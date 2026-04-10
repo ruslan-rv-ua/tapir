@@ -1,6 +1,6 @@
 # Специфікація доступності Tapir
 
-> **Версія:** 0.1 (draft)  
+> **Версія:** 0.1 (draft) | **Версія продукту:** 0.1.0  
 > **Стандарти:** WCAG 2.1 AA (адаптовано для desktop), UI Automation  
 > **Скрінрідери:** NVDA 2023+, JAWS 2023+, Windows Narrator  
 > **Технології:** React Aria Components, WebView2 (Chromium ARIA → UIA mapping)

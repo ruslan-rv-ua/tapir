@@ -1,6 +1,6 @@
 # Архітектура Tapir
 
-> **Версія:** 0.1 (draft)  
+> **Версія:** 0.1 (draft) | **Версія продукту:** 0.1.0  
 > **Стек:** Tauri v2 + React 19 + React Aria + Rust  
 > **Платформа:** Windows 11+, portable EXE
 

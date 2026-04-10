@@ -1,6 +1,6 @@
 # Технологічний стек Tapir
 
-> **Версія:** 0.1 (draft)  
+> **Версія:** 0.1 (draft) | **Версія продукту:** 0.1.0  
 > **Платформа:** Windows 11+, portable EXE  
 > **Архітектура:** Tauri v2 (Rust backend + WebView2 frontend)
 
