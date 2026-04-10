@@ -18,7 +18,8 @@
   // Ім'я активного профілю. Має відповідати файлу data/profiles/{name}.tapirprofile
   "activeProfile": "Default",
 
-  // Аудіо пристрій для програвача. null = системний за замовчуванням
+  // Аудіо пристрій для програвача. null = системний за замовчуванням;
+  // якщо збережений пристрій зник, при старті fallback до null без помилки
   "outputDevice": null,
 
   // Згортати до tray замість закриття
@@ -64,7 +65,7 @@ interface GlobalSettings {
   language: "uk-UA" | "en-US";
   theme: "auto" | "dark" | "light";
   activeProfile: string;
-  outputDevice: string | null;
+  outputDevice: string | null;  // null або unavailable device => system default
   minimizeToTray: boolean;
   showTrayNotifications: boolean;
   showTrackInTitle: boolean;
@@ -380,7 +381,7 @@ interface ScheduledRecording {
   streamId: string;             // references StreamInfo.id
   name: string;                 // user label
   type: "oneshot" | "recurring";
-  dayOfWeek: number | null;     // 0=Mon ... 6=Sun. null for oneshot with date
+  dayOfWeek: number | null;     // 0=Mon ... 6=Sun. null for oneshot with date; інші значення невалідні
   date: string | null;          // ISO 8601 date for oneshot: "2026-02-14"
   time: string;                 // "HH:MM" (24h, local time)
   durationMinutes: number;
@@ -398,7 +399,7 @@ pub struct ScheduledRecording {
     pub name: String,
     #[serde(rename = "type")]
     pub schedule_type: ScheduleType,
-    pub day_of_week: Option<u8>,
+    pub day_of_week: Option<u8>, // validated on load/save: only 0..=6 allowed
     pub date: Option<String>,
     pub time: String,
     pub duration_minutes: u32,
@@ -470,11 +471,23 @@ pub struct ReconnectConfig {
 interface PostprocessConfig {
   enabled: boolean;
   command: string;          // шлях до exe або скрипту
-  arguments: string;        // "%file" замінюється на шлях до файлу
+  arguments: string;        // "%file" замінюється на шлях до файлу; приклад: "--preset radio %file"
   timeoutSecs: number;
   runOnComplete: boolean;
   runOnIncomplete: boolean;
 }
+
+Приклади `arguments`:
+
+```text
+%file
+--preset radio %file
+--input %file --output %file.processed.mp3
+```
+
+Плейсхолдери:
+- `%file` — абсолютний шлях до записаного файлу
+- Інші `%...` плейсхолдери не підтримуються у v0.1.0
 ```
 
 ```rust

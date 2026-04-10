@@ -96,6 +96,8 @@ Tailwind `forced-colors:` для всіх кастомних компонент�
 [Activity Bar] → [Section Content] → [Player Controls] → [Status Bar]
 ```
 
+> У Фазі 1 зона `Player Controls` відсутня і пропускається: `[Activity Bar] → [Section Content] → [Status Bar]`.
+
 Activity Bar — вертикальна навігація секцій (Arrow Up/Down).
 Пряма навігація: Ctrl+1…5 (Streams, Browser, Songs, Schedule, Wishlist).
 Ctrl+, — відкрити діалог налаштувань.
@@ -115,7 +117,9 @@ Shift+F6: зворотній напрямок
 - Запам'ятовує останній сфокусований елемент у кожній зоні (roving focus)
 - Пропускає приховані зони (Player, якщо нічого не відтворюється)
 - Оголошує назву зони через LiveAnnouncer (`assertive`): «Програвач», «Потоки», «Статус»
-- Не працює всередині модальних діалогів (focus trap)- При спробі F6 у відкритому діалозі — ігнорується (focus trap активний). NVDA не оголошує зону.
+- Реалізація: звичайний `window.addEventListener("keydown", ...)` у frontend; це **не** global shortcut і працює лише коли фокус у вікні Tapir
+- Не працює всередині модальних діалогів (focus trap)
+- При спробі F6 у відкритому діалозі — ігнорується (focus trap активний). NVDA не оголошує зону.
 ### 2.4. Command Palette (Ctrl+K)
 
 - `role="dialog"`, `aria-label="Command Palette"`
@@ -124,7 +128,9 @@ Shift+F6: зворотній напрямок
 - Fuzzy search: секції, станції, пісні, налаштування
 - Live region: `aria-live="polite"` — кількість результатів
 
-### 2.5. Profile Switcher
+### 2.5. Profile Switcher [Phase 4]
+
+> У Фазі 1 елемент присутній лише як disabled placeholder з поясненням "Буде доступно у Фазі 4".
 
 - Кнопка внизу Activity Bar: `aria-label="Переключити профіль: {name}"`, `aria-haspopup="listbox"`
 - Popover: React Aria `Popover` + `ListBox` (`selectionMode="single"`)
@@ -260,8 +266,8 @@ React Aria `TableView` з `selectionMode="multiple"`:
 | Home/End | Перший/останній рядок |
 | Space | Toggle selection |
 | Enter | Подвійний клік (запис або відтворення, за `doubleClickAction`) |
-| `P` | Відтворити потік (незалежно від `doubleClickAction`) |
-| `R` | Toggle запис потоку (незалежно від `doubleClickAction`) |
+| `P` | Відтворити потік (window-scoped shortcut у таблиці; незалежно від `doubleClickAction`) |
+| `R` | Toggle запис потоку (window-scoped shortcut у таблиці; незалежно від `doubleClickAction`) |
 | F2 | Відкрити діалог редагування потоку (EditStreamDialog) |
 | Delete | Видалити вибраний потік (з підтвердженням) |
 | Shift+F10 / Context Menu | Контекстне меню |
@@ -310,7 +316,7 @@ React Aria `DialogTrigger` + `Modal`:
 
 ### 3.4. NowPlaying
 
-> **Примітка:** `NowPlaying` з `aria-live="polite"` існує тільки в `PlayerPanel` (§4.1), щоб уникнути подвійного оголошення screen reader.
+> **Примітка:** `NowPlaying` з `aria-live="polite"` існує тільки в `PlayerPanel` (§4.1, Phase 2), щоб уникнути подвійного оголошення screen reader.
 > У `StreamTable` поточний трек показується статично в комірці "Трек" (без `aria-live`).
 
 ### 3.5. First-run experience (перший запуск)
@@ -319,6 +325,7 @@ React Aria `DialogTrigger` + `Modal`:
 - Фокус автоматично переходить до кнопки "Додати потік" (empty state в StreamTable)
 - LiveAnnouncer оголошує (`assertive`): _"Tapir відкрито вперше. Додайте перший потік для запису."_
 - Empty state StreamTable показує CTA кнопку з `autoFocus` (див. §3.1)
+- Оголошення виконується один раз після першого mount головного вікна; повторні ререндери не повинні дублювати announcement
 
 ### 3.6. Контекстне меню
 
@@ -356,7 +363,7 @@ React Aria `Menu`:
 
 ---
 
-## 4. Секція: Програвач (Player)
+## 4. Секція: Програвач (Player) [Phase 2]
 
 ### 4.1. Структура
 
@@ -375,6 +382,8 @@ PlayerPanel (role="complementary", aria-label="Програвач")
 └── VolumeSlider
     └── React Aria Slider (aria-label="Гучність", 0-100%)
 ```
+
+Для Windows High Contrast (`forced-colors:`): thumb, track і focus ring slider мають використовувати системні кольори `ButtonText`, `ButtonFace`, `Highlight`.
 
 ### 4.2. Play/Pause Toggle
 

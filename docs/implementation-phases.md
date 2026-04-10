@@ -54,7 +54,7 @@
 | `AddStreamDialog.tsx` | Модальний діалог додавання/редагування потоку (React Aria Modal) |
 | `StatusBar.tsx` | Кількість записів, вільне місце, найдовший запис |
 | `CommandPalette.tsx` | Ctrl+K: fuzzy search дій, станцій, пісень |
-| `ProfileSwitcher.tsx` | Popover внизу ActivityBar — UI placeholder, нефункціональний до Фази 4 |
+| `ProfileSwitcher.tsx` | Popover внизу ActivityBar — UI placeholder, нефункціональний до Фази 4; у Фазі 1 disabled + tooltip/aria-description "Буде доступно у Фазі 4" |
 | `ToastContainer.tsx` | Toast-повідомлення (bottom-right, aria-live) |
 | `LiveAnnouncer.tsx` | Централізований aria-live контейнер |
 | `ConfirmDialog.tsx` | Діалог підтвердження деструктивних дій |
@@ -122,9 +122,11 @@
 2. Одна IPC команда `start_recording(url)` → reqwest GET → записати raw bytes у файл
 3. Одна IPC подія `emit("recording-status", ...)`
 4. Мінімальний UI: кнопка "Record" + input URL
+4. Мінімальний UI: кнопка "Record" + input URL
 5. Portable: `data/` directory поряд з EXE
 
-Якщо це працює — архітектура підтверджена, Tauri IPC ↔ Rust ↔ reqwest ↔ file I/O з'єднані.
+Якщо це працює — архітектура підтверджена, Tauri IPC ↔ Rust ↔ reqwest ↔ file I/O з'єднані. Після цього Фаза 1 розширюється до повного scope з таблиці "Включено".
+- [ ] `aria-label` для checkbox вибору рядка у StreamTable у форматі `Вибрати потік: {streamName}`
 
 ### Критерії "Done" для Фази 1
 
@@ -281,7 +283,7 @@
 | Елемент | Опис |
 |---------|------|
 | `tray.rs` | TrayIconBuilder, rebuild_tray_menu(), обробка кліків |
-| `tray_menu.rs` | Побудова динамічного меню за станом (player, recordings, window) |
+| `tray_menu.rs` | Побудова динамічного меню за станом (player, recordings, window); залежить від player state з Фази 2 |
 | Balloon tip | `Shell_NotifyIconW` через `windows-rs` для сповіщень про зміну треку |
 | Single instance | `tauri-plugin-single-instance` (Named Mutex) |
 | CLI | `tauri-plugin-cli` — `-r`, `-p`, `-profile`, `-datadir`, `-minimize` |

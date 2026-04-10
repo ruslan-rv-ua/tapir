@@ -117,7 +117,7 @@ src-tauri/src/
 
 ## 3. Модульна структура (Frontend)
 
-> **Фази:** Компоненти без позначки — Фаза 1. Компоненти з позначкою — div. вказану фазу.
+> **Фази:** Компоненти без позначки — Фаза 1. Компоненти з позначкою — див. вказану фазу.
 
 ```
 src/
@@ -206,8 +206,8 @@ use tokio::sync::RwLock;
 
 pub struct AppState {
     pub stream_manager: Arc<RwLock<StreamManager>>,
-    pub player: Arc<RwLock<PlayerEngine>>,
-    pub scheduler: Arc<RwLock<Scheduler>>,
+    pub player: Arc<RwLock<PlayerEngine>>,       // Phase 2. Phase 1: ініціалізується no-op stub
+    pub scheduler: Arc<RwLock<Scheduler>>,        // Phase 3. Phase 1: ініціалізується no-op stub
     pub settings: Arc<RwLock<GlobalSettings>>,
     pub active_profile: Arc<RwLock<Profile>>,
 }
@@ -333,6 +333,8 @@ ELSE (не перший сегмент):
 
 ### 5.2. Відтворення потоку (live) [Phase 2]
 
+> У Фазі 1 `StreamManager::read_loop` пише байти лише у файл(и). Tee у playback channel додається у Фазі 2 без зміни recording pipeline.
+
 ```
 StreamManager read_loop
   │
@@ -401,6 +403,8 @@ main.rs
               └─ IF streams.length === 0 (first run):
                    announce("Tapir відкрито вперше. Додайте перший потік для запису.", "assertive")
                    autoFocus → "Додати потік" button in StreamTable empty state
+
+    Примітка: точна поведінка first-run announcement описана в accessibility.md §3.5.
 ```
 
 ### 5.4. Зміна профілю [Phase 4]
@@ -448,6 +452,8 @@ app.global_shortcut().on_shortcut("Ctrl+Shift+R", |app, _shortcut, event| {
 Після виконання дії backend emit-ує відповідну подію (`recording-status`, `player-status` тощо), і frontend оновлюється як звичайно.
 
 ### 6.1. Команди (Frontend → Backend)
+
+> У таблицях нижче `Returns` показує payload успішного `Ok(...)`. Фактичний IPC-контракт для всіх команд: `Result<T, String>`.
 
 #### Streams & Recording
 
@@ -1140,10 +1146,10 @@ Tab order (main window):
   [Activity Bar] → [Section Content] → [Player Controls] → [Status Bar]
 
 Zone navigation (F6 / Shift+F6):
-  F6 — наступна зона: Activity Bar → Section Content → Player → Status Bar (cycle)
+    F6 — наступна зона: Activity Bar → Section Content → Player → Status Bar (cycle; Player пропускається у Фазі 1 або коли прихований)
   Shift+F6 — попередня зона
   • Запам'ятовує останній фокусований елемент у кожній зоні
-  • Пропускає приховані зони (Player прихований якщо нічого не грає)
+    • Пропускає приховані або неімплементовані зони (Player прихований якщо нічого не грає або ще не реалізований у поточній фазі)
   • Оголошує назву зони через LiveAnnouncer (assertive)
   • Не працює всередині діалогів (Settings, AddStream)
 
