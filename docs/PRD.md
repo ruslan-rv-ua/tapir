@@ -119,12 +119,11 @@ Tapir/
 - Збереження суцільного файлу (один файл на весь запис)
 - Збереження окремих треків (за метаданими)
   - Опція `saveFirstTrack` (boolean): зберігати перший трек або ні. "Перший трек" — сегмент від моменту початку запису до першої зміни метаданих (частковий трек, запис розпочато посередині пісні).
+    > **Canonical поле:** `skipFirstIncompleteTrack` (інвертована семантика: `saveFirstTrack: true` = `skipFirstIncompleteTrack: false`). Див. data-models.md.
     - `saveFirstTrack: true` — перший сегмент зберігається; якщо його тривалість < `minTrackDuration`, він все одно зберігається (виняток з правила мінімальної тривалості)
     - `saveFirstTrack: false` — перший сегмент завжди відкидається, незалежно від `minTrackDuration`
   - Опція `minTrackDuration` (мс): мінімальна тривалість треку для збереження (треки коротше за це значення відкидаються, окрім першого треку при `saveFirstTrack: true`)
-
-> **Поля в data-models:** `saveFirstTrack` → `skipFirstIncompleteTrack` (інвертована семантика),
-> `minTrackDuration` → `skipShortTracksMs`. Псевдокод логіки — div. architecture.md §5.1.2.
+    > **Canonical поле:** `skipShortTracksMs`. Псевдокод логіки — див. architecture.md §5.1.2.
 
 #### 4.1.3. Обробка метаданих
 - Автоматичне отримання метаданих із ICY metadata (artist, title) під час підключення до радіостанції (ICY metadata)

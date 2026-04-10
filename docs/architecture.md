@@ -117,6 +117,8 @@ src-tauri/src/
 
 ## 3. Модульна структура (Frontend)
 
+> **Фази:** Компоненти без позначки — Фаза 1. Компоненти з позначкою — div. вказану фазу.
+
 ```
 src/
 ├── index.html
@@ -164,17 +166,17 @@ src/
 │       ├── LiveAnnouncer.tsx  # Screen reader announcements
 │       ├── ConfirmDialog.tsx  # Accessible confirmation dialog
 │       ├── CommandPalette.tsx # Ctrl+K: fuzzy search actions, stations, songs
-│       ├── ProfileSwitcher.tsx # Profile popover (bottom of ActivityBar)
+│       ├── ProfileSwitcher.tsx # Profile popover [Phase 4, Phase 1: UI placeholder]
 │       ├── ToastContainer.tsx # Toast notifications (bottom-right)
 │       ├── UndoToast.tsx      # Undo toast for mild-destructive actions (delete stream, wishlist entry)
 │       ├── KeyboardShortcutsModal.tsx # F1: повна таблиця shortcuts, role="dialog"
 │       └── ErrorBoundary.tsx
 ├── stores/                    # Nanostores — Tauri IPC bridge
 │   ├── streams.ts             # Stream list + recording states
-│   ├── player.ts              # Playback state
-│   ├── browser.ts             # Search results
-│   ├── songs.ts               # Saved songs
-│   ├── schedule.ts            # Scheduled recordings
+│   ├── player.ts              # Playback state [Phase 2]
+│   ├── browser.ts             # Search results [Phase 3]
+│   ├── songs.ts               # Saved songs [Phase 4]
+│   ├── schedule.ts            # Scheduled recordings [Phase 3]
 │   ├── settings.ts            # Global settings mirror
 │   ├── profile.ts             # Active profile data
 │   ├── navigation.ts          # Active section, command palette state
@@ -329,7 +331,7 @@ ELSE (не перший сегмент):
 > У PRD ці поля описані як `saveFirstTrack` (інвертована семантика) та `minTrackDuration`.
 > Canonical назви — з data-models.md.
 
-### 5.2. Відтворення потоку (live)
+### 5.2. Відтворення потоку (live) [Phase 2]
 
 ```
 StreamManager read_loop
@@ -401,7 +403,7 @@ main.rs
                    autoFocus → "Додати потік" button in StreamTable empty state
 ```
 
-### 5.4. Зміна профілю
+### 5.4. Зміна профілю [Phase 4]
 
 ```
 Frontend                         Rust Backend
@@ -461,7 +463,7 @@ app.global_shortcut().on_shortcut("Ctrl+Shift+R", |app, _shortcut, event| {
 | `toggle_recording` | `{streamId}` | `()` | Увімкнути/вимкнути запис потоку |
 | `get_stream_status` | `{streamId}` | `StreamStatus` | Детальний статус одного потоку |
 
-#### Player
+#### Player [Phase 2]
 
 | Command | Params | Returns | Опис |
 |---|---|---|---|
@@ -474,7 +476,7 @@ app.global_shortcut().on_shortcut("Ctrl+Shift+R", |app, _shortcut, event| {
 | `get_output_devices` | — | `Vec<AudioDevice>` | Список аудіо пристроїв |
 | `set_output_device` | `{deviceName}` | `()` | Вибрати пристрій виведення |
 
-#### Stream Browser
+#### Stream Browser [Phase 3]
 
 | Command | Params | Returns | Опис |
 |---|---|---|---|
@@ -482,6 +484,8 @@ app.global_shortcut().on_shortcut("Ctrl+Shift+R", |app, _shortcut, event| {
 | `add_station_from_browser` | `{station}` | `StreamInfo` | Додати знайдену станцію |
 
 #### Settings & Profiles
+
+> `get_settings` / `save_settings` — Phase 1 (мінімальний). Інші — Phase 4.
 
 | Command | Params | Returns | Опис |
 |---|---|---|---|
@@ -495,7 +499,7 @@ app.global_shortcut().on_shortcut("Ctrl+Shift+R", |app, _shortcut, event| {
 | `export_profile` | `{name, targetPath}` | `()` | Експорт у файл |
 | `import_profile` | `{sourcePath}` | `ProfileMeta` | Імпорт з файлу |
 
-#### Wishlist / Ignorelist
+#### Wishlist / Ignorelist [Phase 2]
 
 | Command | Params | Returns | Опис |
 |---|---|---|---|
@@ -506,7 +510,7 @@ app.global_shortcut().on_shortcut("Ctrl+Shift+R", |app, _shortcut, event| {
 | `add_to_ignorelist` | `{pattern}` | `()` | Додати |
 | `remove_from_ignorelist` | `{pattern}` | `()` | Видалити |
 
-#### Scheduled Recordings
+#### Scheduled Recordings [Phase 3]
 
 | Command | Params | Returns | Опис |
 |---|---|---|---|
@@ -516,7 +520,7 @@ app.global_shortcut().on_shortcut("Ctrl+Shift+R", |app, _shortcut, event| {
 | `delete_scheduled_recording` | `{id}` | `()` | Видалити |
 | `toggle_scheduled_recording` | `{id, enabled}` | `()` | Увімкнути/вимкнути |
 
-#### Saved Songs
+#### Saved Songs [Phase 4]
 
 | Command | Params | Returns | Опис |
 |---|---|---|---|
@@ -527,7 +531,7 @@ app.global_shortcut().on_shortcut("Ctrl+Shift+R", |app, _shortcut, event| {
 | `open_in_explorer` | `{path}` | `()` | Показати в провіднику Windows |
 | `import_files` | `{paths}` | `Vec<SavedSong>` | Імпортувати файли |
 
-#### Postprocessing
+#### Postprocessing [Phase 4]
 
 | Command | Params | Returns | Опис |
 |---|---|---|---|

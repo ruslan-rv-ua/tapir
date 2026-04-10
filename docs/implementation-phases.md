@@ -89,7 +89,7 @@
 
 **Accessibility (обов'язково у Фазі 1):**
 
-- Tab order: [Activity Bar] → [StreamTable] → [Toolbar] → [Player] → [StatusBar]
+- Tab order: [Activity Bar] → [StreamTable] → [Toolbar] → [StatusBar]
 - ARIA roles на всіх елементах (grid, gridcell, columnheader, button, dialog)
 - Live regions: track-changed (polite), recording started/stopped (assertive), errors (assertive)
 - Focus trap в діалогах (AddStream, Confirm)
