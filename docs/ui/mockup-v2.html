@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="uk" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>● 3 записи — Tapir</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        base: '#020617',
+        elevated: '#0f172a',
+        overlay: '#1e293b',
+        surface: '#334155',
+        accent: { 400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' },
+        rec: { 400: '#f87171', 500: '#ef4444', 600: '#dc2626' },
+      },
+      zIndex: { 300: '300' }
+    }
+  }
+}
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', system-ui, sans-serif; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+  /* Record pulse */
+  @keyframes pulse-rec { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .rec-pulse { animation: pulse-rec 1.5s ease-in-out infinite; }
+
+  /* Hover */
+  .nav-item { transition: all 0.15s; }
+  .nav-item:hover { background: rgba(255,255,255,0.06); }
+  .nav-item.active { background: rgba(59,130,246,0.15); border-left: 3px solid #3b82f6; }
+  .nav-item:not(.active) { border-left: 3px solid transparent; }
+
+  .row-hover:hover { background: rgba(255,255,255,0.03); }
+  .row-hover.selected { background: rgba(59,130,246,0.12); }
+
+  /* Focus */
+  button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid #3b82f6; outline-offset: 2px;
+  }
+
+  /* Range slider */
+  input[type="range"] { -webkit-appearance: none; appearance: none; height: 4px; background: #475569; border-radius: 2px; cursor: pointer; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #3b82f6; cursor: pointer; }
+
+  /* Panels */
+  .panel { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+  .panel.active { display: flex; }
+
+  /* Badge */
+  .badge { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; border-radius: 9px; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
+
+  /* Tooltip */
+  .tooltip { position: relative; }
+  .tooltip::after { content: attr(data-tip); position: absolute; left: calc(100% + 8px); top: 50%; transform: translateY(-50%); background: #1e293b; border: 1px solid #475569; padding: 4px 8px; border-radius: 4px; font-size: 12px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 100; }
+  .tooltip:hover::after { opacity: 1; }
+
+  /* Command palette */
+  .cmd-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 900; display: flex; align-items: flex-start; justify-content: center; padding-top: 80px; }
+  .cmd-box { width: 560px; background: #1e293b; border: 1px solid #475569; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); overflow: hidden; }
+  .cmd-input { width: 100%; background: transparent; border: none; padding: 16px 20px; color: #e2e8f0; font-size: 15px; outline: none; border-bottom: 1px solid #334155; }
+  .cmd-item { padding: 10px 20px; color: #cbd5e1; cursor: pointer; display: flex; align-items: center; gap: 12px; font-size: 14px; }
+  .cmd-item:hover, .cmd-item.selected { background: rgba(59,130,246,0.2); color: #e2e8f0; }
+  .cmd-item kbd { margin-left: auto; background: #0f172a; border: 1px solid #334155; padding: 2px 6px; border-radius: 4px; font-size: 11px; color: #94a3b8; font-family: inherit; }
+  .cmd-section { padding: 8px 20px 4px; font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+
+  /* Profile popover */
+  .profile-popover { position: absolute; bottom: 52px; left: 8px; width: 220px; background: #1e293b; border: 1px solid #475569; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 200; padding: 6px 0; }
+  .profile-item { padding: 8px 16px; color: #cbd5e1; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+  .profile-item:hover { background: rgba(59,130,246,0.2); }
+  .profile-sep { height: 1px; background: #334155; margin: 4px 0; }
+
+  /* Context menu */
+  .ctx-menu { position: fixed; background: #1e293b; border: 1px solid #475569; border-radius: 6px; padding: 4px 0; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 1000; min-width: 200px; }
+  .ctx-item { padding: 8px 16px; color: #e2e8f0; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+  .ctx-item:hover { background: #2563eb; }
+  .ctx-sep { height: 1px; background: #334155; margin: 4px 0; }
+
+  /* Modal */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 500; }
+  .modal-box { background: #1e293b; border: 1px solid #475569; border-radius: 10px; padding: 24px; min-width: 420px; max-width: 520px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+
+  /* Toast */
+  .toast-container { position: fixed; bottom: 80px; right: 16px; z-index: 800; display: flex; flex-direction: column; gap: 8px; }
+  .toast { background: #1e293b; border: 1px solid #475569; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.4); display: flex; align-items: center; gap: 10px; min-width: 280px; animation: slideIn 0.3s ease; }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+  /* Player gradient */
+  .player-bar { background: linear-gradient(to right, #0f172a, #1e293b); border-top: 1px solid #334155; }
+</style>
+</head>
+<body class="bg-base text-slate-200 flex flex-col h-screen select-none overflow-hidden">
+
+<!-- ════════════════════ MAIN LAYOUT ════════════════════ -->
+<div class="flex flex-1 overflow-hidden">
+
+  <!-- ══════════ ACTIVITY BAR (48px) ══════════ -->
+  <nav class="w-12 bg-elevated flex flex-col items-center py-2 border-r border-slate-800 shrink-0" role="navigation" aria-label="Секції застосунку">
+    
+    <!-- Section icons -->
+    <button onclick="switchSection('streams')" class="nav-item active w-10 h-10 flex items-center justify-center rounded-lg mb-1 relative tooltip" data-tip="Потоки" aria-label="Потоки (3 записи)" aria-current="page" data-section="streams">
+      <span class="text-lg">●</span>
+      <span class="badge bg-rec-500 text-white">3</span>
+    </button>
+    <button onclick="switchSection('browser')" class="nav-item w-10 h-10 flex items-center justify-center rounded-lg mb-1 tooltip text-slate-500 hover:text-slate-300" data-tip="Браузер" aria-label="Браузер станцій" data-section="browser">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <button onclick="switchSection('songs')" class="nav-item w-10 h-10 flex items-center justify-center rounded-lg mb-1 tooltip text-slate-500 hover:text-slate-300" data-tip="Пісні" aria-label="Збережені пісні" data-section="songs">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z"/></svg>
+    </button>
+    <button onclick="switchSection('schedule')" class="nav-item w-10 h-10 flex items-center justify-center rounded-lg mb-1 tooltip text-slate-500 hover:text-slate-300" data-tip="Розклад" aria-label="Заплановані записи" data-section="schedule">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M16 2v4M8 2v4M3 10h18"/></svg>
+    </button>
+    <button onclick="switchSection('wishlist')" class="nav-item w-10 h-10 flex items-center justify-center rounded-lg mb-1 tooltip text-slate-500 hover:text-slate-300" data-tip="Wishlist" aria-label="Wishlist" data-section="wishlist">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" stroke-width="2" stroke-linejoin="round"/></svg>
+    </button>
+
+    <!-- Spacer -->
+    <div class="flex-1"></div>
+
+    <!-- Separator -->
+    <div class="w-6 h-px bg-slate-700 mb-2"></div>
+
+    <!-- Settings (opens dialog) -->
+    <button onclick="openSettingsDialog()" class="nav-item w-10 h-10 flex items-center justify-center rounded-lg mb-1 tooltip text-slate-500 hover:text-slate-300" data-tip="Налаштування (Ctrl+,)" aria-label="Налаштування">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path stroke-width="2" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    </button>
+
+    <!-- Profile switcher -->
+    <div class="relative">
+      <button onclick="toggleProfilePopover()" class="w-10 h-10 flex items-center justify-center rounded-lg tooltip text-xs font-bold bg-accent-600/20 text-accent-400 hover:bg-accent-600/30 border border-accent-600/30" data-tip="Профіль: Music Discovery" aria-label="Поточний профіль: Music Discovery. Натисніть для перемикання.">
+        MD
+      </button>
+      <!-- Profile popover -->
+      <div id="profile-popover" class="profile-popover" style="display: none" role="listbox" aria-label="Профілі">
+        <div class="px-4 py-2 text-xs text-slate-500 uppercase tracking-wider font-semibold" role="presentation">Профілі</div>
+        <div class="profile-item" role="option" aria-selected="false" onclick="selectProfile('Default', 'DE')">
+          <span class="w-5 text-center text-slate-600">○</span>
+          Default
+        </div>
+        <div class="profile-item" role="option" aria-selected="true" onclick="selectProfile('Music Discovery', 'MD')" style="background: rgba(59,130,246,0.1);">
+          <span class="w-5 text-center text-accent-400">●</span>
+          <span class="text-accent-400 font-medium">Music Discovery</span>
+        </div>
+        <div class="profile-item" role="option" aria-selected="false" onclick="selectProfile('Jazz Collection', 'JC')">
+          <span class="w-5 text-center text-slate-600">○</span>
+          Jazz Collection
+        </div>
+        <div class="profile-sep"></div>
+        <div class="profile-item" onclick="openSettingsDialog('profiles')">
+          <span class="w-5 text-center text-slate-500">+</span>
+          Новий профіль
+        </div>
+        <div class="profile-item" onclick="openSettingsDialog('profiles')">
+          <span class="w-5 text-center text-slate-500">✏</span>
+          Управляти профілями
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ══════════ CONTENT AREA ══════════ -->
+  <div class="flex-1 flex flex-col overflow-hidden">
+
+    <!-- ═══════ SECTION HEADER ═══════ -->
+    <div class="flex items-center gap-3 px-5 py-3 border-b border-slate-800 bg-elevated shrink-0">
+      <h1 id="section-title" class="text-base font-semibold text-slate-100">Потоки</h1>
+      <div class="flex-1"></div>
+      <!-- Command palette trigger -->
+      <button onclick="showCmdPalette()" class="flex items-center gap-2 bg-overlay/50 hover:bg-overlay px-3 py-1.5 rounded-lg text-sm text-slate-500 hover:text-slate-300 border border-slate-700/50 transition-colors" aria-label="Command Palette (Ctrl+K)">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35" stroke-width="2" stroke-linecap="round"/></svg>
+        <span>Пошук дій...</span>
+        <kbd class="bg-base/50 border border-slate-700 px-1.5 py-0.5 rounded text-xs text-slate-500 ml-2">Ctrl+K</kbd>
+      </button>
+    </div>
+
+    <!-- ═══════ PANEL: STREAMS ═══════ -->
+    <div id="section-streams" class="panel active" role="region" aria-label="Потоки">
+      <!-- Toolbar -->
+      <div class="flex items-center gap-2 px-5 py-2.5 border-b border-slate-800/50 shrink-0">
+        <button class="bg-accent-600 hover:bg-accent-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5" onclick="showAddDialog()">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M12 5v14M5 12h14"/></svg>
+          Додати потік
+        </button>
+        <button class="bg-overlay hover:bg-surface/50 text-slate-300 px-3 py-1.5 rounded-lg text-sm transition-colors">⏹ Зупинити всі</button>
+        <div class="flex-1"></div>
+        <span class="text-xs text-slate-600">5 потоків</span>
+      </div>
+
+      <!-- Table -->
+      <div class="flex-1 overflow-auto">
+        <table class="w-full text-sm" role="grid" aria-label="Список потоків">
+          <thead class="sticky top-0 bg-elevated text-left text-slate-500 text-xs uppercase tracking-wider z-10">
+            <tr>
+              <th class="pl-5 pr-2 py-2.5 w-8"><input type="checkbox" class="rounded accent-accent-500"></th>
+              <th class="px-3 py-2.5 w-28">Статус</th>
+              <th class="px-3 py-2.5">Станція</th>
+              <th class="px-3 py-2.5">Зараз грає</th>
+              <th class="px-3 py-2.5 text-right w-24">Бітрейт</th>
+              <th class="px-3 py-2.5 text-right w-28">Тривалість</th>
+              <th class="pr-5 py-2.5 w-12"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="row-hover selected border-b border-slate-800/30" tabindex="0">
+              <td class="pl-5 pr-2 py-2.5"><input type="checkbox" checked class="rounded accent-accent-500"></td>
+              <td class="px-3 py-2.5">
+                <span class="inline-flex items-center gap-1.5 text-rec-400">
+                  <span class="w-2 h-2 rounded-full bg-rec-500 rec-pulse"></span>
+                  <span class="font-medium text-xs">REC</span>
+                </span>
+              </td>
+              <td class="px-3 py-2.5 font-medium text-slate-100">Radio Paradise - Main Mix</td>
+              <td class="px-3 py-2.5 text-slate-400">Radiohead — Everything In Its Right Place</td>
+              <td class="px-3 py-2.5 text-right text-slate-500">320 kbps</td>
+              <td class="px-3 py-2.5 text-right text-slate-400 font-mono text-xs">02:34:15</td>
+              <td class="pr-5 py-2.5"><button class="text-slate-600 hover:text-slate-300 p-1">⋯</button></td>
+            </tr>
+            <tr class="row-hover border-b border-slate-800/30" tabindex="0">
+              <td class="pl-5 pr-2 py-2.5"><input type="checkbox" class="rounded accent-accent-500"></td>
+              <td class="px-3 py-2.5">
+                <span class="inline-flex items-center gap-1.5 text-rec-400">
+                  <span class="w-2 h-2 rounded-full bg-rec-500 rec-pulse"></span>
+                  <span class="font-medium text-xs">REC</span>
+                </span>
+              </td>
+              <td class="px-3 py-2.5 font-medium text-slate-100">SomaFM - Groove Salad</td>
+              <td class="px-3 py-2.5 text-slate-400">Tycho — A Walk</td>
+              <td class="px-3 py-2.5 text-right text-slate-500">256 kbps</td>
+              <td class="px-3 py-2.5 text-right text-slate-400 font-mono text-xs">01:12:42</td>
+              <td class="pr-5 py-2.5"><button class="text-slate-600 hover:text-slate-300 p-1">⋯</button></td>
+            </tr>
+            <tr class="row-hover border-b border-slate-800/30" tabindex="0">
+              <td class="pl-5 pr-2 py-2.5"><input type="checkbox" class="rounded accent-accent-500"></td>
+              <td class="px-3 py-2.5">
+                <span class="inline-flex items-center gap-1.5 text-rec-400">
+                  <span class="w-2 h-2 rounded-full bg-rec-500 rec-pulse"></span>
+                  <span class="font-medium text-xs">REC</span>
+                </span>
+              </td>
+              <td class="px-3 py-2.5 font-medium text-slate-100">KEXP 90.3 FM</td>
+              <td class="px-3 py-2.5 text-slate-400">Fontaines D.C. — Starburster</td>
+              <td class="px-3 py-2.5 text-right text-slate-500">128 kbps</td>
+              <td class="px-3 py-2.5 text-right text-slate-400 font-mono text-xs">00:45:03</td>
+              <td class="pr-5 py-2.5"><button class="text-slate-600 hover:text-slate-300 p-1">⋯</button></td>
+            </tr>
+            <tr class="row-hover border-b border-slate-800/30" tabindex="0">
+              <td class="pl-5 pr-2 py-2.5"><input type="checkbox" class="rounded accent-accent-500"></td>
+              <td class="px-3 py-2.5">
+                <span class="inline-flex items-center gap-1.5 text-slate-600">
+                  <span class="w-2 h-2 rounded-full bg-slate-600"></span>
+                  <span class="text-xs">IDLE</span>
+                </span>
+              </td>
+              <td class="px-3 py-2.5 font-medium text-slate-400">BBC Radio 6 Music</td>
+              <td class="px-3 py-2.5 text-slate-600">—</td>
+              <td class="px-3 py-2.5 text-right text-slate-600">—</td>
+              <td class="px-3 py-2.5 text-right text-slate-600">—</td>
+              <td class="pr-5 py-2.5"><button class="text-slate-600 hover:text-slate-300 p-1">⋯</button></td>
+            </tr>
+            <tr class="row-hover border-b border-slate-800/30" tabindex="0">
+              <td class="pl-5 pr-2 py-2.5"><input type="checkbox" class="rounded accent-accent-500"></td>
+              <td class="px-3 py-2.5">
+                <span class="inline-flex items-center gap-1.5 text-amber-400">
+                  <span class="w-2 h-2 rounded-full bg-amber-500 rec-pulse"></span>
+                  <span class="text-xs">RETRY</span>
+                </span>
+              </td>
+              <td class="px-3 py-2.5 font-medium text-slate-300">NTS Radio 1</td>
+              <td class="px-3 py-2.5 text-slate-600 italic text-xs">Спроба 3/10...</td>
+              <td class="px-3 py-2.5 text-right text-slate-500">128 kbps</td>
+              <td class="px-3 py-2.5 text-right text-slate-400 font-mono text-xs">00:22:10</td>
+              <td class="pr-5 py-2.5"><button class="text-slate-600 hover:text-slate-300 p-1">⋯</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════ PANEL: BROWSER ═══════ -->
+    <div id="section-browser" class="panel" role="region" aria-label="Браузер станцій">
+      <div class="px-5 py-3 border-b border-slate-800/50 shrink-0" role="search">
+        <div class="flex items-end gap-3">
+          <div class="flex-1">
+            <label class="block text-xs text-slate-500 mb-1.5">Назва станції</label>
+            <input type="text" value="jazz" class="w-full bg-base border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:border-accent-500 transition-colors">
+          </div>
+          <div class="w-32">
+            <label class="block text-xs text-slate-500 mb-1.5">Формат</label>
+            <select class="w-full bg-base border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
+              <option>Усі</option><option selected>MP3</option><option>AAC</option>
+            </select>
+          </div>
+          <div class="w-28">
+            <label class="block text-xs text-slate-500 mb-1.5">Мін. бітрейт</label>
+            <input type="number" value="128" class="w-full bg-base border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
+          </div>
+          <button class="bg-accent-600 hover:bg-accent-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">Пошук</button>
+        </div>
+      </div>
+      <div class="flex-1 overflow-auto">
+        <table class="w-full text-sm" role="grid" aria-label="Результати пошуку">
+          <thead class="sticky top-0 bg-elevated text-left text-slate-500 text-xs uppercase tracking-wider">
+            <tr>
+              <th class="px-5 py-2.5">Назва</th>
+              <th class="px-3 py-2.5">Жанр</th>
+              <th class="px-3 py-2.5">Країна</th>
+              <th class="px-3 py-2.5 text-right">Бітрейт</th>
+              <th class="px-3 py-2.5">Формат</th>
+              <th class="px-3 py-2.5 w-24"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="row-hover border-b border-slate-800/30" tabindex="0">
+              <td class="px-5 py-2.5 text-slate-100 font-medium">WBGO Jazz 88.3</td>
+              <td class="px-3 py-2.5 text-slate-500">Jazz</td>
+              <td class="px-3 py-2.5 text-slate-500">US</td>
+              <td class="px-3 py-2.5 text-right text-slate-500">128 kbps</td>
+              <td class="px-3 py-2.5 text-slate-500">MP3</td>
+              <td class="px-3 py-2.5"><button class="text-accent-400 hover:text-accent-300 text-xs font-medium">+ Додати</button></td>
+            </tr>
+            <tr class="row-hover border-b border-slate-800/30" tabindex="0">
+              <td class="px-5 py-2.5 text-slate-100 font-medium">Jazz FM</td>
+              <td class="px-3 py-2.5 text-slate-500">Jazz, Soul</td>
+              <td class="px-3 py-2.5 text-slate-500">UK</td>
+              <td class="px-3 py-2.5 text-right text-slate-500">320 kbps</td>
+              <td class="px-3 py-2.5 text-slate-500">MP3</td>
+              <td class="px-3 py-2.5"><button class="text-accent-400 hover:text-accent-300 text-xs font-medium">+ Додати</button></td>
+            </tr>
+            <tr class="row-hover border-b border-slate-800/30" tabindex="0">
+              <td class="px-5 py-2.5 text-slate-100 font-medium">Adroit Jazz Underground</td>
+              <td class="px-3 py-2.5 text-slate-500">Jazz, Avant-garde</td>
+              <td class="px-3 py-2.5 text-slate-500">US</td>
+              <td class="px-3 py-2.5 text-right text-slate-500">256 kbps</td>
+              <td class="px-3 py-2.5 text-slate-500">MP3</td>
+              <td class="px-3 py-2.5"><button class="text-accent-400 hover:text-accent-300 text-xs font-medium">+ Додати</button></td>
+            </tr>
+            <tr class="row-hover border-b border-slate-800/30" tabindex="0">
+              <td class="px-5 py-2.5 text-slate-100 font-medium">Radio Swiss Jazz</td>
+              <td class="px-3 py-2.5 text-slate-500">Jazz</td>
+              <td class="px-3 py-2.5 text-slate-500">CH</td>
+              <td class="px-3 py-2.5 text-right text-slate-500">128 kbps</td>
+              <td class="px-3 py-2.5 text-slate-500">MP3</td>
+              <td class="px-3 py-2.5"><button class="text-accent-400 hover:text-accent-300 text-xs font-medium">+ Додати</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="px-5 py-2 border-t border-slate-800/50 text-xs text-slate-600 shrink-0" aria-live="polite">Знайдено 42 станції</div>
+    </div>
+
+    <!-- ═══════ PANEL: SONGS ═══════ -->
+    <div id="section-songs" class="panel" role="region" aria-label="Збережені пісні">
+      <div class="flex items-end gap-3 px-5 py-2.5 border-b border-slate-800/50 shrink-0">
+        <div class="flex-1">
+          <input type="text" placeholder="Пошук пісень..." class="w-full bg-base border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-200">
+        </div>
+        <select class="bg-base border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-200 w-40">
+          <option>Усі станції</option><option>Radio Paradise</option><option>SomaFM</option>
+        </select>
+        <select class="bg-base border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-200 w-28">
+          <option>Усі</option><option>Повні</option><option>Неповні</option><option>Wishlist</option>
+        </select>
+        <div class="flex gap-1 ml-2">
+          <button class="bg-overlay hover:bg-surface/50 text-slate-300 px-2.5 py-1.5 rounded-lg text-sm" title="Відтворити">▶</button>
+          <button class="bg-overlay hover:bg-surface/50 text-slate-300 px-2.5 py-1.5 rounded-lg text-sm" title="Теги">✏️</button>
+          <button class="bg-overlay hover:bg-surface/50 text-slate-300 px-2.5 py-1.5 rounded-lg text-sm" title="Видалити">🗑</button>
+          <button class="bg-overlay hover:bg-surface/50 text-slate-300 px-2.5 py-1.5 rounded-lg text-sm" title="Провідник">📂</button>
+        </div>
+      </div>
+      <div class="flex-1 overflow-auto">
+        <table class="w-full text-sm" role="grid" aria-label="Збережені пісні">
+          <thead class="sticky top-0 bg-elevated text-left text-slate-500 text-xs uppercase tracking-wider">
+            <tr>
+              <th class="pl-5 pr-2 py-2 w-8"><input type="checkbox" class="rounded accent-accent-500"></th>
+              <th class="px-3 py-2">Артист</th>
+              <th class="px-3 py-2">Назва</th>
+              <th class="px-3 py-2">Станція</th>
+              <th class="px-3 py-2 text-right">Бітрейт</th>
+              <th class="px-3 py-2 text-right">Тривалість</th>
+              <th class="px-3 py-2 text-right">Розмір</th>
+              <th class="pr-5 py-2">Дата</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="row-hover border-b border-slate-800/30" tabindex="0">
+              <td class="pl-5 pr-2 py-2"><input type="checkbox" class="rounded accent-accent-500"></td>
+              <td class="px-3 py-2 text-slate-200">Radiohead</td>
+              <td class="px-3 py-2 text-slate-100 font-medium">Weird Fishes/Arpeggi</td>
+              <td class="px-3 py-2 text-slate-500">Radio Paradise</td>
+              <td class="px-3 py-2 text-right text-slate-500">320</td>
+              <td class="px-3 py-2 text-right text-slate-500 font-mono text-xs">5:18</td>
+              <td class="px-3 py-2 text-right text-slate-500">12.3 MB</td>
+              <td class="pr-5 py-2 text-slate-500">10.04.2026</td>
+            </tr>
+            <tr class="row-hover border-b border-slate-800/30" tabindex="0">
+              <td class="pl-5 pr-2 py-2"><input type="checkbox" class="rounded accent-accent-500"></td>
+              <td class="px-3 py-2 text-slate-200">Tycho</td>
+              <td class="px-3 py-2 text-slate-100 font-medium">A Walk</td>
+              <td class="px-3 py-2 text-slate-500">SomaFM</td>
+              <td class="px-3 py-2 text-right text-slate-500">256</td>
+              <td class="px-3 py-2 text-right text-slate-500 font-mono text-xs">5:42</td>
+              <td class="px-3 py-2 text-right text-slate-500">10.8 MB</td>
+              <td class="pr-5 py-2 text-slate-500">10.04.2026</td>
+            </tr>
+            <tr class="row-hover border-b border-slate-800/30" tabindex="0">
+              <td class="pl-5 pr-2 py-2"><input type="checkbox" class="rounded accent-accent-500"></td>
+              <td class="px-3 py-2 text-slate-200">Fontaines D.C.</td>
+              <td class="px-3 py-2 text-slate-100 font-medium">Starburster</td>
+              <td class="px-3 py-2 text-slate-500">KEXP</td>
+              <td class="px-3 py-2 text-right text-slate-500">128</td>
+              <td class="px-3 py-2 text-right text-slate-500 font-mono text-xs">4:27</td>
+              <td class="px-3 py-2 text-right text-slate-500">4.2 MB</td>
+              <td class="pr-5 py-2 text-slate-500">10.04.2026</td>
+            </tr>
+            <tr class="row-hover border-b border-slate-800/30 opacity-50" tabindex="0">
+              <td class="pl-5 pr-2 py-2"><input type="checkbox" class="rounded accent-accent-500"></td>
+              <td class="px-3 py-2 text-slate-200">Bonobo</td>
+              <td class="px-3 py-2 text-slate-100 font-medium">Kiara <span class="text-amber-500 text-[10px] ml-1 font-normal">НЕПОВНА</span></td>
+              <td class="px-3 py-2 text-slate-500">SomaFM</td>
+              <td class="px-3 py-2 text-right text-slate-500">256</td>
+              <td class="px-3 py-2 text-right text-slate-500 font-mono text-xs">0:43</td>
+              <td class="px-3 py-2 text-right text-slate-500">1.1 MB</td>
+              <td class="pr-5 py-2 text-slate-500">10.04.2026</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="px-5 py-2 border-t border-slate-800/50 text-xs text-slate-600 shrink-0" aria-live="polite">128 пісень, 2.4 ГБ</div>
+    </div>
+
+    <!-- ═══════ PANEL: SCHEDULE ═══════ -->
+    <div id="section-schedule" class="panel" role="region" aria-label="Розклад">
+      <div class="flex items-center gap-2 px-5 py-2.5 border-b border-slate-800/50 shrink-0">
+        <button class="bg-accent-600 hover:bg-accent-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M12 5v14M5 12h14"/></svg>
+          Додати запис
+        </button>
+        <div class="flex-1"></div>
+        <span class="text-xs text-slate-600">3 заплановані записи</span>
+      </div>
+      <div class="flex-1 overflow-auto">
+        <table class="w-full text-sm" role="grid" aria-label="Заплановані записи">
+          <thead class="sticky top-0 bg-elevated text-left text-slate-500 text-xs uppercase tracking-wider">
+            <tr>
+              <th class="pl-5 pr-2 py-2.5 w-12">Увімк.</th>
+              <th class="px-3 py-2.5">Назва</th>
+              <th class="px-3 py-2.5">Потік</th>
+              <th class="px-3 py-2.5 w-24">Тип</th>
+              <th class="px-3 py-2.5">День</th>
+              <th class="px-3 py-2.5 w-16">Час</th>
+              <th class="px-3 py-2.5 text-right w-24">Тривалість</th>
+              <th class="pr-5 py-2.5 w-28">Статус</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="row-hover border-b border-slate-800/30" tabindex="0">
+              <td class="pl-5 pr-2 py-2.5"><input type="checkbox" checked class="rounded accent-accent-500"></td>
+              <td class="px-3 py-2.5 text-slate-100 font-medium">Ранковий джаз</td>
+              <td class="px-3 py-2.5 text-slate-400">WBGO Jazz 88.3</td>
+              <td class="px-3 py-2.5"><span class="bg-accent-500/10 text-accent-400 text-[10px] px-2 py-0.5 rounded-full font-medium">ПОВТОР</span></td>
+              <td class="px-3 py-2.5 text-slate-400">Пн–Пт</td>
+              <td class="px-3 py-2.5 text-slate-400 font-mono text-xs">07:00</td>
+              <td class="px-3 py-2.5 text-right text-slate-400">120 хв</td>
+              <td class="pr-5 py-2.5"><span class="text-green-400 text-xs">● Очікує</span></td>
+            </tr>
+            <tr class="row-hover border-b border-slate-800/30" tabindex="0">
+              <td class="pl-5 pr-2 py-2.5"><input type="checkbox" checked class="rounded accent-accent-500"></td>
+              <td class="px-3 py-2.5 text-slate-100 font-medium">KEXP Evening Show</td>
+              <td class="px-3 py-2.5 text-slate-400">KEXP 90.3 FM</td>
+              <td class="px-3 py-2.5"><span class="bg-accent-500/10 text-accent-400 text-[10px] px-2 py-0.5 rounded-full font-medium">ПОВТОР</span></td>
+              <td class="px-3 py-2.5 text-slate-400">Щодня</td>
+              <td class="px-3 py-2.5 text-slate-400 font-mono text-xs">20:00</td>
+              <td class="px-3 py-2.5 text-right text-slate-400">180 хв</td>
+              <td class="pr-5 py-2.5">
+                <span class="inline-flex items-center gap-1 text-rec-400 text-xs">
+                  <span class="w-1.5 h-1.5 rounded-full bg-rec-500 rec-pulse"></span>REC
+                </span>
+              </td>
+            </tr>
+            <tr class="row-hover border-b border-slate-800/30 opacity-50" tabindex="0">
+              <td class="pl-5 pr-2 py-2.5"><input type="checkbox" class="rounded accent-accent-500"></td>
+              <td class="px-3 py-2.5 text-slate-300 font-medium">BBC Late Night</td>
+              <td class="px-3 py-2.5 text-slate-500">BBC Radio 6</td>
+              <td class="px-3 py-2.5"><span class="bg-purple-500/10 text-purple-400 text-[10px] px-2 py-0.5 rounded-full font-medium">ОДНОРАЗОВИЙ</span></td>
+              <td class="px-3 py-2.5 text-slate-500">15.04.2026</td>
+              <td class="px-3 py-2.5 text-slate-500 font-mono text-xs">23:00</td>
+              <td class="px-3 py-2.5 text-right text-slate-500">60 хв</td>
+              <td class="pr-5 py-2.5"><span class="text-slate-600 text-xs">Вимкнено</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════ PANEL: WISHLIST ═══════ -->
+    <div id="section-wishlist" class="panel" role="region" aria-label="Wishlist">
+      <div class="flex items-center border-b border-slate-800/50 shrink-0">
+        <button class="px-5 py-2.5 text-sm text-accent-400 border-b-2 border-accent-500 font-medium">Wishlist</button>
+        <button class="px-5 py-2.5 text-sm text-slate-500 hover:text-slate-300 border-b-2 border-transparent">Ignorelist</button>
+        <div class="flex-1"></div>
+        <div class="flex gap-1 pr-5">
+          <button class="bg-accent-600 hover:bg-accent-700 text-white px-3 py-1 rounded-lg text-xs font-medium">+ Додати</button>
+          <button class="bg-overlay hover:bg-surface/50 text-slate-300 px-2.5 py-1 rounded-lg text-xs">📥 Імпорт</button>
+          <button class="bg-overlay hover:bg-surface/50 text-slate-300 px-2.5 py-1 rounded-lg text-xs">📤 Експорт</button>
+        </div>
+      </div>
+      <div class="flex-1 overflow-auto">
+        <table class="w-full text-sm" role="grid" aria-label="Wishlist">
+          <thead class="sticky top-0 bg-elevated text-left text-slate-500 text-xs uppercase tracking-wider">
+            <tr>
+              <th class="pl-5 pr-2 py-2 w-8"><input type="checkbox" class="rounded accent-accent-500"></th>
+              <th class="px-3 py-2">Патерн</th>
+              <th class="px-3 py-2 text-right w-28">Мін. бітрейт</th>
+              <th class="px-3 py-2 w-24">Формат</th>
+              <th class="pr-5 py-2">Опції</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="row-hover border-b border-slate-800/30" tabindex="0">
+              <td class="pl-5 pr-2 py-2.5"><input type="checkbox" class="rounded accent-accent-500"></td>
+              <td class="px-3 py-2.5 text-slate-100 font-medium font-mono">Radiohead*</td>
+              <td class="px-3 py-2.5 text-right text-slate-500">256</td>
+              <td class="px-3 py-2.5 text-slate-500">Усі</td>
+              <td class="pr-5 py-2.5 text-slate-600 text-xs">—</td>
+            </tr>
+            <tr class="row-hover border-b border-slate-800/30" tabindex="0">
+              <td class="pl-5 pr-2 py-2.5"><input type="checkbox" class="rounded accent-accent-500"></td>
+              <td class="px-3 py-2.5 text-slate-100 font-medium font-mono">*Aphex Twin*</td>
+              <td class="px-3 py-2.5 text-right text-slate-500">128</td>
+              <td class="px-3 py-2.5 text-slate-500">MP3</td>
+              <td class="pr-5 py-2.5 text-slate-500 text-xs">Видалити після запису</td>
+            </tr>
+            <tr class="row-hover border-b border-slate-800/30" tabindex="0">
+              <td class="pl-5 pr-2 py-2.5"><input type="checkbox" class="rounded accent-accent-500"></td>
+              <td class="px-3 py-2.5 text-slate-100 font-medium font-mono">Boards of Canada - *</td>
+              <td class="px-3 py-2.5 text-right text-slate-600">—</td>
+              <td class="px-3 py-2.5 text-slate-500">Усі</td>
+              <td class="pr-5 py-2.5 text-slate-500 text-xs">→ Ignorelist</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════ SETTINGS DIALOG (fullscreen overlay) ═══════ -->
+    <div id="settings-dialog" class="fixed inset-0 bg-base/95 z-300 flex" style="display: none" role="dialog" aria-modal="true" aria-label="Налаштування">
+      <!-- Settings sidebar nav -->
+      <div class="w-56 bg-elevated border-r border-slate-800 flex flex-col py-6 px-3" role="navigation" aria-label="Категорії налаштувань">
+        <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider px-3 mb-4">Налаштування</h2>
+        <a href="#" class="block px-3 py-2 text-sm rounded-lg text-accent-400 bg-accent-600/15 font-medium mb-0.5" onclick="scrollSettingsTo('general')">Загальні</a>
+        <a href="#" class="block px-3 py-2 text-sm rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 mb-0.5" onclick="scrollSettingsTo('recording')">Запис</a>
+        <a href="#" class="block px-3 py-2 text-sm rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 mb-0.5" onclick="scrollSettingsTo('reconnect')">Перепідключення</a>
+        <a href="#" class="block px-3 py-2 text-sm rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 mb-0.5" onclick="scrollSettingsTo('hotkeys')">Гарячі клавіші</a>
+        <a href="#" class="block px-3 py-2 text-sm rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 mb-0.5" onclick="scrollSettingsTo('postprocess')">Постобробка</a>
+        <a href="#" class="block px-3 py-2 text-sm rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 mb-0.5" onclick="scrollSettingsTo('audio')">Аудіо</a>
+        <a href="#" class="block px-3 py-2 text-sm rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 mb-0.5" onclick="scrollSettingsTo('profiles')" id="settings-nav-profiles">Профілі</a>
+        <div class="flex-1"></div>
+        <button class="mt-4 px-3 py-2 text-sm text-slate-500 hover:text-slate-300 rounded-lg hover:bg-slate-800 text-left" onclick="closeSettingsDialog()">← Назад <kbd class="text-[10px] ml-2 px-1.5 py-0.5 bg-slate-800 rounded text-slate-600">Esc</kbd></button>
+      </div>
+      <!-- Settings content -->
+      <div class="flex-1 overflow-auto p-8 max-w-2xl">
+        <div class="flex items-center justify-between mb-6">
+          <h1 class="text-lg font-semibold text-slate-100">Налаштування</h1>
+          <button onclick="closeSettingsDialog()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-700/50 text-slate-500 hover:text-slate-300" aria-label="Закрити налаштування">✕</button>
+        </div>
+        <h2 id="settings-general" class="text-base font-semibold text-slate-100 mb-4 flex items-center gap-2">
+          <span class="w-1 h-5 bg-accent-500 rounded-full"></span>Загальні
+        </h2>
+        <div class="space-y-3 mb-8 pl-3">
+          <div class="flex items-center justify-between py-1">
+            <label class="text-sm text-slate-300">Мова</label>
+            <select class="bg-base border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-200 w-48"><option>Українська</option><option>English</option></select>
+          </div>
+          <div class="flex items-center justify-between py-1">
+            <label class="text-sm text-slate-300">Тема</label>
+            <select class="bg-base border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-200 w-48"><option>Темна</option><option>Світла</option><option>Системна</option></select>
+          </div>
+          <div class="flex items-center justify-between py-1">
+            <label class="text-sm text-slate-300">Згортати до tray</label>
+            <input type="checkbox" checked class="rounded accent-accent-500 w-4 h-4">
+          </div>
+          <div class="flex items-center justify-between py-1">
+            <label class="text-sm text-slate-300">Сповіщення при зміні треку</label>
+            <input type="checkbox" checked class="rounded accent-accent-500 w-4 h-4">
+          </div>
+          <div class="flex items-center justify-between py-1">
+            <label class="text-sm text-slate-300">Дія при подвійному кліку</label>
+            <select class="bg-base border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-200 w-48"><option>Записувати</option><option>Відтворювати</option></select>
+          </div>
+          <div class="flex items-center justify-between py-1">
+            <label class="text-sm text-slate-300">Поріг вільного місця (ГБ)</label>
+            <input type="number" value="5" class="bg-base border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-200 w-20 text-right">
+          </div>
+        </div>
+
+        <h2 id="settings-recording" class="text-base font-semibold text-slate-100 mb-4 flex items-center gap-2">
+          <span class="w-1 h-5 bg-accent-500 rounded-full"></span>Запис
+        </h2>
+        <div class="space-y-3 mb-8 pl-3">
+          <div class="py-1">
+            <label class="block text-sm text-slate-300 mb-1.5">Папка для записів</label>
+            <div class="flex gap-2">
+              <input type="text" value="data\recordings" class="flex-1 bg-base border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-200 font-mono">
+              <button class="bg-overlay hover:bg-surface/50 px-3 py-1.5 rounded-lg text-sm text-slate-300">Огляд…</button>
+            </div>
+          </div>
+          <div class="py-1">
+            <label class="block text-sm text-slate-300 mb-1.5">Шаблон імені файлу</label>
+            <input type="text" value="%s\%a - %t" class="w-full bg-base border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-200 font-mono">
+            <p class="text-xs text-slate-600 mt-1">%a — артист, %t — назва, %s — станція, %d — дата, %time — час</p>
+          </div>
+          <div class="flex items-center justify-between py-1">
+            <label class="text-sm text-slate-300">Пропускати перший неповний трек</label>
+            <input type="checkbox" checked class="rounded accent-accent-500 w-4 h-4">
+          </div>
+          <div class="flex items-center justify-between py-1">
+            <label class="text-sm text-slate-300">Мін. тривалість треку (сек)</label>
+            <input type="number" value="30" class="bg-base border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-200 w-20 text-right">
+          </div>
+        </div>
+
+        <h2 id="settings-profiles" class="text-base font-semibold text-slate-100 mb-4 flex items-center gap-2">
+          <span class="w-1 h-5 bg-accent-500 rounded-full"></span>Профілі
+        </h2>
+        <div class="space-y-3 mb-8 pl-3">
+          <div class="flex items-center gap-2">
+            <select class="flex-1 bg-base border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-200">
+              <option>Default</option><option selected>Music Discovery</option><option>Jazz Collection</option>
+            </select>
+            <button class="bg-overlay hover:bg-surface/50 px-3 py-1.5 rounded-lg text-sm text-slate-300">Створити</button>
+            <button class="bg-overlay hover:bg-surface/50 px-3 py-1.5 rounded-lg text-sm text-slate-300">Копія</button>
+            <button class="bg-red-900/30 hover:bg-red-900/50 text-red-400 px-3 py-1.5 rounded-lg text-sm">Видалити</button>
+          </div>
+        </div>
+
+        <div class="flex gap-3 pt-4 border-t border-slate-800">
+          <button class="bg-accent-600 hover:bg-accent-700 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors">Зберегти</button>
+          <button class="bg-overlay hover:bg-surface/50 text-slate-300 px-5 py-2 rounded-lg text-sm transition-colors" onclick="closeSettingsDialog()">Скасувати</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content area -->
+</div><!-- /main layout -->
+
+<!-- ══════════ PLAYER BAR ══════════ -->
+<div class="player-bar px-5 py-2.5 flex items-center gap-4 shrink-0" role="complementary" aria-label="Програвач">
+  <!-- Now Playing -->
+  <div class="min-w-0 w-52" aria-live="polite">
+    <div class="text-[11px] text-slate-500 truncate">Radio Paradise - Main Mix</div>
+    <div class="text-sm text-slate-100 font-medium truncate">Radiohead — Everything In Its Right Place</div>
+  </div>
+
+  <!-- Controls -->
+  <div class="flex items-center gap-1.5" role="toolbar" aria-label="Управління відтворенням">
+    <button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-700/50 text-slate-500 hover:text-slate-200 transition-colors text-sm" aria-label="Попередній">⏮</button>
+    <button class="w-10 h-10 flex items-center justify-center rounded-full bg-accent-600 hover:bg-accent-500 text-white transition-colors" aria-label="Пауза" aria-pressed="true">⏸</button>
+    <button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-700/50 text-slate-500 hover:text-slate-200 transition-colors text-sm" aria-label="Зупинити">⏹</button>
+    <button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-700/50 text-slate-500 hover:text-slate-200 transition-colors text-sm" aria-label="Наступний">⏭</button>
+  </div>
+
+  <!-- Progress -->
+  <div class="flex-1 flex items-center gap-3">
+    <span class="text-[11px] text-slate-600 font-mono w-10 text-right">3:42</span>
+    <div class="flex-1 h-1 bg-slate-800 rounded-full relative cursor-pointer group">
+      <div class="absolute inset-y-0 left-0 bg-accent-500 rounded-full transition-all" style="width: 65%"></div>
+      <div class="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-accent-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" style="left: calc(65% - 6px)"></div>
+    </div>
+    <span class="text-[10px] text-rec-400 font-semibold bg-rec-500/10 px-1.5 py-0.5 rounded font-mono">LIVE</span>
+  </div>
+
+  <!-- Volume -->
+  <div class="flex items-center gap-2 w-28">
+    <button class="text-slate-500 hover:text-slate-300 text-sm" aria-label="Вимкнути звук">🔊</button>
+    <input type="range" min="0" max="100" value="75" class="flex-1" aria-label="Гучність">
+    <span class="text-[11px] text-slate-600 w-8 text-right">75%</span>
+  </div>
+</div>
+
+<!-- ══════════ STATUS BAR ══════════ -->
+<footer class="bg-elevated border-t border-slate-800 px-5 py-1 flex items-center gap-4 text-[11px] text-slate-600 shrink-0" role="contentinfo" aria-label="Статус">
+  <span class="inline-flex items-center gap-1.5" aria-live="polite">
+    <span class="w-1.5 h-1.5 rounded-full bg-rec-500 rec-pulse"></span>
+    <span class="text-rec-400">3 записи</span>
+  </span>
+  <span class="text-slate-800">│</span>
+  <span>45.2 ГБ вільно</span>
+  <span class="text-slate-800">│</span>
+  <span>128 MB збережено</span>
+  <div class="flex-1"></div>
+  <span class="text-slate-500">Music Discovery</span>
+</footer>
+
+<!-- ══════════ COMMAND PALETTE (hidden) ══════════ -->
+<div id="cmd-palette" class="cmd-overlay" style="display: none" onclick="if(event.target===this)hideCmdPalette()">
+  <div class="cmd-box" role="dialog" aria-modal="true" aria-label="Command Palette">
+    <input class="cmd-input" placeholder="Пошук дій, станцій, пісень..." autofocus id="cmd-input">
+    <div class="max-h-80 overflow-auto py-1">
+      <div class="cmd-section">Нещодавні</div>
+      <div class="cmd-item selected">
+        <span>●</span> Почати запис — BBC Radio 6
+        <kbd>Enter</kbd>
+      </div>
+      <div class="cmd-item">
+        <span>⏹</span> Зупинити запис — NTS Radio 1
+      </div>
+      <div class="cmd-section">Дії</div>
+      <div class="cmd-item">
+        <span>+</span> Додати потік
+        <kbd>Ctrl+N</kbd>
+      </div>
+      <div class="cmd-item">
+        <span>⏹</span> Зупинити всі записи
+        <kbd>Ctrl+⇧+S</kbd>
+      </div>
+      <div class="cmd-item">
+        <span>👤</span> Перемкнути профіль...
+        <kbd>Ctrl+⇧+P</kbd>
+      </div>
+      <div class="cmd-section">Навігація</div>
+      <div class="cmd-item">
+        <span>●</span> Потоки
+        <kbd>Ctrl+1</kbd>
+      </div>
+      <div class="cmd-item">
+        <span>🔍</span> Браузер станцій
+        <kbd>Ctrl+2</kbd>
+      </div>
+      <div class="cmd-item">
+        <span>🎵</span> Збережені пісні
+        <kbd>Ctrl+3</kbd>
+      </div>
+      <div class="cmd-item">
+        <span>📅</span> Розклад
+        <kbd>Ctrl+4</kbd>
+      </div>
+      <div class="cmd-item">
+        <span>⭐</span> Wishlist
+        <kbd>Ctrl+5</kbd>
+      </div>
+      <div class="cmd-item">
+        <span>⚙</span> Налаштування
+        <kbd>Ctrl+,</kbd>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ ADD STREAM DIALOG (hidden) ══════════ -->
+<div id="add-dialog" class="modal-bg" style="display: none" onclick="if(event.target===this)hideAddDialog()">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-label="Додати потік">
+    <h2 class="text-base font-semibold text-slate-100 mb-5">Додати потік</h2>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm text-slate-300 mb-1.5">URL потоку <span class="text-rec-400">*</span></label>
+        <input type="url" placeholder="https://stream.example.com/radio.mp3" class="w-full bg-base border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:border-accent-500 transition-colors">
+      </div>
+      <div>
+        <label class="block text-sm text-slate-300 mb-1.5">Назва (необов'язково)</label>
+        <input type="text" placeholder="My Radio Station" class="w-full bg-base border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:border-accent-500 transition-colors">
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button class="bg-overlay hover:bg-surface/50 text-slate-300 px-4 py-2 rounded-lg text-sm transition-colors" onclick="hideAddDialog()">Скасувати</button>
+        <button class="bg-accent-600 hover:bg-accent-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">Додати</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ CONTEXT MENU (hidden) ══════════ -->
+<div id="ctx-menu" class="ctx-menu" style="display: none">
+  <div class="ctx-item">▶ Відтворити</div>
+  <div class="ctx-item">⏺ Почати запис</div>
+  <div class="ctx-item">⏹ Зупинити запис</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item">✏️ Редагувати</div>
+  <div class="ctx-item">📋 Копіювати URL</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item text-red-400">🗑 Видалити</div>
+</div>
+
+<!-- ══════════ TOAST NOTIFICATIONS ══════════ -->
+<div class="toast-container">
+  <div class="toast" role="alert">
+    <span class="text-green-400">✓</span>
+    <span>Станцію додано: <strong>Jazz FM</strong></span>
+    <button class="ml-auto text-slate-500 hover:text-slate-300 text-xs">✕</button>
+  </div>
+</div>
+
+<script>
+// Section switching
+const sectionTitles = {
+  streams: 'Потоки',
+  browser: 'Браузер станцій',
+  songs: 'Збережені пісні',
+  schedule: 'Розклад',
+  wishlist: 'Wishlist'
+};
+
+function switchSection(name) {
+  // Panels
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('section-' + name)?.classList.add('active');
+  
+  // Nav items
+  document.querySelectorAll('.nav-item').forEach(n => {
+    n.classList.remove('active');
+    n.removeAttribute('aria-current');
+  });
+  const btn = document.querySelector(`[data-section="${name}"]`);
+  if (btn) { btn.classList.add('active'); btn.setAttribute('aria-current', 'page'); }
+  
+  // Title
+  document.getElementById('section-title').textContent = sectionTitles[name] || name;
+  
+  // Close popovers
+  hideProfilePopover();
+}
+
+// Profile popover
+function toggleProfilePopover() {
+  const el = document.getElementById('profile-popover');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+function hideProfilePopover() {
+  document.getElementById('profile-popover').style.display = 'none';
+}
+function selectProfile(name, code) {
+  document.querySelector('[data-tip^="Профіль"]').textContent = code;
+  document.querySelector('[data-tip^="Профіль"]').setAttribute('data-tip', 'Профіль: ' + name);
+  hideProfilePopover();
+  // Show toast
+  showToast('Профіль змінено: <strong>' + name + '</strong>');
+}
+
+// Command palette
+function showCmdPalette() {
+  document.getElementById('cmd-palette').style.display = 'flex';
+  setTimeout(() => document.getElementById('cmd-input').focus(), 50);
+}
+function hideCmdPalette() {
+  document.getElementById('cmd-palette').style.display = 'none';
+}
+
+// Add dialog
+function showAddDialog() {
+  document.getElementById('add-dialog').style.display = 'flex';
+}
+function hideAddDialog() {
+  document.getElementById('add-dialog').style.display = 'none';
+}
+
+// Settings dialog
+function openSettingsDialog(section) {
+  document.getElementById('settings-dialog').style.display = 'flex';
+  hideProfilePopover();
+  if (section) {
+    setTimeout(() => scrollSettingsTo(section), 100);
+  }
+}
+function closeSettingsDialog() {
+  document.getElementById('settings-dialog').style.display = 'none';
+}
+function scrollSettingsTo(id) {
+  const el = document.getElementById('settings-' + id);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Toast
+function showToast(html) {
+  const container = document.querySelector('.toast-container');
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.setAttribute('role', 'alert');
+  toast.innerHTML = `<span class="text-accent-400">✓</span><span>${html}</span><button class="ml-auto text-slate-500 hover:text-slate-300 text-xs" onclick="this.parentElement.remove()">✕</button>`;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 4000);
+}
+
+// Context menu
+document.addEventListener('contextmenu', (e) => {
+  const row = e.target.closest('.row-hover');
+  if (row) {
+    e.preventDefault();
+    const menu = document.getElementById('ctx-menu');
+    menu.style.display = 'block';
+    menu.style.left = Math.min(e.clientX, window.innerWidth - 220) + 'px';
+    menu.style.top = Math.min(e.clientY, window.innerHeight - 250) + 'px';
+  }
+});
+document.addEventListener('click', () => {
+  document.getElementById('ctx-menu').style.display = 'none';
+});
+
+// Keyboard
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { hideCmdPalette(); hideAddDialog(); hideProfilePopover(); closeSettingsDialog(); }
+  if (e.ctrlKey && e.key === 'k') { e.preventDefault(); showCmdPalette(); }
+  if (e.ctrlKey && e.key === ',') { e.preventDefault(); openSettingsDialog(); }
+  if (e.ctrlKey && e.key >= '1' && e.key <= '5') {
+    e.preventDefault();
+    const sections = ['streams', 'browser', 'songs', 'schedule', 'wishlist'];
+    switchSection(sections[parseInt(e.key) - 1]);
+  }
+  if (e.ctrlKey && e.key === 'n') { e.preventDefault(); showAddDialog(); }
+});
+
+// Activity bar keyboard nav
+document.querySelector('nav[role="navigation"]').addEventListener('keydown', (e) => {
+  const items = [...document.querySelectorAll('.nav-item')];
+  const idx = items.indexOf(document.activeElement);
+  if (idx === -1) return;
+  if (e.key === 'ArrowDown' && idx < items.length - 1) { items[idx + 1].focus(); e.preventDefault(); }
+  if (e.key === 'ArrowUp' && idx > 0) { items[idx - 1].focus(); e.preventDefault(); }
+});
+
+// Close profile popover on outside click
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('[data-tip^="Профіль"]') && !e.target.closest('#profile-popover')) {
+    hideProfilePopover();
+  }
+});
+</script>
+</body>
+</html>
