@@ -346,7 +346,7 @@ React Aria `Menu`:
 ```tsx
 <Row
   onKeyDown={(e) => {
-    if (e.key === "ContextMenu" || (e.shiftKey && e.key === "F10")) {
+    if (e.key === "ContextMenu" || (e.shiftKey && e.code === "F10")) {
       e.preventDefault();
       openContextMenu(stream.id);
     }

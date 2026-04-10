@@ -234,8 +234,10 @@ async fn start_recording(
     state: tauri::State<'_, AppState>,
     app: tauri::AppHandle,
 ) -> Result<(), String> {
+    // start_recording є синхронним: лише реєструє завдання і spawn’ить async task
     let mut manager = state.stream_manager.write().await;
-    manager.start_recording(url, app.clone()).await.map_err(|e| e.to_string())
+    manager.start_recording(url, app.clone()).map_err(|e| e.to_string())
+    // lock звільнений тут; фактичний запис відбувається у spawned task
 }
 ```
 
@@ -696,24 +698,24 @@ pub struct ReconnectConfig {
 // portable.rs
 use std::path::{Path, PathBuf};
 
-pub fn base_dir() -> PathBuf {
-    std::env::current_exe()
-        .expect("cannot determine exe path")
-        .parent()
-        .expect("exe has no parent dir")
-        .to_path_buf()
+pub fn base_dir() -> Result<PathBuf, String> {
+    let exe = std::env::current_exe()
+        .map_err(|e| format!("cannot determine exe path: {e}"))?;
+    exe.parent()
+        .map(|p| p.to_path_buf())
+        .ok_or_else(|| "exe has no parent dir".to_string())
 }
 
-pub fn data_dir() -> PathBuf {
-    base_dir().join("data")
+pub fn data_dir() -> Result<PathBuf, String> {
+    Ok(base_dir()?.join("data"))
 }
 
-pub fn settings_path() -> PathBuf {
-    data_dir().join("settings.json")
+pub fn settings_path() -> Result<PathBuf, String> {
+    Ok(data_dir()?.join("settings.json"))
 }
 
-pub fn profiles_dir() -> PathBuf {
-    data_dir().join("profiles")
+pub fn profiles_dir() -> Result<PathBuf, String> {
+    Ok(data_dir()?.join("profiles"))
 }
 
 pub fn logs_dir() -> PathBuf {
@@ -1030,7 +1032,7 @@ Global hotkeys (configurable):
 | `decorations: true` | NVDA mouse tracking працює коректно | Кастомний title bar неможливий |
 | React 19 (не Svelte 5) | React Aria — єдина бібліотека з JAWS/NVDA тестуванням | Більший бандл (~80–130 KB gzip vs ~30–50 KB) |
 | Запис raw bytes (без decode) | Мінімальне CPU для 20+ потоків | Не можемо нормалізувати рівень гучності під час запису |
-| symphonia (без HE-AAC) | Pure Rust, без FFmpeg dependency | Деякі станції 32-64 kbps не програються (але записуються нормально) |
+| symphonia (без HE-AAC v2/AAC-ELD; HE-AAC v1 підтримується) | Pure Rust, без FFmpeg dependency | Деякі станції 32-64 kbps не програються (але записуються нормально) |
 | Portable data layout | Файли поряд з EXE, працює з флешки | `current_exe()` може повернути різні шляхи через symlinks |
 | Один лог-файл | Простота, зрозумілість для користувача | Менш зручний аналіз окремих підсистем (можна компенсувати prefixed записами) |
 

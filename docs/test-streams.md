@@ -469,16 +469,26 @@ def read_icy_metadata(host, port, path, n_blocks=3):
         print("Потік без ICY-метаданих!")
         return
 
+    def recv_exact(sock, n):
+        """Читає рівно n байт із сокету, або кидає EOFError."""
+        buf = bytearray()
+        while len(buf) < n:
+            chunk = sock.recv(n - len(buf))
+            if not chunk:
+                raise EOFError("Connection closed")
+            buf.extend(chunk)
+        return bytes(buf)
+
     # Читаємо блоки: metaint байт аудіо + 1 байт довжина + до 255*16 байт метадані
     for _ in range(n_blocks):
-        audio = s.recv(metaint)
+        audio = recv_exact(s, metaint)
         meta_len_byte = s.recv(1)
         if not meta_len_byte:
             break
         meta_len = struct.unpack("B", meta_len_byte)[0] * 16
         if meta_len > 0:
-            meta = s.recv(meta_len)
-            print(f"Metadata: {meta.rstrip(b'\\x00').decode(errors='replace')}")
+            meta = recv_exact(s, meta_len)
+            print(f"Metadata: {meta.rstrip(b'\x00').decode(errors='replace')}")
 
     s.close()
 

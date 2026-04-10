@@ -54,7 +54,7 @@
 | `AddStreamDialog.tsx` | Модальний діалог додавання/редагування потоку (React Aria Modal) |
 | `StatusBar.tsx` | Кількість записів, вільне місце, найдовший запис |
 | `CommandPalette.tsx` | Ctrl+K: fuzzy search дій, станцій, пісень |
-| `ProfileSwitcher.tsx` | Popover внизу ActivityBar для швидкого перемикання профілів |
+| `ProfileSwitcher.tsx` | Popover внизу ActivityBar — UI placeholder, нефункціональний до Фази 4 |
 | `ToastContainer.tsx` | Toast-повідомлення (bottom-right, aria-live) |
 | `LiveAnnouncer.tsx` | Централізований aria-live контейнер |
 | `ConfirmDialog.tsx` | Діалог підтвердження деструктивних дій |
@@ -201,7 +201,6 @@
 - [ ] Повна SettingsDialog з усіма налаштуваннями
 - [ ] Глобальні гарячі клавіші працюють у фоні
 - [ ] Налаштування хоткеїв через UI
-- [ ] Підтвердження при switch profile якщо є активні записи
 - [ ] `tauri-plugin-dialog` для Browse кнопки та Profile import/export
 
 ---
@@ -275,7 +274,7 @@
 | `SongsTable.tsx` | Accessible sortable table з фільтрами |
 | `TagEditor.tsx` | Діалог редагування тегів |
 | `ProfileManager.tsx` | UI для управління профілями |
-| `PostprocessSettings.tsx` | Настросинг постобробки |
+| `PostprocessSettings.tsx` | Налаштування постобробки |
 
 **Infrastructure:**
 
@@ -297,6 +296,7 @@
 - [ ] Редагування ID3v2/M4A тегів через UI
 - [ ] Контекстне меню збережених пісень (play, delete, rename, explorer)
 - [ ] Профілі: створення, переключення, import/export
+- [ ] Підтвердження при switch profile якщо є активні записи
 - [ ] CLI аргументи працюють (запис, відтворення, wishlist)
 - [ ] System tray:
   - [ ] TrayIconBuilder з іконкою та динамічним tooltip

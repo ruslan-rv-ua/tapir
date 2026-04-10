@@ -147,15 +147,15 @@ tailwind.config = {
       <!-- Profile popover -->
       <div id="profile-popover" class="profile-popover" style="display: none" role="listbox" aria-label="Профілі">
         <div class="px-4 py-2 text-xs text-slate-500 uppercase tracking-wider font-semibold" role="presentation">Профілі</div>
-        <div class="profile-item" role="option" aria-selected="false" onclick="selectProfile('Default', 'DE')">
+        <div class="profile-item" role="option" tabindex="0" aria-selected="false" onclick="selectProfile('Default', 'DE')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectProfile('Default','DE')}">
           <span class="w-5 text-center text-slate-600">○</span>
           Default
         </div>
-        <div class="profile-item" role="option" aria-selected="true" onclick="selectProfile('Music Discovery', 'MD')" style="background: rgba(59,130,246,0.1);">
+        <div class="profile-item" role="option" tabindex="0" aria-selected="true" onclick="selectProfile('Music Discovery', 'MD')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectProfile('Music Discovery','MD')}" style="background: rgba(59,130,246,0.1);">
           <span class="w-5 text-center text-accent-400">●</span>
           <span class="text-accent-400 font-medium">Music Discovery</span>
         </div>
-        <div class="profile-item" role="option" aria-selected="false" onclick="selectProfile('Jazz Collection', 'JC')">
+        <div class="profile-item" role="option" tabindex="0" aria-selected="false" onclick="selectProfile('Jazz Collection', 'JC')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectProfile('Jazz Collection','JC')}">
           <span class="w-5 text-center text-slate-600">○</span>
           Jazz Collection
         </div>
@@ -561,13 +561,13 @@ tailwind.config = {
       <!-- Settings sidebar nav -->
       <div class="w-56 bg-elevated border-r border-slate-800 flex flex-col py-6 px-3" role="navigation" aria-label="Категорії налаштувань">
         <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider px-3 mb-4">Налаштування</h2>
-        <a href="#" class="block px-3 py-2 text-sm rounded-lg text-accent-400 bg-accent-600/15 font-medium mb-0.5" onclick="scrollSettingsTo('general')">Загальні</a>
-        <a href="#" class="block px-3 py-2 text-sm rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 mb-0.5" onclick="scrollSettingsTo('recording')">Запис</a>
-        <a href="#" class="block px-3 py-2 text-sm rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 mb-0.5" onclick="scrollSettingsTo('reconnect')">Перепідключення</a>
-        <a href="#" class="block px-3 py-2 text-sm rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 mb-0.5" onclick="scrollSettingsTo('hotkeys')">Гарячі клавіші</a>
-        <a href="#" class="block px-3 py-2 text-sm rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 mb-0.5" onclick="scrollSettingsTo('postprocess')">Постобробка</a>
-        <a href="#" class="block px-3 py-2 text-sm rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 mb-0.5" onclick="scrollSettingsTo('audio')">Аудіо</a>
-        <a href="#" class="block px-3 py-2 text-sm rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 mb-0.5" onclick="scrollSettingsTo('profiles')" id="settings-nav-profiles">Профілі</a>
+        <button class="block w-full text-left px-3 py-2 text-sm rounded-lg text-accent-400 bg-accent-600/15 font-medium mb-0.5" onclick="scrollSettingsTo('general')">Загальні</button>
+        <button class="block w-full text-left px-3 py-2 text-sm rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 mb-0.5" onclick="scrollSettingsTo('recording')">Запис</button>
+        <button class="block w-full text-left px-3 py-2 text-sm rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 mb-0.5" onclick="scrollSettingsTo('reconnect')">Перепідключення</button>
+        <button class="block w-full text-left px-3 py-2 text-sm rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 mb-0.5" onclick="scrollSettingsTo('hotkeys')">Гарячі клавіші</button>
+        <button class="block w-full text-left px-3 py-2 text-sm rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 mb-0.5" onclick="scrollSettingsTo('postprocess')">Постобробка</button>
+        <button class="block w-full text-left px-3 py-2 text-sm rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 mb-0.5" onclick="scrollSettingsTo('audio')">Аудіо</button>
+        <button class="block w-full text-left px-3 py-2 text-sm rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 mb-0.5" onclick="scrollSettingsTo('profiles')" id="settings-nav-profiles">Профілі</button>
         <div class="flex-1"></div>
         <button class="mt-4 px-3 py-2 text-sm text-slate-500 hover:text-slate-300 rounded-lg hover:bg-slate-800 text-left" onclick="closeSettingsDialog()">← Назад <kbd class="text-[10px] ml-2 px-1.5 py-0.5 bg-slate-800 rounded text-slate-600">Esc</kbd></button>
       </div>
@@ -782,15 +782,15 @@ tailwind.config = {
 </div>
 
 <!-- ══════════ CONTEXT MENU (hidden) ══════════ -->
-<div id="ctx-menu" class="ctx-menu" style="display: none">
-  <div class="ctx-item">▶ Відтворити</div>
-  <div class="ctx-item">⏺ Почати запис</div>
-  <div class="ctx-item">⏹ Зупинити запис</div>
-  <div class="ctx-sep"></div>
-  <div class="ctx-item">✏️ Редагувати</div>
-  <div class="ctx-item">📋 Копіювати URL</div>
-  <div class="ctx-sep"></div>
-  <div class="ctx-item text-red-400">🗑 Видалити</div>
+<div id="ctx-menu" class="ctx-menu" role="menu" aria-hidden="true" style="display: none">
+  <div class="ctx-item" role="menuitem">▶ Відтворити</div>
+  <div class="ctx-item" role="menuitem">⏺ Почати запис</div>
+  <div class="ctx-item" role="menuitem">⏹ Зупинити запис</div>
+  <div class="ctx-sep" role="separator"></div>
+  <div class="ctx-item" role="menuitem">✏️ Редагувати</div>
+  <div class="ctx-item" role="menuitem">📋 Копіювати URL</div>
+  <div class="ctx-sep" role="separator"></div>
+  <div class="ctx-item text-red-400" role="menuitem">🗑 Видалити</div>
 </div>
 
 <!-- ══════════ TOAST NOTIFICATIONS ══════════ -->
@@ -899,12 +899,15 @@ document.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     const menu = document.getElementById('ctx-menu');
     menu.style.display = 'block';
+    menu.setAttribute('aria-hidden', 'false');
     menu.style.left = Math.min(e.clientX, window.innerWidth - 220) + 'px';
     menu.style.top = Math.min(e.clientY, window.innerHeight - 250) + 'px';
   }
 });
 document.addEventListener('click', () => {
-  document.getElementById('ctx-menu').style.display = 'none';
+  const menu = document.getElementById('ctx-menu');
+  menu.style.display = 'none';
+  menu.setAttribute('aria-hidden', 'true');
 });
 
 // Keyboard
