@@ -305,7 +305,7 @@ pub struct Profile {
 
 ```typescript
 interface StreamInfo {
-  id: string;                    // nanoid або UUID v4, генерується при додаванні
+  id: string;                    // nanoid, 21 символ (алфавіт: A-Za-z0-9_-), crate `nanoid`
   url: string;                   // resolved URL (після PLS/M3U parsing)
   name: string;                  // user-defined або ICY name
   format: "mp3" | "aac" | null; // визначається при першому підключенні

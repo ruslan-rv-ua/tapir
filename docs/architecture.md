@@ -268,7 +268,7 @@ User clicks "Record"
                                          │   ├─ IF metadata changed:
                                          │   │   ├─ Finalize current track file
                                          │   │   ├─ Write tags (lofty)
-                                         │   │   ├─ Check wishlist/ignorelist
+                                         │   │   ├─ Check wishlist/ignorelist (§5.5)
                                          │   │   ├─ emit("track-changed", {streamId, title})
                                          │   │   └─ Start new track file
                                          │   │
@@ -276,13 +276,58 @@ User clicks "Record"
                                          │   ├─ Write raw bytes → track file
                                          │   │
                                          │   └─ IF playing this stream:
-                                         │       Copy bytes → decode buffer (symphonia → rodio)
+                                         │       Copy bytes → playback channel (§5.2)
                                          │
                                          └─ Return Ok(streamId)
                             ←
   ← listen("track-changed")
   Update NowPlaying + LiveAnnouncer
 ```
+
+#### 5.1.1. ICY metadata encoding
+
+ICY протокол офіційно використовує latin-1 (ISO 8859-1), але більшість сучасних серверів надсилають UTF-8. Алгоритм декодування:
+
+```rust
+fn decode_icy_metadata(raw: &[u8]) -> String {
+    // 1. Спробувати UTF-8
+    match std::str::from_utf8(raw) {
+        Ok(s) => s.nfc().collect(),  // Unicode NFC normalization
+        Err(_) => {
+            // 2. Fallback: latin-1 (ISO 8859-1) — кожен байт → Unicode codepoint
+            let s: String = raw.iter().map(|&b| b as char).collect();
+            s.nfc().collect()
+        }
+    }
+}
+```
+
+**Правила:**
+- Завжди спочатку пробувати UTF-8 (більшість серверів)
+- Якщо UTF-8 невалідний → latin-1 (ніколи не фейлиться, кожен байт — валідний codepoint)
+- Після декодування — Unicode NFC нормалізація
+- Не намагатися auto-detect інших кодувань (Windows-1251, Shift-JIS тощо) — занадто ненадійно
+
+#### 5.1.2. Логіка першого треку та мінімальної тривалості
+
+При зміні метаданих `stream::splitter` вирішує, чи зберігати попередній сегмент:
+
+```
+IF це перший сегмент (від початку запису до першої зміни метаданих):
+    IF skipFirstIncompleteTrack == true:
+        → відкинути сегмент (навіть якщо тривалість >= skipShortTracksMs)
+    ELSE:
+        → зберегти сегмент (навіть якщо тривалість < skipShortTracksMs)
+ELSE (не перший сегмент):
+    IF тривалість < skipShortTracksMs:
+        → відкинути сегмент
+    ELSE:
+        → зберегти сегмент
+```
+
+> **Поля:** `RecordingSettings.skipFirstIncompleteTrack` (bool) та `RecordingSettings.skipShortTracksMs` (u32).
+> У PRD ці поля описані як `saveFirstTrack` (інвертована семантика) та `minTrackDuration`.
+> Canonical назви — з data-models.md.
 
 ### 5.2. Відтворення потоку (live)
 
@@ -589,6 +634,33 @@ loop {
 // symphonia декодує raw bytes → PCM → rodio Sink
 ```
 
+#### Параметри playback channel
+
+| Параметр | Значення | Обґрунтування |
+|----------|----------|---------------|
+| Тип | `crossbeam_channel::bounded<Vec<u8>>` | Lock-free, multi-producer safe |
+| Ємність | 64 chunks | ~1–2 секунди буферу при 256 kbps (chunk ≈ metaint, зазвичай 8–32 KB) |
+| Backpressure | `try_send` — drop chunk if full | Запис не блокується; програвач може мати короткий audio skip |
+| Створення | При `play_stream(streamId)` — recorder отримує `Sender` | Sender = `Option<Sender>` в `StreamHandle` |
+| Видалення | При `stop_playback` або `stop_recording` — drop Sender/Receiver | Receiver дропається → decoder loop завершується |
+
+**Поведінка при переповненні:** `try_send` повертає `Err(Full)` — chunk втрачається. Це призводить до мікро-заїкання (~50–200 мс), що прийнятно: запис (файл) не страждає, лише прослуховування. Якщо програвач не встигає декодувати, це означає перевантаження CPU — в такому разі краще drop ніж backpressure на запис.
+
+### 5.5. Wishlist / Ignorelist — порядок перевірки
+
+При зміні ICY метаданих перевіряються списки в такому порядку:
+
+```
+1. Per-stream ignorelist  → збіг → відкинути трек, НЕ записувати
+2. Global ignorelist      → збіг → відкинути трек, НЕ записувати
+3. Wishlist               → збіг → автоматичний запис
+4. Жодного збігу          → звичайна поведінка (запис якщо ручний запис активний)
+```
+
+**Правило:** Ignorelist завжди має пріоритет над wishlist. Якщо трек збігається з обома — він ігнорується.
+
+**Обґрунтування:** Ignorelist — це explicit opt-out. Користувач, що додає "*jingle*" в ignorelist, очікує що жодні jingle-и не будуть записані, навіть якщо wishlist містить широкий патерн.
+
 ---
 
 ## 8. Моніторинг ресурсів
@@ -718,12 +790,12 @@ pub fn profiles_dir() -> Result<PathBuf, String> {
     Ok(data_dir()?.join("profiles"))
 }
 
-pub fn logs_dir() -> PathBuf {
-    data_dir().join("logs")
+pub fn logs_dir() -> Result<PathBuf, String> {
+    Ok(data_dir()?.join("logs"))
 }
 
-pub fn default_recordings_dir() -> PathBuf {
-    data_dir().join("recordings")
+pub fn default_recordings_dir() -> Result<PathBuf, String> {
+    Ok(data_dir()?.join("recordings"))
 }
 ```
 
@@ -935,9 +1007,85 @@ connect-src https://*.api.radio-browser.info;
 
 ### Файлова безпека
 
-- Санітизація імен файлів: `\ / : * ? " < > |` → `_`
 - Path traversal prevention: відхиляти шляхи з `..`
 - Колізії імен: числовий суфікс `_2`, `_3` (без перезапису)
+
+### sanitize.rs — детальна специфікація
+
+#### Заборонені символи
+
+Замінюються на `_`:
+
+| Символ | Опис |
+|--------|------|
+| `\` | backslash (дозволений лише як роздільник теки у шаблоні) |
+| `/` | slash |
+| `:` | colon |
+| `*` | asterisk |
+| `?` | question mark |
+| `"` | double quote |
+| `<` | less than |
+| `>` | greater than |
+| `\|` | pipe |
+| `\0`–`\x1F` | control characters |
+
+#### Зарезервовані імена Windows
+
+Наступні імена (без урахування регістру, з або без розширення) додають суфікс `_`:
+
+`CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`
+
+Приклад: `CON.mp3` → `CON_.mp3`, `nul` → `nul_`
+
+#### Нормалізація
+
+1. Unicode NFC нормалізація (crate `unicode-normalization`)
+2. Trailing пробіли та крапки обрізаються з кожного компонента шляху
+3. Порожній результат після санітизації → замінюється на `_untitled`
+
+#### Обмеження довжини
+
+- Максимальна довжина одного компонента (ім'я файлу або теки): **255** символів
+- Якщо довше → обрізати до 251 + зберегти розширення (до 4 символів)
+- Максимальна довжина повного шляху: **259** символів (Windows MAX_PATH - 1)
+- Якщо повний шлях перевищує ліміт → обрізати компонент файлу, зберігаючи розширення
+
+#### Алгоритм
+
+```rust
+pub fn sanitize_filename(raw: &str) -> String {
+    let normalized = raw.nfc().collect::<String>();
+    let replaced = replace_forbidden_chars(&normalized, '_');
+    let trimmed = replaced.trim_end_matches([' ', '.'].as_ref()).to_string();
+    let safe = avoid_reserved_names(&trimmed);
+    if safe.is_empty() { "_untitled".to_string() } else { truncate_component(safe, 255) }
+}
+
+pub fn resolve_collision(path: &Path) -> PathBuf {
+    if !path.exists() { return path.to_path_buf(); }
+    let stem = path.file_stem().unwrap().to_str().unwrap();
+    let ext = path.extension().map(|e| format!(".", e.to_str().unwrap())).unwrap_or_default();
+    for i in 2.. {
+        let candidate = path.with_file_name(format!("{stem}_{i}{ext}"));
+        if !candidate.exists() { return candidate; }
+    }
+    unreachable!()
+}
+```
+
+#### Рендеринг шаблонів
+
+| Токен | Значення | Санітизація |
+|-------|----------|-------------|
+| `%a` | artist | sanitize_filename |
+| `%t` | title | sanitize_filename |
+| `%l` | album | sanitize_filename |
+| `%s` | station name | sanitize_filename |
+| `%n` | track number (sequential, per recording session) | digits only |
+| `%d` | date `YYYY-MM-DD` | safe as-is |
+| `%time` | time `HH-MM-SS` | safe as-is (дефіси замість двокрапок) |
+
+Кожен токен санітизується окремо, потім збирається повний шлях. `\` у шаблоні інтерпретується як роздільник теки. Після збірки — перевірка загальної довжини шляху.
 
 ---
 
