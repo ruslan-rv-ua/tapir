@@ -257,7 +257,7 @@ rodio = { version = "0.22", features = ["symphonia-mp3", "symphonia-aac", "symph
 lofty = "0.23"
 
 # Async
-tokio = { version = "~1.51", features = ["full"] }
+tokio = { version = "~1.51", features = ["full"] }  # ~1.51 = >=1.51.0, <2.0.0 (SemVer tilde)
 futures-util = "0.3"
 bytes = "1"
 
@@ -402,7 +402,7 @@ dev:
 build:
     pnpm tauri build --no-bundle
 
-# Fast build — larger exe, quick compile
+# Fast build — larger exe, quick compile (uses [profile.release-fast] in Cargo.toml)
 build-fast:
     pnpm tauri build --no-bundle -- --profile release-fast
 

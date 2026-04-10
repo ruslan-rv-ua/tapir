@@ -292,6 +292,8 @@ ICY протокол офіційно використовує latin-1 (ISO 8859
 
 ```rust
 fn decode_icy_metadata(raw: &[u8]) -> String {
+    // 0. Зняти UTF-8 BOM якщо є
+    let raw = raw.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(raw);
     // 1. Спробувати UTF-8
     match std::str::from_utf8(raw) {
         Ok(s) => s.nfc().collect(),  // Unicode NFC normalization

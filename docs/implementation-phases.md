@@ -2,7 +2,8 @@
 
 > **Версія:** 0.1 (draft) | **Версія продукту:** 0.1.0  
 > **Підхід:** MVP-first, Walking Skeleton, Vertical Slices  
-> **Кількість фаз:** 4
+> **Кількість фаз:** 4  
+> **Ризики:** якщо фаза займає більше часу, наступні фази зсуваються; функціонал не обрізається.
 
 ---
 
@@ -99,7 +100,7 @@
 ### НЕ включено
 
 - ❌ Player (відтворення)
-- ❌ Wishlist/Ignorelist (matcher, UI)
+- ❌ Wishlist/Ignorelist (matcher, UI). Поле `StreamInfo.ignorelist` вже присутнє у data model, але логіка перевірки — Фаза 2
 - ❌ Scheduler (заплановані записи)
 - ❌ Browser (Radio Browser API)
 - ❌ Saved Songs (менеджер файлів)

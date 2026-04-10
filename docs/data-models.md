@@ -274,7 +274,7 @@ interface Profile {
   postprocess: PostprocessConfig;
   playerSession: PlayerSession;
   savedTracks: SavedTrack[];
-  activeRecordingUrls: string[];
+  activeRecordingUrls: string[];  // URL потоків, що записувалися при закритті; заповнюється при graceful shutdown, очищується після відновлення
 }
 ```
 
@@ -427,7 +427,7 @@ interface RecordingSettings {
   deleteStreamFileOnStop: boolean;
   skipFirstIncompleteTrack: boolean;
   skipShortTracksMs: number;             // 0 = не пропускати
-  autoCorrectCase: boolean;              // "artist - title" → "Artist - Title"
+  autoCorrectCase: boolean;              // "artist - title" → "Artist - Title" (Phase 1: включено, реалізовано у sanitize.rs)
   reconnect: ReconnectConfig;
 }
 
