@@ -61,7 +61,7 @@ import { Radio, Play, Pause, Settings } from 'lucide-react';
 </Button>
 ```
 
-Обрано за результатами дослідження: [docs/research-icon-library.md](research-icon-library.md)
+Обрано за результатами дослідження (lucide-react: tree-shakeable SVG, ISC ліцензія, повний набір media/UI іконок).
 
 #### Маппінг іконок
 

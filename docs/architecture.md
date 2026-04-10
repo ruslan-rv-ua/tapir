@@ -135,23 +135,23 @@ src/
 │   │   │                      # Reorder via context menu ↑/↓ (keyboard accessible)
 │   │   ├── StreamRow.tsx      # Row: status, station, track, bitrate
 │   │   └── AddStreamDialog.tsx  # Add / Edit stream (dual-mode dialog)
-│   ├── player/
+│   ├── player/                          # [Phase 2]
 │   │   ├── PlayerPanel.tsx    # Playback controls bar
 │   │   ├── VolumeSlider.tsx   # React Aria Slider
 │   │   └── PlaybackPosition.tsx # Slider (file seek) / ProgressBar (live)
-│   ├── browser/
+│   ├── browser/                         # [Phase 3]
 │   │   ├── BrowserPanel.tsx   # Tab panel: stream browser
 │   │   ├── SearchForm.tsx     # ComboBox + filters
 │   │   └── ResultsTable.tsx   # Search results table
-│   ├── songs/
+│   ├── songs/                           # [Phase 4]
 │   │   ├── SongsPanel.tsx     # Tab panel: saved songs
 │   │   ├── SongsTable.tsx     # Saved songs table (sortable, filterable)
 │   │   └── TagEditor.tsx      # Edit tags dialog
-│   ├── schedule/
+│   ├── schedule/                        # [Phase 3]
 │   │   ├── SchedulePanel.tsx  # Tab panel: scheduled recordings
 │   │   ├── ScheduleTable.tsx
 │   │   └── ScheduleForm.tsx   # Add/edit scheduled recording
-│   ├── settings/
+│   ├── settings/                        # [Phase 2]
 │   │   ├── SettingsDialog.tsx  # Full-screen dialog (⚙️ gear / Ctrl+,)
 │   │   ├── SettingsNav.tsx    # Left sidebar navigation within dialog
 │   │   ├── GeneralSettings.tsx
@@ -159,7 +159,7 @@ src/
 │   │   ├── HotkeySettings.tsx
 │   │   ├── ProfileManager.tsx
 │   │   └── PostprocessSettings.tsx
-│   ├── wishlist/
+│   ├── wishlist/                        # [Phase 2]
 │   │   ├── WishlistPanel.tsx
 │   │   └── WishlistTable.tsx
 │   └── common/
@@ -456,6 +456,8 @@ app.global_shortcut().on_shortcut("Ctrl+Shift+R", |app, _shortcut, event| {
 ### 6.1. Команди (Frontend → Backend)
 
 > У таблицях нижче `Returns` показує payload успішного `Ok(...)`. Фактичний IPC-контракт для всіх команд: `Result<T, String>`.
+>
+> Імена команд вказані у snake_case (Rust). JavaScript викликає camelCase-варіант: `invoke('getStreams')`. Tauri конвертує автоматично.
 
 #### Streams & Recording
 
