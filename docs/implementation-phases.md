@@ -122,11 +122,9 @@
 2. Одна IPC команда `start_recording(url)` → reqwest GET → записати raw bytes у файл
 3. Одна IPC подія `emit("recording-status", ...)`
 4. Мінімальний UI: кнопка "Record" + input URL
-4. Мінімальний UI: кнопка "Record" + input URL
 5. Portable: `data/` directory поряд з EXE
 
 Якщо це працює — архітектура підтверджена, Tauri IPC ↔ Rust ↔ reqwest ↔ file I/O з'єднані. Після цього Фаза 1 розширюється до повного scope з таблиці "Включено".
-- [ ] `aria-label` для checkbox вибору рядка у StreamTable у форматі `Вибрати потік: {streamName}`
 
 ### Критерії "Done" для Фази 1
 
@@ -143,7 +141,7 @@
 - [ ] Рядки UI через Paraglide.js (uk)
 - [ ] Empty state для StreamTable при 0 потоків (CTA кнопка "Додати потік" з autoFocus)
 - [ ] First-run announcement через LiveAnnouncer при першому запуску
-- [ ] `aria-label` для checkbox вибору рядка у StreamTable
+- [ ] `aria-label` для checkbox вибору рядка у StreamTable у форматі `Вибрати потік: {streamName}`
 - [ ] `aria-current="page"` динамічно оновлюється при зміні секції
 
 ---
