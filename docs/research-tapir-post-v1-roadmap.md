@@ -1,4 +1,4 @@
-# Roadmap Tapir: план розвитку після v1.0
+# Roadmap Tapir: план розвитку після 0.1.0
 
 > Дата дослідження: квітень 2026  
 > Автор: AI Research Analyst  
@@ -35,7 +35,7 @@
 
 **Офіційний сайт:** streamwriter.org | Активний розвиток, версія 6.0.1 (09.2024)
 
-| Фіча | Наявна в streamWriter | Наявна в Tapir v1.0 | Примітка |
+| Фіча | Наявна в streamWriter | Наявна в Tapir 0.1.0 | Примітка |
 |---|---|---|---|
 | MP3/AAC запис з ICY | ✅ | ✅ | Базова |
 | Wishlist + автозапис | ✅ | ✅ | streamWriter додає wildcard-і автоматично |
@@ -68,7 +68,7 @@
 
 ### Audials Radio (Windows/Android/iOS, freemium/платний, Audials AG)
 
-| Фіча | Наявна в Audials | Наявна в Tapir v1.0 |
+| Фіча | Наявна в Audials | Наявна в Tapir 0.1.0 |
 |---|---|---|
 | 100 000+ станцій через власну базу | ✅ | ⚠️ (через Radio Browser API) |
 | Автоматичний album art | ✅ | ❌ |
@@ -89,7 +89,7 @@
 
 ### Screamer Radio (Windows, free + paid для темної теми)
 
-| Фіча | Наявна в Screamer | Наявна в Tapir v1.0 |
+| Фіча | Наявна в Screamer | Наявна в Tapir 0.1.0 |
 |---|---|---|
 | HLS потоки | ✅ | ❌ |
 | FLAC від станції | ✅ | ❌ |
@@ -158,7 +158,7 @@ RadioMaximus та RarmaRadio — комерційні Windows-програми �
 
 **Обґрунтування:** Більшість конкурентів цього не мають (крім Audials, який комерційний). Висока цінність для ВСІХ користувачів: записані файли відразу готові для медіаплеєра. Low/Medium складність — лише нові HTTP-запити + запис тегів через вже наявну `lofty`. Жоден з free-конкурентів не має album art автоматично.
 
-**Залежності:** Потребує стабільного Settings API (є у v1.0 Фаза 4). Нові Rust-залежності: `musicbrainz_rs`.
+**Залежності:** Потребує стабільного Settings API (є у 0.1.0 Фаза 4). Нові Rust-залежності: `musicbrainz_rs`.
 
 ---
 
@@ -195,7 +195,7 @@ RadioMaximus та RarmaRadio — комерційні Windows-програми �
 
 **Обґрунтування:** Для незрячих користувачів редагування тегів через Explorer + MediaInfo + Mp3tag є дуже болісним (три застосунки зі слабкою accessibility). Tapir може замінити весь post-processing workflow в одному доступному вікні. Lofty вже підтримує read/write тегів → низька складність. streamWriter має всі ці фічі.
 
-**Залежності:** Природно будується на Songs Manager з Фази 4 v1.0.
+**Залежності:** Природно будується на Songs Manager з Фази 4 (0.1.0).
 
 ---
 
@@ -235,7 +235,7 @@ RadioMaximus та RarmaRadio — комерційні Windows-програми �
 
 **Обґрунтування:** Symphonia має Excellent рейтинг для FLAC і Vorbis — нні нових бібліотек. Screamer підтримує ці формати. Багато публічних радіостанцій Великої Британії, Нідерландів, Швеції стрімлять у FLAC/OGG. Збільшує аудиторію без архітектурних змін.
 
-**Залежності:** Потребує розширення `stream::format.rs` detector та `stream::recorder.rs` для нових контейнерів. Залежить від стабільного v1.0 recording pipeline.
+**Залежності:** Потребує розширення `stream::format.rs` detector та `stream::recorder.rs` для нових контейнерів. Залежить від стабільного 0.1.0 recording pipeline.
 
 ---
 
@@ -274,13 +274,13 @@ RadioMaximus та RarmaRadio — комерційні Windows-програми �
 
 **Обґрунтування:** Audials має подкасти. Незрячі активно слухають подкасти. Tapir вже має Player-інфраструктуру. Природне розширення без зміни core recording логіки. Medium-High складність через новий UI-розділ та управління пам'яттю позиції.
 
-**Залежності:** Потребує Player infrastructure (v1.0 Фаза 2). Незалежний від HLS (v2.0).
+**Залежності:** Потребує Player infrastructure (0.1.0 Фаза 2). Незалежний від HLS (v2.0).
 
 ---
 
 ## Порівняння ключових конкурентів
 
-| Фіча | streamWriter | Audials | Screamer | **Tapir v1.0** | **v1.1** | **v1.2** | **v1.3** | **v1.4** | **v1.5** | **v2.0** | **v2.1** |
+| Фіча | streamWriter | Audials | Screamer | **Tapir 0.1.0** | **v1.1** | **v1.2** | **v1.3** | **v1.4** | **v1.5** | **v2.0** | **v2.1** |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Запис ICY (MP3/AAC) | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Wishlist автозапис | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -316,7 +316,7 @@ RadioMaximus та RarmaRadio — комерційні Windows-програми �
 ### Рекомендований порядок релізів
 
 ```
-v1.0 (4 фази, у розробці)
+0.1.0 (4 фази, у розробці)
   └── v1.1  Метадані (album art, lyrics, Last.fm, MusicBrainz)   [~3 місяці]
        └── v1.2  Silence detection                                [~2 місяці]
             └── v1.3  Tag editor + file management                [~2 місяці]
@@ -340,14 +340,14 @@ v1.0 (4 фази, у розробці)
 | **AI music enhancer (якість звуку)** | Комерційна/пропрієтарна технологія (ML pipeline). Повністю за scope open-source portable tool. Audials реалізував як платну фічу. |
 | **Запис з Spotify/Deezer** | Захищений контент (DRM). Юридично сумнівна зона. Audials це робить на власний ризик. Не відповідає цільовій аудиторії та позиціонуванню. |
 | **Вбудований waveform editor (manual cut)** | Дуже складна реалізація (~розмір окремого застосунку). У незрячих обмежена користь від waveform. Silence detection (v1.2) вирішує 80% проблеми автоматично. |
-| **SoX вбудована інтеграція** | SoX доступний як зовнішній executable (post-processing вже є в v1.0). Пряма інтеграція — великий scope. Нише-аудиторія навіть серед power users. |
+| **SoX вбудована інтеграція** | SoX доступний як зовнішній executable (post-processing вже є в 0.1.0). Пряма інтеграція — великий scope. Нише-аудиторія навіть серед power users. |
 | **Community server (global wishlist via shared streams)** | Потребує власну серверну інфраструктуру (як у streamWriter). Таємниця: streamWriter power-feature перетворилась на тягар підтримки і пов'язана з privacy питаннями. |
 | **Запис відео / відео стрімів** | Повністю інший product scope (Audials, OBS). Жодного зв'язку з цільовим use-case незрячих. |
 | **Windows Store публікація** | Порушує portable philosophy (Store sandboxing несумісний з даними-поруч-з-EXE). Явно excluded в PRD. |
 | **Автоматичне оновлення** | Явно excluded в PRD. Portable mode = user replaces EXE manually. |
-| **Вбудований браузер для відкриття станцій** | Radio Browser API (v1.0) достатній. Embedded browser = додатковий WebView2 instance, security surface. |
+| **Вбудований браузер для відкриття станцій** | Radio Browser API (0.1.0) достатній. Embedded browser = додатковий WebView2 instance, security surface. |
 | **MPEG-DASH support** | Технічно складніший за HLS, мало таких радіостанцій в Україні/Європі. Відкласти до v3.x якщо попит буде підтверджено. |
-| **Format conversion (MP3→FLAC конвертор)** | Lossy→lossless conversion не покращує якість. Корисна лише для стандартизації. FFmpeg post-processing (v1.0) вже дозволяє це через зовнішній preprocessor. |
+| **Format conversion (MP3→FLAC конвертор)** | Lossy→lossless conversion не покращує якість. Корисна лише для стандартизації. FFmpeg post-processing (0.1.0) вже дозволяє це через зовнішній preprocessor. |
 | **Shared public playlists server** | Вимагає сервер + модерацію + privacy policy. streamWriter це має, але це source of maintenance burden. |
 | **Phonetic keyboard navigation (JAWS-like commands)** | Це відповідальність NVDA/JAWS скриптів (розповсюдження в v1.4), не core app logic. |
 
@@ -386,4 +386,4 @@ v1.0 (4 фази, у розробці)
 - [AlternativeTo — streamWriter alternatives](https://alternativeto.net/software/streamwriter/) — конкурентний ландшафт, альтернативи, ринок
 - [Tapir PRD](docs/PRD.md) — базові вимоги, accessibility, out-of-scope items
 - [Tapir tech-stack.md](docs/tech-stack.md) — стек, бібліотеки, symphonia версія
-- [Tapir implementation-phases.md](docs/implementation-phases.md) — що включено у v1.0
+- [Tapir implementation-phases.md](docs/implementation-phases.md) — що включено у 0.1.0
