@@ -115,7 +115,13 @@ StreamEntry {
 }
 ```
 
-Commands acquire `StreamManager` via `state.stream_manager.read().await` (for reads) or `.write().await` (for mutations). Lock scope is kept minimal — never held across `.await` on I/O. Each stream runs as an independent `tokio::spawn` task. Tasks receive `AppHandle` for emitting IPC events and an `Arc<RwLock<...>>` reference to update their own status in the manager.
+Commands acquire `StreamManager` via `state.stream_manager.read().await` (for reads) or `.write().await` (for mutations). Lock scope is kept minimal — never held across `.await` on I/O.
+
+**Task ↔ Manager status update mechanism:** Each spawned recording task receives:
+- `AppHandle` — for emitting IPC events to frontend
+- `Arc<RwLock<StreamManager>>` — for updating its own `StreamEntry.status` in the manager's `entries` map
+
+When a task needs to update status (e.g., `connecting` → `recording`, or on track change), it acquires a brief `.write().await` lock on the manager, updates its `StreamEntry.status`, drops the lock, then emits the corresponding IPC event via `AppHandle`. This ensures both the manager's internal state and the frontend stay synchronized.
 
 ### 3.2. Recording Task Flow
 
@@ -123,7 +129,7 @@ Commands acquire `StreamManager` via `state.stream_manager.read().await` (for re
 2. **Detect format** — `stream::format::detect()` via content-type + magic bytes (MP3: `0xFF 0xFB/0xF3/0xF2`; AAC: ADTS `0xFF 0xF1/0xF9`).
 3. **Read loop** — Read chunks via `icy-metadata` (auto-strips metadata from stream). On metadata change → emit `track-changed`, delegate to splitter.
 4. **Split** — `stream::splitter` compares new metadata with previous. If changed → finalize current track (write tags, close file), open new file.
-5. **Write** — `stream::recorder` writes raw bytes to two files: stream file (continuous) + current track file.
+5. **Write** — `stream::recorder` writes raw bytes to two files: stream file (continuous) + current track file. Track files are written with `_incomplete` suffix (via `incompleteFileNameTemplate`) during recording. On successful track finalization, the file is renamed to the final sanitized filename (via `fileNameTemplate`). If recording is interrupted (crash, stop), the `_incomplete` file remains on disk for user recovery — it is never auto-deleted.
 6. **Tags** — `tags::writer` writes ID3v2 (MP3) or M4A tags on track finalization: artist, title, album (empty), station name.
 7. **Reconnect** — On connection error, task enters reconnect loop (exponential backoff). Emit `recording-status: reconnecting`. Manager checks `CancellationToken` before each retry attempt.
 
@@ -145,7 +151,7 @@ elif metadata_changed:
 - Forbidden characters (`\ / : * ? " < > |`) → `_`
 - Trailing dots/spaces → trim
 - Collisions: if file exists → `_2`, `_3`, etc.
-- `autoCorrectCase`: `"artist - title"` → `"Artist - Title"`
+- `autoCorrectCase` (per-profile, `RecordingSettings.autoCorrectCase` — see `data-models.md` §3.4): `"artist - title"` → `"Artist - Title"`. Phase 1: hardcoded default `true`
 
 ### 3.5. Playlist Parsing (playlist.rs)
 
@@ -158,6 +164,8 @@ Manual implementation (~30 lines each):
 ## 4. IPC Commands & Events
 
 ### 4.1. Commands (frontend → backend)
+
+> **Note:** All return types below are implicitly wrapped in `Result<T, String>`. Errors serialize as rejected invoke promises in frontend.
 
 | Command | Parameters | Returns | Description |
 |---------|-----------|---------|-------------|
@@ -237,7 +245,7 @@ All commands return `Result<T, String>`. Errors serialize as rejected promises i
 
 | Store | Type | Description |
 |-------|------|-------------|
-| `streams.ts` | `atom<StreamInfo[]>` + `map<Record<string, StreamStatus>>` | Stream list (synced via `get_streams()`) AND recording states (updated via Tauri events). Single store as per `architecture.md`: "Stream list + recording states" |
+| `streams.ts` | `$streams: atom<StreamInfo[]>` (synced via `get_streams()` on start and after mutations) + `$statuses: map<Record<string, StreamStatus>>` (updated via Tauri `recording-status` and `track-changed` events). Two Nanostores exports in one file, as per `architecture.md`: "Stream list + recording states" |
 | `profile.ts` | `atom<Profile>` | Active profile data — recording settings (templates, reconnect config, outputDir), used by UI to display/edit per-profile config |
 | `settings.ts` | `atom<GlobalSettings>` | Loaded on start |
 | `navigation.ts` | `atom<{ section, commandPaletteOpen }>` | Active section, Command Palette state |
@@ -339,7 +347,7 @@ On first launch (0 streams), LiveAnnouncer announces: `"Ласкаво прос�
 2. Backend receives close event
 3. `StreamManager::stop_all()` — cancel all recording tasks
 4. Await `JoinHandle` completion (timeout 5s)
-5. Save `activeRecordingUrls` to profile (recovery NOT in Phase 1 scope — only saving URLs)
+5. Save `activeRecordingUrls: string[]` to `Profile` (see `data-models.md` §2 — `Profile.activeRecordingUrls`). Phase 1: only persists the URLs on shutdown; recovery on next launch is NOT in scope
 6. Flush logs
 7. Exit
 
