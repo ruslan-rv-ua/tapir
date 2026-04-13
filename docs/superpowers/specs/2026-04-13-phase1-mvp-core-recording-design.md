@@ -84,15 +84,28 @@ All other plugins (`global-shortcut`, `single-instance`, `cli`, `window-state`, 
 
 ### 3.1. Architecture — Hybrid (C)
 
+**AppState level** (consistent with `architecture.md` §4):
+
+```rust
+pub struct AppState {
+    pub stream_manager: Arc<RwLock<StreamManager>>,  // tokio::sync::RwLock
+    pub settings: Arc<RwLock<GlobalSettings>>,
+    pub active_profile: Arc<RwLock<Profile>>,
+    // player, scheduler — Phase 1: no-op stubs or absent
+}
+```
+
+**StreamManager internals:**
+
 ```
 StreamManager
-  state: Arc<Mutex<HashMap<StreamId, StreamEntry>>>
+  entries: HashMap<StreamId, StreamEntry>
   app_handle: AppHandle
   │
   ├─ start_recording(stream_info) → tokio::spawn(recording_task)
   ├─ stop_recording(stream_id) → CancellationToken::cancel()
   ├─ stop_all() → cancel all tokens
-  └─ get_status(stream_id) → read from shared state
+  └─ get_status(stream_id) → read from entries
 
 StreamEntry {
   info: StreamInfo,
@@ -102,7 +115,7 @@ StreamEntry {
 }
 ```
 
-Each stream runs as an independent `tokio::spawn` task. Tasks hold `Arc` references to shared state and `AppHandle` for emitting IPC events. `Mutex` is locked only for brief status updates, never during I/O.
+Commands acquire `StreamManager` via `state.stream_manager.read().await` (for reads) or `.write().await` (for mutations). Lock scope is kept minimal — never held across `.await` on I/O. Each stream runs as an independent `tokio::spawn` task. Tasks receive `AppHandle` for emitting IPC events and an `Arc<RwLock<...>>` reference to update their own status in the manager.
 
 ### 3.2. Recording Task Flow
 
@@ -224,8 +237,7 @@ All commands return `Result<T, String>`. Errors serialize as rejected promises i
 
 | Store | Type | Description |
 |-------|------|-------------|
-| `streams.ts` | `atom<StreamInfo[]>` | Synced with backend via `get_streams()` on start and after mutations |
-| `statuses.ts` | `map<Record<string, StreamStatus>>` | Updated via Tauri events |
+| `streams.ts` | `atom<StreamInfo[]>` + `map<Record<string, StreamStatus>>` | Stream list (synced via `get_streams()`) AND recording states (updated via Tauri events). Single store as per `architecture.md`: "Stream list + recording states" |
 | `settings.ts` | `atom<GlobalSettings>` | Loaded on start |
 | `navigation.ts` | `atom<{ section, commandPaletteOpen }>` | Active section, Command Palette state |
 | `toasts.ts` | `atom<Toast[]>` | Push/auto-remove queue |
