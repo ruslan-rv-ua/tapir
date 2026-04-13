@@ -238,6 +238,7 @@ All commands return `Result<T, String>`. Errors serialize as rejected promises i
 | Store | Type | Description |
 |-------|------|-------------|
 | `streams.ts` | `atom<StreamInfo[]>` + `map<Record<string, StreamStatus>>` | Stream list (synced via `get_streams()`) AND recording states (updated via Tauri events). Single store as per `architecture.md`: "Stream list + recording states" |
+| `profile.ts` | `atom<Profile>` | Active profile data — recording settings (templates, reconnect config, outputDir), used by UI to display/edit per-profile config |
 | `settings.ts` | `atom<GlobalSettings>` | Loaded on start |
 | `navigation.ts` | `atom<{ section, commandPaletteOpen }>` | Active section, Command Palette state |
 | `toasts.ts` | `atom<Toast[]>` | Push/auto-remove queue |
