@@ -38,6 +38,11 @@ export function ActivityBar() {
               ? m.phase_not_available({ phase: section.phase ?? "" })
               : section.label
           }
+          aria-description={
+            section.disabled
+              ? m.phase_not_available({ phase: section.phase ?? "" })
+              : undefined
+          }
           className={`flex h-10 w-10 items-center justify-center rounded transition-colors ${
             activeSection === section.id
               ? "bg-slate-700 text-blue-400"
