@@ -44,5 +44,6 @@
   "column_track": "Current track",
   "column_bitrate": "Bitrate",
   "column_duration": "Duration",
-  "column_status": "Status"
+  "column_status": "Status",
+  "track_saved": "Track saved: {fileName} ({name})"
 }

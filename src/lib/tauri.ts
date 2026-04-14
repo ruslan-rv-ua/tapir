@@ -90,6 +90,17 @@ export interface StreamErrorPayload {
   willRetry: boolean;
 }
 
+export interface RecordingStartedPayload {
+  streamId: string;
+  fileName: string;
+}
+
+export interface RecordingCompletedPayload {
+  streamId: string;
+  fileName: string;
+  durationMs: number;
+}
+
 // --- Typed invoke wrappers ---
 
 export async function getStreams(): Promise<StreamInfo[]> {

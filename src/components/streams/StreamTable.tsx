@@ -1,9 +1,11 @@
 import { Table, TableHeader, TableBody, Column } from "react-aria-components";
 import { useStore } from "@nanostores/react";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import type { SortDescriptor } from "react-aria-components";
 import { $streams, $statuses } from "../../stores/streams";
 import { StreamRow } from "./StreamRow";
+import { addToast } from "../../stores/toasts";
+import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 
 export function StreamTable() {
@@ -21,8 +23,25 @@ export function StreamTable() {
     return 0;
   });
 
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key !== "Delete") return;
+    const row = (e.target as HTMLElement).closest("tr[data-key]");
+    if (!row) return;
+    const streamId = row.getAttribute("data-key");
+    if (!streamId) return;
+    const stream = streams.find((s) => s.id === streamId);
+    if (!stream) return;
+    e.preventDefault();
+    if (window.confirm(m.confirm_delete_stream({ name: stream.name }))) {
+      tauri.removeStream(streamId).then(() => {
+        $streams.set($streams.get().filter((s) => s.id !== streamId));
+        addToast(m.stream_removed({ name: stream.name }), "info");
+      }).catch((err) => addToast(String(err), "error"));
+    }
+  }, [streams]);
+
   return (
-    <div className="flex-1 overflow-auto">
+    <div className="flex-1 overflow-auto" onKeyDown={handleKeyDown}>
       <Table
         aria-label={m.streams_section()}
         selectionMode="multiple"

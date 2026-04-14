@@ -52,7 +52,8 @@ impl Recorder {
     }
 
     /// Begin recording a new track. Opens the incomplete file.
-    pub async fn start_track(&mut self, artist: &str, title: &str) -> Result<(), RadioError> {
+    /// Returns the incomplete file name on success.
+    pub async fn start_track(&mut self, artist: &str, title: &str) -> Result<String, RadioError> {
         self.track_number += 1;
 
         let ext = audio_format_ext(&self.format);
@@ -92,11 +93,15 @@ impl Recorder {
             ext,
         );
 
-        self.track_incomplete_path = Some(incomplete_path);
+        self.track_incomplete_path = Some(incomplete_path.clone());
         self.track_final_path = Some(final_path);
         self.track_file = Some(file);
 
-        Ok(())
+        let file_name = incomplete_path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+        Ok(file_name)
     }
 
     /// Finalize the current track: flush, rename incomplete → final, write tags.

@@ -15,7 +15,7 @@ import { $commandPaletteOpen } from "./stores/navigation";
 import { addToast } from "./stores/toasts";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import * as tauri from "./lib/tauri";
-import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, StreamInfo } from "./lib/tauri";
+import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, RecordingStartedPayload, RecordingCompletedPayload, StreamInfo } from "./lib/tauri";
 import * as m from "./i18n/paraglide/messages";
 
 function AppContent() {
@@ -90,19 +90,27 @@ function AppContent() {
     $streams.set($streams.get().map((s) => (s.id === updated.id ? updated : s)));
   }, []);
 
+  const handleRecordingCompleted = useCallback((payload: RecordingCompletedPayload) => {
+    const stream = $streams.get().find((s) => s.id === payload.streamId);
+    const name = stream?.name ?? payload.streamId;
+    announce(m.track_saved({ name, fileName: payload.fileName }), "polite");
+  }, [announce]);
+
   useTauriEvent<RecordingStatusPayload>("recording-status", handleRecordingStatus);
   useTauriEvent<TrackChangedPayload>("track-changed", handleTrackChanged);
   useTauriEvent<StreamErrorPayload>("stream-error", handleStreamError);
   useTauriEvent<StreamInfo>("stream-info-updated", handleStreamInfoUpdated);
+  useTauriEvent<RecordingStartedPayload>("recording-started", () => {});
+  useTauriEvent<RecordingCompletedPayload>("recording-completed", handleRecordingCompleted);
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-200">
       <ActivityBar />
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <main className="flex flex-1 flex-col overflow-hidden">
         <SectionHeader title={m.streams_section()} />
         <StreamsPanel />
         <StatusBar />
-      </div>
+      </main>
     </div>
   );
 }

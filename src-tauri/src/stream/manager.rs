@@ -80,6 +80,21 @@ struct StreamErrorPayload {
     will_retry: bool,
 }
 
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RecordingStartedPayload {
+    stream_id: String,
+    file_name: String,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RecordingCompletedPayload {
+    stream_id: String,
+    file_name: String,
+    duration_ms: u64,
+}
+
 // ---------------------------------------------------------------------------
 // Internal entry held per active stream
 // ---------------------------------------------------------------------------
@@ -237,6 +252,29 @@ fn emit_stream_error(app: &AppHandle, stream_id: &str, message: &str, will_retry
             stream_id: stream_id.to_string(),
             message: message.to_string(),
             will_retry,
+        },
+    )
+    .ok();
+}
+
+fn emit_recording_started(app: &AppHandle, stream_id: &str, file_name: &str) {
+    app.emit(
+        "recording-started",
+        RecordingStartedPayload {
+            stream_id: stream_id.to_string(),
+            file_name: file_name.to_string(),
+        },
+    )
+    .ok();
+}
+
+fn emit_recording_completed(app: &AppHandle, stream_id: &str, file_name: &str, duration_ms: u64) {
+    app.emit(
+        "recording-completed",
+        RecordingCompletedPayload {
+            stream_id: stream_id.to_string(),
+            file_name: file_name.to_string(),
+            duration_ms,
         },
     )
     .ok();
@@ -686,16 +724,24 @@ pub async fn recording_task(
                                     update_track_info(&manager, &stream_id, &artist, &title).await;
                                 }
                                 splitter::SplitAction::StartTrack(m) => {
-                                    rec.start_track(&m.artist, &m.title).await.ok();
+                                    if let Ok(file_name) = rec.start_track(&m.artist, &m.title).await {
+                                        emit_recording_started(&app_handle, &stream_id, &file_name);
+                                    }
                                     emit_track_changed(&app_handle, &stream_id, &m.artist, &m.title, "");
                                     update_track_info(&manager, &stream_id, &m.artist, &m.title).await;
                                 }
                                 splitter::SplitAction::FinalizeAndStart { completed, new, duration_ms } => {
                                     // Only count the completed track if it was actually kept on disk.
-                                    if let Ok(Some(_)) = rec.finalize_track(&completed.artist, &completed.title, duration_ms).await {
+                                    if let Ok(Some(final_path)) = rec.finalize_track(&completed.artist, &completed.title, duration_ms).await {
                                         update_tracks_recorded(&manager, &stream_id).await;
+                                        let file_name = final_path.file_name()
+                                            .map(|n| n.to_string_lossy().to_string())
+                                            .unwrap_or_default();
+                                        emit_recording_completed(&app_handle, &stream_id, &file_name, duration_ms);
                                     }
-                                    rec.start_track(&new.artist, &new.title).await.ok();
+                                    if let Ok(file_name) = rec.start_track(&new.artist, &new.title).await {
+                                        emit_recording_started(&app_handle, &stream_id, &file_name);
+                                    }
                                     emit_track_changed(&app_handle, &stream_id, &new.artist, &new.title, "");
                                     update_track_info(&manager, &stream_id, &new.artist, &new.title).await;
                                 }
