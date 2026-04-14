@@ -25,6 +25,7 @@ export function StreamTable() {
     <div className="flex-1 overflow-auto">
       <Table
         aria-label={m.streams_section()}
+        selectionMode="multiple"
         sortDescriptor={sortDescriptor}
         onSortChange={setSortDescriptor}
         className="w-full text-sm"

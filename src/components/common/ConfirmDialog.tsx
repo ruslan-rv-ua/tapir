@@ -1,4 +1,4 @@
-import { Dialog, Modal, ModalOverlay } from "react-aria-components";
+import { Dialog, Modal, ModalOverlay, Heading } from "react-aria-components";
 import * as m from "../../i18n/paraglide/messages";
 
 interface Props {
@@ -16,8 +16,8 @@ export function ConfirmDialog({ title, message, onConfirm, onCancel }: Props) {
       onOpenChange={(open) => { if (!open) onCancel(); }}
     >
       <Modal className="w-80 rounded-lg bg-slate-800 p-6 shadow-2xl outline-none">
-        <Dialog role="alertdialog" aria-labelledby="confirm-title" className="outline-none">
-          <h2 id="confirm-title" className="mb-2 text-lg font-semibold text-slate-100">{title}</h2>
+        <Dialog role="alertdialog" className="outline-none">
+          <Heading slot="title" className="mb-2 text-lg font-semibold text-slate-100">{title}</Heading>
           <p className="mb-6 text-sm text-slate-400">{message}</p>
           <div className="flex justify-end gap-2">
             <button

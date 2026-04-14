@@ -1,4 +1,4 @@
-import { Dialog, Modal, ModalOverlay } from "react-aria-components";
+import { Dialog, Modal, ModalOverlay, Heading } from "react-aria-components";
 import { useState } from "react";
 import * as tauri from "../../lib/tauri";
 import type { StreamInfo } from "../../lib/tauri";
@@ -47,10 +47,10 @@ export function AddStreamDialog({ onClose, editStream }: Props) {
       onOpenChange={(open) => { if (!open) onClose(); }}
     >
       <Modal className="w-96 rounded-lg bg-slate-800 p-6 shadow-2xl outline-none">
-        <Dialog aria-labelledby="dialog-title" className="outline-none">
-          <h2 id="dialog-title" className="mb-4 text-lg font-semibold text-slate-100">
-            {isEdit ? "Редагувати потік" : m.add_stream()}
-          </h2>
+        <Dialog className="outline-none">
+          <Heading slot="title" className="mb-4 text-lg font-semibold text-slate-100">
+            {isEdit ? m.edit_stream() : m.add_stream()}
+          </Heading>
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             {!isEdit && (
               <label className="flex flex-col gap-1 text-sm text-slate-300">

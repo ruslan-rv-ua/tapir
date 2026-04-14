@@ -1,4 +1,5 @@
-import { Row, Cell } from "react-aria-components";
+import { Row, Cell, Checkbox } from "react-aria-components";
+import { createPortal } from "react-dom";
 import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import { formatBitrate, formatDuration } from "../../lib/formatters";
 import * as m from "../../i18n/paraglide/messages";
@@ -17,18 +18,19 @@ function StatusIcon({ state }: { state: string }) {
   switch (state) {
     case "recording":
       return (
-        <span className="inline-flex items-center gap-1 text-xs font-bold text-red-400">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
+        <span aria-label={m.status_recording()} className="inline-flex items-center gap-1 text-xs font-bold text-red-400">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" aria-hidden="true" />
           REC
         </span>
       );
     case "connecting":
+      return <span aria-label={m.status_connecting()} className="h-2 w-2 animate-pulse rounded-full bg-yellow-400" />;
     case "reconnecting":
-      return <span className="h-2 w-2 animate-pulse rounded-full bg-yellow-400" />;
+      return <span aria-label={m.status_reconnecting()} className="h-2 w-2 animate-pulse rounded-full bg-yellow-500" />;
     case "error":
-      return <span className="h-2 w-2 rounded-full bg-red-600" />;
-    default: // idle
-      return <span className="h-2 w-2 rounded-full bg-slate-600" />;
+      return <span aria-label={m.status_error()} className="h-2 w-2 rounded-full bg-red-600" />;
+    default:
+      return <span aria-label={m.status_idle()} className="h-2 w-2 rounded-full bg-slate-600" />;
   }
 }
 
@@ -68,11 +70,7 @@ export function StreamRow({ stream, status }: Props) {
     <>
       <Row id={stream.id} className="border-b border-slate-800 hover:bg-slate-800/50">
         <Cell>
-          <input
-            type="checkbox"
-            aria-label={m.select_stream({ name: stream.name })}
-            className="accent-blue-500"
-          />
+          <Checkbox slot="selection" aria-label={m.select_stream({ name: stream.name })} />
         </Cell>
         <Cell>
           <StatusIcon state={state} />
@@ -110,13 +108,14 @@ export function StreamRow({ stream, status }: Props) {
           </div>
         </Cell>
       </Row>
-      {showConfirmDelete && (
+      {showConfirmDelete && createPortal(
         <ConfirmDialog
           title={m.remove_stream()}
           message={m.confirm_delete_stream({ name: stream.name })}
           onConfirm={handleDelete}
           onCancel={() => setShowConfirmDelete(false)}
-        />
+        />,
+        document.body
       )}
     </>
   );
