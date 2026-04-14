@@ -5,18 +5,14 @@ import { StatusBar } from "./components/layout/StatusBar";
 import { LiveAnnouncer } from "./components/common/LiveAnnouncer";
 import { ToastContainer } from "./components/common/ToastContainer";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
+import { StreamsPanel } from "./components/streams/StreamsPanel";
 import { useTauriEvent } from "./hooks/useTauriEvent";
 import { useAnnounce } from "./hooks/useAnnounce";
-import { $streams, $statuses, updateStreamStatus } from "./stores/streams";
+import { $streams, updateStreamStatus } from "./stores/streams";
 import { addToast } from "./stores/toasts";
 import * as tauri from "./lib/tauri";
 import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload } from "./lib/tauri";
 import * as m from "./i18n/paraglide/messages";
-
-// StreamsPanel is created in Task 16 — use a placeholder for now
-function StreamsPanelPlaceholder() {
-  return <div className="flex flex-1 items-center justify-center text-slate-500">Streams panel (Task 16)</div>;
-}
 
 function AppContent() {
   const announce = useAnnounce();
@@ -66,7 +62,7 @@ function AppContent() {
       <ActivityBar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <SectionHeader title={m.streams_section()} />
-        <StreamsPanelPlaceholder />
+        <StreamsPanel />
         <StatusBar />
       </div>
     </div>
