@@ -108,10 +108,6 @@ export function CommandPalette() {
       <div
         className="h-fit w-[560px] overflow-hidden rounded-lg bg-slate-800 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
-        role="combobox"
-        aria-expanded="true"
-        aria-haspopup="listbox"
-        aria-controls="palette-listbox"
       >
         <input
           ref={inputRef}
@@ -121,6 +117,9 @@ export function CommandPalette() {
           onKeyDown={handleKeyDown}
           placeholder={m.command_palette_placeholder()}
           aria-label={m.command_palette_placeholder()}
+          role="combobox"
+          aria-expanded="true"
+          aria-haspopup="listbox"
           aria-autocomplete="list"
           aria-controls="palette-listbox"
           aria-activedescendant={filtered[clampedIndex] ? `palette-item-${filtered[clampedIndex].id}` : undefined}
@@ -133,7 +132,7 @@ export function CommandPalette() {
           className="max-h-80 overflow-y-auto"
         >
           {filtered.length === 0 ? (
-            <li className="px-4 py-3 text-sm text-slate-500" role="option" aria-selected="false">
+            <li className="px-4 py-3 text-sm text-slate-500">
               No results
             </li>
           ) : (
