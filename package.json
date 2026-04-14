@@ -11,24 +11,26 @@
   },
   "packageManager": "pnpm@10.32.1",
   "dependencies": {
+    "@inlang/paraglide-js": "^2.15.3",
+    "@nanostores/react": "^0.8",
     "@tauri-apps/api": "^2",
-    "@tauri-apps/plugin-log": "^2",
     "@tauri-apps/plugin-dialog": "^2",
-    "react": "^19",
-    "react-dom": "^19",
-    "react-aria-components": "^1",
+    "@tauri-apps/plugin-log": "^2",
     "lucide-react": "^1",
     "nanostores": "^0.11",
-    "@nanostores/react": "^0.8"
+    "react": "^19",
+    "react-aria-components": "^1",
+    "react-dom": "^19"
   },
   "devDependencies": {
+    "@inlang/paraglide-vite": "^1.4.0",
+    "@tailwindcss/vite": "^4",
     "@tauri-apps/cli": "^2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react-swc": "^4",
-    "vite": "^8",
-    "@tailwindcss/vite": "^4",
     "tailwindcss": "^4",
-    "typescript": "^5.7"
+    "typescript": "^5.7",
+    "vite": "^8"
   }
 }
