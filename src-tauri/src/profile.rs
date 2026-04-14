@@ -18,14 +18,21 @@ pub struct StreamInfo {
     pub id: String,
     pub url: String,
     pub name: String,
+    #[serde(default)]
     pub format: Option<AudioFormat>,
+    #[serde(default)]
     pub bitrate: Option<u32>,
+    #[serde(default)]
     pub icy_name: Option<String>,
+    #[serde(default)]
     pub icy_genre: Option<String>,
+    #[serde(default)]
     pub icy_url: Option<String>,
     #[serde(default)]
     pub ignorelist: Vec<String>,
+    #[serde(default)]
     pub username: Option<String>,
+    #[serde(default)]
     pub password: Option<String>,
     pub added_at: String,
 }
@@ -35,7 +42,9 @@ pub struct StreamInfo {
 #[serde(rename_all = "camelCase")]
 pub struct WishlistEntry {
     pub pattern: String,
+    #[serde(default)]
     pub min_bitrate: Option<u32>,
+    #[serde(default)]
     pub format: Option<AudioFormat>,
     pub remove_after_record: bool,
     pub add_to_ignorelist_after_record: bool,
@@ -58,7 +67,9 @@ pub struct ScheduledRecording {
     pub name: String,
     #[serde(rename = "type")]
     pub schedule_type: ScheduleType,
+    #[serde(default)]
     pub day_of_week: Option<u8>,
+    #[serde(default)]
     pub date: Option<String>,
     pub time: String,
     pub duration_minutes: u32,
@@ -175,11 +186,14 @@ pub struct FilePosition {
 pub struct PlayerSession {
     #[serde(default = "default_volume")]
     pub volume: f32,
+    #[serde(default)]
     pub last_stream_id: Option<String>,
+    #[serde(default)]
     pub last_file_position: Option<FilePosition>,
 }
 
 fn default_volume() -> f32 { 0.75 }
+fn default_version() -> u32 { 1 }
 
 impl Default for PlayerSession {
     fn default() -> Self {
@@ -214,6 +228,7 @@ pub struct SavedTrack {
 #[serde(rename_all = "camelCase")]
 pub struct Profile {
     pub name: String,
+    #[serde(default = "default_version")]
     pub version: u32,
     #[serde(default)]
     pub streams: Vec<StreamInfo>,

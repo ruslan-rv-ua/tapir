@@ -1,7 +1,7 @@
 use crate::errors::RadioError;
 use crate::portable;
 use serde::{Deserialize, Serialize};
-use tracing::{info, warn};
+use tracing::info;
 
 /// Strip UTF-8 BOM if present (Windows Notepad adds this).
 pub fn strip_bom(s: &str) -> &str {
@@ -124,13 +124,8 @@ impl GlobalSettings {
         }
         let content = std::fs::read_to_string(&path)?;
         let content = strip_bom(&content);
-        match serde_json::from_str(content) {
-            Ok(settings) => Ok(settings),
-            Err(e) => {
-                warn!("Settings parse error ({}), using defaults", e);
-                Ok(Self::default())
-            }
-        }
+        let settings: Self = serde_json::from_str(content)?;
+        Ok(settings)
     }
 
     pub fn save(&self) -> Result<(), RadioError> {
