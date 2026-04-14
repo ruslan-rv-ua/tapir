@@ -30,6 +30,7 @@ export function ActivityBar() {
       {sections.map((section) => (
         <button
           key={section.id}
+          aria-label={section.label}
           aria-current={activeSection === section.id ? "page" : undefined}
           disabled={section.disabled}
           title={
@@ -51,7 +52,8 @@ export function ActivityBar() {
       <div className="mt-auto">
         <button
           disabled
-          title="Profile (coming soon)"
+          aria-label="Settings"
+          title="Settings (coming soon)"
           className="flex h-10 w-10 cursor-not-allowed items-center justify-center rounded text-slate-600"
         >
           <Settings size={20} aria-hidden={true} />

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { ActivityBar } from "./components/layout/ActivityBar";
 import { SectionHeader } from "./components/layout/SectionHeader";
 import { StatusBar } from "./components/layout/StatusBar";
@@ -30,7 +30,7 @@ function AppContent() {
   }, []);
 
   // Subscribe to Tauri events
-  useTauriEvent<RecordingStatusPayload>("recording-status", (payload) => {
+  const handleRecordingStatus = useCallback((payload: RecordingStatusPayload) => {
     updateStreamStatus(payload.streamId, { state: payload.status });
     const stream = $streams.get().find((s) => s.id === payload.streamId);
     const name = stream?.name ?? payload.streamId;
@@ -43,19 +43,23 @@ function AppContent() {
       announce(m.connection_error({ name }), "assertive");
       addToast(m.connection_error({ name }), "error");
     }
-  });
+  }, [announce]);
 
-  useTauriEvent<TrackChangedPayload>("track-changed", (payload) => {
+  const handleTrackChanged = useCallback((payload: TrackChangedPayload) => {
     updateStreamStatus(payload.streamId, {
       currentTrack: { artist: payload.artist, title: payload.title, album: payload.album, startedAt: new Date().toISOString() },
     });
-  });
+  }, []);
 
-  useTauriEvent<StreamErrorPayload>("stream-error", (payload) => {
+  const handleStreamError = useCallback((payload: StreamErrorPayload) => {
     const stream = $streams.get().find((s) => s.id === payload.streamId);
     const name = stream?.name ?? payload.streamId;
     addToast(`${name}: ${payload.message}`, "error");
-  });
+  }, []);
+
+  useTauriEvent<RecordingStatusPayload>("recording-status", handleRecordingStatus);
+  useTauriEvent<TrackChangedPayload>("track-changed", handleTrackChanged);
+  useTauriEvent<StreamErrorPayload>("stream-error", handleStreamError);
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-200">
