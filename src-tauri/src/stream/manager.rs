@@ -208,14 +208,14 @@ fn emit_recording_status(app: &AppHandle, stream_id: &str, status: &str, error: 
     .ok();
 }
 
-fn emit_track_changed(app: &AppHandle, stream_id: &str, artist: &str, title: &str) {
+fn emit_track_changed(app: &AppHandle, stream_id: &str, artist: &str, title: &str, album: &str) {
     app.emit(
         "track-changed",
         TrackChangedPayload {
             stream_id: stream_id.to_string(),
             artist: artist.to_string(),
             title: title.to_string(),
-            album: String::new(),
+            album: album.to_string(),
         },
     )
     .ok();
@@ -607,13 +607,13 @@ pub async fn recording_task(
                                 splitter::SplitAction::Skip => {}
                                 splitter::SplitAction::StartTrack(m) => {
                                     rec.start_track(&m.artist, &m.title).await.ok();
-                                    emit_track_changed(&app_handle, &stream_id, &m.artist, &m.title);
+                                    emit_track_changed(&app_handle, &stream_id, &m.artist, &m.title, "");
                                     update_track_info(&manager, &stream_id, &m.artist, &m.title).await;
                                 }
                                 splitter::SplitAction::FinalizeAndStart { completed, new, duration_ms } => {
                                     rec.finalize_track(&completed.artist, &completed.title, duration_ms).await.ok();
                                     rec.start_track(&new.artist, &new.title).await.ok();
-                                    emit_track_changed(&app_handle, &stream_id, &new.artist, &new.title);
+                                    emit_track_changed(&app_handle, &stream_id, &new.artist, &new.title, "");
                                     update_track_info(&manager, &stream_id, &new.artist, &new.title).await;
                                 }
                             }
