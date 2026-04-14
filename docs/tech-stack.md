@@ -19,13 +19,13 @@
 | **i18n** | Paraglide.js | latest | Compiler-based, uk/en |
 | **Bundler** | Vite | 8.x | Frontend build |
 | **HTTP Streaming** | reqwest | 0.13 | Async HTTP client |
-| **ICY Protocol** | icy-metadata | 0.6 | ICY заголовки та metadata |
+| **ICY Protocol** | icy-metadata | 0.6 | ICY заголовки (лише `IcyHeaders`; парсинг метаданих потоку — ручний) |
 | **Stream Buffer** | stream-download | 0.24 | Ring buffer для стрімів |
 | **Playback** | rodio | 0.22 | WASAPI audio output |
 | **Decoding** | symphonia | 0.5.5 | MP3 + AAC-LC decoder |
 | **Tags** | lofty | 0.23 | ID3v2 + M4A metadata |
 | **Async** | tokio | ~1.51 | Async runtime (LTS) |
-| **Logging** | tauri-plugin-log + tracing | 2.x / 0.1 | JS+Rust structured logging |
+| **Logging** | tauri-plugin-log + log | 2.x / 0.4 | Файловий лог у `data/logs/`, `log::*` макроси |
 | **Win API** | windows-rs | 0.61 | Registry, toast, balloon tip |
 | **Errors** | anyhow + thiserror | 1 / 2 | Error handling |
 | **Time** | chrono | 0.4 | Date/time з serde |
@@ -118,7 +118,7 @@ Compiler-based i18n. Мінімальний runtime, tree-shakable, typesafe. У
 | Crate | Призначення |
 |---|---|
 | `reqwest` 0.13 | Async HTTP client: streaming body, TLS, proxy, basic auth |
-| `icy-metadata` 0.6 | Парсинг ICY заголовків + автоматичне вирізання метаданих з потоку |
+| `icy-metadata` 0.6 | Парсинг ICY заголовків підключення (`IcyHeaders`). Метадані потоку (StreamTitle) парсяться вручну через ICY протокол (metaint) |
 | `stream-download` 0.24 | Кільцевий буфер для нескінченних (infinite) стрімів |
 
 ### Audio
@@ -323,7 +323,7 @@ panic = "unwind"
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src https://*.api.radio-browser.info"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost http://tauri.localhost https://*.api.radio-browser.info"
     }
   },
   "bundle": {

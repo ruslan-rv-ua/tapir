@@ -347,6 +347,8 @@ pub enum AudioFormat {
 }
 ```
 
+**Автооновлення ICY полів:** Після першого підключення `recording_task` зберігає дані з ICY headers у профіль: `bitrate`, `format`, `icy_name`, `icy_genre`. Якщо `name == url` (користувач не вказав ім'я), `name` автоматично замінюється на `icy_name`. Профіль зберігається на диск, і emit-ується `stream-info-updated` event для оновлення фронтенду.
+
 ### 3.2. WishlistEntry
 
 ```typescript
@@ -787,6 +789,11 @@ interface StreamErrorPayload {
   message: string;
   willRetry: boolean;
 }
+
+// stream-info-updated — після підключення, коли ICY headers оновили профіль потоку
+// Payload = повна структура StreamInfo (див. розділ 1)
+// Frontend оновлює $streams store для відображення bitrate, icy_name, format тощо.
+// Якщо name потоку == URL (не вказано користувачем), name автоматично замінюється на icy_name.
 
 // player-status
 interface PlayerStatusPayload {

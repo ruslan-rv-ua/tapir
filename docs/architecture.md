@@ -262,10 +262,15 @@ User clicks "Record"
                                          ├─ Parse IcyHeaders
                                          │   (name, bitrate, metaint)
                                          │
+                                         ├─ Update profile: bitrate, format,
+                                         │   icy_name, icy_genre
+                                         │   (якщо name == URL → name = icy_name)
+                                         │   emit("stream-info-updated", StreamInfo)
+                                         │
                                          ├─ Spawn tokio task: read_loop
                                          │   │
                                          │   ├─ Read chunk (metaint bytes)
-                                         │   ├─ Read ICY metadata block
+                                         │   ├─ Read ICY metadata block (ручний парсинг)
                                          │   │
                                          │   ├─ IF metadata changed:
                                          │   │   ├─ Finalize current track file
@@ -554,6 +559,7 @@ app.global_shortcut().on_shortcut("Ctrl+Shift+R", |app, _shortcut, event| {
 |---|---|---|
 | `track-changed` | `{streamId, artist, title, album}` | Зміна ICY метаданих у потоці |
 | `recording-status` | `{streamId, status, error?}` | Зміна стану запису (recording/stopped/error/reconnecting) |
+| `stream-info-updated` | `StreamInfo` (повна структура) | Після підключення: оновлені ICY поля (bitrate, icy_name, format, icy_genre) |
 | `recording-started` | `{streamId, fileName}` | Трек розпочато записувати |
 | `recording-completed` | `{streamId, fileName, duration}` | Трек завершено |
 | `stream-error` | `{streamId, message, willRetry, retryNumber?, maxRetries?}` | Помилка з'єднання |
@@ -1004,12 +1010,14 @@ fn rebuild_tray_menu(
 default-src 'self';
 script-src 'self';
 style-src 'self' 'unsafe-inline';
-connect-src https://*.api.radio-browser.info;
+connect-src ipc: http://ipc.localhost http://tauri.localhost https://*.api.radio-browser.info;
 ```
 
 - Ніяких зовнішніх скриптів
 - `unsafe-inline` для динамічних стилів (React Aria, Tailwind)
-- `connect-src` — тільки Radio Browser API (HTTP запити з frontend)
+- `ipc:` + `http://ipc.localhost` — Tauri IPC комунікація (invoke, events)
+- `http://tauri.localhost` — Tauri asset protocol
+- `connect-src` — Radio Browser API (HTTP запити з frontend)
 - Аудіо потоки йдуть через Rust, не через WebView
 
 ### IPC Security
