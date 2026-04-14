@@ -6,6 +6,7 @@ mod profile;
 mod sanitize;
 mod settings;
 mod stream;
+mod tags;
 
 use app_state::AppState;
 use settings::GlobalSettings;
