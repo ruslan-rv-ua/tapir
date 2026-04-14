@@ -1,14 +1,17 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { ActivityBar } from "./components/layout/ActivityBar";
 import { SectionHeader } from "./components/layout/SectionHeader";
 import { StatusBar } from "./components/layout/StatusBar";
 import { LiveAnnouncer } from "./components/common/LiveAnnouncer";
 import { ToastContainer } from "./components/common/ToastContainer";
+import { CommandPalette } from "./components/common/CommandPalette";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import { StreamsPanel } from "./components/streams/StreamsPanel";
 import { useTauriEvent } from "./hooks/useTauriEvent";
 import { useAnnounce } from "./hooks/useAnnounce";
 import { $streams, updateStreamStatus } from "./stores/streams";
+import { $settings } from "./stores/settings";
+import { $commandPaletteOpen } from "./stores/navigation";
 import { addToast } from "./stores/toasts";
 import * as tauri from "./lib/tauri";
 import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload } from "./lib/tauri";
@@ -16,13 +19,34 @@ import * as m from "./i18n/paraglide/messages";
 
 function AppContent() {
   const announce = useAnnounce();
+  const announceRef = useRef(announce);
+  useEffect(() => { announceRef.current = announce; });
 
   // Load initial data
   useEffect(() => {
-    tauri.getStreams().then((streams) => $streams.set(streams)).catch(console.error);
+    tauri.getStreams().then((streams) => {
+      $streams.set(streams);
+      if (streams.length === 0) announceRef.current(m.welcome_first_run(), "assertive");
+    }).catch(console.error);
     tauri.getAllStatuses().then((statuses) => {
       statuses.forEach((s) => updateStreamStatus(s.streamId, s));
     }).catch(console.error);
+    tauri.getSettings().then((settings) => {
+      $settings.set(settings);
+      document.documentElement.lang = settings.language === "uk-UA" ? "uk" : "en";
+    }).catch(console.error);
+  }, []);
+
+  // Ctrl+K keyboard handler
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        $commandPaletteOpen.set(!$commandPaletteOpen.get());
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, []);
 
   // Subscribe to Tauri events
@@ -73,6 +97,7 @@ function App() {
   return (
     <ErrorBoundary>
       <AppContent />
+      <CommandPalette />
       <LiveAnnouncer />
       <ToastContainer />
     </ErrorBoundary>
