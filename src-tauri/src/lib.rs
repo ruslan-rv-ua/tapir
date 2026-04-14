@@ -27,7 +27,17 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            commands::stream_commands::start_test_recording,
+            commands::stream_commands::get_streams,
+            commands::stream_commands::add_stream,
+            commands::stream_commands::remove_stream,
+            commands::stream_commands::update_stream,
+            commands::stream_commands::start_recording,
+            commands::stream_commands::stop_recording,
+            commands::stream_commands::stop_all_recordings,
+            commands::stream_commands::get_stream_status,
+            commands::stream_commands::get_all_statuses,
+            commands::settings_commands::get_settings,
+            commands::settings_commands::save_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
