@@ -2,9 +2,15 @@
 
 ## Project State
 
-Active development.
+Active development — **Phase 2** (scheduling, settings UI, profiles).
+Phase 1 (core recording MVP) is complete and merged into `develop`.
 Breaking changes are expected at any time — no migrations, no backward-compatibility guarantees.
 See [docs/implementation-phases.md](docs/implementation-phases.md) for the full roadmap.
+
+## Developer Context
+
+The developer is **blind** and uses **NVDA** screen reader on Windows.
+All UI must be fully operable and understandable via NVDA — test with screen reader, not just visually.
 
 ## Architecture
 
