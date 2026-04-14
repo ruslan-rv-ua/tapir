@@ -13,6 +13,7 @@ import { $streams, updateStreamStatus } from "./stores/streams";
 import { $settings } from "./stores/settings";
 import { $commandPaletteOpen } from "./stores/navigation";
 import { addToast } from "./stores/toasts";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import * as tauri from "./lib/tauri";
 import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload } from "./lib/tauri";
 import * as m from "./i18n/paraglide/messages";
@@ -24,17 +25,21 @@ function AppContent() {
 
   // Load initial data
   useEffect(() => {
-    tauri.getStreams().then((streams) => {
-      $streams.set(streams);
-      if (streams.length === 0) announceRef.current(m.welcome_first_run(), "assertive");
-    }).catch(console.error);
-    tauri.getAllStatuses().then((statuses) => {
-      statuses.forEach((s) => updateStreamStatus(s.streamId, s));
-    }).catch(console.error);
-    tauri.getSettings().then((settings) => {
-      $settings.set(settings);
-      document.documentElement.lang = settings.language === "uk-UA" ? "uk" : "en";
-    }).catch(console.error);
+    Promise.all([
+      tauri.getStreams().then((streams) => {
+        $streams.set(streams);
+        if (streams.length === 0) announceRef.current(m.welcome_first_run(), "assertive");
+      }),
+      tauri.getAllStatuses().then((statuses) => {
+        statuses.forEach((s) => updateStreamStatus(s.streamId, s));
+      }),
+      tauri.getSettings().then((settings) => {
+        $settings.set(settings);
+        document.documentElement.lang = settings.language === "uk-UA" ? "uk" : "en";
+      }),
+    ]).catch(console.error).finally(() => {
+      getCurrentWindow().show();
+    });
   }, []);
 
   // Ctrl+K keyboard handler
