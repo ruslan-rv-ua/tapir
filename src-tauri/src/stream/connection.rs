@@ -13,7 +13,8 @@ pub async fn record_to_file(url: &str, output_path: &Path) -> Result<(), RadioEr
         .header("Icy-MetaData", "1")
         .header("User-Agent", "Tapir/0.1.0")
         .send()
-        .await?;
+        .await?
+        .error_for_status()?;
 
     info!("Connected to {}, status: {}", url, response.status());
 
