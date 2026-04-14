@@ -2,19 +2,18 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use crate::settings::GlobalSettings;
 use crate::profile::Profile;
+use crate::stream::manager::StreamManager;
 
 pub struct AppState {
+    pub stream_manager: Arc<RwLock<StreamManager>>,
     pub settings: Arc<RwLock<GlobalSettings>>,
     pub active_profile: Arc<RwLock<Profile>>,
-    // stream_manager added in Task 10
-    // player and scheduler are absent in Phase 1 — they will be added as fields
-    // directly in later phases (no no-op stubs needed; AppState is internal, not
-    // an external API, so adding fields is a non-breaking change).
 }
 
 impl AppState {
-    pub fn new(settings: GlobalSettings, profile: Profile) -> Self {
+    pub fn new(settings: GlobalSettings, profile: Profile, app_handle: tauri::AppHandle) -> Self {
         Self {
+            stream_manager: Arc::new(RwLock::new(StreamManager::new(app_handle))),
             settings: Arc::new(RwLock::new(settings)),
             active_profile: Arc::new(RwLock::new(profile)),
         }

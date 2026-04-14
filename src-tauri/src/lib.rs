@@ -11,20 +11,20 @@ mod tags;
 use app_state::AppState;
 use settings::GlobalSettings;
 use profile::Profile;
+use tauri::Manager;
 
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_log::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
-        .setup(|_app| {
+        .setup(|app| {
             portable::ensure_data_dirs()
                 .expect("Failed to create data directories");
-            Ok(())
-        })
-        .manage({
             let settings = GlobalSettings::load().expect("Failed to load settings");
             let profile = Profile::load(&settings.active_profile).expect("Failed to load profile");
-            AppState::new(settings, profile)
+            let state = AppState::new(settings, profile, app.handle().clone());
+            app.manage(state);
+            Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             commands::stream_commands::start_test_recording,
