@@ -22,7 +22,7 @@ tauri-plugin-log = "2"
 tauri-plugin-dialog = "2"
 
 # HTTP Streaming
-reqwest = { version = "0.13", features = ["stream"] }
+reqwest = { version = "0.13", default-features = false, features = ["stream", "rustls"] }
 icy-metadata = { version = "0.6", features = ["reqwest"] }
 stream-download = { version = "0.24", features = ["reqwest-rustls"] }
 
