@@ -111,14 +111,21 @@ impl Recorder {
             return Ok(None);
         }
 
-        // Flush and close the track file
-        if let Some(mut f) = self.track_file.take() {
-            f.flush().await?;
-            // File is dropped (closed) here
-        }
-
+        // Take paths first so we can clean up on error
         let incomplete_path = self.track_incomplete_path.take();
         let final_path = self.track_final_path.take();
+
+        // Flush and close the track file
+        if let Some(mut f) = self.track_file.take() {
+            if let Err(e) = f.flush().await {
+                // Clean up the incomplete file before propagating
+                if let Some(ref path) = incomplete_path {
+                    let _ = tokio::fs::remove_file(path).await;
+                }
+                return Err(e.into());
+            }
+            // File dropped (closed) here
+        }
 
         if duration_ms < self.settings.skip_short_tracks_ms as u64 {
             // Too short — delete the incomplete file
@@ -204,9 +211,14 @@ impl Recorder {
     pub async fn close(&mut self) -> Result<(), RadioError> {
         // Flush and close track file
         if let Some(mut f) = self.track_file.take() {
-            f.flush().await?;
+            let _ = f.flush().await; // best-effort flush
         }
-        self.track_incomplete_path = None;
+        // Delete the incomplete file if one exists
+        if let Some(path) = self.track_incomplete_path.take() {
+            if path.exists() {
+                let _ = tokio::fs::remove_file(&path).await;
+            }
+        }
         self.track_final_path = None;
 
         if self.settings.delete_stream_file_on_stop {
