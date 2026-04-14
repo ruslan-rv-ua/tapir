@@ -43,6 +43,9 @@ pub fn sanitize_component(name: &str) -> String {
 /// Sanitize a full path that may contain path separators.
 /// Each component is sanitized individually to preserve the directory structure.
 /// Backslash (\) is treated as a path separator in templates (Windows style).
+///
+/// Scaffold: will replace inline logic in `build_track_path()` after template refactor.
+#[allow(dead_code)]
 pub fn sanitize_path(rendered: &str) -> String {
     // Templates use \ as path separator (e.g., "%s\%a - %t")
     // Replace / and \ with the system separator, then sanitize each component

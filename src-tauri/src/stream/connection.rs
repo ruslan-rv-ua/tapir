@@ -55,6 +55,9 @@ pub async fn connect(url: &str) -> Result<IcyConnection, RadioError> {
 
 /// Decode ICY metadata bytes: try UTF-8, fallback to latin-1 (ISO-8859-1).
 /// Strips a UTF-8 BOM if present and applies NFC normalization on both paths.
+///
+/// Scaffold: will replace inline decoding in `recording_task` when ICY fallback chain is wired up.
+#[allow(dead_code)]
 pub fn decode_icy_metadata(bytes: &[u8]) -> String {
     // Strip UTF-8 BOM if present (some legacy SHOUTcast servers prepend it)
     let bytes = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(bytes);
@@ -69,6 +72,9 @@ pub fn decode_icy_metadata(bytes: &[u8]) -> String {
 
 /// Parse StreamTitle from ICY metadata format: `StreamTitle='artist - title';StreamUrl='...';`
 /// Returns TrackMetadata with artist and title split on " - " (first occurrence).
+///
+/// Scaffold: will replace inline parsing in `recording_task`.
+#[allow(dead_code)]
 pub fn parse_stream_title(metadata_str: &str) -> Option<TrackMetadata> {
     // Find StreamTitle='...'
     let start = metadata_str.find("StreamTitle='")?;

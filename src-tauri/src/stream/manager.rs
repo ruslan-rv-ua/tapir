@@ -84,6 +84,7 @@ struct StreamErrorPayload {
 // ---------------------------------------------------------------------------
 
 struct StreamEntry {
+    #[allow(dead_code)] // used by get_all_stream_info scaffold
     info: StreamInfo,
     status: StreamStatus,
     cancel_token: CancellationToken,
@@ -187,6 +188,8 @@ impl StreamManager {
         self.entries.values().map(|e| e.status.clone()).collect()
     }
 
+    /// Scaffold: will be exposed via IPC command for monitoring active recordings.
+    #[allow(dead_code)]
     pub fn get_all_stream_info(&self) -> Vec<StreamInfo> {
         self.entries.values().map(|e| e.info.clone()).collect()
     }

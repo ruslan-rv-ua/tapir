@@ -12,6 +12,9 @@ pub fn detect_from_content_type(content_type: &str) -> Option<AudioFormat> {
 }
 
 /// Detect audio format from magic bytes (first 2 bytes of audio stream).
+///
+/// Scaffold: robustness fallback when content-type is missing or unreliable.
+#[allow(dead_code)]
 pub fn detect_from_magic_bytes(bytes: &[u8]) -> Option<AudioFormat> {
     if bytes.len() < 2 {
         return None;
@@ -30,6 +33,9 @@ pub fn detect_from_magic_bytes(bytes: &[u8]) -> Option<AudioFormat> {
 }
 
 /// Full format detection: content-type first, then magic bytes fallback.
+///
+/// Scaffold: combined detection wrapper, will be used when magic-bytes fallback is wired up.
+#[allow(dead_code)]
 pub fn detect(content_type: Option<&str>, first_bytes: &[u8]) -> Option<AudioFormat> {
     if let Some(ct) = content_type {
         if let Some(fmt) = detect_from_content_type(ct) {
