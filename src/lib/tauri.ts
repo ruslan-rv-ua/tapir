@@ -17,7 +17,7 @@ export interface StreamInfo {
   addedAt: string;
 }
 
-export type StreamState = "idle" | "connecting" | "recording" | "reconnecting" | "error";
+export type StreamState = "idle" | "connecting" | "recording" | "reconnecting" | "stopped" | "error";
 
 export interface TrackInfo {
   artist: string;

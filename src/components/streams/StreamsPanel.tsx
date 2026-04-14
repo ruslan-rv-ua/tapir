@@ -1,19 +1,12 @@
 import { useStore } from "@nanostores/react";
-import { useState, useEffect } from "react";
-import { $streams } from "../../stores/streams";
+import { $streams, $showAddStreamDialog } from "../../stores/streams";
 import { StreamTable } from "./StreamTable";
 import { AddStreamDialog } from "./AddStreamDialog";
 import { addToast } from "../../stores/toasts";
-import { useAnnounce } from "../../hooks/useAnnounce";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 
 function EmptyState({ onAdd }: { onAdd: () => void }) {
-  const announce = useAnnounce();
-  useEffect(() => {
-    announce(m.welcome_first_run(), "assertive");
-  }, [announce]);
-
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 text-slate-400">
       <p className="text-lg font-medium text-slate-300">{m.empty_state_title()}</p>
@@ -58,22 +51,22 @@ function Toolbar({ onAdd }: { onAdd: () => void }) {
 
 export function StreamsPanel() {
   const streams = useStore($streams);
-  const [showAddDialog, setShowAddDialog] = useState(false);
+  const showAddDialog = useStore($showAddStreamDialog);
 
   if (streams.length === 0) {
     return (
       <>
-        <EmptyState onAdd={() => setShowAddDialog(true)} />
-        {showAddDialog && <AddStreamDialog onClose={() => setShowAddDialog(false)} />}
+        <EmptyState onAdd={() => $showAddStreamDialog.set(true)} />
+        {showAddDialog && <AddStreamDialog onClose={() => $showAddStreamDialog.set(false)} />}
       </>
     );
   }
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <Toolbar onAdd={() => setShowAddDialog(true)} />
+      <Toolbar onAdd={() => $showAddStreamDialog.set(true)} />
       <StreamTable />
-      {showAddDialog && <AddStreamDialog onClose={() => setShowAddDialog(false)} />}
+      {showAddDialog && <AddStreamDialog onClose={() => $showAddStreamDialog.set(false)} />}
     </div>
   );
 }

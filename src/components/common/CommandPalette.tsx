@@ -1,6 +1,6 @@
 import { useStore } from "@nanostores/react";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { $streams, $statuses } from "../../stores/streams";
+import { $streams, $statuses, $showAddStreamDialog } from "../../stores/streams";
 import { $commandPaletteOpen } from "../../stores/navigation";
 import { addToast } from "../../stores/toasts";
 import * as tauri from "../../lib/tauri";
@@ -40,7 +40,10 @@ export function CommandPalette() {
     {
       id: "add-stream",
       label: m.add_stream(),
-      action: () => { close(); /* TODO: open AddStreamDialog — emit a custom event or use a store flag */ },
+      action: () => {
+        close();
+        $showAddStreamDialog.set(true);
+      },
     },
     {
       id: "stop-all",
