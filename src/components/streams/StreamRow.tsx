@@ -5,6 +5,7 @@ import { formatBitrate, formatDuration } from "../../lib/formatters";
 import * as m from "../../i18n/paraglide/messages";
 import * as tauri from "../../lib/tauri";
 import { $streams } from "../../stores/streams";
+import { $editStream } from "../../stores/streams";
 import { addToast } from "../../stores/toasts";
 import { useState, useEffect } from "react";
 import { ConfirmDialog } from "../common/ConfirmDialog";
@@ -105,6 +106,13 @@ export function StreamRow({ stream, status }: Props) {
               }`}
             >
               {isRecording ? m.stop_recording() : m.start_recording()}
+            </button>
+            <button
+              onClick={() => $editStream.set(stream)}
+              aria-label={m.edit_stream()}
+              className="rounded px-2 py-0.5 text-xs text-slate-500 hover:bg-slate-700 hover:text-slate-300"
+            >
+              ✎
             </button>
             <button
               onClick={() => setShowConfirmDelete(true)}

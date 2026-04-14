@@ -4,6 +4,7 @@ import type { StreamInfo, StreamStatus } from "../lib/tauri";
 export const $streams = atom<StreamInfo[]>([]);
 export const $statuses = map<Record<string, StreamStatus>>({});
 export const $showAddStreamDialog = atom<boolean>(false);
+export const $editStream = atom<StreamInfo | null>(null);
 
 export function updateStreamStatus(streamId: string, status: Partial<StreamStatus>) {
   const current = $statuses.get()[streamId];

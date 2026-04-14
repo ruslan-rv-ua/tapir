@@ -1,5 +1,5 @@
 import { useStore } from "@nanostores/react";
-import { $streams, $showAddStreamDialog } from "../../stores/streams";
+import { $streams, $showAddStreamDialog, $editStream } from "../../stores/streams";
 import { StreamTable } from "./StreamTable";
 import { AddStreamDialog } from "./AddStreamDialog";
 import { addToast } from "../../stores/toasts";
@@ -52,12 +52,25 @@ function Toolbar({ onAdd }: { onAdd: () => void }) {
 export function StreamsPanel() {
   const streams = useStore($streams);
   const showAddDialog = useStore($showAddStreamDialog);
+  const editStream = useStore($editStream);
+
+  const showDialog = showAddDialog || editStream !== null;
+
+  const handleCloseDialog = () => {
+    $showAddStreamDialog.set(false);
+    $editStream.set(null);
+  };
 
   if (streams.length === 0) {
     return (
       <>
         <EmptyState onAdd={() => $showAddStreamDialog.set(true)} />
-        {showAddDialog && <AddStreamDialog onClose={() => $showAddStreamDialog.set(false)} />}
+        {showDialog && (
+          <AddStreamDialog
+            onClose={handleCloseDialog}
+            editStream={editStream ?? undefined}
+          />
+        )}
       </>
     );
   }
@@ -66,7 +79,12 @@ export function StreamsPanel() {
     <div className="flex flex-1 flex-col overflow-hidden">
       <Toolbar onAdd={() => $showAddStreamDialog.set(true)} />
       <StreamTable />
-      {showAddDialog && <AddStreamDialog onClose={() => $showAddStreamDialog.set(false)} />}
+      {showDialog && (
+        <AddStreamDialog
+          onClose={handleCloseDialog}
+          editStream={editStream ?? undefined}
+        />
+      )}
     </div>
   );
 }
