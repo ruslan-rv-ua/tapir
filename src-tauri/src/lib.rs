@@ -3,6 +3,7 @@ mod commands;
 mod errors;
 mod portable;
 mod profile;
+mod sanitize;
 mod settings;
 mod stream;
 
