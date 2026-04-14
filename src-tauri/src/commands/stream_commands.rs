@@ -36,14 +36,15 @@ pub async fn add_stream(
         added_at: chrono::Local::now().to_rfc3339(),
     };
 
-    {
+    let snapshot = {
         let mut profile = state.active_profile.write().await;
         profile.streams.push(new_stream.clone());
-    }
-    {
-        let profile = state.active_profile.read().await;
-        profile.save().map_err(|e| e.to_string())?;
-    }
+        profile.clone()
+    };
+    tokio::task::spawn_blocking(move || snapshot.save())
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?;
 
     Ok(new_stream)
 }
@@ -53,15 +54,24 @@ pub async fn remove_stream(
     stream_id: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
+    // 1. Stop recording first (best-effort, ignore NotFound error)
     {
+        let mut manager = state.stream_manager.write().await;
+        let _ = manager.stop_recording(&stream_id);
+    }
+
+    // 2. Remove from profile (snapshot while write lock is held)
+    let snapshot = {
         let mut profile = state.active_profile.write().await;
         profile.streams.retain(|s| s.id != stream_id);
-    }
-    {
-        let profile = state.active_profile.read().await;
-        profile.save().map_err(|e| e.to_string())?;
-    }
-    Ok(())
+        profile.clone()
+    };
+
+    // 3. Save on a blocking thread to avoid starving the async worker
+    tokio::task::spawn_blocking(move || snapshot.save())
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -70,7 +80,7 @@ pub async fn update_stream(
     name: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<StreamInfo, String> {
-    let updated = {
+    let (updated, snapshot) = {
         let mut profile = state.active_profile.write().await;
         let stream = profile
             .streams
@@ -78,12 +88,14 @@ pub async fn update_stream(
             .find(|s| s.id == stream_id)
             .ok_or_else(|| format!("Stream {} not found", stream_id))?;
         stream.name = name;
-        stream.clone()
+        let updated = stream.clone();
+        let snapshot = profile.clone();
+        (updated, snapshot)
     };
-    {
-        let profile = state.active_profile.read().await;
-        profile.save().map_err(|e| e.to_string())?;
-    }
+    tokio::task::spawn_blocking(move || snapshot.save())
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?;
     Ok(updated)
 }
 
