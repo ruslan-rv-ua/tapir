@@ -307,6 +307,14 @@ async fn update_track_info(
             album: String::new(),
             started_at,
         });
+        // tracks_recorded is NOT incremented here — only when a track is finalized
+        // (i.e., kept on disk). See update_tracks_recorded.
+    }
+}
+
+async fn update_tracks_recorded(manager: &Arc<RwLock<StreamManager>>, stream_id: &str) {
+    let mut guard = manager.write().await;
+    if let Some(entry) = guard.entries.get_mut(stream_id) {
         entry.status.tracks_recorded += 1;
     }
 }
@@ -368,11 +376,13 @@ pub async fn recording_task(
             Err(e) => {
                 let msg = e.to_string();
                 update_state_error(&manager, &stream_id, &msg).await;
+                // attempt will be incremented below, so use attempt + 1 to correctly
+                // predict whether a retry will actually happen.
                 emit_stream_error(
                     &app_handle,
                     &stream_id,
                     &msg,
-                    reconnect.max_retries > 0 && attempt < reconnect.max_retries,
+                    reconnect.max_retries > 0 && (attempt + 1) <= reconnect.max_retries,
                 );
                 // fall through to reconnect logic
                 if reconnect.max_retries == 0 {
@@ -431,7 +441,7 @@ pub async fn recording_task(
         // since we are on tokio and reqwest uses tokio internally, the response is Send.
         let response = conn.response;
 
-        tokio::task::spawn_blocking(move || {
+        let blocking_handle = tokio::task::spawn_blocking(move || {
             use icy_metadata::{IcyMetadata, IcyMetadataReader};
             use std::io::Read;
 
@@ -593,8 +603,10 @@ pub async fn recording_task(
                         }
                         Some(ReadEvent::Error(msg)) => {
                             rec.close().await.ok();
+                            // attempt will be incremented after the 'read loop, so use
+                            // attempt + 1 to correctly predict whether a retry will occur.
                             let will_retry = reconnect.max_retries > 0
-                                && attempt < reconnect.max_retries;
+                                && (attempt + 1) <= reconnect.max_retries;
                             emit_stream_error(&app_handle, &stream_id, &msg, will_retry);
                             break 'read;
                         }
@@ -611,7 +623,10 @@ pub async fn recording_task(
                                     update_track_info(&manager, &stream_id, &m.artist, &m.title).await;
                                 }
                                 splitter::SplitAction::FinalizeAndStart { completed, new, duration_ms } => {
-                                    rec.finalize_track(&completed.artist, &completed.title, duration_ms).await.ok();
+                                    // Only count the completed track if it was actually kept on disk.
+                                    if let Ok(Some(_)) = rec.finalize_track(&completed.artist, &completed.title, duration_ms).await {
+                                        update_tracks_recorded(&manager, &stream_id).await;
+                                    }
                                     rec.start_track(&new.artist, &new.title).await.ok();
                                     emit_track_changed(&app_handle, &stream_id, &new.artist, &new.title, "");
                                     update_track_info(&manager, &stream_id, &new.artist, &new.title).await;
@@ -639,6 +654,21 @@ pub async fn recording_task(
         // Flush any remaining byte count
         if local_bytes > 0 {
             update_bytes_recorded(&manager, &stream_id, local_bytes).await;
+        }
+
+        // Drop rx explicitly so the blocking thread sees a closed channel and exits,
+        // then await the handle to surface any panic.
+        drop(rx);
+        match blocking_handle.await {
+            Ok(()) => {} // clean exit
+            Err(e) if e.is_panic() => {
+                tracing::error!(
+                    stream_id = %stream_id,
+                    "ICY reader thread panicked: {:?}", e
+                );
+                // Treat as a connection error — fall through to reconnect logic
+            }
+            Err(_) => {} // cancelled (won't happen for spawn_blocking)
         }
 
         // --- Reconnect logic ---
