@@ -27,13 +27,21 @@ export function StatusBar() {
   // suppress unused warning — tick is used to trigger re-render
   void tick;
 
+  const pluralRules = new Intl.PluralRules(document.documentElement.lang || "uk");
+  const pluralForm = recordingCount === 0 ? "zero" : pluralRules.select(recordingCount);
+  const recordingsText =
+    pluralForm === "zero" ? m.recordings_count_zero() :
+    pluralForm === "one" ? m.recordings_count_one({ count: recordingCount }) :
+    pluralForm === "few" ? m.recordings_count_few({ count: recordingCount }) :
+    m.recordings_count_many({ count: recordingCount });
+
   return (
     <footer
       role="status"
       aria-live="polite"
       className="flex items-center gap-4 border-t border-slate-700 px-4 py-1.5 text-xs text-slate-400"
     >
-      <span>{m.recordings_count({ count: recordingCount })}</span>
+      <span>{recordingsText}</span>
       {longestMs > 0 && <span>{formatDuration(longestMs)}</span>}
     </footer>
   );
