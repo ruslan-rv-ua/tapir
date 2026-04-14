@@ -2,7 +2,7 @@
 
 ## Project State
 
-Active development, **Phase 1 (MVP: Core Recording)**.
+Active development.
 Breaking changes are expected at any time — no migrations, no backward-compatibility guarantees.
 See [docs/implementation-phases.md](docs/implementation-phases.md) for the full roadmap.
 
