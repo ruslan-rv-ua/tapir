@@ -2,6 +2,7 @@ use crate::errors::RadioError;
 use icy_metadata::{IcyHeaders, RequestIcyMetadata};
 use reqwest::Client;
 use tracing::info;
+use unicode_normalization::UnicodeNormalization;
 
 #[derive(Debug, Clone)]
 pub struct TrackMetadata {
@@ -16,7 +17,9 @@ pub struct IcyConnection {
 }
 
 pub async fn connect(url: &str) -> Result<IcyConnection, RadioError> {
-    let client = Client::builder().build()?;
+    let client = Client::builder()
+        .connect_timeout(std::time::Duration::from_secs(10))
+        .build()?;
 
     let response = client
         .get(url)
@@ -51,14 +54,17 @@ pub async fn connect(url: &str) -> Result<IcyConnection, RadioError> {
 }
 
 /// Decode ICY metadata bytes: try UTF-8, fallback to latin-1 (ISO-8859-1).
+/// Strips a UTF-8 BOM if present and applies NFC normalization on both paths.
 pub fn decode_icy_metadata(bytes: &[u8]) -> String {
-    // Try UTF-8 first
-    std::str::from_utf8(bytes)
-        .map(|s| s.to_string())
-        .unwrap_or_else(|_| {
-            // Fallback to latin-1: each byte maps directly to its Unicode codepoint
-            bytes.iter().map(|&b| b as char).collect()
-        })
+    // Strip UTF-8 BOM if present (some legacy SHOUTcast servers prepend it)
+    let bytes = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(bytes);
+    match std::str::from_utf8(bytes) {
+        Ok(s) => s.nfc().collect(),
+        Err(_) => {
+            // Fallback: treat each byte as latin-1 (ISO-8859-1) codepoint
+            bytes.iter().map(|&b| b as char).collect::<String>().nfc().collect()
+        }
+    }
 }
 
 /// Parse StreamTitle from ICY metadata format: `StreamTitle='artist - title';StreamUrl='...';`

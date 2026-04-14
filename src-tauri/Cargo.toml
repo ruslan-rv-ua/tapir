@@ -44,6 +44,9 @@ log = "0.4"
 anyhow = "1"
 thiserror = "2"
 
+# Unicode
+unicode-normalization = "0.1"
+
 # Misc
 nanoid = "0.4"
 chrono = { version = "0.4", features = ["serde"] }

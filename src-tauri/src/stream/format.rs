@@ -18,7 +18,7 @@ pub fn detect_from_magic_bytes(bytes: &[u8]) -> Option<AudioFormat> {
     }
     // AAC ADTS: 0xFF 0xF1 or 0xFF 0xF9 — check AAC before MP3
     // because both start with 0xFF
-    if bytes[0] == 0xFF && (bytes[1] == 0xF1 || bytes[1] == 0xF9) {
+    if bytes[0] == 0xFF && matches!(bytes[1], 0xF0 | 0xF1 | 0xF8 | 0xF9) {
         return Some(AudioFormat::Aac);
     }
     // MP3 sync word: 0xFF followed by byte with upper 5 bits set (0xE0 mask)
