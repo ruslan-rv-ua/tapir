@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
@@ -13,6 +13,7 @@ use crate::errors::RadioError;
 use crate::portable;
 use crate::profile::{AudioFormat, RecordingSettings, ReconnectConfig, StreamInfo};
 use crate::stream::{connection, format, recorder, splitter};
+use log::{info, warn, error, debug};
 
 // ---------------------------------------------------------------------------
 // Public data types
@@ -138,6 +139,8 @@ impl StreamManager {
             reconnect_attempt: None,
         };
 
+        info!("[{}] Starting recording task: {}", stream_id, stream_info.url);
+
         let join_handle = tokio::spawn(recording_task(
             stream_info.clone(),
             recording_settings,
@@ -200,15 +203,18 @@ impl StreamManager {
 // ---------------------------------------------------------------------------
 
 fn emit_recording_status(app: &AppHandle, stream_id: &str, status: &str, error: Option<String>) {
-    app.emit(
+    debug!("[{}] Emitting recording-status: {}", stream_id, status);
+    match app.emit(
         "recording-status",
         RecordingStatusPayload {
             stream_id: stream_id.to_string(),
             status: status.to_string(),
             error,
         },
-    )
-    .ok();
+    ) {
+        Ok(_) => debug!("[{}] Event emitted OK", stream_id),
+        Err(e) => error!("[{}] Failed to emit event: {}", stream_id, e),
+    }
 }
 
 fn emit_track_changed(app: &AppHandle, stream_id: &str, artist: &str, title: &str, album: &str) {
@@ -333,6 +339,19 @@ fn compute_backoff_delay(reconnect: &ReconnectConfig, attempt: u32) -> u64 {
 }
 
 // ---------------------------------------------------------------------------
+// ICY metadata parser
+// ---------------------------------------------------------------------------
+
+/// Parse `StreamTitle='...'` from ICY metadata string.
+fn parse_stream_title(meta: &str) -> Option<&str> {
+    let prefix = "StreamTitle='";
+    let start = meta.find(prefix)? + prefix.len();
+    let end = meta[start..].find('\'')?;
+    let title = &meta[start..start + end];
+    if title.is_empty() { None } else { Some(title) }
+}
+
+// ---------------------------------------------------------------------------
 // Events sent from the blocking read thread to the async task
 // ---------------------------------------------------------------------------
 
@@ -362,6 +381,8 @@ pub async fn recording_task(
     let url = stream_info.url.clone();
     let station_name = stream_info.name.clone();
 
+    info!("[{}] Recording task started: {}", stream_id, url);
+
     let reconnect = recording_settings.reconnect.clone();
     let mut attempt = 0u32;
 
@@ -375,9 +396,13 @@ pub async fn recording_task(
         emit_recording_status(&app_handle, &stream_id, "connecting", None);
 
         let conn = match connection::connect(&url).await {
-            Ok(c) => c,
+            Ok(c) => {
+                info!("[{}] Connected successfully", stream_id);
+                c
+            }
             Err(e) => {
                 let msg = e.to_string();
+                error!("[{}] Connection failed: {}", stream_id, msg);
                 update_state_error(&manager, &stream_id, &msg).await;
                 // attempt will be incremented below, so use attempt + 1 to correctly
                 // predict whether a retry will actually happen.
@@ -409,11 +434,55 @@ pub async fn recording_task(
         // Reset attempt counter on successful connection
         attempt = 0;
 
-        // --- Set up recorder ---
-        let output_dir = portable::recordings_dir();
+        // --- Update profile with ICY headers ---
+        let icy_bitrate = conn.headers.bitrate();
+        let icy_name_val: Option<String> = conn.headers.name().map(str::to_string);
+        let icy_genre_val: Option<String> = conn.headers.genre().first().map(|s| s.to_string());
+        // IcyHeaders doesn't expose a url() method
+        let icy_url_val: Option<String> = None;
+
         let content_type = conn.content_type.as_deref().unwrap_or("");
         let detected_format = format::detect_from_content_type(content_type)
             .unwrap_or(AudioFormat::Mp3);
+
+        {
+            let state = app_handle.state::<crate::app_state::AppState>();
+            let (updated_stream, snapshot) = {
+                let mut profile = state.active_profile.write().await;
+                if let Some(s) = profile.streams.iter_mut().find(|s| s.id == stream_id) {
+                    if let Some(br) = icy_bitrate {
+                        s.bitrate = Some(br as u32);
+                    }
+                    if icy_name_val.is_some() {
+                        let name = icy_name_val.as_ref().unwrap();
+                        if s.name == s.url {
+                            s.name = name.clone();
+                        }
+                        s.icy_name = icy_name_val.clone();
+                    }
+                    if icy_genre_val.is_some() {
+                        s.icy_genre = icy_genre_val.clone();
+                    }
+                    if icy_url_val.is_some() {
+                        s.icy_url = icy_url_val.clone();
+                    }
+                    s.format = Some(detected_format.clone());
+                    (Some(s.clone()), Some(profile.clone()))
+                } else {
+                    (None, None)
+                }
+            };
+            if let (Some(updated), Some(snap)) = (updated_stream, snapshot) {
+                let _ = tokio::task::spawn_blocking(move || -> Result<(), crate::errors::RadioError> { snap.save() }).await;
+                app_handle.emit("stream-info-updated", updated).ok();
+            }
+        }
+
+        // Use ICY name for recording paths if discovered
+        let station_name = icy_name_val.unwrap_or_else(|| station_name.clone());
+
+        // --- Set up recorder ---
+        let output_dir = portable::recordings_dir();
 
         let mut rec = recorder::Recorder::new(
             output_dir,
@@ -424,7 +493,7 @@ pub async fn recording_task(
 
         let today = chrono::Local::now().format("%Y-%m-%d").to_string();
         if let Err(e) = rec.open_stream_file(&station_name, &today).await {
-            tracing::warn!(stream_id = %stream_id, "Failed to open stream file: {}", e);
+            log::warn!("[{}] Failed to open stream file: {}", stream_id, e);
         }
 
         let splitter_config = splitter::SplitterConfig {
@@ -445,25 +514,11 @@ pub async fn recording_task(
         let response = conn.response;
 
         let blocking_handle = tokio::task::spawn_blocking(move || {
-            use icy_metadata::{IcyMetadata, IcyMetadataReader};
             use std::io::Read;
 
-            // We need a synchronous reader from the reqwest response.
-            // reqwest doesn't expose a sync Read directly, but we can use
-            // `bytes_stream()` collected into a synchronous cursor via a custom adapter.
-            // The simplest approach: use a channel-based SyncStream that blocks on
-            // tokio::runtime::Handle to poll chunks.
-            //
-            // We get the current tokio runtime handle and use block_on to drive
-            // the async stream synchronously inside spawn_blocking.
+            // Build a synchronous adapter that drives the reqwest bytes_stream
             let rt = tokio::runtime::Handle::current();
 
-            // Shared slot for metadata received by the callback
-            let meta_slot: Arc<std::sync::Mutex<Option<(String, String)>>> =
-                Arc::new(std::sync::Mutex::new(None));
-            let meta_slot_cb = Arc::clone(&meta_slot);
-
-            // Build a synchronous adapter that drives the reqwest bytes_stream
             struct ReqwestSyncReader {
                 stream: futures_util::stream::BoxStream<'static, Result<bytes::Bytes, reqwest::Error>>,
                 buf: bytes::Bytes,
@@ -490,7 +545,6 @@ pub async fn recording_task(
                         Some(Ok(bytes)) => {
                             let n = out.len().min(bytes.len());
                             out[..n].copy_from_slice(&bytes[..n]);
-                            // Store leftover
                             self.buf = bytes.slice(n..);
                             Ok(n)
                         }
@@ -501,19 +555,41 @@ pub async fn recording_task(
             let stream_box: futures_util::stream::BoxStream<'static, Result<bytes::Bytes, reqwest::Error>> =
                 Box::pin(response.bytes_stream());
 
-            let inner_reader = ReqwestSyncReader {
+            let mut reader = ReqwestSyncReader {
                 stream: stream_box,
                 buf: bytes::Bytes::new(),
                 rt,
             };
 
-            let mut icy_reader = IcyMetadataReader::new(
-                inner_reader,
-                metaint,
-                move |result: Result<IcyMetadata, _>| {
-                    if let Ok(meta) = result {
-                        if let Some(title_str) = meta.stream_title() {
-                            // Parse "Artist - Title" from stream_title
+            let metaint_val = metaint.map(|m| m.get()).unwrap_or(0);
+            let mut bytes_until_meta = metaint_val;
+            let mut buf = vec![0u8; 8192];
+
+            loop {
+                if tx.is_closed() {
+                    break;
+                }
+
+                if metaint_val > 0 && bytes_until_meta == 0 {
+                    // --- Read ICY metadata block ---
+                    let mut len_byte = [0u8; 1];
+                    if let Err(e) = reader.read_exact(&mut len_byte) {
+                        log::error!("[ICY reader] Failed to read metadata length: {}", e);
+                        let _ = tx.blocking_send(ReadEvent::Error(e.to_string()));
+                        break;
+                    }
+                    let meta_len = len_byte[0] as usize * 16;
+                    if meta_len > 0 {
+                        let mut meta_buf = vec![0u8; meta_len];
+                        if let Err(e) = reader.read_exact(&mut meta_buf) {
+                            log::error!("[ICY reader] Failed to read metadata: {}", e);
+                            let _ = tx.blocking_send(ReadEvent::Error(e.to_string()));
+                            break;
+                        }
+                        // Parse StreamTitle from metadata
+                        let meta_str = String::from_utf8_lossy(&meta_buf);
+                        let meta_str = meta_str.trim_end_matches('\0');
+                        if let Some(title_str) = parse_stream_title(meta_str) {
                             let (artist, title) = if let Some(pos) = title_str.find(" - ") {
                                 (
                                     title_str[..pos].trim().to_string(),
@@ -522,53 +598,36 @@ pub async fn recording_task(
                             } else {
                                 (String::new(), title_str.trim().to_string())
                             };
-                            if let Ok(mut slot) = meta_slot_cb.lock() {
-                                *slot = Some((artist, title));
-                            }
-                        }
-                    }
-                },
-            );
-
-            let mut buf = vec![0u8; 8192];
-            // Track accumulated bytes since last flush to manager (update every ~64 KB)
-            let mut byte_accumulator: u64 = 0;
-            const FLUSH_THRESHOLD: u64 = 65536;
-
-            loop {
-                match icy_reader.read(&mut buf) {
-                    Err(e) => {
-                        let _ = tx.blocking_send(ReadEvent::Error(e.to_string()));
-                        break;
-                    }
-                    Ok(0) => {
-                        let _ = tx.blocking_send(ReadEvent::Eof);
-                        break;
-                    }
-                    Ok(n) => {
-                        // Check if cancelled (channel closed)
-                        if tx.is_closed() {
-                            break;
-                        }
-
-                        // Drain any pending metadata from the callback slot
-                        let meta_event = {
-                            let mut slot = meta_slot.lock().unwrap();
-                            slot.take()
-                        };
-                        if let Some((artist, title)) = meta_event {
-                            // Send metadata event first, then audio (order matters)
                             if tx.blocking_send(ReadEvent::MetadataChanged(artist, title)).is_err() {
                                 break;
                             }
                         }
+                    }
+                    bytes_until_meta = metaint_val;
+                }
 
-                        byte_accumulator += n as u64;
-                        if byte_accumulator >= FLUSH_THRESHOLD {
-                            // Flush is implicit - no separate flush event needed
-                            byte_accumulator = 0;
+                // --- Read audio data ---
+                let max_read = if metaint_val > 0 {
+                    buf.len().min(bytes_until_meta)
+                } else {
+                    buf.len()
+                };
+
+                match reader.read(&mut buf[..max_read]) {
+                    Err(e) => {
+                        log::error!("[ICY reader] Read error: {}", e);
+                        let _ = tx.blocking_send(ReadEvent::Error(e.to_string()));
+                        break;
+                    }
+                    Ok(0) => {
+                        log::warn!("[ICY reader] EOF (0 bytes read)");
+                        let _ = tx.blocking_send(ReadEvent::Eof);
+                        break;
+                    }
+                    Ok(n) => {
+                        if metaint_val > 0 {
+                            bytes_until_meta -= n;
                         }
-
                         if tx.blocking_send(ReadEvent::AudioBytes(buf[..n].to_vec())).is_err() {
                             break;
                         }
@@ -588,7 +647,7 @@ pub async fn recording_task(
         'read: loop {
             tokio::select! {
                 _ = cancel_token.cancelled() => {
-                    // Drop rx to signal the blocking thread, then close recorder
+                    info!("[{}] Recording cancelled by user", stream_id);
                     drop(rx);
                     rec.close().await.ok();
                     break 'reconnect;
@@ -596,15 +655,17 @@ pub async fn recording_task(
                 event = rx.recv() => {
                     match event {
                         None => {
-                            // Channel closed (blocking thread exited cleanly)
+                            warn!("[{}] Read channel closed (blocking thread exited)", stream_id);
                             rec.close().await.ok();
                             break 'read;
                         }
                         Some(ReadEvent::Eof) => {
+                            warn!("[{}] Stream EOF received", stream_id);
                             rec.close().await.ok();
                             break 'read;
                         }
                         Some(ReadEvent::Error(msg)) => {
+                            error!("[{}] Stream read error: {}", stream_id, msg);
                             rec.close().await.ok();
                             // attempt will be incremented after the 'read loop, so use
                             // attempt + 1 to correctly predict whether a retry will occur.
@@ -619,7 +680,11 @@ pub async fn recording_task(
                                 title: title.clone(),
                             };
                             match spl.on_metadata_change(meta) {
-                                splitter::SplitAction::Skip => {}
+                                splitter::SplitAction::Skip => {
+                                    // Still update UI with current track even though recording is skipped
+                                    emit_track_changed(&app_handle, &stream_id, &artist, &title, "");
+                                    update_track_info(&manager, &stream_id, &artist, &title).await;
+                                }
                                 splitter::SplitAction::StartTrack(m) => {
                                     rec.start_track(&m.artist, &m.title).await.ok();
                                     emit_track_changed(&app_handle, &stream_id, &m.artist, &m.title, "");
@@ -665,9 +730,8 @@ pub async fn recording_task(
         match blocking_handle.await {
             Ok(()) => {} // clean exit
             Err(e) if e.is_panic() => {
-                tracing::error!(
-                    stream_id = %stream_id,
-                    "ICY reader thread panicked: {:?}", e
+                log::error!(
+                    "[{}] ICY reader thread panicked: {:?}", stream_id, e
                 );
                 // Treat as a connection error — fall through to reconnect logic
             }
@@ -695,6 +759,7 @@ pub async fn recording_task(
     }
 
     // --- Final cleanup ---
+    info!("[{}] Recording task finished — cleaning up", stream_id);
     update_state(&manager, &stream_id, StreamState::Idle).await;
     emit_recording_status(&app_handle, &stream_id, "stopped", None);
 

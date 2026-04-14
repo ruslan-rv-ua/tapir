@@ -18,12 +18,19 @@ pub fn render_template(
     let date = now.format("%Y-%m-%d").to_string();
     let time = now.format("%H-%M-%S").to_string();
 
+    // Sanitize metadata values so they don't inject path separators.
+    // For example, a station name that is a URL (http://host/path) would
+    // otherwise create a deep directory structure.
+    let artist = sanitize_component(artist);
+    let title = sanitize_component(title);
+    let station = sanitize_component(station);
+
     // Order matters: %time before %t, %n before nothing
     template
         .replace("%time", &time)
-        .replace("%a", artist)
-        .replace("%t", title)
-        .replace("%s", station)
+        .replace("%a", &artist)
+        .replace("%t", &title)
+        .replace("%s", &station)
         .replace("%n", &format!("{:03}", track_number))
         .replace("%d", &date)
 }
@@ -206,5 +213,14 @@ mod tests {
         assert!(!result.contains("time"), "%time placeholder must be fully replaced, got: {}", result);
         // title should appear after the separator
         assert!(result.ends_with("- Song"), "title must appear after time in: {}", result);
+    }
+
+    #[test]
+    fn test_render_template_url_station_sanitized() {
+        // URL as station name should be sanitized — slashes replaced with underscores
+        let result = render_template("%s\\%a - %t", "Artist", "Song", "http://stream.example.com/path", 1);
+        // The station component should have no path separators from the URL
+        assert!(!result.contains("http://"), "URL slashes must be sanitized in: {}", result);
+        assert!(result.contains("http___stream.example.com_path"), "URL should be flat in: {}", result);
     }
 }

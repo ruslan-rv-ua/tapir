@@ -12,11 +12,25 @@ use app_state::AppState;
 use settings::GlobalSettings;
 use profile::Profile;
 use tauri::Manager;
+use tauri_plugin_log::{Target, TargetKind, RotationStrategy};
 use crate::stream::manager::StreamState;
 
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_log::Builder::new().build())
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .level(log::LevelFilter::Debug)
+                .max_file_size(10_485_760) // 10 MB
+                .rotation_strategy(RotationStrategy::KeepOne)
+                .targets([
+                    Target::new(TargetKind::Folder {
+                        path: portable::logs_dir(),
+                        file_name: Some("tapir".into()),
+                    }),
+                    Target::new(TargetKind::Stdout),
+                ])
+                .build(),
+        )
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             portable::ensure_data_dirs()

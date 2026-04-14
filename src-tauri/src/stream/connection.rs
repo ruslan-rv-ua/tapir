@@ -1,7 +1,7 @@
 use crate::errors::RadioError;
 use icy_metadata::{IcyHeaders, RequestIcyMetadata};
 use reqwest::Client;
-use tracing::info;
+use log::info;
 use unicode_normalization::UnicodeNormalization;
 
 #[derive(Debug, Clone)]

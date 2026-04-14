@@ -15,7 +15,7 @@ import { $commandPaletteOpen } from "./stores/navigation";
 import { addToast } from "./stores/toasts";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import * as tauri from "./lib/tauri";
-import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload } from "./lib/tauri";
+import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, StreamInfo } from "./lib/tauri";
 import * as m from "./i18n/paraglide/messages";
 
 function AppContent() {
@@ -56,7 +56,11 @@ function AppContent() {
 
   // Subscribe to Tauri events
   const handleRecordingStatus = useCallback((payload: RecordingStatusPayload) => {
-    updateStreamStatus(payload.streamId, { state: payload.status });
+    if (payload.status === "recording") {
+      updateStreamStatus(payload.streamId, { state: payload.status, recordingStartedAt: new Date().toISOString() });
+    } else {
+      updateStreamStatus(payload.streamId, { state: payload.status, recordingStartedAt: null });
+    }
     const stream = $streams.get().find((s) => s.id === payload.streamId);
     const name = stream?.name ?? payload.streamId;
     if (payload.status === "recording") {
@@ -82,9 +86,14 @@ function AppContent() {
     addToast(`${name}: ${payload.message}`, "error");
   }, []);
 
+  const handleStreamInfoUpdated = useCallback((updated: StreamInfo) => {
+    $streams.set($streams.get().map((s) => (s.id === updated.id ? updated : s)));
+  }, []);
+
   useTauriEvent<RecordingStatusPayload>("recording-status", handleRecordingStatus);
   useTauriEvent<TrackChangedPayload>("track-changed", handleTrackChanged);
   useTauriEvent<StreamErrorPayload>("stream-error", handleStreamError);
+  useTauriEvent<StreamInfo>("stream-info-updated", handleStreamInfoUpdated);
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-200">

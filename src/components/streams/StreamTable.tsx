@@ -39,13 +39,14 @@ export function StreamTable() {
           <Column id="duration" className="px-3 py-2">{m.column_duration()}</Column>
           <Column id="actions" className="px-3 py-2" />
         </TableHeader>
-        <TableBody items={sortedStreams}>
-          {(stream) => (
+        <TableBody>
+          {sortedStreams.map((stream) => (
             <StreamRow
+              key={stream.id}
               stream={stream}
               status={statuses[stream.id]}
             />
-          )}
+          ))}
         </TableBody>
       </Table>
     </div>

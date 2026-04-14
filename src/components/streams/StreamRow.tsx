@@ -6,7 +6,7 @@ import * as m from "../../i18n/paraglide/messages";
 import * as tauri from "../../lib/tauri";
 import { $streams } from "../../stores/streams";
 import { addToast } from "../../stores/toasts";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 
 interface Props {
@@ -36,8 +36,16 @@ function StatusIcon({ state }: { state: string }) {
 
 export function StreamRow({ stream, status }: Props) {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [, setTick] = useState(0);
   const state = status?.state ?? "idle";
   const isRecording = state === "recording";
+
+  // Tick every second while recording to update the elapsed time display
+  useEffect(() => {
+    if (!isRecording || !status?.recordingStartedAt) return;
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [isRecording, status?.recordingStartedAt]);
 
   const elapsedMs = status?.recordingStartedAt
     ? Date.now() - new Date(status.recordingStartedAt).getTime()
