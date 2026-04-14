@@ -1,0 +1,37 @@
+{
+  "productName": "Tapir",
+  "version": "0.1.0",
+  "identifier": "com.tapir.app",
+  "build": {
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist",
+    "beforeDevCommand": "pnpm vite:dev",
+    "beforeBuildCommand": "pnpm vite:build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Tapir",
+        "label": "main",
+        "width": 900,
+        "height": 650,
+        "minWidth": 640,
+        "minHeight": 480,
+        "visible": false,
+        "decorations": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/icon.ico"
+    ]
+  }
+}

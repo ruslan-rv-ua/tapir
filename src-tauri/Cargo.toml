@@ -1,0 +1,65 @@
+[package]
+name = "tapir"
+version = "0.1.0"
+description = "Accessible Internet Radio Recorder for Windows"
+edition = "2024"
+
+[lib]
+name = "tapir_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# Tauri
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Tauri Plugins (Phase 1 only)
+tauri-plugin-log = "2"
+tauri-plugin-dialog = "2"
+
+# HTTP Streaming
+reqwest = { version = "0.13", features = ["stream"] }
+icy-metadata = { version = "0.6", features = ["reqwest"] }
+stream-download = { version = "0.24", features = ["reqwest-rustls"] }
+
+# Tags
+lofty = "0.24"
+
+# Async
+tokio = { version = "~1.51", features = ["full"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+futures-util = "0.3"
+bytes = "1"
+
+# Logging
+tracing = "0.1"
+tracing-log = "0.2"
+log = "0.4"
+
+# Errors
+anyhow = "1"
+thiserror = "2"
+
+# Misc
+nanoid = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
+sys-locale = "0.3"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
+
+[profile.release-fast]
+inherits = "release"
+opt-level = 1
+lto = false
+codegen-units = 16
+strip = false
+panic = "unwind"
