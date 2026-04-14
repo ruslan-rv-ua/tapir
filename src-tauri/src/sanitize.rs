@@ -75,24 +75,31 @@ pub fn auto_correct_case(s: &str) -> String {
 
 /// If the file already exists, append _2, _3, etc. before the extension.
 /// For example: "Artist - Title.mp3" → "Artist - Title_2.mp3"
+/// Extension-free paths are preserved as-is (no extension is added).
 pub fn resolve_collision(path: &Path) -> PathBuf {
     if !path.exists() {
         return path.to_path_buf();
     }
     let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("track");
-    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("mp3");
+    let ext_opt = path.extension().and_then(|e| e.to_str());
     let parent = path.parent().unwrap_or(Path::new("."));
 
     let mut counter = 2u32;
     loop {
-        let candidate = parent.join(format!("{}_{}.{}", stem, counter, ext));
+        let candidate = match ext_opt {
+            Some(ext) => parent.join(format!("{}_{}.{}", stem, counter, ext)),
+            None => parent.join(format!("{}_{}", stem, counter)),
+        };
         if !candidate.exists() {
             return candidate;
         }
         counter += 1;
         if counter > 9999 {
-            // Safety valve: shouldn't happen in practice
-            return parent.join(format!("{}_overflow.{}", stem, ext));
+            let overflow = match ext_opt {
+                Some(ext) => parent.join(format!("{}_overflow.{}", stem, ext)),
+                None => parent.join(format!("{}_overflow", stem)),
+            };
+            return overflow;
         }
     }
 }
@@ -116,12 +123,18 @@ pub fn build_track_path(
     extension: &str,
 ) -> PathBuf {
     let rendered = render_template(template, artist, title, station, track_number);
-    let sanitized = sanitize_path(&rendered);
-    let final_name = if auto_correct {
-        auto_correct_case(&sanitized)
-    } else {
-        sanitized
-    };
+
+    // Sanitize and (optionally) case-correct per path component
+    let final_name: String = rendered
+        .split(['\\', '/'])
+        .map(|component| {
+            let sanitized = sanitize_component(component);
+            if auto_correct { auto_correct_case(&sanitized) } else { sanitized }
+        })
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join(std::path::MAIN_SEPARATOR_STR);
+
     let path = output_dir.join(format!("{}.{}", final_name, extension));
     resolve_collision(&path)
 }
@@ -164,8 +177,8 @@ mod tests {
     #[test]
     fn test_sanitize_path_splits_components() {
         let result = sanitize_path("Station\\Artist - Title");
-        assert!(result.contains("Station"));
-        assert!(result.contains("Artist - Title"));
+        let expected = format!("Station{}Artist - Title", std::path::MAIN_SEPARATOR);
+        assert_eq!(result, expected);
     }
 
     #[test]
@@ -186,7 +199,9 @@ mod tests {
         // If %t is replaced first, %time → %time → %[result of t replacement]ime
         // Our implementation replaces %time first, so this is fine
         let result = render_template("%time - %t", "A", "Song", "S", 1);
-        // %time should be a time string like "HH-MM-SS", not contain "Song"
-        assert!(!result.starts_with("Song"));
+        // %time should be fully replaced — no literal "time" remaining
+        assert!(!result.contains("time"), "%time placeholder must be fully replaced, got: {}", result);
+        // title should appear after the separator
+        assert!(result.ends_with("- Song"), "title must appear after time in: {}", result);
     }
 }
