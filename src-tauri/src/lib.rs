@@ -1,10 +1,14 @@
+mod app_state;
+mod commands;
 mod errors;
 mod portable;
 mod profile;
 mod settings;
+mod stream;
 
-use profile::Profile;
+use app_state::AppState;
 use settings::GlobalSettings;
+use profile::Profile;
 
 pub fn run() {
     tauri::Builder::default()
@@ -13,14 +17,16 @@ pub fn run() {
         .setup(|_app| {
             portable::ensure_data_dirs()
                 .expect("Failed to create data directories");
-            let settings = GlobalSettings::load()
-                .expect("Failed to load settings");
-            let profile = Profile::load(&settings.active_profile)
-                .expect("Failed to load profile");
-            tracing::info!("Loaded profile: {}", profile.name);
-            tracing::info!("Streams in profile: {}", profile.streams.len());
             Ok(())
         })
+        .manage({
+            let settings = GlobalSettings::load().expect("Failed to load settings");
+            let profile = Profile::load(&settings.active_profile).expect("Failed to load profile");
+            AppState::new(settings, profile)
+        })
+        .invoke_handler(tauri::generate_handler![
+            commands::stream_commands::start_test_recording,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
