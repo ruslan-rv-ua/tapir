@@ -14,8 +14,7 @@ pub fn write_tags(
     station: &str,
 ) -> Result<(), RadioError> {
     let tag_type = match format {
-        AudioFormat::Mp3 => TagType::Id3v2,
-        AudioFormat::Aac => TagType::Mp4Ilst,
+        AudioFormat::Mp3 | AudioFormat::Aac => TagType::Id3v2,
     };
 
     let mut tag = Tag::new(tag_type);
