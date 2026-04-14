@@ -4,9 +4,11 @@ import { useState, useCallback } from "react";
 import type { SortDescriptor } from "react-aria-components";
 import { $streams, $statuses } from "../../stores/streams";
 import { StreamRow } from "./StreamRow";
+import { ConfirmDialog } from "../common/ConfirmDialog";
 import { addToast } from "../../stores/toasts";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
+import type { StreamInfo } from "../../lib/tauri";
 
 export function StreamTable() {
   const streams = useStore($streams);
@@ -15,6 +17,7 @@ export function StreamTable() {
     column: "name",
     direction: "ascending",
   });
+  const [pendingDelete, setPendingDelete] = useState<StreamInfo | null>(null);
 
   const sortedStreams = [...streams].sort((a, b) => {
     const dir = sortDescriptor.direction === "ascending" ? 1 : -1;
@@ -32,13 +35,20 @@ export function StreamTable() {
     const stream = streams.find((s) => s.id === streamId);
     if (!stream) return;
     e.preventDefault();
-    if (window.confirm(m.confirm_delete_stream({ name: stream.name }))) {
-      tauri.removeStream(streamId).then(() => {
-        $streams.set($streams.get().filter((s) => s.id !== streamId));
-        addToast(m.stream_removed({ name: stream.name }), "info");
-      }).catch((err) => addToast(String(err), "error"));
-    }
+    setPendingDelete(stream);
   }, [streams]);
+
+  const handleConfirmDelete = async () => {
+    if (!pendingDelete) return;
+    try {
+      await tauri.removeStream(pendingDelete.id);
+      $streams.set($streams.get().filter((s) => s.id !== pendingDelete.id));
+      addToast(m.stream_removed({ name: pendingDelete.name }), "info");
+    } catch (err) {
+      addToast(String(err), "error");
+    }
+    setPendingDelete(null);
+  };
 
   return (
     <div className="flex-1 overflow-auto" onKeyDown={handleKeyDown}>
@@ -68,6 +78,14 @@ export function StreamTable() {
           ))}
         </TableBody>
       </Table>
+      {pendingDelete && (
+        <ConfirmDialog
+          title={m.remove_stream()}
+          message={m.confirm_delete_stream({ name: pendingDelete.name })}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
     </div>
   );
 }
