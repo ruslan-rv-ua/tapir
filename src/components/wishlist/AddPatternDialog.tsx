@@ -13,7 +13,7 @@ interface Props {
   onClose: () => void;
 }
 
-export function AddPatternDialog({ listType, initialPattern, editingPattern, onSubmit, onClose }: Props) {
+export function AddPatternDialog({ initialPattern, editingPattern, onSubmit, onClose }: Props) {
   const [pattern, setPattern] = useState(editingPattern ?? initialPattern ?? "");
   const isEdit = !!editingPattern;
 
