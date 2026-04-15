@@ -84,15 +84,18 @@ src-tauri/src/
 pub struct PlayerEngine {
     session: Arc<Mutex<Option<PlaybackSession>>>,
     volume: Arc<Mutex<f32>>,
-    output_device: Arc<Mutex<Option<String>>>,  // None = system default
-    _output_stream: OutputStream,               // тримає WASAPI живим
-    output_handle: OutputStreamHandle,
+    output_device: Arc<Mutex<Option<String>>>,       // None = system default
+    // Option дозволяє drop + recreate у set_output_device без borrowing конфліктів.
+    // Загортається в Mutex, щоб set_output_device не вимагав &mut self.
+    output_stream: Arc<Mutex<Option<OutputStream>>>, // тримає аудіо вивід живим
+    output_handle: Arc<Mutex<OutputStreamHandle>>,
 }
 
 struct PlaybackSession {
     sink: Arc<Sink>,
     cancel: CancellationToken,
-    source: PlaybackSource,     // Stream { stream_id } | File { path }
+    source: PlaybackSource,      // Stream { stream_id } | File { path }
+    duration_ms: Option<u64>,    // Some для файлів, None для live потоків
     progress_task: JoinHandle<()>,
 }
 ```
@@ -115,10 +118,13 @@ pub enum PlaybackSource {
 1. Скасувати поточну сесію (`cancel.cancel()`, drop session)
 2. Отримати URL потоку з `StreamManager` за `stream_id`
 3. Підключитись через існуючий `stream::connection` код — незалежне HTTP-з'єднання, без запису
-4. Spawn tokio-таск: читати байти → писати в `Arc<Mutex<VecDeque<u8>>>` (ring buffer)
-5. Створити `LiveSource` що реалізує `rodio::Source<Item=i16>` — читає з ring buffer, декодує через symphonia frame-by-frame
-6. `sink.append(live_source)` → rodio → WASAPI
-7. Emit `player-status` (повний `PlayerStatus` struct) з `state: "playing"`, `source: Stream { stream_id }`, `volume`
+4. Створити SPSC ring buffer через `rtrb::RingBuffer::<u8>::new(capacity)` → `(producer, consumer)`
+5. Spawn tokio-таск: читати байти з HTTP → `producer.write_chunk(bytes)` (lock-free, без mutex на кожному sample)
+6. Створити `LiveSource` що реалізує `rodio::Source<Item=i16>` — приймає `consumer` (не Arc<Mutex>), декодує через symphonia frame-by-frame
+7. `sink.append(live_source)` → rodio → аудіо вивід
+8. Emit `player-status` (повний `PlayerStatus` struct) з `state: "playing"`, `source: Stream { stream_id }`, `volume`
+
+> **Ring buffer:** `Arc<Mutex<VecDeque<u8>>>` блокує mutex на кожному audio sample — неприйнятно для real-time аудіо. `rtrb` — lock-free SPSC черга (Single Producer Single Consumer): producer у writer task, consumer у `LiveSource::next()`. Crate `rtrb` додається до `Cargo.toml`.
 
 > Якщо потік вже записується — live playback підключається окремим HTTP-з'єднанням. Запис не переривається.
 
@@ -167,18 +173,20 @@ pub async fn seek(&self, position_ms: u64, app_handle: &AppHandle) -> Result<()>
 ### 3.6. Volume (`set_volume`)
 
 ```rust
-pub async fn set_volume(&self, volume: f32) -> Result<()> {
+pub async fn set_volume(&self, volume: f32, app_handle: &AppHandle) -> Result<()> {
     // volume: 0.0 — 1.0
     *self.volume.lock().await = volume;
     if let Some(session) = self.session.lock().await.as_ref() {
         session.sink.set_volume(volume);
     }
-    // Зберегти у profile.playerSession.volume через ProfileManager
+    // Зберегти у profile.playerSession.volume через ProfileManager в AppState
+    // Emit player-status щоб UI (і майбутній tray) отримали нову гучність
+    app_handle.emit("player-status", self.get_status().await)?;
     Ok(())
 }
 ```
 
-Зміна гучності не перериває відтворення.
+Зміна гучності не перериває відтворення. `AppHandle` передається з `player_commands.rs`.
 
 ### 3.7. Output device (`set_output_device`)
 
@@ -192,19 +200,26 @@ pub async fn set_volume(&self, volume: f32) -> Result<()> {
 ```rust
 pub async fn list_output_devices() -> Result<Vec<AudioDevice>> {
     // cpal device enumeration є синхронним — виконуємо у spawn_blocking
-    // щоб не блокувати tokio thread pool
-    tokio::task::spawn_blocking(|| {
+    // щоб не блокувати tokio thread pool.
+    // spawn_blocking повертає JoinHandle<Result<...>>:
+    // перший .await? обробляє JoinError, другий ? — inner Result.
+    tokio::task::spawn_blocking(|| -> anyhow::Result<Vec<AudioDevice>> {
         let host = cpal::default_host();
         let default_name = host.default_output_device()
             .and_then(|d| d.name().ok());
-        let devices: Vec<AudioDevice> = host.output_devices()?
+        let devices: Vec<AudioDevice> = host
+            .output_devices()
+            .context("failed to enumerate audio output devices")?
             .filter_map(|d| d.name().ok().map(|name| AudioDevice {
                 is_default: Some(&name) == default_name.as_ref(),
                 name,
             }))
             .collect();
         Ok(devices)
-    }).await?
+    })
+    .await
+    .context("device enumeration task panicked")? // JoinError → anyhow
+    .context("device enumeration failed")         // inner Result
 }
 ```
 
@@ -242,7 +257,8 @@ pub async fn stop_playback(state: State<'_, AppState>, app: AppHandle) -> Result
 pub async fn seek_playback(position_ms: u64, state: State<'_, AppState>, app: AppHandle) -> Result<(), String>
 
 #[tauri::command]
-pub async fn set_volume(volume: f32, state: State<'_, AppState>) -> Result<(), String>
+pub async fn set_volume(volume: f32, state: State<'_, AppState>, app: AppHandle) -> Result<(), String>
+// AppHandle потрібен для: emit "player-status" після зміни + persist через ProfileManager
 
 #[tauri::command]
 pub async fn get_player_status(state: State<'_, AppState>) -> Result<PlayerStatus, String>
@@ -331,10 +347,18 @@ src/components/player/
 ```
 
 **`PlaybackPosition.tsx`:**
-- `source.type === 'file'` → React Aria `Slider` з seek
-  - `aria-label={m.playback_position()}`
-  - `aria-valuetext` → `"3 хвилини 12 секунд"`
-  - `onChange` (після release) → `invoke('seek_playback', { positionMs })`
+- `source.type === 'file'` → React Aria `Slider` з seek:
+  ```tsx
+  <Slider
+    aria-label={m.playback_position()}
+    aria-valuetext={formatTime(positionMs)}   // "3 хвилини 12 секунд"
+    value={positionMs}
+    maxValue={durationMs ?? 0}
+    onChangeEnd={pos => invoke('seek_playback', { positionMs: pos })}
+    // onChangeEnd — seek тільки після відпускання, не під час drag
+    // onChange НЕ використовується для invoke, щоб не надсилати seek на кожен px
+  />
+  ```
 - `source.type === 'stream'` → React Aria `ProgressBar` (indeterminate)
   - `aria-label={m.live_stream()}`
 - `state === 'stopped'` → `hidden`
@@ -390,7 +414,9 @@ src/components/player/
 
 ## 7. Залежності та інтеграція
 
-**Нові Rust крейти:** Не потрібні — `rodio` (з symphonia features) вже є в `Cargo.toml`.
+**Нові Rust крейти:**
+- `rtrb` — lock-free SPSC ring buffer для live stream (LiveSource). Додати до `Cargo.toml`: `rtrb = "0.3"`
+- `rodio` (вже є) — `symphonia-mp3`, `symphonia-aac`, `symphonia-isomp4` features вже підключені
 
 **Нові Tauri плагіни:** Не потрібні.
 
