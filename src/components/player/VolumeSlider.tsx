@@ -14,14 +14,17 @@ export function VolumeSlider() {
       minValue={0}
       maxValue={100}
       value={percent}
-      step={5}
+      step={1}
       onChange={(v) => {
         tauri.setVolume(v / 100).catch(console.error);
       }}
       className="flex items-center gap-2 w-32"
     >
       <SliderTrack className="relative h-1 w-full rounded bg-slate-600">
-        <SliderThumb className="w-3 h-3 rounded-full bg-white top-1/2 -translate-y-1/2 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1" />
+        <SliderThumb
+          aria-valuetext={`${percent}%`}
+          className="w-3 h-3 rounded-full bg-white top-1/2 -translate-y-1/2 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1"
+        />
       </SliderTrack>
     </Slider>
   );

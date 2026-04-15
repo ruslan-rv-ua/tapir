@@ -19,6 +19,7 @@ export function PlaybackPosition() {
   if (source.type === "file") {
     const pos = positionMs ?? 0;
     const dur = durationMs ?? 0;
+    if (dur === 0) return null;
     return (
       <Slider
         aria-label={m.playback_position()}

@@ -64,8 +64,8 @@ export function PlayerPanel() {
         className="p-1.5 rounded hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-40"
       >
         {isPlaying
-          ? <Pause aria-hidden size={16} />
-          : <Play aria-hidden size={16} />}
+          ? <Pause aria-hidden={true} size={16} />
+          : <Play aria-hidden={true} size={16} />}
       </Button>
 
       <Button
@@ -74,7 +74,7 @@ export function PlayerPanel() {
         onPress={handleStop}
         className="p-1.5 rounded hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-40"
       >
-        <Square aria-hidden size={16} />
+        <Square aria-hidden={true} size={16} />
       </Button>
 
       <span
