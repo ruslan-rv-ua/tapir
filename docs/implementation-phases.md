@@ -2,19 +2,28 @@
 
 > **Версія:** 0.1 (draft) | **Версія продукту:** 0.1.0  
 > **Підхід:** MVP-first, Walking Skeleton, Vertical Slices  
-> **Кількість фаз:** 4  
+> **Кількість фаз:** 2 основні + 9 підфаз (3A–3I)  
 > **Ризики:** якщо фаза займає більше часу, наступні фази зсуваються; функціонал не обрізається.
 
 ---
 
 ## Зведена таблиця
 
-| Фаза | Назва | Ключове | Орієнтовний scope |
-|------|-------|---------|-------------------|
-| 1 | MVP: Core Recording | Запис потоків + розділення треків + теги + базова доступність + i18n setup | ~14 work items |
-| 2 | Wishlist + Settings + Player | Wishlist/ignorelist, повний SettingsDialog, live playback, файлове відтворення | ~12 work items |
-| 3 | Browser + Scheduler | Radio Browser API, заплановані записи | ~8 work items |
-| 4 | Saved Songs + Advanced | Менеджер файлів, профілі, CLI, tray, post-processing, High Contrast | ~14 work items |
+| Фаза | Назва | Ключове | Статус |
+|------|-------|---------|--------|
+| 1 | MVP: Core Recording | Запис потоків + розділення треків + теги + базова доступність + i18n setup | ✅ Complete |
+| 2A | Player | Live playback, файлове відтворення, volume, output device | ✅ Complete |
+| 2B | Wishlist + Ignorelist + Context Menu | Фільтрація треків, контекстне меню станцій | ⬜ |
+| 2C | SettingsDialog + Shortcuts | Повний діалог налаштувань, глобальні хоткеї, window state | ⬜ |
+| 3A | System Tray | Tray icon, minimize to tray, balloon tips, dynamic menu | ⬜ |
+| 3B | Stream Browser | Radio Browser API — пошук станцій | ⬜ |
+| 3C | Saved Songs Manager | Менеджер записаних файлів, редагування тегів | ⬜ |
+| 3D | Scheduler | Заплановані записи (одноразові + повторювані) | ⬜ |
+| 3E | Single Instance | Named Mutex, передача CLI args | ⬜ |
+| 3F | Profile Manager | Повний CRUD профілів, import/export | ⬜ |
+| 3G | CLI Arguments | Аргументи командного рядка | ⬜ |
+| 3H | Post-processing | Зовнішні програми після запису | ⬜ |
+| 3I | Polish Bundle | High Contrast, Autostart, Log rotation, Bandwidth limiting | ⬜ |
 
 ---
 
@@ -151,200 +160,405 @@
 
 **Ціль:** фільтрація записів через wishlist/ignorelist, повне налаштування програми, відтворення live потоків та записаних файлів.
 
-### Включено
+> **Phase 2A (Player)** — ✅ реалізовано. Залишок розбито на підфази 2B і 2C.
+
+### Фаза 2A — Player (✅ Complete)
+
+Повністю реалізовано: `PlayerEngine` (rodio 0.22), `LiveSource` (rtrb + symphonia), 10 IPC команд, `PlayerPanel`, `VolumeSlider`, `PlaybackPosition`, `$playerStatus` nanostore, NVDA-доступність.
+
+---
+
+### Фаза 2B — Wishlist + Ignorelist + Контекстне меню станцій
+
+**Ціль:** автоматична фільтрація треків через wishlist/ignorelist + контекстне меню у таблиці потоків.
+
+**Залежності:** Phase 1 (stream::manager, ICY metadata)
 
 **Backend:**
 
 | Модуль | Опис |
 |--------|------|
 | `wishlist::matcher` | Wildcard matching (*, ?) для ICY metadata |
-| `commands/wishlist_commands` | IPC: get/add/remove wishlist + ignorelist |
-| `player::engine` | rodio 0.22 (`DeviceSinkBuilder`/`MixerDeviceSink`/`Player`) + symphonia: live playback (незалежне HTTP-з'єднання через `stream::connection`, rtrb SPSC ring buffer, `LiveSource`), файлове відтворення |
-| `commands/player_commands` | IPC: play_stream, play_file, pause, stop, seek, set_volume, get/set_output_device |
+| `commands/wishlist_commands` | IPC: get/add/remove wishlist + ignorelist entries |
+
+**Frontend:**
+
+| Компонент | Опис |
+|-----------|------|
+| `WishlistPanel.tsx` | Секція (Activity Bar tab): список wishlist + ignorelist |
+| `WishlistTable.tsx` | Accessible table з patterns (wildcard, per-stream/global) |
+| `StreamRow.tsx` (оновлення) | Контекстне меню: Play, Record, Edit, Remove, Add to Wishlist, Add to Ignorelist |
+
+**Store:** `profile.ts` (розширення) — wishlist + ignorelist дані
+
+**Критерії "Done" для Фази 2B:**
+- [ ] Wishlist matching працює при зміні ICY metadata
+- [ ] Ignorelist фільтрує небажані треки (глобальний + per-stream)
+- [ ] Precedence: per-stream ignorelist → global ignorelist → wishlist → звичайна поведінка
+- [ ] WishlistPanel з CRUD операціями (додати, видалити, редагувати pattern)
+- [ ] Контекстне меню StreamRow (Shift+F10, right-click): Play, Record, Edit, Remove
+- [ ] Контекстне меню StreamRow: додати до Wishlist / Ignorelist
+- [ ] NVDA: контекстне меню accessible (React Aria Menu)
+
+---
+
+### Фаза 2C — SettingsDialog + Global Shortcuts + Window State
+
+**Ціль:** повний діалог налаштувань програми, глобальні гарячі клавіші, збереження позиції вікна.
+
+**Залежності:** Phase 1 (settings.rs)
+
+**Backend:**
+
+| Модуль | Опис |
+|--------|------|
 | `commands/settings_commands` | Розширений: save_settings з повним набором полів |
 
 **Frontend:**
 
 | Компонент | Опис |
 |-----------|------|
-| `WishlistPanel.tsx` | Tab: список wishlist + ignorelist |
-| `WishlistTable.tsx` | Accessible table з patterns |
-| `PlayerPanel.tsx` | Панель програвача (complementary region) |
-| `VolumeSlider.tsx` | React Aria Slider (0-100%, accessible) |
-| `ProgressBar.tsx` → `PlaybackPosition.tsx` | Slider (file seek) / ProgressBar (live stream) |
-| `SettingsDialog.tsx` | Повноекранний діалог: мова, тема, output dir, templates, reconnect, аудіо-пристрій |
-| `HotkeySettings.tsx` | KeyRecorder для глобальних хоткеїв |
+| `SettingsDialog.tsx` | Повноекранний діалог з табами |
 | `GeneralSettings.tsx` | Мова, тема, tray, notifications |
-| `RecordingSettings.tsx` | Output dir, templates, reconnect |
-
-**Stores:**
-
-| Store | Опис |
-|-------|------|
-| `player.ts` | Playback state, volume, position |
-| `profile.ts` | Active profile data (wishlist included) |
+| `RecordingSettings.tsx` | Output dir, templates, reconnect, min track duration |
+| `HotkeySettings.tsx` | KeyRecorder для глобальних хоткеїв |
 
 **Infrastructure:**
 
 | Елемент | Опис |
 |---------|------|
-| Global shortcuts | `tauri-plugin-global-shortcut` — Ctrl+Shift+R, P, Up, Down, H |
-| Window state | `tauri-plugin-window-state` — запам'ятовування позиції/розміру |
+| `tauri-plugin-global-shortcut` | Ctrl+Shift+R, P, Up, Down, H |
+| `tauri-plugin-window-state` | Запам'ятовування позиції/розміру |
+| `tauri-plugin-dialog` | Browse кнопка для вибору теки |
 
-### Критерії "Done" для Фази 2
-
-- [ ] Wishlist matching працює при зміні ICY metadata
-- [ ] Ignorelist фільтрує небажані треки (глобальний + per-stream)
-- [ ] Live playback потоку через незалежне HTTP-з'єднання (не tee)
-- [ ] Відтворення записаних MP3/AAC файлів з seek
-- [ ] Volume slider accessible (NVDA оголошує рівень)
-- [ ] Вибір аудіо-пристрою
-- [ ] Повна SettingsDialog з усіма налаштуваннями
+**Критерії "Done" для Фази 2C:**
+- [ ] SettingsDialog відкривається та зберігає всі налаштування
+- [ ] Мова: переключення uk/en без перезапуску
+- [ ] Тема: auto/dark/light
+- [ ] Recording settings: output dir (Browse), templates, reconnect
 - [ ] Глобальні гарячі клавіші працюють у фоні
-- [ ] Налаштування хоткеїв через UI
-- [ ] `tauri-plugin-dialog` для Browse кнопки та Profile import/export
+- [ ] Налаштування хоткеїв через UI (KeyRecorder)
+- [ ] Window state зберігається між сесіями
+- [ ] NVDA: усі елементи SettingsDialog accessible
 
 ---
 
-## Фаза 3 — Browser + Scheduler
+## Фази 3A–3I — Декомпозовані підфази (замість оригінальних Фаз 3–4)
 
-**Ціль:** пошук нових станцій через Radio Browser API, автоматичний запис за розкладом.
+> Оригінальні Фаза 3 (Browser + Scheduler) та Фаза 4 (Saved Songs + Advanced) розбиті на 9 незалежних підфаз.
+> Впорядковані за цінністю для користувача. Детальний аналіз — у [research-phase-decomposition.md](research/research-phase-decomposition.md).
 
-### Включено
+### Зведена таблиця підфаз
+
+| # | Підфаза | Залежить від | Цінність |
+|---|---------|-------------|----------|
+| 3A | System Tray + Minimize to Tray | Phase 1 + 2 | 🔴 Критична |
+| 3B | Stream Browser (Radio Browser API) | — (незалежна) | 🔴 Критична |
+| 3C | Saved Songs Manager | Phase 1 | 🟠 Висока |
+| 3D | Scheduler (Заплановані записи) | Phase 1 | 🟠 Висока |
+| 3E | Single Instance | — (незалежна) | 🟡 Середня |
+| 3F | Profile Manager (повний CRUD) | Phase 1 | 🟡 Середня |
+| 3G | CLI Arguments | Phase 1 + 2, 3E | 🟡 Середня |
+| 3H | Post-processing | Phase 1 | 🟢 Низька |
+| 3I | Polish Bundle (HC, Autostart, Logs, BW) | — (незалежні) | 🟢 Низька |
+
+---
+
+### Фаза 3A — System Tray + Minimize to Tray
+
+**Ціль:** робота програми у фоні з іконкою в системному треї, balloon-сповіщеннями та динамічним контекстним меню.
+
+**Залежності:** Phase 1 (recording status), Phase 2 (player status)
 
 **Backend:**
 
 | Модуль | Опис |
 |--------|------|
-| `browser::api` | REST клієнт Radio Browser API (пошук, фільтрація) |
-| `commands/browser_commands` | IPC: search_stations, add_station_from_browser |
-| `scheduler::timer` | Per-minute check loop, CancellationToken |
-| `commands/schedule_commands` | IPC: CRUD scheduled recordings, toggle enabled |
+| `tray.rs` | `TrayIconBuilder`, `rebuild_tray_menu()`, обробка кліків |
+| `tray_menu.rs` | Побудова динамічного меню за станом (player, recordings, window visibility) |
+| Balloon tip | `Shell_NotifyIconW` через `windows-rs` для сповіщень про зміну треку |
 
-**Frontend:**
-
-| Компонент | Опис |
-|-----------|------|
-| `BrowserPanel.tsx` | Tab: пошук станцій |
-| `SearchForm.tsx` | React Aria ComboBox + filters (формат, бітрейт) |
-| `ResultsTable.tsx` | Accessible table результатів |
-| `SchedulePanel.tsx` | Tab: заплановані записи |
-| `ScheduleTable.tsx` | Accessible table з розкладом |
-| `ScheduleForm.tsx` | Діалог: створення/редагування (RadioGroup, TimeField, Select) |
-
-**Stores:**
-
-| Store | Опис |
-|-------|------|
-| `browser.ts` | Search results |
-| `schedule.ts` | Scheduled recordings |
-
-### Критерії "Done" для Фази 3
-
-- [ ] Пошук станцій за назвою, жанром, форматом, бітрейтом
-- [ ] Додавання станції зі списку результатів
-- [ ] Одноразовий та повторюваний запис за розкладом
-- [ ] Конфлікти: потік вже записується, два записи одночасно
-- [ ] Пропущені записи логуються (програма була вимкнена)
-- [ ] Live regions: "Плановий запис розпочато/завершено"
-- [ ] Таблиця розкладу accessible (NVDA grid navigation)
-
----
-
-## Фаза 4 — Saved Songs + Advanced
-
-**Ціль:** менеджер записаних файлів, профілі, CLI, system tray, post-processing. Production-ready.
-
-### Включено
-
-**Backend:**
-
-| Модуль | Опис |
-|--------|------|
-| `commands/songs_commands` | IPC: get/delete/rename songs, update tags, open in explorer, import |
-| `commands/postprocess_commands` | IPC: get/save postprocess config |
-| `postprocess::runner` | Запуск зовнішніх програм, timeout, черга |
-| `profile.rs` (повний) | CRUD профілів, переключення, import/export |
-| `commands/profile_commands` | IPC: list/switch/create/delete/export/import profiles |
-
-**Frontend:**
-
-| Компонент | Опис |
-|-----------|------|
-| `SongsPanel.tsx` | Tab: збережені пісні |
-| `SongsTable.tsx` | Accessible sortable table з фільтрами |
-| `TagEditor.tsx` | Діалог редагування тегів |
-| `ProfileManager.tsx` | UI для управління профілями |
-| `PostprocessSettings.tsx` | Налаштування постобробки |
-
-**Infrastructure:**
+**Settings:**
 
 | Елемент | Опис |
 |---------|------|
-| `tray.rs` | TrayIconBuilder, rebuild_tray_menu(), обробка кліків |
-| `tray_menu.rs` | Побудова динамічного меню за станом (player, recordings, window); залежить від player state з Фази 2 |
-| Balloon tip | `Shell_NotifyIconW` через `windows-rs` для сповіщень про зміну треку |
-| Single instance | `tauri-plugin-single-instance` (Named Mutex) |
-| CLI | `tauri-plugin-cli` — `-r`, `-p`, `-profile`, `-datadir`, `-minimize` |
-| Autostart | `tauri-plugin-autostart` + перевірка шляху при запуску |
-| High Contrast | `forced-colors:` CSS для всіх компонентів |
-| Log rotation | tauri-plugin-log з ротацією |
-| Bandwidth limit | Throttling у stream::connection |
+| `minimizeToTray` | Close → hide замість exit |
+| `showTrayNotifications` | Balloon tip при зміні треку (throttle 3с) |
 
-### Критерії "Done" для Фази 4
+**Критерії "Done":**
+- [ ] Іконка у systemtray з tooltip
+- [ ] Right-click — контекстне меню: "Зараз грає" info, Грати/Пауза, Зупинити, Записи info, Зупинити всі, Показати/Приховати, Вихід
+- [ ] Меню динамічно оновлюється при зміні стану (`player-status`, `recording-status`, window visibility)
+- [ ] Left-click — toggle видимості вікна
+- [ ] `minimizeToTray` setting працює (close → hide)
+- [ ] Balloon tip при зміні треку (з throttle)
+- [ ] Confirm dialog при exit з активними записами
 
-- [ ] Менеджер збережених файлів (сортування, фільтрація, пошук)
-- [ ] Редагування ID3v2/M4A тегів через UI
-- [ ] Контекстне меню збережених пісень (play, delete, rename, explorer)
-- [ ] Профілі: створення, переключення, import/export
-- [ ] Підтвердження при switch profile якщо є активні записи
-- [ ] CLI аргументи працюють (запис, відтворення, wishlist)
-- [ ] System tray:
-  - [ ] TrayIconBuilder з іконкою та динамічним tooltip
-  - [ ] Контекстне меню (right-click): "Зараз грає" info, Грати/Пауза, Зупинити, Записи info, Зупинити всі, Показати/Приховати, Вихід
-  - [ ] Динамічна перебудова меню при зміні стану (`player-status`, `recording-status`, window visibility)
-  - [ ] Left-click: toggle видимості вікна
-  - [ ] Вихід: confirm dialog якщо є активні записи
-  - [ ] Balloon tip при зміні треку (`showTrayNotifications` setting, throttle 3с)
-  - [ ] `minimizeToTray` setting: close → hide замість exit
-- [ ] Single instance: повторний запуск передає аргументи першому
-- [ ] Autostart з перевіркою шляху
-- [ ] Windows High Contrast: усі елементи видимі
-- [ ] Post-processing: запуск зовнішніх програм після запису
-- [ ] Log rotation працює
+---
+
+### Фаза 3B — Stream Browser (Radio Browser API)
+
+**Ціль:** пошук нових станцій через Radio Browser API без ручного введення URL.
+
+**Залежності:** немає (лише reqwest, вже в проєкті)
+
+**Backend:**
+
+| Модуль | Опис |
+|--------|------|
+| `browser::api` | REST клієнт Radio Browser API: пошук, фільтрація, DNS-based server discovery |
+| `commands/browser_commands` | IPC: `search_stations`, `get_station_details`, `add_station_from_browser` |
+
+**Frontend:**
+
+| Компонент | Опис |
+|-----------|------|
+| `BrowserPanel.tsx` | Секція (Activity Bar tab): пошук станцій |
+| `SearchForm.tsx` | React Aria ComboBox + filters (формат, мін. бітрейт, жанр) |
+| `ResultsTable.tsx` | Accessible table результатів з кнопками "Додати" |
+
+**Store:** `browser.ts` — search results, loading state, selected filters
+
+**Критерії "Done":**
+- [ ] Пошук станцій за назвою, жанром, форматом, бітрейтом
+- [ ] Результати у accessible table (NVDA grid navigation)
+- [ ] Кнопка "Додати" → станція з'являється у профілі
+- [ ] Activity Bar icon для Browser tab
+- [ ] Empty state та loading state accessible
+
+---
+
+### Фаза 3C — Saved Songs Manager
+
+**Ціль:** менеджмент записаних файлів у самій програмі.
+
+**Залежності:** Phase 1 (recordings directory, tags::writer)
+
+**Backend:**
+
+| Модуль | Опис |
+|--------|------|
+| `commands/songs_commands` | IPC: `get_saved_songs`, `delete_song`, `rename_song`, `update_song_tags`, `open_in_explorer`, `import_songs` |
+
+**Frontend:**
+
+| Компонент | Опис |
+|-----------|------|
+| `SongsPanel.tsx` | Секція (Activity Bar tab): збережені пісні |
+| `SongsTable.tsx` | Accessible sortable table з фільтрами та пошуком |
+| `TagEditor.tsx` | Діалог редагування ID3v2/M4A тегів |
+
+**Store:** `songs.ts` — список збережених треків, фільтри, сортування
+
+**Критерії "Done":**
+- [ ] Список усіх записаних файлів з metadata
+- [ ] Сортування за назвою, артистом, датою, розміром
+- [ ] Фільтрація та пошук
+- [ ] Контекстне меню: відтворити, відкрити в explorer, видалити, перейменувати, редагувати теги
+- [ ] TagEditor: зміна artist, title, album, genre
+- [ ] Confirm dialog при видаленні
+- [ ] NVDA: grid navigation, live region при операціях
+
+---
+
+### Фаза 3D — Scheduler (Заплановані записи)
+
+**Ціль:** автоматичний запис за розкладом (одноразовий та повторюваний).
+
+**Залежності:** Phase 1 (stream::manager для start/stop recording)
+
+**Backend:**
+
+| Модуль | Опис |
+|--------|------|
+| `scheduler::timer` | Per-minute check loop з `CancellationToken`, запуск та зупинка recording через `stream::manager` |
+| `commands/schedule_commands` | IPC: `get_schedules`, `add_schedule`, `update_schedule`, `delete_schedule`, `toggle_schedule` |
+
+**Frontend:**
+
+| Компонент | Опис |
+|-----------|------|
+| `SchedulePanel.tsx` | Секція (Activity Bar tab): заплановані записи |
+| `ScheduleTable.tsx` | Accessible table з розкладом |
+| `ScheduleForm.tsx` | Діалог: тип (одноразовий/повторюваний), потік, дата/день, час, тривалість |
+
+**Store:** `schedule.ts` — список scheduled recordings, enabled/disabled status
+
+**Критерії "Done":**
+- [ ] Одноразовий запис: дата + час + тривалість
+- [ ] Повторюваний запис: день тижня + час + тривалість
+- [ ] Toggle enabled/disabled без видалення
+- [ ] Конфлікт: потік вже записується → не дублювати
+- [ ] Пропущені записи логуються
+- [ ] Live regions: "Плановий запис розпочато/завершено"
+- [ ] NVDA: таблиця accessible, форма accessible
+
+---
+
+### Фаза 3E — Single Instance
+
+**Ціль:** запобігання одночасному запуску двох копій програми.
+
+**Залежності:** немає (незалежна)
+
+**Backend:**
+
+| Елемент | Опис |
+|---------|------|
+| `tauri-plugin-single-instance` | Named Mutex + Named Pipe для передачі аргументів |
+
+**Критерії "Done":**
+- [ ] Другий запуск → фокус на першому вікні
+- [ ] `clean_shutdown` прапор у `data/state.json`
+- [ ] Named Pipe готовий для передачі CLI args (3G залежить від цього)
+
+---
+
+### Фаза 3F — Profile Manager (повний CRUD)
+
+**Ціль:** створення, перемикання та управління кількома профілями.
+
+**Залежності:** Phase 1 (profile.rs вже має Default profile)
+
+**Backend:**
+
+| Модуль | Опис |
+|--------|------|
+| `profile.rs` (розширення) | CRUD: create, rename, delete (крім Default), duplicate |
+| `commands/profile_commands` | IPC: `list_profiles`, `switch_profile`, `create_profile`, `delete_profile`, `export_profile`, `import_profile` |
+
+**Frontend:**
+
+| Компонент | Опис |
+|-----------|------|
+| `ProfileManager.tsx` | UI: список профілів, операції, import/export |
+| `ProfileSwitcher.tsx` (оновлення) | Активувати повний функціонал замість disabled placeholder |
+
+**Критерії "Done":**
+- [ ] Список профілів з поточним позначеним
+- [ ] Створення нового профілю
+- [ ] Перемикання між профілями
+- [ ] Видалення профілю (крім Default, з confirm)
+- [ ] Export/import `.tapirprofile` файлу
+- [ ] Confirm при switch якщо є активні записи
+- [ ] ProfileSwitcher у ActivityBar працює
+
+---
+
+### Фаза 3G — CLI Arguments
+
+**Ціль:** підтримка аргументів командного рядка для автоматизації та скриптів.
+
+**Залежності:** Phase 1 + Phase 2 (stream::manager + player), **3E** (single instance для передачі аргументів)
+
+**Backend:**
+
+| Елемент | Опис |
+|---------|------|
+| `tauri-plugin-cli` | clap-based парсинг аргументів |
+| CLI handler | Обробка `--record`, `--play`, `--stop-*`, `--wish-*`, `--profile`, `--minimize`, `--datadir` |
+
+**Критерії "Done":**
+- [ ] `--record URL` запускає запис
+- [ ] `--play URL` запускає відтворення
+- [ ] `--stop-recording` / `--stop-playback` зупиняють
+- [ ] `--wish-add` / `--wish-remove` керують wishlist
+- [ ] `--profile NAME` вибирає профіль при запуску
+- [ ] `--minimize` запуск згорнутим до tray
+- [ ] При повторному запуску args передаються першій інстанції
+- [ ] Exit codes: 0 (success), 1 (error), 2 (invalid args)
+
+---
+
+### Фаза 3H — Post-processing
+
+**Ціль:** запуск зовнішніх програм після запису для конвертації, нормалізації тощо.
+
+**Залежності:** Phase 1 (recordings, подія завершення треку)
+
+**Backend:**
+
+| Модуль | Опис |
+|--------|------|
+| `postprocess::runner` | Запуск зовнішніх програм, timeout (120с default), черга |
+| `commands/postprocess_commands` | IPC: `get_postprocess_config`, `save_postprocess_config` |
+
+**Frontend:**
+
+| Компонент | Опис |
+|-----------|------|
+| `PostprocessSettings.tsx` | UI: шлях до програми, аргументи, timeout, triggers |
+
+**Критерії "Done":**
+- [ ] Запуск зовнішньої програми після фіналізації треку
+- [ ] Налаштування аргументів (placeholders %file, %artist, %title)
+- [ ] Timeout з kill process
+- [ ] Вибір тригеру: завершений / незакінчений трек
+- [ ] Черга: не більше N одночасних процесів
+
+---
+
+### Фаза 3I — Polish Bundle
+
+**Ціль:** набір незалежних polish-фіч, кожна може бути реалізована окремо.
+
+**Залежності:** немає (кожен елемент незалежний)
+
+#### 3I-1. Windows High Contrast
+
+- `forced-colors:` CSS для всіх custom компонентів (StatusIcon, Badge, Toast, Slider thumb, Progress track)
+- [ ] Усі кастомні елементи коректно відображаються у Windows High Contrast mode
+
+#### 3I-2. Autostart
+
+- `tauri-plugin-autostart` + перевірка шляху EXE при запуску
+- [ ] Setting "Запускати з Windows" працює
+- [ ] Якщо EXE переміщено, autostart деактивується
+
+#### 3I-3. Log Rotation
+
+- `tauri-plugin-log` з ротацією (розмір, кількість файлів)
+- [ ] Логи ротуються при досягненні макс. розміру
+
+#### 3I-4. Bandwidth Limiting
+
+- Throttling у `stream::connection` (кБ/с per-stream)
+- [ ] Обмеження швидкості завантаження на потік
 
 ---
 
 ## Залежності між фазами
 
 ```
-Фаза 1: Core Recording
+Phase 1: Core Recording ✅
   ├── stream::manager (central)
   ├── settings.rs
   ├── profile.rs (Default only)
   ├── portable.rs
   └── tags::writer
 
-Фаза 2: Wishlist + Settings + Player
-  ├── wishlist::matcher ← залежить від stream::manager (Phase 1)
-  ├── player::engine ← залежить від stream::manager tee (Phase 1)
-  └── SettingsDialog ← залежить від settings.rs (Phase 1)
+Phase 2A: Player ✅
+  └── player::engine ← незалежне HTTP-з'єднання, rtrb ring buffer, symphonia
 
-Фаза 3: Browser + Scheduler
-  ├── browser::api ← незалежний (лише reqwest + JSON)
-  └── scheduler::timer ← залежить від stream::manager (Phase 1)
+Phase 2B: Wishlist + Ignorelist + Context Menu ← Phase 1 (stream::manager, ICY metadata)
+Phase 2C: SettingsDialog + Shortcuts ← Phase 1 (settings.rs)
 
-Фаза 4: Saved Songs + Advanced
-  ├── songs_commands ← залежить від recordings (Phase 1+)
-  ├── postprocess::runner ← залежить від recordings (Phase 1+)
-  ├── profile.rs (full) ← розширює Phase 1 profile.rs
-  └── CLI ← залежить від stream::manager + player (Phase 1+2)
+Phase 3A: System Tray ← Phase 1 (recording status) + Phase 2A (player status)
+Phase 3B: Stream Browser ← незалежна (лише reqwest + JSON)
+Phase 3C: Saved Songs ← Phase 1 (recordings, tags::writer)
+Phase 3D: Scheduler ← Phase 1 (stream::manager)
+Phase 3E: Single Instance ← незалежна
+Phase 3F: Profile Manager ← Phase 1 (profile.rs)
+Phase 3G: CLI ← Phase 1 + Phase 2A + Phase 3E
+Phase 3H: Post-processing ← Phase 1 (recordings)
+Phase 3I: Polish Bundle ← незалежна (кожен елемент)
 ```
 
-Фази 2 і 3 можна виконувати в будь-якому порядку. Фаза 4 залежить від усіх попередніх.
+Підфази 2B і 2C незалежні одна від одної. Підфази 3B, 3E, 3I повністю незалежні. Підфази 3C, 3D, 3F, 3H залежать лише від Phase 1 (завершена) → можна починати негайно. Тільки 3A та 3G мають залежність від Phase 2A.
 
 ---
 
 ## Джерела досліджень
 
 Деталі обґрунтування фазування — в дослідженнях, проведених під час планування.
+Декомпозиція фаз 3–4 — у [research-phase-decomposition.md](research/research-phase-decomposition.md).

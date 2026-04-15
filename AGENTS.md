@@ -9,10 +9,14 @@ See [docs/implementation-phases.md](docs/implementation-phases.md) for the full 
 | Фаза | Статус | Гілка |
 |------|--------|-------|
 | Phase 1 — Core Recording | ✅ Complete | `feature/refine-phase-1` |
-| Phase 2 — Player subsystem | ✅ Complete | `feature/phase-2` (not yet merged) |
-| Phase 2 — Wishlist + SettingsDialog | ⬜ Not started | — |
-| Phase 3 — Browser + Scheduler | ⬜ Not started | — |
-| Phase 4 — Saved Songs + Advanced | ⬜ Not started | — |
+| Phase 2A — Player subsystem | ✅ Complete | `feature/phase-2` (not yet merged) |
+| Phase 2B — Wishlist + Ignorelist + Context Menu | ⬜ Not started | — |
+| Phase 2C — SettingsDialog + Shortcuts | ⬜ Not started | — |
+| Phase 3A — System Tray | ⬜ Not started | — |
+| Phase 3B — Stream Browser | ⬜ Not started | — |
+| Phase 3C — Saved Songs Manager | ⬜ Not started | — |
+| Phase 3D — Scheduler | ⬜ Not started | — |
+| Phase 3E–3I — Single Instance, Profiles, CLI, Post-processing, Polish | ⬜ Not started | — |
 
 **Phase 2 Player — що реалізовано:**
 - `player::engine` — `PlayerEngine` з rodio 0.22 (`DeviceSinkBuilder`/`MixerDeviceSink`/`Player`) + symphonia 0.5
