@@ -12,20 +12,21 @@
 
 ### В скоупі
 - Wildcard matching (*, ?) для ICY StreamTitle — case-insensitive
-- Глобальний ignorelist (Profile.ignorelist)
+- Глобальний ignorelist (Profile.ignorelist) + per-stream ignorelist (StreamInfo.ignorelist) — matching
 - Wishlist з мінімальним набором полів (pattern + addedAt)
 - Matching працює тільки під час активного запису
 - Ignorelist: трек не зберігається як окремий файл (stream-файл продовжує писатись)
 - Контекстне меню StreamRow (React Aria Menu)
 - WishlistPanel як окрема вкладка Activity Bar
-- IPC команди для CRUD wishlist/ignorelist
+- IPC команди для CRUD wishlist/ignorelist (додати, видалити, редагувати)
 - NVDA-доступні оголошення для всіх подій
 
 ### Поза скоупом
-- Per-stream ignorelist UI (дані вже є в data model)
+- Per-stream ignorelist **UI** (дані вже є, matching працює, але окремого UI для керування per-stream ignorelist немає)
 - Розширені поля WishlistEntry: minBitrate, format, removeAfterRecord, addToIgnorelistAfterRecord
 - Моніторинг потоків без запису (auto-record)
 - Імпорт/експорт списків
+- Персистенція `is_wishlist_match` на SavedTrack (Phase 3C)
 
 ---
 
@@ -53,9 +54,10 @@ pub enum TrackAction {
 }
 
 /// Перевіряє трек проти ignorelist та wishlist.
-/// Порядок: global ignorelist → wishlist → Normal
+/// Порядок: per-stream ignorelist → global ignorelist → wishlist → Normal
 pub fn check_track(
     stream_title: &str,
+    per_stream_ignorelist: &[String],
     global_ignorelist: &[String],
     wishlist: &[WishlistEntry],
 ) -> TrackAction
@@ -72,22 +74,27 @@ pub fn check_track(
 ### Порядок перевірки (Precedence)
 
 ```
-1. Global ignorelist → збіг → TrackAction::Ignored
-2. Wishlist          → збіг → TrackAction::WishlistMatch { pattern }
-3. Жодного збігу     → TrackAction::Normal
+1. Per-stream ignorelist → збіг → TrackAction::Ignored
+2. Global ignorelist     → збіг → TrackAction::Ignored
+3. Wishlist              → збіг → TrackAction::WishlistMatch { pattern }
+4. Жодного збігу         → TrackAction::Normal
 ```
 
-Ignorelist завжди має пріоритет над wishlist.
+Ignorelist завжди має пріоритет над wishlist. Per-stream ignorelist перевіряється першим.
 
 ### Інтеграція в manager.rs
 
-У хендлері `MetadataChanged` (рядки ~715-748), **перед** `spl.on_metadata_change()`:
+У хендлері `MetadataChanged` (рядки ~715-748), **перед** `spl.on_metadata_change()`.
 
-1. Зібрати повний StreamTitle: `format!("{} - {}", artist, title)` (або використати оригінальний ICY рядок, якщо він доступний)
-2. Завантажити ignorelist/wishlist з `AppState.profile`
-3. `wishlist::matcher::check_track(stream_title, &ignorelist, &wishlist)`
+> **Примітка:** architecture.md показує перевірку після finalize у псевдокоді. Розміщення *перед* Splitter є навмисним — це дозволяє повністю пропустити Splitter для ігнорованих треків, уникаючи створення файлів для непотрібних треків.
+
+**Правило конкатенації StreamTitle:** якщо `artist` порожній — використовувати тільки `title`. Якщо `title` порожній — тільки `artist`. Якщо обидва непорожні — `format!("{} - {}", artist, title)`. Якщо обидва порожні — пропустити перевірку (TrackAction::Normal).
+
+1. Зібрати повний StreamTitle за правилом вище
+2. Завантажити per-stream ignorelist (з StreamInfo), global ignorelist та wishlist з `AppState.profile`
+3. `wishlist::matcher::check_track(stream_title, &per_stream_ignorelist, &global_ignorelist, &wishlist)`
 4. **Ignored** → emit `track-changed` + `track-ignored` для UI, не передавати в Splitter
-5. **WishlistMatch** → передати в Splitter як зазвичай, зберегти маркер `is_wishlist_match`, emit `wishlist-match`
+5. **WishlistMatch** → передати в Splitter як зазвичай, emit `wishlist-match` event (маркер `is_wishlist_match` не персистується до Phase 3C — SavedTrack management)
 6. **Normal** → існуюча логіка без змін
 
 ---
@@ -101,9 +108,11 @@ Ignorelist завжди має пріоритет над wishlist.
 | `get_wishlist` | — | `Vec<WishlistEntry>` | Повертає wishlist з профілю |
 | `add_to_wishlist` | `{ pattern: String }` | `WishlistEntry` | Додає запис (pattern + addedAt = now). Дублікати ігноруються |
 | `remove_from_wishlist` | `{ pattern: String }` | `()` | Видаляє запис за точним збігом pattern |
+| `update_wishlist_pattern` | `{ oldPattern: String, newPattern: String }` | `WishlistEntry` | Оновлює патерн (реалізація: remove old + add new зі збереженням addedAt) |
 | `get_ignorelist` | — | `Vec<String>` | Повертає глобальний ignorelist |
 | `add_to_ignorelist` | `{ pattern: String }` | `()` | Додає патерн. Дублікати ігноруються |
 | `remove_from_ignorelist` | `{ pattern: String }` | `()` | Видаляє патерн |
+| `update_ignorelist_pattern` | `{ oldPattern: String, newPattern: String }` | `()` | Оновлює патерн (replace in-place) |
 
 ### Логіка
 - Всі команди працюють з `AppState.profile` (lock → modify → save → unlock)
@@ -143,12 +152,22 @@ src/components/wishlist/
 
 ### PatternTable
 
-React Aria `<Table>` з колонками:
+React Aria `<Table>` — переиспользовуваний компонент з конфігурованими колонками:
+
+**Wishlist таблиця** — колонки:
 - **Патерн** — текст
 - **Дата додавання** — formatted date
-- **Дії** — кнопка "Видалити"
+- **Дії** — кнопки "Редагувати" / "Видалити"
 
-Клавіатурна навігація: стрілки ↑↓ між рядками, Tab до кнопки "Видалити", Enter/Space для дії.
+**Ignorelist таблиця** — колонки:
+- **Патерн** — текст
+- **Дії** — кнопки "Редагувати" / "Видалити"
+
+> Ignorelist entries — це `Vec<String>` (без дати), тому колонка "Дата додавання" прихована для ignorelist.
+
+Клавіатурна навігація: стрілки ↑↓ між рядками, Tab до кнопок дій, Enter/Space для дії.
+
+**Редагування:** натискання "Редагувати" відкриває AddPatternDialog з предзаповненим поточним патерном. При збереженні викликається `update_wishlist_pattern` / `update_ignorelist_pattern`.
 
 ### AddPatternDialog
 
@@ -210,11 +229,11 @@ React Aria `<MenuTrigger>` + `<Menu>` + `<MenuItem>`.
 |-------|-----|-------|
 | ▶ Відтворити / ■ Зупинити | playStream / stopPlayback | Toggle |
 | ⏺ Записати / ⏹ Зупинити запис | startRecording / stopRecording | Toggle |
-| ✎ Редагувати | EditStreamDialog | Завжди |
+| ✎ Редагувати | EditStreamDialog (існує з Phase 1) | Завжди |
 | ⊕ Додати до бажаних | AddPatternDialog (wishlist, предзаповнений) | Є поточний трек |
 | ⊖ Додати до ігнорованих | AddPatternDialog (ignorelist, предзаповнений) | Є поточний трек |
 | — (роздільник) | — | — |
-| ✕ Видалити потік | ConfirmDialog | Завжди |
+| ✕ Видалити потік | ConfirmDialog (існує з Phase 1) | Завжди |
 
 **Inline кнопки Play/Record** залишаються в рядку для швидкого доступу.
 
@@ -254,19 +273,33 @@ React Aria `<MenuTrigger>` + `<Menu>` + `<MenuItem>`.
 ## 6. i18n
 
 Нові повідомлення для `uk.json` та `en.json`:
-- Вкладка Activity Bar: "Бажане" / "Wishlist"
-- Заголовки таблиць, кнопки додавання/видалення
-- Пункти контекстного меню
-- Live announcements
+
+| Ключ | UK | EN |
+|------|----|----|
+| `wishlist_tab_label` | Бажане | Wishlist |
+| `wishlist_section_title` | Бажані треки | Desired tracks |
+| `ignorelist_section_title` | Ігноровані треки | Ignored tracks |
+| `add_pattern` | Додати патерн | Add pattern |
+| `edit_pattern` | Редагувати патерн | Edit pattern |
+| `remove_pattern` | Видалити патерн | Remove pattern |
+| `pattern_hint` | Використовуйте * для будь-яких символів, ? для одного | Use * for any characters, ? for one |
+| `add_to_wishlist` | Додати до бажаних | Add to wishlist |
+| `add_to_ignorelist` | Додати до ігнорованих | Add to ignorelist |
+| `stream_actions` | Дії для {name} | Actions for {name} |
+| `stream_context_menu` | Контекстне меню потоку | Stream context menu |
+| `announcement_wishlist_match` | Знайдено бажану пісню: {title} | Desired track found: {title} |
+| `announcement_track_ignored` | Трек ігноровано: {title} | Track ignored: {title} |
+| `announcement_pattern_added` | Патерн додано: {pattern} | Pattern added: {pattern} |
+| `announcement_pattern_removed` | Патерн видалено: {pattern} | Pattern removed: {pattern} |
 
 ---
 
 ## Критерії "Done"
 
 - [ ] Wishlist matching працює при зміні ICY metadata під час запису
-- [ ] Ignorelist фільтрує небажані треки (глобальний)
-- [ ] Precedence: global ignorelist → wishlist → звичайна поведінка
-- [ ] WishlistPanel з CRUD операціями (додати, видалити)
+- [ ] Ignorelist фільтрує небажані треки (per-stream + глобальний)
+- [ ] Precedence: per-stream ignorelist → global ignorelist → wishlist → звичайна поведінка
+- [ ] WishlistPanel з CRUD операціями (додати, видалити, редагувати pattern)
 - [ ] Контекстне меню StreamRow (кнопка ⋯, right-click): Play, Record, Edit, Add to Wishlist, Add to Ignorelist, Remove
 - [ ] NVDA: контекстне меню, таблиці, діалоги — повністю accessible
 - [ ] Live announcements для wishlist-match, track-ignored, pattern add/remove
