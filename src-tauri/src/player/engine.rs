@@ -428,6 +428,7 @@ impl PlayerEngine {
         let url_clone = url.clone();
         let stream_id_clone = stream_id.clone();
         let app_clone = app.clone();
+        let volume_snapshot = *self.volume.lock().await;
 
         // Writer task: HTTP → rtrb producer
         tokio::spawn(async move {
@@ -440,7 +441,7 @@ impl PlayerEngine {
                     let _ = app_clone.emit("player-status", PlayerStatus {
                         state: PlaybackState::Stopped,
                         source: None,
-                        volume: 0.75,
+                        volume: volume_snapshot,
                         position_ms: None,
                         duration_ms: None,
                     });
@@ -468,7 +469,14 @@ impl PlayerEngine {
                                                     remaining = &remaining[n..];
                                                     chunk.commit(n);
                                                 }
-                                                Err(_) => break, // Buffer full — skip
+                                                Err(_) => {
+                                                    // Buffer full — intentionally drop remaining bytes
+                                                    log::trace!(
+                                                        "Player: ring buffer full for {stream_id_clone}, \
+                                                         dropping {} bytes", remaining.len()
+                                                    );
+                                                    break;
+                                                }
                                             }
                                         }
                                     }
@@ -484,8 +492,13 @@ impl PlayerEngine {
         let live_source = LiveSource::new(consumer, 2, 44100);
 
         let device_name = self.output_device_name.lock().await.clone();
-        let device_sink = open_device_sink(device_name.as_deref())
-            .context("Failed to open audio output stream")?;
+        let device_sink = match open_device_sink(device_name.as_deref()) {
+            Ok(s) => s,
+            Err(e) => {
+                cancel.cancel(); // stop orphaned writer task before returning
+                return Err(e).context("Failed to open audio output stream");
+            }
+        };
         let player = Arc::new(Player::connect_new(&device_sink.mixer()));
         let device_sink_arc = Arc::new(std::sync::Mutex::new(Some(device_sink)));
 
