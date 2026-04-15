@@ -67,9 +67,15 @@ pub async fn set_volume(
     app: AppHandle,
 ) -> Result<(), String> {
     state.player.set_volume(volume, &app).await.map_err(|e| e.to_string())?;
-    let mut profile = state.active_profile.write().await;
-    profile.player_session.volume = state.player.current_volume().await;
-    profile.save().map_err(|e| e.to_string())
+    let snapshot = {
+        let mut profile = state.active_profile.write().await;
+        profile.player_session.volume = state.player.current_volume().await;
+        profile.clone()
+    }; // write lock released before blocking save
+    tokio::task::spawn_blocking(move || snapshot.save())
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -93,7 +99,13 @@ pub async fn set_output_device(
     app: AppHandle,
 ) -> Result<(), String> {
     state.player.set_output_device(name.clone(), &app).await.map_err(|e| e.to_string())?;
-    let mut settings = state.settings.write().await;
-    settings.output_device = name;
-    settings.save().map_err(|e| e.to_string())
+    let snapshot = {
+        let mut settings = state.settings.write().await;
+        settings.output_device = name;
+        settings.clone()
+    }; // write lock released before blocking save
+    tokio::task::spawn_blocking(move || snapshot.save())
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
 }

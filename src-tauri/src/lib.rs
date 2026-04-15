@@ -46,6 +46,8 @@ pub fn run() {
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {
                 let app = window.app_handle().clone();
+                // CloseRequested is delivered on the main UI thread (not a tokio worker),
+                // so block_on is safe here and will not deadlock.
                 tauri::async_runtime::block_on(async {
                     let state = app.state::<AppState>();
                     // 1. Stop all recordings
