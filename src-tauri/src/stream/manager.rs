@@ -96,6 +96,24 @@ struct RecordingCompletedPayload {
     duration_ms: u64,
 }
 
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WishlistMatchPayload {
+    stream_id: String,
+    artist: String,
+    title: String,
+    pattern: String,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TrackIgnoredPayload {
+    stream_id: String,
+    artist: String,
+    title: String,
+    pattern: String,
+}
+
 // ---------------------------------------------------------------------------
 // Internal entry held per active stream
 // ---------------------------------------------------------------------------
@@ -282,21 +300,29 @@ fn emit_recording_completed(app: &AppHandle, stream_id: &str, file_name: &str, d
 }
 
 fn emit_wishlist_match(app: &AppHandle, stream_id: &str, artist: &str, title: &str, pattern: &str) {
-    let _ = app.emit("wishlist-match", serde_json::json!({
-        "streamId": stream_id,
-        "artist": artist,
-        "title": title,
-        "pattern": pattern,
-    }));
+    app.emit(
+        "wishlist-match",
+        WishlistMatchPayload {
+            stream_id: stream_id.to_string(),
+            artist: artist.to_string(),
+            title: title.to_string(),
+            pattern: pattern.to_string(),
+        },
+    )
+    .ok();
 }
 
 fn emit_track_ignored(app: &AppHandle, stream_id: &str, artist: &str, title: &str, pattern: &str) {
-    let _ = app.emit("track-ignored", serde_json::json!({
-        "streamId": stream_id,
-        "artist": artist,
-        "title": title,
-        "pattern": pattern,
-    }));
+    app.emit(
+        "track-ignored",
+        TrackIgnoredPayload {
+            stream_id: stream_id.to_string(),
+            artist: artist.to_string(),
+            title: title.to_string(),
+            pattern: pattern.to_string(),
+        },
+    )
+    .ok();
 }
 
 // ---------------------------------------------------------------------------
@@ -794,15 +820,29 @@ pub async fn recording_task(
 
                             match track_action {
                                 matcher::TrackAction::Ignored { ref pattern } => {
+                                    // Finalize any in-progress track so its audio is clean
+                                    let meta = connection::TrackMetadata {
+                                        artist: artist.clone(),
+                                        title: title.clone(),
+                                    };
+                                    let action = spl.on_metadata_change(meta);
+                                    if let splitter::SplitAction::FinalizeAndStart { completed, duration_ms, .. } = action {
+                                        if let Ok(Some(final_path)) = rec.finalize_track(&completed.artist, &completed.title, duration_ms).await {
+                                            update_tracks_recorded(&manager, &stream_id).await;
+                                            let file_name = final_path.file_name()
+                                                .map(|n| n.to_string_lossy().to_string())
+                                                .unwrap_or_default();
+                                            emit_recording_completed(&app_handle, &stream_id, &file_name, duration_ms);
+                                        }
+                                    }
                                     emit_track_changed(&app_handle, &stream_id, &artist, &title, "");
                                     update_track_info(&manager, &stream_id, &artist, &title).await;
                                     emit_track_ignored(&app_handle, &stream_id, &artist, &title, pattern);
-                                    log::info!("[{}] Track ignored ({}): {} - {}", stream_id, pattern, artist, title);
-                                    // Do NOT pass to Splitter — skip recording this track
+                                    info!("[{}] Track ignored ({}): {} - {}", stream_id, pattern, artist, title);
                                 }
                                 matcher::TrackAction::WishlistMatch { ref pattern } => {
                                     emit_wishlist_match(&app_handle, &stream_id, &artist, &title, pattern);
-                                    log::info!("[{}] Wishlist match ({}): {} - {}", stream_id, pattern, artist, title);
+                                    info!("[{}] Wishlist match ({}): {} - {}", stream_id, pattern, artist, title);
                                     let meta = connection::TrackMetadata {
                                         artist: artist.clone(),
                                         title: title.clone(),

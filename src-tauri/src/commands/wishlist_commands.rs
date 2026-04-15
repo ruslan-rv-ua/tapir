@@ -12,23 +12,21 @@ pub async fn add_to_wishlist(
     pattern: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<WishlistEntry, String> {
-    let entry = WishlistEntry {
-        pattern: pattern.clone(),
-        min_bitrate: None,
-        format: None,
-        remove_after_record: false,
-        add_to_ignorelist_after_record: false,
-        added_at: chrono::Local::now().to_rfc3339(),
-    };
-
-    let snapshot = {
+    let (entry, snapshot) = {
         let mut profile = state.active_profile.write().await;
-        // Skip duplicates
-        if profile.wishlist.iter().any(|e| e.pattern == pattern) {
-            return Ok(profile.wishlist.iter().find(|e| e.pattern == pattern).unwrap().clone());
+        if let Some(existing) = profile.wishlist.iter().find(|e| e.pattern == pattern) {
+            return Ok(existing.clone());
         }
+        let entry = WishlistEntry {
+            pattern: pattern.clone(),
+            min_bitrate: None,
+            format: None,
+            remove_after_record: false,
+            add_to_ignorelist_after_record: false,
+            added_at: chrono::Local::now().to_rfc3339(),
+        };
         profile.wishlist.push(entry.clone());
-        profile.clone()
+        (entry, profile.clone())
     };
     tokio::task::spawn_blocking(move || snapshot.save())
         .await
