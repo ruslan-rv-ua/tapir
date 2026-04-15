@@ -38,7 +38,8 @@ pub fn run() {
                 .expect("Failed to create data directories");
             let settings = GlobalSettings::load().expect("Failed to load settings");
             let profile = Profile::load(&settings.active_profile).expect("Failed to load profile");
-            let state = AppState::new(settings, profile, app.handle().clone());
+            let state = AppState::new(settings, profile, app.handle().clone())
+                .expect("Failed to initialize AppState (no audio device?)");
             app.manage(state);
             Ok(())
         })
@@ -70,7 +71,14 @@ pub fn run() {
                     profile.active_recording_urls = urls;
                     let _ = profile.save();
                     drop(profile);
-                    // 5. Wait for tasks to finish
+                    // 5. Stop player and save volume
+                    state.player.stop_session_public().await;
+                    let volume = state.player.current_volume().await;
+                    let mut profile = state.active_profile.write().await;
+                    profile.player_session.volume = volume;
+                    let _ = profile.save();
+                    drop(profile);
+                    // 6. Wait for tasks to finish
                     tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
                 });
             }
@@ -87,6 +95,16 @@ pub fn run() {
             commands::stream_commands::get_all_statuses,
             commands::settings_commands::get_settings,
             commands::settings_commands::save_settings,
+            commands::player_commands::play_stream,
+            commands::player_commands::play_file,
+            commands::player_commands::pause_playback,
+            commands::player_commands::resume_playback,
+            commands::player_commands::stop_playback,
+            commands::player_commands::seek_playback,
+            commands::player_commands::set_volume,
+            commands::player_commands::get_player_status,
+            commands::player_commands::list_output_devices,
+            commands::player_commands::set_output_device,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
