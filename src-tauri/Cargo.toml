@@ -38,6 +38,8 @@ rodio = { version = "0.22", default-features = false, features = [
 ] }
 cpal = "0.15"
 rtrb = "0.3"
+# Direct symphonia access for LiveSource decoder
+symphonia = { version = "0.5", features = ["mp3", "aac", "isomp4"] }
 
 # Async
 tokio = { version = "~1.51", features = ["full"] }

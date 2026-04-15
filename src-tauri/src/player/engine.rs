@@ -353,61 +353,144 @@ impl PlayerEngine {
     }
 }
 
-use rtrb::Consumer;
 use std::collections::VecDeque;
+use std::io::{self, Read};
 
-/// Lock-free SPSC audio source for live HTTP streams.
-/// Receives raw audio bytes from the writer task via rtrb Consumer,
-/// decodes them in chunks via symphonia, and yields samples to rodio.
+// ── RtrbReader ─────────────────────────────────────────────────────────────
+
+/// Wraps an rtrb Consumer as a std::io::Read.
+/// Spin-yields until data is available or producer is dropped.
+struct RtrbReader {
+    consumer: rtrb::Consumer<u8>,
+}
+
+impl Read for RtrbReader {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        if buf.is_empty() { return Ok(0); }
+        loop {
+            let available = self.consumer.slots();
+            if available == 0 {
+                if self.consumer.is_abandoned() {
+                    return Ok(0); // producer dropped — EOF
+                }
+                std::thread::yield_now();
+                continue;
+            }
+            let n = available.min(buf.len());
+            let chunk = self.consumer.read_chunk(n).map_err(|_| {
+                io::Error::new(io::ErrorKind::UnexpectedEof, "rtrb read failed")
+            })?;
+            let (head, tail) = chunk.as_slices();
+            let head_n = head.len().min(n);
+            buf[..head_n].copy_from_slice(&head[..head_n]);
+            let tail_n = (n - head_n).min(tail.len());
+            buf[head_n..head_n + tail_n].copy_from_slice(&tail[..tail_n]);
+            chunk.commit(n);
+            return Ok(n);
+        }
+    }
+}
+
+// RtrbReader is accessed only from one thread at a time; rtrb::Consumer<u8>
+// is Send but not Sync — we implement Sync here to satisfy MediaSource's
+// bound, which is safe because ReadOnlySource is not actually used concurrently.
+unsafe impl Sync for RtrbReader {}
+
+// ── LiveSource ─────────────────────────────────────────────────────────────
+
+use symphonia::core::audio::{SampleBuffer, SignalSpec};
+use symphonia::core::codecs::DecoderOptions;
+use symphonia::core::formats::FormatOptions;
+use symphonia::core::io::{MediaSourceStream, ReadOnlySource};
+use symphonia::core::meta::MetadataOptions;
+use symphonia::core::probe::Hint;
+
+/// Symphonia-backed audio source for live HTTP streams.
+/// Receives raw audio bytes from the writer task via rtrb, decodes via
+/// symphonia, and yields f32 samples to rodio's mixer.
 struct LiveSource {
-    consumer: Consumer<u8>,
+    format: Box<dyn symphonia::core::formats::FormatReader>,
+    decoder: Box<dyn symphonia::core::codecs::Decoder>,
+    track_id: u32,
     buffer: VecDeque<f32>,
-    channels: ChannelCount,
-    sample_rate: SampleRate,
+    spec: SignalSpec,
 }
 
 impl LiveSource {
-    fn new(consumer: Consumer<u8>, channels: u16, sample_rate: u32) -> Self {
-        use std::num::NonZero;
-        Self {
-            consumer,
-            buffer: VecDeque::with_capacity(4096),
-            channels: NonZero::new(channels).expect("channels must be non-zero"),
-            sample_rate: NonZero::new(sample_rate).expect("sample_rate must be non-zero"),
+    fn new(consumer: rtrb::Consumer<u8>, hint_mime: Option<&str>) -> anyhow::Result<Self> {
+        let reader = RtrbReader { consumer };
+        let source = ReadOnlySource::new(reader);
+        let mss = MediaSourceStream::new(Box::new(source), Default::default());
+        let mut hint = Hint::new();
+        if let Some(mime) = hint_mime {
+            hint.mime_type(mime);
         }
+        let probe = symphonia::default::get_probe()
+            .format(&hint, mss, &FormatOptions::default(), &MetadataOptions::default())
+            .context("could not probe live stream format")?;
+        let format = probe.format;
+        let track = format.default_track()
+            .ok_or_else(|| anyhow::anyhow!("no default track in live stream"))?;
+        let track_id = track.id;
+        let decoder = symphonia::default::get_codecs()
+            .make(&track.codec_params, &DecoderOptions::default())
+            .context("unsupported codec in live stream")?;
+        let spec = SignalSpec::new(
+            track.codec_params.sample_rate.unwrap_or(44100),
+            track.codec_params.channels.unwrap_or_default(),
+        );
+        Ok(Self { format, decoder, track_id, buffer: VecDeque::new(), spec })
     }
 
-    /// SKELETON — panics loudly if called. Replace with Task 6a implementation.
-    fn decode_chunk(&mut self) -> bool {
-        use std::sync::Once;
-        static WARN: Once = Once::new();
-        WARN.call_once(|| {
-            panic!(
-                "[LiveSource] decode_chunk is a non-functional skeleton — \
-                implement proper symphonia decoding from Task 6a before shipping. \
-                See docs/superpowers/plans/2026-04-15-player.md §Task 6a."
-            );
-        });
-        false
+    fn decode_next_packet(&mut self) -> bool {
+        loop {
+            match self.format.next_packet() {
+                Ok(packet) if packet.track_id() == self.track_id => {
+                    match self.decoder.decode(&packet) {
+                        Ok(decoded) => {
+                            let mut samples = SampleBuffer::<f32>::new(
+                                decoded.capacity() as u64, self.spec
+                            );
+                            samples.copy_interleaved_ref(decoded);
+                            self.buffer.extend(samples.samples().iter().copied());
+                            return true;
+                        }
+                        Err(e) => {
+                            log::warn!("[LiveSource] decoder error (track {}): {e}", self.track_id);
+                            continue;
+                        }
+                    }
+                }
+                Ok(_) => continue, // different track — skip
+                Err(e) => {
+                    log::warn!("[LiveSource] format reader ended: {e}");
+                    return false;
+                }
+            }
+        }
     }
 }
 
 impl Iterator for LiveSource {
     type Item = f32;
     fn next(&mut self) -> Option<f32> {
-        if self.buffer.is_empty() {
-            if !self.decode_chunk() {
-                return None;
-            }
+        if self.buffer.is_empty() && !self.decode_next_packet() {
+            return None;
         }
-        Some(self.buffer.pop_front().unwrap_or(0.0))
+        self.buffer.pop_front()
     }
 }
 
 impl Source for LiveSource {
     fn current_span_len(&self) -> Option<usize> { None }
-    fn channels(&self) -> ChannelCount { self.channels }
-    fn sample_rate(&self) -> SampleRate { self.sample_rate }
+    fn channels(&self) -> ChannelCount {
+        use std::num::NonZero;
+        NonZero::new(self.spec.channels.count() as u16).unwrap_or(NonZero::new(2).unwrap())
+    }
+    fn sample_rate(&self) -> SampleRate {
+        use std::num::NonZero;
+        NonZero::new(self.spec.rate).unwrap_or(NonZero::new(44100).unwrap())
+    }
     fn total_duration(&self) -> Option<Duration> { None }
 }
 
@@ -418,66 +501,51 @@ impl PlayerEngine {
         url: String,
         app: &AppHandle,
     ) -> Result<()> {
+        use crate::stream::connection;
+        use futures_util::StreamExt;
+
         self.stop_session().await;
 
-        // Ring buffer: 512 KB — ~3s of 128kbps MP3
-        let (mut producer, consumer) = rtrb::RingBuffer::<u8>::new(512 * 1024);
+        // Connect first so we can extract content_type for symphonia probing
+        let conn = connection::connect(&url).await
+            .context("failed to connect to stream")?;
+        let mime_hint: Option<String> = conn.content_type.clone();
 
+        let (mut producer, consumer) = rtrb::RingBuffer::<u8>::new(512 * 1024);
         let cancel = CancellationToken::new();
         let cancel_writer = cancel.clone();
-        let url_clone = url.clone();
         let stream_id_clone = stream_id.clone();
-        let app_clone = app.clone();
-        let volume_snapshot = *self.volume.lock().await;
 
-        // Writer task: HTTP → rtrb producer
+        // Writer task: HTTP body → rtrb producer
         tokio::spawn(async move {
-            use crate::stream::connection;
-            use futures_util::StreamExt;
-
-            match connection::connect(&url_clone).await {
-                Err(e) => {
-                    log::error!("Player: connect error for {stream_id_clone}: {e}");
-                    let _ = app_clone.emit("player-status", PlayerStatus {
-                        state: PlaybackState::Stopped,
-                        source: None,
-                        volume: volume_snapshot,
-                        position_ms: None,
-                        duration_ms: None,
-                    });
-                }
-                Ok(conn) => {
-                    let mut stream = conn.response.bytes_stream();
-                    loop {
-                        tokio::select! {
-                            _ = cancel_writer.cancelled() => break,
-                            chunk = stream.next() => {
-                                match chunk {
-                                    None => break,
-                                    Some(Err(e)) => {
-                                        log::warn!("Player: stream error {stream_id_clone}: {e}");
-                                        break;
-                                    }
-                                    Some(Ok(bytes)) => {
-                                        let mut remaining: &[u8] = bytes.as_ref();
-                                        while !remaining.is_empty() {
-                                            match producer.write_chunk(remaining.len()) {
-                                                Ok(mut chunk) => {
-                                                    let (head, _) = chunk.as_mut_slices();
-                                                    let n = head.len().min(remaining.len());
-                                                    head[..n].copy_from_slice(&remaining[..n]);
-                                                    remaining = &remaining[n..];
-                                                    chunk.commit(n);
-                                                }
-                                                Err(_) => {
-                                                    // Buffer full — intentionally drop remaining bytes
-                                                    log::trace!(
-                                                        "Player: ring buffer full for {stream_id_clone}, \
-                                                         dropping {} bytes", remaining.len()
-                                                    );
-                                                    break;
-                                                }
-                                            }
+            let mut stream = conn.response.bytes_stream();
+            loop {
+                tokio::select! {
+                    _ = cancel_writer.cancelled() => break,
+                    chunk = stream.next() => {
+                        match chunk {
+                            None => break,
+                            Some(Err(e)) => {
+                                log::warn!("Player: stream error {stream_id_clone}: {e}");
+                                break;
+                            }
+                            Some(Ok(bytes)) => {
+                                let mut remaining: &[u8] = bytes.as_ref();
+                                while !remaining.is_empty() {
+                                    match producer.write_chunk(remaining.len()) {
+                                        Ok(mut chunk) => {
+                                            let (head, _) = chunk.as_mut_slices();
+                                            let n = head.len().min(remaining.len());
+                                            head[..n].copy_from_slice(&remaining[..n]);
+                                            remaining = &remaining[n..];
+                                            chunk.commit(n);
+                                        }
+                                        Err(_) => {
+                                            log::trace!(
+                                                "Player: ring buffer full for {stream_id_clone}, \
+                                                 dropping {} bytes", remaining.len()
+                                            );
+                                            break;
                                         }
                                     }
                                 }
@@ -488,14 +556,20 @@ impl PlayerEngine {
             }
         });
 
-        // Assume stereo 44100 Hz (will be refined with ICY headers in future)
-        let live_source = LiveSource::new(consumer, 2, 44100);
+        // LiveSource::new blocks on RtrbReader (waits for symphonia to probe the stream)
+        // — run in spawn_blocking so we don't block the tokio runtime
+        let live_source = tokio::task::spawn_blocking(move || {
+            LiveSource::new(consumer, mime_hint.as_deref())
+        })
+        .await
+        .context("LiveSource init task panicked")?
+        .context("LiveSource init failed")?;
 
         let device_name = self.output_device_name.lock().await.clone();
         let device_sink = match open_device_sink(device_name.as_deref()) {
             Ok(s) => s,
             Err(e) => {
-                cancel.cancel(); // stop orphaned writer task before returning
+                cancel.cancel();
                 return Err(e).context("Failed to open audio output stream");
             }
         };
@@ -506,7 +580,6 @@ impl PlayerEngine {
         player.set_volume(volume);
         player.append(live_source);
 
-        // No progress task for live streams
         let dummy_cancel = cancel.clone();
         let progress_task = tokio::spawn(async move {
             dummy_cancel.cancelled().await;
