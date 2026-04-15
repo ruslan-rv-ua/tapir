@@ -309,6 +309,7 @@ impl PlayerEngine {
     /// `name` = None means revert to system default.
     pub async fn set_output_device(&self, name: Option<String>, app: &AppHandle) -> Result<()> {
         self.stop_session().await;
+        info!("Player: switched output device to {:?}", name);
         *self.output_device_name.lock().await = name;
         let volume = *self.volume.lock().await;
         if let Err(e) = app.emit("player-status", PlayerStatus {
@@ -320,7 +321,6 @@ impl PlayerEngine {
         }) {
             log::warn!("Player: failed to emit player-status: {e}");
         }
-        info!("Player: switched output device");
         Ok(())
     }
 }
