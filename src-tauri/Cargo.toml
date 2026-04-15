@@ -29,6 +29,15 @@ stream-download = { version = "0.24", features = ["reqwest-rustls"] }
 # Tags
 lofty = "0.24"
 
+# Audio playback
+rodio = { version = "0.22", default-features = false, features = [
+    "symphonia-mp3",
+    "symphonia-aac",
+    "symphonia-isomp4",
+] }
+cpal = "0.15"
+rtrb = "0.3"
+
 # Async
 tokio = { version = "~1.51", features = ["full"] }
 tokio-util = { version = "0.7", features = ["rt"] }
