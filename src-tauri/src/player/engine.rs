@@ -288,14 +288,17 @@ impl PlayerEngine {
             let host = rodio::cpal::default_host();
             let default_name = host
                 .default_output_device()
-                .and_then(|d| d.name().ok());
+                .and_then(|d| d.description().ok().map(|desc| desc.name().to_string()));
             let devices = host
                 .output_devices()
                 .context("failed to enumerate audio output devices")?
                 .filter_map(|d| {
-                    d.name().ok().map(|name| AudioDevice {
-                        is_default: Some(&name) == default_name.as_ref(),
-                        name,
+                    d.description().ok().map(|desc| {
+                        let name = desc.name().to_string();
+                        AudioDevice {
+                            is_default: Some(&name) == default_name.as_ref(),
+                            name,
+                        }
                     })
                 })
                 .collect();
@@ -446,7 +449,6 @@ impl LiveSource {
                 Ok(packet) if packet.track_id() == self.track_id => {
                     match self.decoder.decode(&packet) {
                         Ok(decoded) => {
-                            consecutive_errors = 0;
                             let mut samples = SampleBuffer::<f32>::new(
                                 decoded.frames() as u64, self.spec
                             );
@@ -653,7 +655,7 @@ fn open_device_sink(device_name: Option<&str>) -> anyhow::Result<MixerDeviceSink
             let device = host
                 .output_devices()
                 .context("enumerate devices")?
-                .find(|d| d.name().ok().as_deref() == Some(name))
+                .find(|d| d.description().ok().map(|desc| desc.name().to_string()).as_deref() == Some(name))
                 .with_context(|| format!("audio device not found: {name}"))?;
             DeviceSinkBuilder::from_device(device)
                 .and_then(|b| b.open_stream())
