@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Slider, SliderThumb, SliderTrack, ProgressBar } from "react-aria-components";
 import { useStore } from "@nanostores/react";
 import { $playerStatus } from "../../stores/player";
@@ -13,13 +14,15 @@ function formatTime(ms: number): string {
 
 export function PlaybackPosition() {
   const { state, source, positionMs, durationMs } = useStore($playerStatus);
+  const [dragPos, setDragPos] = useState<number | null>(null);
 
   if (state === "stopped" || !source) return null;
 
   if (source.type === "file") {
-    const pos = positionMs ?? 0;
+    const storePos = positionMs ?? 0;
     const dur = durationMs ?? 0;
     if (dur === 0) return null;
+    const pos = dragPos ?? storePos;
     return (
       <Slider
         aria-label={m.playback_position()}
@@ -27,7 +30,11 @@ export function PlaybackPosition() {
         maxValue={dur}
         step={5000}
         value={pos}
-        onChangeEnd={(v) => tauri.seekPlayback(v).catch(console.error)}
+        onChange={(v) => setDragPos(v)}
+        onChangeEnd={(v) => {
+          setDragPos(null);
+          tauri.seekPlayback(v).catch(console.error);
+        }}
         className="flex items-center gap-2 flex-1"
       >
         <SliderTrack className="relative h-1 w-full rounded bg-slate-600">

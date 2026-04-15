@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Slider, SliderThumb, SliderTrack } from "react-aria-components";
 import { useStore } from "@nanostores/react";
 import { $playerStatus } from "../../stores/player";
@@ -6,7 +7,9 @@ import * as m from "../../i18n/paraglide/messages";
 
 export function VolumeSlider() {
   const { volume } = useStore($playerStatus);
-  const percent = Math.round(volume * 100);
+  const storePercent = Math.round(volume * 100);
+  const [dragPercent, setDragPercent] = useState<number | null>(null);
+  const percent = dragPercent ?? storePercent;
 
   return (
     <Slider
@@ -15,7 +18,9 @@ export function VolumeSlider() {
       maxValue={100}
       value={percent}
       step={1}
+      onChange={(v) => setDragPercent(v)}
       onChangeEnd={(v) => {
+        setDragPercent(null);
         tauri.setVolume(v / 100).catch(console.error);
       }}
       className="flex items-center gap-2 w-32"

@@ -162,6 +162,7 @@ impl PlayerEngine {
         let player_clone = Arc::clone(&player);
         let app_clone = app.clone();
         let dur = duration_ms.unwrap_or(0);
+        let volume_arc = Arc::clone(&self.volume);
 
         let progress_task = tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(1));
@@ -183,10 +184,11 @@ impl PlayerEngine {
                 }
             }
             if ended_naturally {
+                let current_volume = *volume_arc.lock().await;
                 let _ = app_clone.emit("player-status", PlayerStatus {
                     state: PlaybackState::Stopped,
                     source: None,
-                    volume,
+                    volume: current_volume,
                     position_ms: None,
                     duration_ms: None,
                 });
@@ -314,8 +316,9 @@ impl PlayerEngine {
     pub async fn set_output_device(&self, name: Option<String>, app: &AppHandle) -> Result<()> {
         self.stop_session().await;
         info!("Player: switched output device to {:?}", name);
-        *self.output_device_name.lock().await = name;
+        // Lock order: session (already released by stop_session) → volume → output_device_name
         let volume = *self.volume.lock().await;
+        *self.output_device_name.lock().await = name;
         if let Err(e) = app.emit("player-status", PlayerStatus {
             state: PlaybackState::Stopped,
             source: None,
@@ -605,6 +608,7 @@ impl PlayerEngine {
 
         let cancel_live = cancel.clone();
         let app_live = app.clone();
+        let volume_arc = Arc::clone(&self.volume);
         let progress_task = tokio::spawn(async move {
             tokio::select! {
                 _ = cancel_live.cancelled() => {
@@ -613,10 +617,11 @@ impl PlayerEngine {
                 _ = writer_done.cancelled() => {
                     // HTTP stream ended or errored. Wait briefly for rodio to drain, then emit stopped.
                     tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
+                    let current_volume = *volume_arc.lock().await;
                     if let Err(e) = app_live.emit("player-status", PlayerStatus {
                         state: PlaybackState::Stopped,
                         source: None,
-                        volume,
+                        volume: current_volume,
                         position_ms: None,
                         duration_ms: None,
                     }) {
