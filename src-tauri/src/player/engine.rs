@@ -80,16 +80,17 @@ pub struct PlayerEngine {
 }
 
 impl PlayerEngine {
-    /// Create a new PlayerEngine using the system default audio output device.
-    pub fn new() -> Result<Self> {
+    /// Create a new PlayerEngine with the given initial volume and output device.
+    /// Verifies that the default audio output can be opened at startup (fail fast).
+    pub fn new(initial_volume: f32, initial_device: Option<String>) -> Result<Self> {
         // Verify we can open the default device at startup (fail fast).
         // We don't keep the sink here; each session opens its own.
         DeviceSinkBuilder::open_default_sink()
             .context("Failed to open audio output stream")?;
         Ok(Self {
             session: Arc::new(Mutex::new(None)),
-            volume: Arc::new(Mutex::new(0.75)),
-            output_device_name: Arc::new(Mutex::new(None)), // Used in Task 5: set_output_device
+            volume: Arc::new(Mutex::new(initial_volume.clamp(0.0, 1.0))),
+            output_device_name: Arc::new(Mutex::new(initial_device)),
         })
     }
 
@@ -374,7 +375,7 @@ impl Read for RtrbReader {
                 if consumer.is_abandoned() {
                     return Ok(0); // producer dropped — EOF
                 }
-                std::thread::yield_now();
+                std::thread::sleep(std::time::Duration::from_millis(1));
                 continue;
             }
             let n = available.min(buf.len());
@@ -521,6 +522,9 @@ impl PlayerEngine {
         let cancel = CancellationToken::new();
         let cancel_writer = cancel.clone();
         let stream_id_clone = stream_id.clone();
+        // Signals when the writer task exits (stream ended or errored, not user-cancelled).
+        let writer_done = CancellationToken::new();
+        let writer_done_signal = writer_done.clone();
 
         // Writer task: HTTP body → rtrb producer
         tokio::spawn(async move {
@@ -560,6 +564,8 @@ impl PlayerEngine {
                     }
                 }
             }
+            // Signal that the writer exited (producer about to drop → LiveSource sees EOF).
+            writer_done_signal.cancel();
         });
 
         // LiveSource::new blocks on RtrbReader (waits for symphonia to probe the stream)
@@ -595,9 +601,27 @@ impl PlayerEngine {
         player.set_volume(volume);
         player.append(live_source);
 
-        let dummy_cancel = cancel.clone();
+        let cancel_live = cancel.clone();
+        let app_live = app.clone();
         let progress_task = tokio::spawn(async move {
-            dummy_cancel.cancelled().await;
+            tokio::select! {
+                _ = cancel_live.cancelled() => {
+                    // User-initiated stop — stop_playback already emits player-status.
+                }
+                _ = writer_done.cancelled() => {
+                    // HTTP stream ended or errored. Wait briefly for rodio to drain, then emit stopped.
+                    tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
+                    if let Err(e) = app_live.emit("player-status", PlayerStatus {
+                        state: PlaybackState::Stopped,
+                        source: None,
+                        volume,
+                        position_ms: None,
+                        duration_ms: None,
+                    }) {
+                        log::warn!("Player: failed to emit player-status on stream end: {e}");
+                    }
+                }
+            }
         });
 
         *self.session.lock().await = Some(PlaybackSession {

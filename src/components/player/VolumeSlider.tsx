@@ -15,7 +15,7 @@ export function VolumeSlider() {
       maxValue={100}
       value={percent}
       step={1}
-      onChange={(v) => {
+      onChangeEnd={(v) => {
         tauri.setVolume(v / 100).catch(console.error);
       }}
       className="flex items-center gap-2 w-32"

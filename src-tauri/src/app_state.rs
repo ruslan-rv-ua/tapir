@@ -19,7 +19,10 @@ impl AppState {
         profile: Profile,
         app_handle: tauri::AppHandle,
     ) -> anyhow::Result<Self> {
-        let player = PlayerEngine::new()?;
+        let player = PlayerEngine::new(
+            profile.player_session.volume,
+            settings.output_device.clone(),
+        )?;
         Ok(Self {
             stream_manager: Arc::new(RwLock::new(StreamManager::new(app_handle))),
             settings: Arc::new(RwLock::new(settings)),

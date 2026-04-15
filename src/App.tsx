@@ -102,7 +102,14 @@ function AppContent() {
       if (src?.type === "stream") {
         const name = $streams.get().find(s => s.id === src.streamId)?.name ?? src.streamId;
         announceRef.current(m.playback_started({ name }), "assertive");
+      } else if (src?.type === "file") {
+        const name = src.path.split(/[\\/]/).pop() ?? src.path;
+        announceRef.current(m.playback_started({ name }), "assertive");
       }
+    } else if (payload.state === "stopped" && !payload.source) {
+      // Unexpected stop (stream disconnected, file ended naturally).
+      // User-initiated stop is also handled here; PlayerPanel may double-announce briefly.
+      announceRef.current(m.playback_stopped(), "assertive");
     }
   }, []);
 

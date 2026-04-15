@@ -25,6 +25,7 @@ export function PlaybackPosition() {
         aria-label={m.playback_position()}
         minValue={0}
         maxValue={dur}
+        step={5000}
         value={pos}
         onChangeEnd={(v) => tauri.seekPlayback(v).catch(console.error)}
         className="flex items-center gap-2 flex-1"
