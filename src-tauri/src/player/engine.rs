@@ -227,6 +227,60 @@ impl PlayerEngine {
     }
 }
 
+impl PlayerEngine {
+    pub async fn pause_playback(&self, app: &AppHandle) -> Result<()> {
+        let session = self.session.lock().await;
+        let s = session.as_ref().ok_or_else(|| anyhow::anyhow!("not playing"))?;
+        s.player.pause();
+        drop(session);
+        let status = self.get_status().await;
+        if let Err(e) = app.emit("player-status", status) {
+            log::warn!("Player: failed to emit player-status: {e}");
+        }
+        Ok(())
+    }
+}
+
+impl PlayerEngine {
+    pub async fn resume_playback(&self, app: &AppHandle) -> Result<()> {
+        let session = self.session.lock().await;
+        let s = session.as_ref().ok_or_else(|| anyhow::anyhow!("not playing"))?;
+        s.player.play();
+        drop(session);
+        let status = self.get_status().await;
+        if let Err(e) = app.emit("player-status", status) {
+            log::warn!("Player: failed to emit player-status: {e}");
+        }
+        Ok(())
+    }
+}
+
+impl PlayerEngine {
+    pub async fn seek_playback(&self, position_ms: u64, app: &AppHandle) -> Result<()> {
+        let session = self.session.lock().await;
+        let s = session.as_ref().ok_or_else(|| anyhow::anyhow!("not playing"))?;
+
+        match &s.source {
+            PlaybackSource::Stream { .. } => {
+                return Err(anyhow::anyhow!("seek unavailable for live stream"));
+            }
+            PlaybackSource::File { .. } => {
+                s.player
+                    .try_seek(std::time::Duration::from_millis(position_ms))
+                    .map_err(|e| anyhow::anyhow!("seek failed: {e}"))?;
+                let pos = s.player.get_pos().as_millis() as u64;
+                let dur = s.duration_ms.unwrap_or(0);
+                drop(session);
+                let _ = app.emit("player-progress", PlayerProgressPayload {
+                    position_ms: pos,
+                    duration_ms: dur,
+                });
+            }
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
