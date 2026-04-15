@@ -45,5 +45,16 @@
   "column_bitrate": "Бітрейт",
   "column_duration": "Тривалість",
   "column_status": "Статус",
-  "track_saved": "Трек збережено: {fileName} ({name})"
+  "track_saved": "Трек збережено: {fileName} ({name})",
+  "volume": "Гучність",
+  "playback_position": "Позиція відтворення",
+  "live_stream": "Живий потік",
+  "time_format_min_sec": "{min} хв {sec} с",
+  "player_panel_label": "Програвач",
+  "pause": "Призупинити",
+  "play": "Відтворити",
+  "stop": "Зупинити",
+  "playback_paused": "Відтворення призупинено",
+  "playback_resumed": "Відтворення відновлено",
+  "playback_stopped": "Відтворення зупинено"
 }

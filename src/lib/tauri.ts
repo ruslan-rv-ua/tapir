@@ -136,3 +136,62 @@ export async function getSettings(): Promise<GlobalSettings> {
 export async function saveSettings(settings: GlobalSettings): Promise<void> {
   return invoke("save_settings", { settings });
 }
+
+// ── Player types ──────────────────────────────────────────────────────────
+
+export type PlaybackState = "stopped" | "playing" | "paused";
+
+export type PlaybackSource =
+  | { type: "stream"; streamId: string }
+  | { type: "file"; path: string };
+
+export interface PlayerStatus {
+  state: PlaybackState;
+  source: PlaybackSource | null;
+  volume: number;        // 0.0–1.0
+  positionMs: number | null;
+  durationMs: number | null;
+}
+
+export interface PlayerProgressPayload {
+  positionMs: number;
+  durationMs: number;
+}
+
+export interface AudioDevice {
+  name: string;
+  isDefault: boolean;
+}
+
+// ── Player IPC wrappers ────────────────────────────────────────────────────
+
+export async function playStream(streamId: string): Promise<void> {
+  return invoke("play_stream", { streamId });
+}
+export async function playFile(path: string): Promise<void> {
+  return invoke("play_file", { path });
+}
+export async function pausePlayback(): Promise<void> {
+  return invoke("pause_playback");
+}
+export async function resumePlayback(): Promise<void> {
+  return invoke("resume_playback");
+}
+export async function stopPlayback(): Promise<void> {
+  return invoke("stop_playback");
+}
+export async function seekPlayback(positionMs: number): Promise<void> {
+  return invoke("seek_playback", { positionMs });
+}
+export async function setVolume(volume: number): Promise<void> {
+  return invoke("set_volume", { volume });
+}
+export async function getPlayerStatus(): Promise<PlayerStatus> {
+  return invoke("get_player_status");
+}
+export async function listOutputDevices(): Promise<AudioDevice[]> {
+  return invoke("list_output_devices");
+}
+export async function setOutputDevice(name: string | null): Promise<void> {
+  return invoke("set_output_device", { name });
+}

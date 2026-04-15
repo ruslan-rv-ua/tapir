@@ -45,5 +45,16 @@
   "column_bitrate": "Bitrate",
   "column_duration": "Duration",
   "column_status": "Status",
-  "track_saved": "Track saved: {fileName} ({name})"
+  "track_saved": "Track saved: {fileName} ({name})",
+  "volume": "Volume",
+  "playback_position": "Playback position",
+  "live_stream": "Live stream",
+  "time_format_min_sec": "{min} min {sec} sec",
+  "player_panel_label": "Player",
+  "pause": "Pause",
+  "play": "Play",
+  "stop": "Stop",
+  "playback_paused": "Playback paused",
+  "playback_resumed": "Playback resumed",
+  "playback_stopped": "Playback stopped"
 }
