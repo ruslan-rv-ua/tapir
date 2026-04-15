@@ -31,6 +31,7 @@ lofty = "0.24"
 
 # Audio playback
 rodio = { version = "0.22", default-features = false, features = [
+    "playback",
     "symphonia-mp3",
     "symphonia-aac",
     "symphonia-isomp4",
