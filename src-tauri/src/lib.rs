@@ -8,6 +8,7 @@ mod sanitize;
 mod settings;
 mod stream;
 mod tags;
+mod wishlist;
 
 use app_state::AppState;
 use settings::GlobalSettings;
