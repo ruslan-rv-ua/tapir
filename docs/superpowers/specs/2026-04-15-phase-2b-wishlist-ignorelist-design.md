@@ -118,6 +118,7 @@ Ignorelist завжди має пріоритет над wishlist. Per-stream ig
 - Всі команди працюють з `AppState.profile` (lock → modify → save → unlock)
 - Дублікати ігноруються (не додається повторний запис з тим самим pattern)
 - Після змін — `profile.save()` зберігає на диск
+- `update_*_pattern`: повертає помилку якщо `oldPattern` не знайдено; відхиляє якщо `newPattern` вже існує
 
 ### WishlistEntry для MVP
 
@@ -201,7 +202,7 @@ export interface WishlistEntry {
 }
 ```
 
-IPC wrapper функції: `getWishlist()`, `addToWishlist(pattern)`, `removeFromWishlist(pattern)`, `getIgnorelist()`, `addToIgnorelist(pattern)`, `removeFromIgnorelist(pattern)`.
+IPC wrapper функції: `getWishlist()`, `addToWishlist(pattern)`, `removeFromWishlist(pattern)`, `updateWishlistPattern(oldPattern, newPattern)`, `getIgnorelist()`, `addToIgnorelist(pattern)`, `removeFromIgnorelist(pattern)`, `updateIgnorelistPattern(oldPattern, newPattern)`.
 
 ### Доступність (NVDA)
 
