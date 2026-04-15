@@ -147,7 +147,8 @@ impl PlayerEngine {
 
         let duration_ms = decoder.total_duration().map(|d| d.as_millis() as u64);
 
-        let device_sink = DeviceSinkBuilder::open_default_sink()
+        let device_name = self.output_device_name.lock().await.clone();
+        let device_sink = open_device_sink(device_name.as_deref())
             .context("Failed to open audio output stream")?;
         let player = Arc::new(Player::connect_new(&device_sink.mixer()));
 
@@ -256,6 +257,75 @@ impl PlayerEngine {
 }
 
 impl PlayerEngine {
+    /// Set volume (0.0–1.0). Applied immediately to any active session.
+    pub async fn set_volume(&self, volume: f32, app: &AppHandle) -> Result<()> {
+        let volume = volume.clamp(0.0, 1.0);
+        // Take session first (established lock order: session → volume)
+        {
+            let session = self.session.lock().await;
+            *self.volume.lock().await = volume;
+            if let Some(s) = session.as_ref() {
+                s.player.set_volume(volume);
+            }
+            // both locks dropped here
+        }
+        let status = self.get_status().await;
+        if let Err(e) = app.emit("player-status", status) {
+            log::warn!("Player: failed to emit player-status: {e}");
+        }
+        Ok(())
+    }
+
+    pub async fn current_volume(&self) -> f32 {
+        *self.volume.lock().await
+    }
+
+    /// Enumerate system audio output devices. Runs in spawn_blocking because cpal is sync.
+    pub async fn list_output_devices() -> Result<Vec<AudioDevice>> {
+        tokio::task::spawn_blocking(|| -> anyhow::Result<Vec<AudioDevice>> {
+            use rodio::cpal::traits::{DeviceTrait, HostTrait};
+            let host = rodio::cpal::default_host();
+            let default_name = host
+                .default_output_device()
+                .and_then(|d| d.name().ok());
+            let devices = host
+                .output_devices()
+                .context("failed to enumerate audio output devices")?
+                .filter_map(|d| {
+                    d.name().ok().map(|name| AudioDevice {
+                        is_default: Some(&name) == default_name.as_ref(),
+                        name,
+                    })
+                })
+                .collect();
+            Ok(devices)
+        })
+        .await
+        .context("device enumeration task panicked")?
+        .context("device enumeration failed")
+    }
+
+    /// Switch audio output device. Stops current playback.
+    /// `name` = None means revert to system default.
+    pub async fn set_output_device(&self, name: Option<String>, app: &AppHandle) -> Result<()> {
+        self.stop_session().await;
+        *self.output_device_name.lock().await = name;
+        let volume = *self.volume.lock().await;
+        if let Err(e) = app.emit("player-status", PlayerStatus {
+            state: PlaybackState::Stopped,
+            source: None,
+            volume,
+            position_ms: None,
+            duration_ms: None,
+        }) {
+            log::warn!("Player: failed to emit player-status: {e}");
+        }
+        info!("Player: switched output device");
+        Ok(())
+    }
+}
+
+impl PlayerEngine {
     pub async fn seek_playback(&self, position_ms: u64, app: &AppHandle) -> Result<()> {
         let session = self.session.lock().await;
         let s = session.as_ref().ok_or_else(|| anyhow::anyhow!("not playing"))?;
@@ -280,6 +350,26 @@ impl PlayerEngine {
             }
         }
         Ok(())
+    }
+}
+
+/// Open a MixerDeviceSink for the named device, or the system default if name is None.
+fn open_device_sink(device_name: Option<&str>) -> anyhow::Result<MixerDeviceSink> {
+    match device_name {
+        None => DeviceSinkBuilder::open_default_sink()
+            .context("open default audio sink"),
+        Some(name) => {
+            use rodio::cpal::traits::{DeviceTrait, HostTrait};
+            let host = rodio::cpal::default_host();
+            let device = host
+                .output_devices()
+                .context("enumerate devices")?
+                .find(|d| d.name().ok().as_deref() == Some(name))
+                .with_context(|| format!("audio device not found: {name}"))?;
+            DeviceSinkBuilder::from_device(device)
+                .and_then(|b| b.open_stream())
+                .context("open device audio sink")
+        }
     }
 }
 
