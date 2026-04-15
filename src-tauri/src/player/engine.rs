@@ -36,7 +36,7 @@ pub struct AudioDevice {
     pub is_default: bool,
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlayerProgressPayload {
     pub position_ms: u64,
@@ -60,6 +60,8 @@ mod tests {
         assert!(json.contains("\"state\":\"stopped\""));
         assert!(json.contains("\"volume\":0.75"));
         assert!(json.contains("\"source\":null"));
+        assert!(json.contains("\"positionMs\":null"));
+        assert!(json.contains("\"durationMs\":null"));
     }
 
     #[test]
@@ -75,6 +77,7 @@ mod tests {
         let src = PlaybackSource::File { path: "recordings/test.mp3".into() };
         let json = serde_json::to_string(&src).unwrap();
         assert!(json.contains("\"type\":\"file\""));
+        assert!(json.contains("\"path\":\"recordings/test.mp3\""));
     }
 
     #[test]
