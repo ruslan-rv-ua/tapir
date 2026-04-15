@@ -6,8 +6,10 @@ import * as m from "../../i18n/paraglide/messages";
 import * as tauri from "../../lib/tauri";
 import { $streams } from "../../stores/streams";
 import { $editStream } from "../../stores/streams";
+import { $playerStatus } from "../../stores/player";
 import { addToast } from "../../stores/toasts";
 import { useState, useEffect } from "react";
+import { useStore } from "@nanostores/react";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 
 interface Props {
@@ -40,6 +42,11 @@ export function StreamRow({ stream, status }: Props) {
   const [, setTick] = useState(0);
   const state = status?.state ?? "idle";
   const isRecording = state === "recording";
+  const playerStatus = useStore($playerStatus);
+  const isThisStreamPlaying =
+    playerStatus.state !== "stopped" &&
+    playerStatus.source?.type === "stream" &&
+    playerStatus.source.streamId === stream.id;
 
   // Tick every second while recording to update the elapsed time display
   useEffect(() => {
@@ -58,6 +65,18 @@ export function StreamRow({ stream, status }: Props) {
         await tauri.stopRecording(stream.id);
       } else {
         await tauri.startRecording(stream.id);
+      }
+    } catch (err) {
+      addToast(String(err), "error");
+    }
+  };
+
+  const handlePlayToggle = async () => {
+    try {
+      if (isThisStreamPlaying) {
+        await tauri.stopPlayback();
+      } else {
+        await tauri.playStream(stream.id);
       }
     } catch (err) {
       addToast(String(err), "error");
@@ -96,6 +115,17 @@ export function StreamRow({ stream, status }: Props) {
         </Cell>
         <Cell>
           <div className="flex gap-1">
+            <button
+              onClick={handlePlayToggle}
+              aria-label={isThisStreamPlaying ? m.stop_stream_playback() : m.play_stream()}
+              className={`rounded px-2 py-0.5 text-xs ${
+                isThisStreamPlaying
+                  ? "bg-blue-700 text-white hover:bg-blue-600"
+                  : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+              }`}
+            >
+              {isThisStreamPlaying ? "■" : "▶"}
+            </button>
             <button
               onClick={handleRecordToggle}
               aria-label={isRecording ? m.stop_recording() : m.start_recording()}

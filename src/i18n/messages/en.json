@@ -9,6 +9,8 @@
   "edit_stream": "Edit stream",
   "start_recording": "Start recording",
   "stop_recording": "Stop recording",
+  "play_stream": "Play stream",
+  "stop_stream_playback": "Stop playback",
   "stop_all": "Stop all",
   "remove_stream": "Remove stream",
   "stream_url": "Stream URL",

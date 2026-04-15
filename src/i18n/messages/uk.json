@@ -9,6 +9,8 @@
   "edit_stream": "Редагувати потік",
   "start_recording": "Почати запис",
   "stop_recording": "Зупинити запис",
+  "play_stream": "Відтворити потік",
+  "stop_stream_playback": "Зупинити відтворення",
   "stop_all": "Зупинити всі",
   "remove_stream": "Видалити потік",
   "stream_url": "URL потоку",
