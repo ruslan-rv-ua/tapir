@@ -69,6 +69,10 @@ struct PlaybackSession {
     _device_sink: Arc<std::sync::Mutex<Option<MixerDeviceSink>>>,
 }
 
+// Lock acquisition order (must be consistent to avoid deadlock):
+// 1. session
+// 2. volume
+// 3. output_device_name
 pub struct PlayerEngine {
     session: Arc<Mutex<Option<PlaybackSession>>>,
     volume: Arc<Mutex<f32>>,
@@ -85,7 +89,7 @@ impl PlayerEngine {
         Ok(Self {
             session: Arc::new(Mutex::new(None)),
             volume: Arc::new(Mutex::new(0.75)),
-            output_device_name: Arc::new(Mutex::new(None)),
+            output_device_name: Arc::new(Mutex::new(None)), // Used in Task 5: set_output_device
         })
     }
 
@@ -159,11 +163,15 @@ impl PlayerEngine {
 
         let progress_task = tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(1));
+            let mut ended_naturally = false;
             loop {
                 tokio::select! {
                     _ = cancel_clone.cancelled() => break,
                     _ = interval.tick() => {
-                        if player_clone.empty() { break; }
+                        if player_clone.empty() {
+                            ended_naturally = true;
+                            break;
+                        }
                         let pos = player_clone.get_pos().as_millis() as u64;
                         let _ = app_clone.emit("player-progress", PlayerProgressPayload {
                             position_ms: pos,
@@ -171,6 +179,15 @@ impl PlayerEngine {
                         });
                     }
                 }
+            }
+            if ended_naturally {
+                let _ = app_clone.emit("player-status", PlayerStatus {
+                    state: PlaybackState::Stopped,
+                    source: None,
+                    volume,
+                    position_ms: None,
+                    duration_ms: None,
+                });
             }
         });
 
@@ -186,7 +203,9 @@ impl PlayerEngine {
         });
 
         let status = self.get_status().await;
-        app.emit("player-status", status)?;
+        if let Err(e) = app.emit("player-status", status) {
+            log::warn!("Player: failed to emit player-status: {e}");
+        }
         info!("Player: playing file {path}");
         Ok(())
     }
