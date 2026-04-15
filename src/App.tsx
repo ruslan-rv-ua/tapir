@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useRef } from "react";
+import { useStore } from "@nanostores/react";
 import { ActivityBar } from "./components/layout/ActivityBar";
 import { SectionHeader } from "./components/layout/SectionHeader";
 import { StatusBar } from "./components/layout/StatusBar";
@@ -7,23 +8,26 @@ import { ToastContainer } from "./components/common/ToastContainer";
 import { CommandPalette } from "./components/common/CommandPalette";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import { StreamsPanel } from "./components/streams/StreamsPanel";
+import { WishlistPanel } from "./components/wishlist/WishlistPanel";
 import { PlayerPanel } from "./components/player/PlayerPanel";
 import { useTauriEvent } from "./hooks/useTauriEvent";
 import { useAnnounce } from "./hooks/useAnnounce";
 import { $streams, updateStreamStatus } from "./stores/streams";
 import { $settings } from "./stores/settings";
 import { $playerStatus } from "./stores/player";
+import { $activeSection } from "./stores/navigation";
 import { $commandPaletteOpen } from "./stores/navigation";
 import { addToast } from "./stores/toasts";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import * as tauri from "./lib/tauri";
-import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, RecordingStartedPayload, RecordingCompletedPayload, StreamInfo, PlayerStatus, PlayerProgressPayload } from "./lib/tauri";
+import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, RecordingStartedPayload, RecordingCompletedPayload, StreamInfo, PlayerStatus, PlayerProgressPayload, WishlistMatchPayload, TrackIgnoredPayload } from "./lib/tauri";
 import * as m from "./i18n/paraglide/messages";
 
 function AppContent() {
   const announce = useAnnounce();
   const announceRef = useRef(announce);
   useEffect(() => { announceRef.current = announce; });
+  const activeSection = useStore($activeSection);
 
   // Load initial data
   useEffect(() => {
@@ -127,6 +131,14 @@ function AppContent() {
     announce(m.track_saved({ name, fileName: payload.fileName }), "polite");
   }, [announce]);
 
+  const handleWishlistMatch = useCallback((payload: WishlistMatchPayload) => {
+    announce(m.announcement_wishlist_match({ title: `${payload.artist} — ${payload.title}` }), "assertive");
+  }, [announce]);
+
+  const handleTrackIgnored = useCallback((payload: TrackIgnoredPayload) => {
+    announce(m.announcement_track_ignored({ title: `${payload.artist} — ${payload.title}` }), "polite");
+  }, [announce]);
+
   useTauriEvent<RecordingStatusPayload>("recording-status", handleRecordingStatus);
   useTauriEvent<TrackChangedPayload>("track-changed", handleTrackChanged);
   useTauriEvent<StreamErrorPayload>("stream-error", handleStreamError);
@@ -135,13 +147,16 @@ function AppContent() {
   useTauriEvent<RecordingCompletedPayload>("recording-completed", handleRecordingCompleted);
   useTauriEvent<PlayerStatus>("player-status", handlePlayerStatus);
   useTauriEvent<PlayerProgressPayload>("player-progress", handlePlayerProgress);
+  useTauriEvent<WishlistMatchPayload>("wishlist-match", handleWishlistMatch);
+  useTauriEvent<TrackIgnoredPayload>("track-ignored", handleTrackIgnored);
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-200">
       <ActivityBar />
       <main className="flex flex-1 flex-col overflow-hidden">
-        <SectionHeader title={m.streams_section()} />
-        <StreamsPanel />
+        <SectionHeader title={activeSection === "wishlist" ? m.wishlist_section() : m.streams_section()} />
+        {activeSection === "streams" && <StreamsPanel />}
+        {activeSection === "wishlist" && <WishlistPanel />}
         <PlayerPanel />
         <StatusBar />
       </main>
