@@ -54,8 +54,10 @@
 
 | Event | Payload | Коли |
 |---|---|---|
-| `player-status` | `PlayerStatus` | play/pause/stop/device change |
-| `player-progress` | `{ positionMs, durationMs }` | кожну 1с під час file playback |
+| `player-status` | `PlayerStatus` (повний struct) | play/pause/stop/device change |
+| `player-progress` | `PlayerProgressPayload { positionMs, durationMs }` | кожну 1с під час file playback |
+
+> **Примітка:** `data-models.md` §5 визначає тонкий `PlayerStatusPayload { status }`. Цей дизайн використовує повний `PlayerStatus` struct як payload (аналогічно до `stream-info-updated`), оскільки фронтенд потребує всіх полів (source, volume, positionMs, durationMs). `data-models.md` буде оновлено відповідно.
 
 ---
 
@@ -108,15 +110,17 @@ pub enum PlaybackSource {
 
 ### 3.3. Live playback (`play_stream`)
 
+> **Архітектурне рішення:** `implementation-phases.md` згадує "tee від StreamManager" як початковий план. За результатами brainstorming прийнято рішення використовувати **незалежне HTTP-з'єднання** замість tee. Причина: tee ускладнює StreamManager, вносить спільний mutable стан між записом і відтворенням, і ускладнює незалежне управління lifecycle. Незалежне з'єднання — простіше, ізольованіше, і не впливає на запис при помилках відтворення. `implementation-phases.md` буде оновлено відповідно.
+
 1. Скасувати поточну сесію (`cancel.cancel()`, drop session)
-2. Отримати URL потоку з `StreamManager` за `stream_id` (або приймати URL напряму)
+2. Отримати URL потоку з `StreamManager` за `stream_id`
 3. Підключитись через існуючий `stream::connection` код — незалежне HTTP-з'єднання, без запису
 4. Spawn tokio-таск: читати байти → писати в `Arc<Mutex<VecDeque<u8>>>` (ring buffer)
 5. Створити `LiveSource` що реалізує `rodio::Source<Item=i16>` — читає з ring buffer, декодує через symphonia frame-by-frame
 6. `sink.append(live_source)` → rodio → WASAPI
-7. Emit `player-status { state: "playing", source: Stream { stream_id }, volume }`
+7. Emit `player-status` (повний `PlayerStatus` struct) з `state: "playing"`, `source: Stream { stream_id }`, `volume`
 
-> Якщо потік вже записується — live playback підключається окремим HTTP-з'єднанням. Tee не потрібен.
+> Якщо потік вже записується — live playback підключається окремим HTTP-з'єднанням. Запис не переривається.
 
 ### 3.4. File playback (`play_file`)
 
@@ -131,24 +135,34 @@ pub enum PlaybackSource {
 
 Seek підтримується лише для file playback. При виклику на live stream — повертає `Err`.
 
+**Реалізація через `Sink::try_seek` (rodio 0.22):**
+
 ```rust
 pub async fn seek(&self, position_ms: u64, app_handle: &AppHandle) -> Result<()> {
     let session = self.session.lock().await;
     let session = session.as_ref().ok_or("not playing")?;
 
     match &session.source {
-        PlaybackSource::File { path } => {
-            session.sink.stop();
-            let mut decoder = Decoder::new(BufReader::new(File::open(path)?))?;
-            decoder.try_seek(Duration::from_millis(position_ms))?;
-            session.sink.append(decoder);
+        PlaybackSource::File { .. } => {
+            // rodio 0.22: Sink::try_seek делегує до symphonia Decoder,
+            // який реалізує Source + Seek. Не зупиняє sink.
+            session.sink
+                .try_seek(Duration::from_millis(position_ms))
+                .map_err(|e| anyhow!("seek failed: {e}"))?;
             // emit player-progress з новою позицією
+            let pos_ms = session.sink.get_pos().as_millis() as u64;
+            app_handle.emit("player-progress", PlayerProgressPayload {
+                position_ms: pos_ms,
+                duration_ms: session.duration_ms.unwrap_or(0),
+            })?;
         }
         PlaybackSource::Stream { .. } => return Err(anyhow!("seek unavailable for live stream")),
     }
     Ok(())
 }
 ```
+
+> `sink.stop()` назавжди зупиняє Sink — його не можна перевикористати. `Sink::try_seek` (rodio 0.17+) — правильний API для seek без перестворення Sink.
 
 ### 3.6. Volume (`set_volume`)
 
@@ -177,10 +191,20 @@ pub async fn set_volume(&self, volume: f32) -> Result<()> {
 
 ```rust
 pub async fn list_output_devices() -> Result<Vec<AudioDevice>> {
-    let host = cpal::default_host();
-    let devices = host.output_devices()?;
-    let default = host.default_output_device();
-    // ...
+    // cpal device enumeration є синхронним — виконуємо у spawn_blocking
+    // щоб не блокувати tokio thread pool
+    tokio::task::spawn_blocking(|| {
+        let host = cpal::default_host();
+        let default_name = host.default_output_device()
+            .and_then(|d| d.name().ok());
+        let devices: Vec<AudioDevice> = host.output_devices()?
+            .filter_map(|d| d.name().ok().map(|name| AudioDevice {
+                is_default: Some(&name) == default_name.as_ref(),
+                name,
+            }))
+            .collect();
+        Ok(devices)
+    }).await?
 }
 ```
 
@@ -189,6 +213,8 @@ pub async fn list_output_devices() -> Result<Vec<AudioDevice>> {
 При закритті програми (`on_window_event CloseRequested`):
 - `PlayerEngine::stop()` — скасувати сесію
 - Зберегти `playerSession.volume` у профіль
+
+> **`PlayerSession.lastStreamId` та `lastFilePosition`** (resume position) визначені в `data-models.md` але виходять за scope цієї фази. Поля присутні у struct, але не заповнюються — відновлення попереднього відтворення реалізується пізніше.
 
 ---
 
@@ -260,9 +286,13 @@ export const $playerStatus = atom<PlayerStatus>({
 Підписка на Tauri events реєструється в `App.tsx`:
 ```typescript
 listen('player-status', e => $playerStatus.set(e.payload));
-listen('player-progress', e => {
-  $playerStatus.setKey('positionMs', e.payload.positionMs);
-  $playerStatus.setKey('durationMs', e.payload.durationMs);
+listen('player-progress', (e: { payload: { positionMs: number; durationMs: number } }) => {
+  // atom не має setKey — оновлення через spread
+  $playerStatus.set({
+    ...$playerStatus.get(),
+    positionMs: e.payload.positionMs,
+    durationMs: e.payload.durationMs,
+  });
 });
 ```
 
