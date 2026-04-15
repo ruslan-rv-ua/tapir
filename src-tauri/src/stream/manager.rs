@@ -14,6 +14,7 @@ use crate::portable;
 use crate::profile::{AudioFormat, RecordingSettings, ReconnectConfig, StreamInfo};
 use crate::stream::{connection, format, recorder, splitter};
 use log::{info, warn, error, debug};
+use crate::wishlist::matcher;
 
 // ---------------------------------------------------------------------------
 // Public data types
@@ -280,6 +281,24 @@ fn emit_recording_completed(app: &AppHandle, stream_id: &str, file_name: &str, d
     .ok();
 }
 
+fn emit_wishlist_match(app: &AppHandle, stream_id: &str, artist: &str, title: &str, pattern: &str) {
+    let _ = app.emit("wishlist-match", serde_json::json!({
+        "streamId": stream_id,
+        "artist": artist,
+        "title": title,
+        "pattern": pattern,
+    }));
+}
+
+fn emit_track_ignored(app: &AppHandle, stream_id: &str, artist: &str, title: &str, pattern: &str) {
+    let _ = app.emit("track-ignored", serde_json::json!({
+        "streamId": stream_id,
+        "artist": artist,
+        "title": title,
+        "pattern": pattern,
+    }));
+}
+
 // ---------------------------------------------------------------------------
 // Status update helpers (never hold the lock across await)
 // ---------------------------------------------------------------------------
@@ -407,6 +426,44 @@ enum ReadEvent {
 // ---------------------------------------------------------------------------
 // recording_task — top-level free async function
 // ---------------------------------------------------------------------------
+
+async fn handle_splitter_action(
+    action: splitter::SplitAction,
+    app_handle: &AppHandle,
+    stream_id: &str,
+    rec: &mut recorder::Recorder,
+    manager: &Arc<RwLock<StreamManager>>,
+    artist: &str,
+    title: &str,
+) {
+    match action {
+        splitter::SplitAction::Skip => {
+            emit_track_changed(app_handle, stream_id, artist, title, "");
+            update_track_info(manager, stream_id, artist, title).await;
+        }
+        splitter::SplitAction::StartTrack(m) => {
+            if let Ok(file_name) = rec.start_track(&m.artist, &m.title).await {
+                emit_recording_started(app_handle, stream_id, &file_name);
+            }
+            emit_track_changed(app_handle, stream_id, &m.artist, &m.title, "");
+            update_track_info(manager, stream_id, &m.artist, &m.title).await;
+        }
+        splitter::SplitAction::FinalizeAndStart { completed, new, duration_ms } => {
+            if let Ok(Some(final_path)) = rec.finalize_track(&completed.artist, &completed.title, duration_ms).await {
+                update_tracks_recorded(manager, stream_id).await;
+                let file_name = final_path.file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                emit_recording_completed(app_handle, stream_id, &file_name, duration_ms);
+            }
+            if let Ok(file_name) = rec.start_track(&new.artist, &new.title).await {
+                emit_recording_started(app_handle, stream_id, &file_name);
+            }
+            emit_track_changed(app_handle, stream_id, &new.artist, &new.title, "");
+            update_track_info(manager, stream_id, &new.artist, &new.title).await;
+        }
+    }
+}
 
 pub async fn recording_task(
     stream_info: StreamInfo,
@@ -713,37 +770,53 @@ pub async fn recording_task(
                             break 'read;
                         }
                         Some(ReadEvent::MetadataChanged(artist, title)) => {
-                            let meta = connection::TrackMetadata {
-                                artist: artist.clone(),
-                                title: title.clone(),
+                            // --- Wishlist/Ignorelist check ---
+                            let track_action = {
+                                let stream_title = matcher::build_stream_title(&artist, &title);
+                                if let Some(ref st) = stream_title {
+                                    let state = app_handle.state::<crate::app_state::AppState>();
+                                    let profile = state.active_profile.read().await;
+                                    let per_stream_ignorelist = profile.streams
+                                        .iter()
+                                        .find(|s| s.id == stream_id)
+                                        .map(|s| s.ignorelist.as_slice())
+                                        .unwrap_or(&[]);
+                                    matcher::check_track(
+                                        st,
+                                        per_stream_ignorelist,
+                                        &profile.ignorelist,
+                                        &profile.wishlist,
+                                    )
+                                } else {
+                                    matcher::TrackAction::Normal
+                                }
                             };
-                            match spl.on_metadata_change(meta) {
-                                splitter::SplitAction::Skip => {
-                                    // Still update UI with current track even though recording is skipped
+
+                            match track_action {
+                                matcher::TrackAction::Ignored { ref pattern } => {
                                     emit_track_changed(&app_handle, &stream_id, &artist, &title, "");
                                     update_track_info(&manager, &stream_id, &artist, &title).await;
+                                    emit_track_ignored(&app_handle, &stream_id, &artist, &title, pattern);
+                                    log::info!("[{}] Track ignored ({}): {} - {}", stream_id, pattern, artist, title);
+                                    // Do NOT pass to Splitter — skip recording this track
                                 }
-                                splitter::SplitAction::StartTrack(m) => {
-                                    if let Ok(file_name) = rec.start_track(&m.artist, &m.title).await {
-                                        emit_recording_started(&app_handle, &stream_id, &file_name);
-                                    }
-                                    emit_track_changed(&app_handle, &stream_id, &m.artist, &m.title, "");
-                                    update_track_info(&manager, &stream_id, &m.artist, &m.title).await;
+                                matcher::TrackAction::WishlistMatch { ref pattern } => {
+                                    emit_wishlist_match(&app_handle, &stream_id, &artist, &title, pattern);
+                                    log::info!("[{}] Wishlist match ({}): {} - {}", stream_id, pattern, artist, title);
+                                    let meta = connection::TrackMetadata {
+                                        artist: artist.clone(),
+                                        title: title.clone(),
+                                    };
+                                    let action = spl.on_metadata_change(meta);
+                                    handle_splitter_action(action, &app_handle, &stream_id, &mut rec, &manager, &artist, &title).await;
                                 }
-                                splitter::SplitAction::FinalizeAndStart { completed, new, duration_ms } => {
-                                    // Only count the completed track if it was actually kept on disk.
-                                    if let Ok(Some(final_path)) = rec.finalize_track(&completed.artist, &completed.title, duration_ms).await {
-                                        update_tracks_recorded(&manager, &stream_id).await;
-                                        let file_name = final_path.file_name()
-                                            .map(|n| n.to_string_lossy().to_string())
-                                            .unwrap_or_default();
-                                        emit_recording_completed(&app_handle, &stream_id, &file_name, duration_ms);
-                                    }
-                                    if let Ok(file_name) = rec.start_track(&new.artist, &new.title).await {
-                                        emit_recording_started(&app_handle, &stream_id, &file_name);
-                                    }
-                                    emit_track_changed(&app_handle, &stream_id, &new.artist, &new.title, "");
-                                    update_track_info(&manager, &stream_id, &new.artist, &new.title).await;
+                                matcher::TrackAction::Normal => {
+                                    let meta = connection::TrackMetadata {
+                                        artist: artist.clone(),
+                                        title: title.clone(),
+                                    };
+                                    let action = spl.on_metadata_change(meta);
+                                    handle_splitter_action(action, &app_handle, &stream_id, &mut rec, &manager, &artist, &title).await;
                                 }
                             }
                         }
