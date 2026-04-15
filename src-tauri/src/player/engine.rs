@@ -271,10 +271,12 @@ impl PlayerEngine {
                 let pos = s.player.get_pos().as_millis() as u64;
                 let dur = s.duration_ms.unwrap_or(0);
                 drop(session);
-                let _ = app.emit("player-progress", PlayerProgressPayload {
+                if let Err(e) = app.emit("player-progress", PlayerProgressPayload {
                     position_ms: pos,
                     duration_ms: dur,
-                });
+                }) {
+                    log::warn!("Player: failed to emit player-progress: {e}");
+                }
             }
         }
         Ok(())
