@@ -13,7 +13,7 @@ interface Props {
   onClose: () => void;
 }
 
-export function AddPatternDialog({ initialPattern, editingPattern, onSubmit, onClose }: Props) {
+export function AddPatternDialog({ listType, initialPattern, editingPattern, onSubmit, onClose }: Props) {
   const [pattern, setPattern] = useState(editingPattern ?? initialPattern ?? "");
   const isEdit = !!editingPattern;
 
@@ -24,7 +24,11 @@ export function AddPatternDialog({ initialPattern, editingPattern, onSubmit, onC
     onSubmit(trimmed);
   };
 
-  const title = isEdit ? m.edit_pattern() : m.add_pattern();
+  const title = isEdit
+    ? m.edit_pattern()
+    : listType === "wishlist"
+      ? m.add_to_wishlist()
+      : m.add_to_ignorelist();
 
   return (
     <ModalOverlay

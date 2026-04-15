@@ -12,6 +12,7 @@ import { useStore } from "@nanostores/react";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { StreamContextMenu } from "./StreamContextMenu";
 import { AddPatternDialog } from "../wishlist/AddPatternDialog";
+import { useAnnounce } from "../../hooks/useAnnounce";
 
 interface Props {
   stream: StreamInfo;
@@ -48,6 +49,7 @@ export function StreamRow({ stream, status }: Props) {
   const state = status?.state ?? "idle";
   const isRecording = state === "recording";
   const playerStatus = useStore($playerStatus);
+  const announce = useAnnounce();
   const isThisStreamPlaying =
     playerStatus.state !== "stopped" &&
     playerStatus.source?.type === "stream" &&
@@ -180,6 +182,7 @@ export function StreamRow({ stream, status }: Props) {
               } else {
                 await tauri.addToIgnorelist(pattern);
               }
+              announce(m.announcement_pattern_added({ pattern }), "polite");
               setPatternDialog(null);
             } catch (err) {
               addToast(String(err), "error");
