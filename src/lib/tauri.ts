@@ -195,3 +195,55 @@ export async function listOutputDevices(): Promise<AudioDevice[]> {
 export async function setOutputDevice(name: string | null): Promise<void> {
   return invoke("set_output_device", { name });
 }
+
+// ── Wishlist/Ignorelist types ─────────────────────────────────────────────
+
+export interface WishlistEntry {
+  pattern: string;
+  minBitrate: number | null;
+  format: "mp3" | "aac" | null;
+  removeAfterRecord: boolean;
+  addToIgnorelistAfterRecord: boolean;
+  addedAt: string;
+}
+
+export interface WishlistMatchPayload {
+  streamId: string;
+  artist: string;
+  title: string;
+  pattern: string;
+}
+
+export interface TrackIgnoredPayload {
+  streamId: string;
+  artist: string;
+  title: string;
+  pattern: string;
+}
+
+// ── Wishlist/Ignorelist IPC wrappers ──────────────────────────────────────
+
+export async function getWishlist(): Promise<WishlistEntry[]> {
+  return invoke("get_wishlist");
+}
+export async function addToWishlist(pattern: string): Promise<WishlistEntry> {
+  return invoke("add_to_wishlist", { pattern });
+}
+export async function removeFromWishlist(pattern: string): Promise<void> {
+  return invoke("remove_from_wishlist", { pattern });
+}
+export async function updateWishlistPattern(oldPattern: string, newPattern: string): Promise<WishlistEntry> {
+  return invoke("update_wishlist_pattern", { oldPattern, newPattern });
+}
+export async function getIgnorelist(): Promise<string[]> {
+  return invoke("get_ignorelist");
+}
+export async function addToIgnorelist(pattern: string): Promise<void> {
+  return invoke("add_to_ignorelist", { pattern });
+}
+export async function removeFromIgnorelist(pattern: string): Promise<void> {
+  return invoke("remove_from_ignorelist", { pattern });
+}
+export async function updateIgnorelistPattern(oldPattern: string, newPattern: string): Promise<void> {
+  return invoke("update_ignorelist_pattern", { oldPattern, newPattern });
+}
