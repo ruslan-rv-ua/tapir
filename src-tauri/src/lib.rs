@@ -108,6 +108,14 @@ pub fn run() {
             commands::player_commands::get_player_status,
             commands::player_commands::list_output_devices,
             commands::player_commands::set_output_device,
+            commands::wishlist_commands::get_wishlist,
+            commands::wishlist_commands::add_to_wishlist,
+            commands::wishlist_commands::remove_from_wishlist,
+            commands::wishlist_commands::update_wishlist_pattern,
+            commands::wishlist_commands::get_ignorelist,
+            commands::wishlist_commands::add_to_ignorelist,
+            commands::wishlist_commands::remove_from_ignorelist,
+            commands::wishlist_commands::update_ignorelist_pattern,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
