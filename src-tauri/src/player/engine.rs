@@ -361,23 +361,24 @@ use std::io::{self, Read};
 /// Wraps an rtrb Consumer as a std::io::Read.
 /// Spin-yields until data is available or producer is dropped.
 struct RtrbReader {
-    consumer: rtrb::Consumer<u8>,
+    consumer: std::sync::Mutex<rtrb::Consumer<u8>>,
 }
 
 impl Read for RtrbReader {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         if buf.is_empty() { return Ok(0); }
+        let mut consumer = self.consumer.lock().unwrap();
         loop {
-            let available = self.consumer.slots();
+            let available = consumer.slots();
             if available == 0 {
-                if self.consumer.is_abandoned() {
+                if consumer.is_abandoned() {
                     return Ok(0); // producer dropped — EOF
                 }
                 std::thread::yield_now();
                 continue;
             }
             let n = available.min(buf.len());
-            let chunk = self.consumer.read_chunk(n).map_err(|_| {
+            let chunk = consumer.read_chunk(n).map_err(|_| {
                 io::Error::new(io::ErrorKind::UnexpectedEof, "rtrb read failed")
             })?;
             let (head, tail) = chunk.as_slices();
@@ -390,11 +391,6 @@ impl Read for RtrbReader {
         }
     }
 }
-
-// RtrbReader is accessed only from one thread at a time; rtrb::Consumer<u8>
-// is Send but not Sync — we implement Sync here to satisfy MediaSource's
-// bound, which is safe because ReadOnlySource is not actually used concurrently.
-unsafe impl Sync for RtrbReader {}
 
 // ── LiveSource ─────────────────────────────────────────────────────────────
 
@@ -418,7 +414,7 @@ struct LiveSource {
 
 impl LiveSource {
     fn new(consumer: rtrb::Consumer<u8>, hint_mime: Option<&str>) -> anyhow::Result<Self> {
-        let reader = RtrbReader { consumer };
+        let reader = RtrbReader { consumer: std::sync::Mutex::new(consumer) };
         let source = ReadOnlySource::new(reader);
         let mss = MediaSourceStream::new(Box::new(source), Default::default());
         let mut hint = Hint::new();
@@ -443,20 +439,30 @@ impl LiveSource {
     }
 
     fn decode_next_packet(&mut self) -> bool {
+        let mut consecutive_errors: u32 = 0;
         loop {
             match self.format.next_packet() {
                 Ok(packet) if packet.track_id() == self.track_id => {
                     match self.decoder.decode(&packet) {
                         Ok(decoded) => {
+                            consecutive_errors = 0;
                             let mut samples = SampleBuffer::<f32>::new(
-                                decoded.capacity() as u64, self.spec
+                                decoded.frames() as u64, self.spec
                             );
                             samples.copy_interleaved_ref(decoded);
                             self.buffer.extend(samples.samples().iter().copied());
                             return true;
                         }
                         Err(e) => {
-                            log::warn!("[LiveSource] decoder error (track {}): {e}", self.track_id);
+                            consecutive_errors += 1;
+                            log::warn!(
+                                "[LiveSource] decoder error (track {}, consecutive {}): {e}",
+                                self.track_id, consecutive_errors
+                            );
+                            if consecutive_errors >= 32 {
+                                log::warn!("[LiveSource] too many consecutive errors, stopping");
+                                return false;
+                            }
                             continue;
                         }
                     }
@@ -541,7 +547,7 @@ impl PlayerEngine {
                                             chunk.commit(n);
                                         }
                                         Err(_) => {
-                                            log::trace!(
+                                            log::debug!(
                                                 "Player: ring buffer full for {stream_id_clone}, \
                                                  dropping {} bytes", remaining.len()
                                             );
@@ -558,12 +564,21 @@ impl PlayerEngine {
 
         // LiveSource::new blocks on RtrbReader (waits for symphonia to probe the stream)
         // — run in spawn_blocking so we don't block the tokio runtime
-        let live_source = tokio::task::spawn_blocking(move || {
+        let live_source = match tokio::task::spawn_blocking(move || {
             LiveSource::new(consumer, mime_hint.as_deref())
         })
         .await
-        .context("LiveSource init task panicked")?
-        .context("LiveSource init failed")?;
+        {
+            Ok(Ok(src)) => src,
+            Ok(Err(e)) => {
+                cancel.cancel();
+                return Err(e).context("LiveSource init failed");
+            }
+            Err(e) => {
+                cancel.cancel();
+                return Err(anyhow::anyhow!("LiveSource init task panicked: {e}"));
+            }
+        };
 
         let device_name = self.output_device_name.lock().await.clone();
         let device_sink = match open_device_sink(device_name.as_deref()) {
