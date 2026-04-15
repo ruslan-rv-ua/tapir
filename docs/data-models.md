@@ -795,14 +795,11 @@ interface StreamErrorPayload {
 // Frontend оновлює $streams store для відображення bitrate, icy_name, format тощо.
 // Якщо name потоку == URL (не вказано користувачем), name автоматично замінюється на icy_name.
 
-// player-status
-interface PlayerStatusPayload {
-  status: "playing" | "paused" | "stopped";
-  positionMs?: number;
-  durationMs?: number;
-}
+// player-status — payload = повний PlayerStatus struct (див. §4.2)
+// Емітується при play/pause/stop/device change/set_volume.
+// Frontend зберігає в $playerStatus store.
 
-// player-progress
+// player-progress — кожну 1с під час file playback
 interface PlayerProgressPayload {
   positionMs: number;
   durationMs: number;

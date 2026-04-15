@@ -159,7 +159,7 @@
 |--------|------|
 | `wishlist::matcher` | Wildcard matching (*, ?) для ICY metadata |
 | `commands/wishlist_commands` | IPC: get/add/remove wishlist + ignorelist |
-| `player::engine` | rodio + symphonia: live playback (tee від StreamManager), файлове відтворення |
+| `player::engine` | rodio 0.22 (`DeviceSinkBuilder`/`MixerDeviceSink`/`Player`) + symphonia: live playback (незалежне HTTP-з'єднання через `stream::connection`, rtrb SPSC ring buffer, `LiveSource`), файлове відтворення |
 | `commands/player_commands` | IPC: play_stream, play_file, pause, stop, seek, set_volume, get/set_output_device |
 | `commands/settings_commands` | Розширений: save_settings з повним набором полів |
 
@@ -195,7 +195,7 @@
 
 - [ ] Wishlist matching працює при зміні ICY metadata
 - [ ] Ignorelist фільтрує небажані треки (глобальний + per-stream)
-- [ ] Live playback потоку через tee від recorder
+- [ ] Live playback потоку через незалежне HTTP-з'єднання (не tee)
 - [ ] Відтворення записаних MP3/AAC файлів з seek
 - [ ] Volume slider accessible (NVDA оголошує рівень)
 - [ ] Вибір аудіо-пристрою

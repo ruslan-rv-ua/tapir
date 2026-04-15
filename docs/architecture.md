@@ -102,7 +102,7 @@ src-tauri/src/
 | `stream::connection` | HTTP з'єднання з ICY; отримує raw bytes та метадані | `reqwest`, `icy-metadata` |
 | `stream::recorder` | Пише raw bytes у файл; розділяє треки за метаданими | `stream::splitter`, `tags`, `sanitize` |
 | `stream::splitter` | Логіка розділення: коли метадані змінюються → фіналізувати попередній трек, розпочати новий | — |
-| `player::engine` | Створює sink через rodio; decode + play; volume/device | `rodio`, `symphonia` |
+| `player::engine` | Створює sink через rodio 0.22 (`DeviceSinkBuilder`/`MixerDeviceSink`/`Player`); live playback через незалежне HTTP-з'єднання з rtrb SPSC ring buffer та `LiveSource` (symphonia); файлове відтворення через `rodio::Decoder`; volume/device | `rodio`, `symphonia`, `rtrb`, `stream::connection` |
 | `scheduler::timer` | Перевіряє заплановані записи щохвилини; делегує `stream::manager` | `stream::manager` |
 | `browser::api` | REST клієнт Radio Browser API | `reqwest` |
 | `tags::writer` | Пише ID3v2 / M4A теги після завершення запису треку | `lofty` |
