@@ -46,7 +46,7 @@ pub struct PlayerProgressPayload {
 use std::sync::Arc;
 use std::time::Duration;
 use anyhow::{Context, Result};
-use rodio::{Decoder, DeviceSinkBuilder, MixerDeviceSink, Player, Source};
+use rodio::{ChannelCount, Decoder, DeviceSinkBuilder, MixerDeviceSink, Player, SampleRate, Source};
 use tauri::{AppHandle, Emitter};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
@@ -349,6 +349,170 @@ impl PlayerEngine {
                 }
             }
         }
+        Ok(())
+    }
+}
+
+use rtrb::Consumer;
+use std::collections::VecDeque;
+
+/// Lock-free SPSC audio source for live HTTP streams.
+/// Receives raw audio bytes from the writer task via rtrb Consumer,
+/// decodes them in chunks via symphonia, and yields samples to rodio.
+struct LiveSource {
+    consumer: Consumer<u8>,
+    buffer: VecDeque<f32>,
+    channels: ChannelCount,
+    sample_rate: SampleRate,
+}
+
+impl LiveSource {
+    fn new(consumer: Consumer<u8>, channels: u16, sample_rate: u32) -> Self {
+        use std::num::NonZero;
+        Self {
+            consumer,
+            buffer: VecDeque::with_capacity(4096),
+            channels: NonZero::new(channels).expect("channels must be non-zero"),
+            sample_rate: NonZero::new(sample_rate).expect("sample_rate must be non-zero"),
+        }
+    }
+
+    /// SKELETON — panics loudly if called. Replace with Task 6a implementation.
+    fn decode_chunk(&mut self) -> bool {
+        use std::sync::Once;
+        static WARN: Once = Once::new();
+        WARN.call_once(|| {
+            panic!(
+                "[LiveSource] decode_chunk is a non-functional skeleton — \
+                implement proper symphonia decoding from Task 6a before shipping. \
+                See docs/superpowers/plans/2026-04-15-player.md §Task 6a."
+            );
+        });
+        false
+    }
+}
+
+impl Iterator for LiveSource {
+    type Item = f32;
+    fn next(&mut self) -> Option<f32> {
+        if self.buffer.is_empty() {
+            if !self.decode_chunk() {
+                return None;
+            }
+        }
+        Some(self.buffer.pop_front().unwrap_or(0.0))
+    }
+}
+
+impl Source for LiveSource {
+    fn current_span_len(&self) -> Option<usize> { None }
+    fn channels(&self) -> ChannelCount { self.channels }
+    fn sample_rate(&self) -> SampleRate { self.sample_rate }
+    fn total_duration(&self) -> Option<Duration> { None }
+}
+
+impl PlayerEngine {
+    pub async fn play_stream(
+        &self,
+        stream_id: String,
+        url: String,
+        app: &AppHandle,
+    ) -> Result<()> {
+        self.stop_session().await;
+
+        // Ring buffer: 512 KB — ~3s of 128kbps MP3
+        let (mut producer, consumer) = rtrb::RingBuffer::<u8>::new(512 * 1024);
+
+        let cancel = CancellationToken::new();
+        let cancel_writer = cancel.clone();
+        let url_clone = url.clone();
+        let stream_id_clone = stream_id.clone();
+        let app_clone = app.clone();
+
+        // Writer task: HTTP → rtrb producer
+        tokio::spawn(async move {
+            use crate::stream::connection;
+            use futures_util::StreamExt;
+
+            match connection::connect(&url_clone).await {
+                Err(e) => {
+                    log::error!("Player: connect error for {stream_id_clone}: {e}");
+                    let _ = app_clone.emit("player-status", PlayerStatus {
+                        state: PlaybackState::Stopped,
+                        source: None,
+                        volume: 0.75,
+                        position_ms: None,
+                        duration_ms: None,
+                    });
+                }
+                Ok(conn) => {
+                    let mut stream = conn.response.bytes_stream();
+                    loop {
+                        tokio::select! {
+                            _ = cancel_writer.cancelled() => break,
+                            chunk = stream.next() => {
+                                match chunk {
+                                    None => break,
+                                    Some(Err(e)) => {
+                                        log::warn!("Player: stream error {stream_id_clone}: {e}");
+                                        break;
+                                    }
+                                    Some(Ok(bytes)) => {
+                                        let mut remaining: &[u8] = bytes.as_ref();
+                                        while !remaining.is_empty() {
+                                            match producer.write_chunk(remaining.len()) {
+                                                Ok(mut chunk) => {
+                                                    let (head, _) = chunk.as_mut_slices();
+                                                    let n = head.len().min(remaining.len());
+                                                    head[..n].copy_from_slice(&remaining[..n]);
+                                                    remaining = &remaining[n..];
+                                                    chunk.commit(n);
+                                                }
+                                                Err(_) => break, // Buffer full — skip
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Assume stereo 44100 Hz (will be refined with ICY headers in future)
+        let live_source = LiveSource::new(consumer, 2, 44100);
+
+        let device_name = self.output_device_name.lock().await.clone();
+        let device_sink = open_device_sink(device_name.as_deref())
+            .context("Failed to open audio output stream")?;
+        let player = Arc::new(Player::connect_new(&device_sink.mixer()));
+        let device_sink_arc = Arc::new(std::sync::Mutex::new(Some(device_sink)));
+
+        let volume = *self.volume.lock().await;
+        player.set_volume(volume);
+        player.append(live_source);
+
+        // No progress task for live streams
+        let dummy_cancel = cancel.clone();
+        let progress_task = tokio::spawn(async move {
+            dummy_cancel.cancelled().await;
+        });
+
+        *self.session.lock().await = Some(PlaybackSession {
+            player: Arc::clone(&player),
+            cancel,
+            source: PlaybackSource::Stream { stream_id: stream_id.clone() },
+            duration_ms: None,
+            progress_task,
+            _device_sink: device_sink_arc,
+        });
+
+        let status = self.get_status().await;
+        if let Err(e) = app.emit("player-status", status) {
+            log::warn!("Player: failed to emit player-status: {e}");
+        }
+        info!("Player: playing live stream {stream_id}");
         Ok(())
     }
 }
