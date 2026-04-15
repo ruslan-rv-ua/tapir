@@ -5,12 +5,13 @@ import { formatBitrate, formatDuration } from "../../lib/formatters";
 import * as m from "../../i18n/paraglide/messages";
 import * as tauri from "../../lib/tauri";
 import { $streams } from "../../stores/streams";
-import { $editStream } from "../../stores/streams";
 import { $playerStatus } from "../../stores/player";
 import { addToast } from "../../stores/toasts";
 import { useState, useEffect } from "react";
 import { useStore } from "@nanostores/react";
 import { ConfirmDialog } from "../common/ConfirmDialog";
+import { StreamContextMenu } from "./StreamContextMenu";
+import { AddPatternDialog } from "../wishlist/AddPatternDialog";
 
 interface Props {
   stream: StreamInfo;
@@ -39,6 +40,10 @@ function StatusIcon({ state }: { state: string }) {
 
 export function StreamRow({ stream, status }: Props) {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [patternDialog, setPatternDialog] = useState<{
+    listType: "wishlist" | "ignorelist";
+    initialPattern: string;
+  } | null>(null);
   const [, setTick] = useState(0);
   const state = status?.state ?? "idle";
   const isRecording = state === "recording";
@@ -94,9 +99,17 @@ export function StreamRow({ stream, status }: Props) {
     setShowConfirmDelete(false);
   };
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const menuButton = e.currentTarget.querySelector<HTMLButtonElement>('[data-context-menu-trigger]');
+    if (menuButton) {
+      menuButton.click();
+    }
+  };
+
   return (
     <>
-      <Row id={stream.id} className="border-b border-slate-800 hover:bg-slate-800/50">
+      <Row id={stream.id} className="border-b border-slate-800 hover:bg-slate-800/50" onContextMenu={handleContextMenu}>
         <Cell>
           <Checkbox slot="selection" aria-label={m.select_stream({ name: stream.name })} />
         </Cell>
@@ -137,20 +150,13 @@ export function StreamRow({ stream, status }: Props) {
             >
               {isRecording ? m.stop_recording() : m.start_recording()}
             </button>
-            <button
-              onClick={() => $editStream.set(stream)}
-              aria-label={m.edit_stream()}
-              className="rounded px-2 py-0.5 text-xs text-slate-500 hover:bg-slate-700 hover:text-slate-300"
-            >
-              ✎
-            </button>
-            <button
-              onClick={() => setShowConfirmDelete(true)}
-              aria-label={m.remove_stream()}
-              className="rounded px-2 py-0.5 text-xs text-slate-500 hover:bg-slate-700 hover:text-slate-300"
-            >
-              ✕
-            </button>
+            <StreamContextMenu
+              stream={stream}
+              status={status}
+              onAddToWishlist={(track) => setPatternDialog({ listType: "wishlist", initialPattern: track })}
+              onAddToIgnorelist={(track) => setPatternDialog({ listType: "ignorelist", initialPattern: track })}
+              onDelete={() => setShowConfirmDelete(true)}
+            />
           </div>
         </Cell>
       </Row>
@@ -160,6 +166,26 @@ export function StreamRow({ stream, status }: Props) {
           message={m.confirm_delete_stream({ name: stream.name })}
           onConfirm={handleDelete}
           onCancel={() => setShowConfirmDelete(false)}
+        />,
+        document.body
+      )}
+      {patternDialog && createPortal(
+        <AddPatternDialog
+          listType={patternDialog.listType}
+          initialPattern={patternDialog.initialPattern}
+          onSubmit={async (pattern) => {
+            try {
+              if (patternDialog.listType === "wishlist") {
+                await tauri.addToWishlist(pattern);
+              } else {
+                await tauri.addToIgnorelist(pattern);
+              }
+              setPatternDialog(null);
+            } catch (err) {
+              addToast(String(err), "error");
+            }
+          }}
+          onClose={() => setPatternDialog(null)}
         />,
         document.body
       )}
