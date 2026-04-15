@@ -2,10 +2,25 @@
 
 ## Project State
 
-Active development — **Phase 2** (scheduling, settings UI, profiles).
-Phase 1 (core recording MVP) is complete and merged into `develop`.
+Active development — **Phase 2** (Wishlist + Settings + Player).
 Breaking changes are expected at any time — no migrations, no backward-compatibility guarantees.
 See [docs/implementation-phases.md](docs/implementation-phases.md) for the full roadmap.
+
+| Фаза | Статус | Гілка |
+|------|--------|-------|
+| Phase 1 — Core Recording | ✅ Complete | `feature/refine-phase-1` |
+| Phase 2 — Player subsystem | ✅ Complete | `feature/phase-2` (not yet merged) |
+| Phase 2 — Wishlist + SettingsDialog | ⬜ Not started | — |
+| Phase 3 — Browser + Scheduler | ⬜ Not started | — |
+| Phase 4 — Saved Songs + Advanced | ⬜ Not started | — |
+
+**Phase 2 Player — що реалізовано:**
+- `player::engine` — `PlayerEngine` з rodio 0.22 (`DeviceSinkBuilder`/`MixerDeviceSink`/`Player`) + symphonia 0.5
+- `LiveSource` — `rodio::Source<Item=f32>` через rtrb ring buffer + symphonia decoder (незалежне HTTP-з'єднання, окремо від StreamManager)
+- 10 IPC команд: `play_stream`, `play_file`, `pause_playback`, `resume_playback`, `stop_playback`, `seek_playback`, `set_volume`, `get_player_status`, `list_output_devices`, `set_output_device`
+- Frontend: `$playerStatus` nanostore, `PlayerPanel`, `VolumeSlider`, `PlaybackPosition`
+- Volume і output device зберігаються у профілі/settings і відновлюються при запуску
+- Повна NVDA-доступність: role="complementary", aria-live, aria-valuetext на слайдерах
 
 ## Developer Context
 
@@ -56,4 +71,12 @@ All project documentation lives in `docs/`. Key files:
 - [data-models.md](docs/data-models.md) — data structures and storage
 - [tech-stack.md](docs/tech-stack.md) — technology choices and rationale
 - [accessibility.md](docs/accessibility.md) — a11y requirements
-- [test-streams.md](docs/test-streams.md) — test radio stream URLs
+- [implementation-phases.md](docs/implementation-phases.md) — roadmap і scope кожної фази
+
+**Manual testing** (`docs/testing/`):
+- [manual-testing-phase1.md](docs/testing/manual-testing-phase1.md) — чекліст для Phase 1
+- [manual-testing-phase2-player.md](docs/testing/manual-testing-phase2-player.md) — чекліст для Phase 2 Player
+- [test-streams.md](docs/testing/test-streams.md) — тестові URL радіо-потоків
+
+**Research** (`docs/research/`):
+- [research-tapir-post-v1-roadmap.md](docs/research/research-tapir-post-v1-roadmap.md) — дослідження для планування фаз
