@@ -1,6 +1,7 @@
 mod app_state;
 mod commands;
 mod errors;
+mod player;
 mod portable;
 mod profile;
 mod sanitize;
