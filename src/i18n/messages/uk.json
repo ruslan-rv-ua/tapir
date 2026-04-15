@@ -56,5 +56,6 @@
   "stop": "Зупинити",
   "playback_paused": "Відтворення призупинено",
   "playback_resumed": "Відтворення відновлено",
-  "playback_stopped": "Відтворення зупинено"
+  "playback_stopped": "Відтворення зупинено",
+  "playback_started": "Відтворення: {name}"
 }

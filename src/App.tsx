@@ -7,15 +7,17 @@ import { ToastContainer } from "./components/common/ToastContainer";
 import { CommandPalette } from "./components/common/CommandPalette";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import { StreamsPanel } from "./components/streams/StreamsPanel";
+import { PlayerPanel } from "./components/player/PlayerPanel";
 import { useTauriEvent } from "./hooks/useTauriEvent";
 import { useAnnounce } from "./hooks/useAnnounce";
 import { $streams, updateStreamStatus } from "./stores/streams";
 import { $settings } from "./stores/settings";
+import { $playerStatus } from "./stores/player";
 import { $commandPaletteOpen } from "./stores/navigation";
 import { addToast } from "./stores/toasts";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import * as tauri from "./lib/tauri";
-import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, RecordingStartedPayload, RecordingCompletedPayload, StreamInfo } from "./lib/tauri";
+import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, RecordingStartedPayload, RecordingCompletedPayload, StreamInfo, PlayerStatus, PlayerProgressPayload } from "./lib/tauri";
 import * as m from "./i18n/paraglide/messages";
 
 function AppContent() {
@@ -36,6 +38,9 @@ function AppContent() {
       tauri.getSettings().then((settings) => {
         $settings.set(settings);
         document.documentElement.lang = settings.language === "uk-UA" ? "uk" : "en";
+      }),
+      tauri.getPlayerStatus().then((status) => {
+        $playerStatus.set(status);
       }),
     ]).catch(console.error).finally(() => {
       getCurrentWindow().show();
@@ -90,6 +95,25 @@ function AppContent() {
     $streams.set($streams.get().map((s) => (s.id === updated.id ? updated : s)));
   }, []);
 
+  const handlePlayerStatus = useCallback((payload: PlayerStatus) => {
+    $playerStatus.set(payload);
+    if (payload.state === "playing") {
+      const src = payload.source;
+      if (src?.type === "stream") {
+        const name = $streams.get().find(s => s.id === src.streamId)?.name ?? src.streamId;
+        announceRef.current(m.playback_started({ name }), "assertive");
+      }
+    }
+  }, []);
+
+  const handlePlayerProgress = useCallback((payload: PlayerProgressPayload) => {
+    $playerStatus.set({
+      ...$playerStatus.get(),
+      positionMs: payload.positionMs,
+      durationMs: payload.durationMs,
+    });
+  }, []);
+
   const handleRecordingCompleted = useCallback((payload: RecordingCompletedPayload) => {
     const stream = $streams.get().find((s) => s.id === payload.streamId);
     const name = stream?.name ?? payload.streamId;
@@ -102,6 +126,8 @@ function AppContent() {
   useTauriEvent<StreamInfo>("stream-info-updated", handleStreamInfoUpdated);
   useTauriEvent<RecordingStartedPayload>("recording-started", () => {});
   useTauriEvent<RecordingCompletedPayload>("recording-completed", handleRecordingCompleted);
+  useTauriEvent<PlayerStatus>("player-status", handlePlayerStatus);
+  useTauriEvent<PlayerProgressPayload>("player-progress", handlePlayerProgress);
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-200">
@@ -109,6 +135,7 @@ function AppContent() {
       <main className="flex flex-1 flex-col overflow-hidden">
         <SectionHeader title={m.streams_section()} />
         <StreamsPanel />
+        <PlayerPanel />
         <StatusBar />
       </main>
     </div>
