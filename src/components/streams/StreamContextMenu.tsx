@@ -113,7 +113,7 @@ export function StreamContextMenu({ stream, status, onAddToWishlist, onAddToIgno
           <Separator className="my-1 border-t border-slate-700" />
           <MenuItem
             id="delete"
-            className="cursor-pointer px-3 py-1.5 text-sm text-red-400 outline-none hover:bg-slate-700 focus:bg-slate-700"
+            className="cursor-pointer px-3 py-1.5 text-sm text-red-400 outline-none hover:bg-slate-700 focus:bg-slate-700 forced-colors:text-[CanvasText]"
           >
             <span aria-hidden="true">✕ </span>{m.remove_stream()}
           </MenuItem>
