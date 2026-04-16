@@ -14,7 +14,11 @@ pub async fn save_settings(
     settings: GlobalSettings,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
-    settings.save().map_err(|e| e.to_string())?;
+    let to_save = settings.clone();
+    tokio::task::spawn_blocking(move || to_save.save())
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?;
     let mut current = state.settings.write().await;
     *current = settings;
     Ok(())
@@ -61,10 +65,14 @@ pub async fn open_directory_picker(
     default_path: Option<String>,
 ) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::DialogExt;
-    let mut builder = app.dialog().file();
-    if let Some(path) = default_path {
-        builder = builder.set_directory(&path);
-    }
-    let result = builder.blocking_pick_folder();
+    let result = tokio::task::spawn_blocking(move || {
+        let mut builder = app.dialog().file();
+        if let Some(path) = default_path {
+            builder = builder.set_directory(&path);
+        }
+        builder.blocking_pick_folder()
+    })
+    .await
+    .map_err(|e| e.to_string())?;
     Ok(result.map(|p| p.to_string()))
 }

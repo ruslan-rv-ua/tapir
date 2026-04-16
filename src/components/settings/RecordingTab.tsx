@@ -32,8 +32,12 @@ export function RecordingTab() {
   }
 
   async function handleBrowse() {
-    const dir = await tauri.openDirectoryPicker(recording?.outputDir);
-    if (dir) update({ outputDir: dir });
+    try {
+      const dir = await tauri.openDirectoryPicker(recording?.outputDir);
+      if (dir) update({ outputDir: dir });
+    } catch (err) {
+      console.error("Failed to open directory picker:", err);
+    }
   }
 
   return (
@@ -53,7 +57,7 @@ export function RecordingTab() {
         <button
           onClick={handleBrowse}
           aria-label={m.settings_output_dir_browse()}
-          className="rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-600"
+          className="rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-600 outline-none focus:ring-2 focus:ring-blue-400"
         >
           {m.settings_output_dir_browse()}
         </button>
@@ -132,6 +136,7 @@ export function RecordingTab() {
         value={recording.skipShortTracksMs / 1000}
         onChange={(val) => { if (!Number.isNaN(val)) update({ skipShortTracksMs: val * 1000 }); }}
         minValue={0}
+        step={1}
       >
         <Label className="block text-sm font-medium text-slate-300">
           {m.settings_min_track_duration()}

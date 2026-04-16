@@ -33,7 +33,9 @@ export function KeyRecorder({ label, value, onChange, onValidate }: Props) {
       const key = e.key;
       if (!["Control", "Shift", "Alt", "Meta"].includes(key)) {
         const normalized =
-          key === "ArrowUp"
+          key === " "
+            ? "Space"
+            : key === "ArrowUp"
             ? "Up"
             : key === "ArrowDown"
               ? "Down"

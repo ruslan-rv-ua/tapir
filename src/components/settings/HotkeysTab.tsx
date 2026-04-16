@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useStore } from "@nanostores/react";
 import { $settings } from "../../stores/settings";
 import { useAutoSave } from "../../hooks/useAutoSave";
+import { useAnnounce } from "../../hooks/useAnnounce";
 import { KeyRecorder } from "./KeyRecorder";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
@@ -17,6 +18,7 @@ const HOTKEY_FIELDS: { key: keyof HotkeyMap; label: () => string }[] = [
 
 export function HotkeysTab() {
   const settings = useStore($settings);
+  const announce = useAnnounce();
   const [registrationErrors, setRegistrationErrors] = useState<string[]>([]);
 
   const save = useAutoSave(async () => {
@@ -37,6 +39,9 @@ export function HotkeysTab() {
       hotkeys: { ...current.hotkeys, [key]: combo },
     });
     save();
+    if (combo) {
+      announce(m.settings_hotkey_changed({ combo }), "polite");
+    }
   }
 
   function validateHotkey(currentKey: keyof HotkeyMap) {

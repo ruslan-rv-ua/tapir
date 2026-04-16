@@ -195,6 +195,7 @@ export function GeneralTab() {
         onChange={(val) => { if (!Number.isNaN(val)) update({ diskSpaceThresholdGb: val }); }}
         minValue={0}
         maxValue={100}
+        step={1}
       >
         <Label className="block text-sm font-medium text-slate-300">
           {m.settings_disk_threshold()}
