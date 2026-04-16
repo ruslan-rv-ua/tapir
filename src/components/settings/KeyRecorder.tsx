@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import { Button, Label } from "react-aria-components";
 import * as m from "../../i18n/paraglide/messages";
 
@@ -12,7 +12,6 @@ interface Props {
 export function KeyRecorder({ label, value, onChange, onValidate }: Props) {
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const keysRef = useRef<Set<string>>(new Set());
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -22,7 +21,6 @@ export function KeyRecorder({ label, value, onChange, onValidate }: Props) {
 
       if (e.key === "Escape") {
         setIsRecording(false);
-        keysRef.current.clear();
         return;
       }
 
@@ -57,7 +55,6 @@ export function KeyRecorder({ label, value, onChange, onValidate }: Props) {
           onChange(combo);
         }
         setIsRecording(false);
-        keysRef.current.clear();
       }
     },
     [isRecording, onChange, onValidate],
@@ -72,7 +69,11 @@ export function KeyRecorder({ label, value, onChange, onValidate }: Props) {
     <div role="group" aria-label={label} className="flex items-center gap-3">
       <Label className="w-48 text-sm text-slate-300">{label}</Label>
       <Button
-        aria-label={`${label}: ${value || m.settings_hotkey_clear()}. ${m.settings_hotkey_press_to_change()}`}
+        aria-label={
+          isRecording
+            ? m.settings_hotkey_press_keys()
+            : `${label}: ${value || m.settings_hotkey_clear()}. ${m.settings_hotkey_press_to_change()}`
+        }
         onPress={() => {
           setIsRecording(true);
           setError(null);
