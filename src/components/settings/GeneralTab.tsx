@@ -16,6 +16,8 @@ import { $settings } from "../../stores/settings";
 import { useAutoSave } from "../../hooks/useAutoSave";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
+// @ts-expect-error — paraglide runtime has no .d.ts
+import { setLocale } from "../../i18n/paraglide/runtime";
 import type { GlobalSettings } from "../../lib/tauri";
 
 export function GeneralTab() {
@@ -33,7 +35,9 @@ export function GeneralTab() {
     const updated = { ...current, ...patch };
     $settings.set(updated);
     if (patch.language) {
-      document.documentElement.lang = patch.language === "uk-UA" ? "uk" : "en";
+      const locale = patch.language === "uk-UA" ? "uk" : "en";
+      document.documentElement.lang = locale;
+      setLocale(locale, { reload: false });
     }
     if (patch.theme) {
       applyTheme(patch.theme);
@@ -188,7 +192,7 @@ export function GeneralTab() {
       {/* Disk threshold */}
       <NumberField
         value={settings.diskSpaceThresholdGb}
-        onChange={(val) => update({ diskSpaceThresholdGb: val })}
+        onChange={(val) => { if (!Number.isNaN(val)) update({ diskSpaceThresholdGb: val }); }}
         minValue={0}
         maxValue={100}
       >

@@ -39,25 +39,24 @@ export function RecordingTab() {
   return (
     <div className="space-y-6">
       {/* Output directory */}
-      <div>
-        <Label className="block text-sm font-medium text-slate-300">
-          {m.settings_output_dir()}
-        </Label>
-        <div className="mt-1 flex gap-2">
-          <TextField
-            value={recording.outputDir}
-            onChange={(val) => update({ outputDir: val })}
-            className="flex-1"
-          >
-            <Input className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400" />
-          </TextField>
-          <button
-            onClick={handleBrowse}
-            className="rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-600"
-          >
-            {m.settings_output_dir_browse()}
-          </button>
-        </div>
+      <div className="flex gap-2 items-end">
+        <TextField
+          value={recording.outputDir}
+          onChange={(val) => update({ outputDir: val })}
+          className="flex-1"
+        >
+          <Label className="block text-sm font-medium text-slate-300">
+            {m.settings_output_dir()}
+          </Label>
+          <Input className="mt-1 w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400" />
+        </TextField>
+        <button
+          onClick={handleBrowse}
+          aria-label={m.settings_output_dir_browse()}
+          className="rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-600"
+        >
+          {m.settings_output_dir_browse()}
+        </button>
       </div>
 
       {/* File templates */}
@@ -131,7 +130,7 @@ export function RecordingTab() {
       {/* Min track duration (display in seconds, store as ms) */}
       <NumberField
         value={recording.skipShortTracksMs / 1000}
-        onChange={(val) => update({ skipShortTracksMs: val * 1000 })}
+        onChange={(val) => { if (!Number.isNaN(val)) update({ skipShortTracksMs: val * 1000 }); }}
         minValue={0}
       >
         <Label className="block text-sm font-medium text-slate-300">

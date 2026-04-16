@@ -32,7 +32,7 @@ export function ReconnectionTab() {
     <div className="space-y-6">
       <NumberField
         value={r.maxRetries}
-        onChange={(val) => update({ maxRetries: val })}
+        onChange={(val) => { if (!Number.isNaN(val)) update({ maxRetries: val }); }}
         minValue={0}
       >
         <Label className="block text-sm font-medium text-slate-300">
@@ -48,7 +48,7 @@ export function ReconnectionTab() {
 
       <NumberField
         value={r.retryIntervalSecs}
-        onChange={(val) => update({ retryIntervalSecs: val })}
+        onChange={(val) => { if (!Number.isNaN(val)) update({ retryIntervalSecs: val }); }}
         minValue={1}
       >
         <Label className="block text-sm font-medium text-slate-300">
@@ -61,7 +61,7 @@ export function ReconnectionTab() {
 
       <NumberField
         value={r.backoffMultiplier}
-        onChange={(val) => update({ backoffMultiplier: val })}
+        onChange={(val) => { if (!Number.isNaN(val)) update({ backoffMultiplier: val }); }}
         minValue={1}
         step={0.1}
       >
@@ -75,7 +75,7 @@ export function ReconnectionTab() {
 
       <NumberField
         value={r.maxIntervalSecs}
-        onChange={(val) => update({ maxIntervalSecs: val })}
+        onChange={(val) => { if (!Number.isNaN(val)) update({ maxIntervalSecs: val }); }}
         minValue={1}
       >
         <Label className="block text-sm font-medium text-slate-300">

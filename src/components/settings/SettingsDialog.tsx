@@ -19,7 +19,7 @@ export function SettingsDialog() {
     if (isOpen) {
       tauri.getRecordingSettings().then((rec) => {
         $recordingSettings.set(rec);
-      });
+      }).catch(console.error);
     }
   }, [isOpen]);
 
