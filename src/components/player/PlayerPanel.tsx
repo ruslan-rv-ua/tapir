@@ -63,7 +63,7 @@ export function PlayerPanel() {
         aria-label={isPlaying ? m.pause() : m.play()}
         isDisabled={!isActive}
         onPress={handlePlayPause}
-        className="p-1.5 rounded hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-40"
+        className="p-1.5 rounded hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-40 forced-colors:disabled:text-[GrayText] forced-colors:disabled:border-[GrayText]"
       >
         {isPlaying
           ? <Pause aria-hidden={true} size={16} />
@@ -74,7 +74,7 @@ export function PlayerPanel() {
         aria-label={m.stop()}
         isDisabled={!isActive}
         onPress={handleStop}
-        className="p-1.5 rounded hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-40"
+        className="p-1.5 rounded hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-40 forced-colors:disabled:text-[GrayText] forced-colors:disabled:border-[GrayText]"
       >
         <Square aria-hidden={true} size={16} />
       </Button>
