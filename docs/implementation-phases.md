@@ -507,7 +507,7 @@
 #### 3I-1. Windows High Contrast
 
 - `forced-colors:` CSS для всіх custom компонентів (StatusIcon, Badge, Toast, Slider thumb, Progress track)
-- [ ] Усі кастомні елементи коректно відображаються у Windows High Contrast mode
+- [x] Усі кастомні елементи коректно відображаються у Windows High Contrast mode
 
 #### 3I-2. Autostart
 
