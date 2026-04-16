@@ -10,6 +10,7 @@ mod settings;
 mod stream;
 mod tags;
 mod wishlist;
+mod browser;
 
 use app_state::AppState;
 use settings::GlobalSettings;
@@ -130,6 +131,9 @@ pub fn run() {
             commands::wishlist_commands::add_to_ignorelist,
             commands::wishlist_commands::remove_from_ignorelist,
             commands::wishlist_commands::update_ignorelist_pattern,
+            commands::browser_commands::search_stations,
+            commands::browser_commands::get_browser_filters,
+            commands::browser_commands::add_station_from_browser,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -10,6 +10,7 @@ import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import { SettingsDialog } from "./components/settings/SettingsDialog";
 import { StreamsPanel } from "./components/streams/StreamsPanel";
 import { WishlistPanel } from "./components/wishlist/WishlistPanel";
+import { BrowserPanel } from "./components/browser/BrowserPanel";
 import { PlayerPanel } from "./components/player/PlayerPanel";
 import { useTauriEvent } from "./hooks/useTauriEvent";
 import { useAnnounce } from "./hooks/useAnnounce";
@@ -148,6 +149,10 @@ function AppContent() {
     announce(m.announcement_track_ignored({ title: `${payload.artist} — ${payload.title}` }), "polite");
   }, [announce]);
 
+  const handleStreamsChanged = useCallback(() => {
+    tauri.getStreams().then((streams) => $streams.set(streams));
+  }, []);
+
   useTauriEvent<RecordingStatusPayload>("recording-status", handleRecordingStatus);
   useTauriEvent<TrackChangedPayload>("track-changed", handleTrackChanged);
   useTauriEvent<StreamErrorPayload>("stream-error", handleStreamError);
@@ -158,14 +163,20 @@ function AppContent() {
   useTauriEvent<PlayerProgressPayload>("player-progress", handlePlayerProgress);
   useTauriEvent<WishlistMatchPayload>("wishlist-match", handleWishlistMatch);
   useTauriEvent<TrackIgnoredPayload>("track-ignored", handleTrackIgnored);
+  useTauriEvent("streams-changed", handleStreamsChanged);
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-200">
       <ActivityBar />
       <main className="flex flex-1 flex-col overflow-hidden">
-        <SectionHeader title={activeSection === "wishlist" ? m.wishlist_section() : m.streams_section()} />
+        <SectionHeader title={
+          activeSection === "wishlist" ? m.wishlist_section() :
+          activeSection === "browser" ? m.browser_section() :
+          m.streams_section()
+        } />
         {activeSection === "streams" && <StreamsPanel />}
         {activeSection === "wishlist" && <WishlistPanel />}
+        {activeSection === "browser" && <BrowserPanel />}
         <PlayerPanel />
         <StatusBar />
       </main>

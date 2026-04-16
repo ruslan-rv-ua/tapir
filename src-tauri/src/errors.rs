@@ -22,6 +22,15 @@ pub enum RadioError {
 
     #[error("{0}")]
     Other(String),
+
+    #[error("Radio Browser API error: {0}")]
+    BrowserApi(String),
+
+    #[error("No Radio Browser servers available")]
+    BrowserNoServers,
+
+    #[error("Stream with this URL already exists")]
+    DuplicateStream,
 }
 
 impl From<RadioError> for String {

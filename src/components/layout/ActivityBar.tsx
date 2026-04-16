@@ -14,7 +14,7 @@ const sections: Array<{
   phase?: string;
 }> = [
   { id: "streams", icon: Radio, label: m.streams_section(), disabled: false },
-  { id: "browser", icon: Globe, label: m.browser_section(), disabled: true, phase: "2" },
+  { id: "browser", icon: Globe, label: m.browser_section(), disabled: false },
   { id: "wishlist", icon: Heart, label: m.wishlist_section(), disabled: false },
   { id: "schedule", icon: Calendar, label: m.schedule_section(), disabled: true, phase: "3" },
   { id: "songs", icon: Music, label: m.songs_section(), disabled: true, phase: "3" },

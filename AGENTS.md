@@ -13,7 +13,7 @@ See [docs/implementation-phases.md](docs/implementation-phases.md) for the full 
 | Phase 2B — Wishlist + Ignorelist + Context Menu | ✅ Complete | `feature/phase-2b` |
 | Phase 2C — SettingsDialog + Shortcuts | ✅ Complete | `feature/phase-2c` |
 | Phase 3A — System Tray | ⬜ Not started | — |
-| Phase 3B — Stream Browser | ⬜ Not started | — |
+| Phase 3B — Stream Browser | ✅ Complete | `feature/phase-3b` |
 | Phase 3C — Saved Songs Manager | ⬜ Not started | — |
 | Phase 3D — Scheduler | ⬜ Not started | — |
 | Phase 3E–3I — Single Instance, Profiles, CLI, Post-processing, Polish | ⬜ Not started | — |

@@ -278,3 +278,61 @@ export async function registerHotkeys(): Promise<string[]> {
 export async function openDirectoryPicker(defaultPath?: string): Promise<string | null> {
   return invoke("open_directory_picker", { defaultPath: defaultPath ?? null });
 }
+
+// ── Radio Browser types ───────────────────────────────────────────────────
+
+export interface StationResult {
+  stationuuid: string;
+  name: string;
+  url: string;
+  urlResolved: string;
+  codec: string;
+  bitrate: number;
+  country: string;
+  countrycode: string;
+  tags: string;
+  language: string;
+  votes: number;
+  clickcount: number;
+  hasExtendedInfo: boolean | null;
+  homepage: string;
+  lastcheckok: number;
+}
+
+export interface SearchParams {
+  query?: string;
+  country?: string;
+  language?: string;
+  codec?: string;
+  minBitrate?: number;
+  order?: string;
+  reverse?: boolean;
+  offset?: number;
+  limit?: number;
+}
+
+export interface FilterItem {
+  name: string;
+  stationcount: number;
+}
+
+export interface BrowserFilters {
+  countries: FilterItem[];
+  codecs: FilterItem[];
+  languages: FilterItem[];
+  tags: FilterItem[];
+}
+
+// ── Radio Browser IPC wrappers ────────────────────────────────────────────
+
+export async function searchStationsIpc(params: SearchParams): Promise<StationResult[]> {
+  return invoke<StationResult[]>("search_stations", { params });
+}
+
+export async function getBrowserFilters(): Promise<BrowserFilters> {
+  return invoke<BrowserFilters>("get_browser_filters");
+}
+
+export async function addStationFromBrowser(station: StationResult): Promise<void> {
+  return invoke("add_station_from_browser", { station });
+}

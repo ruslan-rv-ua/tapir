@@ -16,7 +16,7 @@
 | 2B | Wishlist + Ignorelist + Context Menu | Фільтрація треків, контекстне меню станцій | ✅ Complete |
 | 2C | SettingsDialog + Shortcuts | Повний діалог налаштувань, глобальні хоткеї, window state | ✅ Complete |
 | 3A | System Tray | Tray icon, minimize to tray, balloon tips, dynamic menu | ⬜ |
-| 3B | Stream Browser | Radio Browser API — пошук станцій | ⬜ |
+| 3B | Stream Browser | Radio Browser API — пошук станцій | ✅ Complete |
 | 3C | Saved Songs Manager | Менеджер записаних файлів, редагування тегів | ⬜ |
 | 3D | Scheduler | Заплановані записи (одноразові + повторювані) | ⬜ |
 | 3E | Single Instance | Named Mutex, передача CLI args | ⬜ |
@@ -296,7 +296,7 @@
 
 ---
 
-### Фаза 3B — Stream Browser (Radio Browser API)
+### Фаза 3B — Stream Browser (Radio Browser API) ✅
 
 **Ціль:** пошук нових станцій через Radio Browser API без ручного введення URL.
 

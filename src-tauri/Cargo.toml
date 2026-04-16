@@ -24,7 +24,7 @@ tauri-plugin-global-shortcut = "2"
 tauri-plugin-window-state = "2"
 
 # HTTP Streaming
-reqwest = { version = "0.13", default-features = false, features = ["stream", "rustls"] }
+reqwest = { version = "0.13", default-features = false, features = ["stream", "rustls", "json"] }
 icy-metadata = { version = "0.6", features = ["reqwest"] }
 stream-download = { version = "0.24", features = ["reqwest-rustls"] }
 

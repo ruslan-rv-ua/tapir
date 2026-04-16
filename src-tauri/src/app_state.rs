@@ -4,6 +4,7 @@ use crate::settings::GlobalSettings;
 use crate::profile::Profile;
 use crate::stream::manager::StreamManager;
 use crate::player::engine::PlayerEngine;
+use crate::browser::api::RadioBrowserClient;
 
 pub struct AppState {
     pub stream_manager: Arc<RwLock<StreamManager>>,
@@ -11,6 +12,7 @@ pub struct AppState {
     pub active_profile: Arc<RwLock<Profile>>,
     // PlayerEngine is internally synchronized via Arc<Mutex<>> fields — no outer RwLock needed.
     pub player: Arc<PlayerEngine>,
+    pub browser_client: Arc<tokio::sync::OnceCell<RadioBrowserClient>>,
 }
 
 impl AppState {
@@ -23,11 +25,13 @@ impl AppState {
             profile.player_session.volume,
             settings.output_device.clone(),
         )?;
+        let browser_client = Arc::new(tokio::sync::OnceCell::new());
         Ok(Self {
             stream_manager: Arc::new(RwLock::new(StreamManager::new(app_handle))),
             settings: Arc::new(RwLock::new(settings)),
             active_profile: Arc::new(RwLock::new(profile)),
             player: Arc::new(player),
+            browser_client,
         })
     }
 }

@@ -685,9 +685,14 @@ interface StationResult {
   codec: string;          // "MP3", "AAC", "AAC+"
   bitrate: number;
   country: string;
+  countrycode: string;    // ISO 3166-1 (e.g. "UA", "DE")
   tags: string;           // comma-separated
-  hasExtendedInfo: boolean; // чи надсилає ICY metadata
-  favicon: string;
+  language: string;
+  votes: number;
+  clickcount: number;
+  hasExtendedInfo: boolean | null;
+  homepage: string;
+  lastcheckok: number;    // 1 = OK, 0 = failed
 }
 ```
 
@@ -698,13 +703,24 @@ pub struct StationResult {
     pub stationuuid: String,
     pub name: String,
     pub url: String,
+    #[serde(default, alias = "url_resolved")]
     pub url_resolved: String,
     pub codec: String,
     pub bitrate: u32,
     pub country: String,
+    #[serde(alias = "countrycode")]
+    pub countrycode: String,
     pub tags: String,
-    pub has_extended_info: bool,
-    pub favicon: String,
+    pub language: String,
+    pub votes: i32,
+    #[serde(alias = "clickcount")]
+    pub clickcount: u32,
+    #[serde(default, alias = "has_extended_info")]
+    pub has_extended_info: Option<bool>,
+    #[serde(default)]
+    pub homepage: String,
+    #[serde(alias = "lastcheckok")]
+    pub lastcheckok: i8,
 }
 ```
 
