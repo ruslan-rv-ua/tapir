@@ -59,7 +59,7 @@ export function StreamTable() {
         onSortChange={setSortDescriptor}
         className="w-full text-sm"
       >
-        <TableHeader className="border-b border-slate-700 text-xs text-slate-500 uppercase">
+        <TableHeader className="border-b border-slate-700 text-xs text-slate-500 uppercase forced-colors:border-[ButtonText]">
           <Column id="select" className="w-10 px-3 py-2" />
           <Column id="status" className="w-16 px-3 py-2">{m.column_status()}</Column>
           <Column id="name" isRowHeader allowsSorting className="px-3 py-2">{m.column_name()}</Column>

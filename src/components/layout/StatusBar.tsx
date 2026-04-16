@@ -39,7 +39,7 @@ export function StatusBar() {
     <footer
       role="status"
       aria-live="polite"
-      className="flex items-center gap-4 border-t border-slate-700 px-4 py-1.5 text-xs text-slate-400"
+      className="flex items-center gap-4 border-t border-slate-700 px-4 py-1.5 text-xs text-slate-400 forced-colors:border-[ButtonText] forced-colors:text-[CanvasText]"
     >
       <span>{recordingsText}</span>
       {longestMs > 0 && <span>{formatDuration(longestMs)}</span>}
