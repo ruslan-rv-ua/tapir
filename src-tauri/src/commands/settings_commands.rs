@@ -37,14 +37,15 @@ pub async fn save_recording_settings(
     recording: RecordingSettings,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
-    let mut profile = state.active_profile.write().await;
-    profile.recording = recording;
-    let snapshot = profile.clone();
-    drop(profile);
+    let mut snapshot = state.active_profile.read().await.clone();
+    snapshot.recording = recording.clone();
     tokio::task::spawn_blocking(move || snapshot.save())
         .await
         .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    let mut profile = state.active_profile.write().await;
+    profile.recording = recording;
+    Ok(())
 }
 
 #[tauri::command]

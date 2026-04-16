@@ -30,6 +30,7 @@
   "connection_error": "Помилка з'єднання: {name}",
   "reconnecting": "Перепідключення: {name}, спроба {attempt}",
   "stream_added": "Потік додано: {name}",
+  "stream_updated": "Потік оновлено: {name}",
   "stream_removed": "Потік видалено: {name}",
   "welcome_first_run": "Ласкаво просимо до Tapir. Натисніть Enter щоб додати перший потік.",
   "empty_state_title": "Потоків ще немає",
@@ -134,5 +135,6 @@
   "settings_output_device": "Пристрій виведення",
   "settings_output_device_default": "Системний за замовчуванням",
   "settings_output_device_refresh": "Оновити список пристроїв",
-  "settings_save_error": "Помилка збереження налаштувань"
+  "settings_save_error": "Помилка збереження налаштувань",
+  "playback_error": "Помилка відтворення"
 }

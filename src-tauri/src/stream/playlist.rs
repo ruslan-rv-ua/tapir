@@ -14,6 +14,7 @@ pub fn parse_pls(content: &str) -> Result<String, RadioError> {
         if let Some(url) = line.strip_prefix("File1=") {
             let url = url.trim();
             if !url.is_empty() {
+                validate_stream_url(url)?;
                 return Ok(url.to_string());
             }
         }
@@ -29,9 +30,20 @@ pub fn parse_m3u(content: &str) -> Result<String, RadioError> {
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
+        validate_stream_url(line)?;
         return Ok(line.to_string());
     }
     Err(RadioError::Format("No stream URL found in M3U".to_string()))
+}
+
+/// Reject non-HTTP(S) URLs extracted from playlists (e.g. file:// injection).
+fn validate_stream_url(url: &str) -> Result<(), RadioError> {
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        return Err(RadioError::InvalidUrl(format!(
+            "Playlist contains non-HTTP URL: {url}"
+        )));
+    }
+    Ok(())
 }
 
 /// Detect playlist type by URL path extension (.pls / .m3u / .m3u8), fetch and parse.

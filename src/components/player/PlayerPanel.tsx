@@ -39,6 +39,7 @@ export function PlayerPanel() {
       }
     } catch (e) {
       console.error(e);
+      announce(m.playback_error(), "assertive");
     }
   };
 
@@ -48,6 +49,7 @@ export function PlayerPanel() {
       announce(m.playback_stopped(), "assertive");
     } catch (e) {
       console.error(e);
+      announce(m.playback_error(), "assertive");
     }
   };
 

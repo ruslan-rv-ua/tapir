@@ -30,6 +30,7 @@
   "connection_error": "Connection error: {name}",
   "reconnecting": "Reconnecting: {name}, attempt {attempt}",
   "stream_added": "Stream added: {name}",
+  "stream_updated": "Stream updated: {name}",
   "stream_removed": "Stream removed: {name}",
   "welcome_first_run": "Welcome to Tapir. Press Enter to add your first stream.",
   "empty_state_title": "No streams yet",
@@ -134,5 +135,6 @@
   "settings_output_device": "Output device",
   "settings_output_device_default": "System default",
   "settings_output_device_refresh": "Refresh device list",
-  "settings_save_error": "Error saving settings"
+  "settings_save_error": "Error saving settings",
+  "playback_error": "Playback error"
 }

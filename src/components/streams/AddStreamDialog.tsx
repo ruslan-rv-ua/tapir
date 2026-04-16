@@ -27,7 +27,7 @@ export function AddStreamDialog({ onClose, editStream }: Props) {
       if (isEdit && editStream) {
         const updated = await tauri.updateStream(editStream.id, name);
         $streams.set($streams.get().map((s) => s.id === updated.id ? updated : s));
-        addToast(m.stream_added({ name: updated.name }), "success");
+        addToast(m.stream_updated({ name: updated.name }), "success");
       } else {
         const newStream = await tauri.addStream(url, name || undefined);
         $streams.set([...$streams.get(), newStream]);

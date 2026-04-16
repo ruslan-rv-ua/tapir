@@ -76,19 +76,23 @@ export function StreamContextMenu({ stream, status, onAddToWishlist, onAddToIgno
             id="play"
             className="cursor-pointer px-3 py-1.5 text-sm text-slate-200 outline-none hover:bg-slate-700 focus:bg-slate-700"
           >
-            {isThisStreamPlaying ? `■ ${m.stop_stream_playback()}` : `▶ ${m.play_stream()}`}
+            {isThisStreamPlaying
+              ? <><span aria-hidden="true">■ </span>{m.stop_stream_playback()}</>
+              : <><span aria-hidden="true">▶ </span>{m.play_stream()}</>}
           </MenuItem>
           <MenuItem
             id="record"
             className="cursor-pointer px-3 py-1.5 text-sm text-slate-200 outline-none hover:bg-slate-700 focus:bg-slate-700"
           >
-            {isRecording ? `⏹ ${m.stop_recording()}` : `⏺ ${m.start_recording()}`}
+            {isRecording
+              ? <><span aria-hidden="true">⏹ </span>{m.stop_recording()}</>
+              : <><span aria-hidden="true">⏺ </span>{m.start_recording()}</>}
           </MenuItem>
           <MenuItem
             id="edit"
             className="cursor-pointer px-3 py-1.5 text-sm text-slate-200 outline-none hover:bg-slate-700 focus:bg-slate-700"
           >
-            ✎ {m.edit_stream()}
+            <span aria-hidden="true">✎ </span>{m.edit_stream()}
           </MenuItem>
           {currentTrack && (
             <>
@@ -96,13 +100,13 @@ export function StreamContextMenu({ stream, status, onAddToWishlist, onAddToIgno
                 id="add-wishlist"
                 className="cursor-pointer px-3 py-1.5 text-sm text-slate-200 outline-none hover:bg-slate-700 focus:bg-slate-700"
               >
-                ⊕ {m.add_to_wishlist()}
+                <span aria-hidden="true">⊕ </span>{m.add_to_wishlist()}
               </MenuItem>
               <MenuItem
                 id="add-ignorelist"
                 className="cursor-pointer px-3 py-1.5 text-sm text-slate-200 outline-none hover:bg-slate-700 focus:bg-slate-700"
               >
-                ⊖ {m.add_to_ignorelist()}
+                <span aria-hidden="true">⊖ </span>{m.add_to_ignorelist()}
               </MenuItem>
             </>
           )}
@@ -111,7 +115,7 @@ export function StreamContextMenu({ stream, status, onAddToWishlist, onAddToIgno
             id="delete"
             className="cursor-pointer px-3 py-1.5 text-sm text-red-400 outline-none hover:bg-slate-700 focus:bg-slate-700"
           >
-            ✕ {m.remove_stream()}
+            <span aria-hidden="true">✕ </span>{m.remove_stream()}
           </MenuItem>
         </Menu>
       </Popover>

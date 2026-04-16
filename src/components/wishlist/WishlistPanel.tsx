@@ -1,3 +1,4 @@
+import { Button } from "react-aria-components";
 import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { PatternTable } from "./PatternTable";
@@ -112,12 +113,12 @@ export function WishlistPanel() {
           <h2 id="wishlist-heading" className="text-sm font-semibold text-slate-300">
             {m.wishlist_section_title()}
           </h2>
-          <button
-            onClick={() => setDialog({ mode: "add", listType: "wishlist" })}
-            className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700"
+          <Button
+            onPress={() => setDialog({ mode: "add", listType: "wishlist" })}
+            className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
           >
             {m.add_pattern()}
-          </button>
+          </Button>
         </div>
         <PatternTable
           items={wishlist.map((e) => ({ pattern: e.pattern, addedAt: e.addedAt }))}
@@ -135,12 +136,12 @@ export function WishlistPanel() {
           <h2 id="ignorelist-heading" className="text-sm font-semibold text-slate-300">
             {m.ignorelist_section_title()}
           </h2>
-          <button
-            onClick={() => setDialog({ mode: "add", listType: "ignorelist" })}
-            className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700"
+          <Button
+            onPress={() => setDialog({ mode: "add", listType: "ignorelist" })}
+            className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
           >
             {m.add_pattern()}
-          </button>
+          </Button>
         </div>
         <PatternTable
           items={ignorelist.map((p) => ({ pattern: p }))}

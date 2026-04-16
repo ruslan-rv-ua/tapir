@@ -1,3 +1,4 @@
+import { Button } from "react-aria-components";
 import { useStore } from "@nanostores/react";
 import { $streams, $showAddStreamDialog, $editStream } from "../../stores/streams";
 import { StreamTable } from "./StreamTable";
@@ -11,13 +12,13 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
     <div className="flex flex-1 flex-col items-center justify-center gap-4 text-slate-400">
       <p className="text-lg font-medium text-slate-300">{m.empty_state_title()}</p>
       <p className="text-sm">{m.empty_state_description()}</p>
-      <button
+      <Button
         autoFocus
-        onClick={onAdd}
+        onPress={onAdd}
         className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
       >
         {m.add_stream()}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -33,18 +34,18 @@ function Toolbar({ onAdd }: { onAdd: () => void }) {
 
   return (
     <div className="flex items-center gap-2 border-b border-slate-700 px-4 py-2">
-      <button
-        onClick={onAdd}
-        className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
+      <Button
+        onPress={onAdd}
+        className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
       >
         {m.add_stream()}
-      </button>
-      <button
-        onClick={handleStopAll}
-        className="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700"
+      </Button>
+      <Button
+        onPress={handleStopAll}
+        className="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
       >
         {m.stop_all()}
-      </button>
+      </Button>
     </div>
   );
 }
