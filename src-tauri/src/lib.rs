@@ -82,14 +82,14 @@ pub fn run() {
                     // 4. Save active URLs to profile
                     let mut profile = state.active_profile.write().await;
                     profile.active_recording_urls = urls;
-                    let _ = profile.save();
+                    let _ = profile.save().inspect_err(|e| log::error!("Failed to save profile on shutdown: {e}"));
                     drop(profile);
                     // 5. Stop player and save volume
                     state.player.stop_session_public().await;
                     let volume = state.player.current_volume().await;
                     let mut profile = state.active_profile.write().await;
                     profile.player_session.volume = volume;
-                    let _ = profile.save();
+                    let _ = profile.save().inspect_err(|e| log::error!("Failed to save profile volume on shutdown: {e}"));
                     drop(profile);
                     // 6. Wait for tasks to finish
                     tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;

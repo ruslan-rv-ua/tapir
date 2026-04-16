@@ -3,6 +3,7 @@ import { $activeSection } from "../../stores/navigation";
 import { $settingsDialogOpen } from "../../stores/settings";
 import type { Section } from "../../stores/navigation";
 import { Radio, Globe, Heart, Calendar, Music, Settings } from "lucide-react";
+import { Button } from "react-aria-components";
 import * as m from "../../i18n/paraglide/messages";
 
 const sections: Array<{
@@ -29,23 +30,18 @@ export function ActivityBar() {
       className="flex w-12 flex-col items-center gap-1 border-r border-slate-700 bg-slate-900 py-2"
     >
       {sections.map((section) => (
-        <button
+        <Button
           key={section.id}
           aria-label={section.label}
           aria-current={activeSection === section.id ? "page" : undefined}
-          disabled={section.disabled}
-          onClick={() => $activeSection.set(section.id)}
-          title={
-            section.disabled
-              ? m.phase_not_available({ phase: section.phase ?? "" })
-              : section.label
-          }
+          isDisabled={section.disabled}
+          onPress={() => $activeSection.set(section.id)}
           aria-description={
             section.disabled
               ? m.phase_not_available({ phase: section.phase ?? "" })
               : undefined
           }
-          className={`flex h-10 w-10 items-center justify-center rounded transition-colors ${
+          className={`flex h-10 w-10 items-center justify-center rounded transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
             activeSection === section.id
               ? "bg-slate-700 text-blue-400"
               : section.disabled
@@ -54,16 +50,16 @@ export function ActivityBar() {
           }`}
         >
           <section.icon size={20} aria-hidden={true} />
-        </button>
+        </Button>
       ))}
       <div className="mt-auto">
-        <button
-          onClick={() => $settingsDialogOpen.set(true)}
+        <Button
+          onPress={() => $settingsDialogOpen.set(true)}
           aria-label={m.settings_title()}
-          className="flex h-10 w-10 items-center justify-center rounded text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+          className="flex h-10 w-10 items-center justify-center rounded text-slate-400 hover:bg-slate-700 hover:text-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
         >
           <Settings size={20} aria-hidden={true} />
-        </button>
+        </Button>
       </div>
     </nav>
   );

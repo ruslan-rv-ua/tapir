@@ -119,8 +119,11 @@
   "settings_max_retries": "Max reconnection attempts",
   "settings_max_retries_desc": "0 = unlimited",
   "settings_retry_interval": "Retry interval (sec)",
+  "settings_retry_interval_desc": "Initial wait time between reconnection attempts",
   "settings_backoff_multiplier": "Backoff multiplier",
+  "settings_backoff_multiplier_desc": "Multiplies the interval after each failed attempt",
   "settings_max_interval": "Max interval (sec)",
+  "settings_max_interval_desc": "Upper limit for the interval between attempts",
   "settings_hotkey_toggle_recording": "Recording (toggle)",
   "settings_hotkey_toggle_playback": "Playback (toggle)",
   "settings_hotkey_volume_up": "Volume up",
@@ -136,5 +139,8 @@
   "settings_output_device_default": "System default",
   "settings_output_device_refresh": "Refresh device list",
   "settings_save_error": "Error saving settings",
+  "settings_output_device_error": "Failed to change output device",
+  "settings_output_device_load_error": "Failed to load device list",
+  "saving": "Saving…",
   "playback_error": "Playback error"
 }

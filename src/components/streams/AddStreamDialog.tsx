@@ -85,16 +85,17 @@ export function AddStreamDialog({ onClose, editStream }: Props) {
                 type="button"
                 onClick={onClose}
                 disabled={loading}
-                className="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700"
+                className="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
               >
                 {m.cancel()}
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+                aria-busy={loading || undefined}
+                className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
               >
-                {loading ? "..." : m.save()}
+                {loading ? m.saving() : m.save()}
               </button>
             </div>
           </form>

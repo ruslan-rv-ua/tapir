@@ -49,7 +49,7 @@ export function SettingsDialog() {
             <button
               onClick={() => $settingsDialogOpen.set(false)}
               aria-label={m.settings_close()}
-              className="rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+              className="rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
             >
               ✕
             </button>

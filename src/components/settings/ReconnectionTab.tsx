@@ -57,6 +57,9 @@ export function ReconnectionTab() {
         <Group className="mt-1 flex w-32">
           <Input className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400" />
         </Group>
+        <p className="mt-1 text-xs text-slate-500">
+          {m.settings_retry_interval_desc()}
+        </p>
       </NumberField>
 
       <NumberField
@@ -71,6 +74,9 @@ export function ReconnectionTab() {
         <Group className="mt-1 flex w-32">
           <Input className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400" />
         </Group>
+        <p className="mt-1 text-xs text-slate-500">
+          {m.settings_backoff_multiplier_desc()}
+        </p>
       </NumberField>
 
       <NumberField
@@ -84,6 +90,9 @@ export function ReconnectionTab() {
         <Group className="mt-1 flex w-32">
           <Input className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400" />
         </Group>
+        <p className="mt-1 text-xs text-slate-500">
+          {m.settings_max_interval_desc()}
+        </p>
       </NumberField>
     </div>
   );

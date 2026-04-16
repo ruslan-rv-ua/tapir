@@ -119,8 +119,11 @@
   "settings_max_retries": "Максимум спроб перепідключення",
   "settings_max_retries_desc": "0 = необмежено",
   "settings_retry_interval": "Інтервал між спробами (сек)",
+  "settings_retry_interval_desc": "Початковий час очікування між спробами перепідключення",
   "settings_backoff_multiplier": "Множник backoff",
+  "settings_backoff_multiplier_desc": "Множить інтервал після кожної невдалої спроби",
   "settings_max_interval": "Максимальний інтервал (сек)",
+  "settings_max_interval_desc": "Верхня межа інтервалу між спробами",
   "settings_hotkey_toggle_recording": "Запис (toggle)",
   "settings_hotkey_toggle_playback": "Відтворення (toggle)",
   "settings_hotkey_volume_up": "Гучність +",
@@ -136,5 +139,8 @@
   "settings_output_device_default": "Системний за замовчуванням",
   "settings_output_device_refresh": "Оновити список пристроїв",
   "settings_save_error": "Помилка збереження налаштувань",
+  "settings_output_device_error": "Не вдалося змінити пристрій виведення",
+  "settings_output_device_load_error": "Не вдалося завантажити список пристроїв",
+  "saving": "Збереження…",
   "playback_error": "Помилка відтворення"
 }

@@ -61,13 +61,13 @@ export function AddPatternDialog({ listType, initialPattern, editingPattern, onS
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700"
+                className="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
               >
                 {m.cancel()}
               </button>
               <button
                 type="submit"
-                className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
+                className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
               >
                 {isEdit ? m.save() : m.add_pattern()}
               </button>

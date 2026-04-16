@@ -10,6 +10,7 @@ import {
 } from "react-aria-components";
 import { useStore } from "@nanostores/react";
 import { $settings } from "../../stores/settings";
+import { addToast } from "../../stores/toasts";
 import { useAutoSave } from "../../hooks/useAutoSave";
 import * as tauri from "../../lib/tauri";
 import type { AudioDevice } from "../../lib/tauri";
@@ -24,7 +25,7 @@ export function AudioTab() {
       const devs = await tauri.listOutputDevices();
       setDevices(devs);
     } catch (err) {
-      console.error("Failed to load audio devices:", err);
+      addToast(m.settings_output_device_load_error(), "error");
     }
   };
 
@@ -44,7 +45,7 @@ export function AudioTab() {
     try {
       await tauri.setOutputDevice(name);
     } catch (err) {
-      console.error("Failed to set output device:", err);
+      addToast(m.settings_output_device_error(), "error");
       return;
     }
     const current = $settings.get();

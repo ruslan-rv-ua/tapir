@@ -25,7 +25,7 @@ export function ToastContainer() {
           <button
             onClick={() => removeToast(toast.id)}
             aria-label={`Dismiss: ${toast.message}`}
-            className="ml-auto text-white/70 hover:text-white"
+            className="ml-auto text-white/70 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white rounded"
           >
             ✕
           </button>

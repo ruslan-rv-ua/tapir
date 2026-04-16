@@ -10,7 +10,6 @@ export function updateStreamStatus(streamId: string, status: Partial<StreamStatu
   const current = $statuses.get()[streamId];
   if (current) {
     $statuses.setKey(streamId, { ...current, ...status });
-  } else {
-    $statuses.setKey(streamId, status as StreamStatus);
   }
+  // Ignore partial updates for unknown streams — full status comes from backend events
 }
