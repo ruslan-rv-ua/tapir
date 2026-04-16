@@ -81,19 +81,19 @@ export function KeyRecorder({ label, value, onChange, onValidate }: Props) {
           setError(null);
         }}
         onKeyDown={handleKeyDown}
-        className="min-w-36 rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400"
+        className="min-w-36 rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText] forced-colors:text-[CanvasText] forced-colors:focus:ring-[Highlight]"
       >
         {isRecording ? m.settings_hotkey_press_keys() : value || "—"}
       </Button>
       <Button
         aria-label={m.settings_hotkey_clear()}
         onPress={handleClear}
-        className="rounded border border-slate-600 bg-slate-700 px-2 py-2 text-sm text-slate-400 hover:text-slate-200 outline-none focus:ring-2 focus:ring-blue-400"
+        className="rounded border border-slate-600 bg-slate-700 px-2 py-2 text-sm text-slate-400 hover:text-slate-200 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border-[ButtonText] forced-colors:text-[ButtonText] forced-colors:focus:ring-[Highlight]"
       >
         ✕
       </Button>
       {error && (
-        <span role="alert" className="text-xs text-red-400">
+        <span role="alert" className="text-xs text-red-400 forced-colors:text-[CanvasText]">
           {error}
         </span>
       )}
