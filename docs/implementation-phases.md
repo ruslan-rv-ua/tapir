@@ -13,7 +13,7 @@
 |------|-------|---------|--------|
 | 1 | MVP: Core Recording | Запис потоків + розділення треків + теги + базова доступність + i18n setup | ✅ Complete |
 | 2A | Player | Live playback, файлове відтворення, volume, output device | ✅ Complete |
-| 2B | Wishlist + Ignorelist + Context Menu | Фільтрація треків, контекстне меню станцій | ⬜ |
+| 2B | Wishlist + Ignorelist + Context Menu | Фільтрація треків, контекстне меню станцій | ✅ Complete |
 | 2C | SettingsDialog + Shortcuts | Повний діалог налаштувань, глобальні хоткеї, window state | ⬜ |
 | 3A | System Tray | Tray icon, minimize to tray, balloon tips, dynamic menu | ⬜ |
 | 3B | Stream Browser | Radio Browser API — пошук станцій | ⬜ |
@@ -168,7 +168,7 @@
 
 ---
 
-### Фаза 2B — Wishlist + Ignorelist + Контекстне меню станцій
+### Фаза 2B — Wishlist + Ignorelist + Контекстне меню станцій ✅
 
 **Ціль:** автоматична фільтрація треків через wishlist/ignorelist + контекстне меню у таблиці потоків.
 

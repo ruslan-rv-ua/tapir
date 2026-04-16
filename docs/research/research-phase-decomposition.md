@@ -1,7 +1,7 @@
 # Декомпозиція фаз 3–4 на незалежні підфази
 
 > **Версія:** 1.0 | **Дата:** 2025-07-18  
-> **Контекст:** Phase 1 (Core Recording) ✅ | Phase 2A (Player) ✅ | Phase 2B (Wishlist+Context Menu) ⬜ | Phase 2C (Settings) ⬜
+> **Контекст:** Phase 1 (Core Recording) ✅ | Phase 2A (Player) ✅ | Phase 2B (Wishlist+Context Menu) ✅ | Phase 2C (Settings) ⬜
 
 ---
 

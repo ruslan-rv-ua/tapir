@@ -10,7 +10,7 @@ See [docs/implementation-phases.md](docs/implementation-phases.md) for the full 
 |------|--------|-------|
 | Phase 1 — Core Recording | ✅ Complete | `feature/refine-phase-1` |
 | Phase 2A — Player subsystem | ✅ Complete | `feature/phase-2` (not yet merged) |
-| Phase 2B — Wishlist + Ignorelist + Context Menu | ⬜ Not started | — |
+| Phase 2B — Wishlist + Ignorelist + Context Menu | ✅ Complete | `feature/phase-2b` |
 | Phase 2C — SettingsDialog + Shortcuts | ⬜ Not started | — |
 | Phase 3A — System Tray | ⬜ Not started | — |
 | Phase 3B — Stream Browser | ⬜ Not started | — |
