@@ -51,7 +51,7 @@ export function PatternTable({ items, ariaLabel, showDate, emptyMessage, onEdit,
         </TableHeader>
         <TableBody>
           {items.map((item) => (
-            <Row key={item.pattern} className="border-b border-slate-800 hover:bg-slate-800/50">
+            <Row key={item.pattern} className="border-b border-slate-800 hover:bg-slate-800/50 forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText]">
               <Cell className="px-3 py-2 font-mono text-slate-200">{item.pattern}</Cell>
               {showDate && (
                 <Cell className="px-3 py-2 text-slate-400">
