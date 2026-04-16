@@ -47,7 +47,7 @@ export function AddStreamDialog({ onClose, editStream }: Props) {
       isOpen
       onOpenChange={(open) => { if (!open) onClose(); }}
     >
-      <Modal className="w-96 rounded-lg bg-slate-800 p-6 shadow-2xl outline-none">
+      <Modal className="w-96 rounded-lg bg-slate-800 p-6 shadow-2xl outline-none forced-colors:bg-[Canvas] forced-colors:border forced-colors:border-[ButtonText]">
         <Dialog className="outline-none">
           <Heading slot="title" className="mb-4 text-lg font-semibold text-slate-100">
             {isEdit ? m.edit_stream() : m.add_stream()}
@@ -63,7 +63,7 @@ export function AddStreamDialog({ onClose, editStream }: Props) {
                   required
                   autoFocus
                   disabled={loading}
-                  className="rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-slate-100 outline-none focus:border-blue-500"
+                  className="rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-slate-100 outline-none focus:border-blue-500 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText] forced-colors:text-[CanvasText] forced-colors:focus:border-[Highlight]"
                   placeholder="https://..."
                 />
               </label>
@@ -76,10 +76,10 @@ export function AddStreamDialog({ onClose, editStream }: Props) {
                 onChange={(e) => setName(e.target.value)}
                 autoFocus={isEdit}
                 disabled={loading}
-                className="rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-slate-100 outline-none focus:border-blue-500"
+                className="rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-slate-100 outline-none focus:border-blue-500 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText] forced-colors:text-[CanvasText] forced-colors:focus:border-[Highlight]"
               />
             </label>
-            {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
+            {error && <p role="alert" className="text-sm text-red-400 forced-colors:text-[CanvasText]">{error}</p>}
             <div className="mt-2 flex justify-end gap-2">
               <button
                 type="button"
