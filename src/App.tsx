@@ -7,6 +7,7 @@ import { LiveAnnouncer } from "./components/common/LiveAnnouncer";
 import { ToastContainer } from "./components/common/ToastContainer";
 import { CommandPalette } from "./components/common/CommandPalette";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
+import { SettingsDialog } from "./components/settings/SettingsDialog";
 import { StreamsPanel } from "./components/streams/StreamsPanel";
 import { WishlistPanel } from "./components/wishlist/WishlistPanel";
 import { PlayerPanel } from "./components/player/PlayerPanel";
@@ -14,6 +15,7 @@ import { useTauriEvent } from "./hooks/useTauriEvent";
 import { useAnnounce } from "./hooks/useAnnounce";
 import { $streams, updateStreamStatus } from "./stores/streams";
 import { $settings } from "./stores/settings";
+import { $settingsDialogOpen } from "./stores/settings";
 import { $playerStatus } from "./stores/player";
 import { $activeSection } from "./stores/navigation";
 import { $commandPaletteOpen } from "./stores/navigation";
@@ -42,6 +44,9 @@ function AppContent() {
       tauri.getSettings().then((settings) => {
         $settings.set(settings);
         document.documentElement.lang = settings.language === "uk-UA" ? "uk" : "en";
+        if (settings.theme !== "auto") {
+          document.documentElement.setAttribute("data-theme", settings.theme);
+        }
       }),
       tauri.getPlayerStatus().then((status) => {
         $playerStatus.set(status);
@@ -51,12 +56,16 @@ function AppContent() {
     });
   }, []);
 
-  // Ctrl+K keyboard handler
+  // Ctrl+K and Ctrl+, keyboard handlers
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault();
         $commandPaletteOpen.set(!$commandPaletteOpen.get());
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === ",") {
+        e.preventDefault();
+        $settingsDialogOpen.set(!$settingsDialogOpen.get());
       }
     };
     window.addEventListener("keydown", handler);
@@ -169,6 +178,7 @@ function App() {
     <ErrorBoundary>
       <AppContent />
       <CommandPalette />
+      <SettingsDialog />
       <LiveAnnouncer />
       <ToastContainer />
     </ErrorBoundary>
