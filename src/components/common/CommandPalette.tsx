@@ -109,7 +109,7 @@ export function CommandPalette() {
       role="presentation"
     >
       <div
-        className="h-fit w-[560px] overflow-hidden rounded-lg bg-slate-800 shadow-2xl"
+        className="h-fit w-[560px] overflow-hidden rounded-lg bg-slate-800 shadow-2xl forced-colors:border forced-colors:border-[ButtonText]"
         onClick={(e) => e.stopPropagation()}
       >
         <input
@@ -126,7 +126,7 @@ export function CommandPalette() {
           aria-autocomplete="list"
           aria-controls="palette-listbox"
           aria-activedescendant={filtered[clampedIndex] ? `palette-item-${filtered[clampedIndex].id}` : undefined}
-          className="w-full border-b border-slate-600 bg-transparent p-4 text-slate-200 outline-none placeholder:text-slate-500"
+          className="w-full border-b border-slate-600 bg-transparent p-4 text-slate-200 outline-none placeholder:text-slate-500 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText] forced-colors:text-[CanvasText]"
         />
         <ul
           id="palette-listbox"
@@ -147,7 +147,7 @@ export function CommandPalette() {
                 aria-selected={index === clampedIndex}
                 onClick={item.action}
                 className={`flex cursor-pointer flex-col px-4 py-2.5 text-sm ${
-                  index === clampedIndex ? "bg-blue-600/30 text-slate-100" : "text-slate-300 hover:bg-slate-700/50"
+                  index === clampedIndex ? "bg-blue-600/30 text-slate-100 forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]" : "text-slate-300 hover:bg-slate-700/50 forced-colors:text-[CanvasText]"
                 }`}
               >
                 <span>{item.label}</span>
