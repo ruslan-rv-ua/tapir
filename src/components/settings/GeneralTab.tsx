@@ -32,6 +32,9 @@ export function GeneralTab() {
     if (!current) return;
     const updated = { ...current, ...patch };
     $settings.set(updated);
+    if (patch.language) {
+      document.documentElement.lang = patch.language === "uk-UA" ? "uk" : "en";
+    }
     if (patch.theme) {
       applyTheme(patch.theme);
     }
