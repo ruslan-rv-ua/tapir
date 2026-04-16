@@ -57,16 +57,29 @@ export interface RecordingSettings {
   reconnect: ReconnectConfig;
 }
 
+export interface HotkeyMap {
+  toggleRecording: string;
+  togglePlayback: string;
+  volumeUp: string;
+  volumeDown: string;
+  toggleWindow: string;
+}
+
 export interface GlobalSettings {
   language: string;
-  theme: string;
+  theme: "auto" | "dark" | "light";
   activeProfile: string;
-  windowWidth: number;
-  windowHeight: number;
-  windowMaximized: boolean;
+  outputDevice: string | null;
+  minimizeToTray: boolean;
+  showTrayNotifications: boolean;
+  showTrackInTitle: boolean;
   diskSpaceThresholdGb: number;
+  doubleClickAction: "record" | "play";
+  bandwidthLimitKbps: number;
+  autostart: boolean;
+  hotkeys: HotkeyMap;
+  logRotation: boolean;
   logMaxSizeMb: number;
-  bandwidthLimitKbps: number | null;
 }
 
 // --- IPC event payload types ---
@@ -246,4 +259,22 @@ export async function removeFromIgnorelist(pattern: string): Promise<void> {
 }
 export async function updateIgnorelistPattern(oldPattern: string, newPattern: string): Promise<void> {
   return invoke("update_ignorelist_pattern", { oldPattern, newPattern });
+}
+
+// ── Settings IPC wrappers ─────────────────────────────────────────────────
+
+export async function getRecordingSettings(): Promise<RecordingSettings> {
+  return invoke("get_recording_settings");
+}
+
+export async function saveRecordingSettings(recording: RecordingSettings): Promise<void> {
+  return invoke("save_recording_settings", { recording });
+}
+
+export async function registerHotkeys(): Promise<string[]> {
+  return invoke("register_hotkeys");
+}
+
+export async function openDirectoryPicker(defaultPath?: string): Promise<string | null> {
+  return invoke("open_directory_picker", { defaultPath: defaultPath ?? null });
 }
