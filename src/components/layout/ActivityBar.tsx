@@ -1,5 +1,6 @@
 import { useStore } from "@nanostores/react";
 import { $activeSection } from "../../stores/navigation";
+import { $settingsDialogOpen } from "../../stores/settings";
 import type { Section } from "../../stores/navigation";
 import { Radio, Globe, Heart, Calendar, Music, Settings } from "lucide-react";
 import * as m from "../../i18n/paraglide/messages";
@@ -57,10 +58,9 @@ export function ActivityBar() {
       ))}
       <div className="mt-auto">
         <button
-          disabled
-          aria-label="Settings"
-          title="Settings (coming soon)"
-          className="flex h-10 w-10 cursor-not-allowed items-center justify-center rounded text-slate-600"
+          onClick={() => $settingsDialogOpen.set(true)}
+          aria-label={m.settings_title()}
+          className="flex h-10 w-10 items-center justify-center rounded text-slate-400 hover:bg-slate-700 hover:text-slate-200"
         >
           <Settings size={20} aria-hidden={true} />
         </button>
