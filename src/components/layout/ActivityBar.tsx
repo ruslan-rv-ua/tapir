@@ -43,10 +43,10 @@ export function ActivityBar() {
           }
           className={`flex h-10 w-10 items-center justify-center rounded transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
             activeSection === section.id
-              ? "bg-slate-700 text-blue-400"
+              ? "bg-slate-700 text-blue-400 forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]"
               : section.disabled
-              ? "cursor-not-allowed text-slate-600"
-              : "text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+              ? "cursor-not-allowed text-slate-600 forced-colors:text-[GrayText]"
+              : "text-slate-400 hover:bg-slate-700 hover:text-slate-200 forced-colors:text-[ButtonText] forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText]"
           }`}
         >
           <section.icon size={20} aria-hidden={true} />
@@ -56,7 +56,7 @@ export function ActivityBar() {
         <Button
           onPress={() => $settingsDialogOpen.set(true)}
           aria-label={m.settings_title()}
-          className="flex h-10 w-10 items-center justify-center rounded text-slate-400 hover:bg-slate-700 hover:text-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+          className="flex h-10 w-10 items-center justify-center rounded text-slate-400 hover:bg-slate-700 hover:text-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:text-[ButtonText] forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText]"
         >
           <Settings size={20} aria-hidden={true} />
         </Button>
