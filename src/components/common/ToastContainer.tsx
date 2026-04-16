@@ -15,10 +15,10 @@ export function ToastContainer() {
         <div
           key={toast.id}
           className={`flex items-center gap-2 rounded px-3 py-2 text-sm shadow-lg ${
-            toast.type === "error" ? "bg-red-700 text-white" :
-            toast.type === "warning" ? "bg-amber-600 text-white" :
-            toast.type === "success" ? "bg-green-700 text-white" :
-            "bg-slate-700 text-slate-100"
+            toast.type === "error" ? "bg-red-700 text-white forced-colors:bg-[Canvas] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[CanvasText]" :
+            toast.type === "warning" ? "bg-amber-600 text-white forced-colors:bg-[Canvas] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[CanvasText]" :
+            toast.type === "success" ? "bg-green-700 text-white forced-colors:bg-[Canvas] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[CanvasText]" :
+            "bg-slate-700 text-slate-100 forced-colors:bg-[Canvas] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[CanvasText]"
           }`}
         >
           <span>{toast.message}</span>
