@@ -15,7 +15,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
       <Button
         autoFocus
         onPress={onAdd}
-        className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
+        className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
       >
         {m.add_stream()}
       </Button>
@@ -36,13 +36,13 @@ function Toolbar({ onAdd }: { onAdd: () => void }) {
     <div className="flex items-center gap-2 border-b border-slate-700 px-4 py-2">
       <Button
         onPress={onAdd}
-        className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
+        className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
       >
         {m.add_stream()}
       </Button>
       <Button
         onPress={handleStopAll}
-        className="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
+        className="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:text-[ButtonText]"
       >
         {m.stop_all()}
       </Button>
