@@ -25,10 +25,10 @@ export function VolumeSlider() {
       }}
       className="flex items-center gap-2 w-32"
     >
-      <SliderTrack className="relative h-1 w-full rounded bg-slate-600">
+      <SliderTrack className="relative h-1 w-full rounded bg-slate-600 forced-colors:bg-[Canvas] forced-colors:border forced-colors:border-[ButtonText]">
         <SliderThumb
           aria-valuetext={`${percent}%`}
-          className="w-3 h-3 rounded-full bg-white top-1/2 -translate-y-1/2 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1"
+          className="w-3 h-3 rounded-full bg-white top-1/2 -translate-y-1/2 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1 forced-colors:bg-[ButtonText]"
         />
       </SliderTrack>
     </Slider>
