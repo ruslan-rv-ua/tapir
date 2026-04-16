@@ -8,6 +8,7 @@ mod sanitize;
 mod settings;
 mod stream;
 mod tags;
+mod shortcuts;
 mod wishlist;
 
 use app_state::AppState;
@@ -34,6 +35,8 @@ pub fn run() {
                 .build(),
         )
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_window_state::Builder::new().build())
         .setup(|app| {
             portable::ensure_data_dirs()
                 .expect("Failed to create data directories");
