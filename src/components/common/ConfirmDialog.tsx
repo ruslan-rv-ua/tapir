@@ -15,7 +15,7 @@ export function ConfirmDialog({ title, message, onConfirm, onCancel }: Props) {
       isOpen
       onOpenChange={(open) => { if (!open) onCancel(); }}
     >
-      <Modal className="w-80 rounded-lg bg-slate-800 p-6 shadow-2xl outline-none">
+      <Modal className="w-80 rounded-lg bg-slate-800 p-6 shadow-2xl outline-none forced-colors:bg-[Canvas] forced-colors:border forced-colors:border-[ButtonText]">
         <Dialog role="alertdialog" className="outline-none">
           <Heading slot="title" className="mb-2 text-lg font-semibold text-slate-100">{title}</Heading>
           <p className="mb-6 text-sm text-slate-400">{message}</p>
@@ -23,13 +23,13 @@ export function ConfirmDialog({ title, message, onConfirm, onCancel }: Props) {
             <button
               autoFocus
               onClick={onCancel}
-              className="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700"
+              className="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700 forced-colors:text-[ButtonText]"
             >
               {m.cancel()}
             </button>
             <button
               onClick={onConfirm}
-              className="rounded bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700"
+              className="rounded bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
             >
               {m["delete"]()}
             </button>
