@@ -9,3 +9,15 @@ input:focus-visible,
   outline: 2px solid oklch(0.707 0.165 254.624);
   outline-offset: 2px;
 }
+
+@media (forced-colors: active) {
+  button:focus-visible,
+  [role="row"]:focus-visible,
+  [role="menuitem"]:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid Highlight !important;
+    outline-offset: 2px;
+  }
+}
