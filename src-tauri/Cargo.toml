@@ -20,6 +20,8 @@ serde_json = "1"
 # Tauri Plugins (Phase 1 only)
 tauri-plugin-log = "2"
 tauri-plugin-dialog = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-window-state = "2"
 
 # HTTP Streaming
 reqwest = { version = "0.13", default-features = false, features = ["stream", "rustls"] }
