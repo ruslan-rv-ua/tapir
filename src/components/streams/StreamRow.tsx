@@ -23,19 +23,19 @@ function StatusIcon({ state }: { state: string }) {
   switch (state) {
     case "recording":
       return (
-        <span aria-label={m.status_recording()} className="inline-flex items-center gap-1 text-xs font-bold text-red-400">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" aria-hidden="true" />
+        <span aria-label={m.status_recording()} className="inline-flex items-center gap-1 text-xs font-bold text-red-400 forced-colors:text-[ButtonText]">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-red-500 forced-colors:bg-[ButtonText] forced-colors:border forced-colors:border-[ButtonText]" aria-hidden="true" />
           REC
         </span>
       );
     case "connecting":
-      return <span aria-label={m.status_connecting()} className="h-2 w-2 animate-pulse rounded-full bg-yellow-400" />;
+      return <span aria-label={m.status_connecting()} className="h-2 w-2 animate-pulse rounded-full bg-yellow-400 forced-colors:bg-[ButtonText] forced-colors:border forced-colors:border-[ButtonText]" />;
     case "reconnecting":
-      return <span aria-label={m.status_reconnecting()} className="h-2 w-2 animate-pulse rounded-full bg-yellow-500" />;
+      return <span aria-label={m.status_reconnecting()} className="h-2 w-2 animate-pulse rounded-full bg-yellow-500 forced-colors:bg-[ButtonText] forced-colors:border forced-colors:border-[ButtonText]" />;
     case "error":
-      return <span aria-label={m.status_error()} className="h-2 w-2 rounded-full bg-red-600" />;
+      return <span aria-label={m.status_error()} className="h-2 w-2 rounded-full bg-red-600 forced-colors:bg-[ButtonText] forced-colors:border forced-colors:border-[ButtonText]" />;
     default:
-      return <span aria-label={m.status_idle()} className="h-2 w-2 rounded-full bg-slate-600" />;
+      return <span aria-label={m.status_idle()} className="h-2 w-2 rounded-full bg-slate-600 forced-colors:bg-[GrayText] forced-colors:border forced-colors:border-[ButtonText]" />;
   }
 }
 
@@ -111,7 +111,7 @@ export function StreamRow({ stream, status }: Props) {
 
   return (
     <>
-      <Row id={stream.id} className="border-b border-slate-800 hover:bg-slate-800/50" onContextMenu={handleContextMenu}>
+      <Row id={stream.id} className="border-b border-slate-800 hover:bg-slate-800/50 forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText]" onContextMenu={handleContextMenu}>
         <Cell>
           <Checkbox slot="selection" aria-label={m.select_stream({ name: stream.name })} />
         </Cell>
@@ -135,8 +135,8 @@ export function StreamRow({ stream, status }: Props) {
               aria-label={isThisStreamPlaying ? m.stop_stream_playback() : m.play_stream()}
               className={`rounded px-2 py-0.5 text-xs ${
                 isThisStreamPlaying
-                  ? "bg-blue-700 text-white hover:bg-blue-600"
-                  : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                  ? "bg-blue-700 text-white hover:bg-blue-600 forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]"
+                  : "bg-slate-700 text-slate-300 hover:bg-slate-600 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText]"
               }`}
             >
               {isThisStreamPlaying ? "■" : "▶"}
@@ -146,8 +146,8 @@ export function StreamRow({ stream, status }: Props) {
               aria-label={isRecording ? m.stop_recording() : m.start_recording()}
               className={`rounded px-2 py-0.5 text-xs ${
                 isRecording
-                  ? "bg-red-700 text-white hover:bg-red-600"
-                  : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                  ? "bg-red-700 text-white hover:bg-red-600 forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]"
+                  : "bg-slate-700 text-slate-300 hover:bg-slate-600 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText]"
               }`}
             >
               {isRecording ? m.stop_recording() : m.start_recording()}
