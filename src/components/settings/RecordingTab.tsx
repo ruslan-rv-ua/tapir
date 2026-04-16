@@ -52,12 +52,12 @@ export function RecordingTab() {
           <Label className="block text-sm font-medium text-slate-300">
             {m.settings_output_dir()}
           </Label>
-          <Input className="mt-1 w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400" />
+          <Input className="mt-1 w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText]" />
         </TextField>
         <button
           onClick={handleBrowse}
           aria-label={m.settings_output_dir_browse()}
-          className="rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-600 outline-none focus:ring-2 focus:ring-blue-400"
+          className="rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-600 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText]"
         >
           {m.settings_output_dir_browse()}
         </button>
@@ -71,7 +71,7 @@ export function RecordingTab() {
         <Label className="block text-sm font-medium text-slate-300">
           {m.settings_file_template()}
         </Label>
-        <Input className="mt-1 w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400" />
+        <Input className="mt-1 w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText]" />
         <p className="mt-1 text-xs text-slate-500">
           {m.settings_template_help()}
         </p>
@@ -84,7 +84,7 @@ export function RecordingTab() {
         <Label className="block text-sm font-medium text-slate-300">
           {m.settings_incomplete_template()}
         </Label>
-        <Input className="mt-1 w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400" />
+        <Input className="mt-1 w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText]" />
       </TextField>
 
       <TextField
@@ -94,7 +94,7 @@ export function RecordingTab() {
         <Label className="block text-sm font-medium text-slate-300">
           {m.settings_stream_template()}
         </Label>
-        <Input className="mt-1 w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400" />
+        <Input className="mt-1 w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText]" />
       </TextField>
 
       {/* Checkboxes */}
@@ -142,7 +142,7 @@ export function RecordingTab() {
           {m.settings_min_track_duration()}
         </Label>
         <Group className="mt-1 flex w-32">
-          <Input className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400" />
+          <Input className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText]" />
         </Group>
       </NumberField>
 

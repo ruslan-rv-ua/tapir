@@ -66,7 +66,7 @@ export function AudioTab() {
         <Label className="block text-sm font-medium text-slate-300">
           {m.settings_output_device()}
         </Label>
-        <Button className="mt-1 flex w-80 items-center justify-between rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400">
+        <Button className="mt-1 flex w-80 items-center justify-between rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText]">
           <SelectValue />
           <span aria-hidden="true">▼</span>
         </Button>
@@ -93,7 +93,7 @@ export function AudioTab() {
 
       <Button
         onPress={loadDevices}
-        className="rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-600 outline-none focus:ring-2 focus:ring-blue-400"
+        className="rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-600 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText]"
         aria-label={m.settings_output_device_refresh()}
       >
         {m.settings_output_device_refresh()}
