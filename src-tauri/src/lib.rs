@@ -5,10 +5,10 @@ mod player;
 mod portable;
 mod profile;
 mod sanitize;
+mod shortcuts;
 mod settings;
 mod stream;
 mod tags;
-mod shortcuts;
 mod wishlist;
 
 use app_state::AppState;
