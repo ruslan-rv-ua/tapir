@@ -45,6 +45,13 @@ pub fn run() {
             let state = AppState::new(settings, profile, app.handle().clone())
                 .expect("Failed to initialize AppState (no audio device?)");
             app.manage(state);
+            let state_ref = app.state::<AppState>();
+            let settings = tauri::async_runtime::block_on(state_ref.settings.read());
+            let failed = shortcuts::register_global_shortcuts(app.handle(), &settings.hotkeys);
+            if !failed.is_empty() {
+                tracing::warn!("Failed to register shortcuts: {:?}", failed);
+            }
+            drop(settings);
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -101,6 +108,10 @@ pub fn run() {
             commands::stream_commands::get_all_statuses,
             commands::settings_commands::get_settings,
             commands::settings_commands::save_settings,
+            commands::settings_commands::get_recording_settings,
+            commands::settings_commands::save_recording_settings,
+            commands::settings_commands::register_hotkeys,
+            commands::settings_commands::open_directory_picker,
             commands::player_commands::play_stream,
             commands::player_commands::play_file,
             commands::player_commands::pause_playback,
