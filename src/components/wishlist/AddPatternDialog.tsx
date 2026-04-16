@@ -36,7 +36,7 @@ export function AddPatternDialog({ listType, initialPattern, editingPattern, onS
       isOpen
       onOpenChange={(open) => { if (!open) onClose(); }}
     >
-      <Modal className="w-96 rounded-lg bg-slate-800 p-6 shadow-2xl outline-none">
+      <Modal className="w-96 rounded-lg bg-slate-800 p-6 shadow-2xl outline-none forced-colors:bg-[Canvas] forced-colors:border forced-colors:border-[ButtonText]">
         <Dialog className="outline-none">
           <Heading slot="title" className="mb-4 text-lg font-semibold text-slate-100">
             {title}
@@ -51,7 +51,7 @@ export function AddPatternDialog({ listType, initialPattern, editingPattern, onS
                 required
                 autoFocus
                 aria-describedby="pattern-hint"
-                className="rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-slate-100 outline-none focus:border-blue-500"
+                className="rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-slate-100 outline-none focus:border-blue-500 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText] forced-colors:text-[CanvasText] forced-colors:focus:border-[Highlight]"
               />
             </label>
             <p id="pattern-hint" className="text-xs text-slate-500">
@@ -61,7 +61,7 @@ export function AddPatternDialog({ listType, initialPattern, editingPattern, onS
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
+                className="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:text-[ButtonText]"
               >
                 {m.cancel()}
               </button>
