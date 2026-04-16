@@ -14,7 +14,7 @@
 | 1 | MVP: Core Recording | Запис потоків + розділення треків + теги + базова доступність + i18n setup | ✅ Complete |
 | 2A | Player | Live playback, файлове відтворення, volume, output device | ✅ Complete |
 | 2B | Wishlist + Ignorelist + Context Menu | Фільтрація треків, контекстне меню станцій | ✅ Complete |
-| 2C | SettingsDialog + Shortcuts | Повний діалог налаштувань, глобальні хоткеї, window state | ⬜ |
+| 2C | SettingsDialog + Shortcuts | Повний діалог налаштувань, глобальні хоткеї, window state | ✅ Complete |
 | 3A | System Tray | Tray icon, minimize to tray, balloon tips, dynamic menu | ⬜ |
 | 3B | Stream Browser | Radio Browser API — пошук станцій | ⬜ |
 | 3C | Saved Songs Manager | Менеджер записаних файлів, редагування тегів | ⬜ |
