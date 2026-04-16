@@ -76,7 +76,7 @@ export function HotkeysTab() {
           className="mt-4 rounded border border-red-700 bg-red-900/30 p-3"
         >
           {registrationErrors.map((combo) => (
-            <p key={combo} className="text-sm text-red-300">
+            <p key={combo} className="text-sm text-red-300 forced-colors:text-[CanvasText]">
               {m.settings_hotkey_registration_failed({ combo })}
             </p>
           ))}
