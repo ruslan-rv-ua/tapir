@@ -119,13 +119,13 @@ export function GeneralTab() {
       <Checkbox
         isSelected={settings.minimizeToTray}
         isDisabled
-        className="flex items-center gap-2 text-sm text-slate-500"
+        className="flex items-center gap-2 text-sm text-slate-500 forced-colors:text-[GrayText]"
       >
         <div className="flex h-5 w-5 items-center justify-center rounded border border-slate-600 bg-slate-700">
           {settings.minimizeToTray && <span>✓</span>}
         </div>
         <Label>{m.settings_minimize_to_tray()}</Label>
-        <span className="text-xs text-slate-600">
+        <span className="text-xs text-slate-600 forced-colors:text-[GrayText]">
           ({m.settings_disabled_tray()})
         </span>
       </Checkbox>
@@ -134,13 +134,13 @@ export function GeneralTab() {
       <Checkbox
         isSelected={settings.showTrayNotifications}
         isDisabled
-        className="flex items-center gap-2 text-sm text-slate-500"
+        className="flex items-center gap-2 text-sm text-slate-500 forced-colors:text-[GrayText]"
       >
         <div className="flex h-5 w-5 items-center justify-center rounded border border-slate-600 bg-slate-700">
           {settings.showTrayNotifications && <span>✓</span>}
         </div>
         <Label>{m.settings_show_tray_notifications()}</Label>
-        <span className="text-xs text-slate-600">
+        <span className="text-xs text-slate-600 forced-colors:text-[GrayText]">
           ({m.settings_disabled_tray()})
         </span>
       </Checkbox>
