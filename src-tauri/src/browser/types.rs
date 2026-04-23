@@ -65,5 +65,6 @@ pub struct BrowserFilters {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ServerInfo {
     pub name: String,
+    #[allow(dead_code)]
     pub ip: String,
 }

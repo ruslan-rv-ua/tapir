@@ -7,11 +7,11 @@ dev:
 
 # Production build — minimal exe, slow compile
 build:
-    pnpm tauri build --no-bundle
+    @pnpm tauri build --no-bundle
 
 # Fast build — larger exe, quick compile (uses [profile.release-fast] in Cargo.toml)
 build-fast:
-    pnpm tauri build --no-bundle -- --profile release-fast
+    @pnpm tauri build --no-bundle -- --profile release-fast
 
 # Frontend-only dev server on port 1420
 vite-dev:
