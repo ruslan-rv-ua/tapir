@@ -216,13 +216,13 @@ Player transport controls use `onTabBoundary`, NOT `onTabOut`, so Tab from the l
 - Apply `useRovingFocus` (vertical axis) to section buttons + settings button
 - Section buttons: change from individual tabIndex to roving (currently all independently focusable)
 - Disabled sections: use `aria-disabled="true"` on the button instead of React Aria `isDisabled` prop, so they remain in the roving focus sequence and are discoverable by NVDA
-- `focus('forward')` → first section; `focus('backward')` → settings button
+- `focus('forward')` → restore last remembered roving element (roving index is memory); fallback: first section button. `focus('backward')` → restore last remembered roving element; fallback: settings button.
 
 #### Streams screen zones
 
 Two zones:
 
-1. **Actions zone** (`data-zone-id="streams-actions"`) — toolbar containing CommandPalette button (from SectionHeader), Add Stream button, Stop All button. `useRovingFocus` horizontal.
+1. **Actions zone** (`data-zone-id="streams-actions"`) — toolbar containing CommandPalette button (from SectionHeader), Add Stream button, Stop All button. `useRovingFocus` horizontal. `focus('forward'|'backward')` → restore last remembered roving element; fallback: first button.
 2. **Streams list zone** (`data-zone-id="streams-list"`) — `<ul>` with `useCompositeList`. Replaces `<StreamTable>`.
 
 **StreamItem segments** — `SegmentKind[]` is dynamic per item:
@@ -241,11 +241,11 @@ So the resolved `segments[]` for an idle stream: `['track', 'tech', 'actions']`;
 
 Inner buttons in `'actions'` segment have `tabIndex={-1}`. **Enter** on the `'actions'` segment fires the primary button's click handler directly (e.g. Record for a stream, Add for a station). Context menu / secondary actions are always accessible via **Shift+F10** / ContextMenu key → `onAction('contextMenu', ...)`. There is no intermediate "focus first button" step — Enter always activates, not navigates.
 
-Empty state: when no streams exist, `StreamsPanel` renders a single **empty-state zone** (`data-zone-id="streams-empty"`) that includes both the CommandPalette trigger button (from `SectionHeader`) and the Add Stream CTA button with `autoFocus`. Zone type: **composite** (roving focus, Tab always exits). The CTA also carries `aria-describedby` pointing to a hidden `<span>` with the empty-state description (e.g. `"Список потоків порожній. Натисніть Enter, щоб додати перший потік."`) so NVDA announces context automatically when focus lands. A polite `aria-live` announcement is also dispatched when the zone mounts to ensure announcement even when focus is already there. `focus('forward')` → Add Stream CTA button. `focus('backward')` → CommandPalette trigger button (or Add CTA if trigger is absent). This zone replaces both `streams-actions` and `streams-list` in the zone order; `onZonesChange` updates App.tsx. The CommandPalette trigger must always remain inside the first active-screen zone, whether in empty or populated state.
+Empty state: when no streams exist, `StreamsPanel` renders a single **empty-state zone** (`data-zone-id="streams-empty"`) that includes both the CommandPalette trigger button (from `SectionHeader`) and the Add Stream CTA button with `autoFocus`. Zone type: **composite** (roving focus, Tab always exits). The CTA carries `aria-describedby` pointing to a hidden `<span>` with the empty-state description (e.g. `"Список потоків порожній. Натисніть Enter, щоб додати перший потік."`) so NVDA announces context when focus lands. No additional live announcement on mount — the CTA focus + `aria-describedby` is the one announcement path; a second live announce would cause NVDA to read twice. `focus('forward')` → Add Stream CTA button. `focus('backward')` → CommandPalette trigger button (or Add CTA if trigger is absent). This zone replaces both `streams-actions` and `streams-list` in the zone order; `onZonesChange` updates App.tsx. The CommandPalette trigger must always remain inside the first active-screen zone, whether in empty or populated state.
 
 #### Browser screen zones
 
-1. **Search/Filters zone** (`data-zone-id="browser-search"`) — form zone — existing `<SearchForm>` + CommandPalette button. Standard Tab-within-zone (form widgets keep native keyboard model). Exit handled by `useFocusBoundary` (first/last real focusable `onKeyDown`). `focus('forward')` → first focusable element (search input); `focus('backward')` → last focusable element (last filter/button).
+1. **Search/Filters zone** (`data-zone-id="browser-search"`) — form zone — existing `<SearchForm>` + CommandPalette button. Standard Tab-within-zone (form widgets keep native keyboard model). Exit handled by `useFocusBoundary` (first/last real focusable `onKeyDown`). `focus('forward'|'backward')` → restore last remembered focused element (form zone memory); fallback: search input for 'forward', last filter/button for 'backward'.
 2. **Results list zone** (`data-zone-id="browser-results"`) — composite zone — `<ul>` with `useCompositeList`. Replaces `<StationTable>`.
 
 **StationItem segments** (`SegmentKind[]`): `['metadata', 'actions']`
@@ -257,7 +257,7 @@ After add action: `announce(m.browser_station_added({ name }), 'polite')`. Focus
 
 #### Wishlist/Ignorelist screen zones
 
-1. **Controls zone** (`data-zone-id="wishlist-controls"`) — form zone — Tabs (Wishlist/Ignorelist), Add button, CommandPalette button. Tabs use React Aria `<Tabs>` with native Left/Right switching; buttons after tabs reachable via Tab within zone. Exit handled by `useFocusBoundary` (first/last real focusable `onKeyDown`). `focus('forward')` → first focusable (Wishlist tab); `focus('backward')` → last focusable (Add or last button).
+1. **Controls zone** (`data-zone-id="wishlist-controls"`) — form zone — Tabs (Wishlist/Ignorelist), Add button, CommandPalette button. Tabs use React Aria `<Tabs>` with native Left/Right switching; buttons after tabs reachable via Tab within zone. Exit handled by `useFocusBoundary` (first/last real focusable `onKeyDown`). `focus('forward'|'backward')` → restore last remembered focused element (form zone memory); fallback: first focusable (Wishlist tab) for 'forward', last focusable (Add or last button) for 'backward'.
 2. **Patterns list zone** (`data-zone-id="wishlist-list"`) — `<ul>` with `useCompositeList`. Replaces `<PatternTable>`.
 
 **PatternItem segments** (`SegmentKind[]`): `['conditions', 'actions']`
@@ -265,7 +265,7 @@ After add action: `announce(m.browser_station_added({ name }), 'polite')`. Focus
 2. `'conditions'`: format, min bitrate, options. `aria-label` example: `"Умови: MP3, 128 кбіт/с"` or `"Умови: будь-який формат"`
 3. `'actions'`: Edit, Delete. `aria-label` computed: `"Дії: Редагувати, Видалити"`; inner buttons `tabIndex={-1}`
 
-Empty state: dedicated empty-state zone (same pattern as Streams empty state — composite zone type, CTA with `autoFocus`, `aria-describedby` pointing to empty-state description, polite live announcement on mount, CommandPalette trigger included, `focus('forward')` → CTA, `focus('backward')` → CommandPalette trigger).
+Empty state: dedicated empty-state zone (same pattern as Streams empty state — composite zone type, CTA with `autoFocus`, `aria-describedby` pointing to empty-state description (no additional live announce), CommandPalette trigger included, `focus('forward')` → CTA, `focus('backward')` → CommandPalette trigger).
 
 #### Player zone (mixed zone)
 
@@ -275,7 +275,7 @@ Empty state: dedicated empty-state zone (same pattern as Streams empty state —
   1. Transport controls group: `role="toolbar"` + `useRovingFocus` (horizontal, Left/Right). Tab from last transport control → moves to next sub-control (position slider).
   2. Position Slider (only when seekable source): native keyboard (Left/Right, PageUp/PageDown, Home/End). Tab → volume slider.
   3. Volume Slider: native keyboard. Tab → `onTabOut(true)` (exits to StatusBar). Shift+Tab → back to position slider (or transport controls if no slider).
-- `focus('forward')` → first transport control; `focus('backward')` → volume slider (or last available sub-control)
+- `focus('forward')` → restore last sub-control (Player mixed zone memory); fallback: first transport control. `focus('backward')` → restore last sub-control; fallback: volume slider (or last available sub-control).
 
 #### StatusBar zone
 
@@ -290,7 +290,7 @@ Empty state: dedicated empty-state zone (same pattern as Streams empty state —
 - Each segment: `<div tabIndex={isActive ? 0 : -1} aria-label={...}>` with `role="status"` omitted (the dedicated live region handles announcements separately)
 - If only one segment is present, it still gets `tabIndex={0}` and Left/Right have no effect
 - Home/End: first/last segment
-- `focus('forward')` → first segment (recordings count); `focus('backward')` → last present segment
+- `focus('forward')` → restore last remembered segment (roving index); fallback: first segment (recordings count). `focus('backward')` → restore last remembered segment; fallback: last present segment.
 - On entry: `announce(m.zone_status(), 'polite')` since read-only content may not trigger NVDA automatically
 
 ---
