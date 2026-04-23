@@ -132,7 +132,7 @@ Each item declares its own ordered `segments: SegmentKind[]` array. The hook res
 | PageUp / PageDown | Move by approx one visual page (container height / item height) |
 | Tab / Shift+Tab | Call `onTabOut(forward: boolean)` — hands off to zone manager |
 | Enter | `onAction('primary', activeItemId, activeSegment)` |
-| Space | `onAction('toggle', activeItemId, activeSegment)` |
+| Space | `onAction('toggle', activeItemId, activeSegment)` — **exception: on `'actions'` segment, Space fires `'primary'` (not `'toggle'`), since actions segments have no toggle semantics** |
 | Delete | `onAction('delete', activeItemId, activeSegment)` |
 | Shift+F10 / ContextMenu | `onAction('contextMenu', activeItemId, activeSegment)` |
 
@@ -174,6 +174,10 @@ Each item declares its own ordered `segments: SegmentKind[]` array. The hook res
 2. If not found, use `prevIndex` clamped to `[0, items.length - 1]` as the fallback item.
 3. If `activeSegment` kind is absent from the restored item's segments, fall back to `'summary'`.
 `prevIndex` is updated every time `activeItemId` changes so it always reflects the last known position.
+
+**Live reconciliation** (item removal while list has focus): `useCompositeList` watches for changes to the `items` array via `useEffect`. If the `activeItemId` no longer exists and the list still has focus (check `listRef.current.contains(document.activeElement)`):
+- If items remain: immediately move focus to the item at `prevIndex` clamped to `[0, items.length - 1]`.
+- If the list becomes empty: the parent panel replaces the list with the empty-state zone (`onZonesChange`) and calls `focus('forward')` on that zone so NVDA announces the CTA.
 
 **Form zones** (Browser search, Wishlist controls): store last focused `HTMLElement` in a `useRef<HTMLElement | null>`. On every `focus` or `focusin` event within the zone, update the ref. `focus('forward')` and `focus('backward')` restore to the stored element (call `.focus()` on it) if it still exists and is still within the zone; fall back to first/last focusable respectively.
 
