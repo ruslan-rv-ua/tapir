@@ -79,6 +79,8 @@ type ZoneOrder = [
 
 Active panel provides its ordered zone entries via `onZonesChange(zones: ZoneEntry[])`. App.tsx rebuilds the flat `orderedZones: ZoneEntry[]` whenever the active section changes or a panel reports zone changes. Unmounted zones are excluded.
 
+**On active-section change**: after the new screen's zones register (via `onZonesChange`), App must call `focus('forward')` on the first active-screen zone (or the empty-state CTA zone if the list is empty). This ensures focus moves into the new screen rather than remaining in ActivityBar.
+
 #### Zone detection (for F6 handler)
 
 `element.closest('[data-zone-id]')` returns the innermost zone element (safe with nested panels since the innermost `data-zone-id` wins). Match by `id` string against `orderedZones`.
@@ -177,7 +179,7 @@ Each item declares its own ordered `segments: SegmentKind[]` array. The hook res
 
 **Mixed zone** (Player): track the last active sub-control (transport button index, or "position slider", or "volume slider") in a `useRef`. Restore on re-entry.
 
-**Empty-state zones**: trivially have 2 focusable elements (CommandPalette trigger + CTA). `focus('forward')` → CTA (last activity is always at the CTA). `focus('backward')` → CommandPalette trigger. No stored position needed — these are stable layouts.
+**Empty-state zones**: 2 focusable elements (CommandPalette trigger + CTA). Store last focused control in the roving index (same as other composite zones). `focus('forward')` and `focus('backward')` both restore the last remembered control; fallback to CTA for 'forward' and CommandPalette trigger for 'backward' when no memory exists.
 
 ---
 
@@ -215,7 +217,7 @@ Player transport controls use `onTabBoundary`, NOT `onTabOut`, so Tab from the l
 - Add `data-zone-id="activity-bar"`
 - Apply `useRovingFocus` (vertical axis) to section buttons + settings button
 - Section buttons: change from individual tabIndex to roving (currently all independently focusable)
-- Disabled sections: use `aria-disabled="true"` on the button instead of React Aria `isDisabled` prop, so they remain in the roving focus sequence and are discoverable by NVDA
+- Disabled sections: use `aria-disabled="true"` on the button instead of React Aria `isDisabled` prop, so they remain in the roving focus sequence and are discoverable by NVDA. **All activation handlers (click, Enter, Space) on disabled items must be no-ops** — check `aria-disabled="true"` at the top of each handler and return early. This ensures they are discoverable but cannot switch sections.
 - `focus('forward')` → restore last remembered roving element (roving index is memory); fallback: first section button. `focus('backward')` → restore last remembered roving element; fallback: settings button.
 
 #### Streams screen zones
@@ -301,7 +303,7 @@ Empty state: dedicated empty-state zone (same pattern as Streams empty state —
 
 Changes required:
 - `ConfirmDialog`: safe action (Cancel) must receive `autoFocus`. Verify this is already the case.
-- All dialogs + CommandPalette: before opening, store the current `document.activeElement` ref. On `Escape`/close, restore focus to that element.
+- All dialogs + CommandPalette: before opening, store the current `document.activeElement` ref. On `Escape`/close, restore focus to that element **if it is still connected to the DOM**. Exception: if the dialog was a destructive confirm (delete item), the opener may no longer exist. In that case, after the deletion completes, call `focus('forward')` on the affected list zone — the list's focus memory will resolve to the nearest surviving sibling using `prevIndex`.
 - `CommandPalette`: add `data-modal="true"` to its root element AND implement a focus trap (Tab cycles only within the palette content). On open, focus the search input. On close, restore opener's focus. Use React Aria `<FocusScope contain restoreFocus>` or equivalent.
 - Modal guard used by all global zone handlers:
   ```ts
