@@ -168,22 +168,37 @@ Each item declares its own ordered `segments: SegmentKind[]` array. The hook res
 
 #### Focus memory
 
-`useCompositeList` stores `{ itemId: string, activeSegment: SegmentKind, scrollTop: number }` in a `useRef` (no reactivity needed). When the zone receives `focus('forward')`, it resolves `itemId` against the current items array, restores `scrollTop`, and focuses the remembered segment kind. If `itemId` no longer exists, fall back to the nearest surviving item by original index (or first item). If the remembered segment kind is absent from the restored item, fall back to `'summary'`.
+`useCompositeList` stores `{ itemId: string, prevIndex: number, activeSegment: SegmentKind, scrollTop: number }` in a `useRef` (no reactivity needed). When the zone receives `focus('forward')`:
+1. Try to find `itemId` in current items array → if found, restore segment and scrollTop.
+2. If not found, use `prevIndex` clamped to `[0, items.length - 1]` as the fallback item.
+3. If `activeSegment` kind is absent from the restored item's segments, fall back to `'summary'`.
+`prevIndex` is updated every time `activeItemId` changes so it always reflects the last known position.
 
 ---
 
 ### 3. `useRovingFocus` hook
 
-For toolbar-like zones (ActivityBar, toolbar action zones, Player transport controls).
+For toolbar-like zones (ActivityBar, toolbar action zones).
 
 ```ts
-useRovingFocus(refs: RefObject<HTMLElement>[], axis: 'horizontal' | 'vertical')
+useRovingFocus(
+  refs: RefObject<HTMLElement>[],
+  axis: 'horizontal' | 'vertical',
+  options?: {
+    onTabOut?: (forward: boolean) => void;       // called when Tab at boundary exits the zone
+    onTabBoundary?: (forward: boolean) => void;  // called when Tab at boundary hands off to next sub-control (mixed zones)
+  }
+)
 ```
 
-- Arrow keys in the given axis cycle through `refs`.
+- Arrow keys in the given axis move between `refs`.
 - Home/End jump to first/last.
-- Tab/Shift+Tab delegate to `onTabOut`.
 - Only the active element has `tabIndex={0}`; all others have `tabIndex={-1}`.
+- Tab/Shift+Tab behavior depends on options:
+  - If `onTabOut` provided: Tab at boundary calls `onTabOut` (composite zone exit — stops propagation).
+  - If `onTabBoundary` provided: Tab at last element calls `onTabBoundary(true)`; Shift+Tab at first element calls `onTabBoundary(false)`. Used for Player transport controls to hand off to position slider.
+
+Player transport controls use `onTabBoundary`, NOT `onTabOut`, so Tab from the last transport button moves to the position slider (not out of the Player zone).
 
 ---
 
@@ -221,23 +236,23 @@ So the resolved `segments[]` for an idle stream: `['track', 'tech', 'actions']`;
 
 Inner buttons in `'actions'` segment have `tabIndex={-1}`. Enter on the `'actions'` segment focuses the first inner button; subsequent Left/Right (if desired) could move between inner buttons, but FRD does not require intra-action navigation — Enter activates the whole segment's primary action.
 
-Empty state: when no streams exist, `StreamsPanel` renders a single **empty-state zone** (`data-zone-id="streams-empty"`) containing a descriptive message and the Add Stream CTA button with `autoFocus`. This zone replaces both the actions zone and list zone in the zone order — the first Tab in Main lands directly on the Add CTA. When streams are added, the zone order switches back to `[streams-actions, streams-list]`. `onZonesChange` is called to update App.tsx.
+Empty state: when no streams exist, `StreamsPanel` renders a single **empty-state zone** (`data-zone-id="streams-empty"`) that includes both the CommandPalette trigger button (from `SectionHeader`) and the Add Stream CTA button with `autoFocus`. The CTA gets `autoFocus` so NVDA announces the empty state on `focus('forward')`. This zone replaces both `streams-actions` and `streams-list` in the zone order; `onZonesChange` updates App.tsx. The CommandPalette trigger must always remain inside the first active-screen zone, whether in empty or populated state.
 
 #### Browser screen zones
 
-1. **Search/Filters zone** (`data-zone-id="browser-search"`) — existing `<SearchForm>` + CommandPalette button. Standard Tab-within-zone (form widgets keep native keyboard model).
-2. **Results list zone** (`data-zone-id="browser-results"`) — `<ul>` with `useCompositeList`. Replaces `<StationTable>`.
+1. **Search/Filters zone** (`data-zone-id="browser-search"`) — form zone — existing `<SearchForm>` + CommandPalette button. Standard Tab-within-zone (form widgets keep native keyboard model). Sentinel elements at zone boundaries handle Tab exit. `focus('forward')` → first focusable element (search input); `focus('backward')` → last focusable element (last filter/button).
+2. **Results list zone** (`data-zone-id="browser-results"`) — composite zone — `<ul>` with `useCompositeList`. Replaces `<StationTable>`.
 
-**StationItem segments:**
-1. Summary: station name
-2. Segment 0 — Metadata: country, codec, bitrate, popularity
-3. Segment 1 — Actions: Add button
+**StationItem segments** (`SegmentKind[]`): `['metadata', 'actions']`
+1. Summary (`'summary'`): station name
+2. `'metadata'`: country, codec, bitrate, popularity. `aria-label` example: `"Метадані: Ukraine, MP3, 256 кбіт/с, 15000 слухачів"`
+3. `'actions'`: Add button. `aria-label` computed: `"Дії: Додати"` or `"Дії: Вже додано"`
 
 After add action: `announce(m.browser_station_added({ name }), 'polite')`. Focus stays on same item.
 
 #### Wishlist/Ignorelist screen zones
 
-1. **Controls zone** (`data-zone-id="wishlist-controls"`) — Tabs (Wishlist/Ignorelist), Add button, CommandPalette button. Tabs use React Aria `<Tabs>` with native Left/Right switching; buttons after tabs reachable via Tab within zone.
+1. **Controls zone** (`data-zone-id="wishlist-controls"`) — form zone — Tabs (Wishlist/Ignorelist), Add button, CommandPalette button. Tabs use React Aria `<Tabs>` with native Left/Right switching; buttons after tabs reachable via Tab within zone. Sentinel elements at boundaries. `focus('forward')` → first focusable (Wishlist tab); `focus('backward')` → last focusable (Add or last button).
 2. **Patterns list zone** (`data-zone-id="wishlist-list"`) — `<ul>` with `useCompositeList`. Replaces `<PatternTable>`.
 
 **PatternItem segments** (`SegmentKind[]`): `['conditions', 'actions']`
@@ -260,17 +275,18 @@ Empty state: dedicated empty-state zone (same pattern as Streams empty state).
 #### StatusBar zone
 
 - Element: existing `<footer>`
-- Add `data-zone-id="status-bar"`
-- Keep an inner `role="status" aria-live="polite"` element for live recording updates (do NOT move this to the footer itself to avoid regressions)
-- Add a separate focusable status summary element: `<div tabIndex={0} aria-label={statusSummaryLabel}>` as the focus anchor; this is the entry point for `focus('forward')` and `focus('backward')`
-- Segments (Left/Right navigation via `useRovingFocus` horizontal):
-  1. Active recordings count (always present)
-  2. Free disk space (when available)
-  3. Longest recording duration (when recording)
+- Add `data-zone-id="status-bar"`, zone type: **composite** (roving focus, Left/Right)
+- Keep an inner `role="status" aria-live="polite"` element (invisible) for live recording updates — do NOT remove this to avoid NVDA regressions
+- The focusable elements in this zone are the status segments themselves (no extra wrapper anchor):
+  1. Recordings count — always present, `tabIndex={0}` by default (first in roving order)
+  2. Free disk space — when data available
+  3. Longest recording duration — when recording active
   4. Future indicators (bandwidth, active profile, etc.)
+- Each segment: `<div tabIndex={isActive ? 0 : -1} aria-label={...}>` with `role="status"` omitted (the dedicated live region handles announcements separately)
+- If only one segment is present, it still gets `tabIndex={0}` and Left/Right have no effect
 - Home/End: first/last segment
-- `focus('forward')` → first segment; `focus('backward')` → last segment
-- Announce zone name on entry: `announce(m.zone_status(), 'polite')` (read-only content may not trigger NVDA focus announcement automatically)
+- `focus('forward')` → first segment (recordings count); `focus('backward')` → last present segment
+- On entry: `announce(m.zone_status(), 'polite')` since read-only content may not trigger NVDA automatically
 
 ---
 
