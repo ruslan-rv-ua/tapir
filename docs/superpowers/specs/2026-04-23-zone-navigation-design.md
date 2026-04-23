@@ -11,9 +11,8 @@
 
 Tapir's current UI uses React Aria `<Table>`/`<Row>`/`<Cell>` for all lists (streams, browser results, wishlist patterns). These tables do not match the desired keyboard model for a blind user with NVDA:
 
-- Tab cycles through every individual cell, creating hundreds of tab stops.
+- React Aria Table follows the ARIA `grid` pattern, which relies on arrow-key navigation inside a composite widget. This does not match Tapir's required **segment-based list model** (Left/Right navigate between named segments within an item).
 - There is no zone-level navigation (Tab cycles zones, not controls).
-- Multi-part list items cannot be navigated by segment with Left/Right inside a row.
 - F6/Shift+F6 desktop shortcut is not supported.
 
 The FRD (docs/FRD-navigation.md) defines the target model: zone-based Tab cycling, composite lists with roving focus, and segment-level Left/Right navigation within each list item.
@@ -52,7 +51,14 @@ Three distinct zone types determine how Tab behaves **inside** the zone:
 - **Form zones** (Browser search/filters, Wishlist controls): contain standard form widgets (Input, Select, ComboBox, etc.). Native Tab order is preserved **within** the zone. Exit at zone boundaries is detected by adding `onKeyDown` handlers **to the first and last real focusable elements** in the zone (no hidden sentinel nodes):
   - **First element** `onKeyDown`: if `Shift+Tab` → `preventDefault(); exitZone(forward=false)`
   - **Last element** `onKeyDown`: if `Tab` (no Shift) → `preventDefault(); exitZone(forward=true)`
-  This keeps all focus targets real, visible, and accessible. A utility `useFocusBoundary(containerRef)` auto-discovers the first and last tabbable descendants and attaches these handlers.
+  This keeps all focus targets real, visible, and accessible. A utility `useFocusBoundary(containerRef)` attaches these handlers. Since form zone contents can change dynamically (e.g. Browser filters async-loaded after `loadFilters()`), the hook must **re-discover** first/last tabbable elements after every render and DOM change. API:
+
+  ```ts
+  const { refreshBoundary } = useFocusBoundary(containerRef, exitZone)
+  // caller must call refreshBoundary() after async DOM changes:
+  useEffect(() => { refreshBoundary() }, [filters, activeTab])
+  ```
+  Hidden, `disabled`, and portal-based elements must never become boundary targets.
 - **Mixed zones** (Player): contain a small ordered sequence of sub-controls (transport toolbar, position slider, volume slider). Tab moves between sub-controls in sequence; only after the last sub-control does Tab call `onTabOut(true)`. Shift+Tab from the first sub-control calls `onTabOut(false)`. Each sub-control group uses roving focus internally where applicable.
 
 #### F6 handler (global) vs Tab handler (per-zone)
@@ -195,21 +201,22 @@ For toolbar-like zones (ActivityBar, toolbar action zones).
 useRovingFocus(
   refs: RefObject<HTMLElement>[],
   axis: 'horizontal' | 'vertical',
-  options?: {
-    onTabOut?: (forward: boolean) => void;       // called when Tab at boundary exits the zone
-    onTabBoundary?: (forward: boolean) => void;  // called when Tab at boundary hands off to next sub-control (mixed zones)
-  }
+  options:
+    | { mode: 'composite-exit'; onTabOut: (forward: boolean) => void }
+    | { mode: 'mixed-boundary-handoff'; onTabBoundary: (forward: boolean) => void }
 )
 ```
+
+Two mutually exclusive modes prevent ambiguity:
+
+- **`composite-exit`** (ActivityBar, all toolbars): Tab or Shift+Tab **at any element** immediately calls `onTabOut(forward)` and stops propagation. This ensures Tab never remains inside a composite zone — the active roving element is exited regardless of position.
+- **`mixed-boundary-handoff`** (Player transport controls only): Tab at the **last** element calls `onTabBoundary(true)`; Shift+Tab at the **first** element calls `onTabBoundary(false)`. Used exclusively to hand off to the next sub-control (position slider). Tab from non-boundary elements stays within the transport group.
 
 - Arrow keys in the given axis move between `refs`.
 - Home/End jump to first/last.
 - Only the active element has `tabIndex={0}`; all others have `tabIndex={-1}`.
-- Tab/Shift+Tab behavior depends on options:
-  - If `onTabOut` provided: Tab at boundary calls `onTabOut` (composite zone exit — stops propagation).
-  - If `onTabBoundary` provided: Tab at last element calls `onTabBoundary(true)`; Shift+Tab at first element calls `onTabBoundary(false)`. Used for Player transport controls to hand off to position slider.
 
-Player transport controls use `onTabBoundary`, NOT `onTabOut`, so Tab from the last transport button moves to the position slider (not out of the Player zone).
+Player transport controls use `mode: 'mixed-boundary-handoff'`, NOT `composite-exit`, so Tab from the last transport button moves to the position slider (not out of the Player zone).
 
 ---
 
@@ -228,7 +235,7 @@ Player transport controls use `onTabBoundary`, NOT `onTabOut`, so Tab from the l
 
 Two zones:
 
-1. **Actions zone** (`data-zone-id="streams-actions"`) — toolbar containing CommandPalette button (from SectionHeader), Add Stream button, Stop All button. `useRovingFocus` horizontal. `focus('forward'|'backward')` → restore last remembered roving element; fallback: first button.
+1. **Actions zone** (`data-zone-id="streams-actions"`) — toolbar containing **CommandPalette trigger button** (rendered by `StreamsPanel` directly, not `SectionHeader`), Add Stream button, Stop All button. `useRovingFocus` horizontal with `mode: 'composite-exit'`. `focus('forward'|'backward')` → restore last remembered roving element; fallback: first button.
 2. **Streams list zone** (`data-zone-id="streams-list"`) — `<ul>` with `useCompositeList`. Replaces `<StreamTable>`.
 
 **StreamItem segments** — `SegmentKind[]` is dynamic per item:
@@ -247,11 +254,11 @@ So the resolved `segments[]` for an idle stream: `['track', 'tech', 'actions']`;
 
 Inner buttons in `'actions'` segment have `tabIndex={-1}`. **Enter** on the `'actions'` segment fires the primary button's click handler directly (e.g. Record for a stream, Add for a station). Context menu / secondary actions are always accessible via **Shift+F10** / ContextMenu key → `onAction('contextMenu', ...)`. There is no intermediate "focus first button" step — Enter always activates, not navigates.
 
-Empty state: when no streams exist, `StreamsPanel` renders a single **empty-state zone** (`data-zone-id="streams-empty"`) that includes both the CommandPalette trigger button (from `SectionHeader`) and the Add Stream CTA button with `autoFocus`. Zone type: **composite** (roving focus, Tab always exits). The CTA carries `aria-describedby` pointing to a hidden `<span>` with the empty-state description (e.g. `"Список потоків порожній. Натисніть Enter, щоб додати перший потік."`) so NVDA announces context when focus lands. No additional live announcement on mount — the CTA focus + `aria-describedby` is the one announcement path; a second live announce would cause NVDA to read twice. `focus('forward')` → Add Stream CTA button. `focus('backward')` → CommandPalette trigger button (or Add CTA if trigger is absent). This zone replaces both `streams-actions` and `streams-list` in the zone order; `onZonesChange` updates App.tsx. The CommandPalette trigger must always remain inside the first active-screen zone, whether in empty or populated state.
+Empty state: when no streams exist, `StreamsPanel` renders a single **empty-state zone** (`data-zone-id="streams-empty"`) that includes both the **CommandPalette trigger button** (rendered by `StreamsPanel`, not `SectionHeader`) and the Add Stream CTA button with `autoFocus`. Zone type: **composite** (roving focus, Tab always exits). The CTA carries `aria-describedby` pointing to a hidden `<span>` with the empty-state description (e.g. `"Список потоків порожній. Натисніть Enter, щоб додати перший потік."`) so NVDA announces context when focus lands. No additional live announcement on mount — the CTA focus + `aria-describedby` is the one announcement path; a second live announce would cause NVDA to read twice. `focus('forward')` → Add Stream CTA button. `focus('backward')` → CommandPalette trigger button (or Add CTA if trigger is absent). This zone replaces both `streams-actions` and `streams-list` in the zone order; `onZonesChange` updates App.tsx.
 
 #### Browser screen zones
 
-1. **Search/Filters zone** (`data-zone-id="browser-search"`) — form zone — existing `<SearchForm>` + CommandPalette button. Standard Tab-within-zone (form widgets keep native keyboard model). Exit handled by `useFocusBoundary` (first/last real focusable `onKeyDown`). `focus('forward'|'backward')` → restore last remembered focused element (form zone memory); fallback: search input for 'forward', last filter/button for 'backward'.
+1. **Search/Filters zone** (`data-zone-id="browser-search"`) — form zone — existing `<SearchForm>` + **CommandPalette trigger button** (rendered by `BrowserPanel`, not `SectionHeader`). Standard Tab-within-zone (form widgets keep native keyboard model). Exit handled by `useFocusBoundary` (first/last real focusable `onKeyDown`; caller must call `refreshBoundary()` after filter async-load). `focus('forward'|'backward')` → restore last remembered focused element (form zone memory); fallback: search input for 'forward', last filter/button for 'backward'.
 2. **Results list zone** (`data-zone-id="browser-results"`) — composite zone — `<ul>` with `useCompositeList`. Replaces `<StationTable>`.
 
 **StationItem segments** (`SegmentKind[]`): `['metadata', 'actions']`
@@ -263,7 +270,7 @@ After add action: `announce(m.browser_station_added({ name }), 'polite')`. Focus
 
 #### Wishlist/Ignorelist screen zones
 
-1. **Controls zone** (`data-zone-id="wishlist-controls"`) — form zone — Tabs (Wishlist/Ignorelist), Add button, CommandPalette button. Tabs use React Aria `<Tabs>` with native Left/Right switching; buttons after tabs reachable via Tab within zone. Exit handled by `useFocusBoundary` (first/last real focusable `onKeyDown`). `focus('forward'|'backward')` → restore last remembered focused element (form zone memory); fallback: first focusable (Wishlist tab) for 'forward', last focusable (Add or last button) for 'backward'.
+1. **Controls zone** (`data-zone-id="wishlist-controls"`) — form zone — Tabs (Wishlist/Ignorelist), Add button, **CommandPalette trigger button** (rendered by `WishlistPanel`, not `SectionHeader`). Tabs use React Aria `<Tabs>` with native Left/Right switching; buttons after tabs reachable via Tab within zone. Exit handled by `useFocusBoundary` (first/last real focusable `onKeyDown`). `focus('forward'|'backward')` → restore last remembered focused element (form zone memory); fallback: first focusable (Wishlist tab) for 'forward', last focusable (Add or last button) for 'backward'.
 2. **Patterns list zone** (`data-zone-id="wishlist-list"`) — `<ul>` with `useCompositeList`. Replaces `<PatternTable>`.
 
 **PatternItem segments** (`SegmentKind[]`): `['conditions', 'actions']`
@@ -308,7 +315,19 @@ Empty state: dedicated empty-state zone (same pattern as Streams empty state —
 Changes required:
 - `ConfirmDialog`: safe action (Cancel) must receive `autoFocus`. Verify this is already the case.
 - All dialogs + CommandPalette: before opening, store the current `document.activeElement` ref. On `Escape`/close, restore focus to that element **if it is still connected to the DOM**. Exception: if the dialog was a destructive confirm (delete item), the opener may no longer exist. In that case, after the deletion completes, call `focus('forward')` on the affected list zone — the list's focus memory will resolve to the nearest surviving sibling using `prevIndex`.
-- `CommandPalette`: add `data-modal="true"` to its root element AND implement a focus trap (Tab cycles only within the palette content). On open, focus the search input. On close, restore opener's focus. Use React Aria `<FocusScope contain restoreFocus>` or equivalent.
+- `CommandPalette`: requires `role="dialog"`, `aria-modal="true"`, and `aria-label="Command Palette"` (or i18n equivalent `m.command_palette_label()`) on its root element so NVDA announces the modal context and its name. Also add `data-modal="true"` as a **technical selector** for the modal guard (`data-modal` is a supplemental attribute only; `role="dialog"` is the primary ARIA semantic). Implement a focus trap (`<FocusScope contain restoreFocus>` or equivalent). On open, focus the search input. On close, restore opener's focus.
+
+  ```tsx
+  // CommandPalette root
+  <div
+    role="dialog"
+    aria-modal="true"
+    aria-label={m.command_palette_label()}
+    data-modal="true"
+  >
+    ...
+  </div>
+  ```
 - Modal guard used by all global zone handlers:
   ```ts
   const isInModal = !!document.activeElement?.closest(
@@ -323,8 +342,9 @@ Changes required:
 
 **New files:**
 - `src/hooks/useCompositeList.ts` — 2D roving focus hook
-- `src/hooks/useRovingFocus.ts` — 1D toolbar roving focus hook
+- `src/hooks/useRovingFocus.ts` — 1D toolbar roving focus hook (`mode: 'composite-exit' | 'mixed-boundary-handoff'`)
 - `src/hooks/useZoneNavigation.ts` — global Tab/F6 zone cycling logic
+- `src/hooks/useFocusBoundary.ts` — form zone Tab-exit boundary hook with dynamic refresh
 - `src/components/streams/StreamList.tsx` — replaces StreamTable
 - `src/components/streams/StreamItem.tsx` — replaces StreamRow
 - `src/components/browser/StationList.tsx` — replaces StationTable
@@ -335,10 +355,11 @@ Changes required:
 - `src/components/layout/ActivityBar.tsx` — roving focus, aria-disabled
 - `src/components/layout/StatusBar.tsx` — focus anchor, segment navigation
 - `src/components/player/PlayerPanel.tsx` — toolbar roving focus, zone integration
-- `src/components/streams/StreamsPanel.tsx` — actions zone, zone registration
-- `src/components/browser/BrowserPanel.tsx` — zone registration
-- `src/components/wishlist/WishlistPanel.tsx` — zone registration
-- `src/components/layout/SectionHeader.tsx` — CommandPalette button joins first screen zone
+- `src/components/streams/StreamsPanel.tsx` — actions zone, zone registration, owns CommandPalette trigger
+- `src/components/browser/BrowserPanel.tsx` — zone registration, owns CommandPalette trigger
+- `src/components/wishlist/WishlistPanel.tsx` — zone registration, owns CommandPalette trigger
+- `src/components/layout/SectionHeader.tsx` — remove CommandPalette trigger (moved to panels); keep title + settings button only
+- `src/components/common/CommandPalette.tsx` — add `role="dialog"`, `aria-modal="true"`, `aria-label`, focus trap
 
 **Deleted files (after replacement):**
 - `src/components/streams/StreamTable.tsx`
