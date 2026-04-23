@@ -49,15 +49,10 @@ Each major zone component exposes `{ el, focus }` via `useImperativeHandle` on a
 Three distinct zone types determine how Tab behaves **inside** the zone:
 
 - **Composite zones** (ActivityBar, toolbars, lists, StatusBar): use roving focus; all elements except the active one have `tabIndex={-1}`. Tab is intercepted in the zone's `onKeyDown` and always exits by calling `onTabOut(forward)`.
-- **Form zones** (Browser search/filters, Wishlist controls): contain standard form widgets (Input, Select, ComboBox, etc.). Native Tab order is preserved **within** the zone. Exit at zone boundaries is handled by invisible sentinel elements at the start and end of the zone:
-  ```jsx
-  <span tabIndex={0} aria-hidden="true"
-    onFocus={(e) => { e.preventDefault(); exitZone(forward=false); }} />
-  {/* ... form content ... */}
-  <span tabIndex={0} aria-hidden="true"
-    onFocus={(e) => { e.preventDefault(); exitZone(forward=true); }} />
-  ```
-  Sentinels use `onFocus` (not `onKeyDown`): when Tab naturally moves focus onto a sentinel, the `onFocus` handler immediately redirects focus to the appropriate adjacent zone.
+- **Form zones** (Browser search/filters, Wishlist controls): contain standard form widgets (Input, Select, ComboBox, etc.). Native Tab order is preserved **within** the zone. Exit at zone boundaries is detected by adding `onKeyDown` handlers **to the first and last real focusable elements** in the zone (no hidden sentinel nodes):
+  - **First element** `onKeyDown`: if `Shift+Tab` → `preventDefault(); exitZone(forward=false)`
+  - **Last element** `onKeyDown`: if `Tab` (no Shift) → `preventDefault(); exitZone(forward=true)`
+  This keeps all focus targets real, visible, and accessible. A utility `useFocusBoundary(containerRef)` auto-discovers the first and last tabbable descendants and attaches these handlers.
 - **Mixed zones** (Player): contain a small ordered sequence of sub-controls (transport toolbar, position slider, volume slider). Tab moves between sub-controls in sequence; only after the last sub-control does Tab call `onTabOut(true)`. Shift+Tab from the first sub-control calls `onTabOut(false)`. Each sub-control group uses roving focus internally where applicable.
 
 #### F6 handler (global) vs Tab handler (per-zone)
@@ -66,7 +61,7 @@ Three distinct zone types determine how Tab behaves **inside** the zone:
 
 **Tab/Shift+Tab in composite zones**: each composite zone's root `onKeyDown` detects Tab and calls `onTabOut(forward)` instead of letting native Tab propagate.
 
-**Tab/Shift+Tab in form zones**: native Tab operates within the zone; sentinels on `onFocus` redirect exit at zone boundaries.
+**Tab/Shift+Tab in form zones**: native Tab operates within the zone; the first and last real focusable elements detect boundary escape via `onKeyDown` and call `exitZone`.
 
 **Tab/Shift+Tab in mixed zones (Player)**: Tab moves between the ordered sub-controls; only at the first/last boundary does it call `onTabOut`.
 
@@ -234,9 +229,9 @@ So the resolved `segments[]` for an idle stream: `['track', 'tech', 'actions']`;
 | `'status'` | `"Тривалість запису, 1:23:45"` or `"Відтворюється"` |
 | `'actions'` | Computed: `"Дії: Відтворити, Почати запис, Меню"` (lists actual button labels) |
 
-Inner buttons in `'actions'` segment have `tabIndex={-1}`. Enter on the `'actions'` segment focuses the first inner button; subsequent Left/Right (if desired) could move between inner buttons, but FRD does not require intra-action navigation — Enter activates the whole segment's primary action.
+Inner buttons in `'actions'` segment have `tabIndex={-1}`. **Enter** on the `'actions'` segment fires the primary button's click handler directly (e.g. Record for a stream, Add for a station). Context menu / secondary actions are always accessible via **Shift+F10** / ContextMenu key → `onAction('contextMenu', ...)`. There is no intermediate "focus first button" step — Enter always activates, not navigates.
 
-Empty state: when no streams exist, `StreamsPanel` renders a single **empty-state zone** (`data-zone-id="streams-empty"`) that includes both the CommandPalette trigger button (from `SectionHeader`) and the Add Stream CTA button with `autoFocus`. The CTA gets `autoFocus` so NVDA announces the empty state on `focus('forward')`. This zone replaces both `streams-actions` and `streams-list` in the zone order; `onZonesChange` updates App.tsx. The CommandPalette trigger must always remain inside the first active-screen zone, whether in empty or populated state.
+Empty state: when no streams exist, `StreamsPanel` renders a single **empty-state zone** (`data-zone-id="streams-empty"`) that includes both the CommandPalette trigger button (from `SectionHeader`) and the Add Stream CTA button with `autoFocus`. The CTA also carries `aria-describedby` pointing to a hidden `<span>` with the empty-state description (e.g. `"Список потоків порожній. Натисніть Enter, щоб додати перший потік."`) so NVDA announces context automatically when focus lands. A polite `aria-live` announcement is also dispatched when the zone mounts to ensure announcement even when focus is already there. This zone replaces both `streams-actions` and `streams-list` in the zone order; `onZonesChange` updates App.tsx. The CommandPalette trigger must always remain inside the first active-screen zone, whether in empty or populated state.
 
 #### Browser screen zones
 
@@ -260,7 +255,7 @@ After add action: `announce(m.browser_station_added({ name }), 'polite')`. Focus
 2. `'conditions'`: format, min bitrate, options. `aria-label` example: `"Умови: MP3, 128 кбіт/с"` or `"Умови: будь-який формат"`
 3. `'actions'`: Edit, Delete. `aria-label` computed: `"Дії: Редагувати, Видалити"`; inner buttons `tabIndex={-1}`
 
-Empty state: dedicated empty-state zone (same pattern as Streams empty state).
+Empty state: dedicated empty-state zone (same pattern as Streams empty state — CTA with `autoFocus`, `aria-describedby` pointing to empty-state description, polite live announcement on mount, CommandPalette trigger included).
 
 #### Player zone (mixed zone)
 
@@ -296,8 +291,8 @@ Empty state: dedicated empty-state zone (same pattern as Streams empty state).
 
 Changes required:
 - `ConfirmDialog`: safe action (Cancel) must receive `autoFocus`. Verify this is already the case.
-- All dialogs: `Escape` returns focus to the element that triggered the dialog. Store trigger ref in each dialog.
-- `CommandPalette`: add `data-modal="true"` to its root element so the modal guard covers it.
+- All dialogs + CommandPalette: before opening, store the current `document.activeElement` ref. On `Escape`/close, restore focus to that element.
+- `CommandPalette`: add `data-modal="true"` to its root element AND implement a focus trap (Tab cycles only within the palette content). On open, focus the search input. On close, restore opener's focus. Use React Aria `<FocusScope contain restoreFocus>` or equivalent.
 - Modal guard used by all global zone handlers:
   ```ts
   const isInModal = !!document.activeElement?.closest(
