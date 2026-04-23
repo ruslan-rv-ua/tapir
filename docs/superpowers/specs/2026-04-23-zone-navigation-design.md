@@ -35,56 +35,70 @@ Chosen over:
 #### Zone interface
 
 ```ts
-interface ZoneFocusAPI {
+interface ZoneEntry {
+  id: string;
+  el: HTMLElement;             // the root DOM element with data-zone-id
   focus(direction: 'forward' | 'backward'): void;
 }
 ```
 
-Each major zone component exposes this via `useImperativeHandle` on a `forwardRef`.
+Each major zone component exposes `{ el, focus }` via `useImperativeHandle` on a `forwardRef`. The zone root element always carries `data-zone-id="<id>"` matching the entry's `id`.
 
-#### Zone order in App.tsx
+#### Zone types: composite, form, and mixed
+
+Three distinct zone types determine how Tab behaves **inside** the zone:
+
+- **Composite zones** (ActivityBar, toolbars, lists, StatusBar): use roving focus; all elements except the active one have `tabIndex={-1}`. Tab is intercepted in the zone's `onKeyDown` and always exits by calling `onTabOut(forward)`.
+- **Form zones** (Browser search/filters, Wishlist controls): contain standard form widgets (Input, Select, ComboBox, etc.). Native Tab order is preserved **within** the zone. Exit at zone boundaries is handled by invisible sentinel elements at the start and end of the zone:
+  ```jsx
+  <span tabIndex={0} aria-hidden="true"
+    onFocus={(e) => { e.preventDefault(); exitZone(forward=false); }} />
+  {/* ... form content ... */}
+  <span tabIndex={0} aria-hidden="true"
+    onFocus={(e) => { e.preventDefault(); exitZone(forward=true); }} />
+  ```
+  Sentinels use `onFocus` (not `onKeyDown`): when Tab naturally moves focus onto a sentinel, the `onFocus` handler immediately redirects focus to the appropriate adjacent zone.
+- **Mixed zones** (Player): contain a small ordered sequence of sub-controls (transport toolbar, position slider, volume slider). Tab moves between sub-controls in sequence; only after the last sub-control does Tab call `onTabOut(true)`. Shift+Tab from the first sub-control calls `onTabOut(false)`. Each sub-control group uses roving focus internally where applicable.
+
+#### F6 handler (global) vs Tab handler (per-zone)
+
+**F6/Shift+F6**: global `window.addEventListener('keydown')` always cycles zones, regardless of zone type.
+
+**Tab/Shift+Tab in composite zones**: each composite zone's root `onKeyDown` detects Tab and calls `onTabOut(forward)` instead of letting native Tab propagate.
+
+**Tab/Shift+Tab in form zones**: native Tab operates within the zone; sentinels on `onFocus` redirect exit at zone boundaries.
+
+**Tab/Shift+Tab in mixed zones (Player)**: Tab moves between the ordered sub-controls; only at the first/last boundary does it call `onTabOut`.
+
+#### Zone order
 
 ```ts
-const zoneRefs = {
-  activityBar: React.createRef<ZoneFocusAPI>(),
-  screenZones: [], // populated by active panel
-  player: React.createRef<ZoneFocusAPI>(),
-  statusBar: React.createRef<ZoneFocusAPI>(),
-};
+// In App.tsx (ref-based, not reactive)
+type ZoneOrder = [
+  activityBarRef,
+  ...screenZoneRefs,   // 1–N zones from the active panel, set via onZonesChange
+  playerRef,
+  statusBarRef,
+]
 ```
 
-Active panel provides its zones via a callback: `onZonesChange(zones: ZoneFocusAPI[])`. App.tsx builds the flat ordered array:
+Active panel provides its ordered zone entries via `onZonesChange(zones: ZoneEntry[])`. App.tsx rebuilds the flat `orderedZones: ZoneEntry[]` whenever the active section changes or a panel reports zone changes. Unmounted zones are excluded.
 
-```
-[activityBar, ...screenZones, player, statusBar]
-```
+#### Zone detection (for F6 handler)
 
-#### Zone detection
+`element.closest('[data-zone-id]')` returns the innermost zone element (safe with nested panels since the innermost `data-zone-id` wins). Match by `id` string against `orderedZones`.
 
-Each zone root element carries `data-zone-id="<id>"`. When Tab or F6 fires:
+#### Modal guard
+
+The global F6 handler and per-zone Tab interceptors must not fire when focus is inside a modal surface. Guard condition:
 
 ```ts
-const zoneEl = document.activeElement?.closest('[data-zone-id]');
-const idx = orderedZones.findIndex(z => z.el === zoneEl);
+const isInModal = !!document.activeElement?.closest(
+  '[role="dialog"], [role="alertdialog"], [data-modal="true"]'
+);
 ```
 
-#### Global key handler in App.tsx
-
-```ts
-window.addEventListener('keydown', (e) => {
-  if (e.key === 'Tab' || e.key === 'F6') {
-    const idx = currentZoneIndex();
-    if (idx === -1) return; // focus outside known zones (modal)
-    e.preventDefault();
-    const next = e.shiftKey
-      ? wrap(idx - 1, orderedZones.length)
-      : wrap(idx + 1, orderedZones.length);
-    orderedZones[next].focus(e.shiftKey ? 'backward' : 'forward');
-  }
-});
-```
-
-Unmounted zones are filtered out before building `orderedZones`.
+`data-modal="true"` covers `CommandPalette` (custom overlay with no dialog role). Both `SettingsDialog` (uses React Aria Dialog, `role="dialog"`) and `ConfirmDialog` (uses `role="alertdialog"`) are covered by the explicit role selectors.
 
 #### Zone announcement
 
@@ -99,49 +113,52 @@ Manages 2D roving focus for any list: Up/Down between items, Left/Right between 
 #### State
 
 ```ts
+type SegmentKind = 'summary' | 'track' | 'tech' | 'status' | 'actions' | 'metadata' | 'conditions';
+
 interface CompositeListState {
-  activeItem: number;         // index into items array
-  activeSegment: number;      // -1 = summary; 0..n = segment index
+  activeItemId: string;           // stable item ID, not array index
+  activeSegment: SegmentKind;     // 'summary' = summary focus point
 }
 ```
+
+Each item declares its own ordered `segments: SegmentKind[]` array. The hook resolves which segment kinds are available for the active item. Up/Down preserves `activeSegment` kind if the target item has that kind; otherwise falls back to `'summary'`. Left/Right move through the target item's actual `segments` array by position, not by numeric index, so absent optional segments never cause index mismatches.
 
 #### Keyboard behaviour
 
 | Key | Effect |
 |-----|--------|
-| Up / Down | Move `activeItem` ± 1; keep `activeSegment` if segment exists in target item, else fall back to -1 |
-| Left | Decrease `activeSegment` (min -1 = summary) |
-| Right | Increase `activeSegment` (max = segments.length - 1) |
-| Home | `activeItem = 0` |
-| End | `activeItem = items.length - 1` |
-| PageUp / PageDown | Move by approx one visual page (measured by container height / item height) |
+| Up / Down | Move to prev/next item by `activeItemId`; keep `activeSegment` kind if target has it, else `'summary'` |
+| Left | Move to prev segment kind in active item's `segments[]`; at first → stay on `'summary'` |
+| Right | Move to next segment kind in active item's `segments[]`; at `'summary'` → first segment |
+| Home | First item in list |
+| End | Last item in list |
+| PageUp / PageDown | Move by approx one visual page (container height / item height) |
 | Tab / Shift+Tab | Call `onTabOut(forward: boolean)` — hands off to zone manager |
-| Enter | `onAction('primary', activeItem, activeSegment)` |
-| Space | `onAction('toggle', activeItem, activeSegment)` |
-| Delete | `onAction('delete', activeItem, activeSegment)` |
-| Shift+F10 / ContextMenu | `onAction('contextMenu', activeItem, activeSegment)` |
+| Enter | `onAction('primary', activeItemId, activeSegment)` |
+| Space | `onAction('toggle', activeItemId, activeSegment)` |
+| Delete | `onAction('delete', activeItemId, activeSegment)` |
+| Shift+F10 / ContextMenu | `onAction('contextMenu', activeItemId, activeSegment)` |
 
 #### DOM pattern
 
 ```jsx
 <ul role="list" data-zone-id={zoneId} ref={listRef} onKeyDown={handleKeyDown}>
-  {items.map((item, i) => (
+  {items.map((item) => (
     <li key={item.id}>
       {/* summary focus point */}
       <div
-        tabIndex={isFocused(i, -1) ? 0 : -1}
+        tabIndex={isFocused(item.id, 'summary') ? 0 : -1}
         aria-label={item.summaryLabel}
-        ref={getSummaryRef(i)}
       />
-      {/* segments */}
-      {item.segments.map((seg, s) => (
+      {/* segments — only rendered if present in item.segments */}
+      {item.segments.map((kind) => (
         <div
-          key={s}
-          tabIndex={isFocused(i, s) ? 0 : -1}
-          aria-label={seg.label}
+          key={kind}
+          tabIndex={isFocused(item.id, kind) ? 0 : -1}
+          aria-label={item.segmentLabels[kind]}
         >
-          {seg.content}
-          {/* action buttons inside segments get tabIndex={-1} */}
+          {item.segmentContent[kind]}
+          {/* action buttons inside action segment get tabIndex={-1} */}
         </div>
       ))}
     </li>
@@ -151,7 +168,7 @@ interface CompositeListState {
 
 #### Focus memory
 
-`useCompositeList` stores `{ activeItem, activeSegment }` in a `useRef` (no reactivity needed). When the zone receives `focus('forward')`, it restores the last active position. If the remembered item no longer exists, it falls back to the nearest available item.
+`useCompositeList` stores `{ itemId: string, activeSegment: SegmentKind, scrollTop: number }` in a `useRef` (no reactivity needed). When the zone receives `focus('forward')`, it resolves `itemId` against the current items array, restores `scrollTop`, and focuses the remembered segment kind. If `itemId` no longer exists, fall back to the nearest surviving item by original index (or first item). If the remembered segment kind is absent from the restored item, fall back to `'summary'`.
 
 ---
 
@@ -188,13 +205,23 @@ Two zones:
 1. **Actions zone** (`data-zone-id="streams-actions"`) — toolbar containing CommandPalette button (from SectionHeader), Add Stream button, Stop All button. `useRovingFocus` horizontal.
 2. **Streams list zone** (`data-zone-id="streams-list"`) — `<ul>` with `useCompositeList`. Replaces `<StreamTable>`.
 
-**StreamItem segments** (in order):
-1. Summary (index -1): recording state + playback state + stream name. `aria-label` example: `"Записується, Radio Paradise"`
-2. Segment 0 — Track: current artist/title. `aria-label`: `"Трек, Tycho — A Walk"` or `"Трек, —"`
-3. Segment 1 — Tech: bitrate + duration if recording. `aria-label`: `"256 кбіт/с, 1:23:45"` or `"256 кбіт/с"`
-4. Segment 2 — Actions: Play/Stop, Record/Stop, context menu. `aria-label`: `"Дії"`; inner buttons have `tabIndex={-1}`.
+**StreamItem segments** — `SegmentKind[]` is dynamic per item:
+- Always present: `['track', 'tech', 'actions']`
+- Present only when recording or playing: `'status'` is inserted between `'tech'` and `'actions'`
 
-Empty state: `<div autoFocus>` with CTA button (existing `EmptyState` component). Zone skips list zone if empty.
+So the resolved `segments[]` for an idle stream: `['track', 'tech', 'actions']`; for a recording/playing stream: `['track', 'tech', 'status', 'actions']`.
+
+| Kind | `aria-label` example |
+|------|----------------------|
+| `'summary'` | `"Записується, Radio Paradise"` or `"Відтворюється, записується, SomaFM"` |
+| `'track'` | `"Трек, Tycho — A Walk"` or `"Трек, —"` |
+| `'tech'` | `"256 кбіт/с"` |
+| `'status'` | `"Тривалість запису, 1:23:45"` or `"Відтворюється"` |
+| `'actions'` | Computed: `"Дії: Відтворити, Почати запис, Меню"` (lists actual button labels) |
+
+Inner buttons in `'actions'` segment have `tabIndex={-1}`. Enter on the `'actions'` segment focuses the first inner button; subsequent Left/Right (if desired) could move between inner buttons, but FRD does not require intra-action navigation — Enter activates the whole segment's primary action.
+
+Empty state: when no streams exist, `StreamsPanel` renders a single **empty-state zone** (`data-zone-id="streams-empty"`) containing a descriptive message and the Add Stream CTA button with `autoFocus`. This zone replaces both the actions zone and list zone in the zone order — the first Tab in Main lands directly on the Add CTA. When streams are added, the zone order switches back to `[streams-actions, streams-list]`. `onZonesChange` is called to update App.tsx.
 
 #### Browser screen zones
 
@@ -213,41 +240,55 @@ After add action: `announce(m.browser_station_added({ name }), 'polite')`. Focus
 1. **Controls zone** (`data-zone-id="wishlist-controls"`) — Tabs (Wishlist/Ignorelist), Add button, CommandPalette button. Tabs use React Aria `<Tabs>` with native Left/Right switching; buttons after tabs reachable via Tab within zone.
 2. **Patterns list zone** (`data-zone-id="wishlist-list"`) — `<ul>` with `useCompositeList`. Replaces `<PatternTable>`.
 
-**PatternItem segments:**
-1. Summary: pattern string
-2. Segment 0 — Conditions: format, min bitrate, options (if applicable)
-3. Segment 1 — Actions: Edit, Delete
+**PatternItem segments** (`SegmentKind[]`): `['conditions', 'actions']`
+1. Summary (`'summary'`): pattern string (e.g. `"Tycho*"`)
+2. `'conditions'`: format, min bitrate, options. `aria-label` example: `"Умови: MP3, 128 кбіт/с"` or `"Умови: будь-який формат"`
+3. `'actions'`: Edit, Delete. `aria-label` computed: `"Дії: Редагувати, Видалити"`; inner buttons `tabIndex={-1}`
 
-Empty state: message + Add CTA, similar to streams empty state.
+Empty state: dedicated empty-state zone (same pattern as Streams empty state).
 
-#### Player zone
+#### Player zone (mixed zone)
 
 - Element: existing `<PlayerPanel>`
-- `data-zone-id="player"`
-- Transport controls group: `role="toolbar"` + `useRovingFocus` (horizontal)
-- Position Slider: below transport controls, native keyboard (Left/Right, PageUp/PageDown, Home/End)
-- Volume Slider: after position slider
-- Tab from last control (volume slider) → calls `onTabOut(true)` → StatusBar
-- `focus('forward')` → first transport control; `focus('backward')` → volume slider or last available control
+- `data-zone-id="player"`, zone type: **mixed**
+- Internal Tab order (sub-controls, sequential):
+  1. Transport controls group: `role="toolbar"` + `useRovingFocus` (horizontal, Left/Right). Tab from last transport control → moves to next sub-control (position slider).
+  2. Position Slider (only when seekable source): native keyboard (Left/Right, PageUp/PageDown, Home/End). Tab → volume slider.
+  3. Volume Slider: native keyboard. Tab → `onTabOut(true)` (exits to StatusBar). Shift+Tab → back to position slider (or transport controls if no slider).
+- `focus('forward')` → first transport control; `focus('backward')` → volume slider (or last available sub-control)
 
 #### StatusBar zone
 
-- Element: existing `<footer role="status">`
-- Add `data-zone-id="status-bar"`, `tabIndex={0}` on the footer itself as anchor
-- Change `role="status"` to `role="contentinfo"` (live region stays as `aria-live="polite"` on inner element)
-- Left/Right: move between status segments (recordings count, duration, future indicators)
-- `focus('forward')` → first segment (or footer anchor); `focus('backward')` → last segment
-- Announce zone name on entry: `announce(m.zone_status(), 'polite')` (since read-only content may not trigger NVDA focus announcement)
+- Element: existing `<footer>`
+- Add `data-zone-id="status-bar"`
+- Keep an inner `role="status" aria-live="polite"` element for live recording updates (do NOT move this to the footer itself to avoid regressions)
+- Add a separate focusable status summary element: `<div tabIndex={0} aria-label={statusSummaryLabel}>` as the focus anchor; this is the entry point for `focus('forward')` and `focus('backward')`
+- Segments (Left/Right navigation via `useRovingFocus` horizontal):
+  1. Active recordings count (always present)
+  2. Free disk space (when available)
+  3. Longest recording duration (when recording)
+  4. Future indicators (bandwidth, active profile, etc.)
+- Home/End: first/last segment
+- `focus('forward')` → first segment; `focus('backward')` → last segment
+- Announce zone name on entry: `announce(m.zone_status(), 'polite')` (read-only content may not trigger NVDA focus announcement automatically)
 
 ---
 
-### 5. Modal surfaces (no changes to model)
+### 5. Modal surfaces
 
-`SettingsDialog`, `AddStreamDialog`, `AddPatternDialog`, `ConfirmDialog` already use React Aria dialog pattern which provides focus trap. Verify:
+`SettingsDialog` and `AddStreamDialog`/`AddPatternDialog` use React Aria dialog pattern which provides focus trap. `ConfirmDialog` uses `role="alertdialog"`. `CommandPalette` is a custom overlay.
 
-- `ConfirmDialog`: cancel/safe action receives `autoFocus`
-- All dialogs: `Escape` returns focus to trigger element
-- No global zone handler fires when focus is within a dialog (guard: check `document.activeElement.closest('[role="dialog"]')`)
+Changes required:
+- `ConfirmDialog`: safe action (Cancel) must receive `autoFocus`. Verify this is already the case.
+- All dialogs: `Escape` returns focus to the element that triggered the dialog. Store trigger ref in each dialog.
+- `CommandPalette`: add `data-modal="true"` to its root element so the modal guard covers it.
+- Modal guard used by all global zone handlers:
+  ```ts
+  const isInModal = !!document.activeElement?.closest(
+    '[role="dialog"], [role="alertdialog"], [data-modal="true"]'
+  );
+  if (isInModal) return; // do not intercept Tab/F6
+  ```
 
 ---
 
@@ -285,20 +326,24 @@ Empty state: message + Add CTA, similar to streams empty state.
 New keys needed (in both `uk.json` and `en.json`):
 
 ```
-zone_activity_bar       — "Бокова панель"
-zone_streams_actions    — "Дії потоку"
-zone_streams_list       — "Список потоків"
-zone_browser_search     — "Пошук"
-zone_browser_results    — "Результати пошуку"
-zone_wishlist_controls  — "Список і дії"
-zone_wishlist_list      — "Список патернів"
-zone_player             — "Програвач"
-zone_status             — "Статус"
-segment_track           — "Трек"
-segment_tech            — "Технічна інформація"
-segment_actions         — "Дії"
-segment_metadata        — "Метадані"
-segment_conditions      — "Умови"
+zone_activity_bar           — "Бокова панель"
+zone_streams_actions        — "Дії потоку"
+zone_streams_list           — "Список потоків"
+zone_browser_search         — "Пошук"
+zone_browser_results        — "Результати пошуку"
+zone_wishlist_controls      — "Список і дії"
+zone_wishlist_list          — "Список патернів"
+zone_player                 — "Програвач"
+zone_status                 — "Статус"
+segment_track               — "Трек"
+segment_tech                — "Технічна інформація"
+segment_status_duration     — "Тривалість запису"
+segment_playing             — "Відтворюється"
+segment_actions             — "Дії"          (used in computed action segment label)
+segment_metadata            — "Метадані"
+segment_conditions          — "Умови"
+segment_free_disk           — "Вільне місце"
+segment_longest_recording   — "Найдовший запис"
 ```
 
 ---
