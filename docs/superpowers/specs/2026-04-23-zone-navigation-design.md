@@ -163,11 +163,21 @@ Each item declares its own ordered `segments: SegmentKind[]` array. The hook res
 
 #### Focus memory
 
-`useCompositeList` stores `{ itemId: string, prevIndex: number, activeSegment: SegmentKind, scrollTop: number }` in a `useRef` (no reactivity needed). When the zone receives `focus('forward')`:
+**All zone types** must implement focus memory per FRD §6.3 — re-entering a zone via Tab/F6 restores the user's last position. First/last are only the fallback when no prior position exists or it has been removed.
+
+**Composite/roving zones** (ActivityBar, toolbars, StatusBar): the roving focus index naturally provides memory — the element with `tabIndex={0}` IS the stored position. No extra state needed. `focus('forward')` restores to that element; `focus('backward')` restores to that element too (unless the zone explicitly maps 'backward' to the last item, which only makes sense for linear zones with a meaningful "end").
+
+**List zones** (`useCompositeList`): stores `{ itemId: string, prevIndex: number, activeSegment: SegmentKind, scrollTop: number }` in a `useRef` (no reactivity needed). When the zone receives `focus('forward')`:
 1. Try to find `itemId` in current items array → if found, restore segment and scrollTop.
 2. If not found, use `prevIndex` clamped to `[0, items.length - 1]` as the fallback item.
 3. If `activeSegment` kind is absent from the restored item's segments, fall back to `'summary'`.
 `prevIndex` is updated every time `activeItemId` changes so it always reflects the last known position.
+
+**Form zones** (Browser search, Wishlist controls): store last focused `HTMLElement` in a `useRef<HTMLElement | null>`. On every `focus` or `focusin` event within the zone, update the ref. `focus('forward')` and `focus('backward')` restore to the stored element (call `.focus()` on it) if it still exists and is still within the zone; fall back to first/last focusable respectively.
+
+**Mixed zone** (Player): track the last active sub-control (transport button index, or "position slider", or "volume slider") in a `useRef`. Restore on re-entry.
+
+**Empty-state zones**: trivially have 2 focusable elements (CommandPalette trigger + CTA). `focus('forward')` → CTA (last activity is always at the CTA). `focus('backward')` → CommandPalette trigger. No stored position needed — these are stable layouts.
 
 ---
 
