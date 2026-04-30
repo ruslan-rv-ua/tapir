@@ -9,13 +9,11 @@ const TABBABLE =
   ' select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 function getTabbable(container: HTMLElement): HTMLElement[] {
-  return Array.from(container.querySelectorAll<HTMLElement>(TABBABLE)).filter(
-    (el) =>
-      !el.closest('[hidden]') &&
-      el.getAttribute('aria-hidden') !== 'true' &&
-      getComputedStyle(el).display !== 'none' &&
-      getComputedStyle(el).visibility !== 'hidden',
-  );
+  return Array.from(container.querySelectorAll<HTMLElement>(TABBABLE)).filter((el) => {
+    if (el.closest('[hidden]') || el.closest('[aria-hidden="true"]')) return false;
+    const style = getComputedStyle(el);
+    return style.display !== 'none' && style.visibility !== 'hidden';
+  });
 }
 
 /**
