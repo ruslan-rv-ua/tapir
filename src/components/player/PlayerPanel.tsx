@@ -108,12 +108,12 @@ export const PlayerPanel = forwardRef<
   const restoreFocusPlayer = useCallback(
     (direction: "forward" | "backward") => {
       announce(m.zone_player(), "polite");
-      if (
-        direction === "backward" ||
-        lastFocusedRef.current === "transport"
-      ) {
-        lastFocusedRef.current = "transport";
-        restoreTransport(direction);
+      if (direction === "backward") {
+        // Enter from the right → land on the rightmost stop (volume)
+        lastFocusedRef.current = "volume";
+        volumeWrapperRef.current?.focus();
+      } else if (lastFocusedRef.current === "transport") {
+        restoreTransport("forward");
       } else if (lastFocusedRef.current === "position") {
         positionWrapperRef.current?.focus();
       } else {
@@ -174,7 +174,8 @@ export const PlayerPanel = forwardRef<
           aria-label={isPlaying ? m.pause() : m.play()}
           isDisabled={!isActive}
           onPress={handlePlayPause}
-          {...{ tabIndex: getTabIndex(0) }}
+          // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
+          tabIndex={getTabIndex(0)}
           className="p-1.5 rounded hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-40 forced-colors:disabled:text-[GrayText] forced-colors:disabled:border-[GrayText]"
         >
           {isPlaying ? (
@@ -189,7 +190,8 @@ export const PlayerPanel = forwardRef<
           aria-label={m.stop()}
           isDisabled={!isActive}
           onPress={handleStop}
-          {...{ tabIndex: getTabIndex(1) }}
+          // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
+          tabIndex={getTabIndex(1)}
           className="p-1.5 rounded hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-40 forced-colors:disabled:text-[GrayText] forced-colors:disabled:border-[GrayText]"
         >
           <Square aria-hidden={true} size={16} />
