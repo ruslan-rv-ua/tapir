@@ -27,6 +27,8 @@ import * as tauri from "./lib/tauri";
 import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, RecordingStartedPayload, RecordingCompletedPayload, StreamInfo, PlayerStatus, PlayerProgressPayload, WishlistMatchPayload, TrackIgnoredPayload } from "./lib/tauri";
 import * as m from "./i18n/paraglide/messages";
 
+const PERMANENT_ZONE_IDS = new Set(["activity-bar", "player", "status-bar"]);
+
 function AppContent() {
   const announce = useAnnounce();
   const announceRef = useRef(announce);
@@ -60,12 +62,13 @@ function AppContent() {
   useEffect(() => {
     if (prevSectionRef.current === activeSection) return;
     prevSectionRef.current = activeSection;
-    requestAnimationFrame(() => {
+    const rafId = requestAnimationFrame(() => {
       const firstScreen = orderedZonesRef.current.find(
-        (z) => z.id !== "activity-bar" && z.id !== "player" && z.id !== "status-bar"
+        (z) => !PERMANENT_ZONE_IDS.has(z.id)
       );
       firstScreen?.focus("forward");
     });
+    return () => cancelAnimationFrame(rafId);
   }, [activeSection]);
 
   const onZonesChange = useCallback((zones: ZoneEntry[]) => {
