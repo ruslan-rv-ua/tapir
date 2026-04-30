@@ -1,23 +1,23 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useStore } from "@nanostores/react";
 import { SearchForm } from "./SearchForm";
-import { StationTable } from "./StationTable";
+import { StationList } from "./StationList";
 import {
-  $searchResults,
-  $searchLoading,
-  $searchError,
-  $popularStations,
-  $popularLoading,
-  $popularError,
-  $hasMore,
-  $isSearchActive,
-  loadFilters,
-  loadPopularStations,
-  loadMore,
+  $searchResults, $searchLoading, $searchError,
+  $popularStations, $popularLoading, $popularError,
+  $hasMore, $isSearchActive,
+  loadFilters, loadPopularStations, loadMore,
 } from "../../stores/browser";
+import { useFocusBoundary } from "../../hooks/useFocusBoundary";
+import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as m from "../../i18n/paraglide/messages";
 
-export function BrowserPanel() {
+interface Props {
+  onZonesChange: (zones: ZoneEntry[]) => void;
+  exitZone: (fromId: string, forward: boolean) => void;
+}
+
+export function BrowserPanel({ onZonesChange, exitZone }: Props) {
   const searchResults = useStore($searchResults);
   const searchLoading = useStore($searchLoading);
   const searchError = useStore($searchError);
@@ -32,30 +32,57 @@ export function BrowserPanel() {
     loadPopularStations();
   }, []);
 
+  const searchContainerRef = useRef<HTMLDivElement | null>(null);
+  const { refreshBoundary: _refreshBoundary, restoreFocus: searchRestoreFocus } = useFocusBoundary(
+    searchContainerRef,
+    (forward) => exitZone("browser-search", forward),
+  );
+
+  const resultsListRef = useRef<ZoneEntry | null>(null);
+
+  const searchZone: ZoneEntry = {
+    id: "browser-search",
+    get el() { return searchContainerRef.current!; },
+    focus: searchRestoreFocus,
+  };
+
+  const resultsCallbackRef = useCallback((zone: ZoneEntry | null) => {
+    resultsListRef.current = zone;
+  }, []);
+
+  useEffect(() => {
+    const zones: ZoneEntry[] = [searchZone];
+    if (resultsListRef.current) zones.push(resultsListRef.current);
+    onZonesChange(zones);
+    // onZonesChange intentionally omitted — callers must pass a stable (useCallback-wrapped) reference.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchRestoreFocus]);
+
+  const showSearchResults = isSearchActive && (searchResults.length > 0 || searchLoading || !!searchError);
+  const stations = showSearchResults ? searchResults : popularStations;
+  const loading = showSearchResults ? searchLoading : popularLoading;
+  const error = showSearchResults ? searchError : popularError;
+  const emptyMessage = showSearchResults ? m.browser_no_results() : m.browser_empty();
+
   return (
     <div role="region" aria-label={m.browser_section()} className="flex flex-1 flex-col overflow-hidden">
-      <SearchForm />
-      {isSearchActive && (searchResults.length > 0 || searchLoading || searchError) ? (
-        <StationTable
-          stations={searchResults}
-          loading={searchLoading}
-          error={searchError}
-          hasMore={hasMore}
-          onLoadMore={loadMore}
-          emptyMessage={m.browser_no_results()}
-        />
-      ) : (
-        <>
-          <h2 className="px-4 py-2 text-sm font-medium text-slate-300">{m.browser_popular_title()}</h2>
-          <StationTable
-            stations={popularStations}
-            loading={popularLoading}
-            error={popularError}
-            hasMore={false}
-            emptyMessage={m.browser_empty()}
-          />
-        </>
+      <SearchForm
+        containerRef={searchContainerRef}
+        exitZone={(forward) => exitZone("browser-search", forward)}
+      />
+      {!showSearchResults && (
+        <h2 className="px-4 py-2 text-sm font-medium text-slate-300">{m.browser_popular_title()}</h2>
       )}
+      <StationList
+        ref={resultsCallbackRef}
+        stations={stations}
+        loading={loading}
+        error={error}
+        hasMore={showSearchResults ? hasMore : false}
+        onLoadMore={showSearchResults ? loadMore : undefined}
+        emptyMessage={emptyMessage}
+        exitZone={(forward) => exitZone("browser-results", forward)}
+      />
     </div>
   );
 }

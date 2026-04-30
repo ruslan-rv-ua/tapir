@@ -1,4 +1,4 @@
-import { useRef, useCallback, useEffect } from "react";
+import { useRef, useCallback, useEffect, type RefObject } from "react";
 import { useStore } from "@nanostores/react";
 import { SearchField, Input, Button, Label, Select, SelectValue, Popover, ListBox, ListBoxItem, NumberField, Group } from "react-aria-components";
 import {
@@ -8,12 +8,27 @@ import {
   updateSearchParam,
   resetSearch,
 } from "../../stores/browser";
+import { useFocusBoundary } from "../../hooks/useFocusBoundary";
 import * as m from "../../i18n/paraglide/messages";
 
-export function SearchForm() {
+interface SearchFormProps {
+  containerRef?: RefObject<HTMLDivElement | null>;
+  exitZone?: (forward: boolean) => void;
+}
+
+export function SearchForm({ containerRef, exitZone }: SearchFormProps = {}) {
   const params = useStore($searchParams);
   const filters = useStore($browserFilters);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const internalRef = useRef<HTMLDivElement | null>(null);
+  const effectiveRef = containerRef ?? internalRef;
+  const { refreshBoundary } = useFocusBoundary(
+    effectiveRef,
+    exitZone ?? (() => {}),
+  );
+
+  useEffect(() => { refreshBoundary(); }, [filters, refreshBoundary]);
 
   // Debounced text search
   const handleQueryChange = useCallback((value: string) => {
@@ -52,7 +67,7 @@ export function SearchForm() {
   }, []);
 
   return (
-    <div className="flex flex-wrap items-end gap-3 border-b border-slate-700 px-4 py-3 forced-colors:border-[ButtonText]">
+    <div ref={effectiveRef} data-zone-id="browser-search" className="flex flex-wrap items-end gap-3 border-b border-slate-700 px-4 py-3 forced-colors:border-[ButtonText]">
       <SearchField
         aria-label={m.browser_search_placeholder()}
         value={params.query ?? ""}
