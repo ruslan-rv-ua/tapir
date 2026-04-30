@@ -1,0 +1,120 @@
+import { forwardRef, useImperativeHandle, useState } from "react";
+import { useStore } from "@nanostores/react";
+import { $streams, $statuses } from "../../stores/streams";
+import { useCompositeList } from "../../hooks/useCompositeList";
+import type { ZoneEntry } from "../../hooks/useZoneNavigation";
+import { StreamItem, getStreamSegments } from "./StreamItem";
+import * as tauri from "../../lib/tauri";
+import { addToast } from "../../stores/toasts";
+import { createPortal } from "react-dom";
+import { ConfirmDialog } from "../common/ConfirmDialog";
+import * as m from "../../i18n/paraglide/messages";
+
+interface Props {
+  exitZone: (forward: boolean) => void;
+  onEmpty: () => void;
+}
+
+export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty }, ref) => {
+  const streams = useStore($streams);
+  const statuses = useStore($statuses);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  // Build items with dynamic segments
+  const items = streams.map((s) => ({
+    id: s.id,
+    segments: getStreamSegments(statuses[s.id]),
+  }));
+
+  const { listRef, onKeyDown, isFocused, restoreFocus } =
+    useCompositeList({
+      zoneId: "streams-list",
+      items,
+      onTabOut: exitZone,
+      onEmpty,
+      onAction: (type, itemId, segment) => {
+        if (type === "delete") {
+          setPendingDeleteId(itemId);
+          return;
+        }
+        if (type === "contextMenu") {
+          const menuBtn = listRef.current?.querySelector<HTMLButtonElement>(
+            `[data-item-id="${CSS.escape(itemId)}"] [data-context-menu-trigger]`
+          );
+          menuBtn?.click();
+          return;
+        }
+        if (type === "primary" || (type === "toggle" && segment !== "actions")) {
+          const stream = streams.find((s) => s.id === itemId);
+          if (!stream) return;
+          const status = statuses[itemId];
+          const isRecording = status?.state === "recording";
+          const action = segment === "actions" || segment === "summary"
+            ? (isRecording ? tauri.stopRecording(itemId) : tauri.startRecording(itemId))
+            : Promise.resolve();
+          action.catch((err) => addToast(String(err), "error"));
+        }
+      },
+    });
+
+  useImperativeHandle(ref, () => ({
+    id: "streams-list",
+    get el() { return listRef.current!; },
+    focus: restoreFocus,
+  }), [restoreFocus]);
+
+  const handleConfirmDelete = async () => {
+    if (!pendingDeleteId) return;
+    const streamName = streams.find(s => s.id === pendingDeleteId)?.name ?? "";
+    try {
+      await tauri.removeStream(pendingDeleteId);
+      $streams.set($streams.get().filter((s) => s.id !== pendingDeleteId));
+      addToast(m.stream_removed({ name: streamName }), "info");
+    } catch (err) { addToast(String(err), "error"); }
+    setPendingDeleteId(null);
+  };
+
+  return (
+    <>
+      <ul
+        ref={listRef}
+        data-zone-id="streams-list"
+        aria-label={m.zone_streams_list()}
+        role="list"
+        className="flex-1 overflow-auto"
+        onKeyDown={onKeyDown}
+      >
+        {streams.map((stream) => (
+          <StreamItem
+            key={stream.id}
+            stream={stream}
+            status={statuses[stream.id]}
+            isFocused={(segment) => isFocused(stream.id, segment)}
+            onPrimaryAction={() => {
+              const isRecording = statuses[stream.id]?.state === "recording";
+              if (isRecording) tauri.stopRecording(stream.id).catch((e) => addToast(String(e), "error"));
+              else tauri.startRecording(stream.id).catch((e) => addToast(String(e), "error"));
+            }}
+            onContextMenu={() => {
+              const menuBtn = listRef.current?.querySelector<HTMLButtonElement>(
+                `[data-item-id="${CSS.escape(stream.id)}"] [data-context-menu-trigger]`
+              );
+              menuBtn?.click();
+            }}
+            onDelete={() => setPendingDeleteId(stream.id)}
+          />
+        ))}
+      </ul>
+      {pendingDeleteId && createPortal(
+        <ConfirmDialog
+          title={m.remove_stream()}
+          message={m.confirm_delete_stream({ name: streams.find(s => s.id === pendingDeleteId)?.name ?? "" })}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setPendingDeleteId(null)}
+        />,
+        document.body
+      )}
+    </>
+  );
+});
+StreamList.displayName = "StreamList";
