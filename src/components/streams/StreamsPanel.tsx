@@ -1,6 +1,6 @@
-import { useEffect, useRef, useMemo } from "react";
+import { useCallback, useEffect, useRef, useMemo } from "react";
 import { useStore } from "@nanostores/react";
-import { $streams, $showAddStreamDialog, $editStream } from "../../stores/streams";
+import { $streams, $showAddStreamDialog } from "../../stores/streams";
 import { $commandPaletteOpen } from "../../stores/navigation";
 import { StreamList } from "./StreamList";
 import { AddStreamDialog } from "./AddStreamDialog";
@@ -17,16 +17,7 @@ interface Props {
 
 export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const streams = useStore($streams);
-  const showAddDialog = useStore($showAddStreamDialog);
-  const editStream = useStore($editStream);
   const isEmpty = streams.length === 0;
-
-  const showDialog = showAddDialog || editStream !== null;
-
-  const handleCloseDialog = () => {
-    $showAddStreamDialog.set(false);
-    $editStream.set(null);
-  };
 
   // === Actions zone refs ===
   const actionsZoneRef = useRef<HTMLDivElement | null>(null);
@@ -43,6 +34,9 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
   // === List zone (forwardRef from StreamList) ===
   const streamListRef = useRef<ZoneEntry | null>(null);
+  const streamListCallbackRef = useCallback((zone: ZoneEntry | null) => {
+    streamListRef.current = zone;
+  }, []);
 
   // === Empty-state zone ===
   const emptyZoneRef = useRef<HTMLDivElement | null>(null);
@@ -77,6 +71,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
       if (streamListRef.current) zones.push(streamListRef.current);
       onZonesChange(zones);
     }
+  // onZonesChange intentionally omitted — callers must pass a stable (useCallback-wrapped) reference.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEmpty, actionsRestore]);
 
@@ -109,7 +104,6 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
           <button
             ref={emptyCtaRef}
             tabIndex={emptyTabIndex(1)}
-            autoFocus
             aria-describedby={emptyDescId}
             onClick={() => $showAddStreamDialog.set(true)}
             className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
@@ -157,29 +151,14 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
           {/* List zone */}
           <StreamList
-            ref={(zone) => {
-              streamListRef.current = zone;
-              if (zone && !isEmpty) {
-                const actionsZone: ZoneEntry = {
-                  id: "streams-actions",
-                  get el() { return actionsZoneRef.current!; },
-                  focus: actionsRestore,
-                };
-                onZonesChange([actionsZone, zone]);
-              }
-            }}
+            ref={streamListCallbackRef}
             exitZone={(forward) => exitZone("streams-list", forward)}
             onEmpty={() => {/* handled by isEmpty effect */}}
           />
         </>
       )}
 
-      {showDialog && (
-        <AddStreamDialog
-          onClose={handleCloseDialog}
-          editStream={editStream ?? undefined}
-        />
-      )}
+      <AddStreamDialog />
     </div>
   );
 }

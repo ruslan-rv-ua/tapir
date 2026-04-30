@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useState } from "react";
+import { forwardRef, useImperativeHandle, useMemo, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { $streams, $statuses } from "../../stores/streams";
 import { useCompositeList } from "../../hooks/useCompositeList";
@@ -21,10 +21,10 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty }, r
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   // Build items with dynamic segments
-  const items = streams.map((s) => ({
-    id: s.id,
-    segments: getStreamSegments(statuses[s.id]),
-  }));
+  const items = useMemo(
+    () => streams.map((s) => ({ id: s.id, segments: getStreamSegments(statuses[s.id]) })),
+    [streams, statuses]
+  );
 
   const { listRef, onKeyDown, isFocused, restoreFocus } =
     useCompositeList({

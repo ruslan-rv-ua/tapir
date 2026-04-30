@@ -1,23 +1,37 @@
 import { Dialog, Modal, ModalOverlay, Heading } from "react-aria-components";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useStore } from "@nanostores/react";
 import * as tauri from "../../lib/tauri";
-import type { StreamInfo } from "../../lib/tauri";
-import { $streams } from "../../stores/streams";
+import { $streams, $showAddStreamDialog, $editStream } from "../../stores/streams";
 import { addToast } from "../../stores/toasts";
 import * as m from "../../i18n/paraglide/messages";
 
-interface Props {
-  onClose: () => void;
-  editStream?: StreamInfo; // if provided, edit mode
-}
+export function AddStreamDialog() {
+  const showAddDialog = useStore($showAddStreamDialog);
+  const editStream = useStore($editStream);
 
-export function AddStreamDialog({ onClose, editStream }: Props) {
-  const [url, setUrl] = useState(editStream?.url ?? "");
-  const [name, setName] = useState(editStream?.name ?? "");
+  const isOpen = showAddDialog || editStream !== null;
+  const isEdit = editStream !== null;
+
+  const [url, setUrl] = useState("");
+  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isEdit = !!editStream;
+  // Sync form fields when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      setUrl(editStream?.url ?? "");
+      setName(editStream?.name ?? "");
+      setError(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  const handleClose = () => {
+    $showAddStreamDialog.set(false);
+    $editStream.set(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +47,7 @@ export function AddStreamDialog({ onClose, editStream }: Props) {
         $streams.set([...$streams.get(), newStream]);
         addToast(m.stream_added({ name: newStream.name }), "success");
       }
-      onClose();
+      handleClose();
     } catch (err) {
       setError(String(err));
     } finally {
@@ -44,8 +58,8 @@ export function AddStreamDialog({ onClose, editStream }: Props) {
   return (
     <ModalOverlay
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      isOpen
-      onOpenChange={(open) => { if (!open) onClose(); }}
+      isOpen={isOpen}
+      onOpenChange={(open) => { if (!open) handleClose(); }}
     >
       <Modal className="w-96 rounded-lg bg-slate-800 p-6 shadow-2xl outline-none forced-colors:bg-[Canvas] forced-colors:border forced-colors:border-[ButtonText]">
         <Dialog className="outline-none">
@@ -83,7 +97,7 @@ export function AddStreamDialog({ onClose, editStream }: Props) {
             <div className="mt-2 flex justify-end gap-2">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handleClose}
                 disabled={loading}
                 className="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
               >
