@@ -21,6 +21,7 @@ export function CommandPalette() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const openerRef = useRef<Element | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   // Reset on open
   useEffect(() => {
@@ -98,6 +99,25 @@ export function CommandPalette() {
   const clampedIndex = Math.min(selectedIndex, Math.max(0, filtered.length - 1));
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      if (!dialogRef.current) return;
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((el) => !el.closest('[aria-hidden="true"]'));
+      if (focusable.length === 0) return;
+      const activeIdx = focusable.indexOf(document.activeElement as HTMLElement);
+      if (e.shiftKey) {
+        const prevIdx = activeIdx <= 0 ? focusable.length - 1 : activeIdx - 1;
+        focusable[prevIdx]?.focus();
+      } else {
+        const nextIdx = activeIdx >= focusable.length - 1 ? 0 : activeIdx + 1;
+        focusable[nextIdx]?.focus();
+      }
+      return;
+    }
     if (e.key === "Escape") { e.preventDefault(); close(); }
     if (e.key === "ArrowDown") { e.preventDefault(); setSelectedIndex((i) => Math.min(i + 1, filtered.length - 1)); }
     if (e.key === "ArrowUp") { e.preventDefault(); setSelectedIndex((i) => Math.max(i - 1, 0)); }
@@ -116,11 +136,13 @@ export function CommandPalette() {
       role="presentation"
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={m.command_palette_label()}
         data-modal="true"
         className="h-fit w-[560px] overflow-hidden rounded-lg bg-slate-800 shadow-2xl forced-colors:border forced-colors:border-[ButtonText]"
+        onKeyDown={handleKeyDown}
       >
         <input
           ref={inputRef}
