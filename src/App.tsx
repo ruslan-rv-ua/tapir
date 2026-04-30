@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { ActivityBar } from "./components/layout/ActivityBar";
 import { SectionHeader } from "./components/layout/SectionHeader";
@@ -12,6 +12,7 @@ import { StreamsPanel } from "./components/streams/StreamsPanel";
 import { WishlistPanel } from "./components/wishlist/WishlistPanel";
 import { BrowserPanel } from "./components/browser/BrowserPanel";
 import { PlayerPanel } from "./components/player/PlayerPanel";
+import { useZoneNavigation, type ZoneEntry } from "./hooks/useZoneNavigation";
 import { useTauriEvent } from "./hooks/useTauriEvent";
 import { useAnnounce } from "./hooks/useAnnounce";
 import { $streams, updateStreamStatus } from "./stores/streams";
@@ -31,6 +32,46 @@ function AppContent() {
   const announceRef = useRef(announce);
   useEffect(() => { announceRef.current = announce; });
   const activeSection = useStore($activeSection);
+
+  // ── Zone navigation ──────────────────────────────────────
+  // Permanent zones: ActivityBar, Player, StatusBar — never unmount
+  const activityBarZoneRef = useRef<ZoneEntry | null>(null);
+  const playerZoneRef = useRef<ZoneEntry | null>(null);
+  const statusBarZoneRef = useRef<ZoneEntry | null>(null);
+
+  // Screen zones from the active panel — registered via onZonesChange
+  const [screenZones, setScreenZones] = useState<ZoneEntry[]>([]);
+  const orderedZonesRef = useRef<ZoneEntry[]>([]);
+
+  // Keep orderedZonesRef in sync whenever screenZones changes
+  useEffect(() => {
+    orderedZonesRef.current = [
+      activityBarZoneRef.current,
+      ...screenZones,
+      playerZoneRef.current,
+      statusBarZoneRef.current,
+    ].filter((z): z is ZoneEntry => z !== null);
+  }, [screenZones]);
+
+  const { exitZone } = useZoneNavigation(orderedZonesRef);
+
+  // When the section changes, focus first screen zone after zones register
+  const prevSectionRef = useRef(activeSection);
+  useEffect(() => {
+    if (prevSectionRef.current === activeSection) return;
+    prevSectionRef.current = activeSection;
+    requestAnimationFrame(() => {
+      const firstScreen = orderedZonesRef.current.find(
+        (z) => z.id !== "activity-bar" && z.id !== "player" && z.id !== "status-bar"
+      );
+      firstScreen?.focus("forward");
+    });
+  }, [activeSection]);
+
+  const onZonesChange = useCallback((zones: ZoneEntry[]) => {
+    setScreenZones(zones);
+  }, []);
+  // ── End zone navigation ──────────────────────────────────
 
   // Load initial data
   useEffect(() => {
@@ -167,18 +208,14 @@ function AppContent() {
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-200">
-      <ActivityBar />
+      <ActivityBar ref={activityBarZoneRef} exitZone={(forward: boolean) => exitZone("activity-bar", forward)} />
       <main className="flex flex-1 flex-col overflow-hidden">
-        <SectionHeader title={
-          activeSection === "wishlist" ? m.wishlist_section() :
-          activeSection === "browser" ? m.browser_section() :
-          m.streams_section()
-        } />
-        {activeSection === "streams" && <StreamsPanel />}
-        {activeSection === "wishlist" && <WishlistPanel />}
-        {activeSection === "browser" && <BrowserPanel />}
-        <PlayerPanel />
-        <StatusBar />
+        <SectionHeader section={activeSection} />
+        {activeSection === "streams" && <StreamsPanel onZonesChange={onZonesChange} exitZone={exitZone} />}
+        {activeSection === "wishlist" && <WishlistPanel onZonesChange={onZonesChange} exitZone={exitZone} />}
+        {activeSection === "browser" && <BrowserPanel onZonesChange={onZonesChange} exitZone={exitZone} />}
+        <PlayerPanel ref={playerZoneRef} exitZone={(forward: boolean) => exitZone("player", forward)} />
+        <StatusBar ref={statusBarZoneRef} exitZone={(forward: boolean) => exitZone("status-bar", forward)} />
       </main>
     </div>
   );
