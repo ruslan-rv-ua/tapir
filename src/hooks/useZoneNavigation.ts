@@ -9,7 +9,8 @@ export interface ZoneEntry {
   focus(direction: 'forward' | 'backward'): void;
 }
 
-const MODAL_SELECTOR = '[role="dialog"], [role="alertdialog"], [data-modal="true"]';
+const MODAL_SELECTOR =
+  '[role="dialog"], [role="alertdialog"], [aria-modal="true"], [data-modal="true"]';
 
 function isInModal(): boolean {
   return !!document.activeElement?.closest(MODAL_SELECTOR);
@@ -35,8 +36,8 @@ export function useZoneNavigation(orderedZonesRef: RefObject<ZoneEntry[]>) {
       }
       const idx = zones.findIndex((z) => z.id === fromId);
       if (idx < 0) {
-        // fromId not found — focus first
-        zones[0]?.focus('forward');
+        const fallback = zones[forward ? 0 : zones.length - 1];
+        fallback?.focus(forward ? 'forward' : 'backward');
         return;
       }
       const nextIdx = forward
@@ -53,6 +54,7 @@ export function useZoneNavigation(orderedZonesRef: RefObject<ZoneEntry[]>) {
       if (e.key !== 'F6') return;
       if (isInModal()) return;
       e.preventDefault();
+      e.stopPropagation();
       const zoneEl = document.activeElement?.closest<HTMLElement>('[data-zone-id]');
       const currentId = zoneEl?.dataset.zoneId ?? null;
       cycleZone(currentId, !e.shiftKey);
