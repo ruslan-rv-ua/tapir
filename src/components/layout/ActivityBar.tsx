@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef } from "react";
+import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 import { Button } from "react-aria-components";
 import { Radio, Globe, Heart, Calendar, Music, Settings } from "lucide-react";
 import { useStore } from "@nanostores/react";
@@ -39,8 +39,11 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
   const ref3 = useRef<HTMLButtonElement | null>(null);
   const ref4 = useRef<HTMLButtonElement | null>(null);
   const settingsRef = useRef<HTMLButtonElement | null>(null);
-  const sectionRefs = [ref0, ref1, ref2, ref3, ref4];
-  const allRefs = [...sectionRefs, settingsRef];
+
+  const allRefs = useMemo(
+    () => [ref0, ref1, ref2, ref3, ref4, settingsRef],
+    [],
+  );
 
   const { onKeyDown, getTabIndex, restoreFocus } = useRovingFocus(
     allRefs,
@@ -54,12 +57,11 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
       return navRef.current!;
     },
     focus: restoreFocus,
-  }));
+  }), [restoreFocus]);
 
   return (
     <nav
       ref={navRef}
-      role="navigation"
       aria-label={m.main_navigation()}
       data-zone-id="activity-bar"
       className="flex w-12 flex-col items-center gap-1 border-r border-slate-700 bg-slate-900 py-2"
@@ -68,13 +70,11 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
       {SECTIONS.map((sec, i) => (
         <Button
           key={sec.id}
-          ref={sectionRefs[i]}
+          ref={allRefs[i]}
           aria-label={sec.label()}
           aria-pressed={activeSection === sec.id}
           aria-disabled={sec.disabled ? "true" : undefined}
-          aria-description={
-            sec.disabled ? m.phase_not_available({ phase: sec.phase ?? "" }) : undefined
-          }
+          aria-describedby={sec.disabled ? `nav-${sec.id}-desc` : undefined}
           {...{ tabIndex: getTabIndex(i) }}
           onPress={() => {
             if (sec.disabled) return;
@@ -89,6 +89,11 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
           }`}
         >
           <sec.Icon size={20} aria-hidden={true} />
+          {sec.disabled && (
+            <span id={`nav-${sec.id}-desc`} className="sr-only">
+              {m.phase_not_available({ phase: sec.phase ?? "" })}
+            </span>
+          )}
         </Button>
       ))}
       <div className="mt-auto">
