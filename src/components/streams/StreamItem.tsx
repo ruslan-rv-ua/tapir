@@ -4,13 +4,11 @@ import { createPortal } from "react-dom";
 import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import type { SegmentKind } from "../../hooks/useCompositeList";
 import { formatBitrate, formatDuration } from "../../lib/formatters";
-import { ConfirmDialog } from "../common/ConfirmDialog";
 import { StreamContextMenu } from "./StreamContextMenu";
 import { AddPatternDialog } from "../wishlist/AddPatternDialog";
 import { $playerStatus } from "../../stores/player";
 import * as m from "../../i18n/paraglide/messages";
 import * as tauri from "../../lib/tauri";
-import { $streams } from "../../stores/streams";
 import { addToast } from "../../stores/toasts";
 import { useAnnounce } from "../../hooks/useAnnounce";
 
@@ -36,12 +34,11 @@ interface Props {
   onDelete: () => void;
 }
 
-export function StreamItem({ stream, status, isFocused, onPrimaryAction: _onPrimaryAction, onContextMenu: _onContextMenu, onDelete: _onDelete }: Props) {
+export function StreamItem({ stream, status, isFocused, onPrimaryAction: _onPrimaryAction, onContextMenu: _onContextMenu, onDelete }: Props) {
   const state = status?.state ?? "idle";
   const isRecording = state === "recording";
   const playerStatus = useStore($playerStatus);
   const announce = useAnnounce();
-  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [patternDialog, setPatternDialog] = useState<{ listType: "wishlist" | "ignorelist"; initialPattern: string } | null>(null);
   const [, setTick] = useState(0);
 
@@ -73,15 +70,6 @@ export function StreamItem({ stream, status, isFocused, onPrimaryAction: _onPrim
       if (isThisStreamPlaying) await tauri.stopPlayback();
       else await tauri.playStream(stream.id);
     } catch (err) { addToast(String(err), "error"); }
-  };
-
-  const handleDelete = async () => {
-    try {
-      await tauri.removeStream(stream.id);
-      $streams.set($streams.get().filter((s) => s.id !== stream.id));
-      addToast(m.stream_removed({ name: stream.name }), "info");
-    } catch (err) { addToast(String(err), "error"); }
-    setShowConfirmDelete(false);
   };
 
   // Summary label
@@ -202,7 +190,7 @@ export function StreamItem({ stream, status, isFocused, onPrimaryAction: _onPrim
               status={status}
               onAddToWishlist={(track) => setPatternDialog({ listType: "wishlist", initialPattern: track })}
               onAddToIgnorelist={(track) => setPatternDialog({ listType: "ignorelist", initialPattern: track })}
-              onDelete={() => setShowConfirmDelete(true)}
+              onDelete={onDelete}
             />
           </div>
         );
@@ -210,15 +198,6 @@ export function StreamItem({ stream, status, isFocused, onPrimaryAction: _onPrim
         return null;
       })}
 
-      {showConfirmDelete && createPortal(
-        <ConfirmDialog
-          title={m.remove_stream()}
-          message={m.confirm_delete_stream({ name: stream.name })}
-          onConfirm={handleDelete}
-          onCancel={() => setShowConfirmDelete(false)}
-        />,
-        document.body
-      )}
       {patternDialog && createPortal(
         <AddPatternDialog
           listType={patternDialog.listType}
