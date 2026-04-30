@@ -31,6 +31,7 @@ interface FocusMemory {
 }
 
 interface UseCompositeListOptions<T extends CompositeListItem> {
+  /** Zone identifier — reserved for zone-system registration (Task 4 wires this up). */
   zoneId: string;
   items: T[];
   onTabOut: (forward: boolean) => void;
