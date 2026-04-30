@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { useRovingFocus } from "../../hooks/useRovingFocus";
 import { useAnnounce } from "../../hooks/useAnnounce";
@@ -18,7 +18,7 @@ export const StatusBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
   const footerRef = useRef<HTMLElement | null>(null);
   const seg0Ref = useRef<HTMLDivElement | null>(null);
   const seg1Ref = useRef<HTMLDivElement | null>(null);
-  const segRefs = [seg0Ref, seg1Ref];
+  const segRefs = useMemo(() => [seg0Ref, seg1Ref], []);
 
   const activeStatuses = Object.values(statuses).filter((s) => s.state === "recording");
   const recordingCount = activeStatuses.length;
@@ -47,7 +47,7 @@ export const StatusBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
     pluralForm === "few" ? m.recordings_count_few({ count: recordingCount }) :
     m.recordings_count_many({ count: recordingCount });
 
-  const { onKeyDown, getTabIndex, restoreFocus } = useRovingFocus(
+  const { onKeyDown, getTabIndex, restoreFocus, moveTo } = useRovingFocus(
     segRefs,
     "horizontal",
     { mode: "composite-exit", onTabOut: exitZone },
@@ -60,6 +60,11 @@ export const StatusBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
     },
     [announce, restoreFocus],
   );
+
+  // Reset to seg0 when seg1 unmounts to avoid losing tabIndex=0
+  useEffect(() => {
+    if (longestMs === 0) moveTo(0);
+  }, [longestMs, moveTo]);
 
   useImperativeHandle(
     ref,
@@ -80,8 +85,6 @@ export const StatusBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
       className="flex items-center gap-4 border-t border-slate-700 px-4 py-1.5 text-xs text-slate-400 forced-colors:border-[ButtonText] forced-colors:text-[CanvasText]"
       onKeyDown={onKeyDown}
     >
-      <span role="status" aria-live="polite" className="sr-only" aria-atomic="true" />
-
       <div
         ref={seg0Ref}
         tabIndex={getTabIndex(0)}
