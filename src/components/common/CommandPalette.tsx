@@ -20,14 +20,21 @@ export function CommandPalette() {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const openerRef = useRef<Element | null>(null);
 
   // Reset on open
   useEffect(() => {
     if (isOpen) {
+      openerRef.current = document.activeElement;
       setQuery("");
       setSelectedIndex(0);
       // Focus input after mount
       requestAnimationFrame(() => inputRef.current?.focus());
+    } else {
+      if (openerRef.current instanceof HTMLElement) {
+        openerRef.current.focus();
+      }
+      openerRef.current = null;
     }
   }, [isOpen]);
 
@@ -104,13 +111,16 @@ export function CommandPalette() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex justify-center bg-black/50 pt-20"
-      onClick={close}
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]"
+      onClick={(e) => { if (e.target === e.currentTarget) close(); }}
       role="presentation"
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={m.command_palette_label()}
+        data-modal="true"
         className="h-fit w-[560px] overflow-hidden rounded-lg bg-slate-800 shadow-2xl forced-colors:border forced-colors:border-[ButtonText]"
-        onClick={(e) => e.stopPropagation()}
       >
         <input
           ref={inputRef}
