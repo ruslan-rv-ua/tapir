@@ -32,7 +32,10 @@ export function CommandPalette() {
       // Focus input after mount
       requestAnimationFrame(() => inputRef.current?.focus());
     } else {
-      if (openerRef.current instanceof HTMLElement) {
+      if (
+        openerRef.current instanceof HTMLElement &&
+        openerRef.current !== document.body
+      ) {
         openerRef.current.focus();
       }
       openerRef.current = null;
@@ -104,9 +107,14 @@ export function CommandPalette() {
       if (!dialogRef.current) return;
       const focusable = Array.from(
         dialogRef.current.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), details > summary:not([disabled]), [tabindex]:not([tabindex="-1"])'
         )
-      ).filter((el) => !el.closest('[aria-hidden="true"]'));
+      ).filter(
+        (el) =>
+          !el.closest('[aria-hidden="true"]') &&
+          el.offsetParent !== null &&
+          getComputedStyle(el).visibility !== 'hidden',
+      );
       if (focusable.length === 0) return;
       const activeIdx = focusable.indexOf(document.activeElement as HTMLElement);
       if (e.shiftKey) {
@@ -137,6 +145,7 @@ export function CommandPalette() {
     >
       <div
         ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={m.command_palette_label()}
@@ -149,7 +158,6 @@ export function CommandPalette() {
           type="text"
           value={query}
           onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
-          onKeyDown={handleKeyDown}
           placeholder={m.command_palette_placeholder()}
           aria-label={m.command_palette_placeholder()}
           role="combobox"
