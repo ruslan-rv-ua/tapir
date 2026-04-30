@@ -60,6 +60,7 @@ export function StreamContextMenu({ stream, status, onAddToWishlist, onAddToIgno
   return (
     <MenuTrigger>
       <Button
+        excludeFromTabOrder
         aria-label={m.stream_actions({ name: stream.name })}
         title={m.stream_actions({ name: stream.name })}
         data-context-menu-trigger

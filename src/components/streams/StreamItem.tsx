@@ -36,7 +36,7 @@ interface Props {
   onDelete: () => void;
 }
 
-export function StreamItem({ stream, status, isFocused, onPrimaryAction, onContextMenu, onDelete }: Props) {
+export function StreamItem({ stream, status, isFocused, onPrimaryAction: _onPrimaryAction, onContextMenu: _onContextMenu, onDelete: _onDelete }: Props) {
   const state = status?.state ?? "idle";
   const isRecording = state === "recording";
   const playerStatus = useStore($playerStatus);
@@ -99,9 +99,11 @@ export function StreamItem({ stream, status, isFocused, onPrimaryAction, onConte
 
   const techLabel = `${m.segment_tech()}, ${formatBitrate(stream.bitrate)}`;
 
-  const statusLabel = isRecording
-    ? `${m.segment_status_duration()}, ${formatDuration(elapsedMs)}`
-    : `${m.segment_status()}, ${m.segment_playing()}`;
+  const statusLabel =
+    state === "recording"    ? `${m.segment_status_duration()}, ${formatDuration(elapsedMs)}` :
+    state === "connecting"   ? `${m.segment_status()}, ${m.status_connecting()}` :
+    state === "reconnecting" ? `${m.segment_status()}, ${m.status_reconnecting()}` :
+    `${m.segment_status()}, ${m.status_idle()}`;
 
   const actionLabels = [
     isThisStreamPlaying ? m.stop_stream_playback() : m.play_stream(),
@@ -163,7 +165,10 @@ export function StreamItem({ stream, status, isFocused, onPrimaryAction, onConte
             aria-label={statusLabel}
             className="px-3 py-1 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight]"
           >
-            {isRecording ? formatDuration(elapsedMs) : m.segment_playing()}
+            {state === "recording"    ? formatDuration(elapsedMs) :
+             state === "connecting"   ? m.status_connecting() :
+             state === "reconnecting" ? m.status_reconnecting() :
+             m.status_idle()}
           </div>
         );
 
