@@ -9,6 +9,7 @@ import {
   resetSearch,
 } from "../../stores/browser";
 import { useFocusBoundary } from "../../hooks/useFocusBoundary";
+import type { SearchParams } from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 
 interface SearchFormProps {
@@ -19,7 +20,7 @@ interface SearchFormProps {
 export function SearchForm({ containerRef, exitZone }: SearchFormProps = {}) {
   const params = useStore($searchParams);
   const filters = useStore($browserFilters);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const internalRef = useRef<HTMLDivElement | null>(null);
   const effectiveRef = containerRef ?? internalRef;
@@ -42,7 +43,7 @@ export function SearchForm({ containerRef, exitZone }: SearchFormProps = {}) {
 
   // Immediate search on filter change
   const handleFilterChange = useCallback(<K extends keyof typeof params>(key: K, value: string) => {
-    updateSearchParam(key, value || undefined);
+    updateSearchParam(key, (value || undefined) as SearchParams[K]);
     clearTimeout(debounceRef.current);
     setTimeout(() => searchStations($searchParams.get()), 0);
   }, []);
