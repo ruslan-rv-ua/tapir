@@ -53,12 +53,12 @@ export function useRovingFocus(
 
       if (e.key === prevKey) {
         e.preventDefault();
-        moveTo((idx - 1 + count) % count);
+        moveTo(idx - 1);
         return;
       }
       if (e.key === nextKey) {
         e.preventDefault();
-        moveTo((idx + 1) % count);
+        moveTo(idx + 1);
         return;
       }
       if (e.key === 'Home') { e.preventDefault(); moveTo(0); return; }

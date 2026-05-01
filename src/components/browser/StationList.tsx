@@ -93,6 +93,17 @@ export const StationList = forwardRef<ZoneEntry, Props>(
 
           return (
             <li key={station.stationuuid} className="border-b border-slate-800 forced-colors:border-[ButtonText]">
+              {/* Summary segment — must always be first; useCompositeList resolves 'summary' implicitly */}
+              <div
+                data-item-id={station.stationuuid}
+                data-segment="summary"
+                tabIndex={isFocused(station.stationuuid, "summary") ? 0 : -1}
+                aria-label={station.name}
+                className="px-3 py-2 font-medium text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight]"
+              >
+                {station.name}
+              </div>
+
               {/* Metadata segment */}
               <div
                 data-item-id={station.stationuuid}

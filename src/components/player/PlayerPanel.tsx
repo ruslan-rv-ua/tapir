@@ -29,6 +29,13 @@ function useSourceLabel(): string {
   return source.path.split(/[\\/]/).pop() ?? source.path;
 }
 
+/** Focuses the first range input inside a container, or the container itself as fallback. */
+function focusFirstIn(container: HTMLElement | null): void {
+  if (!container) return;
+  const slider = container.querySelector<HTMLElement>('input[type="range"]');
+  (slider ?? container).focus();
+}
+
 export const PlayerPanel = forwardRef<
   ZoneEntry,
   { exitZone: (forward: boolean) => void }
@@ -55,7 +62,7 @@ export const PlayerPanel = forwardRef<
     (forward: boolean) => {
       if (forward) {
         lastFocusedRef.current = "position";
-        positionWrapperRef.current?.focus();
+        focusFirstIn(positionWrapperRef.current);
       } else {
         exitZone(false);
       }
@@ -82,7 +89,7 @@ export const PlayerPanel = forwardRef<
           restoreTransport("backward");
         } else {
           lastFocusedRef.current = "volume";
-          volumeWrapperRef.current?.focus();
+          focusFirstIn(volumeWrapperRef.current);
         }
       }
     },
@@ -96,7 +103,7 @@ export const PlayerPanel = forwardRef<
         e.stopPropagation();
         if (e.shiftKey) {
           lastFocusedRef.current = "position";
-          positionWrapperRef.current?.focus();
+          focusFirstIn(positionWrapperRef.current);
         } else {
           exitZone(true);
         }
@@ -111,13 +118,13 @@ export const PlayerPanel = forwardRef<
       if (direction === "backward") {
         // Enter from the right → land on the rightmost stop (volume)
         lastFocusedRef.current = "volume";
-        volumeWrapperRef.current?.focus();
+        focusFirstIn(volumeWrapperRef.current);
       } else if (lastFocusedRef.current === "transport") {
         restoreTransport("forward");
       } else if (lastFocusedRef.current === "position") {
-        positionWrapperRef.current?.focus();
+        focusFirstIn(positionWrapperRef.current);
       } else {
-        volumeWrapperRef.current?.focus();
+        focusFirstIn(volumeWrapperRef.current);
       }
     },
     [announce, restoreTransport]

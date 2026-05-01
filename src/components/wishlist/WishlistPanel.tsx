@@ -120,6 +120,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   // --- Zone navigation ---
   const controlsRef = useRef<HTMLDivElement | null>(null);
   const patternListRef = useRef<ZoneEntry | null>(null);
+  const addPatternBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const { refreshBoundary, restoreFocus: controlsRestore } = useFocusBoundary(
     controlsRef,
@@ -200,6 +201,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
             </Tab>
           </TabList>
           <Button
+            ref={addPatternBtnRef}
             onPress={() => setDialog({ mode: "add", listType: activeTab })}
             className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText] forced-colors:focus-visible:outline-[Highlight]"
           >
@@ -216,7 +218,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
             showDate={true}
             emptyMessage={m.empty_wishlist()}
             exitZone={(forward) => exitZone("wishlist-list", forward)}
-            onEmpty={() => {}}
+            onEmpty={() => addPatternBtnRef.current?.focus()}
             onEdit={(pattern) => setDialog({ mode: "edit", listType: "wishlist", pattern })}
             onRemove={handleRemoveWishlist}
           />
@@ -229,7 +231,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
             showDate={false}
             emptyMessage={m.empty_ignorelist()}
             exitZone={(forward) => exitZone("wishlist-list", forward)}
-            onEmpty={() => {}}
+            onEmpty={() => addPatternBtnRef.current?.focus()}
             onEdit={(pattern) => setDialog({ mode: "edit", listType: "ignorelist", pattern })}
             onRemove={handleRemoveIgnorelist}
           />
