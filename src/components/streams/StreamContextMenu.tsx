@@ -61,8 +61,9 @@ export function StreamContextMenu({ stream, status, onAddToWishlist, onAddToIgno
     <MenuTrigger>
       <Button
         aria-label={m.stream_actions({ name: stream.name })}
+        title={m.stream_actions({ name: stream.name })}
         data-context-menu-trigger
-        className="rounded px-2 py-0.5 text-xs text-slate-500 hover:bg-slate-700 hover:text-slate-300"
+        className="inline-flex items-center justify-center rounded bg-slate-700 px-2 py-1 text-xs text-slate-300 hover:bg-slate-600 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
       >
         ⋯
       </Button>

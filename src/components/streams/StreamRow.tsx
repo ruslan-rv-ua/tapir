@@ -54,6 +54,10 @@ export function StreamRow({ stream, status }: Props) {
     playerStatus.state !== "stopped" &&
     playerStatus.source?.type === "stream" &&
     playerStatus.source.streamId === stream.id;
+  const playActionLabel = isThisStreamPlaying ? m.stop_stream_playback() : m.play_stream();
+  const playActionShortLabel = isThisStreamPlaying ? m.stop() : m.play();
+  const recordActionLabel = isRecording ? m.stop_recording() : m.start_recording();
+  const recordActionShortLabel = isRecording ? m.status_recording() : m.settings_double_click_record();
 
   // Tick every second while recording to update the elapsed time display
   useEffect(() => {
@@ -129,28 +133,32 @@ export function StreamRow({ stream, status }: Props) {
           {elapsedMs > 0 ? formatDuration(elapsedMs) : "—"}
         </Cell>
         <Cell>
-          <div className="flex gap-1">
+          <div className="flex flex-wrap justify-end gap-1">
             <button
               onClick={handlePlayToggle}
-              aria-label={isThisStreamPlaying ? m.stop_stream_playback() : m.play_stream()}
-              className={`rounded px-2 py-0.5 text-xs ${
+              aria-label={playActionLabel}
+              title={playActionLabel}
+              className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium whitespace-nowrap ${
                 isThisStreamPlaying
                   ? "bg-blue-700 text-white hover:bg-blue-600 forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]"
                   : "bg-slate-700 text-slate-300 hover:bg-slate-600 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText]"
               }`}
             >
-              {isThisStreamPlaying ? "■" : "▶"}
+              <span aria-hidden="true">{isThisStreamPlaying ? "■" : "▶"}</span>
+              <span>{playActionShortLabel}</span>
             </button>
             <button
               onClick={handleRecordToggle}
-              aria-label={isRecording ? m.stop_recording() : m.start_recording()}
-              className={`rounded px-2 py-0.5 text-xs ${
+              aria-label={recordActionLabel}
+              title={recordActionLabel}
+              className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium whitespace-nowrap ${
                 isRecording
                   ? "bg-red-700 text-white hover:bg-red-600 forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]"
                   : "bg-slate-700 text-slate-300 hover:bg-slate-600 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText]"
               }`}
             >
-              {isRecording ? m.stop_recording() : m.start_recording()}
+              <span aria-hidden="true">{isRecording ? "⏹" : "⏺"}</span>
+              <span>{recordActionShortLabel}</span>
             </button>
             <StreamContextMenu
               stream={stream}
