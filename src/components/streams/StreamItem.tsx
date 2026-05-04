@@ -103,7 +103,16 @@ export function StreamItem({ stream, status, isFocused, onPrimaryAction: _onPrim
   const segments = getStreamSegments(status);
 
   return (
-    <li className="border-b border-slate-800 forced-colors:border-[ButtonText]">
+    <li
+      className={`grid border-b border-slate-800 forced-colors:border-[ButtonText] ${
+        isRecording
+          ? "bg-red-950/30 border-l-2 border-l-red-500"
+          : isThisStreamPlaying
+          ? "bg-blue-950/30"
+          : ""
+      }`}
+      style={{ gridTemplateColumns: "100px 1fr 1.5fr 90px 90px 160px" }}
+    >
       {/* Summary focus point */}
       <div
         data-item-id={stream.id}
@@ -111,8 +120,35 @@ export function StreamItem({ stream, status, isFocused, onPrimaryAction: _onPrim
         tabIndex={isFocused("summary") ? 0 : -1}
         aria-label={summaryLabel}
         className="flex items-center px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight]"
+        style={{ gridRow: 1, gridColumn: 2 }}
       >
-        <span className="font-medium text-slate-200">{stream.name}</span>
+        <span className="font-medium text-slate-200 truncate">{stream.name}</span>
+      </div>
+
+      {/* Visual status dot — col 1, aria-hidden (screen readers get status from summary + status segment) */}
+      <div
+        aria-hidden="true"
+        className="flex items-center gap-1.5 px-3 py-2 text-xs"
+        style={{ gridRow: 1, gridColumn: 1 }}
+      >
+        <span
+          className={`h-2 w-2 shrink-0 rounded-full ${
+            state === "recording"
+              ? "bg-red-500"
+              : state === "connecting" || state === "reconnecting"
+              ? "bg-amber-400"
+              : state === "error"
+              ? "bg-red-500"
+              : "bg-green-500"
+          }`}
+        />
+        <span className="truncate text-slate-400">
+          {state === "recording"    ? m.status_recording() :
+           state === "connecting"   ? m.status_connecting() :
+           state === "reconnecting" ? m.status_reconnecting() :
+           state === "error"        ? m.status_error() :
+           m.status_idle()}
+        </span>
       </div>
 
       {segments.map((kind) => {
@@ -123,7 +159,8 @@ export function StreamItem({ stream, status, isFocused, onPrimaryAction: _onPrim
             data-segment="track"
             tabIndex={isFocused("track") ? 0 : -1}
             aria-label={trackLabel}
-            className="px-3 py-1 text-sm text-slate-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight]"
+            className="px-3 py-2 text-sm text-slate-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight] truncate"
+            style={{ gridRow: 1, gridColumn: 3 }}
           >
             {status?.currentTrack
               ? `${status.currentTrack.artist} — ${status.currentTrack.title}`
@@ -138,7 +175,8 @@ export function StreamItem({ stream, status, isFocused, onPrimaryAction: _onPrim
             data-segment="tech"
             tabIndex={isFocused("tech") ? 0 : -1}
             aria-label={techLabel}
-            className="px-3 py-1 text-sm text-slate-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight]"
+            className="px-3 py-2 text-sm text-slate-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight]"
+            style={{ gridRow: 1, gridColumn: 4 }}
           >
             {formatBitrate(stream.bitrate)}
           </div>
@@ -151,7 +189,8 @@ export function StreamItem({ stream, status, isFocused, onPrimaryAction: _onPrim
             data-segment="status"
             tabIndex={isFocused("status") ? 0 : -1}
             aria-label={statusLabel}
-            className="px-3 py-1 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight]"
+            className="px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight]"
+            style={{ gridRow: 1, gridColumn: 5 }}
           >
             {state === "recording"    ? formatDuration(elapsedMs) :
              state === "connecting"   ? m.status_connecting() :
@@ -167,7 +206,8 @@ export function StreamItem({ stream, status, isFocused, onPrimaryAction: _onPrim
             data-segment="actions"
             tabIndex={isFocused("actions") ? 0 : -1}
             aria-label={actionsLabel}
-            className="flex gap-1 px-3 py-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight]"
+            className="flex gap-1 px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight]"
+            style={{ gridRow: 1, gridColumn: 6 }}
           >
             <button
               tabIndex={-1}
