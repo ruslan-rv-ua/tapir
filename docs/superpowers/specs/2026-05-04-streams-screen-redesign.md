@@ -40,35 +40,38 @@ This spec covers the visual and structural changes to match that mockup while pr
 
 Zone order (Tab / Shift+Tab cycles through these):
 1. `activity-bar` — ActivityBar (rovingFocus vertical)
-2. `streams-toolbar` — Titlebar actions + search + filter chips ← **NEW**
-3. `streams-list` — StreamList (composite list) — only when non-empty
-   OR `streams-empty` — empty state buttons
+2. `streams-toolbar` — Titlebar actions + search + filter chips ← **NEW** (non-empty state only)
+   OR `streams-empty` — empty state (palette + CTA)
+3. `streams-list` — StreamList (composite list) — non-empty state only
 4. `player` — PlayerPanel transport + sliders
-5. `status-bar` — StatusBar (no focusable content — skipped; this is intentional)
+5. `status-bar` — StatusBar (focusable segments — stays in cycle per FRD 6.2.1 and 7.1.1)
 
 The old `streams-actions` zone (palette + add + stop-all) is replaced by `streams-toolbar`.
 
+**Empty state — no toolbar zone:**  
+Per FRD 7.3.3: "перший `Tab` у `Main` має приводити фокус на головну CTA-кнопку". When the stream list is empty, register only `[emptyZone]`. The empty state zone contains palette + CTA buttons; `focus('forward')` lands on the CTA button. No toolbar zone is added in empty state.
+
 **streams-toolbar zone — focus model:**  
 The toolbar contains a `<input type="text">` which cannot be inside a standard `composite-exit` rovingFocus (arrow keys would conflict with cursor movement). Use `mixed-boundary-handoff` mode for the whole toolbar:
-- Tab moves naturally between all items
+- Only the **active item** has `tabIndex=0`; all others have `tabIndex=-1`. Arrow keys (Left/Right) move between items within the toolbar.
 - Shift+Tab on the first item (Команди) → `exitZone("streams-toolbar", false)`
 - Tab on the last item (last chip) → `exitZone("streams-toolbar", true)`
+- At any non-boundary item, Tab/Shift+Tab is NOT intercepted — native Tab moves to the next zone-external tab stop.
 - Arrow key navigation is blocked only when the focused element is the search input: add an `onKeyDown` on the input itself that calls `e.stopPropagation()` for `ArrowLeft`, `ArrowRight`, `Home`, `End`
 
-**streams-toolbar zone items** (in Tab order):
+**streams-toolbar zone items** (in Tab/arrow order):
 1. "Команди" button
 2. "Додати потік" button
-3. Search input
-4. "Усі" chip
-5. "Записуються" chip
-6. "З помилками" chip
-7. "Вибрані" chip
+3. "Зупинити все" button — **kept in toolbar** (FRD 7.3.2 requires it)
+4. Search input
+5. "Усі" chip
+6. "Записуються" chip
+7. "З помилками" chip
+8. "Вибрані" chip
 
 `onZonesChange` in StreamsPanel registers:
 - `[toolbarZone, streamListZone]` when non-empty
-- `[toolbarZone, emptyZone]` when empty
-
-The toolbar zone is **always present** — even when the stream list is empty (user needs "Додати потік").
+- `[emptyZone]` when empty (CTA-first, per FRD)
 
 ---
 
@@ -85,8 +88,9 @@ The toolbar zone is **always present** — even when the stream list is empty (u
 - Disabled state: `cursor-not-allowed text-slate-600`
 - Add logo area at top: a small SVG or text "Tapir" — or leave empty (the mockup shows a logo image that isn't available)
 - Add **profile card** at the very bottom (below Settings button):
-  - Static card: user icon + "Профіль" (strong) + "Music Discovery" (span)
-  - `aria-label="Активний профіль"` (not focusable — stub, no interaction)
+  - Static card: user icon + "Профіль" (strong) + actual active profile name from `useStore($settings).activeProfile ?? "Default"` (span)
+  - No `aria-label` (not focusable, not interactive — stub for Phase 3D profiles feature)
+  - Visual-only element: `aria-hidden="true"` on the card container
 - Settings button: remains just above the profile card
 - Zone navigation: unchanged (rovingFocus vertical on section buttons + settings button; profile card is NOT in the tab order)
 - Forced-colors: maintained per existing patterns
@@ -130,12 +134,19 @@ The toolbar zone is **always present** — even when the stream list is empty (u
 **Metrics bar:**
 - 4 tiles in a CSS grid row (`grid grid-cols-4 gap-3`)
 - Tile component (inline): `strong` value + `span` label
-- Values computed from `$streams` + `$statuses` stores:
-  - `streams.length` → "X потоків" / "У профілі"
-  - `Object.values(statuses).filter(s => s.state === "recording").length` → "X записів" / "Активні"
-  - `Object.values(statuses).filter(s => s.state === "error").length` → "X збоїв" / "Потребує уваги"
+- Values computed from `$streams` + `$statuses` stores using reactive `useStore` hooks:
+  ```ts
+  const streamIds = new Set(streams.map(s => s.id));
+  const visibleStatuses = Object.entries(statuses)
+    .filter(([id]) => streamIds.has(id))
+    .map(([, s]) => s);
+  ```
+  - `streams.length` → "{count} потоків" / "У профілі"
+  - `visibleStatuses.filter(s => s.state === "recording").length` → "{count} записів" / "Активні"
+  - `visibleStatuses.filter(s => s.state === "error").length` → "{count} збоїв" / "Потребує уваги"
   - `"—"` → "Вільно" (stub, disk space TBD)
 - No keyboard interaction (display only)
+- Metric counts use plural-aware i18n keys (see i18n Keys section)
 
 **Toolbar (stubs):**
 - Search `<input type="text">` with `aria-label={m.streams_search_label()}`, `placeholder`.  
@@ -145,7 +156,7 @@ The toolbar zone is **always present** — even when the stream list is empty (u
   "Усі" starts with `aria-pressed="true"` visually. Clicking does nothing — state is local UI stub only.  
   Chips do NOT affect the stream list.
 
-**Stop All action:** Remove from toolbar entirely. Remains available via CommandPalette.
+**Stop All action:** Remains in the toolbar as button 3 (FRD 7.3.2 requires it in the action zone). Calls `tauri.stopAllRecordings()`. Secondary visual style.
 
 **Column headers (visual only):**
 - `div[aria-hidden="true"]` with same CSS grid as stream rows: Статус / Станція / Зараз грає / Бітрейт / Тривалість / Дії
@@ -153,8 +164,8 @@ The toolbar zone is **always present** — even when the stream list is empty (u
 
 **Zone registration changes:**
 - Remove `actionsZone` and its rovingFocus setup
-- Add `toolbarZone` with `data-zone-id="streams-toolbar"`, `mixed-boundary-handoff` mode on 7 items (see Zone Navigation Model for details on search input arrow-key guard)
-- `onZonesChange` registers `[toolbarZone, streamListZone]` when non-empty, `[toolbarZone, emptyZone]` when empty
+- Add `toolbarZone` with `data-zone-id="streams-toolbar"`, `mixed-boundary-handoff` mode on 8 items (see Zone Navigation Model for details on search input arrow-key guard)
+- `onZonesChange` registers `[toolbarZone, streamListZone]` when non-empty, `[emptyZone]` when empty (CTA-first per FRD 7.3.3)
 
 ### 4. StreamItem
 
@@ -172,29 +183,29 @@ DOM order of children (Tab order follows DOM order):
 | DOM pos | `grid-column` | Focusable | Segment | Content |
 |---|---|---|---|---|
 | 1 | 2 — Станція | ✅ | `summary` | station name (visible text) |
-| 2 | 1 — Статус | ❌ | — (`aria-hidden`) | status dot + label |
+| 2 | 1 — Статус | ❌ | — (`aria-hidden`) | **visual** status dot + label |
 | 3 | 3 — Зараз грає | ✅ | `track` | artist — title or "—" |
 | 4 | 4 — Бітрейт | ✅ | `tech` | formatBitrate or "—" |
-| 5 | 5 — Тривалість | ❌ | — (`aria-hidden`) | formatDuration or "—" |
+| 5 | 5 — Тривалість/Стан | ✅ active / ❌ idle | `status` (active only) | duration or state text |
 | 6 | 6 — Дії | ✅ | `actions` | ▶/■ + ⏺/⏹ + ⋯ |
 
 **Key decisions:**
-- Status indicator (col 1) is `aria-hidden="true"` — purely visual. Screen reader users get status info from the `summary` aria-label.
-- Duration (col 5) is `aria-hidden="true"` — included in `summary` segment's aria-label when recording.
-- `summary` is DOM-first (col 2) — keyboard/screen-reader order: Станція → Зараз грає → Бітрейт → Дії. This matches `useCompositeList` expectations (summary is first).
-- CSS Grid explicit placement (`grid-column`) allows visual col 1 (status) to appear before col 2 (summary) without changing DOM order.
+- Col 1 (Статус dot): `aria-hidden="true"` — purely visual new decoration (colored dot + short label like "REC", "Підключення…"). Not a segment. Screen reader users get status from the `summary` aria-label AND from the `status` segment when active.
+- Col 5 (Тривалість/Стан): The **existing `status` segment** — focusable and part of the composite list for `recording`, `connecting`, and `reconnecting` states. In `idle`/`stopped` state the cell is `aria-hidden` (no segment rendered — matches current behavior).
+- `summary` is DOM-first (col 2) — keyboard/screen-reader order: Станція → Зараз грає → Бітрейт → [Статус, коли активний] → Дії. This matches `useCompositeList` expectations (summary is first).
+- CSS Grid explicit placement (`grid-column`) allows visual col 1 (status dot) to appear before col 2 (summary) without changing DOM order.
 
 **`getStreamSegments()` — NO CHANGE from current behavior:**
-Returns `["track", "tech", "actions"]` always (status is not a segment). The current code already has this — no modification needed to this function.
+Already returns `["track", "tech", "status", "actions"]` for active streams (recording/connecting/reconnecting), and `["track", "tech", "actions"]` for idle/stopped. Do not modify this function.
 
-**Status dot labels:**
-- `recording` → red dot + "REC"
-- `connecting` → amber dot + "Підключення"
-- `reconnecting` → amber dot + "Retry"
-- `error` → red dot + "Помилка"
-- `idle` / `stopped` → green dot + "Idle"
+**Visual status dot labels (col 1, aria-hidden):**
+- `recording` → red dot + `m.status_recording()` ("REC")
+- `connecting` → amber dot + `m.status_connecting()` ("Підключення...")
+- `reconnecting` → amber dot + `m.status_reconnecting()` ("Перепідключення...")
+- `error` → red dot + `m.status_error()` ("Помилка")
+- `idle` / `stopped` → green dot + `m.status_idle()` ("Очікування")
 
-**Reconnecting label:** Show `m.status_reconnecting()` only (no "N/M" — `maxRetries` not in `StreamStatus`).
+All labels use existing i18n keys — no hardcoded English text.
 
 **Row highlighting:**
 - Recording: subtle `bg-red-950/30 border-l-2 border-red-500`
@@ -259,7 +270,25 @@ Returns `["track", "tech", "actions"]` always (status is not a segment). The cur
 
 ## i18n Keys
 
-New keys needed (add to `uk.json` and `en.json`). Values are simple strings (no pluralization — count is embedded at call site via template literal or concatenation, e.g. `` `${count} потоків` ``):
+New keys needed (add to `uk.json` and `en.json`):
+
+Plural-aware keys for metric counts (follow the existing `recordings_count_one/few/many/zero` pattern):
+- `streams_count_zero` — "Немає потоків"
+- `streams_count_one` — "{count} потік"
+- `streams_count_few` — "{count} потоки"
+- `streams_count_many` — "{count} потоків"
+- `active_recordings_zero` — "Немає записів"
+- `active_recordings_one` — "{count} запис"
+- `active_recordings_few` — "{count} записи"
+- `active_recordings_many` — "{count} записів"
+- `errors_count_zero` — "Немає збоїв"
+- `errors_count_one` — "{count} збій"
+- `errors_count_few` — "{count} збої"
+- `errors_count_many` — "{count} збоїв"
+
+Use `Intl.PluralRules` like StatusBar does. Do NOT embed counts via template literals.
+
+Simple (non-plural) new keys:
 
 - `zone_streams_toolbar` — "Пошук і фільтри"
 - `streams_search_label` — "Пошук потоків або URL"
@@ -288,13 +317,16 @@ New keys needed (add to `uk.json` and `en.json`). Values are simple strings (no 
 - `player_device` — "Пристрій"
 - `player_volume` — "Гучність"
 - `commands_label` — "Команди"
+- `stop_all_recordings` — "Зупинити все" ← needed for Stop All toolbar button
 
 ---
 
 ## Risks & Notes
 
-- **`getStreamSegments()` unchanged** — status is `aria-hidden`, not a navigable segment. No change needed to this function.
+- **`getStreamSegments()` unchanged** — matches current code: returns `["track","tech","status","actions"]` for active streams (recording/connecting/reconnecting), `["track","tech","actions"]` for idle/stopped. The `status` segment (col 5) remains accessible. The new visual status dot (col 1) is `aria-hidden` decoration only.
 - **ActivityBar width change** affects overall layout; content area shrinks by ~176px. The stream table uses CSS grid with `minmax` or `fr` units — ensure `min-width` on the list prevents collapse.
-- **Profile card** is purely static — no click handler, no tab stop. If needed in future (Phase 3D), it becomes interactive.
+- **Profile card** is `aria-hidden="true"` and purely static — no click handler, no tab stop. Shows actual active profile name from `$settings`. Will become interactive in Phase 3D.
 - **Prev/Next/Mute stubs** in PlayerPanel: `isDisabled={true}` (not just no-op). Screen readers will announce them as "dimmed/unavailable" — this is the correct behavior for not-yet-implemented controls.
 - **`streams_search_label`** — used for both `aria-label` and `placeholder` on the search input.
+- **Metric plurals** — use `Intl.PluralRules` + separate `one/few/many/zero` keys (same pattern as `StatusBar` / `recordings_count_*`). Do not embed counts via string concatenation.
+- **`$settings.activeProfile`** — verify field name in `GlobalSettings` struct; fall back to `"Default"` if null.
