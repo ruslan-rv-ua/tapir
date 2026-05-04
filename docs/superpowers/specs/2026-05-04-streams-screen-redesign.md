@@ -89,8 +89,8 @@ The toolbar contains a `<input type="text">` which cannot be inside a standard `
 - Add logo area at top: a small SVG or text "Tapir" — or leave empty (the mockup shows a logo image that isn't available)
 - Add **profile card** at the very bottom (below Settings button):
   - Static card: user icon + "Профіль" (strong) + actual active profile name from `useStore($settings).activeProfile ?? "Default"` (span)
-  - No `aria-label` (not focusable, not interactive — stub for Phase 3D profiles feature)
-  - Visual-only element: `aria-hidden="true"` on the card container
+  - Not focusable (`tabIndex` not set / no tab stop), but NOT `aria-hidden` — NVDA reads it as passive text in the document flow
+  - Will become an interactive button in Phase 3D (profiles feature)
 - Settings button: remains just above the profile card
 - Zone navigation: unchanged (rovingFocus vertical on section buttons + settings button; profile card is NOT in the tab order)
 - Forced-colors: maintained per existing patterns
@@ -288,36 +288,36 @@ Plural-aware keys for metric counts (follow the existing `recordings_count_one/f
 
 Use `Intl.PluralRules` like StatusBar does. Do NOT embed counts via template literals.
 
-Simple (non-plural) new keys:
+Simple (non-plural) new keys (verify each against `uk.json` before adding — already-existing keys are noted):
 
-- `zone_streams_toolbar` — "Пошук і фільтри"
-- `streams_search_label` — "Пошук потоків або URL"
-- `filter_all` — "Усі"
-- `filter_recording` — "Записуються"
-- `filter_errors` — "З помилками"
-- `filter_selected` — "Вибрані"
-- `metric_streams_in_profile` — "У профілі"
-- `metric_active_recordings` — "Активні"
-- `metric_errors` — "Потребує уваги"
-- `metric_free_space` — "Вільно"
-- `profile_name` — "Профіль"
-- `column_status` — "Статус"
-- `column_station` — "Станція"
-- `column_now_playing` — "Зараз грає"
-- `column_bitrate` — "Бітрейт"
-- `column_duration` — "Тривалість"
-- `column_actions` — "Дії"
-- `player_now_playing` — "Зараз грає"
-- `player_controls` — "Керування"
-- `player_output` — "Вивід"
-- `player_prev` — "Попередній потік"
-- `player_next` — "Наступний потік"
-- `player_mute` — "Вимкнути/увімкнути звук"
-- `player_active_recording` — "Активний запис"
-- `player_device` — "Пристрій"
-- `player_volume` — "Гучність"
-- `commands_label` — "Команди"
-- `stop_all_recordings` — "Зупинити все" ← needed for Stop All toolbar button
+- `zone_streams_toolbar` — "Пошук і фільтри" ← NEW
+- `streams_search_label` — "Пошук потоків або URL" ← NEW
+- `filter_all` — "Усі" ← NEW
+- `filter_recording` — "Записуються" ← NEW
+- `filter_errors` — "З помилками" ← NEW
+- `filter_selected` — "Вибрані" ← NEW
+- `metric_streams_in_profile` — "У профілі" ← NEW
+- `metric_active_recordings` — "Активні" ← NEW
+- `metric_errors` — "Потребує уваги" ← NEW
+- `metric_free_space` — "Вільно" ← NEW
+- `profile_name` — "Профіль" ← NEW
+- `column_station` — "Станція" ← NEW
+- `column_now_playing` — "Зараз грає" ← NEW (≠ existing `column_track` "Поточний трек")
+- ~~`column_status`~~ — **already exists**
+- ~~`column_bitrate`~~ — **already exists**
+- ~~`column_duration`~~ — **already exists**
+- ~~`column_actions`~~ — **already exists**
+- `player_now_playing` — "Зараз грає" ← NEW
+- `player_controls` — "Керування" ← NEW
+- `player_output` — "Вивід" ← NEW
+- `player_prev` — "Попередній потік" ← NEW
+- `player_next` — "Наступний потік" ← NEW
+- `player_mute` — "Вимкнути/увімкнути звук" ← NEW
+- `player_active_recording` — "Активний запис" ← NEW
+- `player_device` — "Пристрій" ← NEW
+- `player_volume` — "Гучність" ← NEW
+- `commands_label` — "Команди" ← NEW (button visible text; aria-label reuses existing `command_palette_label`)
+- ~~`stop_all_recordings`~~ — **use existing `stop_all`** ("Зупинити всі")
 
 ---
 
