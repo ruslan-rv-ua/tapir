@@ -36,6 +36,31 @@ This spec covers the visual and structural changes to match that mockup while pr
 
 ---
 
+## Zone Navigation Model
+
+Zone order (Tab / Shift+Tab cycles through these):
+1. `activity-bar` — ActivityBar (rovingFocus vertical)
+2. `streams-toolbar` — Titlebar + search + filter chips (rovingFocus horizontal) ← **NEW**
+3. `streams-list` — StreamList (composite list) — only when non-empty
+   OR `streams-empty` — empty state buttons
+4. `player` — PlayerPanel transport + sliders
+5. `status-bar` — StatusBar (currently no focusable content, skipped)
+
+The old `streams-actions` zone (palette + add + stop-all) is replaced by `streams-toolbar`.
+
+**streams-toolbar zone items** (in order):
+1. "Команди" button
+2. "Додати потік" button
+3. Search input
+4. "Усі" chip
+5. "Записуються" chip
+6. "З помилками" chip
+7. "Вибрані" chip
+
+`onZonesChange` in StreamsPanel now registers `[toolbarZone, streamListZone]` (or `[emptyZone]`).
+
+---
+
 ## Component Designs
 
 ### 1. ActivityBar
@@ -80,11 +105,16 @@ This spec covers the visual and structural changes to match that mockup while pr
 </div>
 ```
 
-**Titlebar:**
-- `h2` "Потоки" (`aria-hidden` — the region aria-label already announces it)
-- "Команди" button → opens `$commandPaletteOpen` (replaces current `>_` button)
-- "Додати потік" button → opens `$showAddStreamDialog`
-- Zone: these buttons move from the actions zone into the titlebar. The `actionsZoneRef` and rovingFocus setup for the old toolbar are **removed**. Titlebar buttons are standard tab stops (not in a composite zone).
+**Titlebar + Toolbar = `streams-toolbar` zone:**
+- `h2` "Потоки" — real, visible heading (do NOT add `aria-hidden`)
+- `<div ref={toolbarZoneRef} data-zone-id="streams-toolbar" role="toolbar" aria-label={m.zone_streams_toolbar()}>`
+- Contains (rovingFocus horizontal):
+  1. "Команди" button → `$commandPaletteOpen.set(true)`
+  2. "Додати потік" button → `$showAddStreamDialog.set(true)`
+  3. Search `<input>` with `aria-label`, `placeholder`; Ctrl+F shortcut focuses it
+  4. Filter chip buttons (see below)
+- The old `actionsZoneRef` + rovingFocus for actions are **removed**
+- The `toolbarZoneRef` replaces them; registered via `onZonesChange`
 
 **Metrics bar:**
 - 4 tiles in a CSS grid row (`grid grid-cols-4 gap-3`)
@@ -97,43 +127,46 @@ This spec covers the visual and structural changes to match that mockup while pr
 - No keyboard interaction (display only)
 
 **Toolbar (stubs):**
-- Search input with `aria-label="Пошук потоків або URL"`, `placeholder`, keyboard shortcut badge "Ctrl+F" — input does nothing
-- Filter chips: "Усі" (active state), "Записуються", "З помилками", "Вибрані" — buttons with `role="radio"` / `aria-pressed` but no filter logic
+- Search `<input type="text">` with `aria-label={m.streams_search_placeholder()}`, `placeholder`.  
+  Keyboard: Ctrl+F focuses this input (via `useEffect` keydown handler in StreamsPanel).  
+  Input value is not used — no filtering occurs yet.
+- Filter chips: plain `<button>` elements with **`aria-pressed`** only (no `role="radio"`).  
+  "Усі" starts with `aria-pressed="true"` visually. Clicking does nothing — state is local UI stub only.  
+  Chips do NOT affect the stream list.
+
+**Stop All action:** Remove from toolbar entirely. Remains available via CommandPalette.
 
 **Column headers (visual only):**
 - `div[aria-hidden="true"]` with same CSS grid as stream rows: Статус / Станція / Зараз грає / Бітрейт / Тривалість / Дії
 - Styled in muted/small caps text
 
 **Zone registration changes:**
-- Remove `actionsZone` (toolbar buttons are standard tab stops now)
-- StreamList zone remains as before
-- Empty state zone remains as before
-- `onZonesChange` now registers only `[streamListRef.current]` (or `[emptyZone]`)
+- Remove `actionsZone` and its rovingFocus setup
+- Add `toolbarZone` with `data-zone-id="streams-toolbar"`, rovingFocus horizontal on 7 items
+- `onZonesChange` registers `[toolbarZone, streamListZone]` when non-empty, `[emptyZone]` when empty
 
 ### 4. StreamItem
 
 **File:** `src/components/streams/StreamItem.tsx`
 
-**Grid layout:**
-```css
-grid-template-columns: 100px 1fr 1.5fr 90px 90px 160px
-```
-Each `<li>` is the grid container. Summary is sr-only first child. Then 6 grid cells.
+**Segment → column mapping:**
+| Grid col | CSS col size | Segment | Content |
+|---|---|---|---|
+| 1 — Статус | `100px` | `status` (always) | dot + label |
+| 2 — Станція | `1fr` | `summary` (always) | stream.name (visible text) |
+| 3 — Зараз грає | `1.5fr` | `track` (always) | artist — title or "—" |
+| 4 — Бітрейт | `90px` | `tech` (always) | formatBitrate or "—" |
+| 5 — Тривалість | `90px` | *(static child of status cell, not a segment)* | formatDuration or "—" |
+| 6 — Дії | `160px` | `actions` (always) | ▶/■ + ⏺/⏹ + ⋯ |
 
-**Segment changes:**
-- `getStreamSegments()` now **always** returns `["status", "track", "tech", "actions"]` (status always present)
-- `summary` segment: sr-only focusable div (unchanged behavior — composite list entry point)
-- `status` segment: CSS grid cell col 1 — status dot + text label:
-  - `recording` → red dot + "REC"
-  - `connecting` → yellow dot + "Підключення"
-  - `reconnecting` → yellow dot + "Retry (N/M)"
-  - `error` → red dot + "Помилка"
-  - `idle` → green dot + "Idle"
-- `track` segment: CSS grid cell col 3 — `artist — title` or `"—"`
-- `tech` segment: CSS grid cell col 4 — `formatBitrate(stream.bitrate)` or `"—"`
-- New static cell col 2 (station name): stream name in bold — NOT a focusable segment, rendered as a visual `<span>` inside the `summary`-cell area. Actually: the summary cell occupies col 2, and visually shows stream name. The sr-only aria-label provides full context.
-- New static cell col 5 (duration): `formatDuration(elapsedMs)` when recording, else `"—"` — not a separate segment (included in status aria-label)
-- `actions` segment: CSS grid cell col 6 — 3 buttons: Play/Stop, REC toggle, context menu
+**Clarification on `summary` segment:**  
+The `summary` segment div IS the station-name column (col 2). It is **visible on screen** and shows `stream.name` as text content. It also has an extended `aria-label` (summaryLabel) that provides full context (status + track) for screen readers. This is NOT sr-only — the segment div IS the visual cell. The `tabIndex` and `data-segment="summary"` are unchanged.
+
+**`getStreamSegments()` change:**  
+Always returns `["status", "track", "tech", "actions"]` — status segment is always present.  
+The "Тривалість" value is rendered inside the `status` grid cell as a second line (not a separate segment), so the `status` aria-label includes it.
+
+**Reconnecting label:** Show `m.status_reconnecting()` only (no "N/M" — `maxRetries` is not in `StreamStatus`).
 
 **Row highlighting:**
 - Recording: subtle `bg-red-950/30 border-l-2 border-red-500`
@@ -151,30 +184,36 @@ Each `<li>` is the grid container. Summary is sr-only first child. Then 6 grid c
 **Layout:** 3 equal-ish columns in a horizontal bar (`grid grid-cols-3 gap-4`), each column is a `<article>` card.
 
 **Panel 1 — "Зараз грає":**
-- `<h3>` "Зараз грає"
-- Source name (strong)
-- `artist — title` paragraph (or "—")
-- Meta row: "Прослуховування" + bitrate string + "Live" badge when no position — these are stubs/derived from playerStatus
+- `<h3>` "Зараз грає" (aria-hidden — region label already names the panel)
+- Source label: `useSourceLabel()` hook result (existing)
+- Track: `currentTrack?.artist — currentTrack?.title` or `"—"`.  
+  Track info: `playerStatus.source?.type === "stream"` → look up `statuses[source.streamId]?.currentTrack`. For files: no track info, show filename.
+- Meta row (muted text): `"Прослуховування"` + bitrate string (from stream's `bitrate` field if source is stream, else "—") + `"Live"` badge when `source.type === "stream"`
 
 **Panel 2 — "Керування":**
-- `<h3>` "Керування"
-- Transport row: Prev (stub, aria-label, disabled), Play/Pause (existing), Next (stub), Mute (stub) + "Live" span
-- Progress section: `PlaybackPosition` component (existing)
-- Zone: transport refs expand from `[playPauseRef, stopRef]` to `[prevRef, playPauseRef, nextRef, muteRef]`; stop button is removed (stop moved to context? or kept as 5th button)
-  - **Decision:** Keep Stop button but only when `isActive`. Transport refs: `[prevRef, playPauseRef, stopRef, nextRef, muteRef]`
+- `<h3>` "Керування" (aria-hidden)
+- Transport row — 5 buttons:
+  1. **Prev** — `isDisabled={true}` stub, `aria-label={m.player_prev()}`
+  2. **Play/Pause** — existing logic (enabled when `isActive`)
+  3. **Stop** — existing logic (enabled when `isActive`)
+  4. **Next** — `isDisabled={true}` stub, `aria-label={m.player_next()}`
+  5. **Mute** — `isDisabled={true}` stub, `aria-label={m.player_mute()}`
+- `PlaybackPosition` component (unchanged). When it returns `null`, the position wrapper div is still present — Tab flow is unchanged.
+- Transport rovingFocus refs: `[prevRef, playPauseRef, stopRef, nextRef, muteRef]` (5 refs)
 
 **Panel 3 — "Вивід":**
-- `<h3>` "Вивід"
-- Detail rows:
-  - "Активний запис" → name of first recording stream or "—"
-  - "Пристрій" → `settings.outputDevice` or "—"  
-  - "Гучність" → percentage label (derived from VolumeSlider state — stub)
-- `VolumeSlider` component (existing)
-- Zone: volume wrapper handles Tab key same as before
+- `<h3>` "Вивід" (aria-hidden)
+- Detail rows (each a `<div>` with `<span>` label + `<strong>` value):
+  - "Активний запис" → `$streams.get().find(s => $statuses.get()[s.id]?.state === "recording")?.name ?? "—"`;  
+    use `useStore($streams)` + `useStore($statuses)` inside PlayerPanel
+  - "Пристрій" → `useStore($settings).outputDevice ?? "—"`
+  - "Гучність" → `${Math.round(playerStatus.volume * 100)}%`
+- `VolumeSlider` component (unchanged)
 
 **Zone navigation updates:**
-- `restoreFocusPlayer` updates: backward direction → land on mute (last transport button)
-- Tab sequence within player: transport row → position slider → volume slider → exit forward
+- `transportRefs` useMemo expands to 5 refs: `[prevRef, playPauseRef, stopRef, nextRef, muteRef]`
+- `restoreFocusPlayer` backward → land on `muteRef` (last transport item)
+- Tab sequence: transport row → position wrapper → volume wrapper → exit forward (unchanged flow, just more transport buttons)
 
 ### 6. StatusBar
 
@@ -188,9 +227,10 @@ Each `<li>` is the grid container. Summary is sr-only first child. Then 6 grid c
 
 ## i18n Keys
 
-New keys needed (add to `uk.json` and `en.json`):
+New keys needed (add to `uk.json` and `en.json`). Values are simple strings (no pluralization — count is embedded at call site via template literal or concatenation, e.g. `` `${count} потоків` ``):
+
 - `zone_streams_toolbar` — "Пошук і фільтри"
-- `streams_search_placeholder` — "Пошук потоків або URL"
+- `streams_search_label` — "Пошук потоків або URL"
 - `filter_all` — "Усі"
 - `filter_recording` — "Записуються"
 - `filter_errors` — "З помилками"
@@ -221,7 +261,8 @@ New keys needed (add to `uk.json` and `en.json`):
 
 ## Risks & Notes
 
-- **`getStreamSegments()` change** (always returns status) may affect `useCompositeList` navigation if it assumes segment count can vary. Verify that adding a permanent "status" segment doesn't break roving focus within a row.
-- **ActivityBar width change** affects overall layout; content area shrinks by ~176px. Verify stream table columns still fit.
+- **`getStreamSegments()` change** (always returns status) — the segment count increases by 1 for all rows, regardless of state. `useCompositeList` navigates by `data-segment` attribute, not by array index, so adding a new always-present segment is safe. Verify manually.
+- **ActivityBar width change** affects overall layout; content area shrinks by ~176px. The stream table uses CSS grid with `minmax` or `fr` units — ensure `min-width` on the list prevents collapse.
 - **Profile card** is purely static — no click handler, no tab stop. If needed in future (Phase 3D), it becomes interactive.
-- **Prev/Next/Mute stubs** in PlayerPanel: buttons are present but `onPress` does nothing. They are NOT disabled (have no `isDisabled` prop) so screen reader users know they exist. Add `aria-describedby` pointing to "буде реалізовано" text.
+- **Prev/Next/Mute stubs** in PlayerPanel: `isDisabled={true}` (not just no-op). Screen readers will announce them as "dimmed/unavailable" — this is the correct behavior for not-yet-implemented controls.
+- **`streams_search_placeholder` key renamed to `streams_search_label`** — both `aria-label` and `placeholder` will use it.
