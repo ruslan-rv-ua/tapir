@@ -1,7 +1,6 @@
 import { useEffect, useCallback, useRef, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { ActivityBar } from "./components/layout/ActivityBar";
-import { SectionHeader } from "./components/layout/SectionHeader";
 import { StatusBar } from "./components/layout/StatusBar";
 import { LiveAnnouncer } from "./components/common/LiveAnnouncer";
 import { ToastContainer } from "./components/common/ToastContainer";
@@ -213,7 +212,6 @@ function AppContent() {
     <div className="flex h-screen bg-slate-950 text-slate-200">
       <ActivityBar ref={activityBarZoneRef} exitZone={(forward: boolean) => exitZone("activity-bar", forward)} />
       <main className="flex flex-1 flex-col overflow-hidden">
-        <SectionHeader section={activeSection} />
         {activeSection === "streams" && <StreamsPanel onZonesChange={onZonesChange} exitZone={exitZone} />}
         {activeSection === "wishlist" && <WishlistPanel onZonesChange={onZonesChange} exitZone={exitZone} />}
         {activeSection === "browser" && <BrowserPanel onZonesChange={onZonesChange} exitZone={exitZone} />}
