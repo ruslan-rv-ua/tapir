@@ -119,7 +119,7 @@ The toolbar zone is **always present** — even when the stream list is empty (u
 **Titlebar + Toolbar = `streams-toolbar` zone:**
 - `h2` "Потоки" — real, visible heading (do NOT add `aria-hidden`)
 - `<div ref={toolbarZoneRef} data-zone-id="streams-toolbar" role="toolbar" aria-label={m.zone_streams_toolbar()}>`
-- Contains (rovingFocus horizontal):
+- Contains (`mixed-boundary-handoff`):
   1. "Команди" button → `$commandPaletteOpen.set(true)`
   2. "Додати потік" button → `$showAddStreamDialog.set(true)`
   3. Search `<input>` with `aria-label`, `placeholder`; Ctrl+F shortcut focuses it
@@ -153,8 +153,8 @@ The toolbar zone is **always present** — even when the stream list is empty (u
 
 **Zone registration changes:**
 - Remove `actionsZone` and its rovingFocus setup
-- Add `toolbarZone` with `data-zone-id="streams-toolbar"`, rovingFocus horizontal on 7 items
-- `onZonesChange` registers `[toolbarZone, streamListZone]` when non-empty, `[emptyZone]` when empty
+- Add `toolbarZone` with `data-zone-id="streams-toolbar"`, `mixed-boundary-handoff` mode on 7 items (see Zone Navigation Model for details on search input arrow-key guard)
+- `onZonesChange` registers `[toolbarZone, streamListZone]` when non-empty, `[toolbarZone, emptyZone]` when empty
 
 ### 4. StreamItem
 
@@ -180,7 +180,7 @@ DOM order of children (Tab order follows DOM order):
 
 **Key decisions:**
 - Status indicator (col 1) is `aria-hidden="true"` — purely visual. Screen reader users get status info from the `summary` aria-label.
-- Duration (col 5) is `aria-hidden="true"` — included in `status` segment's aria-label when recording.
+- Duration (col 5) is `aria-hidden="true"` — included in `summary` segment's aria-label when recording.
 - `summary` is DOM-first (col 2) — keyboard/screen-reader order: Станція → Зараз грає → Бітрейт → Дії. This matches `useCompositeList` expectations (summary is first).
 - CSS Grid explicit placement (`grid-column`) allows visual col 1 (status) to appear before col 2 (summary) without changing DOM order.
 
@@ -235,7 +235,7 @@ Returns `["track", "tech", "actions"]` always (status is not a segment). The cur
 - `<article aria-label={m.player_output()}>` — article is labelled
 - `<h3 aria-hidden="true">` "Вивід" — visual only
 - Detail rows (each a `<div>` with `<span>` label + `<strong>` value):
-  - "Активний запис" → `$streams.get().find(s => $statuses.get()[s.id]?.state === "recording")?.name ?? "—"`;  
+  - "Активний запис" → `streams.find(s => statuses[s.id]?.state === "recording")?.name ?? "—"` (use reactive `useStore($streams)` / `useStore($statuses)` — not raw `.get()` calls);  
     use `useStore($streams)` + `useStore($statuses)` inside PlayerPanel
   - "Пристрій" → `useStore($settings).outputDevice ?? "—"`
   - "Гучність" → `${Math.round(playerStatus.volume * 100)}%`
@@ -292,7 +292,7 @@ New keys needed (add to `uk.json` and `en.json`). Values are simple strings (no 
 
 ## Risks & Notes
 
-- **`getStreamSegments()` change** (always returns status) — the segment count increases by 1 for all rows, regardless of state. `useCompositeList` navigates by `data-segment` attribute, not by array index, so adding a new always-present segment is safe. Verify manually.
+- **`getStreamSegments()` unchanged** — status is `aria-hidden`, not a navigable segment. No change needed to this function.
 - **ActivityBar width change** affects overall layout; content area shrinks by ~176px. The stream table uses CSS grid with `minmax` or `fr` units — ensure `min-width` on the list prevents collapse.
 - **Profile card** is purely static — no click handler, no tab stop. If needed in future (Phase 3D), it becomes interactive.
 - **Prev/Next/Mute stubs** in PlayerPanel: `isDisabled={true}` (not just no-op). Screen readers will announce them as "dimmed/unavailable" — this is the correct behavior for not-yet-implemented controls.
