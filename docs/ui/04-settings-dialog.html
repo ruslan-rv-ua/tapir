@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tapir Settings Dialog</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --page-bg:
+        radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 28%),
+        radial-gradient(circle at top right, rgba(245, 158, 11, 0.1), transparent 24%),
+        linear-gradient(180deg, #06101b 0%, #08121d 44%, #04070b 100%);
+      --page-text: #ebf4ff;
+      --line: rgba(173, 196, 224, 0.14);
+      --shell-bg: #09111a;
+      --panel-soft: rgba(255, 255, 255, 0.04);
+      --muted: #8da4be;
+      --text: #ebf5ff;
+      --accent: #38bdf8;
+      --accent-strong: #0f70d8;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --radius-xl: 30px;
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --focus-ring: 0 0 0 3px rgba(125, 211, 252, 0.42);
+      --shadow: 0 28px 90px rgba(0, 0, 0, 0.34);
+      --rail-width: 246px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      background: var(--page-bg);
+      color: var(--page-text);
+      font-family: "Bahnschrift", "Segoe UI Variable Text", "Trebuchet MS", sans-serif;
+      line-height: 1.5;
+    }
+
+    button,
+    input { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    img { display: block; max-width: 100%; }
+    :focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+    .page {
+      width: min(1520px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 24px 0 48px;
+      position: relative;
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: var(--rail-width) minmax(0, 1fr);
+      min-height: 860px;
+      overflow: hidden;
+      border-radius: 28px;
+      border: 1px solid var(--line);
+      background:
+        radial-gradient(circle at top right, rgba(255, 255, 255, 0.05), transparent 30%),
+        linear-gradient(180deg, #0b1521 0%, var(--shell-bg) 100%);
+      box-shadow: var(--shadow);
+      filter: blur(0.5px) saturate(0.9);
+    }
+
+    .rail {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 18px 14px;
+      border-right: 1px solid var(--line);
+      background: rgba(0, 0, 0, 0.18);
+    }
+
+    .rail-brand {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 0 14px;
+    }
+
+    .rail-brand img {
+      width: min(100%, 96px);
+      object-fit: contain;
+      filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.24));
+    }
+
+    .rail-group,
+    .rail-footer { display: grid; gap: 12px; }
+    .rail-footer { margin-top: auto; }
+
+    .rail-button,
+    .profile-card,
+    .shell-card,
+    .dialog,
+    .tab,
+    .field-shell,
+    .toggle,
+    .ghost-pill,
+    .solid-pill,
+    .refresh-pill,
+    .save-badge {
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.03);
+      color: inherit;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+
+    .rail-button,
+    .profile-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      min-height: 58px;
+      padding: 12px 14px;
+      border-radius: 18px;
+      text-align: left;
+    }
+
+    .rail-icon-box,
+    .profile-avatar,
+    .hotkey-badge,
+    .save-dot {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted);
+      flex: none;
+    }
+
+    .save-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 10px;
+      background: rgba(34, 197, 94, 0.14);
+      color: #d7ffe6;
+    }
+
+    .rail-glyph,
+    .dialog-glyph {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .rail-copy,
+    .profile-copy,
+    .screen-copy,
+    .dialog-copy,
+    .aside-copy,
+    .hotkey-copy { display: grid; gap: 2px; min-width: 0; }
+
+    .rail-label,
+    .profile-copy strong,
+    .screen-copy strong,
+    .dialog-copy strong,
+    .aside-copy strong,
+    .field strong,
+    .hotkey-copy strong {
+      margin: 0;
+      color: var(--text);
+      font-family: "Segoe UI Variable Display", "Bahnschrift", sans-serif;
+      letter-spacing: -0.02em;
+    }
+
+    .workspace {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      padding: 24px;
+      gap: 16px;
+    }
+
+    .shell-card {
+      border-radius: var(--radius-lg);
+      min-height: 112px;
+      background: var(--panel-soft);
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(0, 0, 0, 0.42);
+      backdrop-filter: blur(14px);
+    }
+
+    .dialog {
+      width: min(1120px, 100%);
+      min-height: 760px;
+      border-radius: 28px;
+      background:
+        radial-gradient(circle at top right, rgba(56, 189, 248, 0.12), transparent 22%),
+        linear-gradient(180deg, rgba(14, 25, 38, 0.98), rgba(8, 15, 24, 0.98));
+      box-shadow: 0 40px 120px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .dialog-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 24px 28px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .dialog-copy strong { font-size: 1.35rem; }
+    .dialog-copy span,
+    .profile-copy span,
+    .screen-copy span,
+    .field span,
+    .aside-copy span,
+    .hotkey-copy span,
+    .field-hint,
+    .save-badge,
+    .dialog-tablist,
+    .shell-note {
+      color: var(--muted);
+    }
+
+    .dialog-actions,
+    .dialog-tablist,
+    .field-grid,
+    .checkbox-grid,
+    .hotkey-list,
+    .dialog-body,
+    .transport-row,
+    .progress-caption,
+    .volume-meta,
+    .detail-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .ghost-pill,
+    .solid-pill,
+    .refresh-pill,
+    .save-badge,
+    .tab {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 0 16px;
+      border-radius: 14px;
+      font-weight: 700;
+    }
+
+    .solid-pill,
+    .tab.active {
+      background: linear-gradient(180deg, rgba(56, 189, 248, 0.9), rgba(15, 112, 216, 0.92));
+      border-color: transparent;
+      color: white;
+    }
+
+    .save-badge {
+      gap: 8px;
+      padding-left: 10px;
+      padding-right: 14px;
+      background: rgba(34, 197, 94, 0.1);
+      border-color: rgba(34, 197, 94, 0.2);
+      color: #d7ffe6;
+    }
+
+    .dialog-tablist {
+      gap: 8px;
+      padding: 16px 28px 0;
+    }
+
+    .dialog-body {
+      flex: 1;
+      align-items: stretch;
+      gap: 18px;
+      padding: 18px 28px 28px;
+      min-height: 0;
+    }
+
+    .form-column {
+      flex: 1 1 620px;
+      min-width: 0;
+      display: grid;
+      gap: 16px;
+    }
+
+    .aside-column {
+      flex: 0 0 320px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .section-card,
+    .aside-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: var(--panel-soft);
+      padding: 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .section-card header,
+    .aside-card header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .field-grid {
+      align-items: stretch;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+    }
+
+    .field.shell-wide {
+      grid-column: 1 / -1;
+    }
+
+    .field-shell {
+      min-height: 56px;
+      border-radius: 16px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .field-shell input {
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      background: transparent;
+    }
+
+    .checkbox-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .toggle {
+      min-height: 60px;
+      border-radius: 18px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .toggle .marker {
+      width: 18px;
+      height: 18px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.04);
+      flex: none;
+    }
+
+    .toggle.active .marker {
+      background: linear-gradient(180deg, rgba(56, 189, 248, 0.9), rgba(15, 112, 216, 0.92));
+      border-color: transparent;
+    }
+
+    .hotkey-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .hotkey-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .hotkey-row:last-child { border-bottom: 0; padding-bottom: 0; }
+
+    .hotkey-badge {
+      width: 54px;
+      height: 36px;
+      border-radius: 12px;
+      background: rgba(56, 189, 248, 0.14);
+      color: #d7f0ff;
+      font-weight: 700;
+      font-size: 0.82rem;
+    }
+
+    .player-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .shell-card { padding: 16px; }
+
+    .shell-card .shell-note {
+      font-size: 0.9rem;
+      display: block;
+      margin-top: 8px;
+    }
+
+    @media (max-width: 1180px) {
+      .dialog-body,
+      .field-grid,
+      .checkbox-grid,
+      .player-strip { display: grid; grid-template-columns: 1fr; }
+      .aside-column { flex-basis: auto; }
+    }
+
+    @media (max-width: 980px) {
+      .app-shell { grid-template-columns: 1fr; }
+      .rail { border-right: 0; border-bottom: 1px solid var(--line); }
+      .rail-group,
+      .rail-footer { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 760px) {
+      .page {
+        width: min(100%, calc(100% - 20px));
+        padding: 10px 0 24px;
+      }
+
+      .overlay,
+      .dialog-header,
+      .dialog-tablist,
+      .dialog-body,
+      .workspace { padding-left: 16px; padding-right: 16px; }
+
+      .rail-group,
+      .rail-footer { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="app-shell" aria-hidden="true">
+      <aside class="rail">
+        <div class="rail-brand"><img src="logo.svg" alt=""></div>
+        <div class="rail-group">
+          <button type="button" class="rail-button"><span class="rail-icon-box"><svg class="rail-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"></circle><circle cx="12" cy="12" r="2.5"></circle></svg></span><span class="rail-copy"><span class="rail-label">Потоки</span><span class="shell-note">Фонова секція</span></span></button>
+          <button type="button" class="rail-button"><span class="rail-icon-box"><svg class="rail-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"></circle><path d="M20 20l-4.2-4.2"></path></svg></span><span class="rail-copy"><span class="rail-label">Браузер</span><span class="shell-note">Пошук станцій</span></span></button>
+          <button type="button" class="rail-button"><span class="rail-icon-box"><svg class="rail-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20l-6.6-6.3a4.4 4.4 0 0 1 6.2-6.2L12 8l.4-.5a4.4 4.4 0 0 1 6.2 6.2z"></path></svg></span><span class="rail-copy"><span class="rail-label">Wishlist</span><span class="shell-note">Шаблони</span></span></button>
+        </div>
+        <div class="rail-footer">
+          <button type="button" class="rail-button active"><span class="rail-icon-box"><svg class="rail-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"></circle><path d="M12 2v3"></path><path d="M12 19v3"></path><path d="M4.9 4.9l2.1 2.1"></path><path d="M17 17l2.1 2.1"></path><path d="M2 12h3"></path><path d="M19 12h3"></path></svg></span><span class="rail-copy"><span class="rail-label">Налаштування</span><span class="shell-note">Відкритий діалог</span></span></button>
+          <div class="profile-card"><span class="profile-avatar"><svg class="rail-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 19a7 7 0 0 1 14 0"></path></svg></span><div class="profile-copy"><strong>Профіль</strong><span>Music Discovery</span></div></div>
+        </div>
+      </aside>
+
+      <section class="workspace">
+        <div class="shell-card"></div>
+        <div class="player-strip">
+          <div class="shell-card"><strong>Плеєр</strong><span class="shell-note">Radio Paradise Main Mix · FLAC</span></div>
+          <div class="shell-card"><strong>Поточні записи</strong><span class="shell-note">1 активний потік</span></div>
+          <div class="shell-card"><strong>Статус</strong><span class="shell-note">Останнє автозбереження 12:52</span></div>
+        </div>
+      </section>
+    </section>
+
+    <div class="overlay">
+      <section class="dialog" role="dialog" aria-modal="true" aria-label="Налаштування">
+        <header class="dialog-header">
+          <div class="dialog-copy">
+            <strong>Налаштування</strong>
+            <span>Автозбереження увімкнене. Зміни застосовуються без окремої кнопки Save.</span>
+          </div>
+
+          <div class="dialog-actions">
+            <span class="save-badge"><span class="save-dot">✓</span><span>Збережено 2 с тому</span></span>
+            <button type="button" class="ghost-pill">Скинути</button>
+            <button type="button" class="solid-pill">Закрити</button>
+          </div>
+        </header>
+
+        <nav class="dialog-tablist" aria-label="Вкладки налаштувань">
+          <button type="button" class="tab">Загальні</button>
+          <button type="button" class="tab active" aria-current="page">Запис</button>
+          <button type="button" class="tab">Перепідключення</button>
+          <button type="button" class="tab">Гарячі клавіші</button>
+          <button type="button" class="tab">Аудіо</button>
+        </nav>
+
+        <div class="dialog-body">
+          <div class="form-column">
+            <section class="section-card" aria-labelledby="recording-section">
+              <header>
+                <div class="dialog-copy">
+                  <strong id="recording-section">Параметри запису</strong>
+                  <span>Вихідна папка, шаблони файлів і правила обробки треків.</span>
+                </div>
+                <button type="button" class="refresh-pill">Відкрити папку</button>
+              </header>
+
+              <div class="field-grid">
+                <label class="field shell-wide">
+                  <strong>Папка записів</strong>
+                  <span class="field-shell"><input type="text" value="D:\\Tapir\\Recordings" aria-label="Папка записів" readonly><span>Огляд…</span></span>
+                </label>
+
+                <label class="field shell-wide">
+                  <strong>Шаблон імені треку</strong>
+                  <span class="field-shell"><input type="text" value="{artist} - {title}" aria-label="Шаблон імені треку" readonly><span>{ }</span></span>
+                </label>
+
+                <label class="field">
+                  <strong>Незавершений файл</strong>
+                  <span class="field-shell"><input type="text" value="{artist} - {title} [partial]" aria-label="Шаблон незавершеного файлу" readonly></span>
+                </label>
+
+                <label class="field">
+                  <strong>Ім'я stream-файлу</strong>
+                  <span class="field-shell"><input type="text" value="{stream}_{date}" aria-label="Шаблон stream-файлу" readonly></span>
+                </label>
+
+                <label class="field">
+                  <strong>Мінімальна тривалість</strong>
+                  <span class="field-shell"><input type="text" value="8" aria-label="Мінімальна тривалість треку" readonly><span>сек</span></span>
+                </label>
+
+                <label class="field">
+                  <strong>Поріг диска</strong>
+                  <span class="field-shell"><input type="text" value="12" aria-label="Поріг дискового простору" readonly><span>ГБ</span></span>
+                </label>
+              </div>
+
+              <div class="checkbox-grid">
+                <div class="toggle active"><span class="marker"></span><div class="field"><strong>Зберігати stream-файл</strong><span>Окремий суцільний файл для потоку</span></div></div>
+                <div class="toggle"><span class="marker"></span><div class="field"><strong>Видаляти stream при stop</strong><span>Лише готові треки лишаються в папці</span></div></div>
+                <div class="toggle active"><span class="marker"></span><div class="field"><strong>Пропускати перший неповний</strong><span>Не зберігати обрізаний стартовий трек</span></div></div>
+                <div class="toggle active"><span class="marker"></span><div class="field"><strong>Автокорекція регістру</strong><span>Нормалізувати метадані під час split</span></div></div>
+              </div>
+            </section>
+
+            <section class="section-card" aria-labelledby="hotkey-preview">
+              <header>
+                <div class="dialog-copy">
+                  <strong id="hotkey-preview">Попередній перегляд гарячих клавіш</strong>
+                  <span>Ключові дії, які найчастіше змінюють у налаштуваннях.</span>
+                </div>
+              </header>
+
+              <div class="hotkey-list">
+                <div class="hotkey-row"><span class="hotkey-badge">Ctrl+Alt+R</span><div class="hotkey-copy"><strong>Recording (toggle)</strong><span>Старт або стоп запису поточного потоку</span></div></div>
+                <div class="hotkey-row"><span class="hotkey-badge">Ctrl+Alt+P</span><div class="hotkey-copy"><strong>Playback (toggle)</strong><span>Старт або стоп локального плеєра</span></div></div>
+                <div class="hotkey-row"><span class="hotkey-badge">Ctrl+Alt+↑</span><div class="hotkey-copy"><strong>Volume Up</strong><span>Збільшити гучність на крок</span></div></div>
+              </div>
+            </section>
+          </div>
+
+          <aside class="aside-column">
+            <section class="aside-card" aria-labelledby="template-preview">
+              <header>
+                <div class="aside-copy">
+                  <strong id="template-preview">Приклади імен файлів</strong>
+                  <span>Швидка перевірка перед закриттям діалогу.</span>
+                </div>
+              </header>
+
+              <div class="field">
+                <strong>Готовий трек</strong>
+                <span class="field-shell"><input type="text" value="Tycho - A Walk.flac" aria-label="Приклад готового треку" readonly></span>
+              </div>
+              <div class="field">
+                <strong>Незавершений</strong>
+                <span class="field-shell"><input type="text" value="Tycho - A Walk [partial].tmp" aria-label="Приклад незавершеного файлу" readonly></span>
+              </div>
+              <div class="field">
+                <strong>Stream dump</strong>
+                <span class="field-shell"><input type="text" value="SomaFM_Groove_Salad_2026-10-21.ts" aria-label="Приклад stream dump" readonly></span>
+              </div>
+            </section>
+
+            <section class="aside-card" aria-labelledby="audio-preview">
+              <header>
+                <div class="aside-copy">
+                  <strong id="audio-preview">Аудіо</strong>
+                  <span>Стисла картка для швидкої зміни output device.</span>
+                </div>
+              </header>
+
+              <div class="field">
+                <strong>Вивід</strong>
+                <span class="field-shell"><input type="text" value="Realtek Speakers" aria-label="Вибраний пристрій виводу" readonly><span>▼</span></span>
+              </div>
+              <button type="button" class="refresh-pill">Оновити список пристроїв</button>
+            </section>
+
+            <section class="aside-card" aria-labelledby="autosave-status">
+              <header>
+                <div class="aside-copy">
+                  <strong id="autosave-status">Стан автозбереження</strong>
+                  <span>Останні дії, які вплинули на конфігурацію.</span>
+                </div>
+              </header>
+
+              <div class="hotkey-list">
+                <div class="hotkey-row"><span class="save-dot">✓</span><div class="hotkey-copy"><strong>Папку записів оновлено</strong><span>12:52 · D:\\Tapir\\Recordings</span></div></div>
+                <div class="hotkey-row"><span class="save-dot">✓</span><div class="hotkey-copy"><strong>Шаблон треку збережено</strong><span>12:51 · {artist} - {title}</span></div></div>
+                <div class="hotkey-row"><span class="save-dot">✓</span><div class="hotkey-copy"><strong>Поріг диска змінено</strong><span>12:49 · 12 ГБ</span></div></div>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>
