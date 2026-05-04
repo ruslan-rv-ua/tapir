@@ -82,7 +82,7 @@ export const StatusBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
     <footer
       ref={footerRef}
       data-zone-id="status-bar"
-      className="flex items-center gap-4 border-t border-slate-700 px-4 py-1.5 text-xs text-slate-400 forced-colors:border-[ButtonText] forced-colors:text-[CanvasText]"
+      className="flex items-center gap-4 border-t border-slate-700 px-4 py-1.5 text-sm text-slate-400 forced-colors:border-[ButtonText] forced-colors:text-[CanvasText]"
       onKeyDown={onKeyDown}
     >
       <div
@@ -91,7 +91,7 @@ export const StatusBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
         aria-label={`${m.segment_status_duration()}: ${recordingsText}`}
         className="cursor-default rounded px-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
       >
-        {recordingsText}
+        <strong className="text-slate-200">{recordingsText}</strong>
       </div>
 
       {longestMs > 0 && (
@@ -101,7 +101,7 @@ export const StatusBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
           aria-label={`${m.segment_longest_recording()}: ${formatDuration(longestMs)}`}
           className="cursor-default rounded px-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
         >
-          {formatDuration(longestMs)}
+          <strong className="text-slate-200">{formatDuration(longestMs)}</strong>
         </div>
       )}
     </footer>
