@@ -171,12 +171,12 @@ DOM order of children (Tab order follows DOM order):
 
 | DOM pos | `grid-column` | Focusable | Segment | Content |
 |---|---|---|---|---|
-| 1 | 2 — Станція | ✅ `summary` | station name (visible text) |
-| 2 | 1 — Статус | ❌ `aria-hidden` | status dot + label |
-| 3 | 3 — Зараз грає | ✅ `track` | artist — title or "—" |
-| 4 | 4 — Бітрейт | ✅ `tech` | formatBitrate or "—" |
-| 5 | 5 — Тривалість | ❌ `aria-hidden` | formatDuration or "—" |
-| 6 | 6 — Дії | ✅ `actions` | ▶/■ + ⏺/⏹ + ⋯ |
+| 1 | 2 — Станція | ✅ | `summary` | station name (visible text) |
+| 2 | 1 — Статус | ❌ | — (`aria-hidden`) | status dot + label |
+| 3 | 3 — Зараз грає | ✅ | `track` | artist — title or "—" |
+| 4 | 4 — Бітрейт | ✅ | `tech` | formatBitrate or "—" |
+| 5 | 5 — Тривалість | ❌ | — (`aria-hidden`) | formatDuration or "—" |
+| 6 | 6 — Дії | ✅ | `actions` | ▶/■ + ⏺/⏹ + ⋯ |
 
 **Key decisions:**
 - Status indicator (col 1) is `aria-hidden="true"` — purely visual. Screen reader users get status info from the `summary` aria-label.
@@ -243,7 +243,8 @@ Returns `["track", "tech", "actions"]` always (status is not a segment). The cur
 
 **Zone navigation updates:**
 - `transportRefs` useMemo expands to 5 refs: `[prevRef, playPauseRef, stopRef, nextRef, muteRef]`
-- `restoreFocusPlayer` backward → land on `muteRef` (last transport item)
+- Backward zone entry (Shift+Tab arriving from StatusBar) → land on last item in volume wrapper
+- `restoreFocusPlayer` (modal-dismiss focus restore) → land on `muteRef` (last transport item, preserves play/pause context)
 - Tab sequence: transport row → position wrapper → volume wrapper → exit forward (unchanged flow, just more transport buttons)
 
 ### 6. StatusBar
