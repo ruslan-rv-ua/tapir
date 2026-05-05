@@ -96,7 +96,7 @@ Each navigation button changes from a flat icon+text layout to an icon-box+label
 
 #### Settings button
 
-The Settings button in the footer footer adopts the same icon-box+label structure and shows the i18n string `m.settings_title()` as visible text (not sr-only).
+The Settings button in the footer adopts the same icon-box+label structure and shows the i18n string `m.settings_title()` as visible text (not sr-only).
 
 #### Profile card
 
@@ -122,7 +122,7 @@ The profile card changes its avatar from `<User size={16}>` in a plain div to an
 |------|--------|
 | `src/hooks/useRovingFocus.ts` | Add `'both'` to axis union; handle ArrowLeft/ArrowRight when axis is `'both'` |
 | `src/components/layout/ActivityBar.tsx` | New button structure (icon box + label copy); Settings label; profile card redesign; axis `'both'` |
-| `src/App.tsx` | `finally` callback becomes `async`, `show()` is awaited, then `activityBarZoneRef.current?.focus("forward")` is called |
+| `src/App.tsx` | `finally` callback chains `getCurrentWindow().show().then(() => focus()).catch(console.error)` |
 
 ---
 
