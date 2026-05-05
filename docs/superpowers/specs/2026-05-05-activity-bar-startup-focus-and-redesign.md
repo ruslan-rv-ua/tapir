@@ -30,15 +30,21 @@ Three independent improvements to the ActivityBar:
 
 ### 1. Startup Focus (`App.tsx`)
 
-In the `useEffect` that loads initial data, in the `finally` block (after `getCurrentWindow().show()`), add:
+In the `useEffect` that loads initial data, the `finally` block currently calls `getCurrentWindow().show()` synchronously (fire-and-forget). `show()` returns a `Promise`, so focus must be called **after** it resolves — otherwise the focus event may fire before the OS window is visible.
+
+Change the `finally` callback to `async` and `await show()` before focusing:
 
 ```ts
-activityBarZoneRef.current?.focus("forward");
+.catch(console.error)
+.finally(async () => {
+  await getCurrentWindow().show();
+  activityBarZoneRef.current?.focus("forward");
+});
 ```
 
-**Why this works for NVDA:** NVDA automatically switches from browse mode to focus/application mode when an interactive element (button) receives programmatic focus. No NVDA-specific API is required.
+**Partial-failure behavior:** `Promise.all` short-circuits on the first rejection, so the `catch` runs and then `finally` still executes. This is acceptable — the ActivityBar is always mounted and its ref is always non-null, so focus is set regardless of whether data fetches succeeded or partially failed. The window always appears.
 
-**Timing:** `finally` runs after all data fetches resolve or reject, after the window is made visible — the ActivityBar is always mounted, so the ref is guaranteed non-null.
+**Why this works for NVDA:** NVDA automatically switches from browse mode to focus/application mode when an interactive element (button) receives programmatic focus. No NVDA-specific API is required.
 
 ### 2. Bidirectional Arrow Navigation (`useRovingFocus.ts`)
 
