@@ -85,7 +85,8 @@ Each navigation button changes from a flat icon+text layout to an icon-box+label
 | Button (disabled) | `cursor-not-allowed text-slate-600 border-transparent` |
 | Button (hover, inactive) | `hover:bg-white/[.05] hover:border-slate-600/50 hover:text-slate-200` |
 | Icon box (base) | `relative flex items-center justify-center w-[42px] h-[42px] flex-none rounded-[14px] bg-white/[.04] text-slate-400` |
-| Icon box (active) | `bg-white/[.08]` |
+| Icon box (active) | `bg-white/[.08] text-sky-300` |
+| Icon box (disabled) | `bg-white/[.02] text-slate-600 forced-colors:text-[GrayText]` — color does **not** inherit automatically from the button because icon box is a sibling span; class must be applied conditionally based on `sec.disabled` |
 | focus-visible | `focus-visible:ring-2 focus-visible:ring-blue-400` |
 | forced-colors active | existing `forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]` patterns preserved |
 
@@ -143,6 +144,8 @@ The Settings button currently has `aria-label={m.settings_title()}`. After the r
 - [ ] Icon appears inside rounded square box for all buttons
 - [ ] Profile card has avatar box (blue-tinted) + profile name + active profile name
 - [ ] Windows High Contrast mode: forced-colors classes render correctly (Highlight, HighlightText, GrayText)
+- [ ] Disabled sections (schedule, songs) render with muted icon box and muted text in both normal and forced-colors modes
+- [ ] `getCurrentWindow().show()` failure: log error, window stays hidden — focus call is skipped naturally since the promise rejects; no separate error handling needed
 
 ## Out of Scope
 
