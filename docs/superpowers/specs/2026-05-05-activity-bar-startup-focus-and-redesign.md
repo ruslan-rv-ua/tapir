@@ -32,15 +32,19 @@ Three independent improvements to the ActivityBar:
 
 In the `useEffect` that loads initial data, the `finally` block currently calls `getCurrentWindow().show()` synchronously (fire-and-forget). `show()` returns a `Promise`, so focus must be called **after** it resolves — otherwise the focus event may fire before the OS window is visible.
 
-Change the `finally` callback to `async` and `await show()` before focusing:
+Change the `finally` callback to chain off `show()` so failure is logged and focus is skipped cleanly:
 
 ```ts
 .catch(console.error)
-.finally(async () => {
-  await getCurrentWindow().show();
-  activityBarZoneRef.current?.focus("forward");
+.finally(() => {
+  getCurrentWindow().show()
+    .then(() => { activityBarZoneRef.current?.focus("forward"); })
+    .catch(console.error);
 });
 ```
+
+- `show()` success → focus is called
+- `show()` failure → error logged via `console.error`, focus skipped
 
 **Partial-failure behavior:** `Promise.all` short-circuits on the first rejection, so the `catch` runs and then `finally` still executes. This is acceptable — the ActivityBar is always mounted and its ref is always non-null, so focus is set regardless of whether data fetches succeeded or partially failed. The window always appears.
 
@@ -82,7 +86,7 @@ Each navigation button changes from a flat icon+text layout to an icon-box+label
 |---------|-----------------|
 | Button (base) | `flex items-center gap-3 w-full min-h-[58px] px-[14px] py-3 rounded-[18px] border border-slate-700/30 bg-white/[.02] text-slate-400 transition-colors outline-none` |
 | Button (active) | `bg-gradient-to-b from-sky-400/[.18] to-blue-700/[.16] border-sky-300/[.28] text-sky-300` |
-| Button (disabled) | `cursor-not-allowed text-slate-600 border-transparent` |
+| Button (disabled) | `cursor-not-allowed text-slate-600 border-transparent forced-colors:text-[GrayText]` |
 | Button (hover, inactive) | `hover:bg-white/[.05] hover:border-slate-600/50 hover:text-slate-200` |
 | Icon box (base) | `relative flex items-center justify-center w-[42px] h-[42px] flex-none rounded-[14px] bg-white/[.04] text-slate-400` |
 | Icon box (active) | `bg-white/[.08] text-sky-300` |
@@ -145,7 +149,8 @@ The Settings button currently has `aria-label={m.settings_title()}`. After the r
 - [ ] Profile card has avatar box (blue-tinted) + profile name + active profile name
 - [ ] Windows High Contrast mode: forced-colors classes render correctly (Highlight, HighlightText, GrayText)
 - [ ] Disabled sections (schedule, songs) render with muted icon box and muted text in both normal and forced-colors modes
-- [ ] `getCurrentWindow().show()` failure: log error, window stays hidden — focus call is skipped naturally since the promise rejects; no separate error handling needed
+- [ ] `getCurrentWindow().show()` failure: error logged via `console.error`, focus skipped; no crash
+- [ ] Profile card is non-focusable (no tabIndex, passive text for screen readers)
 
 ## Out of Scope
 
