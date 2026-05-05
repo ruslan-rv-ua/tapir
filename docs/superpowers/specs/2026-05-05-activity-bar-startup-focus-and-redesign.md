@@ -117,7 +117,7 @@ The profile card changes its avatar from `<User size={16}>` in a plain div to an
 |------|--------|
 | `src/hooks/useRovingFocus.ts` | Add `'both'` to axis union; handle ArrowLeft/ArrowRight when axis is `'both'` |
 | `src/components/layout/ActivityBar.tsx` | New button structure (icon box + label copy); Settings label; profile card redesign; axis `'both'` |
-| `src/App.tsx` | One line: `activityBarZoneRef.current?.focus("forward")` in data-load `finally` |
+| `src/App.tsx` | `finally` callback becomes `async`, `show()` is awaited, then `activityBarZoneRef.current?.focus("forward")` is called |
 
 ---
 
@@ -129,6 +129,20 @@ The profile card changes its avatar from `<User size={16}>` in a plain div to an
 - The Settings button previously relied on `aria-label` for screen reader identification; with visible text added, `aria-label` can be retained as-is (it overrides visible text for AT, but visible text benefits sighted+low-vision users).
 
 ---
+
+## Accessibility Notes — aria-label on Settings Button
+
+The Settings button currently has `aria-label={m.settings_title()}`. After the redesign, the button will also have visible text (same string). Keeping `aria-label` is an **explicit accessibility decision**: React Aria passes `aria-label` through to the DOM, where it takes precedence over visible text for screen readers. Removing it would have no negative effect (visible text + accessible name are identical), but keeping it is harmless and makes intent clear. **Decision: keep `aria-label` as-is.**
+
+## Verification Checklist
+
+- [ ] Window shows, then NVDA announces first ActivityBar button automatically (focus mode active)
+- [ ] ↑/↓ and ←/→ all move focus within ActivityBar items
+- [ ] Settings button shows visible "Налаштування" text alongside icon
+- [ ] Active section button has gradient background + accent border
+- [ ] Icon appears inside rounded square box for all buttons
+- [ ] Profile card has avatar box (blue-tinted) + profile name + active profile name
+- [ ] Windows High Contrast mode: forced-colors classes render correctly (Highlight, HighlightText, GrayText)
 
 ## Out of Scope
 
