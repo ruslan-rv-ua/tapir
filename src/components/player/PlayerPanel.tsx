@@ -70,9 +70,7 @@ export const PlayerPanel = forwardRef<
     : "—";
   const bitrateDisplay = currentStream ? formatBitrate(currentStream.bitrate) : "—";
 
-  // Panel 3 data
-  const activeRecordingName =
-    streams.find(s => statuses[s.id]?.state === "recording")?.name ?? "—";
+
 
   const playerRootRef = useRef<HTMLDivElement>(null);
   const playPauseRef = useRef<HTMLButtonElement>(null);
@@ -301,17 +299,10 @@ export const PlayerPanel = forwardRef<
         <h3 aria-hidden="true" className="text-base font-bold text-slate-100">
           {m.player_output()}
         </h3>
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-slate-400">{m.player_active_recording()}</span>
-          <strong className="text-slate-200 truncate ml-2">{activeRecordingName}</strong>
-        </div>
-        <div className="flex items-center justify-between text-xs">
+
+        <div className="flex items-center justify-between text-sm">
           <span className="text-slate-400">{m.player_device()}</span>
           <strong className="text-slate-200 truncate ml-2">{settings?.outputDevice ?? "—"}</strong>
-        </div>
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-slate-400">{m.player_volume()}</span>
-          <strong className="text-slate-200">{`${Math.round(playerStatus.volume * 100)}%`}</strong>
         </div>
         <div ref={volumeWrapperRef} tabIndex={-1} onKeyDown={handleVolumeKeyDown}>
           <VolumeSlider />
