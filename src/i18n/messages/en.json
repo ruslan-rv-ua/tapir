@@ -80,6 +80,7 @@
   "volume": "Volume",
   "playback_position": "Playback position",
   "live_stream": "Live stream",
+  "live_stream_short": "LIVE",
   "time_format_min_sec": "{min} min {sec} sec",
   "player_panel_label": "Player",
   "pause": "Pause",

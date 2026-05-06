@@ -80,6 +80,7 @@
   "volume": "Гучність",
   "playback_position": "Позиція відтворення",
   "live_stream": "Живий потік",
+  "live_stream_short": "LIVE",
   "time_format_min_sec": "{min} хв {sec} с",
   "player_panel_label": "Програвач",
   "pause": "Призупинити",
