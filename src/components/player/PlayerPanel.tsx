@@ -17,6 +17,7 @@ import { useAnnounce } from "../../hooks/useAnnounce";
 import { useRovingFocus } from "../../hooks/useRovingFocus";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import { formatBitrate } from "../../lib/formatters";
+import { LiveBadge } from "./LiveBadge";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 
@@ -217,9 +218,7 @@ export const PlayerPanel = forwardRef<
         <div className="flex items-center gap-2 text-sm text-slate-500 flex-wrap">
           <span>{m.player_listening()}</span>
           <span>{bitrateDisplay}</span>
-          {source?.type === "stream" && (
-            <span className="rounded bg-slate-700 px-1 py-0.5 text-xs">Live</span>
-          )}
+          {source?.type === "stream" && <LiveBadge />}
         </div>
       </article>
 
