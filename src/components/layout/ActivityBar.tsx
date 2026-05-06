@@ -97,7 +97,7 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
               ? "bg-white/[.08] text-sky-300 forced-colors:text-[HighlightText]"
               : sec.disabled
               ? "bg-white/[.02] text-slate-600 forced-colors:text-[GrayText]"
-              : "bg-white/[.04] text-slate-400",
+              : "bg-white/[.04] text-slate-400 hover:text-slate-200",
           ].join(" ")}>
             <sec.Icon size={20} aria-hidden={true} />
           </span>
@@ -119,7 +119,7 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
           onPress={() => $settingsDialogOpen.set(true)}
           className="flex items-center gap-3 w-full min-h-[58px] px-[14px] py-3 rounded-[18px] border border-slate-700/30 bg-white/[.02] text-slate-400 hover:bg-white/[.05] hover:border-slate-600/50 hover:text-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:text-[ButtonText] forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText] transition-colors"
         >
-          <span className="relative flex items-center justify-center w-[42px] h-[42px] flex-none rounded-[14px] bg-white/[.04] text-slate-400">
+          <span className="relative flex items-center justify-center w-[42px] h-[42px] flex-none rounded-[14px] bg-white/[.04] text-slate-400 hover:text-slate-200">
             <Settings size={20} aria-hidden={true} />
           </span>
           <span className="flex flex-col gap-0.5 min-w-0">
