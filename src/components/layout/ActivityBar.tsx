@@ -48,7 +48,7 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
 
   const { onKeyDown, getTabIndex, restoreFocus } = useRovingFocus(
     allRefs,
-    "vertical",
+    "both",
     { mode: "composite-exit", onTabOut: exitZone },
   );
 
@@ -81,16 +81,29 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
             if (sec.disabled) return;
             $activeSection.set(sec.id);
           }}
-          className={`flex w-full items-center gap-3 px-3 py-3 rounded-xl border-l-2 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
+          className={[
+            "flex items-center gap-3 w-full min-h-[58px] px-[14px] py-3 rounded-[18px] border transition-colors outline-none",
+            "focus-visible:ring-2 focus-visible:ring-blue-400",
             activeSection === sec.id
-              ? "border-blue-400 bg-slate-700/60 text-blue-400 forced-colors:bg-[Highlight] forced-colors:text-[HighlightText] forced-colors:border-[Highlight]"
+              ? "bg-gradient-to-b from-sky-400/[.18] to-blue-700/[.16] border-sky-300/[.28] text-sky-300 forced-colors:bg-[Highlight] forced-colors:text-[HighlightText] forced-colors:border-[Highlight]"
               : sec.disabled
-              ? "border-transparent cursor-not-allowed text-slate-600 forced-colors:text-[GrayText]"
-              : "border-transparent text-slate-400 hover:bg-slate-700/40 hover:text-slate-200 forced-colors:text-[ButtonText] forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText]"
-          }`}
+              ? "bg-white/[.02] border-transparent cursor-not-allowed text-slate-600 forced-colors:text-[GrayText]"
+              : "bg-white/[.02] border-slate-700/30 text-slate-400 hover:bg-white/[.05] hover:border-slate-600/50 hover:text-slate-200 forced-colors:text-[ButtonText] forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText]",
+          ].join(" ")}
         >
-          <sec.Icon size={20} aria-hidden={true} />
-          <span className="text-sm">{sec.label()}</span>
+          <span className={[
+            "relative flex items-center justify-center w-[42px] h-[42px] flex-none rounded-[14px]",
+            activeSection === sec.id
+              ? "bg-white/[.08] text-sky-300 forced-colors:text-[HighlightText]"
+              : sec.disabled
+              ? "bg-white/[.02] text-slate-600 forced-colors:text-[GrayText]"
+              : "bg-white/[.04] text-slate-400",
+          ].join(" ")}>
+            <sec.Icon size={20} aria-hidden={true} />
+          </span>
+          <span className="flex flex-col gap-0.5 min-w-0">
+            <span className="text-sm font-bold leading-tight">{sec.label()}</span>
+          </span>
           {sec.disabled && (
             <span id={`nav-${sec.id}-desc`} className="sr-only">
               {m.phase_not_available({ phase: sec.phase ?? "" })}
@@ -98,25 +111,32 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
           )}
         </Button>
       ))}
-      <div className="mt-auto flex flex-col gap-2 px-2">
+      <div className="mt-auto flex flex-col gap-1">
         <Button
           ref={settingsRef}
           aria-label={m.settings_title()}
           {...{ tabIndex: getTabIndex(SECTIONS.length) }}
           onPress={() => $settingsDialogOpen.set(true)}
-          className="flex w-full items-center gap-3 px-3 py-3 rounded-xl border-l-2 border-transparent text-slate-400 hover:bg-slate-700/40 hover:text-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:text-[ButtonText] forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText] transition-colors"
+          className="flex items-center gap-3 w-full min-h-[58px] px-[14px] py-3 rounded-[18px] border border-slate-700/30 bg-white/[.02] text-slate-400 hover:bg-white/[.05] hover:border-slate-600/50 hover:text-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:text-[ButtonText] forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText] transition-colors"
         >
-          <Settings size={20} aria-hidden={true} />
+          <span className="relative flex items-center justify-center w-[42px] h-[42px] flex-none rounded-[14px] bg-white/[.04] text-slate-400">
+            <Settings size={20} aria-hidden={true} />
+          </span>
+          <span className="flex flex-col gap-0.5 min-w-0">
+            <span className="text-sm font-bold leading-tight">{m.settings_title()}</span>
+          </span>
         </Button>
 
         {/* Profile card — not focusable; NVDA reads as passive text */}
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800/50 text-slate-400">
-          <User size={16} aria-hidden={true} className="shrink-0" />
-          <div className="min-w-0">
-            <strong className="block text-xs text-slate-300 truncate">{m.profile_name()}</strong>
-            <span className="block text-xs truncate">
-              {settings?.activeProfile ?? "Default"}
-            </span>
+        <div
+          className="flex items-center gap-3 px-[14px] py-3 rounded-[18px] border border-slate-700/30 bg-white/[.02] text-slate-400"
+        >
+          <span className="flex items-center justify-center w-[42px] h-[42px] flex-none rounded-[14px] bg-sky-400/[.12] text-sky-200">
+            <User size={20} aria-hidden={true} />
+          </span>
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <strong className="text-sm font-bold text-slate-300 truncate leading-tight">{m.profile_name()}</strong>
+            <span className="text-xs text-slate-500 truncate">{settings?.activeProfile ?? "Default"}</span>
           </div>
         </div>
       </div>

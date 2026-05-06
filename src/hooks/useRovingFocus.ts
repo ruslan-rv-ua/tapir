@@ -6,7 +6,9 @@ type RovingFocusOptions =
   | { mode: 'mixed-boundary-handoff'; onTabBoundary: (forward: boolean) => void };
 
 /**
- * 1D roving focus for toolbar-like composite zones.
+ * Roving focus for toolbar-like composite zones.
+ * axis: 'horizontal' | 'vertical' — single-axis arrow nav.
+ * axis: 'both' — all four arrow keys active simultaneously (bidirectional).
  *
  * composite-exit mode: Tab at ANY element calls onTabOut and stops propagation.
  * mixed-boundary-handoff mode: Tab only at first/last boundary calls onTabBoundary.
