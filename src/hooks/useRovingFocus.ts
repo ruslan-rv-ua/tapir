@@ -13,7 +13,7 @@ type RovingFocusOptions =
  */
 export function useRovingFocus(
   refs: React.RefObject<HTMLElement | null>[],
-  axis: 'horizontal' | 'vertical',
+  axis: 'horizontal' | 'vertical' | 'both',
   options: RovingFocusOptions,
 ) {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -48,15 +48,22 @@ export function useRovingFocus(
       const count = refs.length;
       if (count === 0) return;
       const idx = activeIndexRef.current;
-      const prevKey = axis === 'horizontal' ? 'ArrowLeft' : 'ArrowUp';
-      const nextKey = axis === 'horizontal' ? 'ArrowRight' : 'ArrowDown';
 
-      if (e.key === prevKey) {
+      const isPrev =
+        (axis === 'vertical' && e.key === 'ArrowUp') ||
+        (axis === 'horizontal' && e.key === 'ArrowLeft') ||
+        (axis === 'both' && (e.key === 'ArrowUp' || e.key === 'ArrowLeft'));
+      const isNext =
+        (axis === 'vertical' && e.key === 'ArrowDown') ||
+        (axis === 'horizontal' && e.key === 'ArrowRight') ||
+        (axis === 'both' && (e.key === 'ArrowDown' || e.key === 'ArrowRight'));
+
+      if (isPrev) {
         e.preventDefault();
         moveTo(idx - 1);
         return;
       }
-      if (e.key === nextKey) {
+      if (isNext) {
         e.preventDefault();
         moveTo(idx + 1);
         return;
