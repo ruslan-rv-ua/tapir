@@ -96,7 +96,9 @@ function AppContent() {
         $playerStatus.set(status);
       }),
     ]).catch(console.error).finally(() => {
-      getCurrentWindow().show();
+      getCurrentWindow().show()
+        .then(() => { activityBarZoneRef.current?.focus("forward"); })
+        .catch(console.error);
     });
   }, []);
 
