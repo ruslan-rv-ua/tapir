@@ -38,9 +38,14 @@ export function PlaybackPosition() {
         className="flex items-center gap-2 flex-1"
       >
         <SliderTrack className="relative h-2 w-full rounded bg-slate-600 forced-colors:bg-[Canvas] forced-colors:border forced-colors:border-[ButtonText]">
+          <div
+            className="absolute inset-y-0 left-0 rounded-full bg-blue-400 pointer-events-none forced-colors:bg-[Highlight]"
+            style={{ width: `${Math.min((pos / dur) * 100, 100)}%` }}
+            aria-hidden="true"
+          />
           <SliderThumb
             aria-valuetext={formatTime(pos)}
-            className="w-3 h-3 rounded-full bg-white top-1/2 -translate-y-1/2 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1 forced-colors:bg-[ButtonText]"
+            className="w-3 h-3 rounded-full bg-white top-1/2 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1 forced-colors:bg-[ButtonText]"
           />
         </SliderTrack>
       </Slider>

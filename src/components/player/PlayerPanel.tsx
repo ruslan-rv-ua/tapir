@@ -289,7 +289,7 @@ export const PlayerPanel = forwardRef<
           </Button>
         </div>
 
-        <div ref={positionWrapperRef} tabIndex={-1} onKeyDown={handlePositionKeyDown}>
+        <div ref={positionWrapperRef} tabIndex={-1} onKeyDown={handlePositionKeyDown} className="mt-auto">
           <PlaybackPosition />
         </div>
       </article>
@@ -304,7 +304,7 @@ export const PlayerPanel = forwardRef<
           <span className="text-slate-400">{m.player_device()}</span>
           <strong className="text-slate-200 truncate ml-2">{settings?.outputDevice ?? "—"}</strong>
         </div>
-        <div ref={volumeWrapperRef} tabIndex={-1} onKeyDown={handleVolumeKeyDown}>
+        <div ref={volumeWrapperRef} tabIndex={-1} onKeyDown={handleVolumeKeyDown} className="mt-auto">
           <VolumeSlider />
         </div>
       </article>

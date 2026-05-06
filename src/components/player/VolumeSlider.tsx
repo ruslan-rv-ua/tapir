@@ -23,12 +23,17 @@ export function VolumeSlider() {
         setDragPercent(null);
         tauri.setVolume(v / 100).catch(console.error);
       }}
-      className="flex items-center gap-2 w-32"
+      className="flex items-center gap-2 w-full"
     >
       <SliderTrack className="relative h-2 w-full rounded bg-slate-600 forced-colors:bg-[Canvas] forced-colors:border forced-colors:border-[ButtonText]">
+        <div
+          className="absolute inset-y-0 left-0 rounded-full bg-white/70 pointer-events-none forced-colors:bg-[ButtonText]"
+          style={{ width: `${percent}%` }}
+          aria-hidden="true"
+        />
         <SliderThumb
           aria-valuetext={`${percent}%`}
-          className="w-3.5 h-3.5 rounded-full bg-white top-1/2 -translate-y-1/2 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1 forced-colors:bg-[ButtonText]"
+          className="w-3.5 h-3.5 rounded-full bg-white top-1/2 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1 forced-colors:bg-[ButtonText]"
         />
       </SliderTrack>
     </Slider>
