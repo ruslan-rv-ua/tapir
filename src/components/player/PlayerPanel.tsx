@@ -227,7 +227,7 @@ export const PlayerPanel = forwardRef<
         <h3 aria-hidden="true" className="text-base font-bold text-slate-100">
           {m.player_controls()}
         </h3>
-        <div role="toolbar" onKeyDown={transportKeyDown} className="flex items-center gap-1">
+        <div role="toolbar" onKeyDown={transportKeyDown} className="flex items-center justify-center gap-2">
           {/* Index 0: Prev (stub) */}
           <Button
             ref={prevRef}
@@ -235,9 +235,9 @@ export const PlayerPanel = forwardRef<
             isDisabled={true}
             // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
             tabIndex={getTabIndex(0)}
-            className="p-1.5 rounded hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-40 forced-colors:disabled:text-[GrayText]"
+            className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText]"
           >
-            <SkipBack aria-hidden={true} size={16} />
+            <SkipBack aria-hidden={true} size={18} />
           </Button>
 
           {/* Index 1: Play/Pause */}
@@ -248,9 +248,9 @@ export const PlayerPanel = forwardRef<
             onPress={handlePlayPause}
             // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
             tabIndex={getTabIndex(1)}
-            className="p-1.5 rounded hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-40 forced-colors:disabled:text-[GrayText]"
+            className="w-[52px] h-[52px] rounded-2xl bg-blue-700 border border-transparent flex items-center justify-center hover:bg-blue-600 focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:bg-[Highlight] forced-colors:text-[HighlightText] forced-colors:disabled:text-[GrayText]"
           >
-            {isPlaying ? <Pause aria-hidden={true} size={16} /> : <Play aria-hidden={true} size={16} />}
+            {isPlaying ? <Pause aria-hidden={true} size={20} /> : <Play aria-hidden={true} size={20} />}
           </Button>
 
           {/* Index 2: Stop */}
@@ -261,9 +261,9 @@ export const PlayerPanel = forwardRef<
             onPress={handleStop}
             // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
             tabIndex={getTabIndex(2)}
-            className="p-1.5 rounded hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-40 forced-colors:disabled:text-[GrayText]"
+            className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText]"
           >
-            <Square aria-hidden={true} size={16} />
+            <Square aria-hidden={true} size={18} />
           </Button>
 
           {/* Index 3: Next (stub) */}
@@ -273,9 +273,9 @@ export const PlayerPanel = forwardRef<
             isDisabled={true}
             // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
             tabIndex={getTabIndex(3)}
-            className="p-1.5 rounded hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-40 forced-colors:disabled:text-[GrayText]"
+            className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText]"
           >
-            <SkipForward aria-hidden={true} size={16} />
+            <SkipForward aria-hidden={true} size={18} />
           </Button>
 
           {/* Index 4: Mute (stub) */}
@@ -285,9 +285,9 @@ export const PlayerPanel = forwardRef<
             isDisabled={true}
             // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
             tabIndex={getTabIndex(4)}
-            className="p-1.5 rounded hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-40 forced-colors:disabled:text-[GrayText]"
+            className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText]"
           >
-            <VolumeX aria-hidden={true} size={16} />
+            <VolumeX aria-hidden={true} size={18} />
           </Button>
         </div>
 
