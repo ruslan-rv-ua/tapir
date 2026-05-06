@@ -209,12 +209,12 @@ export const PlayerPanel = forwardRef<
     >
       {/* ── Panel 1: Зараз грає ── */}
       <article aria-label={m.player_now_playing()} className="rounded-[20px] bg-white/[0.04] border border-white/[0.06] p-4 flex flex-col gap-2 min-w-0">
-        <h3 aria-hidden="true" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <h3 aria-hidden="true" className="text-base font-bold text-slate-100">
           {m.player_now_playing()}
         </h3>
-        <p className="text-sm text-slate-200 truncate">{sourceLabel}</p>
-        <p className="text-xs text-slate-400 truncate">{trackDisplay}</p>
-        <div className="flex items-center gap-2 text-xs text-slate-500">
+        <p className="text-base font-bold text-slate-100 truncate">{sourceLabel}</p>
+        <p className="text-sm text-slate-400 truncate">{trackDisplay}</p>
+        <div className="flex items-center gap-2 text-sm text-slate-500 flex-wrap">
           <span>{m.player_listening()}</span>
           <span>{bitrateDisplay}</span>
           {source?.type === "stream" && (
@@ -225,7 +225,7 @@ export const PlayerPanel = forwardRef<
 
       {/* ── Panel 2: Керування ── */}
       <article aria-label={m.player_controls()} className="rounded-[20px] bg-white/[0.04] border border-white/[0.06] p-4 flex flex-col gap-2 min-w-0">
-        <h3 aria-hidden="true" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <h3 aria-hidden="true" className="text-base font-bold text-slate-100">
           {m.player_controls()}
         </h3>
         <div role="toolbar" onKeyDown={transportKeyDown} className="flex items-center gap-1">
@@ -299,7 +299,7 @@ export const PlayerPanel = forwardRef<
 
       {/* ── Panel 3: Вивід ── */}
       <article aria-label={m.player_output()} className="rounded-[20px] bg-white/[0.04] border border-white/[0.06] p-4 flex flex-col gap-2 min-w-0">
-        <h3 aria-hidden="true" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <h3 aria-hidden="true" className="text-base font-bold text-slate-100">
           {m.player_output()}
         </h3>
         <div className="flex items-center justify-between text-xs">
