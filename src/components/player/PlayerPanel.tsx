@@ -205,10 +205,10 @@ export const PlayerPanel = forwardRef<
       role="complementary"
       aria-label={m.player_panel_label()}
       data-zone-id="player"
-      className="grid grid-cols-3 gap-4 px-4 py-2 bg-slate-900 border-t border-slate-700 shrink-0 forced-colors:border-[ButtonText]"
+      className="grid grid-cols-[1.15fr_1.2fr_minmax(200px,0.85fr)] gap-4 px-6 py-4 bg-gradient-to-b from-white/[0.03] to-white/[0.01] border-t border-white/[0.08] shrink-0 forced-colors:border-[ButtonText]"
     >
       {/* ── Panel 1: Зараз грає ── */}
-      <article aria-label={m.player_now_playing()} className="flex flex-col gap-1 min-w-0">
+      <article aria-label={m.player_now_playing()} className="rounded-[20px] bg-white/[0.04] border border-white/[0.06] p-4 flex flex-col gap-2 min-w-0">
         <h3 aria-hidden="true" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
           {m.player_now_playing()}
         </h3>
@@ -224,7 +224,7 @@ export const PlayerPanel = forwardRef<
       </article>
 
       {/* ── Panel 2: Керування ── */}
-      <article aria-label={m.player_controls()} className="flex flex-col gap-2 min-w-0">
+      <article aria-label={m.player_controls()} className="rounded-[20px] bg-white/[0.04] border border-white/[0.06] p-4 flex flex-col gap-2 min-w-0">
         <h3 aria-hidden="true" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
           {m.player_controls()}
         </h3>
@@ -298,7 +298,7 @@ export const PlayerPanel = forwardRef<
       </article>
 
       {/* ── Panel 3: Вивід ── */}
-      <article aria-label={m.player_output()} className="flex flex-col gap-1.5 min-w-0">
+      <article aria-label={m.player_output()} className="rounded-[20px] bg-white/[0.04] border border-white/[0.06] p-4 flex flex-col gap-2 min-w-0">
         <h3 aria-hidden="true" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
           {m.player_output()}
         </h3>
