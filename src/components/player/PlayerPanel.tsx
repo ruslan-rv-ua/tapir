@@ -6,9 +6,9 @@ import {
   useCallback,
 } from "react";
 import { Button } from "react-aria-components";
-import { Play, Pause, Square, SkipBack, SkipForward, VolumeX } from "lucide-react";
+import { Play, Pause, Square, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
 import { useStore } from "@nanostores/react";
-import { $playerStatus } from "../../stores/player";
+import { $playerStatus, $muteState } from "../../stores/player";
 import { $streams, $statuses } from "../../stores/streams";
 import { $settings } from "../../stores/settings";
 import { PlaybackPosition } from "./PlaybackPosition";
@@ -50,6 +50,8 @@ export const PlayerPanel = forwardRef<
   const statuses = useStore($statuses);
   const settings = useStore($settings);
   const announce = useAnnounce();
+  const muteState = useStore($muteState);
+  const isMuted = muteState.muted;
   const isPlaying = state === "playing";
   const isPaused = state === "paused";
   const isActive = isPlaying || isPaused;
@@ -72,6 +74,7 @@ export const PlayerPanel = forwardRef<
 
 
 
+  const mutePendingRef = useRef(false);
   const playerRootRef = useRef<HTMLDivElement>(null);
   const playPauseRef = useRef<HTMLButtonElement>(null);
   const stopRef = useRef<HTMLButtonElement>(null);
@@ -173,6 +176,30 @@ export const PlayerPanel = forwardRef<
     [restoreFocusPlayer]
   );
 
+  const handleMute = async () => {
+    if (mutePendingRef.current) return;
+    mutePendingRef.current = true;
+    try {
+      if (!isMuted) {
+        const vol = $playerStatus.get().volume;
+        const savedVolume = vol > 0 ? vol : 0.75;
+        await tauri.setVolume(0);
+        $muteState.set({ muted: true, savedVolume, restoring: false });
+        announce(m.player_mute_action(), "assertive");
+      } else {
+        const { savedVolume } = $muteState.get();
+        await tauri.setVolume(savedVolume);
+        $muteState.set({ muted: false, savedVolume, restoring: false });
+        announce(m.player_unmute_action(), "assertive");
+      }
+    } catch (e) {
+      console.error(e);
+      announce(m.playback_error(), "assertive");
+    } finally {
+      mutePendingRef.current = false;
+    }
+  };
+
   const handlePlayPause = async () => {
     try {
       if (isPlaying) {
@@ -189,11 +216,25 @@ export const PlayerPanel = forwardRef<
   };
 
   const handleStop = async () => {
+    const muteSnapshot = $muteState.get();
     try {
+      if (muteSnapshot.muted) {
+        // Block Case 1 from auto-clearing mute during the stop sequence
+        $muteState.set({ muted: true, savedVolume: muteSnapshot.savedVolume, restoring: true });
+        await tauri.setVolume(muteSnapshot.savedVolume);
+      }
       await tauri.stopPlayback();
-      announce(m.playback_stopped(), "assertive");
+      if (muteSnapshot.muted) {
+        $muteState.set({ muted: false, savedVolume: muteSnapshot.savedVolume, restoring: false });
+      }
+      // No announce — handlePlayerStatus in App.tsx announces playback_stopped
     } catch (e) {
       console.error(e);
+      if (muteSnapshot.muted) {
+        // Re-mute backend so state stays consistent with $muteState (still muted)
+        tauri.setVolume(0).catch(console.error);
+        $muteState.set({ muted: true, savedVolume: muteSnapshot.savedVolume, restoring: false });
+      }
       announce(m.playback_error(), "assertive");
     }
   };
@@ -276,16 +317,18 @@ export const PlayerPanel = forwardRef<
             <SkipForward aria-hidden={true} size={18} />
           </Button>
 
-          {/* Index 4: Mute (stub) */}
+          {/* Index 4: Mute */}
           <Button
             ref={muteRef}
-            aria-label={m.player_mute()}
-            isDisabled={true}
+            aria-label={isMuted ? m.player_unmute_action() : m.player_mute_action()}
+            aria-pressed={isMuted}
+            isDisabled={!isActive}
+            onPress={handleMute}
             // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
             tabIndex={getTabIndex(4)}
-            className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText]"
+            className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 aria-pressed:bg-amber-500/20 aria-pressed:border-amber-400/40 aria-pressed:text-amber-400 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText] forced-colors:aria-pressed:bg-[Highlight] forced-colors:aria-pressed:text-[HighlightText] forced-colors:aria-pressed:border-[Highlight]"
           >
-            <VolumeX aria-hidden={true} size={18} />
+            {isMuted ? <VolumeX aria-hidden={true} size={18} /> : <Volume2 aria-hidden={true} size={18} />}
           </Button>
         </div>
 
