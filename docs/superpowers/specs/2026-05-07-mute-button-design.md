@@ -73,7 +73,7 @@ const handleMute = async () => {
 
 ### Mute State on Playback Stop
 
-**User-initiated stop** (`handleStop` in `PlayerPanel`): if muted, restore volume **before** stopping so the engine is never left at 0:
+**User-initiated stop** (`handleStop` in `PlayerPanel`): if muted, restore volume **before** stopping so the engine is never left at 0. The `playback_stopped` announcement is **not** made here — it comes from `handlePlayerStatus` in `App.tsx` (single source of truth for all playback state announcements):
 
 ```ts
 const handleStop = async () => {
@@ -84,7 +84,7 @@ const handleStop = async () => {
       $muteState.set({ muted: false, savedVolume: muteState.savedVolume });
     }
     await tauri.stopPlayback();
-    announce(m.playback_stopped(), "assertive");
+    // No announce here — handlePlayerStatus announces playback_stopped
   } catch (e) {
     console.error(e);
     announce(m.playback_error(), "assertive");
@@ -94,13 +94,17 @@ const handleStop = async () => {
 
 If `setVolume` fails, the stop is aborted and the error is announced — no silent half-state.
 
-**Unexpected stop** (stream disconnect, file ended — arrives as `player-status { state: "stopped" }` with no user action): `handlePlayerStatus` handles this:
+**Unexpected stop** (stream disconnect, file ended — arrives as `player-status { state: "stopped" }` with no user action): `handlePlayerStatus` handles this. `$muteState` is cleared only after `setVolume` succeeds to prevent the UI/backend desync:
 
 ```ts
 if (payload.state === "stopped" && $muteState.get().muted) {
   const { savedVolume } = $muteState.get();
-  $muteState.set({ muted: false, savedVolume });
-  tauri.setVolume(savedVolume).catch((e) => log.error("mute restore failed", e));
+  tauri.setVolume(savedVolume)
+    .then(() => $muteState.set({ muted: false, savedVolume }))
+    .catch((e) => {
+      console.error("mute restore failed:", e);
+      // $muteState stays muted; user can fix via volume slider
+    });
 }
 ```
 
