@@ -17,7 +17,7 @@ import { useAnnounce } from "./hooks/useAnnounce";
 import { $streams, updateStreamStatus } from "./stores/streams";
 import { $settings } from "./stores/settings";
 import { $settingsDialogOpen } from "./stores/settings";
-import { $playerStatus } from "./stores/player";
+import { $playerStatus, $muteState } from "./stores/player";
 import { $activeSection } from "./stores/navigation";
 import { $commandPaletteOpen } from "./stores/navigation";
 import { addToast } from "./stores/toasts";
@@ -155,8 +155,24 @@ function AppContent() {
   }, []);
 
   const handlePlayerStatus = useCallback((payload: PlayerStatus) => {
+    const prev = $playerStatus.get();
     $playerStatus.set(payload);
-    if (payload.state === "playing") {
+
+    const stateChangedToPlaying = prev.state === "stopped" && payload.state === "playing";
+    const sourceChangedWhilePlaying =
+      payload.state === "playing" &&
+      (prev.source?.type !== payload.source?.type ||
+        (payload.source?.type === "stream" &&
+          prev.source?.type === "stream" &&
+          prev.source.streamId !== payload.source.streamId) ||
+        (payload.source?.type === "file" &&
+          prev.source?.type === "file" &&
+          prev.source.path !== payload.source.path));
+
+    // ── Announce state transitions only ──────────────────────────────────────
+    // Announce playback_started only on stopped→playing or source switch.
+    // Volume-only events (set_volume IPC) and paused→playing are excluded.
+    if (stateChangedToPlaying || sourceChangedWhilePlaying) {
       const src = payload.source;
       if (src?.type === "stream") {
         const name = $streams.get().find(s => s.id === src.streamId)?.name ?? src.streamId;
@@ -165,10 +181,49 @@ function AppContent() {
         const name = src.path.split(/[\\/]/).pop() ?? src.path;
         announceRef.current(m.playback_started({ name }), "assertive");
       }
-    } else if (payload.state === "stopped" && !payload.source) {
-      // Unexpected stop (stream disconnected, file ended naturally).
-      // User-initiated stop is also handled here; PlayerPanel may double-announce briefly.
+    }
+    // Note: paused→playing is announced by handlePlayPause, not here.
+    if (prev.state !== "stopped" && payload.state === "stopped") {
       announceRef.current(m.playback_stopped(), "assertive");
+    }
+
+    // ── Mute state cleanup ───────────────────────────────────────────────────
+    // Case 1: keyboard shortcut raised volume while muted — clear mute UI
+    if ($muteState.get().muted && !$muteState.get().restoring && payload.volume > 0) {
+      const { savedVolume } = $muteState.get();
+      $muteState.set({ muted: false, savedVolume, restoring: false });
+    }
+
+    // Case 2: new source started (stopped→playing or source switch) while muted
+    // Resume (paused→playing) intentionally excluded — user paused while muted, they
+    // expect to stay muted on resume.
+    if ((stateChangedToPlaying || sourceChangedWhilePlaying) && $muteState.get().muted) {
+      const { savedVolume } = $muteState.get();
+      tauri.setVolume(savedVolume)
+        .then(() => $muteState.set({ muted: false, savedVolume, restoring: false }))
+        .catch((e) => {
+          console.error("mute restore failed on new source:", e);
+          $muteState.set({ muted: true, savedVolume, restoring: false });
+        });
+    }
+
+    // Unexpected stop while muted — restore volume.
+    // restoring flag prevents re-entry if setVolume itself emits another stopped event.
+    if (payload.state === "stopped" && $muteState.get().muted && !$muteState.get().restoring) {
+      const { savedVolume } = $muteState.get();
+      $muteState.set({ muted: true, savedVolume, restoring: true });
+      tauri.setVolume(savedVolume)
+        .then(() => {
+          if ($muteState.get().restoring) {
+            $muteState.set({ muted: false, savedVolume, restoring: false });
+          }
+        })
+        .catch((e) => {
+          if ($muteState.get().restoring) {
+            console.error("mute restore failed:", e);
+            $muteState.set({ muted: true, savedVolume, restoring: false });
+          }
+        });
     }
   }, []);
 
