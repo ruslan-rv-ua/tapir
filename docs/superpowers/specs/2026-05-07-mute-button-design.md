@@ -80,12 +80,8 @@ const handleMute = async () => {
 const handleStop = async () => {
   try {
     const muteState = $muteState.get();
-    // Also check mutePendingRef.current: if a mute IPC is in flight, $muteState.muted
-    // may still be false while the backend is being set to 0.
-    const needsRestore = muteState.muted || mutePendingRef.current;
-    if (needsRestore) {
-      const restoreVol = muteState.savedVolume > 0 ? muteState.savedVolume : 0.75;
-      await tauri.setVolume(restoreVol);
+    if (muteState.muted) {
+      await tauri.setVolume(muteState.savedVolume);
       $muteState.set({ muted: false, savedVolume: muteState.savedVolume, restoring: false });
     }
     await tauri.stopPlayback();
@@ -98,6 +94,8 @@ const handleStop = async () => {
 ```
 
 If `setVolume` fails, the stop is aborted and the error is announced — no silent half-state.
+
+> **Known trade-off — rapid mute→stop race:** If Stop is pressed within the ~100ms IPC round-trip of an in-flight `handleMute`, `$muteState.muted` may still be `false` while the backend is being driven to 0. `handleStop` will then skip the restore and the backend may remain at 0 after stop. This window is practically unreachable in real usage. Sequencing the calls correctly would require `handleStop` to await the in-flight mute promise, adding significant complexity that is not justified for this edge case.
 
 **Unexpected stop** (stream disconnect, file ended, context-menu Stop, source switch — any stop NOT initiated by `PlayerPanel.handleStop`): all such stops arrive as `player-status { state: "stopped" }` and are handled by `handlePlayerStatus` in `App.tsx`. The `restoring` flag on `$muteState` prevents re-entry if `setVolume` causes a second `player-status { state: "stopped" }` event before the async restore completes:
 
@@ -145,8 +143,12 @@ When `stateChangedToPlaying || sourceChangedWhilePlaying` AND `$muteState.muted`
 if ((stateChangedToPlaying || sourceChangedWhilePlaying) && $muteState.get().muted) {
   const { savedVolume, restoring } = $muteState.get();
   if (!restoring) {
-    // No restore in flight — call setVolume now (fire-and-forget)
-    tauri.setVolume(savedVolume).catch(console.error);
+    // No restore in flight — call setVolume now
+    tauri.setVolume(savedVolume).catch((e) => {
+      // Restore failed: revert UI to muted so user can see the problem
+      console.error("mute restore failed on new source:", e);
+      $muteState.set({ muted: true, savedVolume, restoring: false });
+    });
   }
   // If restoring === true, the unexpected-stop restore promise is already in flight.
   // Clearing mute state here is sufficient; the .then() callback checks restoring
