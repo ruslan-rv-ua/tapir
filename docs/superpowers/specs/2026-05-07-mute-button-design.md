@@ -25,9 +25,33 @@ export const $muteState = atom<MuteState>({ muted: false, savedVolume: 0.75 });
 
 ### Mute Logic (PlayerPanel)
 
-Handler `handleMute`:
-- **Not muted → mute**: read `$playerStatus.get().volume`; if it is 0, use 0.75 as savedVolume; set `$muteState` to `{ muted: true, savedVolume }`, call `tauri.setVolume(0)`.
-- **Muted → unmute**: read `$muteState.get().savedVolume`, set `$muteState` to `{ muted: false, savedVolume }`, call `tauri.setVolume(savedVolume)`.
+Handler `handleMute` (async, with error handling):
+
+```ts
+const handleMute = async () => {
+  try {
+    if (!isMuted) {
+      const vol = $playerStatus.get().volume;
+      const savedVolume = vol > 0 ? vol : 0.75;
+      await tauri.setVolume(0);                          // IPC first
+      $muteState.set({ muted: true, savedVolume });      // state update only on success
+      announce(m.player_mute_action(), "assertive");
+    } else {
+      const { savedVolume } = $muteState.get();
+      await tauri.setVolume(savedVolume);                // IPC first
+      $muteState.set({ muted: false, savedVolume });     // state update only on success
+      announce(m.player_unmute_action(), "assertive");
+    }
+  } catch (e) {
+    console.error(e);
+    announce(m.playback_error(), "assertive");
+  }
+};
+```
+
+`$muteState` is updated **after** the IPC call succeeds to prevent UI/backend desync on failure.
+
+**Edge case — volume already at 0:** If the user has manually set the slider to 0% before muting, `savedVolume` falls back to `0.75` so that unmuting restores an audible level rather than silence.
 
 ### VolumeSlider
 
@@ -49,64 +73,102 @@ This handles the case where a keyboard shortcut (`volume_up`) raises volume whil
 
 | State | Icon | `aria-pressed` | `aria-label` |
 |-------|------|----------------|--------------|
-| Not muted | `Volume2` | `false` | i18n `player_unmuted` ("Вимкнути звук" / "Mute") |
-| Muted | `VolumeX` | `true` | i18n `player_muted` ("Увімкнути звук" / "Unmute") |
+| Not muted | `Volume2` | `false` | i18n `player_mute_action` ("Вимкнути звук" / "Mute") |
+| Muted | `VolumeX` | `true` | i18n `player_unmute_action` ("Увімкнути звук" / "Unmute") |
 
 - Button is **enabled** only when `isActive` (state is `"playing"` or `"paused"`), consistent with other transport controls.
 - `Volume2` icon is imported from `lucide-react` (already a dependency).
+- `PlayerPanel` derives icon and `aria-pressed` directly from `$muteState.muted`: when `muted === true`, render `VolumeX` with `aria-pressed=true`; otherwise render `Volume2` with `aria-pressed=false`.
 
 ### Accessibility
 
 - `aria-pressed` correctly communicates toggle state to NVDA.
 - `aria-label` changes dynamically so the screen reader announces the current action ("Вимкнути звук" / "Увімкнути звук").
-- After pressing, announce mute/unmute via `useAnnounce` with `"assertive"` priority.
+- After a successful mute, announce `m.player_mute_action()` via `useAnnounce` with `"assertive"` priority.
+- After a successful unmute, announce `m.player_unmute_action()` via `useAnnounce` with `"assertive"` priority.
+- On IPC failure, announce `m.playback_error()` with `"assertive"` priority (consistent with other transport controls).
 
 ### i18n
 
-Add two new keys (replacing the single `player_mute` key that was a combined label):
+Add two new keys (the existing `player_mute` key is **removed**, as the stub button that used it is replaced):
 
 | Key | uk | en |
 |-----|----|----|
 | `player_mute_action` | `"Вимкнути звук"` | `"Mute"` |
 | `player_unmute_action` | `"Увімкнути звук"` | `"Unmute"` |
 
-The existing `player_mute` key (`"Вимкнути/увімкнути звук"`) can be kept for backward compat or removed if unused.
+Note: `volume === 0` set via the volume slider does **not** set `$muteState.muted = true`. The muted flag is only set by pressing the mute button. These are two distinct states.
 
 ## Data Flow
 
 ```
-User presses Mute button
+User presses Mute button (not muted, volume = 75%)
   → handleMute()
-    → $muteState.set({ muted: true, savedVolume: 0.75 })
-    → tauri.setVolume(0)
-      → Rust emits PlayerStatus { volume: 0.0, ... }
-        → handlePlayerStatus: volume == 0 → mute state unchanged ✓
+    → tauri.setVolume(0)           ← IPC first
+      → Rust emits PlayerStatus { state: "playing", volume: 0.0, ... }
+        → handlePlayerStatus: state unchanged ("playing"→"playing") → no announce
           → $playerStatus.set({ volume: 0, ... })
-            → VolumeSlider renders 0%
+    → $muteState.set({ muted: true, savedVolume: 0.75 }) ← state after success
+    → announce("Вимкнути звук", "assertive")
+      → VolumeSlider renders 0%, mute icon = VolumeX, aria-pressed=true ✓
 
-User presses Mute button again (unmute)
+User presses Mute button again (muted)
   → handleMute()
-    → $muteState.set({ muted: false, savedVolume: 0.75 })
-    → tauri.setVolume(0.75)
-      → Rust emits PlayerStatus { volume: 0.75, ... }
-        → handlePlayerStatus: volume > 0 && muted already false → no-op ✓
+    → tauri.setVolume(0.75)        ← IPC first
+      → Rust emits PlayerStatus { state: "playing", volume: 0.75, ... }
+        → handlePlayerStatus: state unchanged ("playing"→"playing") → no announce
           → $playerStatus.set({ volume: 0.75, ... })
-            → VolumeSlider renders 75%
+    → $muteState.set({ muted: false, savedVolume: 0.75 }) ← state after success
+    → announce("Увімкнути звук", "assertive")
+      → VolumeSlider renders 75%, mute icon = Volume2, aria-pressed=false ✓
 
 Keyboard shortcut volume_up while muted
-  → Rust: 0.0 + 0.05 = 0.05 → set_volume(0.05)
-    → Rust emits PlayerStatus { volume: 0.05, ... }
-      → handlePlayerStatus: volume > 0 && muted == true
-        → $muteState.set({ muted: false, savedVolume: 0.75 }) ← auto-clear
-          → VolumeSlider renders 5%, mute icon clears ✓
+  → Rust: 0.0 + 0.05 = 0.05 → emit PlayerStatus { state: "playing", volume: 0.05 }
+    → handlePlayerStatus: volume > 0 && muted == true
+      → $muteState.set({ muted: false, savedVolume: 0.75 }) ← auto-clear (savedVolume preserved)
+        → mute icon = Volume2, aria-pressed=false ✓
 ```
+
+### Double-Announce Prevention
+
+`set_volume` causes the Rust backend to emit `player-status`, which `handlePlayerStatus` currently receives and announces `playback_started` whenever `state === "playing"`. This fires on **every** volume change (slider, keyboard, mute), causing spurious announcements.
+
+**Fix (in scope):** Track previous playback state and source in `handlePlayerStatus`. Only call `announce(playback_started)` when either:
+1. State transitions from non-playing to "playing", **or**
+2. State remains "playing" but the source changes (e.g., user switches stream while playing).
+
+Implementation:
+
+```ts
+const prev = $playerStatus.get();
+$playerStatus.set(payload);
+
+const stateChangedToPlaying = prev.state !== "playing" && payload.state === "playing";
+const sourceChangedWhilePlaying =
+  payload.state === "playing" &&
+  (prev.source?.type !== payload.source?.type ||
+    (payload.source?.type === "stream" &&
+      prev.source?.type === "stream" &&
+      prev.source.streamId !== payload.source.streamId) ||
+    (payload.source?.type === "file" &&
+      prev.source?.type === "file" &&
+      prev.source.path !== payload.source.path));
+
+if (stateChangedToPlaying || sourceChangedWhilePlaying) {
+  // announce playback_started
+}
+```
+
+Volume-only updates (`set_volume` → `player-status` with same state+source) will NOT trigger an announcement.
+
+This fix is included in `src/App.tsx` changes.
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
 | `src/stores/player.ts` | Add `$muteState` atom |
-| `src/App.tsx` | Add mute-state cleanup in `handlePlayerStatus` |
+| `src/App.tsx` | Add mute-state cleanup in `handlePlayerStatus`; fix double-announce (only announce `playback_started` on state transition) |
 | `src/components/player/PlayerPanel.tsx` | Implement `handleMute`, update button props, import `Volume2` |
 | `src/i18n/messages/uk.json` | Add `player_mute_action`, `player_unmute_action` |
 | `src/i18n/messages/en.json` | Add `player_mute_action`, `player_unmute_action` |
