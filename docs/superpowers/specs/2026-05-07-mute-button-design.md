@@ -73,17 +73,38 @@ const handleMute = async () => {
 
 ### Mute State on Playback Stop
 
-When `handlePlayerStatus` receives `state === "stopped"` and `$muteState.get().muted === true`, restore backend volume and clear mute:
+**User-initiated stop** (`handleStop` in `PlayerPanel`): if muted, restore volume **before** stopping so the engine is never left at 0:
+
+```ts
+const handleStop = async () => {
+  try {
+    const muteState = $muteState.get();
+    if (muteState.muted) {
+      await tauri.setVolume(muteState.savedVolume);
+      $muteState.set({ muted: false, savedVolume: muteState.savedVolume });
+    }
+    await tauri.stopPlayback();
+    announce(m.playback_stopped(), "assertive");
+  } catch (e) {
+    console.error(e);
+    announce(m.playback_error(), "assertive");
+  }
+};
+```
+
+If `setVolume` fails, the stop is aborted and the error is announced — no silent half-state.
+
+**Unexpected stop** (stream disconnect, file ended — arrives as `player-status { state: "stopped" }` with no user action): `handlePlayerStatus` handles this:
 
 ```ts
 if (payload.state === "stopped" && $muteState.get().muted) {
   const { savedVolume } = $muteState.get();
   $muteState.set({ muted: false, savedVolume });
-  tauri.setVolume(savedVolume).catch(console.error); // restore engine volume
+  tauri.setVolume(savedVolume).catch((e) => log.error("mute restore failed", e));
 }
 ```
 
-This ensures the engine is not left at 0 when the next playback session starts.
+`setVolume` fires a second `player-status { state: "stopped" }` event. This is harmless because the `playback_stopped` announcement is gated on state transition (see Double-Announce Prevention below) — the second event does not re-announce.
 
 No logic changes. Volume slider always displays `$playerStatus.volume` (the actual backend volume). While muted this value is 0. When the user moves the slider and releases, `onChangeEnd` calls `setVolume(v / 100)`. The backend emits a `PlayerStatus` event with the new volume > 0, which triggers mute-state cleanup in `App.tsx`.
 
@@ -189,7 +210,7 @@ if (stateChangedToPlaying || sourceChangedWhilePlaying) {
 }
 ```
 
-Volume-only updates (`set_volume` → `player-status` with same state+source) will NOT trigger an announcement.
+Volume-only updates (`set_volume` → `player-status` with same state+source) will NOT trigger an announcement. The same state-transition guard is applied to `playback_stopped`: only announce when `previousState !== "stopped" && payload.state === "stopped"`. This prevents the second `player-status` event triggered by mute-restore on unexpected stop from double-announcing.
 
 This fix is included in `src/App.tsx` changes.
 
@@ -198,8 +219,8 @@ This fix is included in `src/App.tsx` changes.
 | File | Change |
 |------|--------|
 | `src/stores/player.ts` | Add `$muteState` atom |
-| `src/App.tsx` | Add mute-state cleanup in `handlePlayerStatus`; fix double-announce (only announce `playback_started` on state transition OR source change while playing); restore volume on stop if muted |
-| `src/components/player/PlayerPanel.tsx` | Implement `handleMute` with in-flight guard, update button props, import `Volume2` |
+| `src/App.tsx` | Add mute-state cleanup in `handlePlayerStatus`; fix double-announce (state-transition guard for both `playback_started` and `playback_stopped`); handle unexpected stop while muted (restore volume) |
+| `src/components/player/PlayerPanel.tsx` | Implement `handleMute` with in-flight guard; update `handleStop` to restore volume if muted; update mute button props; import `Volume2` |
 | `src/i18n/messages/uk.json` | Add `player_mute_action`, `player_unmute_action` |
 | `src/i18n/messages/en.json` | Add `player_mute_action`, `player_unmute_action` |
 
