@@ -78,24 +78,30 @@ const handleMute = async () => {
 
 ```ts
 const handleStop = async () => {
+  const muteState = $muteState.get();
   try {
-    const muteState = $muteState.get();
     if (muteState.muted) {
       await tauri.setVolume(muteState.savedVolume);
-      $muteState.set({ muted: false, savedVolume: muteState.savedVolume, restoring: false });
     }
     await tauri.stopPlayback();
+    // Clear mute only after BOTH operations succeed
+    if (muteState.muted) {
+      $muteState.set({ muted: false, savedVolume: muteState.savedVolume, restoring: false });
+    }
     // No announce here — handlePlayerStatus announces playback_stopped
   } catch (e) {
     console.error(e);
+    // If we were muted, backend volume may have been set to savedVolume before the
+    // failure. Re-mute the backend so it stays consistent with $muteState (still muted).
+    if (muteState.muted) {
+      tauri.setVolume(0).catch(console.error);
+    }
     announce(m.playback_error(), "assertive");
   }
 };
 ```
 
-If `setVolume` fails, the stop is aborted and the error is announced — no silent half-state.
-
-> **Known trade-off — rapid mute→stop race:** If Stop is pressed within the ~100ms IPC round-trip of an in-flight `handleMute`, `$muteState.muted` may still be `false` while the backend is being driven to 0. `handleStop` will then skip the restore and the backend may remain at 0 after stop. This window is practically unreachable in real usage. Sequencing the calls correctly would require `handleStop` to await the in-flight mute promise, adding significant complexity that is not justified for this edge case.
+If `setVolume` fails, the stop is aborted, backend stays at 0, `$muteState` stays muted — no change. If `stopPlayback` fails, the re-mute in the catch block returns the backend to 0 so it matches `$muteState` (still muted). A double failure (re-mute also fails) leaves a backend/UI inconsistency but is accepted as an extreme edge case.
 
 **Unexpected stop** (stream disconnect, file ended, context-menu Stop, source switch — any stop NOT initiated by `PlayerPanel.handleStop`): all such stops arrive as `player-status { state: "stopped" }` and are handled by `handlePlayerStatus` in `App.tsx`. The `restoring` flag on `$muteState` prevents re-entry if `setVolume` causes a second `player-status { state: "stopped" }` event before the async restore completes:
 
