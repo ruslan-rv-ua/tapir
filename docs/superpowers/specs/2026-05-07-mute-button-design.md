@@ -137,7 +137,7 @@ if ($muteState.get().muted && !$muteState.get().restoring && payload.volume > 0)
 ```
 
 **Case 2 — new playback started (source switch or play from stopped) while muted:**
-When `stateChangedToPlaying || sourceChangedWhilePlaying` AND `$muteState.muted`, restore volume and clear mute so the new source plays audibly. The backend does not emit `state: "stopped"` on a source switch — it emits `state: "playing"` directly for the new source, so the unexpected-stop handler would not fire.
+When `stateChangedToPlaying || sourceChangedWhilePlaying` AND `$muteState.muted`, restore volume and clear mute so the new source plays audibly. Resume (`paused → playing`) does **not** trigger this case — if the user paused while muted, they expect to stay muted on resume.
 
 ```ts
 if ((stateChangedToPlaying || sourceChangedWhilePlaying) && $muteState.get().muted) {
@@ -222,8 +222,10 @@ Keyboard shortcut volume_up while muted
 `set_volume` causes the Rust backend to emit `player-status`, which `handlePlayerStatus` currently receives and announces `playback_started` whenever `state === "playing"`. This fires on **every** volume change (slider, keyboard, mute), causing spurious announcements.
 
 **Fix (in scope):** Track previous playback state and source in `handlePlayerStatus`. Only call `announce(playback_started)` when either:
-1. State transitions from non-playing to "playing", **or**
+1. State transitions from **stopped** to "playing" (new source starts), **or**
 2. State remains "playing" but the source changes (e.g., user switches stream while playing).
+
+Resume (`paused → playing`) must NOT trigger `playback_started` — it already has its own `playback_resumed` announcement.
 
 Implementation:
 
@@ -231,7 +233,8 @@ Implementation:
 const prev = $playerStatus.get();
 $playerStatus.set(payload);
 
-const stateChangedToPlaying = prev.state !== "playing" && payload.state === "playing";
+const stateChangedToPlaying = prev.state === "stopped" && payload.state === "playing";
+const resumed = prev.state === "paused" && payload.state === "playing";
 const sourceChangedWhilePlaying =
   payload.state === "playing" &&
   (prev.source?.type !== payload.source?.type ||
@@ -244,6 +247,9 @@ const sourceChangedWhilePlaying =
 
 if (stateChangedToPlaying || sourceChangedWhilePlaying) {
   // announce playback_started
+}
+if (resumed) {
+  // announce playback_resumed (pre-existing behavior, unchanged)
 }
 ```
 
