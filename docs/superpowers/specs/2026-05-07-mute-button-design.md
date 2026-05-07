@@ -116,16 +116,28 @@ No logic changes. Volume slider always displays `$playerStatus.volume` (the actu
 
 ### Mute-State Cleanup in App.tsx
 
-In `handlePlayerStatus`, add:
+`handlePlayerStatus` handles two mute-clearing cases:
 
+**Case 1 — keyboard shortcut raised volume while muted:**
 ```ts
-if ($muteState.get().muted && payload.volume > 0) {
+if ($muteState.get().muted && !$muteState.get().restoring && payload.volume > 0) {
   const { savedVolume } = $muteState.get();
   $muteState.set({ muted: false, savedVolume, restoring: false });
 }
 ```
 
-This handles the case where a keyboard shortcut (`volume_up`) raises volume while muted, automatically clearing mute state.
+**Case 2 — new playback started (source switch or play from stopped) while muted:**
+When `stateChangedToPlaying || sourceChangedWhilePlaying` AND `$muteState.muted`, restore volume and clear mute so the new source plays audibly. The backend does not emit `state: "stopped"` on a source switch — it emits `state: "playing"` directly for the new source, so the unexpected-stop handler would not fire.
+
+```ts
+if ((stateChangedToPlaying || sourceChangedWhilePlaying) && $muteState.get().muted) {
+  const { savedVolume } = $muteState.get();
+  tauri.setVolume(savedVolume).catch(console.error);
+  $muteState.set({ muted: false, savedVolume, restoring: false });
+}
+```
+
+Note: `setVolume` is fire-and-forget here because the announcement and state update happen in the `playback_started` path immediately after — a small window of volume=0 on the backend is acceptable and will self-correct on the next status event.
 
 ### Button Appearance
 
@@ -166,7 +178,7 @@ User presses Mute button (not muted, volume = 75%)
       → Rust emits PlayerStatus { state: "playing", volume: 0.0, ... }
         → handlePlayerStatus: state unchanged ("playing"→"playing") → no announce
           → $playerStatus.set({ volume: 0, ... })
-    → $muteState.set({ muted: true, savedVolume: 0.75 }) ← state after success
+    → $muteState.set({ muted: true, savedVolume: 0.75, restoring: false }) ← state after success
     → announce("Вимкнути звук", "assertive")
       → VolumeSlider renders 0%, mute icon = VolumeX, aria-pressed=true ✓
 
@@ -176,7 +188,7 @@ User presses Mute button again (muted)
       → Rust emits PlayerStatus { state: "playing", volume: 0.75, ... }
         → handlePlayerStatus: state unchanged ("playing"→"playing") → no announce
           → $playerStatus.set({ volume: 0.75, ... })
-    → $muteState.set({ muted: false, savedVolume: 0.75 }) ← state after success
+    → $muteState.set({ muted: false, savedVolume: 0.75, restoring: false }) ← state after success
     → announce("Увімкнути звук", "assertive")
       → VolumeSlider renders 75%, mute icon = Volume2, aria-pressed=false ✓
 
