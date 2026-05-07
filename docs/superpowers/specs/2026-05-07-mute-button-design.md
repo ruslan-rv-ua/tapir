@@ -80,8 +80,12 @@ const handleMute = async () => {
 const handleStop = async () => {
   try {
     const muteState = $muteState.get();
-    if (muteState.muted) {
-      await tauri.setVolume(muteState.savedVolume);
+    // Also check mutePendingRef.current: if a mute IPC is in flight, $muteState.muted
+    // may still be false while the backend is being set to 0.
+    const needsRestore = muteState.muted || mutePendingRef.current;
+    if (needsRestore) {
+      const restoreVol = muteState.savedVolume > 0 ? muteState.savedVolume : 0.75;
+      await tauri.setVolume(restoreVol);
       $muteState.set({ muted: false, savedVolume: muteState.savedVolume, restoring: false });
     }
     await tauri.stopPlayback();
@@ -102,10 +106,18 @@ if (payload.state === "stopped" && $muteState.get().muted && !$muteState.get().r
   const { savedVolume } = $muteState.get();
   $muteState.set({ muted: true, savedVolume, restoring: true });  // mark in-flight
   tauri.setVolume(savedVolume)
-    .then(() => $muteState.set({ muted: false, savedVolume, restoring: false }))
+    .then(() => {
+      // Guard: Case 2 may have already cleared mute state if new playback started
+      // before this promise settled. Only update if still restoring.
+      if ($muteState.get().restoring) {
+        $muteState.set({ muted: false, savedVolume, restoring: false });
+      }
+    })
     .catch((e) => {
-      console.error("mute restore failed:", e);
-      $muteState.set({ muted: true, savedVolume, restoring: false }); // stay muted; user can fix via slider
+      if ($muteState.get().restoring) {
+        console.error("mute restore failed:", e);
+        $muteState.set({ muted: true, savedVolume, restoring: false }); // stay muted; user can fix via slider
+      }
     });
 }
 ```
@@ -131,13 +143,17 @@ When `stateChangedToPlaying || sourceChangedWhilePlaying` AND `$muteState.muted`
 
 ```ts
 if ((stateChangedToPlaying || sourceChangedWhilePlaying) && $muteState.get().muted) {
-  const { savedVolume } = $muteState.get();
-  tauri.setVolume(savedVolume).catch(console.error);
+  const { savedVolume, restoring } = $muteState.get();
+  if (!restoring) {
+    // No restore in flight — call setVolume now (fire-and-forget)
+    tauri.setVolume(savedVolume).catch(console.error);
+  }
+  // If restoring === true, the unexpected-stop restore promise is already in flight.
+  // Clearing mute state here is sufficient; the .then() callback checks restoring
+  // before updating, so it will no-op after this clear.
   $muteState.set({ muted: false, savedVolume, restoring: false });
 }
 ```
-
-Note: `setVolume` is fire-and-forget here because the announcement and state update happen in the `playback_started` path immediately after — a small window of volume=0 on the backend is acceptable and will self-correct on the next status event.
 
 ### Button Appearance
 
@@ -195,7 +211,7 @@ User presses Mute button again (muted)
 Keyboard shortcut volume_up while muted
   → Rust: 0.0 + 0.05 = 0.05 → emit PlayerStatus { state: "playing", volume: 0.05 }
     → handlePlayerStatus: volume > 0 && muted == true
-      → $muteState.set({ muted: false, savedVolume: 0.75 }) ← auto-clear (savedVolume preserved)
+      → $muteState.set({ muted: false, savedVolume: 0.75, restoring: false }) ← auto-clear (savedVolume preserved)
         → mute icon = Volume2, aria-pressed=false ✓
 ```
 
