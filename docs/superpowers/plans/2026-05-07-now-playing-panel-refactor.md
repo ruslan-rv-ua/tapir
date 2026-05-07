@@ -182,11 +182,12 @@ const trackDisplay = source?.type === "stream"
         <h3 aria-hidden="true" className="text-base font-bold text-slate-100">
           {m.player_now_playing()}
         </h3>
-        <div aria-live="polite">
-          {!source ? (
-            <p className="text-sm text-slate-500 italic">{m.player_nothing_playing()}</p>
-          ) : (
-            <>
+        {!source ? (
+          <p className="text-sm text-slate-500 italic">{m.player_nothing_playing()}</p>
+        ) : (
+          <>
+            {/* aria-live covers only the dynamically changing track info */}
+            <div aria-live="polite">
               {source.type === "file" ? (
                 <div className="flex items-center gap-2 min-w-0">
                   <p className="text-base font-bold text-slate-100 truncate flex-1 min-w-0">{sourceLabel}</p>
@@ -196,27 +197,28 @@ const trackDisplay = source?.type === "stream"
                 <p className="text-base font-bold text-slate-100 truncate">{sourceLabel}</p>
               )}
               <p className="text-sm text-slate-400 truncate">{trackDisplay}</p>
-              {source.type === "stream" && (
-                <div className="flex items-center gap-2 text-sm text-slate-500 flex-wrap">
-                  <span>{bitrateDisplay}</span>
-                  <LiveBadge />
-                </div>
-              )}
-            </>
-          )}
-        </div>
+            </div>
+            {source.type === "stream" && (
+              <div className="flex items-center gap-2 text-sm text-slate-500 flex-wrap">
+                <span>{bitrateDisplay}</span>
+                <LiveBadge />
+              </div>
+            )}
+          </>
+        )}
       </article>
 ```
 
-- [ ] **Step 4: Перевірити TypeScript — нуль помилок у змінених файлах**
+- [ ] **Step 4: Перевірити TypeScript і Rust компіляцію**
 
 ```powershell
 cd C:\dev\Tapir
 npx @inlang/paraglide-js compile --project ./project.inlang --outdir ./src/i18n/paraglide
 npx tsc --noEmit 2>&1
+cargo check --manifest-path src-tauri/Cargo.toml 2>&1 | Select-String "error"
 ```
 
-Очікувано: або 0 помилок, або лише **вже існуючі** помилки пов'язані з Paraglide (вони pre-existing, не наші).
+Очікувано: `tsc` — або 0 помилок, або лише pre-existing Paraglide помилки (не наші). `cargo check` — 0 рядків з "error".
 
 - [ ] **Step 5: Запустити `just dev` і перевірити вручну**
 
@@ -228,6 +230,7 @@ just dev
 - [ ] Нічого не грає → панель показує «Нічого не грає» (italic, сірий)
 - [ ] Грає стрім → назва станції, трек, бітрейт, [LIVE] — без «Прослуховування»
 - [ ] Грає стрім без треку → «—» у рядку трека
+- [ ] Призупинено (paused) → панель показує повну інформацію (source ≠ null)
 - [ ] Грає файл → назва файлу + бейдж «Запис», порожній рядок трека, без meta-рядка
 - [ ] При зміні треку NVDA оголошує нову назву
 - [ ] Розмітка не стрибає при зміні станів
