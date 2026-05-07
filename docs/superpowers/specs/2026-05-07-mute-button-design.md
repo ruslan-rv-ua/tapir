@@ -53,7 +53,37 @@ const handleMute = async () => {
 
 **Edge case — volume already at 0:** If the user has manually set the slider to 0% before muting, `savedVolume` falls back to `0.75` so that unmuting restores an audible level rather than silence.
 
-### VolumeSlider
+### In-Flight Protection
+
+`handleMute` uses a `pendingRef = useRef(false)` guard to prevent concurrent IPC calls on rapid double-presses:
+
+```ts
+const mutePendingRef = useRef(false);
+
+const handleMute = async () => {
+  if (mutePendingRef.current) return;
+  mutePendingRef.current = true;
+  try {
+    // ... mute/unmute logic
+  } finally {
+    mutePendingRef.current = false;
+  }
+};
+```
+
+### Mute State on Playback Stop
+
+When `handlePlayerStatus` receives `state === "stopped"` and `$muteState.get().muted === true`, restore backend volume and clear mute:
+
+```ts
+if (payload.state === "stopped" && $muteState.get().muted) {
+  const { savedVolume } = $muteState.get();
+  $muteState.set({ muted: false, savedVolume });
+  tauri.setVolume(savedVolume).catch(console.error); // restore engine volume
+}
+```
+
+This ensures the engine is not left at 0 when the next playback session starts.
 
 No logic changes. Volume slider always displays `$playerStatus.volume` (the actual backend volume). While muted this value is 0. When the user moves the slider and releases, `onChangeEnd` calls `setVolume(v / 100)`. The backend emits a `PlayerStatus` event with the new volume > 0, which triggers mute-state cleanup in `App.tsx`.
 
@@ -168,10 +198,12 @@ This fix is included in `src/App.tsx` changes.
 | File | Change |
 |------|--------|
 | `src/stores/player.ts` | Add `$muteState` atom |
-| `src/App.tsx` | Add mute-state cleanup in `handlePlayerStatus`; fix double-announce (only announce `playback_started` on state transition) |
-| `src/components/player/PlayerPanel.tsx` | Implement `handleMute`, update button props, import `Volume2` |
+| `src/App.tsx` | Add mute-state cleanup in `handlePlayerStatus`; fix double-announce (only announce `playback_started` on state transition OR source change while playing); restore volume on stop if muted |
+| `src/components/player/PlayerPanel.tsx` | Implement `handleMute` with in-flight guard, update button props, import `Volume2` |
 | `src/i18n/messages/uk.json` | Add `player_mute_action`, `player_unmute_action` |
 | `src/i18n/messages/en.json` | Add `player_mute_action`, `player_unmute_action` |
+
+> **Note:** After editing i18n JSON files, run `pnpm run build` (or the Paraglide compile step) to regenerate `src/i18n/paraglide/messages.js` before using the new keys in components.
 
 ## Out of Scope
 
