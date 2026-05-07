@@ -18,6 +18,7 @@ import { useRovingFocus } from "../../hooks/useRovingFocus";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import { formatBitrate } from "../../lib/formatters";
 import { LiveBadge } from "./LiveBadge";
+import { RecordingBadge } from "./RecordingBadge";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 
@@ -65,11 +66,10 @@ export const PlayerPanel = forwardRef<
     ? statuses[source.streamId]
     : null;
   const currentTrack = currentStreamStatus?.currentTrack;
+  // For files: empty string — reserved for future ID3 metadata tags
   const trackDisplay = source?.type === "stream"
     ? (currentTrack ? `${currentTrack.artist} — ${currentTrack.title}` : "—")
-    : source?.type === "file"
-    ? (source.path.split(/[\\/]/).pop() ?? "—")
-    : "—";
+    : "";
   const bitrateDisplay = currentStream ? formatBitrate(currentStream.bitrate) : "—";
 
 
@@ -248,17 +248,34 @@ export const PlayerPanel = forwardRef<
       className="grid grid-cols-[1.15fr_1.2fr_minmax(200px,0.85fr)] gap-4 px-6 py-4 bg-gradient-to-b from-white/[0.03] to-white/[0.01] border-t border-white/[0.08] shrink-0 forced-colors:border-[ButtonText]"
     >
       {/* ── Panel 1: Зараз грає ── */}
-      <article aria-label={m.player_now_playing()} className="rounded-[20px] bg-white/[0.04] border border-white/[0.06] p-4 flex flex-col gap-2 min-w-0">
+      <article aria-label={m.player_now_playing()} className="rounded-[20px] bg-white/[0.04] border border-white/[0.06] p-4 flex flex-col gap-2 min-w-0 min-h-[130px]">
         <h3 aria-hidden="true" className="text-base font-bold text-slate-100">
           {m.player_now_playing()}
         </h3>
-        <p className="text-base font-bold text-slate-100 truncate">{sourceLabel}</p>
-        <p className="text-sm text-slate-400 truncate">{trackDisplay}</p>
-        <div className="flex items-center gap-2 text-sm text-slate-500 flex-wrap">
-          <span>{m.player_listening()}</span>
-          <span>{bitrateDisplay}</span>
-          {source?.type === "stream" && <LiveBadge />}
-        </div>
+        {!source ? (
+          <p className="text-sm text-slate-500 italic">{m.player_nothing_playing()}</p>
+        ) : (
+          <>
+            {/* aria-live covers only the dynamically changing track info */}
+            <div aria-live="polite">
+              {source.type === "file" ? (
+                <div className="flex items-center gap-2 min-w-0">
+                  <p className="text-base font-bold text-slate-100 truncate flex-1 min-w-0">{sourceLabel}</p>
+                  <RecordingBadge />
+                </div>
+              ) : (
+                <p className="text-base font-bold text-slate-100 truncate">{sourceLabel}</p>
+              )}
+              <p className="text-sm text-slate-400 truncate">{trackDisplay}</p>
+            </div>
+            {source.type === "stream" && (
+              <div className="flex items-center gap-2 text-sm text-slate-500 flex-wrap">
+                <span>{bitrateDisplay}</span>
+                <LiveBadge />
+              </div>
+            )}
+          </>
+        )}
       </article>
 
       {/* ── Panel 2: Керування ── */}
