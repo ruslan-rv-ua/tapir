@@ -35,12 +35,12 @@ const handleMute = async () => {
       const vol = $playerStatus.get().volume;
       const savedVolume = vol > 0 ? vol : 0.75;
       await tauri.setVolume(0);                          // IPC first
-      $muteState.set({ muted: true, savedVolume });      // state update only on success
+      $muteState.set({ muted: true, savedVolume, restoring: false });      // state update only on success
       announce(m.player_mute_action(), "assertive");
     } else {
       const { savedVolume } = $muteState.get();
       await tauri.setVolume(savedVolume);                // IPC first
-      $muteState.set({ muted: false, savedVolume });     // state update only on success
+      $muteState.set({ muted: false, savedVolume, restoring: false });     // state update only on success
       announce(m.player_unmute_action(), "assertive");
     }
   } catch (e) {
@@ -82,7 +82,7 @@ const handleStop = async () => {
     const muteState = $muteState.get();
     if (muteState.muted) {
       await tauri.setVolume(muteState.savedVolume);
-      $muteState.set({ muted: false, savedVolume: muteState.savedVolume });
+      $muteState.set({ muted: false, savedVolume: muteState.savedVolume, restoring: false });
     }
     await tauri.stopPlayback();
     // No announce here — handlePlayerStatus announces playback_stopped
@@ -120,7 +120,8 @@ In `handlePlayerStatus`, add:
 
 ```ts
 if ($muteState.get().muted && payload.volume > 0) {
-  $muteState.set({ ...$muteState.get(), muted: false });
+  const { savedVolume } = $muteState.get();
+  $muteState.set({ muted: false, savedVolume, restoring: false });
 }
 ```
 
