@@ -232,5 +232,6 @@
   "player_device": "Device",
   "player_volume": "Volume",
   "commands_label": "Commands",
-  "player_listening": "Listening"
+  "player_nothing_playing": "Nothing playing",
+  "player_recording_badge": "Recording"
 }

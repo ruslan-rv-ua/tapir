@@ -232,5 +232,6 @@
   "player_device": "Пристрій",
   "player_volume": "Гучність",
   "commands_label": "Команди",
-  "player_listening": "Прослуховування"
+  "player_nothing_playing": "Нічого не грає",
+  "player_recording_badge": "Запис"
 }
