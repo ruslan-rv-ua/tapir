@@ -227,6 +227,8 @@
   "player_prev": "Попередній потік",
   "player_next": "Наступний потік",
   "player_mute": "Вимкнути/увімкнути звук",
+  "player_mute_action": "Вимкнути звук",
+  "player_unmute_action": "Увімкнути звук",
   "player_active_recording": "Активний запис",
   "player_device": "Пристрій",
   "player_volume": "Гучність",
