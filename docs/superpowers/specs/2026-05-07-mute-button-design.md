@@ -81,6 +81,9 @@ const handleStop = async () => {
   const muteState = $muteState.get();
   try {
     if (muteState.muted) {
+      // Set restoring=true BEFORE setVolume so that the player-status { volume > 0 }
+      // event it emits does not trigger Case 1 and auto-clear mute prematurely.
+      $muteState.set({ muted: true, savedVolume: muteState.savedVolume, restoring: true });
       await tauri.setVolume(muteState.savedVolume);
     }
     await tauri.stopPlayback();
@@ -92,16 +95,17 @@ const handleStop = async () => {
   } catch (e) {
     console.error(e);
     // If we were muted, backend volume may have been set to savedVolume before the
-    // failure. Re-mute the backend so it stays consistent with $muteState (still muted).
+    // failure. Re-mute the backend so it stays consistent with $muteState (back to muted).
     if (muteState.muted) {
       tauri.setVolume(0).catch(console.error);
+      $muteState.set({ muted: true, savedVolume: muteState.savedVolume, restoring: false });
     }
     announce(m.playback_error(), "assertive");
   }
 };
 ```
 
-If `setVolume` fails, the stop is aborted, backend stays at 0, `$muteState` stays muted — no change. If `stopPlayback` fails, the re-mute in the catch block returns the backend to 0 so it matches `$muteState` (still muted). A double failure (re-mute also fails) leaves a backend/UI inconsistency but is accepted as an extreme edge case.
+`restoring: true` blocks Case 1 for the duration of the stop sequence. On any failure, `$muteState` is explicitly reset to `{ muted: true, restoring: false }` alongside the re-mute IPC.
 
 **Unexpected stop** (stream disconnect, file ended, context-menu Stop, source switch — any stop NOT initiated by `PlayerPanel.handleStop`): all such stops arrive as `player-status { state: "stopped" }` and are handled by `handlePlayerStatus` in `App.tsx`. The `restoring` flag on `$muteState` prevents re-entry if `setVolume` causes a second `player-status { state: "stopped" }` event before the async restore completes:
 
@@ -147,19 +151,16 @@ When `stateChangedToPlaying || sourceChangedWhilePlaying` AND `$muteState.muted`
 
 ```ts
 if ((stateChangedToPlaying || sourceChangedWhilePlaying) && $muteState.get().muted) {
-  const { savedVolume, restoring } = $muteState.get();
-  if (!restoring) {
-    // No restore in flight — call setVolume now
-    tauri.setVolume(savedVolume).catch((e) => {
-      // Restore failed: revert UI to muted so user can see the problem
+  const { savedVolume } = $muteState.get();
+  // Always call setVolume — even if a restore is already in-flight (restoring=true).
+  // The two calls are idempotent (same target volume). State is updated only when
+  // this call settles, so no UI/backend desync on failure.
+  tauri.setVolume(savedVolume)
+    .then(() => $muteState.set({ muted: false, savedVolume, restoring: false }))
+    .catch((e) => {
       console.error("mute restore failed on new source:", e);
       $muteState.set({ muted: true, savedVolume, restoring: false });
     });
-  }
-  // If restoring === true, the unexpected-stop restore promise is already in flight.
-  // Clearing mute state here is sufficient; the .then() callback checks restoring
-  // before updating, so it will no-op after this clear.
-  $muteState.set({ muted: false, savedVolume, restoring: false });
 }
 ```
 
