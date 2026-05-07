@@ -17,10 +17,11 @@ Added to `src/stores/player.ts`:
 ```ts
 interface MuteState {
   muted: boolean;
-  savedVolume: number; // the volume to restore on unmute (0.0–1.0)
+  savedVolume: number;  // the volume to restore on unmute (0.0–1.0)
+  restoring: boolean;   // true while setVolume is in-flight during unexpected-stop restore
 }
 
-export const $muteState = atom<MuteState>({ muted: false, savedVolume: 0.75 });
+export const $muteState = atom<MuteState>({ muted: false, savedVolume: 0.75, restoring: false });
 ```
 
 ### Mute Logic (PlayerPanel)
@@ -94,16 +95,17 @@ const handleStop = async () => {
 
 If `setVolume` fails, the stop is aborted and the error is announced — no silent half-state.
 
-**Unexpected stop** (stream disconnect, file ended — arrives as `player-status { state: "stopped" }` with no user action): `handlePlayerStatus` handles this. `$muteState` is cleared only after `setVolume` succeeds to prevent the UI/backend desync:
+**Unexpected stop** (stream disconnect, file ended, context-menu Stop, source switch — any stop NOT initiated by `PlayerPanel.handleStop`): all such stops arrive as `player-status { state: "stopped" }` and are handled by `handlePlayerStatus` in `App.tsx`. The `restoring` flag on `$muteState` prevents re-entry if `setVolume` causes a second `player-status { state: "stopped" }` event before the async restore completes:
 
 ```ts
-if (payload.state === "stopped" && $muteState.get().muted) {
+if (payload.state === "stopped" && $muteState.get().muted && !$muteState.get().restoring) {
   const { savedVolume } = $muteState.get();
+  $muteState.set({ muted: true, savedVolume, restoring: true });  // mark in-flight
   tauri.setVolume(savedVolume)
-    .then(() => $muteState.set({ muted: false, savedVolume }))
+    .then(() => $muteState.set({ muted: false, savedVolume, restoring: false }))
     .catch((e) => {
       console.error("mute restore failed:", e);
-      // $muteState stays muted; user can fix via volume slider
+      $muteState.set({ muted: true, savedVolume, restoring: false }); // stay muted; user can fix via slider
     });
 }
 ```
