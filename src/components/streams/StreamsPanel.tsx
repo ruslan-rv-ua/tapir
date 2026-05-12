@@ -301,10 +301,10 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
                   tabIndex={toolbarTabIndex(4 + i)}
                   aria-pressed={activeChip === chip.id}
                   onClick={() => setActiveChip(chip.id)}
-                  className={`rounded px-2 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
+                  className={`rounded-full px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
                     activeChip === chip.id
-                      ? "bg-blue-600 text-white forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]"
-                      : "text-slate-400 hover:bg-slate-800 forced-colors:text-[ButtonText] forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText]"
+                      ? "border border-sky-300/[.22] bg-sky-400/[.14] text-slate-100 forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]"
+                      : "border border-slate-700/50 text-slate-400 hover:bg-slate-800 forced-colors:text-[ButtonText] forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText]"
                   }`}
                 >
                   {chip.labelFn()}
