@@ -313,26 +313,32 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
             </div>
           </div>
 
-          {/* ── Column headers (visual only) ── */}
-          <div
-            aria-hidden="true"
-            className="grid border-b border-slate-700 px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-500 forced-colors:border-[ButtonText]"
-            style={{ gridTemplateColumns: "100px 1fr 1.5fr 90px 90px 160px" }}
-          >
-            <span style={{ gridColumn: 1 }}>{m.column_status()}</span>
-            <span style={{ gridColumn: 2 }}>{m.column_station()}</span>
-            <span style={{ gridColumn: 3 }}>{m.column_now_playing()}</span>
-            <span style={{ gridColumn: 4 }}>{m.column_bitrate()}</span>
-            <span style={{ gridColumn: 5 }}>{m.column_duration()}</span>
-            <span style={{ gridColumn: 6 }}>{m.column_actions()}</span>
-          </div>
+          {/* Content pad wrapper */}
+          <div className="flex flex-1 flex-col overflow-hidden px-4 py-3">
+            {/* Rounded card container */}
+            <div className="flex flex-1 flex-col overflow-hidden rounded-[18px] border border-slate-700/60 bg-white/[.02] forced-colors:border-[ButtonText]">
+              {/* ── Column headers (visual only) ── */}
+              <div
+                aria-hidden="true"
+                className="grid border-b border-slate-700 bg-white/[.04] px-3 py-2.5 text-xs font-medium uppercase tracking-wide text-slate-500 forced-colors:border-[ButtonText] forced-colors:bg-[Canvas]"
+                style={{ gridTemplateColumns: "100px 1fr 1.5fr 90px 90px 240px" }}
+              >
+                <span style={{ gridColumn: 1 }}>{m.column_status()}</span>
+                <span style={{ gridColumn: 2 }}>{m.column_station()}</span>
+                <span style={{ gridColumn: 3 }}>{m.column_now_playing()}</span>
+                <span style={{ gridColumn: 4 }}>{m.column_bitrate()}</span>
+                <span style={{ gridColumn: 5 }}>{m.column_duration()}</span>
+                <span style={{ gridColumn: 6 }}>{m.column_actions()}</span>
+              </div>
 
-          {/* ── Stream list zone ── */}
-          <StreamList
-            ref={streamListCallbackRef}
-            exitZone={(forward) => exitZone("streams-list", forward)}
-            onEmpty={() => {/* handled by isEmpty effect */}}
-          />
+              {/* ── Stream list zone ── */}
+              <StreamList
+                ref={streamListCallbackRef}
+                exitZone={(forward) => exitZone("streams-list", forward)}
+                onEmpty={() => {/* handled by isEmpty effect */}}
+              />
+            </div>
+          </div>
         </>
       )}
 
