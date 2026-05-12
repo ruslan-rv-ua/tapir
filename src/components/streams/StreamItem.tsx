@@ -211,9 +211,10 @@ export function StreamItem({ stream, status, isFocused, onPrimaryAction: _onPrim
               tabIndex={-1}
               onClick={handlePlayToggle}
               aria-label={isThisStreamPlaying ? m.stop_stream_playback() : m.play_stream()}
-              className={`rounded px-2 py-0.5 text-xs ${isThisStreamPlaying ? "bg-blue-700 text-white forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]" : "bg-slate-700 text-slate-300 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText]"}`}
+              className={`inline-flex shrink-0 whitespace-nowrap items-center gap-1 rounded-md px-2 py-0.5 text-xs ${isThisStreamPlaying ? "bg-blue-700 text-white forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]" : "bg-slate-700 text-slate-300 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText]"}`}
             >
-              {isThisStreamPlaying ? "■" : "▶"}
+              <span aria-hidden="true">{isThisStreamPlaying ? "■" : "▶"}</span>
+              <span>{isThisStreamPlaying ? m.stop() : m.play()}</span>
             </button>
             <button
               tabIndex={-1}
