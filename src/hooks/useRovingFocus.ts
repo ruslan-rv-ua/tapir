@@ -102,17 +102,25 @@ export function useRovingFocus(
     (direction: 'forward' | 'backward') => {
       const count = refs.length;
       if (count === 0) return;
-      const idx = activeIndexRef.current;
-      const el = refs[idx]?.current;
-      if (el) {
-        el.focus();
-        return;
+
+      const isEnabled = (el: HTMLElement | null): el is HTMLElement =>
+        el !== null && !(el as HTMLButtonElement).disabled && !el.hasAttribute('aria-disabled');
+
+      // Try remembered index first, then scan in travel direction for an enabled element
+      const startIdx = activeIndexRef.current;
+      const indices = direction === 'forward'
+        ? [...Array(count).keys()].map((i) => (startIdx + i) % count)
+        : [...Array(count).keys()].map((i) => (startIdx - i + count) % count);
+
+      for (const i of indices) {
+        const el = refs[i]?.current;
+        if (isEnabled(el)) {
+          activeIndexRef.current = i;
+          setActiveIndex(i);
+          el.focus();
+          return;
+        }
       }
-      // Fallback when remembered element gone
-      const fallbackIdx = direction === 'forward' ? 0 : count - 1;
-      activeIndexRef.current = fallbackIdx;
-      setActiveIndex(fallbackIdx);
-      refs[fallbackIdx]?.current?.focus();
     },
     [refs],
   );

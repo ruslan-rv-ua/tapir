@@ -84,19 +84,18 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   // ── Filter chip stub state ────────────────────────────────
   const [activeChip, setActiveChip] = useState<string>("all");
 
-  // ── Toolbar zone refs (8 items) ──────────────────────────
+  // ── Toolbar zone refs (7 items) ──────────────────────────
   const toolbarZoneRef = useRef<HTMLDivElement | null>(null);
   const cmdBtn     = useRef<HTMLButtonElement | null>(null);
   const addBtn     = useRef<HTMLButtonElement | null>(null);
   const stopAllBtn = useRef<HTMLButtonElement | null>(null);
-  const searchRef  = useRef<HTMLInputElement | null>(null);
   const chip0Ref   = useRef<HTMLButtonElement | null>(null);
   const chip1Ref   = useRef<HTMLButtonElement | null>(null);
   const chip2Ref   = useRef<HTMLButtonElement | null>(null);
   const chip3Ref   = useRef<HTMLButtonElement | null>(null);
   const chipRefs = useMemo(() => [chip0Ref, chip1Ref, chip2Ref, chip3Ref], []);
   const toolbarRefs = useMemo(
-    () => [cmdBtn, addBtn, stopAllBtn, searchRef, chip0Ref, chip1Ref, chip2Ref, chip3Ref],
+    () => [cmdBtn, addBtn, stopAllBtn, chip0Ref, chip1Ref, chip2Ref, chip3Ref],
     [],
   );
 
@@ -104,23 +103,10 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     onKeyDown: toolbarKeyDown,
     getTabIndex: toolbarTabIndex,
     restoreFocus: toolbarRestore,
-    moveTo: toolbarMoveTo,
   } = useRovingFocus(toolbarRefs, "horizontal", {
     mode: "mixed-boundary-handoff",
     onTabBoundary: (forward) => exitZone("streams-toolbar", forward),
   });
-
-  // Ctrl+F: focus the search input via rovingFocus moveTo
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === "f") {
-        e.preventDefault();
-        toolbarMoveTo(3); // index 3 = searchRef
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [toolbarMoveTo]);
 
   // ── List zone ────────────────────────────────────────────
   const streamListRef = useRef<ZoneEntry | null>(null);
@@ -226,7 +212,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
           {/* ── Workspace titlebar + Toolbar = streams-toolbar zone ── */}
           {/* IMPORTANT: Both rows must live inside the zone div so mixed-boundary-handoff
-              sees all 8 interactive items (indices 0–7). h2 is structural, not focusable. */}
+              sees all 7 interactive items (indices 0–6). h2 is structural, not focusable. */}
           <div
             ref={toolbarZoneRef}
             data-zone-id="streams-toolbar"
@@ -261,7 +247,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
               </div>
             </div>
 
-            {/* Row 2: Зупинити все + Search + Chips */}
+            {/* Row 2: Зупинити все + Chips */}
             <div className="flex items-center gap-2 px-4 py-2">
               {/* Index 2: Зупинити все */}
               <button
@@ -275,30 +261,12 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
               <div className="mx-1 h-4 w-px bg-slate-700 forced-colors:bg-[ButtonText]" aria-hidden="true" />
 
-              {/* Index 3: Search */}
-              <input
-                ref={searchRef}
-                type="text"
-                tabIndex={toolbarTabIndex(3)}
-                aria-label={m.streams_search_label()}
-                placeholder={m.streams_search_label()}
-                className="min-w-0 flex-1 rounded bg-slate-800 px-3 py-1 text-xs text-slate-200 placeholder-slate-500 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:bg-[Canvas] forced-colors:text-[CanvasText] forced-colors:border forced-colors:border-[ButtonText]"
-                onKeyDown={(e) => {
-                  // Prevent arrow keys from being consumed by the outer rovingFocus handler
-                  if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) {
-                    e.stopPropagation();
-                  }
-                }}
-              />
-
-              <div className="mx-1 h-4 w-px bg-slate-700 forced-colors:bg-[ButtonText]" aria-hidden="true" />
-
-              {/* Indices 4–7: Filter chips */}
+              {/* Indices 3–6: Filter chips */}
               {FILTER_CHIPS.map((chip, i) => (
                 <button
                   key={chip.id}
                   ref={chipRefs[i]}
-                  tabIndex={toolbarTabIndex(4 + i)}
+                  tabIndex={toolbarTabIndex(3 + i)}
                   aria-pressed={activeChip === chip.id}
                   onClick={() => setActiveChip(chip.id)}
                   className={`rounded-full px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${

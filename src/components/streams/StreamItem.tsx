@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { createPortal } from "react-dom";
+import { Mic, Loader2, RefreshCw, AlertCircle, Radio, Volume2 } from "lucide-react";
 import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import type { SegmentKind } from "../../hooks/useCompositeList";
 import { formatBitrate, formatDuration } from "../../lib/formatters";
@@ -87,6 +88,14 @@ export function StreamItem({ stream, status, isFocused, onPrimaryAction: _onPrim
 
   const techLabel = `${m.segment_tech()}, ${formatBitrate(stream.bitrate)}`;
 
+  const statusIconLabel =
+    state === "recording"    ? m.status_recording() :
+    state === "connecting"   ? m.status_connecting() :
+    state === "reconnecting" ? m.status_reconnecting() :
+    state === "error"        ? m.status_error() :
+    isThisStreamPlaying      ? m.segment_playing() :
+    m.status_idle();
+
   const statusLabel =
     state === "recording"    ? `${m.segment_status_duration()}, ${formatDuration(elapsedMs)}` :
     state === "connecting"   ? `${m.segment_status()}, ${m.status_connecting()}` :
@@ -125,28 +134,20 @@ export function StreamItem({ stream, status, isFocused, onPrimaryAction: _onPrim
         <span className="font-medium text-slate-200 truncate">{stream.name}</span>
       </div>
 
-      {/* Visual status dot — col 1, aria-hidden (screen readers get status from summary + status segment) */}
+      {/* Status icon — col 1 */}
       <div
-        aria-hidden="true"
-        className="flex items-center gap-1.5 px-3 py-2 text-xs"
+        role="img"
+        aria-label={statusIconLabel}
+        title={statusIconLabel}
+        className="flex items-center justify-center px-3 py-2"
         style={{ gridRow: 1, gridColumn: 1 }}
       >
-        <span
-          className={`h-2.5 w-2.5 shrink-0 rounded-full forced-colors:shadow-none ${
-            state === "recording" || state === "error"
-              ? "bg-red-500 shadow-[0_0_0_3px_rgba(239,68,68,.2)] forced-colors:bg-[Highlight]"
-              : state === "connecting" || state === "reconnecting"
-              ? "bg-amber-400 shadow-[0_0_0_3px_rgba(245,158,11,.18)] forced-colors:bg-[Highlight]"
-              : "bg-green-500 shadow-[0_0_0_3px_rgba(34,197,94,.15)] forced-colors:bg-[Highlight]"
-          }`}
-        />
-        <span className="truncate text-slate-400">
-          {state === "recording"    ? m.status_recording() :
-           state === "connecting"   ? m.status_connecting() :
-           state === "reconnecting" ? m.status_reconnecting() :
-           state === "error"        ? m.status_error() :
-           m.status_idle()}
-        </span>
+        {state === "recording"    ? <Mic         aria-hidden size={16} className="text-red-500   forced-colors:text-[Highlight]" /> :
+         state === "connecting"   ? <Loader2     aria-hidden size={16} className="text-amber-400 animate-spin forced-colors:text-[Highlight]" /> :
+         state === "reconnecting" ? <RefreshCw   aria-hidden size={16} className="text-amber-400 animate-spin forced-colors:text-[Highlight]" /> :
+         state === "error"        ? <AlertCircle aria-hidden size={16} className="text-red-500   forced-colors:text-[Highlight]" /> :
+         isThisStreamPlaying      ? <Volume2     aria-hidden size={16} className="text-blue-400  forced-colors:text-[Highlight]" /> :
+                                    <Radio       aria-hidden size={16} className="text-green-500  forced-colors:text-[Highlight]" />}
       </div>
 
       {segments.map((kind) => {
@@ -211,18 +212,18 @@ export function StreamItem({ stream, status, isFocused, onPrimaryAction: _onPrim
               tabIndex={-1}
               onClick={handlePlayToggle}
               aria-label={isThisStreamPlaying ? m.stop_stream_playback() : m.play_stream()}
-              className={`inline-flex shrink-0 whitespace-nowrap items-center gap-1 rounded-md px-2 py-0.5 text-xs ${isThisStreamPlaying ? "bg-blue-700 text-white forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]" : "bg-slate-700 text-slate-300 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText]"}`}
+              className={`inline-flex min-w-[5.5rem] justify-center shrink-0 whitespace-nowrap items-center gap-1 rounded-md px-2 py-0.5 text-xs ${isThisStreamPlaying ? "bg-blue-700 text-white forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]" : "bg-slate-700 text-slate-300 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText]"}`}
             >
-              <span aria-hidden="true">{isThisStreamPlaying ? "■" : "▶"}</span>
+              <span aria-hidden="true">{isThisStreamPlaying ? "\u25a0" : "\u25ba"}</span>
               <span>{isThisStreamPlaying ? m.stop() : m.play()}</span>
             </button>
             <button
               tabIndex={-1}
               onClick={handleRecordToggle}
               aria-label={isRecording ? m.stop_recording() : m.start_recording()}
-              className={`inline-flex shrink-0 whitespace-nowrap items-center gap-1 rounded-md px-2 py-0.5 text-xs ${isRecording ? "bg-red-700 text-white forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]" : "bg-slate-700 text-slate-300 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText]"}`}
+              className={`inline-flex min-w-[7.5rem] justify-center shrink-0 whitespace-nowrap items-center gap-1 rounded-md px-2 py-0.5 text-xs ${isRecording ? "bg-red-700 text-white forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]" : "bg-slate-700 text-slate-300 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText]"}`}
             >
-              <span aria-hidden="true">{isRecording ? "⏹" : "⏺"}</span>
+              <span aria-hidden="true">{isRecording ? "\u23f9" : "\u23fa"}</span>
               <span>{isRecording ? m.stop_recording() : m.start_recording()}</span>
             </button>
             <StreamContextMenu

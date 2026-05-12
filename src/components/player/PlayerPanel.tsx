@@ -155,8 +155,22 @@ export const PlayerPanel = forwardRef<
         focusFirstIn(volumeWrapperRef.current);
       } else if (lastFocusedRef.current === "transport") {
         restoreTransport("forward");
+        // If all transport buttons are disabled, fall through to position slider,
+        // then to volume (VolumeSlider always renders; PlaybackPosition may return null)
+        if (!playerRootRef.current?.contains(document.activeElement)) {
+          lastFocusedRef.current = "position";
+          focusFirstIn(positionWrapperRef.current);
+        }
+        if (!playerRootRef.current?.contains(document.activeElement)) {
+          lastFocusedRef.current = "volume";
+          focusFirstIn(volumeWrapperRef.current);
+        }
       } else if (lastFocusedRef.current === "position") {
         focusFirstIn(positionWrapperRef.current);
+        if (!playerRootRef.current?.contains(document.activeElement)) {
+          lastFocusedRef.current = "volume";
+          focusFirstIn(volumeWrapperRef.current);
+        }
       } else {
         focusFirstIn(volumeWrapperRef.current);
       }
