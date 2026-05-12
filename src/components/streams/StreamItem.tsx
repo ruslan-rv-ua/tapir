@@ -132,14 +132,12 @@ export function StreamItem({ stream, status, isFocused, onPrimaryAction: _onPrim
         style={{ gridRow: 1, gridColumn: 1 }}
       >
         <span
-          className={`h-2 w-2 shrink-0 rounded-full ${
-            state === "recording"
-              ? "bg-red-500"
+          className={`h-2.5 w-2.5 shrink-0 rounded-full forced-colors:shadow-none ${
+            state === "recording" || state === "error"
+              ? "bg-red-500 shadow-[0_0_0_3px_rgba(239,68,68,.2)] forced-colors:bg-[Highlight]"
               : state === "connecting" || state === "reconnecting"
-              ? "bg-amber-400"
-              : state === "error"
-              ? "bg-red-500"
-              : "bg-green-500"
+              ? "bg-amber-400 shadow-[0_0_0_3px_rgba(245,158,11,.18)] forced-colors:bg-[Highlight]"
+              : "bg-green-500 shadow-[0_0_0_3px_rgba(34,197,94,.15)] forced-colors:bg-[Highlight]"
           }`}
         />
         <span className="truncate text-slate-400">
