@@ -220,9 +220,10 @@ export function StreamItem({ stream, status, isFocused, onPrimaryAction: _onPrim
               tabIndex={-1}
               onClick={handleRecordToggle}
               aria-label={isRecording ? m.stop_recording() : m.start_recording()}
-              className={`rounded px-2 py-0.5 text-xs ${isRecording ? "bg-red-700 text-white forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]" : "bg-slate-700 text-slate-300 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText]"}`}
+              className={`inline-flex shrink-0 whitespace-nowrap items-center gap-1 rounded-md px-2 py-0.5 text-xs ${isRecording ? "bg-red-700 text-white forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]" : "bg-slate-700 text-slate-300 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText]"}`}
             >
-              {isRecording ? m.stop_recording() : m.start_recording()}
+              <span aria-hidden="true">{isRecording ? "⏹" : "⏺"}</span>
+              <span>{isRecording ? m.stop_recording() : m.start_recording()}</span>
             </button>
             <StreamContextMenu
               stream={stream}
