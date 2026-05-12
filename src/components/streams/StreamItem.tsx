@@ -120,7 +120,7 @@ export function StreamItem({ stream, status, isFocused, onPrimaryAction: _onPrim
           ? "bg-blue-950/30"
           : ""
       }`}
-      style={{ gridTemplateColumns: "100px 1fr 1.5fr 90px 90px 240px" }}
+      style={{ gridTemplateColumns: "100px minmax(0,1fr) minmax(0,1.5fr) 90px 90px auto" }}
     >
       {/* Summary focus point */}
       <div

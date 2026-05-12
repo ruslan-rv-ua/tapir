@@ -514,7 +514,6 @@ impl PlayerEngine {
         app: &AppHandle,
     ) -> Result<()> {
         use crate::stream::connection;
-        use futures_util::StreamExt;
 
         self.stop_session().await;
 
@@ -522,30 +521,192 @@ impl PlayerEngine {
         let conn = connection::connect(&url).await
             .context("failed to connect to stream")?;
         let mime_hint: Option<String> = conn.content_type.clone();
+        let metaint = conn.headers.metadata_interval();
 
         let (mut producer, consumer) = rtrb::RingBuffer::<u8>::new(512 * 1024);
         let cancel = CancellationToken::new();
         let cancel_writer = cancel.clone();
-        let stream_id_clone = stream_id.clone();
         // Signals when the writer task exits (stream ended or errored, not user-cancelled).
         let writer_done = CancellationToken::new();
         let writer_done_signal = writer_done.clone();
 
-        // Writer task: HTTP body → rtrb producer
-        tokio::spawn(async move {
-            let mut stream = conn.response.bytes_stream();
+        // ICY events from the blocking reader to the async writer
+        enum IcyEvent {
+            Audio(Vec<u8>),
+            Metadata(String, String), // artist, title
+            Eof,
+            Error(String),
+        }
+        let (read_tx, mut read_rx) = tokio::sync::mpsc::channel::<IcyEvent>(64);
+        let response = conn.response;
+
+        // Blocking reader: strips ICY metadata from the byte stream
+        tokio::task::spawn_blocking(move || {
+            use std::io::Read;
+
+            let rt = tokio::runtime::Handle::current();
+
+            struct ReqwestSyncReader {
+                stream: futures_util::stream::BoxStream<
+                    'static,
+                    Result<bytes::Bytes, reqwest::Error>,
+                >,
+                buf: bytes::Bytes,
+                rt: tokio::runtime::Handle,
+            }
+
+            impl Read for ReqwestSyncReader {
+                fn read(&mut self, out: &mut [u8]) -> std::io::Result<usize> {
+                    if !self.buf.is_empty() {
+                        let n = out.len().min(self.buf.len());
+                        out[..n].copy_from_slice(&self.buf[..n]);
+                        self.buf = self.buf.slice(n..);
+                        return Ok(n);
+                    }
+                    let chunk = self.rt.block_on(async {
+                        use futures_util::StreamExt;
+                        self.stream.next().await
+                    });
+                    match chunk {
+                        None => Ok(0),
+                        Some(Err(e)) => {
+                            Err(std::io::Error::new(std::io::ErrorKind::Other, e))
+                        }
+                        Some(Ok(bytes)) => {
+                            let n = out.len().min(bytes.len());
+                            out[..n].copy_from_slice(&bytes[..n]);
+                            self.buf = bytes.slice(n..);
+                            Ok(n)
+                        }
+                    }
+                }
+            }
+
+            let stream_box: futures_util::stream::BoxStream<
+                'static,
+                Result<bytes::Bytes, reqwest::Error>,
+            > = Box::pin(response.bytes_stream());
+            let mut reader = ReqwestSyncReader {
+                stream: stream_box,
+                buf: bytes::Bytes::new(),
+                rt,
+            };
+
+            let metaint_val = metaint.map(|m| m.get()).unwrap_or(0);
+            let mut bytes_until_meta = metaint_val;
+            let mut buf = vec![0u8; 8192];
+
+            fn parse_stream_title(meta: &str) -> Option<(String, String)> {
+                let start = meta.find("StreamTitle='")?;
+                let after = start + "StreamTitle='".len();
+                let end = meta[after..].find('\'')?;
+                let s = meta[after..after + end].trim();
+                if s.is_empty() {
+                    return None;
+                }
+                if let Some(pos) = s.find(" - ") {
+                    Some((s[..pos].trim().to_string(), s[pos + 3..].trim().to_string()))
+                } else {
+                    Some((String::new(), s.to_string()))
+                }
+            }
+
             loop {
-                tokio::select! {
-                    _ = cancel_writer.cancelled() => break,
-                    chunk = stream.next() => {
-                        match chunk {
-                            None => break,
-                            Some(Err(e)) => {
-                                log::warn!("Player: stream error {stream_id_clone}: {e}");
+                if read_tx.is_closed() {
+                    break;
+                }
+
+                if metaint_val > 0 && bytes_until_meta == 0 {
+                    let mut len_byte = [0u8; 1];
+                    if let Err(e) = reader.read_exact(&mut len_byte) {
+                        let _ = read_tx.blocking_send(IcyEvent::Error(e.to_string()));
+                        break;
+                    }
+                    let meta_len = len_byte[0] as usize * 16;
+                    if meta_len > 0 {
+                        let mut meta_buf = vec![0u8; meta_len];
+                        if let Err(e) = reader.read_exact(&mut meta_buf) {
+                            let _ = read_tx.blocking_send(IcyEvent::Error(e.to_string()));
+                            break;
+                        }
+                        let meta_str = String::from_utf8_lossy(&meta_buf);
+                        let meta_str = meta_str.trim_end_matches('\0');
+                        if let Some((artist, title)) = parse_stream_title(meta_str) {
+                            if read_tx
+                                .blocking_send(IcyEvent::Metadata(artist, title))
+                                .is_err()
+                            {
                                 break;
                             }
-                            Some(Ok(bytes)) => {
-                                let mut remaining: &[u8] = bytes.as_ref();
+                        }
+                    }
+                    bytes_until_meta = metaint_val;
+                }
+
+                let max_read = if metaint_val > 0 {
+                    buf.len().min(bytes_until_meta)
+                } else {
+                    buf.len()
+                };
+
+                match reader.read(&mut buf[..max_read]) {
+                    Err(e) => {
+                        let _ = read_tx.blocking_send(IcyEvent::Error(e.to_string()));
+                        break;
+                    }
+                    Ok(0) => {
+                        let _ = read_tx.blocking_send(IcyEvent::Eof);
+                        break;
+                    }
+                    Ok(n) => {
+                        if metaint_val > 0 {
+                            bytes_until_meta -= n;
+                        }
+                        if read_tx
+                            .blocking_send(IcyEvent::Audio(buf[..n].to_vec()))
+                            .is_err()
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+
+        // Async writer: reads IcyEvents → rtrb producer + emits track-changed
+        let stream_id_writer = stream_id.clone();
+        let app_writer = app.clone();
+        tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    _ = cancel_writer.cancelled() => {
+                        drop(read_rx); // signal blocking thread to stop
+                        break;
+                    }
+                    event = read_rx.recv() => {
+                        match event {
+                            None | Some(IcyEvent::Eof) | Some(IcyEvent::Error(_)) => break,
+                            Some(IcyEvent::Metadata(artist, title)) => {
+                                #[derive(serde::Serialize, Clone)]
+                                #[serde(rename_all = "camelCase")]
+                                struct TrackChangedPayload {
+                                    stream_id: String,
+                                    artist: String,
+                                    title: String,
+                                    album: String,
+                                }
+                                let _ = app_writer.emit(
+                                    "track-changed",
+                                    TrackChangedPayload {
+                                        stream_id: stream_id_writer.clone(),
+                                        artist,
+                                        title,
+                                        album: String::new(),
+                                    },
+                                );
+                            }
+                            Some(IcyEvent::Audio(data)) => {
+                                let mut remaining: &[u8] = data.as_slice();
                                 while !remaining.is_empty() {
                                     match producer.write_chunk(remaining.len()) {
                                         Ok(mut chunk) => {
@@ -557,8 +718,9 @@ impl PlayerEngine {
                                         }
                                         Err(_) => {
                                             log::debug!(
-                                                "Player: ring buffer full for {stream_id_clone}, \
-                                                 dropping {} bytes", remaining.len()
+                                                "Player: ring buffer full for {stream_id_writer}, \
+                                                 dropping {} bytes",
+                                                remaining.len()
                                             );
                                             break;
                                         }
