@@ -205,20 +205,20 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
       ) : (
         <>
           {/* ── Metrics bar ── */}
-          <div className="grid grid-cols-4 gap-3 border-b border-slate-700 px-4 py-3 forced-colors:border-[ButtonText]">
-            <div className="flex flex-col gap-0.5">
+          <div className="grid grid-cols-4 gap-3 border-b border-slate-700 px-4 py-4 forced-colors:border-[ButtonText]">
+            <div className="flex flex-col gap-1.5 rounded-2xl border border-white/[.06] bg-white/[.04] p-4 forced-colors:border-[ButtonText] forced-colors:bg-[Canvas]">
               <strong className="text-sm text-slate-100">{streamCountText}</strong>
               <span className="text-xs text-slate-400">{m.metric_streams_in_profile()}</span>
             </div>
-            <div className="flex flex-col gap-0.5">
+            <div className="flex flex-col gap-1.5 rounded-2xl border border-white/[.06] bg-white/[.04] p-4 forced-colors:border-[ButtonText] forced-colors:bg-[Canvas]">
               <strong className="text-sm text-slate-100">{activeRecText}</strong>
               <span className="text-xs text-slate-400">{m.metric_active_recordings()}</span>
             </div>
-            <div className="flex flex-col gap-0.5">
+            <div className="flex flex-col gap-1.5 rounded-2xl border border-white/[.06] bg-white/[.04] p-4 forced-colors:border-[ButtonText] forced-colors:bg-[Canvas]">
               <strong className="text-sm text-slate-100">{errorText}</strong>
               <span className="text-xs text-slate-400">{m.metric_errors()}</span>
             </div>
-            <div className="flex flex-col gap-0.5">
+            <div className="flex flex-col gap-1.5 rounded-2xl border border-white/[.06] bg-white/[.04] p-4 forced-colors:border-[ButtonText] forced-colors:bg-[Canvas]">
               <strong className="text-sm text-slate-100">—</strong>
               <span className="text-xs text-slate-400">{m.metric_free_space()}</span>
             </div>
