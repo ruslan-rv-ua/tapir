@@ -22,7 +22,7 @@ The player zone currently has several accessibility issues:
 1. Skip the player zone entirely via Tab/Shift+Tab when nothing is playing.
 2. Remove all sliders from the Tab order.
 3. Establish a single, consistent navigation model: Left/Right arrow keys move between focus stops inside the zone; Tab/Shift+Tab exits the zone.
-4. Sliders are adjustable with Up/Down arrow keys only.
+4. Sliders are adjustable with Up/Down arrow keys only. Home/End/PageUp/PageDown do **not** adjust slider values; they perform zone-level navigation (Home → first stop, End → last stop, PageUp/PageDown → no-op).
 5. NVDA always enters focus (application) mode when the player zone is focused.
 
 ---
@@ -59,6 +59,8 @@ Result: Tab and Shift+Tab pass through the player zone transparently when idle.
 
 All focus stops are navigated in this fixed order using Left/Right arrow keys. Conditional stops are included only when their condition is met; disabled stops are always skipped.
 
+> **Precondition:** This table applies only when `source !== null && state !== 'stopped'`. When the player is stopped, the zone is transparent to all Tab navigation (§2) and the stop list is effectively empty — it is never consulted.
+
 | # | Element | Included when |
 |---|---------|---------------|
 | 1 | Source name (stream name or filename) | Always (when something is playing) |
@@ -91,6 +93,7 @@ interface FocusStop {
 }
 
 function usePlayerZoneNav(
+  appRef: RefObject<HTMLElement | null>,  // ref to the inner role="application" div
   stops: FocusStop[],
   onExitZone: (forward: boolean) => void
 ): {
@@ -104,10 +107,12 @@ function usePlayerZoneNav(
 
 | Key | Action |
 |-----|--------|
-| `ArrowLeft` | Move to previous enabled stop; clamp at first (no wrap) |
-| `ArrowRight` | Move to next enabled stop; clamp at last (no wrap) |
-| `Tab` | Call `onExitZone(true)` — exit zone forward |
-| `Shift+Tab` | Call `onExitZone(false)` — exit zone backward |
+| `ArrowLeft` | Move to previous enabled stop; clamp at first (no wrap); `preventDefault` |
+| `ArrowRight` | Move to next enabled stop; clamp at last (no wrap); `preventDefault` |
+| `Tab` | `preventDefault` + `stopPropagation`; call `onExitZone(true)` |
+| `Shift+Tab` | `preventDefault` + `stopPropagation`; call `onExitZone(false)` |
+| `Home` | Move to first enabled stop; `preventDefault` |
+| `End` | Move to last enabled stop; `preventDefault` |
 
 **`enterZone(direction)`:** focuses the first enabled stop when `'forward'`, the last when `'backward'`. Called by `restoreFocusPlayer` on zone entry.
 
@@ -121,8 +126,9 @@ The hook tracks `activeIdx` internally (index within the `stops` array).
 - **Navigation (←/→):** moves `activeIdx` to the next/previous enabled stop.
 - **`enterZone`:** sets `activeIdx` to first or last enabled stop.
 - **`navigate(forward)` (called by slider `onNavigate`):** moves `activeIdx` exactly as ←/→ would.
-- **Click / programmatic focus:** the hook listens to `focusin` events on the inner `role="application"` div. When a focusin fires on an element that matches a ref in `stops`, `activeIdx` is updated to that stop's index. This keeps keyboard navigation consistent after a mouse click.
-- **Stop-list shrink or reorder** (e.g., track metadata appears/disappears, source type changes): recalculated on each render. The `stops` array is reconstructed in `PlayerPanel` based on runtime state and passed fresh each render. If `activeIdx` points beyond the new list length, it is clamped to the last enabled index.
+- **Click / programmatic focus:** the hook attaches a native `focusin` listener to `appRef.current` in a `useEffect`. When a `focusin` fires on an element that matches a ref in `stops`, `activeIdx` is updated to that stop's index. This keeps keyboard navigation consistent after a mouse click.
+- **Stop-list reorder or insertion** (e.g., track metadata appears mid-playback): after each render, the hook searches the new `stops` array for the ref that was previously focused (`stops[activeIdx].ref`). If found at a new index, `activeIdx` is remapped to that index so subsequent arrow navigation continues from the correct element. If the previously focused ref is no longer in the list, `activeIdx` is clamped to the nearest valid enabled index.
+- **Stop-list shrink** (stops removed entirely): if `activeIdx` is out-of-range after removal, clamp to the last enabled index.
 
 **Focus loss when a stop becomes disabled mid-playback** (e.g., playback stops while focus is on the Stop button): On each render, if `stops[activeIdx].enabled` has become `false`, the hook moves focus to the next enabled stop in the forward direction. If no enabled stop exists (player is stopped), exits the zone forward. This check runs in a `useEffect` whenever the `stops` array changes.
 
@@ -140,7 +146,9 @@ onNavigate?: (forward: boolean) => void
 In the slider's `onKeyDown` handler (on `SliderThumb`):
 - `ArrowLeft` or `ArrowRight`: call `onNavigate(key === 'ArrowRight')`, `e.preventDefault()`, and **`e.stopPropagation()`** — `preventDefault()` stops the browser from changing the slider value; `stopPropagation()` prevents the event from bubbling to `onRootKeyDown` on the zone root (which would otherwise trigger a second navigation).
 - `ArrowUp` or `ArrowDown`: pass through to React Aria for value adjustment.
-- `Home`, `End`, `PageUp`, `PageDown`: pass through to React Aria (default slider behavior: Home → min, End → max, PageUp/Down → large step).
+- `Home`: call `navigate` to first stop + `e.preventDefault()` + `e.stopPropagation()` (prevents React Aria jumping to min).
+- `End`: call `navigate` to last stop + `e.preventDefault()` + `e.stopPropagation()` (prevents React Aria jumping to max).
+- `PageUp`, `PageDown`: `e.preventDefault()` + `e.stopPropagation()` — no-op (prevents React Aria large-step behavior, consistent with goal §4).
 
 **Slider tabIndex:** Slider thumbs (`<input type="range">` rendered by `SliderThumb`) must have `tabIndex={-1}` so they are programmatically focusable (required for zone entry) but not reachable via Tab key. React Aria's `<SliderThumb>` accepts a `tabIndex` prop for this purpose.
 
@@ -160,8 +168,9 @@ In the slider's `onKeyDown` handler (on `SliderThumb`):
 - `lastFocusedRef` and the three-section focus restoration logic
 
 **Add:**
+- `appRef` — ref to the inner `<div role="application">` element
 - `sourceNameRef`, `trackNameRef`, `bitrateRowRef`, `outputDeviceRef` — refs for text focus stops
-- `usePlayerZoneNav(stops, exitZone)` — replaces all current navigation hooks
+- `usePlayerZoneNav(appRef, stops, exitZone)` — replaces all current navigation hooks
 - Outer `<div role="complementary" aria-label={...} data-zone-id="player">` — landmark, unchanged
 - Inner `<div role="application" aria-label={...}>` — wraps all panels; `onRootKeyDown` from the hook attaches here
 - `tabIndex={-1}` wrappers around text stops
