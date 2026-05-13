@@ -55,7 +55,7 @@ export function usePlayerZoneNav(
 
   /**
    * Find the nearest enabled stop.
-   * 'first'/'last' scan the full list (ignores `from`).
+   * 'first'/'last' scan the full list (`from` is ignored for these).
    * 'next'/'prev' start adjacent to `from` and clamp at the boundary (no wrap).
    * Returns -1 if no enabled stop exists.
    */
@@ -90,7 +90,7 @@ export function usePlayerZoneNav(
       }
       focusStop(idx);
     },
-    [stops.length, findEnabled, focusStop, onExitZone],
+    [findEnabled, focusStop, onExitZone],
   );
 
   /**
@@ -165,7 +165,7 @@ export function usePlayerZoneNav(
 
     // Stop gone or disabled — move focus unconditionally (no document.activeElement check;
     // it may already point to <body> before this effect runs).
-    const fromIdx = activeIdxRef.current;
+    const fromIdx = Math.min(activeIdxRef.current, stops.length - 1);
     let target = -1;
     for (let i = fromIdx + 1; i < stops.length; i++) {
       if (stops[i].enabled) { target = i; break; }
@@ -180,7 +180,11 @@ export function usePlayerZoneNav(
     } else {
       onExitZone(true);
     }
-  // stops identity change is the only trigger; other deps are read via refs to avoid stale closures.
+  // Intentionally suppressed deps:
+  // - focusStop: changes only when stops changes (same dep), closure is always in sync.
+  // - onExitZone: effect must fire ONLY on stops change; stale closure is acceptable here
+  //   because onExitZone is expected to be stable (memoised by the caller, PlayerPanel).
+  // prevStopRefRef / activeIdxRef are refs, always current.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stops]);
 
