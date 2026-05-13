@@ -1,15 +1,28 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { RefObject } from "react";
 import { Slider, SliderThumb, SliderTrack } from "react-aria-components";
 import { useStore } from "@nanostores/react";
 import { $playerStatus } from "../../stores/player";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 
-export function VolumeSlider() {
+interface VolumeSliderProps {
+  inputRef?: RefObject<HTMLInputElement | null>;
+  onNavigate?: (direction: 'prev' | 'next' | 'first' | 'last') => void;
+}
+
+export function VolumeSlider({ inputRef, onNavigate }: VolumeSliderProps) {
   const { volume } = useStore($playerStatus);
   const storePercent = Math.round(volume * 100);
   const [dragPercent, setDragPercent] = useState<number | null>(null);
   const percent = dragPercent ?? storePercent;
+
+  // RAC controls the input's tabIndex internally; patch it via DOM to remove from Tab order.
+  useEffect(() => {
+    const input = inputRef?.current;
+    if (!input) return;
+    input.tabIndex = -1;
+  }, [inputRef]);
 
   return (
     <Slider
@@ -32,7 +45,27 @@ export function VolumeSlider() {
           aria-hidden="true"
         />
         <SliderThumb
+          inputRef={inputRef}
           aria-valuetext={`${percent}%`}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowLeft') {
+              e.preventDefault(); e.stopPropagation();
+              onNavigate?.('prev');
+            } else if (e.key === 'ArrowRight') {
+              e.preventDefault(); e.stopPropagation();
+              onNavigate?.('next');
+            } else if (e.key === 'Home') {
+              e.preventDefault(); e.stopPropagation();
+              onNavigate?.('first');
+            } else if (e.key === 'End') {
+              e.preventDefault(); e.stopPropagation();
+              onNavigate?.('last');
+            } else if (e.key === 'PageUp' || e.key === 'PageDown') {
+              // No-op: block browser/RAC default (spec §4 — PageUp/Down are no-ops on sliders).
+              e.preventDefault(); e.stopPropagation();
+            }
+            // ArrowUp / ArrowDown: pass through to RAC for value adjustment.
+          }}
           className="w-3.5 h-3.5 rounded-full bg-white top-1/2 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1 forced-colors:bg-[ButtonText]"
         />
       </SliderTrack>
