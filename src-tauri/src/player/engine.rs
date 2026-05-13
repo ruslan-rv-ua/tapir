@@ -535,7 +535,7 @@ impl PlayerEngine {
             Audio(Vec<u8>),
             Metadata(String, String), // artist, title
             Eof,
-            Error(String),
+            Error,
         }
         let (read_tx, mut read_rx) = tokio::sync::mpsc::channel::<IcyEvent>(64);
         let response = conn.response;
@@ -618,15 +618,15 @@ impl PlayerEngine {
 
                 if metaint_val > 0 && bytes_until_meta == 0 {
                     let mut len_byte = [0u8; 1];
-                    if let Err(e) = reader.read_exact(&mut len_byte) {
-                        let _ = read_tx.blocking_send(IcyEvent::Error(e.to_string()));
+                    if let Err(_) = reader.read_exact(&mut len_byte) {
+                        let _ = read_tx.blocking_send(IcyEvent::Error);
                         break;
                     }
                     let meta_len = len_byte[0] as usize * 16;
                     if meta_len > 0 {
                         let mut meta_buf = vec![0u8; meta_len];
-                        if let Err(e) = reader.read_exact(&mut meta_buf) {
-                            let _ = read_tx.blocking_send(IcyEvent::Error(e.to_string()));
+                        if let Err(_) = reader.read_exact(&mut meta_buf) {
+                            let _ = read_tx.blocking_send(IcyEvent::Error);
                             break;
                         }
                         let meta_str = String::from_utf8_lossy(&meta_buf);
@@ -650,8 +650,8 @@ impl PlayerEngine {
                 };
 
                 match reader.read(&mut buf[..max_read]) {
-                    Err(e) => {
-                        let _ = read_tx.blocking_send(IcyEvent::Error(e.to_string()));
+                    Err(_) => {
+                        let _ = read_tx.blocking_send(IcyEvent::Error);
                         break;
                     }
                     Ok(0) => {
@@ -685,7 +685,7 @@ impl PlayerEngine {
                     }
                     event = read_rx.recv() => {
                         match event {
-                            None | Some(IcyEvent::Eof) | Some(IcyEvent::Error(_)) => break,
+                            None | Some(IcyEvent::Eof) | Some(IcyEvent::Error) => break,
                             Some(IcyEvent::Metadata(artist, title)) => {
                                 #[derive(serde::Serialize, Clone)]
                                 #[serde(rename_all = "camelCase")]
