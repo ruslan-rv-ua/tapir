@@ -117,7 +117,14 @@ function usePlayerZoneNav(
 
 The hook tracks `activeIdx` internally (index within the `stops` array).
 
-**Focus loss when a stop becomes disabled mid-playback** (e.g., playback stops while focus is on the Stop button): On each render, if `stops[activeIdx].enabled` has become `false`, the hook moves focus to the next enabled stop in the forward direction. If no enabled stop exists, exits the zone forward. This check runs in a `useEffect` whenever the `stops` array changes.
+**`activeIdx` synchronisation rules:**
+- **Navigation (←/→):** moves `activeIdx` to the next/previous enabled stop.
+- **`enterZone`:** sets `activeIdx` to first or last enabled stop.
+- **`navigate(forward)` (called by slider `onNavigate`):** moves `activeIdx` exactly as ←/→ would.
+- **Click / programmatic focus:** the hook listens to `focusin` events on the inner `role="application"` div. When a focusin fires on an element that matches a ref in `stops`, `activeIdx` is updated to that stop's index. This keeps keyboard navigation consistent after a mouse click.
+- **Stop-list shrink or reorder** (e.g., track metadata appears/disappears, source type changes): recalculated on each render. The `stops` array is reconstructed in `PlayerPanel` based on runtime state and passed fresh each render. If `activeIdx` points beyond the new list length, it is clamped to the last enabled index.
+
+**Focus loss when a stop becomes disabled mid-playback** (e.g., playback stops while focus is on the Stop button): On each render, if `stops[activeIdx].enabled` has become `false`, the hook moves focus to the next enabled stop in the forward direction. If no enabled stop exists (player is stopped), exits the zone forward. This check runs in a `useEffect` whenever the `stops` array changes.
 
 
 ---
@@ -131,11 +138,13 @@ onNavigate?: (forward: boolean) => void
 ```
 
 In the slider's `onKeyDown` handler (on `SliderThumb`):
-- `ArrowLeft` or `ArrowRight`: call `onNavigate(key === 'ArrowRight')` and `e.preventDefault()` — this prevents the browser/React Aria from changing the slider value, and the parent hook handles zone navigation via `navigate()`.
+- `ArrowLeft` or `ArrowRight`: call `onNavigate(key === 'ArrowRight')`, `e.preventDefault()`, and **`e.stopPropagation()`** — `preventDefault()` stops the browser from changing the slider value; `stopPropagation()` prevents the event from bubbling to `onRootKeyDown` on the zone root (which would otherwise trigger a second navigation).
 - `ArrowUp` or `ArrowDown`: pass through to React Aria for value adjustment.
 - `Home`, `End`, `PageUp`, `PageDown`: pass through to React Aria (default slider behavior: Home → min, End → max, PageUp/Down → large step).
 
-**Why `onKeyDown` on `SliderThumb`:** The `<SliderThumb>` renders an `<input type="range">`. Calling `preventDefault()` on the `keydown` event before the browser applies the default action stops the value from changing on Left/Right.
+**Slider tabIndex:** Slider thumbs (`<input type="range">` rendered by `SliderThumb`) must have `tabIndex={-1}` so they are programmatically focusable (required for zone entry) but not reachable via Tab key. React Aria's `<SliderThumb>` accepts a `tabIndex` prop for this purpose.
+
+**Why `onKeyDown` on `SliderThumb`:** Attaching `onKeyDown` directly to the `<SliderThumb>` (inner `<input type="range">`) ensures the handler fires on the event's target, preventing any parent from intercepting the event first and guaranteeing `stopPropagation()` is called before `onRootKeyDown`.
 
 ---
 
@@ -153,7 +162,8 @@ In the slider's `onKeyDown` handler (on `SliderThumb`):
 **Add:**
 - `sourceNameRef`, `trackNameRef`, `bitrateRowRef`, `outputDeviceRef` — refs for text focus stops
 - `usePlayerZoneNav(stops, exitZone)` — replaces all current navigation hooks
-- `role="application"` on root `<div>`
+- Outer `<div role="complementary" aria-label={...} data-zone-id="player">` — landmark, unchanged
+- Inner `<div role="application" aria-label={...}>` — wraps all panels; `onRootKeyDown` from the hook attaches here
 - `tabIndex={-1}` wrappers around text stops
 
 **`restoreFocusPlayer`** simplified to: if stopped → `exitZone(direction === 'forward')`; else → `enterZone(direction)`.
@@ -163,12 +173,14 @@ Button refs (`playPauseRef`, `stopRef`, `muteRef`) remain as refs passed to `use
 ### `VolumeSlider.tsx`
 
 - Add `onNavigate?: (forward: boolean) => void` prop.
-- Add `onKeyDown` to `SliderThumb`: intercept ArrowLeft/Right → call `onNavigate` + `preventDefault()`.
+- Add `onKeyDown` to `SliderThumb`: intercept ArrowLeft/Right → call `onNavigate` + `preventDefault()` + `stopPropagation()`.
+- Add `tabIndex={-1}` to `SliderThumb` to remove it from the Tab order while keeping it programmatically focusable.
 
 ### `PlaybackPosition.tsx`
 
 - Add `onNavigate?: (forward: boolean) => void` prop.
-- Add `onKeyDown` to `SliderThumb` in the file-source slider: same intercept pattern.
+- Add `onKeyDown` to `SliderThumb` in the file-source slider: same intercept pattern (`preventDefault` + `stopPropagation` on Left/Right).
+- Add `tabIndex={-1}` to `SliderThumb`.
 - Live stream `ProgressBar` branch: unchanged (not focusable, not a stop).
 
 ---
