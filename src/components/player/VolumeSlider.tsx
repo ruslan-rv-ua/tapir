@@ -17,12 +17,15 @@ export function VolumeSlider({ inputRef, onNavigate }: VolumeSliderProps) {
   const [dragPercent, setDragPercent] = useState<number | null>(null);
   const percent = dragPercent ?? storePercent;
 
-  // RAC controls the input's tabIndex internally; patch it via DOM to remove from Tab order.
+  // RAC controls the input's tabIndex internally; patch it after every render so that
+  // any RAC re-render cannot silently return the input to the Tab order.
+  // No dep array: VolumeSlider always renders (no conditional mount), so the overhead
+  // is a single synchronous DOM write per render — negligible and safe.
   useEffect(() => {
     const input = inputRef?.current;
     if (!input) return;
     input.tabIndex = -1;
-  }, [inputRef]);
+  });
 
   return (
     <Slider
