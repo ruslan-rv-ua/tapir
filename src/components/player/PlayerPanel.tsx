@@ -199,7 +199,7 @@ export const PlayerPanel = forwardRef<
         aria-label={m.player_panel_label()}
         ref={appRef}
         onKeyDown={onRootKeyDown}
-        className="contents"
+        className="grid grid-cols-subgrid col-span-3"
       >
         {/* ── Panel 1: Зараз грає ── */}
         <article aria-label={m.player_now_playing()} className="rounded-[20px] bg-white/[0.04] border border-white/[0.06] p-4 flex flex-col gap-2 min-w-0 min-h-[130px]">
@@ -337,7 +337,6 @@ export const PlayerPanel = forwardRef<
             {m.player_output()}
           </h3>
 
-          {/* Focus stop #8: output device display */}
           <div
             ref={outputDeviceRef}
             tabIndex={-1}
