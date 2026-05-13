@@ -158,9 +158,10 @@ In the slider's `onKeyDown` handler (on `SliderThumb`):
 - `End`: call `onNavigate('last')`, `e.preventDefault()`, `e.stopPropagation()` (prevents React Aria jumping to max).
 - `PageUp`, `PageDown`: `e.preventDefault()` + `e.stopPropagation()` — no-op (consistent with goal §4).
 
-**Slider tabIndex:** Slider thumbs (`<input type="range">` rendered by `SliderThumb`) must have `tabIndex={-1}` so they are programmatically focusable (required for zone entry) but not reachable via Tab key. React Aria's `<SliderThumb>` accepts a `tabIndex` prop for this purpose.
-
-**Why `onKeyDown` on `SliderThumb`:** Attaching `onKeyDown` directly to the `<SliderThumb>` (inner `<input type="range">`) ensures the handler fires on the event's target, preventing any parent from intercepting the event first and guaranteeing `stopPropagation()` is called before `onRootKeyDown`.
+**Slider tabIndex and ref integration with React Aria:**
+React Aria's `<SliderThumb>` renders an `<input type="range">` as its DOM output. The `ref` prop on `<SliderThumb>` is forwarded directly to that `<input>` element — so `thumbRef.current` will be the focusable input. The `tabIndex` prop is also applied to the same input. Therefore:
+- `<SliderThumb ref={thumbRef} tabIndex={-1}>` correctly registers the input as the focusable element in the stop list and removes it from the Tab order.
+- `onKeyDown` on `<SliderThumb>` fires on that input element.
 
 ---
 
@@ -186,7 +187,9 @@ In the slider's `onKeyDown` handler (on `SliderThumb`):
 
 **`restoreFocusPlayer`** simplified to: if stopped → `exitZone(direction === 'forward')`; else → `enterZone(direction)`.
 
-Button refs (`playPauseRef`, `stopRef`, `muteRef`) remain as refs passed to `usePlayerZoneNav` stop list.
+**Button tabIndex policy:** After removing `useRovingFocus`, all transport buttons (`playPauseRef`, `stopRef`, `muteRef`) get static `tabIndex={-1}`. They are never reachable via Tab — the zone root's `onRootKeyDown` intercepts Tab and exits the zone, and ←/→ arrows handle all in-zone navigation. This replaces the roving-tabindex pattern from `useRovingFocus`.
+
+Button refs (`playPauseRef`, `stopRef`, `muteRef`) remain as refs passed to `usePlayerZoneNav` stop list with `enabled: isActive`.
 
 ### `VolumeSlider.tsx`
 
