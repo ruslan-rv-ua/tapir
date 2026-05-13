@@ -5,6 +5,7 @@ import {
   useMemo,
   useCallback,
 } from "react";
+import type { RefObject } from "react";
 import { Button } from "react-aria-components";
 import { Play, Pause, Square, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
 import { useStore } from "@nanostores/react";
@@ -14,7 +15,7 @@ import { $settings } from "../../stores/settings";
 import { PlaybackPosition } from "./PlaybackPosition";
 import { VolumeSlider } from "./VolumeSlider";
 import { useAnnounce } from "../../hooks/useAnnounce";
-import { useRovingFocus } from "../../hooks/useRovingFocus";
+import { usePlayerZoneNav, type FocusStop } from "../../hooks/usePlayerZoneNav";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import { formatBitrate } from "../../lib/formatters";
 import { LiveBadge } from "./LiveBadge";
@@ -31,13 +32,6 @@ function useSourceLabel(): string {
     return stream?.name ?? source.streamId;
   }
   return source.path.split(/[\\/]/).pop() ?? source.path;
-}
-
-/** Focuses the first range input inside a container, or the container itself as fallback. */
-function focusFirstIn(container: HTMLElement | null): void {
-  if (!container) return;
-  const slider = container.querySelector<HTMLElement>('input[type="range"]');
-  (slider ?? container).focus();
 }
 
 export const PlayerPanel = forwardRef<
@@ -60,7 +54,7 @@ export const PlayerPanel = forwardRef<
   // Panel 1 data
   const source = playerStatus.source;
   const currentStream = source?.type === "stream"
-    ? streams.find(s => s.id === source.streamId)
+    ? streams.find((s) => s.id === source.streamId)
     : null;
   const currentStreamStatus = source?.type === "stream"
     ? statuses[source.streamId]
@@ -71,111 +65,50 @@ export const PlayerPanel = forwardRef<
     ? (currentTrack ? `${currentTrack.artist} — ${currentTrack.title}` : "—")
     : "";
   const bitrateDisplay = currentStream ? formatBitrate(currentStream.bitrate) : "—";
-
-
+  const durationMs = playerStatus.durationMs;
+  const hasTrackName = source?.type === 'stream' && !!currentTrack;
+  const isStream = source?.type === 'stream';
+  const hasPositionSlider = source?.type === 'file' && (durationMs ?? 0) > 0;
 
   const mutePendingRef = useRef(false);
   const playerRootRef = useRef<HTMLDivElement>(null);
   const playPauseRef = useRef<HTMLButtonElement>(null);
   const stopRef = useRef<HTMLButtonElement>(null);
-  const prevRef = useRef<HTMLButtonElement>(null);
-  const nextRef = useRef<HTMLButtonElement>(null);
   const muteRef = useRef<HTMLButtonElement>(null);
-  const positionWrapperRef = useRef<HTMLDivElement>(null);
-  const volumeWrapperRef = useRef<HTMLDivElement>(null);
-  const lastFocusedRef = useRef<"transport" | "position" | "volume">(
-    "transport"
-  );
+  const appRef = useRef<HTMLDivElement>(null);
+  const sourceNameRef = useRef<HTMLDivElement>(null);
+  const trackNameRef = useRef<HTMLDivElement>(null);
+  const bitrateRowRef = useRef<HTMLDivElement>(null);
+  const outputDeviceRef = useRef<HTMLDivElement>(null);
+  const positionInputRef = useRef<HTMLInputElement>(null);
+  const volumeInputRef = useRef<HTMLInputElement>(null);
 
-  const transportRefs = useMemo(
-    () => [prevRef, playPauseRef, stopRef, nextRef, muteRef],
-    [],
-  );
+  // isActive is the base guard: when stopped, ALL stops become disabled so the
+  // stops-change effect in usePlayerZoneNav exits the zone automatically.
+  const stops = useMemo((): FocusStop[] => [
+    { ref: sourceNameRef,                                                enabled: isActive },
+    { ref: trackNameRef,                                                 enabled: isActive && hasTrackName },
+    { ref: bitrateRowRef,                                                enabled: isActive && isStream },
+    { ref: playPauseRef as RefObject<HTMLElement | null>,                enabled: isActive },
+    { ref: stopRef      as RefObject<HTMLElement | null>,                enabled: isActive },
+    { ref: muteRef      as RefObject<HTMLElement | null>,                enabled: isActive },
+    { ref: positionInputRef as unknown as RefObject<HTMLElement | null>, enabled: isActive && hasPositionSlider },
+    { ref: outputDeviceRef,                                              enabled: isActive },
+    { ref: volumeInputRef   as unknown as RefObject<HTMLElement | null>, enabled: isActive },
+  ], [isActive, hasTrackName, isStream, hasPositionSlider]);
 
-  const onTabBoundary = useCallback(
-    (forward: boolean) => {
-      if (forward) {
-        lastFocusedRef.current = "position";
-        focusFirstIn(positionWrapperRef.current);
-      } else {
-        exitZone(false);
-      }
-    },
-    [exitZone]
-  );
-
-  const {
-    onKeyDown: transportKeyDown,
-    getTabIndex,
-    restoreFocus: restoreTransport,
-  } = useRovingFocus(transportRefs, "horizontal", {
-    mode: "mixed-boundary-handoff",
-    onTabBoundary,
-  });
-
-  const handlePositionKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === "Tab") {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.shiftKey) {
-          lastFocusedRef.current = "transport";
-          restoreTransport("backward");
-        } else {
-          lastFocusedRef.current = "volume";
-          focusFirstIn(volumeWrapperRef.current);
-        }
-      }
-    },
-    [restoreTransport]
-  );
-
-  const handleVolumeKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === "Tab") {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.shiftKey) {
-          lastFocusedRef.current = "position";
-          focusFirstIn(positionWrapperRef.current);
-        } else {
-          exitZone(true);
-        }
-      }
-    },
-    [exitZone]
-  );
+  const { onRootKeyDown, enterZone, navigate } = usePlayerZoneNav(appRef, stops, exitZone);
 
   const restoreFocusPlayer = useCallback(
     (direction: "forward" | "backward") => {
       announce(m.zone_player(), "polite");
-      if (direction === "backward") {
-        // Enter from the right → land on the rightmost stop (volume)
-        lastFocusedRef.current = "volume";
-        focusFirstIn(volumeWrapperRef.current);
-      } else if (lastFocusedRef.current === "transport") {
-        restoreTransport("forward");
-        // If all transport buttons are disabled, fall through to position slider,
-        // then to volume (VolumeSlider always renders; PlaybackPosition may return null)
-        if (!playerRootRef.current?.contains(document.activeElement)) {
-          lastFocusedRef.current = "position";
-          focusFirstIn(positionWrapperRef.current);
-        }
-        if (!playerRootRef.current?.contains(document.activeElement)) {
-          lastFocusedRef.current = "volume";
-          focusFirstIn(volumeWrapperRef.current);
-        }
-      } else if (lastFocusedRef.current === "position") {
-        focusFirstIn(positionWrapperRef.current);
-        if (!playerRootRef.current?.contains(document.activeElement)) {
-          lastFocusedRef.current = "volume";
-          focusFirstIn(volumeWrapperRef.current);
-        }
-      } else {
-        focusFirstIn(volumeWrapperRef.current);
+      if (state === "stopped" || !source) {
+        exitZone(direction === "forward");
+        return;
       }
+      enterZone(direction);
     },
-    [announce, restoreTransport]
+    [announce, state, source, exitZone, enterZone],
   );
 
   useImperativeHandle(
@@ -261,127 +194,167 @@ export const PlayerPanel = forwardRef<
       data-zone-id="player"
       className="grid grid-cols-[1.15fr_1.2fr_minmax(200px,0.85fr)] gap-4 px-6 py-4 bg-gradient-to-b from-white/[0.03] to-white/[0.01] border-t border-white/[0.08] shrink-0 forced-colors:border-[ButtonText]"
     >
-      {/* ── Panel 1: Зараз грає ── */}
-      <article aria-label={m.player_now_playing()} className="rounded-[20px] bg-white/[0.04] border border-white/[0.06] p-4 flex flex-col gap-2 min-w-0 min-h-[130px]">
-        <h3 aria-hidden="true" className="text-base font-bold text-slate-100">
-          {m.player_now_playing()}
-        </h3>
-        {!source ? (
-          <p className="text-sm text-slate-500 italic">{m.player_nothing_playing()}</p>
-        ) : (
-          <>
-            {/* aria-live covers only the dynamically changing track info */}
-            <div aria-live="polite">
-              {source.type === "file" ? (
-                <div className="flex items-center gap-2 min-w-0">
-                  <p className="text-base font-bold text-slate-100 truncate flex-1 min-w-0">{sourceLabel}</p>
-                  <RecordingBadge />
-                </div>
-              ) : (
-                <p className="text-base font-bold text-slate-100 truncate">{sourceLabel}</p>
-              )}
-              <p className="text-sm text-slate-400 truncate">{trackDisplay}</p>
-            </div>
-            {source.type === "stream" && (
-              <div className="flex items-center gap-2 text-sm text-slate-500 flex-wrap">
-                <span>{bitrateDisplay}</span>
-                <LiveBadge />
+      <div
+        role="application"
+        aria-label={m.player_panel_label()}
+        ref={appRef}
+        onKeyDown={onRootKeyDown}
+        className="contents"
+      >
+        {/* ── Panel 1: Зараз грає ── */}
+        <article aria-label={m.player_now_playing()} className="rounded-[20px] bg-white/[0.04] border border-white/[0.06] p-4 flex flex-col gap-2 min-w-0 min-h-[130px]">
+          <h3 aria-hidden="true" className="text-base font-bold text-slate-100">
+            {m.player_now_playing()}
+          </h3>
+          {!source ? (
+            <p className="text-sm text-slate-500 italic">{m.player_nothing_playing()}</p>
+          ) : (
+            <>
+              {/* aria-live covers dynamically changing track info */}
+              <div aria-live="polite">
+                {source.type === "file" ? (
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div
+                      ref={sourceNameRef}
+                      tabIndex={-1}
+                      className="text-base font-bold text-slate-100 truncate flex-1 min-w-0 rounded outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                    >
+                      {sourceLabel}
+                    </div>
+                    <RecordingBadge />
+                  </div>
+                ) : (
+                  <div
+                    ref={sourceNameRef}
+                    tabIndex={-1}
+                    className="text-base font-bold text-slate-100 truncate rounded outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                  >
+                    {sourceLabel}
+                  </div>
+                )}
+                {source.type === "stream" ? (
+                  currentTrack ? (
+                    <div
+                      ref={trackNameRef}
+                      tabIndex={-1}
+                      className="text-sm text-slate-400 truncate rounded outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                    >
+                      {trackDisplay}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-400 truncate">—</p>
+                  )
+                ) : null}
               </div>
-            )}
-          </>
-        )}
-      </article>
+              {source.type === "stream" && (
+                <div
+                  ref={bitrateRowRef}
+                  tabIndex={-1}
+                  className="flex items-center gap-2 text-sm text-slate-500 flex-wrap rounded outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                >
+                  <span>{bitrateDisplay}</span>
+                  <LiveBadge />
+                </div>
+              )}
+            </>
+          )}
+        </article>
 
-      {/* ── Panel 2: Керування ── */}
-      <article aria-label={m.player_controls()} className="rounded-[20px] bg-white/[0.04] border border-white/[0.06] p-4 flex flex-col gap-2 min-w-0">
-        <h3 aria-hidden="true" className="text-base font-bold text-slate-100">
-          {m.player_controls()}
-        </h3>
-        <div role="toolbar" onKeyDown={transportKeyDown} className="flex items-center justify-center gap-2">
-          {/* Index 0: Prev (stub) */}
-          <Button
-            ref={prevRef}
-            aria-label={m.player_prev()}
-            isDisabled={true}
-            // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
-            tabIndex={getTabIndex(0)}
-            className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText]"
+        {/* ── Panel 2: Керування ── */}
+        <article aria-label={m.player_controls()} className="rounded-[20px] bg-white/[0.04] border border-white/[0.06] p-4 flex flex-col gap-2 min-w-0">
+          <h3 aria-hidden="true" className="text-base font-bold text-slate-100">
+            {m.player_controls()}
+          </h3>
+          <div className="flex items-center justify-center gap-2">
+            {/* Prev (stub, always disabled — not a focus stop) */}
+            <Button
+              aria-label={m.player_prev()}
+              isDisabled={true}
+              // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
+              tabIndex={-1}
+              className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText]"
+            >
+              <SkipBack aria-hidden={true} size={18} />
+            </Button>
+
+            <Button
+              ref={playPauseRef}
+              aria-label={isPlaying ? m.pause() : m.play()}
+              isDisabled={!isActive}
+              onPress={handlePlayPause}
+              // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
+              tabIndex={-1}
+              className="w-[52px] h-[52px] rounded-2xl bg-blue-700 border border-transparent flex items-center justify-center hover:bg-blue-600 focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:bg-[Highlight] forced-colors:text-[HighlightText] forced-colors:disabled:text-[GrayText]"
+            >
+              {isPlaying ? <Pause aria-hidden={true} size={20} /> : <Play aria-hidden={true} size={20} />}
+            </Button>
+
+            <Button
+              ref={stopRef}
+              aria-label={m.stop()}
+              isDisabled={!isActive}
+              onPress={handleStop}
+              // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
+              tabIndex={-1}
+              className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText]"
+            >
+              <Square aria-hidden={true} size={18} />
+            </Button>
+
+            {/* Next (stub, always disabled — not a focus stop) */}
+            <Button
+              aria-label={m.player_next()}
+              isDisabled={true}
+              // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
+              tabIndex={-1}
+              className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText]"
+            >
+              <SkipForward aria-hidden={true} size={18} />
+            </Button>
+
+            <Button
+              ref={muteRef}
+              aria-label={isMuted ? m.player_unmute_action() : m.player_mute_action()}
+              aria-pressed={isMuted}
+              isDisabled={!isActive}
+              onPress={handleMute}
+              // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
+              tabIndex={-1}
+              className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 aria-pressed:bg-amber-500/20 aria-pressed:border-amber-400/40 aria-pressed:text-amber-400 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText] forced-colors:aria-pressed:bg-[Highlight] forced-colors:aria-pressed:text-[HighlightText] forced-colors:aria-pressed:border-[Highlight]"
+            >
+              {isMuted ? <VolumeX aria-hidden={true} size={18} /> : <Volume2 aria-hidden={true} size={18} />}
+            </Button>
+          </div>
+
+          <div className="mt-auto">
+            <PlaybackPosition inputRef={positionInputRef} onNavigate={navigate} />
+          </div>
+        </article>
+
+        {/* ── Panel 3: Вивід ── */}
+        <article aria-label={m.player_output()} className="rounded-[20px] bg-white/[0.04] border border-white/[0.06] p-4 flex flex-col gap-2 min-w-0">
+          <h3 aria-hidden="true" className="text-base font-bold text-slate-100">
+            {m.player_output()}
+          </h3>
+
+          {/* Focus stop #8: output device display */}
+          <div
+            ref={outputDeviceRef}
+            tabIndex={-1}
+            aria-label={`${m.player_device()}: ${settings?.outputDevice ?? "—"}`}
+            className="flex items-center justify-between text-sm rounded outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
           >
-            <SkipBack aria-hidden={true} size={18} />
-          </Button>
+            <span className="text-slate-400" aria-hidden="true">{m.player_device()}</span>
+            <strong className="text-slate-200 truncate ml-2" aria-hidden="true">
+              {settings?.outputDevice ?? "—"}
+            </strong>
+          </div>
 
-          {/* Index 1: Play/Pause */}
-          <Button
-            ref={playPauseRef}
-            aria-label={isPlaying ? m.pause() : m.play()}
-            isDisabled={!isActive}
-            onPress={handlePlayPause}
-            // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
-            tabIndex={getTabIndex(1)}
-            className="w-[52px] h-[52px] rounded-2xl bg-blue-700 border border-transparent flex items-center justify-center hover:bg-blue-600 focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:bg-[Highlight] forced-colors:text-[HighlightText] forced-colors:disabled:text-[GrayText]"
-          >
-            {isPlaying ? <Pause aria-hidden={true} size={20} /> : <Play aria-hidden={true} size={20} />}
-          </Button>
-
-          {/* Index 2: Stop */}
-          <Button
-            ref={stopRef}
-            aria-label={m.stop()}
-            isDisabled={!isActive}
-            onPress={handleStop}
-            // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
-            tabIndex={getTabIndex(2)}
-            className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText]"
-          >
-            <Square aria-hidden={true} size={18} />
-          </Button>
-
-          {/* Index 3: Next (stub) */}
-          <Button
-            ref={nextRef}
-            aria-label={m.player_next()}
-            isDisabled={true}
-            // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
-            tabIndex={getTabIndex(3)}
-            className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText]"
-          >
-            <SkipForward aria-hidden={true} size={18} />
-          </Button>
-
-          {/* Index 4: Mute */}
-          <Button
-            ref={muteRef}
-            aria-label={isMuted ? m.player_unmute_action() : m.player_mute_action()}
-            aria-pressed={isMuted}
-            isDisabled={!isActive}
-            onPress={handleMute}
-            // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
-            tabIndex={getTabIndex(4)}
-            className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 aria-pressed:bg-amber-500/20 aria-pressed:border-amber-400/40 aria-pressed:text-amber-400 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText] forced-colors:aria-pressed:bg-[Highlight] forced-colors:aria-pressed:text-[HighlightText] forced-colors:aria-pressed:border-[Highlight]"
-          >
-            {isMuted ? <VolumeX aria-hidden={true} size={18} /> : <Volume2 aria-hidden={true} size={18} />}
-          </Button>
-        </div>
-
-        <div ref={positionWrapperRef} tabIndex={-1} onKeyDown={handlePositionKeyDown} className="mt-auto">
-          <PlaybackPosition />
-        </div>
-      </article>
-
-      {/* ── Panel 3: Вивід ── */}
-      <article aria-label={m.player_output()} className="rounded-[20px] bg-white/[0.04] border border-white/[0.06] p-4 flex flex-col gap-2 min-w-0">
-        <h3 aria-hidden="true" className="text-base font-bold text-slate-100">
-          {m.player_output()}
-        </h3>
-
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-slate-400">{m.player_device()}</span>
-          <strong className="text-slate-200 truncate ml-2">{settings?.outputDevice ?? "—"}</strong>
-        </div>
-        <div ref={volumeWrapperRef} tabIndex={-1} onKeyDown={handleVolumeKeyDown} className="mt-auto">
-          <VolumeSlider />
-        </div>
-      </article>
+          <div className="mt-auto">
+            <VolumeSlider inputRef={volumeInputRef} onNavigate={navigate} />
+          </div>
+        </article>
+      </div>
     </div>
   );
 });
