@@ -69,14 +69,15 @@ All focus stops are navigated in this fixed order using Left/Right arrow keys. C
 | 4 | Play/Pause button | `isActive` (playing or paused) |
 | 5 | Stop button | `isActive` |
 | 6 | Mute button | `isActive` |
-| 7 | Playback position slider | File source only (not live stream) |
+| 7 | Playback position slider | File source only **and** `durationMs > 0` (component returns `null` otherwise) |
 | 8 | Output device display | Always |
 | 9 | Volume slider | Always |
 
 **Notes:**
 - Prev and Next buttons are always disabled; they are never added to the stop list.
 - The live stream `ProgressBar` (indeterminate, non-interactive) is not a focus stop.
-- For file sources, stops #2 and #3 are absent. Stop #7 is present.
+- For file sources, stops #2 and #3 are absent. Stop #7 is present only once `durationMs` is known — there is a transient window at playback start where it is absent.
+- Stop #7's inclusion condition must be derived from whether `PlaybackPosition` would actually render the slider (i.e., `source.type === 'file' && (durationMs ?? 0) > 0`), not merely from source type alone.
 
 Text stops (#1, #2, #3, #8) are wrapped in a `<div tabIndex={-1} ref={...}>` so they can receive programmatic focus. NVDA reads their text content when focused (application mode behavior).
 
@@ -133,8 +134,8 @@ The hook tracks `activeIdx` internally (index within the `stops` array).
 - **`enterZone`:** sets `activeIdx` to first or last enabled stop.
 - **`navigate(direction)` (called by slider `onNavigate`):** updates `activeIdx` and calls `.focus()` exactly as keyboard handling would.
 - **Click / programmatic focus:** the hook attaches a native `focusin` listener to `appRef.current` in a `useEffect`. When a `focusin` fires on an element that matches a ref in `stops`, `activeIdx` is updated to that stop's index. This keeps keyboard navigation consistent after a mouse click.
-- **Stop-list reorder or insertion** (e.g., track metadata appears mid-playback): in a `useEffect` on `stops` change, the hook looks up the previously active ref in the new list by identity. If found at a new index, `activeIdx` is remapped. If not found, falls through to the shrink rule.
-- **Stop-list shrink / active stop removed**: if the previously active ref is gone from the list AND currently has DOM focus (`document.activeElement`), the hook moves focus to the nearest enabled stop (forward direction first, then backward). If no enabled stop exists, calls `onExitZone(true)`. If the removed stop did not have DOM focus, `activeIdx` is simply clamped to the last valid enabled index without moving DOM focus.
+- **Stop-list reorder or insertion** (e.g., track metadata appears mid-playback): in a `useEffect` on `stops` change, the hook looks up the previously active ref in the new list by identity. If found at a new index, `activeIdx` is remapped. If not found, falls through to the removal rule.
+- **Stop-list removal / active stop gone or disabled**: the hook stores the previously-active ref in a `useRef` (updated on every `activeIdx` change). In the `useEffect` on `stops` change, it checks whether that ref is no longer present in the new list OR is `enabled: false`. If so, the hook **unconditionally** moves focus to the nearest enabled stop (forward first, then backward) — without relying on `document.activeElement` (which may already have moved to `<body>` before the effect runs). If no enabled stop exists, calls `onExitZone(true)`.
 
 
 ---
@@ -144,11 +145,15 @@ The hook tracks `activeIdx` internally (index within the `stops` array).
 Both `VolumeSlider` and `PlaybackPosition` accept two new optional props:
 
 ```typescript
-thumbRef?: RefObject<HTMLInputElement | null>  // forwarded to <SliderThumb> → <input type="range">
+inputRef?: RefObject<HTMLInputElement | null>  // passed as SliderThumb's inputRef prop
 onNavigate?: (direction: 'prev' | 'next' | 'first' | 'last') => void
 ```
 
-`thumbRef` is used by `PlayerPanel` to register the slider's focusable element in the stop list and to move focus to the slider during `enterZone`. It is forwarded via `<SliderThumb ref={thumbRef}>`.
+**`inputRef`** is the correct way to access the focusable `<input type="range">` inside a React Aria `SliderThumb`. Verified against `react-aria-components` types: `SliderThumb.ref` is `RefAttributes<HTMLDivElement>` (the wrapper div), while `SliderThumb.inputRef` is `RefObject<HTMLInputElement | null>` (the actual input). `inputRef` is passed to `<SliderThumb inputRef={inputRef}>`.
+
+**Tab order exclusion:** React Aria controls the input's `tabIndex` internally. To remove it from the Tab order, the component sets `inputRef.current.tabIndex = -1` in a `useEffect` (after mount and on `inputRef` changes). This directly patches the DOM because RAC does not expose an input-level `tabIndex` prop.
+
+**`onKeyDown`** on `<SliderThumb>` catches key events that originate on the `<input>` and bubble up to the wrapper div. This is the correct attachment point — it fires after the input's own handlers and before zone root's `onRootKeyDown`.
 
 In the slider's `onKeyDown` handler (on `SliderThumb`):
 - `ArrowLeft`: call `onNavigate('prev')`, `e.preventDefault()`, `e.stopPropagation()`.
@@ -159,9 +164,14 @@ In the slider's `onKeyDown` handler (on `SliderThumb`):
 - `PageUp`, `PageDown`: `e.preventDefault()` + `e.stopPropagation()` — no-op (consistent with goal §4).
 
 **Slider tabIndex and ref integration with React Aria:**
-React Aria's `<SliderThumb>` renders an `<input type="range">` as its DOM output. The `ref` prop on `<SliderThumb>` is forwarded directly to that `<input>` element — so `thumbRef.current` will be the focusable input. The `tabIndex` prop is also applied to the same input. Therefore:
-- `<SliderThumb ref={thumbRef} tabIndex={-1}>` correctly registers the input as the focusable element in the stop list and removes it from the Tab order.
-- `onKeyDown` on `<SliderThumb>` fires on that input element.
+React Aria's `<SliderThumb>` renders a wrapper `<div>` that contains an `<input type="range">`. Verified against `react-aria-components` types:
+- `<SliderThumb>` has `RefAttributes<HTMLDivElement>` — `ref` points to the wrapper div, NOT the input.
+- `SliderThumb.inputRef?: RefObject<HTMLInputElement | null>` — points to the actual `<input type="range">`.
+
+Therefore:
+- Use `<SliderThumb inputRef={inputRef}>` to register the focusable input in the stop list.
+- To remove the input from the Tab order: set `inputRef.current.tabIndex = -1` in a `useEffect` (after mount and when `inputRef` changes). This is a direct DOM patch because RAC does not expose an input-level `tabIndex` prop.
+- `onKeyDown` on `<SliderThumb>` fires on the wrapper div; events from the inner `<input>` bubble up to it, so this is the correct attachment point for key interception.
 
 ---
 
@@ -179,7 +189,7 @@ React Aria's `<SliderThumb>` renders an `<input type="range">` as its DOM output
 **Add:**
 - `appRef` — ref to the inner `<div role="application">` element
 - `sourceNameRef`, `trackNameRef`, `bitrateRowRef`, `outputDeviceRef` — refs for text focus stops
-- `positionThumbRef`, `volumeThumbRef` — `RefObject<HTMLInputElement | null>` passed to `PlaybackPosition` and `VolumeSlider` as `thumbRef`; these point to the actual `<input type="range">` elements and are registered in the stop list
+- `positionInputRef`, `volumeInputRef` — `RefObject<HTMLInputElement | null>` passed to `PlaybackPosition` and `VolumeSlider` as `inputRef`; these point to the actual `<input type="range">` elements and are registered in the stop list
 - `usePlayerZoneNav(appRef, stops, exitZone)` — replaces all current navigation hooks
 - Outer `<div role="complementary" aria-label={...} data-zone-id="player">` — landmark, unchanged
 - Inner `<div role="application" aria-label={...} ref={appRef}>` — wraps all panels; `onRootKeyDown` from the hook attaches here
@@ -193,16 +203,16 @@ Button refs (`playPauseRef`, `stopRef`, `muteRef`) remain as refs passed to `use
 
 ### `VolumeSlider.tsx`
 
-- Add `thumbRef?: RefObject<HTMLInputElement | null>` and `onNavigate?: (direction: 'prev' | 'next' | 'first' | 'last') => void` props.
+- Add `inputRef?: RefObject<HTMLInputElement | null>` and `onNavigate?: (direction: 'prev' | 'next' | 'first' | 'last') => void` props.
 - Add `onKeyDown` to `SliderThumb`: intercept Left/Right/Home/End/PageUp/PageDown (all with `preventDefault` + `stopPropagation`); pass Up/Down through.
-- Add `tabIndex={-1}` to `SliderThumb` to remove it from the Tab order while keeping it programmatically focusable.
-- Forward `thumbRef` to `<SliderThumb ref={thumbRef}>`.
+- Forward `inputRef` to `<SliderThumb inputRef={inputRef}>`.
+- Add a `useEffect` that sets `inputRef.current.tabIndex = -1` after mount and on `inputRef` changes (removes input from Tab order without using an unsupported prop).
 
 ### `PlaybackPosition.tsx`
 
-- Add `thumbRef?: RefObject<HTMLInputElement | null>` and `onNavigate?: (direction: 'prev' | 'next' | 'first' | 'last') => void` props.
+- Add `inputRef?: RefObject<HTMLInputElement | null>` and `onNavigate?: (direction: 'prev' | 'next' | 'first' | 'last') => void` props.
 - Add `onKeyDown` to `SliderThumb` in the file-source slider: same intercept pattern.
-- Add `tabIndex={-1}` to `SliderThumb`. Forward `thumbRef`.
+- Forward `inputRef` to `<SliderThumb inputRef={inputRef}>`. Same `useEffect` for `tabIndex = -1`.
 - Live stream `ProgressBar` branch: unchanged (not focusable, not a stop).
 
 ---
@@ -262,6 +272,8 @@ Button refs (`playPauseRef`, `stopRef`, `muteRef`) remain as refs passed to `use
 | All transport buttons disabled (nothing playing) | Buttons absent from stop list |
 | Playing live stream | Position slider absent from stop list (skip from buttons → output device) |
 | Arrow Right from Mute button (live stream) | → output device (position slider skipped) |
+| Playing file, `durationMs` not yet known (`=== 0`) | Position slider absent from stop list; keyboard nav skips from buttons to output device |
+| Playing file, `durationMs` becomes known mid-navigation | Position slider added to stop list; `activeIdx` remapped; focus stays on current stop |
 
 ### Sliders
 
