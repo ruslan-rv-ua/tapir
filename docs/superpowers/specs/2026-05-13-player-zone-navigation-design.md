@@ -29,13 +29,21 @@ The player zone currently has several accessibility issues:
 
 ## Architecture
 
-### 1. `role="application"` on the Player Root
+### 1. Landmark Preservation + NVDA Focus Mode
 
-The root `<div>` of `PlayerPanel` changes from `role="complementary"` to `role="application"`.
+The root `<div role="complementary">` is **retained** to preserve the player as a discoverable ARIA landmark. An inner `<div role="application" aria-label={m.player_panel_label()}>` wraps all interactive content.
 
-This causes NVDA to automatically engage **application (focus) mode** for the entire player zone, ensuring all keystrokes are passed to the web application rather than being interpreted by NVDA's virtual cursor.
+```html
+<div role="complementary" aria-label={m.player_panel_label()} data-zone-id="player">
+  <div role="application" aria-label={m.player_panel_label()}>
+    <!-- all panels: now-playing, controls, output -->
+  </div>
+</div>
+```
 
-The existing `aria-label={m.player_panel_label()}` is retained.
+The `role="application"` inner wrapper causes NVDA to automatically engage **application (focus) mode**, ensuring all keystrokes are passed to the web application. The outer `role="complementary"` preserves landmark navigation (NVDA semicolon key).
+
+`data-zone-id="player"` stays on the outer div so `useZoneNavigation` continues to work. `onRootKeyDown` from `usePlayerZoneNav` is attached to the **inner** `role="application"` div.
 
 ---
 
@@ -88,6 +96,7 @@ function usePlayerZoneNav(
 ): {
   onRootKeyDown: (e: React.KeyboardEvent) => void;
   enterZone: (direction: 'forward' | 'backward') => void;
+  navigate: (forward: boolean) => void;
 }
 ```
 
@@ -100,11 +109,16 @@ function usePlayerZoneNav(
 | `Tab` | Call `onExitZone(true)` — exit zone forward |
 | `Shift+Tab` | Call `onExitZone(false)` — exit zone backward |
 
-**`enterZone(direction)`:** focuses the first enabled stop when `'forward'`, the last when `'backward'`. This is called by `restoreFocusPlayer` on zone entry.
+**`enterZone(direction)`:** focuses the first enabled stop when `'forward'`, the last when `'backward'`. Called by `restoreFocusPlayer` on zone entry.
 
-**`onRootKeyDown`:** attached to the root `<div role="application">` of `PlayerPanel`. All keydown events bubble here.
+**`navigate(forward)`:** imperative navigation exposed for sliders. Sliders call `navigate(true/false)` from the `onNavigate` callback instead of duplicating navigation logic.
 
-The hook tracks `activeIdx` internally (index within the `stops` array). When `enabled` flags change (e.g., playback stops), the hook re-validates the active index on the next navigation event.
+**`onRootKeyDown`:** attached to the inner `<div role="application">`. All keydown events bubble here.
+
+The hook tracks `activeIdx` internally (index within the `stops` array).
+
+**Focus loss when a stop becomes disabled mid-playback** (e.g., playback stops while focus is on the Stop button): On each render, if `stops[activeIdx].enabled` has become `false`, the hook moves focus to the next enabled stop in the forward direction. If no enabled stop exists, exits the zone forward. This check runs in a `useEffect` whenever the `stops` array changes.
+
 
 ---
 
@@ -117,8 +131,9 @@ onNavigate?: (forward: boolean) => void
 ```
 
 In the slider's `onKeyDown` handler (on `SliderThumb`):
-- `ArrowLeft` or `ArrowRight`: call `onNavigate(key === 'ArrowRight')` and `e.preventDefault()` — this prevents the browser/React Aria from changing the slider value, and the parent hook handles zone navigation.
-- `ArrowUp` or `ArrowDown`: do nothing (pass through to React Aria for value adjustment).
+- `ArrowLeft` or `ArrowRight`: call `onNavigate(key === 'ArrowRight')` and `e.preventDefault()` — this prevents the browser/React Aria from changing the slider value, and the parent hook handles zone navigation via `navigate()`.
+- `ArrowUp` or `ArrowDown`: pass through to React Aria for value adjustment.
+- `Home`, `End`, `PageUp`, `PageDown`: pass through to React Aria (default slider behavior: Home → min, End → max, PageUp/Down → large step).
 
 **Why `onKeyDown` on `SliderThumb`:** The `<SliderThumb>` renders an `<input type="range">`. Calling `preventDefault()` on the `keydown` event before the browser applies the default action stops the value from changing on Left/Right.
 
@@ -178,3 +193,59 @@ Button refs (`playPauseRef`, `stopRef`, `muteRef`) remain as refs passed to `use
 - Bitrate row: if `LiveBadge` renders additional text/icon, ensure it has a meaningful `aria-label` or is `aria-hidden` with the "LIVE" text already present in the surrounding span.
 - The `aria-live="polite"` region inside Panel 1 remains for async track name updates.
 - NVDA users can use F6/Shift+F6 (zone cycling) as an alternative to Tab for zone navigation — this is unaffected.
+- Zone entry announcement (`announce(m.zone_player())`) is retained in `restoreFocusPlayer`.
+
+---
+
+## Acceptance Cases
+
+### Zone entry / skip
+
+| Scenario | Expected |
+|----------|----------|
+| Player stopped, press Tab | Zone skipped — focus goes to next zone |
+| Player stopped, press Shift+Tab | Zone skipped — focus goes to previous zone |
+| Player stopped, press F6 | Zone skipped — `restoreFocusPlayer` exits immediately |
+| Player playing/paused, press Tab | Focus enters zone at first enabled stop |
+| Player playing/paused, press Shift+Tab | Focus enters zone at last enabled stop |
+
+### In-zone navigation (stream source, playing)
+
+| Scenario | Expected |
+|----------|----------|
+| Arrow Right from source name | → track name |
+| Arrow Right from track name | → bitrate row |
+| Arrow Right from bitrate row | → Play/Pause button |
+| Arrow Left from source name | stays on source name (no wrap) |
+| Arrow Right from volume slider | stays on volume slider (no wrap) |
+| Tab anywhere in zone | exits zone forward |
+| Shift+Tab anywhere in zone | exits zone backward |
+
+### Disabled stops are skipped
+
+| Scenario | Expected |
+|----------|----------|
+| All transport buttons disabled (nothing playing) | Buttons absent from stop list |
+| Playing live stream | Position slider absent from stop list (skip from buttons → output device) |
+| Arrow Right from Mute button (live stream) | → output device (position slider skipped) |
+
+### Sliders
+
+| Scenario | Expected |
+|----------|----------|
+| ArrowLeft on volume slider | navigates to output device stop |
+| ArrowRight on volume slider | stays (last stop) |
+| ArrowUp on volume slider | volume increases |
+| ArrowDown on volume slider | volume decreases |
+| ArrowLeft on position slider | navigates to Mute button |
+| ArrowRight on position slider | navigates to output device |
+| ArrowUp on position slider | seeks forward |
+| ArrowDown on position slider | seeks backward |
+
+### Stop-while-focused
+
+| Scenario | Expected |
+|----------|----------|
+| Playback stops while focus is on Stop button | Focus moves to next enabled stop; if none, exits zone forward |
+| Playback stops while focus is on source name text | Source name becomes inactive; since player is now stopped, zone exits forward |
+
