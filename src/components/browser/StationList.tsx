@@ -19,7 +19,7 @@ interface Props {
   exitZone: (forward: boolean) => void;
 }
 
-const STATION_SEGMENTS: Exclude<SegmentKind, 'summary'>[] = ["metadata", "actions"];
+const STATION_SEGMENTS: Exclude<SegmentKind, 'summary'>[] = ["metadata", "action-add"];
 
 export const StationList = forwardRef<ZoneEntry, Props>(
   ({ stations, loading, error, hasMore, onLoadMore, emptyMessage, exitZone }, ref) => {
@@ -37,12 +37,13 @@ export const StationList = forwardRef<ZoneEntry, Props>(
       [stations],
     );
 
-    const { listRef, onKeyDown, isFocused, restoreFocus } = useCompositeList({
+    const { listRef, onKeyDownCapture, isFocused, restoreFocus, activeItemId } = useCompositeList({
       zoneId: "browser-results",
       items,
       onTabOut: exitZone,
+      // The Add button self-activates; Enter on the whole-row summary also adds.
       onAction: async (type, itemId, segment) => {
-        if (type !== "primary" && !(type === "toggle" && segment === "actions")) return;
+        if (type !== "primary" || segment !== "summary") return;
         const station = stations.find((s) => s.stationuuid === itemId);
         if (!station || isAlreadyAdded(station)) return;
         try {
@@ -79,53 +80,57 @@ export const StationList = forwardRef<ZoneEntry, Props>(
         role="list"
         aria-label={m.zone_browser_results()}
         className="flex-1 overflow-auto"
-        onKeyDown={onKeyDown}
+        onKeyDownCapture={onKeyDownCapture}
       >
         {stations.map((station) => {
           const added = isAlreadyAdded(station);
-          const metaLabel = `${m.segment_metadata()}: ${[
+          // Value only; the "Метадані" type is announced via aria-roledescription.
+          const metaValue = [
             station.country,
             station.codec,
             station.bitrate ? `${station.bitrate} кбіт/с` : null,
             station.clickcount ? String(station.clickcount) : null,
-          ].filter(Boolean).join(", ")}`;
-          const actionsLabel = `${m.segment_actions()}: ${added ? m.browser_added() : m.add_stream()}`;
+          ].filter(Boolean).join(", ");
+          const activeRow = activeItemId === station.stationuuid;
 
           return (
-            <li key={station.stationuuid} className="border-b border-slate-800 forced-colors:border-[ButtonText]">
-              {/* Summary segment — must always be first; useCompositeList resolves 'summary' implicitly */}
-              <div
-                data-item-id={station.stationuuid}
-                data-segment="summary"
-                tabIndex={isFocused(station.stationuuid, "summary") ? 0 : -1}
-                aria-label={station.name}
-                className="px-3 py-2 font-medium text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight]"
-              >
+            <li
+              key={station.stationuuid}
+              // The <li> is the 'summary' (whole-row) focus stop; aria-roledescription
+              // makes NVDA read "{name}, станція". Single focus ring via the global
+              // [tabindex]:focus-visible rule.
+              data-item-id={station.stationuuid}
+              data-segment="summary"
+              tabIndex={isFocused(station.stationuuid, "summary") ? 0 : -1}
+              aria-label={station.name}
+              aria-roledescription={m.item_role_station()}
+              className={`border-b border-slate-800 forced-colors:border-[ButtonText] ${activeRow ? "bg-slate-800/60" : ""}`}
+            >
+              {/* Station name — visual only; the row's accessible name is on the <li>. */}
+              <div className="px-3 py-2 font-medium text-slate-100">
                 {station.name}
               </div>
 
               {/* Metadata segment */}
               <div
+                role="group"
                 data-item-id={station.stationuuid}
                 data-segment="metadata"
                 tabIndex={isFocused(station.stationuuid, "metadata") ? 0 : -1}
-                aria-label={metaLabel}
-                className="px-3 py-1 text-sm text-slate-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
+                aria-label={metaValue}
+                aria-roledescription={m.segment_metadata()}
+                className="px-3 py-1 text-sm text-slate-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight]"
               >
                 {[station.name, station.country, station.codec, station.bitrate && `${station.bitrate} kbps`].filter(Boolean).join(" · ")}
               </div>
 
-              {/* Actions segment */}
-              <div
-                data-item-id={station.stationuuid}
-                data-segment="actions"
-                tabIndex={isFocused(station.stationuuid, "actions") ? 0 : -1}
-                aria-label={actionsLabel}
-                className="px-3 py-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
-              >
+              {/* Action — individual focus stop (roving tabIndex). */}
+              <div className="px-3 py-1">
                 <button
-                  tabIndex={-1}
-                  disabled={added}
+                  data-item-id={station.stationuuid}
+                  data-segment="action-add"
+                  tabIndex={isFocused(station.stationuuid, "action-add") ? 0 : -1}
+                  aria-disabled={added || undefined}
                   aria-label={added ? m.browser_added() : m.add_stream()}
                   onClick={async () => {
                     if (added) return;
@@ -134,7 +139,7 @@ export const StationList = forwardRef<ZoneEntry, Props>(
                       announce(m.browser_station_added({ name: station.name }), "polite");
                     } catch (err) { addToast(String(err), "error"); }
                   }}
-                  className={`rounded px-2 py-0.5 text-xs ${added ? "cursor-not-allowed text-slate-600" : "bg-blue-600 text-white hover:bg-blue-700 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"}`}
+                  className={`rounded px-2 py-0.5 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight] ${added ? "cursor-not-allowed text-slate-600" : "bg-blue-600 text-white hover:bg-blue-700 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"}`}
                 >
                   {added ? m.browser_added() : m.add_stream()}
                 </button>

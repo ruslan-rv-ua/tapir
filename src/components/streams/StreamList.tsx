@@ -26,7 +26,7 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty }, r
     [streams, statuses]
   );
 
-  const { listRef, onKeyDown, isFocused, restoreFocus } =
+  const { listRef, onKeyDownCapture, isFocused, restoreFocus, activeItemId } =
     useCompositeList({
       zoneId: "streams-list",
       items,
@@ -39,20 +39,17 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty }, r
         }
         if (type === "contextMenu") {
           const menuBtn = listRef.current?.querySelector<HTMLButtonElement>(
-            `[data-item-id="${CSS.escape(itemId)}"] [data-context-menu-trigger]`
+            `[data-item-id="${CSS.escape(itemId)}"][data-context-menu-trigger]`
           );
           menuBtn?.click();
           return;
         }
-        if (type === "primary" || (type === "toggle" && segment !== "actions")) {
-          const stream = streams.find((s) => s.id === itemId);
-          if (!stream) return;
-          const status = statuses[itemId];
-          const isRecording = status?.state === "recording";
-          const action = segment === "actions" || segment === "summary"
-            ? (isRecording ? tauri.stopRecording(itemId) : tauri.startRecording(itemId))
-            : Promise.resolve();
-          action.catch((err) => addToast(String(err), "error"));
+        // Action buttons self-activate; only Enter/Space on the whole-row summary
+        // triggers the row's primary action (record toggle).
+        if ((type === "primary" || type === "toggle") && segment === "summary") {
+          const isRecording = statuses[itemId]?.state === "recording";
+          (isRecording ? tauri.stopRecording(itemId) : tauri.startRecording(itemId))
+            .catch((err) => addToast(String(err), "error"));
         }
       },
     });
@@ -82,13 +79,14 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty }, r
         aria-label={m.zone_streams_list()}
         role="list"
         className="flex-1 overflow-y-auto overflow-x-hidden"
-        onKeyDown={onKeyDown}
+        onKeyDownCapture={onKeyDownCapture}
       >
         {streams.map((stream) => (
           <StreamItem
             key={stream.id}
             stream={stream}
             status={statuses[stream.id]}
+            isActiveRow={activeItemId === stream.id}
             isFocused={(segment) => isFocused(stream.id, segment)}
             onPrimaryAction={() => {
               const isRecording = statuses[stream.id]?.state === "recording";

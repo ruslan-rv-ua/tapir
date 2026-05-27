@@ -10,12 +10,14 @@ import * as m from "../../i18n/paraglide/messages";
 interface Props {
   stream: StreamInfo;
   status: StreamStatus | undefined;
+  /** True when the menu trigger is the active 'action-menu' focus stop. */
+  menuFocused: boolean;
   onAddToWishlist: (currentTrack: string) => void;
   onAddToIgnorelist: (currentTrack: string) => void;
   onDelete: () => void;
 }
 
-export function StreamContextMenu({ stream, status, onAddToWishlist, onAddToIgnorelist, onDelete }: Props) {
+export function StreamContextMenu({ stream, status, menuFocused, onAddToWishlist, onAddToIgnorelist, onDelete }: Props) {
   const playerStatus = useStore($playerStatus);
   const state = status?.state ?? "idle";
   const isRecording = state === "recording";
@@ -60,11 +62,14 @@ export function StreamContextMenu({ stream, status, onAddToWishlist, onAddToIgno
   return (
     <MenuTrigger>
       <Button
-        excludeFromTabOrder
+        // Roving focus stop: tabbable only while it is the active 'action-menu' segment.
+        excludeFromTabOrder={!menuFocused}
+        data-item-id={stream.id}
+        data-segment="action-menu"
+        data-context-menu-trigger
         aria-label={m.stream_actions({ name: stream.name })}
         title={m.stream_actions({ name: stream.name })}
-        data-context-menu-trigger
-        className="inline-flex shrink-0 items-center justify-center rounded bg-slate-700 px-2 py-1 text-xs text-slate-300 hover:bg-slate-600 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
+        className="inline-flex shrink-0 items-center justify-center rounded bg-slate-700 px-2 py-1 text-xs text-slate-300 hover:bg-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText] forced-colors:focus-visible:outline-[Highlight]"
       >
         ⋯
       </Button>

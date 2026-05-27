@@ -21,7 +21,7 @@ interface Props {
   onRemove: (pattern: string) => void;
 }
 
-const PATTERN_SEGMENTS: Exclude<SegmentKind, "summary">[] = ["conditions", "actions"];
+const PATTERN_SEGMENTS: Exclude<SegmentKind, "summary">[] = ["conditions", "action-edit", "action-delete"];
 
 function formatDate(iso: string): string {
   try {
@@ -39,7 +39,7 @@ export const PatternList = forwardRef<ZoneEntry, Props>(
     );
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-    const { listRef, onKeyDown, isFocused, restoreFocus } = useCompositeList({
+    const { listRef, onKeyDownCapture, isFocused, restoreFocus, activeItemId } = useCompositeList({
       zoneId: "wishlist-list",
       items: listItems,
       onTabOut: exitZone,
@@ -49,7 +49,8 @@ export const PatternList = forwardRef<ZoneEntry, Props>(
           setConfirmDelete(itemId);
           return;
         }
-        if (type === "primary" || (type === "toggle" && segment !== "actions")) {
+        // Edit/Delete buttons self-activate; Enter/Space on the whole-row summary edits.
+        if ((type === "primary" || type === "toggle") && segment === "summary") {
           onEdit(itemId);
         }
       },
@@ -79,59 +80,65 @@ export const PatternList = forwardRef<ZoneEntry, Props>(
           role="list"
           aria-label={ariaLabel}
           className="flex-1 overflow-auto"
-          onKeyDown={onKeyDown}
+          onKeyDownCapture={onKeyDownCapture}
         >
           {items.map((item) => {
-            const conditionsLabel = showDate && item.addedAt
-              ? `${m.segment_conditions()}: ${m.column_added_at()}, ${formatDate(item.addedAt)}`
-              : `${m.segment_conditions()}: ${m.empty_conditions()}`;
-            const actionsLabel = `${m.segment_actions()}: ${m.edit_pattern()}, ${m.remove_pattern()}`;
+            // Value only; the "Умови" type is announced via aria-roledescription.
+            const conditionsValue = showDate && item.addedAt
+              ? `${m.column_added_at()}, ${formatDate(item.addedAt)}`
+              : m.empty_conditions();
+            const activeRow = activeItemId === item.pattern;
 
             return (
-              <li key={item.pattern} className="border-b border-slate-800 forced-colors:border-[ButtonText]">
-                {/* Summary */}
-                <div
-                  data-item-id={item.pattern}
-                  data-segment="summary"
-                  tabIndex={isFocused(item.pattern, "summary") ? 0 : -1}
-                  aria-label={item.pattern}
-                  className="px-3 py-2 font-mono text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
-                >
+              <li
+                key={item.pattern}
+                // The <li> is the 'summary' (whole-row) focus stop; aria-roledescription
+                // makes NVDA read "{pattern}, патерн". Single focus ring via the global
+                // [tabindex]:focus-visible rule.
+                data-item-id={item.pattern}
+                data-segment="summary"
+                tabIndex={isFocused(item.pattern, "summary") ? 0 : -1}
+                aria-label={item.pattern}
+                aria-roledescription={m.item_role_pattern()}
+                className={`border-b border-slate-800 forced-colors:border-[ButtonText] ${activeRow ? "bg-slate-800/60" : ""}`}
+              >
+                {/* Pattern text — visual only; the row's accessible name is on the <li>. */}
+                <div className="px-3 py-2 font-mono text-slate-200">
                   {item.pattern}
                 </div>
 
                 {/* Conditions segment */}
                 <div
+                  role="group"
                   data-item-id={item.pattern}
                   data-segment="conditions"
                   tabIndex={isFocused(item.pattern, "conditions") ? 0 : -1}
-                  aria-label={conditionsLabel}
-                  className="px-3 py-1 text-sm text-slate-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
+                  aria-label={conditionsValue}
+                  aria-roledescription={m.segment_conditions()}
+                  className="px-3 py-1 text-sm text-slate-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight]"
                 >
                   {showDate && item.addedAt ? formatDate(item.addedAt) : "—"}
                 </div>
 
-                {/* Actions segment */}
-                <div
-                  data-item-id={item.pattern}
-                  data-segment="actions"
-                  tabIndex={isFocused(item.pattern, "actions") ? 0 : -1}
-                  aria-label={actionsLabel}
-                  className="flex justify-end gap-1 px-3 py-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
-                >
+                {/* Actions — each button is its own focus stop (roving tabIndex). */}
+                <div className="flex justify-end gap-1 px-3 py-1">
                   <button
-                    tabIndex={-1}
+                    data-item-id={item.pattern}
+                    data-segment="action-edit"
+                    tabIndex={isFocused(item.pattern, "action-edit") ? 0 : -1}
                     onClick={() => onEdit(item.pattern)}
                     aria-label={`${m.edit_pattern()}: ${item.pattern}`}
-                    className="rounded px-2 py-0.5 text-xs text-slate-500 hover:bg-slate-700 hover:text-slate-300"
+                    className="rounded px-2 py-0.5 text-xs text-slate-500 hover:bg-slate-700 hover:text-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight]"
                   >
                     ✎
                   </button>
                   <button
-                    tabIndex={-1}
+                    data-item-id={item.pattern}
+                    data-segment="action-delete"
+                    tabIndex={isFocused(item.pattern, "action-delete") ? 0 : -1}
                     onClick={() => setConfirmDelete(item.pattern)}
                     aria-label={`${m.remove_pattern()}: ${item.pattern}`}
-                    className="rounded px-2 py-0.5 text-xs text-slate-500 hover:bg-slate-700 hover:text-slate-300"
+                    className="rounded px-2 py-0.5 text-xs text-slate-500 hover:bg-slate-700 hover:text-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight]"
                   >
                     ✕
                   </button>
