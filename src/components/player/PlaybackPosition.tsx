@@ -1,9 +1,15 @@
-import { useState } from "react";
-import { Slider, SliderThumb, SliderTrack, ProgressBar } from "react-aria-components";
+import { useEffect, useState } from "react";
+import type { RefObject } from "react";
+import { ProgressBar, Slider, SliderThumb, SliderTrack } from "react-aria-components";
 import { useStore } from "@nanostores/react";
 import { $playerStatus } from "../../stores/player";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
+
+interface PlaybackPositionProps {
+  inputRef?: RefObject<HTMLInputElement | null>;
+  onNavigate?: (direction: 'prev' | 'next' | 'first' | 'last') => void;
+}
 
 function formatTime(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
@@ -12,9 +18,18 @@ function formatTime(ms: number): string {
   return m.time_format_min_sec({ min, sec });
 }
 
-export function PlaybackPosition() {
+export function PlaybackPosition({ inputRef, onNavigate }: PlaybackPositionProps) {
   const { state, source, positionMs, durationMs } = useStore($playerStatus);
   const [dragPos, setDragPos] = useState<number | null>(null);
+
+  // Patch tabIndex after every render — slider conditionally mounts, so ref.current
+  // becomes available at an unpredictable render. No dep array ensures we patch
+  // whenever the input is present.
+  useEffect(() => {
+    const input = inputRef?.current;
+    if (!input) return;
+    input.tabIndex = -1;
+  });
 
   if (state === "stopped" || !source) return null;
 
@@ -44,7 +59,26 @@ export function PlaybackPosition() {
             aria-hidden="true"
           />
           <SliderThumb
+            inputRef={inputRef}
             aria-valuetext={formatTime(pos)}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowLeft') {
+                e.preventDefault(); e.stopPropagation();
+                onNavigate?.('prev');
+              } else if (e.key === 'ArrowRight') {
+                e.preventDefault(); e.stopPropagation();
+                onNavigate?.('next');
+              } else if (e.key === 'Home') {
+                e.preventDefault(); e.stopPropagation();
+                onNavigate?.('first');
+              } else if (e.key === 'End') {
+                e.preventDefault(); e.stopPropagation();
+                onNavigate?.('last');
+              } else if (e.key === 'PageUp' || e.key === 'PageDown') {
+                e.preventDefault(); e.stopPropagation();
+              }
+              // ArrowUp / ArrowDown: pass through to RAC for value adjustment.
+            }}
             className="w-3 h-3 rounded-full bg-white top-1/2 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1 forced-colors:bg-[ButtonText]"
           />
         </SliderTrack>
@@ -52,7 +86,7 @@ export function PlaybackPosition() {
     );
   }
 
-  // Live stream — indeterminate progress bar
+  // Live stream — indeterminate progress bar (not interactive, no inputRef/onNavigate)
   return (
     <ProgressBar
       aria-label={m.live_stream()}

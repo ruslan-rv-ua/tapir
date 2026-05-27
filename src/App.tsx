@@ -40,18 +40,39 @@ function AppContent() {
   const playerZoneRef = useRef<ZoneEntry | null>(null);
   const statusBarZoneRef = useRef<ZoneEntry | null>(null);
 
+  // Stable proxy ZoneEntry objects for permanent zones.
+  // These are created once and always delegate to the CURRENT ref at call time,
+  // preventing stale-closure bugs when a permanent zone recreates its ZoneEntry
+  // (e.g. PlayerPanel recreates restoreFocusPlayer when playback state changes).
+  const activityBarProxyRef = useRef<ZoneEntry>({
+    id: "activity-bar",
+    get el() { return activityBarZoneRef.current!.el; },
+    focus: (dir) => activityBarZoneRef.current?.focus(dir),
+  });
+  const playerProxyRef = useRef<ZoneEntry>({
+    id: "player",
+    get el() { return playerZoneRef.current!.el; },
+    focus: (dir) => playerZoneRef.current?.focus(dir),
+  });
+  const statusBarProxyRef = useRef<ZoneEntry>({
+    id: "status-bar",
+    get el() { return statusBarZoneRef.current!.el; },
+    focus: (dir) => statusBarZoneRef.current?.focus(dir),
+  });
+
   // Screen zones from the active panel — registered via onZonesChange
   const [screenZones, setScreenZones] = useState<ZoneEntry[]>([]);
   const orderedZonesRef = useRef<ZoneEntry[]>([]);
 
-  // Keep orderedZonesRef in sync whenever screenZones changes
+  // Keep orderedZonesRef in sync whenever screenZones changes.
+  // Permanent zones use proxies (above) so they never go stale.
   useEffect(() => {
     orderedZonesRef.current = [
-      activityBarZoneRef.current,
+      activityBarProxyRef.current,
       ...screenZones,
-      playerZoneRef.current,
-      statusBarZoneRef.current,
-    ].filter((z): z is ZoneEntry => z !== null);
+      playerProxyRef.current,
+      statusBarProxyRef.current,
+    ];
   }, [screenZones]);
 
   const { exitZone } = useZoneNavigation(orderedZonesRef);
