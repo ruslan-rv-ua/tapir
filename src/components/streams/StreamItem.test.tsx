@@ -79,6 +79,37 @@ describe("StreamItem — accessibility structure", () => {
   });
 });
 
+describe("StreamItem — last-played track presentation", () => {
+  const mkStatus = (over: Partial<StreamStatus> = {}): StreamStatus => ({
+    streamId: "s1",
+    state: "idle",
+    currentTrack: { artist: "A", title: "B", album: "", startedAt: "2026-01-01T00:00:00Z" },
+    recordingStartedAt: null,
+    bytesRecorded: 0,
+    tracksRecorded: 0,
+    error: null,
+    reconnectAttempt: null,
+    ...over,
+  });
+
+  it("labels a track as last-played and dims it when the stream is idle and not playing", () => {
+    const { container } = renderItem(mkStream(), mkStatus());
+    const track = container.querySelector('[data-segment="track"]')!;
+    expect(track.getAttribute("aria-label")).toMatch(/last played|востаннє/i);
+    expect(track.getAttribute("aria-label")).toMatch(/A — B/);
+    expect(track.className).toMatch(/italic/);
+    expect(track.className).toMatch(/text-slate-500/);
+  });
+
+  it("labels a track as current (no prefix, not italic) while recording", () => {
+    const { container } = renderItem(mkStream(), mkStatus({ state: "recording", recordingStartedAt: "2026-01-01T00:00:00Z" }));
+    const track = container.querySelector('[data-segment="track"]')!;
+    expect(track.getAttribute("aria-label")).toBe("A — B");
+    expect(track.className).not.toMatch(/italic/);
+    expect(track.className).toMatch(/text-slate-400/);
+  });
+});
+
 describe("StreamItem — action buttons activate Tauri commands", () => {
   it("Play starts playback for the stream", () => {
     const { container } = renderItem();

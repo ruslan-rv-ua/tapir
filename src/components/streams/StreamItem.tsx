@@ -94,9 +94,20 @@ export function StreamItem({ stream, status, isFocused, isActiveRow, onPrimaryAc
   // each cell (a real role="group"), so a roleless named <div> — which Chromium
   // exposes as a "section" and NVDA reads as "розділ" — is avoided. The value
   // alone goes in aria-label; NVDA reads e.g. "192 kbps, Технічна інформація".
+  // When the stream is neither recording/connecting nor playing through us, any
+  // known `currentTrack` is the *last* one we saw — show it dimmed + italic and
+  // re-label it for screen readers so it doesn't read as "now playing". The
+  // italic also survives Windows forced-colors mode, where the colour dim does
+  // not.
+  const isStreamActive =
+    isRecording || isThisStreamPlaying || state === "connecting" || state === "reconnecting";
+  const hasTrack = !!status?.currentTrack;
+  const showAsLastTrack = !isStreamActive && hasTrack;
   const trackValue = status?.currentTrack
     ? `${status.currentTrack.artist} — ${status.currentTrack.title}`
     : "—";
+  const trackLabel = showAsLastTrack ? m.segment_track_last({ track: trackValue }) : trackValue;
+  const trackTextClass = showAsLastTrack ? "text-slate-500 italic" : "text-slate-400";
 
   const techValue = formatBitrate(stream.bitrate);
 
@@ -172,9 +183,9 @@ export function StreamItem({ stream, status, isFocused, isActiveRow, onPrimaryAc
             data-item-id={stream.id}
             data-segment="track"
             tabIndex={isFocused("track") ? 0 : -1}
-            aria-label={trackValue}
+            aria-label={trackLabel}
             aria-roledescription={m.segment_track()}
-            className="px-3 py-2 text-sm text-slate-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight] truncate"
+            className={`px-3 py-2 text-sm ${trackTextClass} focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight] truncate`}
             style={{ gridRow: 1, gridColumn: 3 }}
           >
             {trackValue}
