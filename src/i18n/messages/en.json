@@ -55,6 +55,8 @@
   "status_idle": "Idle",
   "status_connecting": "Connecting...",
   "status_recording": "REC",
+  "status_recording_label": "Recording",
+  "status_recording_and_playing": "Recording and playing",
   "status_reconnecting": "Reconnecting...",
   "status_error": "Error",
   "recording_started": "Recording started: {name}",

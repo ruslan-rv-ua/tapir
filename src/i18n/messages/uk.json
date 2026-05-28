@@ -55,6 +55,8 @@
   "status_idle": "Очікування",
   "status_connecting": "Підключення...",
   "status_recording": "REC",
+  "status_recording_label": "Записується",
+  "status_recording_and_playing": "Записується і відтворюється",
   "status_reconnecting": "Перепідключення...",
   "status_error": "Помилка",
   "recording_started": "Запис розпочато: {name}",

@@ -80,13 +80,15 @@ export function StreamItem({ stream, status, isFocused, isActiveRow, onPrimaryAc
     } catch (err) { addToast(String(err), "error"); }
   };
 
-  // Summary label
-  const statusParts: string[] = [];
-  if (isRecording) statusParts.push(m.status_recording());
-  if (isThisStreamPlaying) statusParts.push(m.segment_playing());
-  const summaryLabel = statusParts.length > 0
-    ? `${statusParts.join(", ")}, ${stream.name}`
-    : stream.name;
+  // Summary label — uses screen-reader-friendly words, not the visual "REC"
+  // abbreviation. When both states apply, a natural-language conjunction avoids
+  // the comma micro-pause NVDA inserts between joined fragments.
+  const stateLabel =
+    isRecording && isThisStreamPlaying ? m.status_recording_and_playing() :
+    isRecording                        ? m.status_recording_label() :
+    isThisStreamPlaying                ? m.segment_playing() :
+    null;
+  const summaryLabel = stateLabel ? `${stateLabel}, ${stream.name}` : stream.name;
 
   // Segment values. The segment *type* is announced via aria-roledescription on
   // each cell (a real role="group"), so a roleless named <div> — which Chromium
@@ -99,7 +101,7 @@ export function StreamItem({ stream, status, isFocused, isActiveRow, onPrimaryAc
   const techValue = formatBitrate(stream.bitrate);
 
   const statusIconLabel =
-    state === "recording"    ? m.status_recording() :
+    state === "recording"    ? m.status_recording_label() :
     state === "connecting"   ? m.status_connecting() :
     state === "reconnecting" ? m.status_reconnecting() :
     state === "error"        ? m.status_error() :
