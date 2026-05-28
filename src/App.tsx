@@ -10,6 +10,7 @@ import { SettingsDialog } from "./components/settings/SettingsDialog";
 import { StreamsPanel } from "./components/streams/StreamsPanel";
 import { WishlistPanel } from "./components/wishlist/WishlistPanel";
 import { BrowserPanel } from "./components/browser/BrowserPanel";
+import { SongsPanel } from "./components/songs/SongsPanel";
 import { PlayerPanel } from "./components/player/PlayerPanel";
 import { useZoneNavigation, type ZoneEntry } from "./hooks/useZoneNavigation";
 import { useTauriEvent } from "./hooks/useTauriEvent";
@@ -293,6 +294,7 @@ function AppContent() {
         {activeSection === "streams" && <StreamsPanel onZonesChange={onZonesChange} exitZone={exitZone} />}
         {activeSection === "wishlist" && <WishlistPanel onZonesChange={onZonesChange} exitZone={exitZone} />}
         {activeSection === "browser" && <BrowserPanel onZonesChange={onZonesChange} exitZone={exitZone} />}
+        {activeSection === "songs" && <SongsPanel onZonesChange={onZonesChange} exitZone={exitZone} />}
         <PlayerPanel ref={playerZoneRef} exitZone={(forward: boolean) => exitZone("player", forward)} />
         <StatusBar ref={statusBarZoneRef} exitZone={(forward: boolean) => exitZone("status-bar", forward)} />
       </main>

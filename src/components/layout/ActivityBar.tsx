@@ -22,7 +22,7 @@ const SECTIONS: SectionConfig[] = [
   { id: "browser", label: m.browser_section, Icon: Globe },
   { id: "wishlist", label: m.wishlist_section, Icon: Heart },
   { id: "schedule", label: m.schedule_section, Icon: Calendar, disabled: true, phase: "3" },
-  { id: "songs", label: m.songs_section, Icon: Music, disabled: true, phase: "3" },
+  { id: "songs", label: m.songs_section, Icon: Music },
 ];
 
 interface Props {
