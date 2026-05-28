@@ -29,6 +29,78 @@ fn truncate_chars(s: &str, max: usize) -> String {
     out
 }
 
+use tauri::AppHandle;
+use tauri::menu::{Menu, MenuBuilder, MenuItemBuilder};
+use tauri::Wry;
+
+const ID_NOW_PLAYING: &str = "now-playing";
+const ID_TOGGLE_PLAYBACK: &str = "toggle-playback";
+const ID_STOP_PLAYBACK: &str = "stop-playback";
+const ID_RECORDING_INFO: &str = "recording-info";
+const ID_STOP_ALL: &str = "stop-all";
+const ID_TOGGLE_WINDOW: &str = "toggle-window";
+const ID_QUIT: &str = "quit";
+
+pub const MENU_ID_TOGGLE_PLAYBACK: &str = ID_TOGGLE_PLAYBACK;
+pub const MENU_ID_STOP_PLAYBACK: &str = ID_STOP_PLAYBACK;
+pub const MENU_ID_STOP_ALL: &str = ID_STOP_ALL;
+pub const MENU_ID_TOGGLE_WINDOW: &str = ID_TOGGLE_WINDOW;
+pub const MENU_ID_QUIT: &str = ID_QUIT;
+
+/// Build the right-click menu from a snapshot.
+pub fn build_menu(app: &AppHandle, snap: &MenuSnapshot) -> tauri::Result<Menu<Wry>> {
+    let mut builder = MenuBuilder::new(app);
+
+    let show_now_playing = matches!(
+        snap.player_state,
+        PlaybackState::Playing | PlaybackState::Paused
+    ) && snap.now_playing_label.is_some();
+
+    if show_now_playing {
+        let label = snap.now_playing_label.as_deref().unwrap_or("");
+        let item = MenuItemBuilder::with_id(ID_NOW_PLAYING, format!("Зараз грає: {label}"))
+            .enabled(false)
+            .build(app)?;
+        builder = builder.item(&item).separator();
+    }
+
+    let play_label = match snap.player_state {
+        PlaybackState::Playing => "Пауза",
+        _ => "Грати",
+    };
+    let toggle_playback = MenuItemBuilder::with_id(ID_TOGGLE_PLAYBACK, play_label)
+        .enabled(!matches!(snap.player_state, PlaybackState::Stopped))
+        .build(app)?;
+    builder = builder.item(&toggle_playback);
+
+    if !matches!(snap.player_state, PlaybackState::Stopped) {
+        let stop = MenuItemBuilder::with_id(ID_STOP_PLAYBACK, "Зупинити").build(app)?;
+        builder = builder.item(&stop);
+    }
+
+    builder = builder.separator();
+
+    if snap.active_recordings > 0 {
+        let info = MenuItemBuilder::with_id(
+            ID_RECORDING_INFO,
+            format!("● Записи: {} активних", snap.active_recordings),
+        )
+        .enabled(false)
+        .build(app)?;
+        let stop_all = MenuItemBuilder::with_id(ID_STOP_ALL, "Зупинити всі записи").build(app)?;
+        builder = builder.item(&info).item(&stop_all).separator();
+    }
+
+    let window_label = if snap.window_visible { "Приховати Tapir" } else { "Показати Tapir" };
+    let toggle_window = MenuItemBuilder::with_id(ID_TOGGLE_WINDOW, window_label).build(app)?;
+    builder = builder.item(&toggle_window).separator();
+
+    let quit = MenuItemBuilder::with_id(ID_QUIT, "Вихід").build(app)?;
+    builder = builder.item(&quit);
+
+    builder.build()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
