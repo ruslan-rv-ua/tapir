@@ -16,6 +16,7 @@
     "dialog:default",
     "log:default",
     "global-shortcut:default",
-    "window-state:default"
+    "window-state:default",
+    "notification:default"
   ]
 }

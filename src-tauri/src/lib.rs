@@ -38,6 +38,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_window_state::Builder::new().build())
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             portable::ensure_data_dirs()
                 .expect("Failed to create data directories");
@@ -47,9 +48,7 @@ pub fn run() {
                 .expect("Failed to initialize AppState (no audio device?)");
             app.manage(state);
             tray::setup_tray(app.handle()).expect("Failed to set up system tray");
-            if let Err(e) = tray::notify::init_balloon_runtime(app.handle()) {
-                log::warn!("Failed to initialize balloon runtime: {e}");
-            }
+            tray::notify::register_aumid(&app.config().identifier, "Tapir");
             let state_ref = app.state::<AppState>();
             let settings = tauri::async_runtime::block_on(state_ref.settings.read());
             let failed = shortcuts::register_global_shortcuts(app.handle(), &settings.hotkeys);

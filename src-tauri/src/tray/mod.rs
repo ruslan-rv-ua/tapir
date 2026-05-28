@@ -1,4 +1,4 @@
-//! System tray: icon, dynamic context menu, balloon notifications, quit confirm.
+//! System tray: icon, dynamic context menu, toast notifications, quit confirm.
 
 pub mod menu;
 pub mod handlers;

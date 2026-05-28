@@ -699,10 +699,13 @@ impl PlayerEngine {
                                     "track-changed",
                                     TrackChangedPayload {
                                         stream_id: stream_id_writer.clone(),
-                                        artist,
-                                        title,
+                                        artist: artist.clone(),
+                                        title: title.clone(),
                                         album: String::new(),
                                     },
+                                );
+                                crate::tray::notify::notify_track_change(
+                                    &app_writer, &stream_id_writer, &artist, &title,
                                 );
                             }
                             Some(IcyEvent::Audio(data)) => {
