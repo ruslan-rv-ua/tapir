@@ -9,6 +9,7 @@ mod shortcuts;
 mod settings;
 mod stream;
 mod tags;
+mod tray;
 mod wishlist;
 mod browser;
 
