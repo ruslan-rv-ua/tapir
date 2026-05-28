@@ -9,7 +9,7 @@ use crate::errors::RadioError;
 use crate::profile::AudioFormat;
 use crate::songs::Song;
 
-const STATION_ROOT_SENTINEL: &str = "—";
+pub(crate) const STATION_ROOT_SENTINEL: &str = "—";
 
 /// Map an extension (lower-cased) to our `AudioFormat`. None for unsupported.
 pub fn format_from_extension(ext: &str) -> Option<AudioFormat> {
@@ -23,14 +23,19 @@ pub fn format_from_extension(ext: &str) -> Option<AudioFormat> {
 /// Compute the station name from a file path relative to `output_dir`.
 /// First path component → station. Files in `output_dir` root → sentinel.
 fn derive_station(path: &Path, output_dir: &Path) -> String {
-    path.strip_prefix(output_dir)
-        .ok()
-        .and_then(|rel| rel.components().next())
+    let Ok(rel) = path.strip_prefix(output_dir) else {
+        return STATION_ROOT_SENTINEL.to_string();
+    };
+    // If the relative path has 2+ components, the first is the station dir.
+    // A single-component path means the file lives in output_dir root.
+    let mut components = rel.components();
+    let first = components.next();
+    let has_more = components.next().is_some();
+    if !has_more {
+        return STATION_ROOT_SENTINEL.to_string();
+    }
+    first
         .and_then(|c| c.as_os_str().to_str())
-        .filter(|first| {
-            // If the only component is the file itself, no station folder.
-            PathBuf::from(first).extension().is_none()
-        })
         .map(String::from)
         .unwrap_or_else(|| STATION_ROOT_SENTINEL.to_string())
 }
@@ -124,6 +129,20 @@ mod tests {
     fn derive_station_uses_sentinel_when_file_in_root() {
         let out = PathBuf::from("/recordings");
         let path = PathBuf::from("/recordings/orphan.mp3");
+        assert_eq!(derive_station(&path, &out), STATION_ROOT_SENTINEL);
+    }
+
+    #[test]
+    fn derive_station_handles_dot_in_station_name() {
+        let out = PathBuf::from("/recordings");
+        let path = PathBuf::from("/recordings/WFMU.org/Show.mp3");
+        assert_eq!(derive_station(&path, &out), "WFMU.org");
+    }
+
+    #[test]
+    fn derive_station_returns_sentinel_when_outside_output_dir() {
+        let out = PathBuf::from("/recordings");
+        let path = PathBuf::from("/elsewhere/orphan.mp3");
         assert_eq!(derive_station(&path, &out), STATION_ROOT_SENTINEL);
     }
 
