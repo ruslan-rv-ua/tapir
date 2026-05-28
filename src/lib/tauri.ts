@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import type { Song } from "../types/song";
 
 // --- Types matching Rust structs (camelCase, as serialized) ---
 
@@ -335,4 +336,27 @@ export async function getBrowserFilters(): Promise<BrowserFilters> {
 
 export async function addStationFromBrowser(station: StationResult): Promise<void> {
   return invoke("add_station_from_browser", { station });
+}
+
+// ── Songs (Phase 3C) ──────────────────────────────────────────────────────
+
+export async function listSavedSongs(): Promise<Song[]> {
+  return invoke("list_saved_songs");
+}
+export async function playSavedSong(path: string): Promise<void> {
+  return invoke("play_saved_song", { path });
+}
+export async function openSongInExplorer(path: string): Promise<void> {
+  return invoke("open_song_in_explorer", { path });
+}
+export async function renameSavedSong(oldPath: string, newBasename: string): Promise<Song> {
+  return invoke("rename_song", { oldPath, newBasename });
+}
+export async function updateSongTags(
+  path: string, artist: string, title: string, album: string, genre: string,
+): Promise<Song> {
+  return invoke("update_song_tags", { path, artist, title, album, genre });
+}
+export async function deleteSavedSong(path: string): Promise<void> {
+  return invoke("delete_song", { path });
 }
