@@ -202,7 +202,7 @@ export const PlayerPanel = forwardRef<
         className="grid grid-cols-subgrid col-span-3"
       >
         {/* ── Panel 1: Зараз грає ── */}
-        <article aria-label={m.player_now_playing()} className="rounded-[20px] bg-white/[0.04] border border-white/[0.06] p-4 flex flex-col gap-2 min-w-0 min-h-[130px]">
+        <div role="group" aria-label={m.player_now_playing()} className="rounded-[20px] bg-white/[0.04] border border-white/[0.06] p-4 flex flex-col gap-2 min-w-0 min-h-[130px]">
           <h3 aria-hidden="true" className="text-base font-bold text-slate-100">
             {m.player_now_playing()}
           </h3>
@@ -258,10 +258,10 @@ export const PlayerPanel = forwardRef<
               )}
             </>
           )}
-        </article>
+        </div>
 
         {/* ── Panel 2: Керування ── */}
-        <article aria-label={m.player_controls()} className="rounded-[20px] bg-white/[0.04] border border-white/[0.06] p-4 flex flex-col gap-2 min-w-0">
+        <div role="group" aria-label={m.player_controls()} className="rounded-[20px] bg-white/[0.04] border border-white/[0.06] p-4 flex flex-col gap-2 min-w-0">
           <h3 aria-hidden="true" className="text-base font-bold text-slate-100">
             {m.player_controls()}
           </h3>
@@ -329,10 +329,10 @@ export const PlayerPanel = forwardRef<
           <div className="mt-auto">
             <PlaybackPosition inputRef={positionInputRef} onNavigate={navigate} />
           </div>
-        </article>
+        </div>
 
         {/* ── Panel 3: Вивід ── */}
-        <article aria-label={m.player_output()} className="rounded-[20px] bg-white/[0.04] border border-white/[0.06] p-4 flex flex-col gap-2 min-w-0">
+        <div role="group" aria-label={m.player_output()} className="rounded-[20px] bg-white/[0.04] border border-white/[0.06] p-4 flex flex-col gap-2 min-w-0">
           <h3 aria-hidden="true" className="text-base font-bold text-slate-100">
             {m.player_output()}
           </h3>
@@ -352,7 +352,7 @@ export const PlayerPanel = forwardRef<
           <div className="mt-auto">
             <VolumeSlider inputRef={volumeInputRef} onNavigate={navigate} />
           </div>
-        </article>
+        </div>
       </div>
     </div>
   );
