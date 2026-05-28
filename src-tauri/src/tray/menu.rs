@@ -101,6 +101,51 @@ pub fn build_menu(app: &AppHandle, snap: &MenuSnapshot) -> tauri::Result<Menu<Wr
     builder.build()
 }
 
+use crate::app_state::AppState;
+use crate::player::engine::{PlaybackSource, PlayerStatus};
+use tauri::Manager;
+
+/// Compose the "Now playing" label for the menu, reading station + track
+/// info from AppState. Returns None when nothing is meaningfully playing.
+pub async fn build_now_playing_label(
+    status: &PlayerStatus,
+    app: &AppHandle,
+) -> Option<String> {
+    if !matches!(status.state, PlaybackState::Playing | PlaybackState::Paused) {
+        return None;
+    }
+    let source = status.source.as_ref()?;
+    let state = app.state::<AppState>();
+    match source {
+        PlaybackSource::Stream { stream_id } => {
+            let manager = state.stream_manager.read().await;
+            let statuses = manager.get_all_statuses();
+            let stream_status = statuses.iter().find(|s| &s.stream_id == stream_id).cloned();
+            drop(manager);
+
+            let profile = state.active_profile.read().await;
+            let stream_info = profile.streams.iter().find(|s| &s.id == stream_id).cloned();
+            drop(profile);
+
+            let station = stream_info.map(|s| s.name).unwrap_or_else(|| stream_id.clone());
+
+            match stream_status.and_then(|s| s.current_track) {
+                Some(t) if !t.artist.is_empty() || !t.title.is_empty() => {
+                    Some(format!("{station} — {} — {}", t.artist, t.title))
+                }
+                _ => Some(station),
+            }
+        }
+        PlaybackSource::File { path } => {
+            let basename = std::path::Path::new(path)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("?");
+            Some(format!("Файл: {basename}"))
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
