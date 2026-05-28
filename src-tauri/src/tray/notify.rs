@@ -31,8 +31,8 @@ use std::sync::OnceLock;
 use windows::core::PCWSTR;
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM, HMODULE};
 use windows::Win32::UI::Shell::{
-    Shell_NotifyIconW, NIF_INFO, NIF_MESSAGE, NIIF_NONE, NIIF_RESPECT_QUIET_TIME,
-    NIM_ADD, NIM_DELETE, NIM_MODIFY, NIN_BALLOONUSERCLICK, NOTIFYICONDATAW,
+    Shell_NotifyIconW, NIF_INFO, NIF_MESSAGE, NIF_STATE, NIIF_NONE, NIIF_RESPECT_QUIET_TIME,
+    NIM_ADD, NIM_DELETE, NIM_MODIFY, NIN_BALLOONUSERCLICK, NIS_HIDDEN, NOTIFYICONDATAW,
 };
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::WindowsAndMessaging::{
@@ -90,8 +90,14 @@ pub fn init_balloon_runtime(app: &tauri::AppHandle) -> anyhow::Result<()> {
         BALLOON_HWND.store(hwnd.0 as isize, Ordering::Release);
 
         let mut nid = balloon_notify_data(hwnd);
-        nid.uFlags = NIF_MESSAGE;
+        // NIS_HIDDEN keeps this entry out of the notification area UI
+        // (and out of Win+B navigation), while still allowing balloon
+        // callbacks to reach `balloon_wnd_proc`. Without it Windows 11
+        // surfaces a second unnamed tray button next to Tauri's icon.
+        nid.uFlags = NIF_MESSAGE | NIF_STATE;
         nid.uCallbackMessage = BALLOON_CALLBACK_MSG;
+        nid.dwState = NIS_HIDDEN;
+        nid.dwStateMask = NIS_HIDDEN;
         let added = Shell_NotifyIconW(NIM_ADD, &nid).as_bool();
         if !added {
             log::warn!("Shell_NotifyIconW(NIM_ADD) for balloon icon failed");
@@ -150,7 +156,11 @@ pub fn show_balloon(title: &str, body: &str) {
     }
     let hwnd = HWND(raw as *mut _);
     let mut nid = balloon_notify_data(hwnd);
-    nid.uFlags = NIF_INFO;
+    // Re-assert NIS_HIDDEN on every MODIFY so Windows does not unhide
+    // the placeholder icon when the balloon is displayed.
+    nid.uFlags = NIF_INFO | NIF_STATE;
+    nid.dwState = NIS_HIDDEN;
+    nid.dwStateMask = NIS_HIDDEN;
     write_utf16(&mut nid.szInfoTitle, title);
     write_utf16(&mut nid.szInfo, body);
     nid.Anonymous.uTimeout = 5000;
