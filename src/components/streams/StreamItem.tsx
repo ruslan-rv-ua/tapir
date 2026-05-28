@@ -221,7 +221,7 @@ export function StreamItem({ stream, status, isFocused, isActiveRow, onPrimaryAc
           data-segment="action-play"
           tabIndex={isFocused("action-play") ? 0 : -1}
           onClick={handlePlayToggle}
-          aria-label={isThisStreamPlaying ? m.stop_stream_playback() : m.play_stream()}
+          aria-label={isThisStreamPlaying ? m.stop_stream_playback_named({ name: stream.name }) : m.play_stream_named({ name: stream.name })}
           className={`inline-flex min-w-[5.5rem] justify-center shrink-0 whitespace-nowrap items-center gap-1 rounded-md px-2 py-0.5 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight] ${isThisStreamPlaying ? "bg-blue-700 text-white forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]" : "bg-slate-700 text-slate-300 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText]"}`}
         >
           <span aria-hidden="true">{isThisStreamPlaying ? "\u25a0" : "\u25ba"}</span>
@@ -232,7 +232,7 @@ export function StreamItem({ stream, status, isFocused, isActiveRow, onPrimaryAc
           data-segment="action-record"
           tabIndex={isFocused("action-record") ? 0 : -1}
           onClick={handleRecordToggle}
-          aria-label={isRecording ? m.stop_recording() : m.start_recording()}
+          aria-label={isRecording ? m.stop_recording_named({ name: stream.name }) : m.start_recording_named({ name: stream.name })}
           className={`inline-flex min-w-[7.5rem] justify-center shrink-0 whitespace-nowrap items-center gap-1 rounded-md px-2 py-0.5 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight] ${isRecording ? "bg-red-700 text-white forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]" : "bg-slate-700 text-slate-300 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText]"}`}
         >
           <span aria-hidden="true">{isRecording ? "\u23f9" : "\u23fa"}</span>
