@@ -133,7 +133,6 @@
   "settings_theme_light": "Світла",
   "settings_minimize_to_tray": "Згортати до tray замість закриття",
   "settings_show_tray_notifications": "Сповіщення при зміні треку",
-  "settings_disabled_tray": "Доступно після реалізації System Tray",
   "settings_show_track_in_title": "Показувати назву треку в заголовку вікна",
   "settings_double_click_action": "Дія при подвійному кліку на потоці",
   "settings_double_click_record": "Запис",

@@ -115,34 +115,28 @@ export function GeneralTab() {
         </Popover>
       </Select>
 
-      {/* Minimize to tray (disabled — Phase 3A) */}
+      {/* Minimize to tray */}
       <Checkbox
         isSelected={settings.minimizeToTray}
-        isDisabled
-        className="flex items-center gap-2 text-sm text-slate-500 forced-colors:text-[GrayText]"
+        onChange={(val) => update({ minimizeToTray: val })}
+        className="flex items-center gap-2 text-sm text-slate-300"
       >
         <div className="flex h-5 w-5 items-center justify-center rounded border border-slate-600 bg-slate-700">
           {settings.minimizeToTray && <span>✓</span>}
         </div>
         <Label>{m.settings_minimize_to_tray()}</Label>
-        <span className="text-xs text-slate-600 forced-colors:text-[GrayText]">
-          ({m.settings_disabled_tray()})
-        </span>
       </Checkbox>
 
-      {/* Show tray notifications (disabled — Phase 3A) */}
+      {/* Show tray notifications */}
       <Checkbox
         isSelected={settings.showTrayNotifications}
-        isDisabled
-        className="flex items-center gap-2 text-sm text-slate-500 forced-colors:text-[GrayText]"
+        onChange={(val) => update({ showTrayNotifications: val })}
+        className="flex items-center gap-2 text-sm text-slate-300"
       >
         <div className="flex h-5 w-5 items-center justify-center rounded border border-slate-600 bg-slate-700">
           {settings.showTrayNotifications && <span>✓</span>}
         </div>
         <Label>{m.settings_show_tray_notifications()}</Label>
-        <span className="text-xs text-slate-600 forced-colors:text-[GrayText]">
-          ({m.settings_disabled_tray()})
-        </span>
       </Checkbox>
 
       {/* Show track in title */}
