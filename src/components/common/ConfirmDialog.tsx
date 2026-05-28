@@ -4,11 +4,12 @@ import * as m from "../../i18n/paraglide/messages";
 interface Props {
   title: string;
   message: string;
+  confirmLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-export function ConfirmDialog({ title, message, onConfirm, onCancel }: Props) {
+export function ConfirmDialog({ title, message, confirmLabel, onConfirm, onCancel }: Props) {
   return (
     <ModalOverlay
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
@@ -31,7 +32,7 @@ export function ConfirmDialog({ title, message, onConfirm, onCancel }: Props) {
               onClick={onConfirm}
               className="rounded bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
             >
-              {m["delete"]()}
+              {confirmLabel ?? m["delete"]()}
             </button>
           </div>
         </Dialog>

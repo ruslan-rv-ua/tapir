@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { useStore } from "@nanostores/react";
+import { createPortal } from "react-dom";
 import { $streams, $statuses, $showAddStreamDialog } from "../../stores/streams";
 import { $commandPaletteOpen } from "../../stores/navigation";
+import { $settings } from "../../stores/settings";
 import { StreamList } from "./StreamList";
 import { AddStreamDialog } from "./AddStreamDialog";
+import { ConfirmDialog } from "../common/ConfirmDialog";
 import { useRovingFocus } from "../../hooks/useRovingFocus";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as tauri from "../../lib/tauri";
@@ -25,6 +28,7 @@ const FILTER_CHIPS = [
 export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const streams = useStore($streams);
   const statuses = useStore($statuses);
+  const settings = useStore($settings);
   const isEmpty = streams.length === 0;
 
   // ── Metrics ──────────────────────────────────────────────
@@ -39,8 +43,8 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const errorCount  = visibleStatuses.filter(s => s.state === "error").length;
 
   const pluralRules = useMemo(
-    () => new Intl.PluralRules(document.documentElement.lang || "uk"),
-    [],
+    () => new Intl.PluralRules(settings?.language || document.documentElement.lang || "uk"),
+    [settings?.language],
   );
   const pluralize = useCallback(
     (
@@ -83,6 +87,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
   // ── Filter chip stub state ────────────────────────────────
   const [activeChip, setActiveChip] = useState<string>("all");
+  const [confirmStopAll, setConfirmStopAll] = useState(false);
 
   // ── Toolbar zone refs (7 items) ──────────────────────────
   const toolbarZoneRef = useRef<HTMLDivElement | null>(null);
@@ -151,9 +156,14 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEmpty, toolbarRestore]);
 
-  const handleStopAll = async () => {
+  const doStopAll = async () => {
     try { await tauri.stopAllRecordings(); }
     catch (err) { addToast(String(err), "error"); }
+  };
+  const handleStopAll = () => {
+    if (activeCount === 0) return;
+    if (activeCount > 1) setConfirmStopAll(true);
+    else doStopAll();
   };
 
   const emptyDescId = "streams-empty-desc";
@@ -192,21 +202,41 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
         <>
           {/* ── Metrics bar ── */}
           <div className="grid grid-cols-4 gap-3 border-b border-slate-700 px-4 py-4 forced-colors:border-[ButtonText]">
-            <div className="flex flex-col gap-1.5 rounded-2xl border border-white/[.06] bg-white/[.04] p-4 forced-colors:border-[ButtonText] forced-colors:bg-[Canvas]">
+            <div
+              role="status"
+              aria-atomic="true"
+              aria-label={`${m.metric_streams_in_profile()}: ${streamCountText}`}
+              className="flex flex-col gap-1.5 rounded-2xl border border-white/[.06] bg-white/[.04] p-4 forced-colors:border-[ButtonText] forced-colors:bg-[Canvas]"
+            >
               <strong className="text-sm text-slate-100">{streamCountText}</strong>
               <span className="text-xs text-slate-400">{m.metric_streams_in_profile()}</span>
             </div>
-            <div className="flex flex-col gap-1.5 rounded-2xl border border-white/[.06] bg-white/[.04] p-4 forced-colors:border-[ButtonText] forced-colors:bg-[Canvas]">
+            <div
+              role="status"
+              aria-atomic="true"
+              aria-label={`${m.metric_active_recordings()}: ${activeRecText}`}
+              className="flex flex-col gap-1.5 rounded-2xl border border-white/[.06] bg-white/[.04] p-4 forced-colors:border-[ButtonText] forced-colors:bg-[Canvas]"
+            >
               <strong className="text-sm text-slate-100">{activeRecText}</strong>
               <span className="text-xs text-slate-400">{m.metric_active_recordings()}</span>
             </div>
-            <div className="flex flex-col gap-1.5 rounded-2xl border border-white/[.06] bg-white/[.04] p-4 forced-colors:border-[ButtonText] forced-colors:bg-[Canvas]">
+            <div
+              role="status"
+              aria-atomic="true"
+              aria-label={`${m.metric_errors()}: ${errorText}`}
+              className="flex flex-col gap-1.5 rounded-2xl border border-white/[.06] bg-white/[.04] p-4 forced-colors:border-[ButtonText] forced-colors:bg-[Canvas]"
+            >
               <strong className="text-sm text-slate-100">{errorText}</strong>
               <span className="text-xs text-slate-400">{m.metric_errors()}</span>
             </div>
-            <div className="flex flex-col gap-1.5 rounded-2xl border border-white/[.06] bg-white/[.04] p-4 forced-colors:border-[ButtonText] forced-colors:bg-[Canvas]">
-              <strong className="text-sm text-slate-100">—</strong>
-              <span className="text-xs text-slate-400">{m.metric_free_space()}</span>
+            <div
+              role="status"
+              aria-atomic="true"
+              aria-label={m.metric_free_space_unavailable()}
+              className="flex flex-col gap-1.5 rounded-2xl border border-white/[.06] bg-white/[.04] p-4 forced-colors:border-[ButtonText] forced-colors:bg-[Canvas]"
+            >
+              <strong className="text-sm text-slate-100" aria-hidden="true">—</strong>
+              <span className="text-xs text-slate-400" aria-hidden="true">{m.metric_free_space()}</span>
             </div>
           </div>
 
@@ -254,7 +284,8 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
                 ref={stopAllBtn}
                 tabIndex={toolbarTabIndex(2)}
                 onClick={handleStopAll}
-                className="rounded px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
+                disabled={activeCount === 0}
+                className="rounded px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
               >
                 {m.stop_all()}
               </button>
@@ -311,6 +342,16 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
       )}
 
       <AddStreamDialog />
+      {confirmStopAll && createPortal(
+        <ConfirmDialog
+          title={m.confirm_stop_all_title()}
+          message={m.confirm_stop_all_message({ count: activeCount })}
+          confirmLabel={m.stop_all()}
+          onConfirm={() => { setConfirmStopAll(false); doStopAll(); }}
+          onCancel={() => setConfirmStopAll(false)}
+        />,
+        document.body,
+      )}
     </div>
   );
 }
