@@ -12,6 +12,11 @@ use crate::sanitize;
 /// `new_basename` is treated as a single path component — slashes / colons /
 /// other path separators are stripped via `sanitize_component`.
 pub fn rename_file(old: &Path, new_basename: &str) -> Result<PathBuf, RadioError> {
+    if !old.is_file() {
+        return Err(RadioError::Format(
+            "rename: source is not a file".into(),
+        ));
+    }
     let parent = old
         .parent()
         .ok_or_else(|| RadioError::Io(std::io::Error::new(
@@ -31,6 +36,11 @@ pub fn rename_file(old: &Path, new_basename: &str) -> Result<PathBuf, RadioError
     } else {
         parent.join(format!("{cleaned}.{ext}"))
     };
+    // No-op if the user "renamed" to the same name. Without this, the source
+    // is its own collision and resolve_collision would suffix with _2.
+    if candidate == old {
+        return Ok(old.to_path_buf());
+    }
     let final_path = sanitize::resolve_collision(&candidate);
     std::fs::rename(old, &final_path)?;
     Ok(final_path)
@@ -66,7 +76,8 @@ mod tests {
         // Suffix added — exact suffix depends on sanitize::resolve_collision.
         assert!(new_path.exists());
         assert_ne!(new_path, existing);
-        assert!(new_path.file_name().unwrap().to_string_lossy().contains("target"));
+        let name = new_path.file_name().unwrap().to_string_lossy().to_string();
+        assert!(name.contains("_2") || name.contains("_3"), "expected collision suffix, got {name}");
     }
 
     #[test]
@@ -76,5 +87,25 @@ mod tests {
         fs::write(&src, b"x").unwrap();
         assert!(rename_file(&src, "").is_err());
         assert!(rename_file(&src, "   ").is_err());
+    }
+
+    #[test]
+    fn rename_to_same_name_is_noop() {
+        let dir = tempdir().unwrap();
+        let src = dir.path().join("track.mp3");
+        fs::write(&src, b"data").unwrap();
+
+        let result = rename_file(&src, "track").unwrap();
+        assert_eq!(result, src);
+        assert!(src.exists());
+    }
+
+    #[test]
+    fn rename_rejects_directory() {
+        let dir = tempdir().unwrap();
+        let subdir = dir.path().join("a_subdir");
+        fs::create_dir(&subdir).unwrap();
+        let err = rename_file(&subdir, "renamed").unwrap_err();
+        assert!(matches!(err, RadioError::Format(_)));
     }
 }
