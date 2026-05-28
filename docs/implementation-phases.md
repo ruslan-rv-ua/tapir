@@ -140,21 +140,21 @@
 
 ### Критерії "Done" для Фази 1
 
-- [ ] Користувач може додати потік за URL (прямий або PLS/M3U)
-- [ ] Запис одного або кількох потоків одночасно
-- [ ] Автоматичне розділення на треки за ICY metadata
-- [ ] ID3v2/M4A теги записуються при фіналізації треку
-- [ ] Автоматичне перепідключення при обриві
-- [ ] Файли зберігаються за шаблоном в `data/recordings/`
-- [ ] Повна навігація клавіатурою (Tab, Arrow, Enter, Space, Escape)
-- [ ] NVDA читає таблицю потоків, оголошує зміну треку та статус запису
-- [ ] Фокус trap в діалогах
-- [ ] Portable EXE структура працює (data/ поряд з exe)
-- [ ] Рядки UI через Paraglide.js (uk)
-- [ ] Empty state для StreamTable при 0 потоків (CTA кнопка "Додати потік" з autoFocus)
-- [ ] First-run announcement через LiveAnnouncer при першому запуску
-- [ ] `aria-label` для checkbox вибору рядка у StreamTable у форматі `Вибрати потік: {streamName}`
-- [ ] `aria-current="page"` динамічно оновлюється при зміні секції
+- [x] Користувач може додати потік за URL (прямий або PLS/M3U)
+- [x] Запис одного або кількох потоків одночасно
+- [x] Автоматичне розділення на треки за ICY metadata
+- [x] ID3v2/M4A теги записуються при фіналізації треку
+- [x] Автоматичне перепідключення при обриві
+- [x] Файли зберігаються за шаблоном в `data/recordings/`
+- [x] Повна навігація клавіатурою (Tab, Arrow, Enter, Space, Escape)
+- [x] NVDA читає таблицю потоків, оголошує зміну треку та статус запису
+- [x] Фокус trap в діалогах
+- [x] Portable EXE структура працює (data/ поряд з exe)
+- [x] Рядки UI через Paraglide.js (uk)
+- [x] Empty state для StreamTable при 0 потоків (CTA кнопка "Додати потік" з autoFocus)
+- [x] First-run announcement через LiveAnnouncer при першому запуску
+- [x] `aria-label` для checkbox вибору рядка у StreamTable у форматі `Вибрати потік: {streamName}`
+- [x] `aria-current="page"` динамічно оновлюється при зміні секції
 
 ---
 
@@ -194,13 +194,13 @@
 **Store:** `profile.ts` (розширення) — wishlist + ignorelist дані
 
 **Критерії "Done" для Фази 2B:**
-- [ ] Wishlist matching працює при зміні ICY metadata
-- [ ] Ignorelist фільтрує небажані треки (глобальний + per-stream)
-- [ ] Precedence: per-stream ignorelist → global ignorelist → wishlist → звичайна поведінка
-- [ ] WishlistPanel з CRUD операціями (додати, видалити, редагувати pattern)
-- [ ] Контекстне меню StreamRow (Shift+F10, right-click): Play, Record, Edit, Remove
-- [ ] Контекстне меню StreamRow: додати до Wishlist / Ignorelist
-- [ ] NVDA: контекстне меню accessible (React Aria Menu)
+- [x] Wishlist matching працює при зміні ICY metadata
+- [x] Ignorelist фільтрує небажані треки (глобальний + per-stream)
+- [x] Precedence: per-stream ignorelist → global ignorelist → wishlist → звичайна поведінка
+- [x] WishlistPanel з CRUD операціями (додати, видалити, редагувати pattern)
+- [x] Контекстне меню StreamRow (Shift+F10, right-click): Play, Record, Edit, Remove
+- [x] Контекстне меню StreamRow: додати до Wishlist / Ignorelist
+- [x] NVDA: контекстне меню accessible (React Aria Menu)
 
 ---
 
@@ -234,14 +234,14 @@
 | `tauri-plugin-dialog` | Browse кнопка для вибору теки |
 
 **Критерії "Done" для Фази 2C:**
-- [ ] SettingsDialog відкривається та зберігає всі налаштування
-- [ ] Мова: переключення uk/en без перезапуску
-- [ ] Тема: auto/dark/light
-- [ ] Recording settings: output dir (Browse), templates, reconnect
-- [ ] Глобальні гарячі клавіші працюють у фоні
-- [ ] Налаштування хоткеїв через UI (KeyRecorder)
-- [ ] Window state зберігається між сесіями
-- [ ] NVDA: усі елементи SettingsDialog accessible
+- [x] SettingsDialog відкривається та зберігає всі налаштування
+- [x] Мова: переключення uk/en без перезапуску
+- [x] Тема: auto/dark/light
+- [x] Recording settings: output dir (Browse), templates, reconnect
+- [x] Глобальні гарячі клавіші працюють у фоні
+- [x] Налаштування хоткеїв через UI (KeyRecorder)
+- [x] Window state зберігається між сесіями
+- [x] NVDA: усі елементи SettingsDialog accessible
 
 ---
 
@@ -322,11 +322,11 @@
 **Store:** `browser.ts` — search results, loading state, selected filters
 
 **Критерії "Done":**
-- [ ] Пошук станцій за назвою, жанром, форматом, бітрейтом
-- [ ] Результати у accessible table (NVDA grid navigation)
-- [ ] Кнопка "Додати" → станція з'являється у профілі
-- [ ] Activity Bar icon для Browser tab
-- [ ] Empty state та loading state accessible
+- [x] Пошук станцій за назвою, жанром, форматом, бітрейтом
+- [x] Результати у accessible table (NVDA grid navigation)
+- [x] Кнопка "Додати" → станція з'являється у профілі
+- [x] Activity Bar icon для Browser tab
+- [x] Empty state та loading state accessible
 
 ---
 
