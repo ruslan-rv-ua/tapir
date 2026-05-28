@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use chrono::{DateTime, Local};
 use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::prelude::*;
+use walkdir::WalkDir;
 
 use crate::errors::RadioError;
 use crate::profile::AudioFormat;
@@ -96,6 +97,32 @@ pub fn read_song(path: &Path, output_dir: &Path, format: AudioFormat) -> Result<
     })
 }
 
+/// Walk `output_dir` recursively, return one `Song` per recognized audio file.
+/// Errors per-file are logged and skipped; the walk continues.
+pub fn scan(output_dir: &Path) -> Vec<Song> {
+    if !output_dir.exists() {
+        return Vec::new();
+    }
+    let mut songs = Vec::new();
+    for entry in WalkDir::new(output_dir).follow_links(false).into_iter().flatten() {
+        let path = entry.path();
+        if !entry.file_type().is_file() {
+            continue;
+        }
+        let ext = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_ascii_lowercase();
+        let Some(format) = format_from_extension(&ext) else { continue };
+        match read_song(path, output_dir, format) {
+            Ok(song) => songs.push(song),
+            Err(e) => log::warn!("Skip song {}: {e}", path.display()),
+        }
+    }
+    songs
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -150,5 +177,32 @@ mod tests {
     fn is_complete_basename_detects_suffix() {
         assert!(is_complete_basename("Tycho - A Walk"));
         assert!(!is_complete_basename("Tycho - A Walk_incomplete"));
+    }
+
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn scan_returns_empty_when_dir_missing() {
+        let p = PathBuf::from("/nonexistent/path/that/does/not/exist");
+        assert!(scan(&p).is_empty());
+    }
+
+    #[test]
+    fn scan_skips_unrecognized_extensions() {
+        let dir = tempdir().unwrap();
+        fs::write(dir.path().join("notes.txt"), b"hello").unwrap();
+        fs::write(dir.path().join("playlist.m3u"), b"#EXTM3U").unwrap();
+        assert!(scan(dir.path()).is_empty());
+    }
+
+    #[test]
+    fn scan_skips_corrupt_audio_files_and_continues() {
+        let dir = tempdir().unwrap();
+        // Empty MP3 file — lofty will reject it; scan should not panic.
+        fs::write(dir.path().join("broken.mp3"), b"").unwrap();
+        // No valid files to find, but the call must succeed.
+        let songs = scan(dir.path());
+        assert!(songs.is_empty());
     }
 }

@@ -80,6 +80,9 @@ windows = { version = "0.62", features = [
 # so toast notifications carry our AUMID and actually appear on Windows 10/11.
 winreg = "0.55"
 
+[dev-dependencies]
+tempfile = "3"
+
 [profile.release]
 opt-level = "s"
 lto = true
