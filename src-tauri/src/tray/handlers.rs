@@ -65,31 +65,7 @@ fn spawn_stop_all(app: &AppHandle) {
 fn handle_quit(app: &AppHandle) {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
-        let state = app.state::<crate::app_state::AppState>();
-        let active = {
-            let mgr = state.stream_manager.read().await;
-            mgr.get_all_statuses()
-                .iter()
-                .filter(|s| matches!(
-                    s.state,
-                    crate::stream::manager::StreamState::Recording
-                        | crate::stream::manager::StreamState::Connecting
-                        | crate::stream::manager::StreamState::Reconnecting
-                ))
-                .count()
-        };
-
-        if active > 0 {
-            // Win32 MessageBox is blocking; run on a blocking thread to
-            // avoid stalling the tokio worker.
-            let confirmed = tokio::task::spawn_blocking(move || {
-                crate::tray::notify::show_quit_confirm(active)
-            })
-            .await
-            .unwrap_or(false);
-            if !confirmed { return; }
-        }
-
+        if !crate::tray::notify::confirm_quit_if_recording(&app).await { return; }
         crate::app_state::graceful_shutdown(&app).await;
         app.exit(0);
     });

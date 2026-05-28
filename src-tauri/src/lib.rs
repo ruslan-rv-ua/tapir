@@ -75,6 +75,17 @@ pub fn run() {
                     return;
                 }
 
+                // Same guard as the tray-menu Quit: prompt before tearing down
+                // active recordings, regardless of how the close was triggered.
+                let confirmed = tauri::async_runtime::block_on(async {
+                    crate::tray::notify::confirm_quit_if_recording(&app).await
+                });
+                if !confirmed {
+                    api.prevent_close();
+                    return;
+                }
+
+                let _ = window.hide();
                 tauri::async_runtime::block_on(async {
                     crate::app_state::graceful_shutdown(&app).await;
                 });

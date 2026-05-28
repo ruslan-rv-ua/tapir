@@ -62,6 +62,36 @@ pub fn show_quit_confirm(active_count: usize) -> bool {
     result == IDYES
 }
 
+/// Gate quit on the user's confirmation if any recordings are active.
+/// Returns `true` when the caller may proceed to shut down (either nothing
+/// was recording, or the user clicked "Yes"). Centralises the policy so the
+/// tray-menu Quit and the Alt+F4 / window-close path behave identically —
+/// otherwise it's easy to lose in-flight recordings via the path that skips
+/// the prompt.
+pub async fn confirm_quit_if_recording(app: &tauri::AppHandle) -> bool {
+    let state = tauri::Manager::state::<crate::app_state::AppState>(app);
+    let active = {
+        let mgr = state.stream_manager.read().await;
+        mgr.get_all_statuses()
+            .iter()
+            .filter(|s| matches!(
+                s.state,
+                crate::stream::manager::StreamState::Recording
+                    | crate::stream::manager::StreamState::Connecting
+                    | crate::stream::manager::StreamState::Reconnecting
+            ))
+            .count()
+    };
+
+    if active == 0 { return true; }
+
+    // MessageBoxW blocks; run on a blocking thread so we don't stall the
+    // tokio worker (or the UI thread, if called via block_on).
+    tokio::task::spawn_blocking(move || show_quit_confirm(active))
+        .await
+        .unwrap_or(false)
+}
+
 static LAST_NOTIFY_MS: AtomicU64 = AtomicU64::new(0);
 const THROTTLE_MS: u64 = 3000;
 
