@@ -111,4 +111,32 @@ mod tests {
         let tag = tagged.primary_tag().unwrap();
         assert!(tag.genre().is_none());
     }
+
+    #[test]
+    fn unrelated_tag_fields_are_preserved_across_write() {
+        let dir = tempdir().unwrap();
+        let p = copy_fixture(dir.path(), "test.mp3");
+
+        // Seed an unrelated COMM frame on the file (this is what the recorder
+        // does via tags::writer::write_tags — sets "Recorded from: {station}").
+        {
+            let mut tagged = lofty::read_from_path(&p).unwrap();
+            if tagged.primary_tag().is_none() {
+                tagged.insert_tag(Tag::new(TagType::Id3v2));
+            }
+            let tag = tagged.primary_tag_mut().unwrap();
+            tag.set_comment("Recorded from: SomaFM".to_string());
+            tagged.save_to_path(&p, WriteOptions::default()).unwrap();
+        }
+
+        // Now overwrite artist/title/album/genre via write_song_tags.
+        write_song_tags(&p, AudioFormat::Mp3, "Tycho", "A Walk", "Dive", "Ambient").unwrap();
+
+        // The unrelated COMM frame must survive.
+        let tagged = lofty::read_from_path(&p).unwrap();
+        let tag = tagged.primary_tag().unwrap();
+        assert_eq!(tag.comment().as_deref(), Some("Recorded from: SomaFM"));
+        // And the new fields are written.
+        assert_eq!(tag.artist().as_deref(), Some("Tycho"));
+    }
 }
