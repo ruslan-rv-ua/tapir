@@ -115,12 +115,12 @@ extern "system" fn balloon_wnd_proc(
     lparam: LPARAM,
 ) -> LRESULT {
     if msg == BALLOON_CALLBACK_MSG && (lparam.0 as u32) == NIN_BALLOONUSERCLICK {
-        if let Some(app) = APP_HANDLE.get() {
-            if let Some(window) = tauri::Manager::get_webview_window(app, "main") {
-                let _ = window.show();
-                let _ = window.unminimize();
-                let _ = window.set_focus();
-            }
+        if let Some(app) = APP_HANDLE.get()
+            && let Some(window) = tauri::Manager::get_webview_window(app, "main")
+        {
+            let _ = window.show();
+            let _ = window.unminimize();
+            let _ = window.set_focus();
         }
         return LRESULT(0);
     }

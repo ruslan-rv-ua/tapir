@@ -17,7 +17,7 @@
 | 2A | Player | Live playback, файлове відтворення, volume, output device | ✅ Complete |
 | 2B | Wishlist + Ignorelist + Context Menu | Фільтрація треків, контекстне меню станцій | ✅ Complete |
 | 2C | SettingsDialog + Shortcuts | Повний діалог налаштувань, глобальні хоткеї, window state | ✅ Complete |
-| 3A | System Tray | Tray icon, minimize to tray, balloon tips, dynamic menu | ⬜ |
+| 3A | System Tray | Tray icon, minimize to tray, balloon tips, dynamic menu | ✅ Complete |
 | 3B | Stream Browser | Radio Browser API — пошук станцій | ✅ Complete |
 | 3C | Saved Songs Manager | Менеджер записаних файлів, редагування тегів | ⬜ |
 | 3D | Scheduler | Заплановані записи (одноразові + повторювані) | ⬜ |
@@ -288,13 +288,13 @@
 | `showTrayNotifications` | Balloon tip при зміні треку (throttle 3с) |
 
 **Критерії "Done":**
-- [ ] Іконка у systemtray з tooltip
-- [ ] Right-click — контекстне меню: "Зараз грає" info, Грати/Пауза, Зупинити, Записи info, Зупинити всі, Показати/Приховати, Вихід
-- [ ] Меню динамічно оновлюється при зміні стану (`player-status`, `recording-status`, window visibility)
-- [ ] Left-click — toggle видимості вікна
-- [ ] `minimizeToTray` setting працює (close → hide)
-- [ ] Balloon tip при зміні треку (з throttle)
-- [ ] Confirm dialog при exit з активними записами
+- [x] Іконка у systemtray з tooltip
+- [x] Right-click — контекстне меню: "Зараз грає" info, Грати/Пауза, Зупинити, Записи info, Зупинити всі, Показати/Приховати, Вихід
+- [x] Меню динамічно оновлюється при зміні стану (`player-status`, `recording-status`, window visibility)
+- [x] Left-click — toggle видимості вікна
+- [x] `minimizeToTray` setting працює (close → hide)
+- [x] Balloon tip при зміні треку (з throttle)
+- [x] Confirm dialog при exit з активними записами
 
 ---
 
