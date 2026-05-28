@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { Slider, SliderThumb, SliderTrack } from "react-aria-components";
 import { useStore } from "@nanostores/react";
@@ -16,6 +16,9 @@ export function VolumeSlider({ inputRef, onNavigate }: VolumeSliderProps) {
   const storePercent = Math.round(volume * 100);
   const [dragPercent, setDragPercent] = useState<number | null>(null);
   const percent = dragPercent ?? storePercent;
+  // RAC onChangeEnd only fires on pointer-up, not on keyboard. Track drag state so
+  // onChange can commit immediately for keyboard while deferring to onChangeEnd for drag.
+  const isDraggingRef = useRef(false);
 
   // RAC controls the input's tabIndex internally; patch it after every render so that
   // any RAC re-render cannot silently return the input to the Tab order.
@@ -34,8 +37,14 @@ export function VolumeSlider({ inputRef, onNavigate }: VolumeSliderProps) {
       maxValue={100}
       value={percent}
       step={1}
-      onChange={(v) => setDragPercent(v)}
+      onChange={(v) => {
+        setDragPercent(v);
+        if (!isDraggingRef.current) {
+          tauri.setVolume(v / 100).catch(console.error);
+        }
+      }}
       onChangeEnd={(v) => {
+        isDraggingRef.current = false;
         setDragPercent(null);
         tauri.setVolume(v / 100).catch(console.error);
       }}
@@ -50,6 +59,7 @@ export function VolumeSlider({ inputRef, onNavigate }: VolumeSliderProps) {
         <SliderThumb
           inputRef={inputRef}
           aria-valuetext={`${percent}%`}
+          onPointerDown={() => { isDraggingRef.current = true; }}
           onKeyDown={(e) => {
             if (e.key === 'ArrowLeft') {
               e.preventDefault(); e.stopPropagation();
