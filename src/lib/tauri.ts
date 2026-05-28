@@ -349,7 +349,7 @@ export async function playSavedSong(path: string): Promise<void> {
 export async function openSongInExplorer(path: string): Promise<void> {
   return invoke("open_song_in_explorer", { path });
 }
-export async function renameSavedSong(oldPath: string, newBasename: string): Promise<Song> {
+export async function renameSong(oldPath: string, newBasename: string): Promise<Song> {
   return invoke("rename_song", { oldPath, newBasename });
 }
 export async function updateSongTags(
@@ -357,6 +357,6 @@ export async function updateSongTags(
 ): Promise<Song> {
   return invoke("update_song_tags", { path, artist, title, album, genre });
 }
-export async function deleteSavedSong(path: string): Promise<void> {
+export async function deleteSong(path: string): Promise<void> {
   return invoke("delete_song", { path });
 }
