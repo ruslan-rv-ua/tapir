@@ -17,7 +17,6 @@ use settings::GlobalSettings;
 use profile::Profile;
 use tauri::Manager;
 use tauri_plugin_log::{Target, TargetKind, RotationStrategy};
-use crate::stream::manager::StreamState;
 
 pub fn run() {
     tauri::Builder::default()
@@ -61,39 +60,7 @@ pub fn run() {
                 // CloseRequested is delivered on the main UI thread (not a tokio worker),
                 // so block_on is safe here and will not deadlock.
                 tauri::async_runtime::block_on(async {
-                    let state = app.state::<AppState>();
-                    // 1. Stop all recordings
-                    let mut manager = state.stream_manager.write().await;
-                    manager.stop_all();
-                    // 2. Collect active stream IDs before stopping
-                    let active_ids: Vec<String> = manager.get_all_statuses()
-                        .iter()
-                        .filter(|s| !matches!(s.state, StreamState::Idle | StreamState::Error))
-                        .map(|s| s.stream_id.clone())
-                        .collect();
-                    drop(manager);
-                    // 3. Map stream IDs to URLs via profile
-                    let profile_read = state.active_profile.read().await;
-                    let urls: Vec<String> = active_ids.iter()
-                        .filter_map(|id| {
-                            profile_read.streams.iter().find(|s| s.id == *id).map(|s| s.url.clone())
-                        })
-                        .collect();
-                    drop(profile_read);
-                    // 4. Save active URLs to profile
-                    let mut profile = state.active_profile.write().await;
-                    profile.active_recording_urls = urls;
-                    let _ = profile.save().inspect_err(|e| log::error!("Failed to save profile on shutdown: {e}"));
-                    drop(profile);
-                    // 5. Stop player and save volume
-                    state.player.stop_session_public().await;
-                    let volume = state.player.current_volume().await;
-                    let mut profile = state.active_profile.write().await;
-                    profile.player_session.volume = volume;
-                    let _ = profile.save().inspect_err(|e| log::error!("Failed to save profile volume on shutdown: {e}"));
-                    drop(profile);
-                    // 6. Wait for tasks to finish
-                    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+                    crate::app_state::graceful_shutdown(&app).await;
                 });
             }
         })
