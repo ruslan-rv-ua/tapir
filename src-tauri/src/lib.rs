@@ -47,6 +47,9 @@ pub fn run() {
                 .expect("Failed to initialize AppState (no audio device?)");
             app.manage(state);
             tray::setup_tray(app.handle()).expect("Failed to set up system tray");
+            if let Err(e) = tray::notify::init_balloon_runtime(app.handle()) {
+                log::warn!("Failed to initialize balloon runtime: {e}");
+            }
             let state_ref = app.state::<AppState>();
             let settings = tauri::async_runtime::block_on(state_ref.settings.read());
             let failed = shortcuts::register_global_shortcuts(app.handle(), &settings.hotkeys);

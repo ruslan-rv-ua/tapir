@@ -169,3 +169,28 @@ fn write_utf16(dst: &mut [u16], src: &str) {
     }
     dst[encoded.len()] = 0;
 }
+
+use std::sync::atomic::AtomicU64;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+static LAST_BALLOON_MS: AtomicU64 = AtomicU64::new(0);
+const THROTTLE_MS: u64 = 3000;
+
+/// Show a track-change balloon with global 3-second throttle.
+pub fn show_balloon_throttled(station: &str, artist: &str, title: &str) {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    let last = LAST_BALLOON_MS.load(Ordering::Relaxed);
+    if now.saturating_sub(last) < THROTTLE_MS { return; }
+    LAST_BALLOON_MS.store(now, Ordering::Relaxed);
+
+    let body = match (artist.is_empty(), title.is_empty()) {
+        (false, false) => format!("{artist} — {title}"),
+        (true, false)  => title.to_string(),
+        (false, true)  => artist.to_string(),
+        _ => return,
+    };
+    show_balloon(station, &body);
+}
