@@ -244,6 +244,9 @@ pub struct Profile {
     pub postprocess: PostprocessConfig,
     #[serde(default)]
     pub player_session: PlayerSession,
+    // DEPRECATED Phase 3C: not populated. Saved Songs Manager scans the
+    // recordings directory on demand instead. Kept for backward compat with
+    // existing profile JSON files; reserved for a future cached-index approach.
     #[serde(default)]
     pub saved_tracks: Vec<SavedTrack>,
     #[serde(default)]
