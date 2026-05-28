@@ -46,6 +46,7 @@ pub fn run() {
             let state = AppState::new(settings, profile, app.handle().clone())
                 .expect("Failed to initialize AppState (no audio device?)");
             app.manage(state);
+            tray::setup_tray(app.handle()).expect("Failed to set up system tray");
             let state_ref = app.state::<AppState>();
             let settings = tauri::async_runtime::block_on(state_ref.settings.read());
             let failed = shortcuts::register_global_shortcuts(app.handle(), &settings.hotkeys);
