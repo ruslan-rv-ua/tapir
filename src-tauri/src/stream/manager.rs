@@ -263,6 +263,30 @@ fn emit_track_changed(app: &AppHandle, stream_id: &str, artist: &str, title: &st
         },
     )
     .ok();
+
+    // Tray balloon (best-effort, throttled, gated on setting).
+    let app_balloon = app.clone();
+    let stream_id_owned = stream_id.to_string();
+    let artist_owned = artist.to_string();
+    let title_owned = title.to_string();
+    tauri::async_runtime::spawn(async move {
+        let state = app_balloon.state::<crate::app_state::AppState>();
+        let settings = state.settings.read().await;
+        if !settings.show_tray_notifications { return; }
+        drop(settings);
+
+        let profile = state.active_profile.read().await;
+        let station = profile.streams.iter()
+            .find(|s| s.id == stream_id_owned)
+            .map(|s| s.name.clone())
+            .unwrap_or_else(|| stream_id_owned.clone());
+        drop(profile);
+
+        crate::tray::notify::show_balloon_throttled(&station, &artist_owned, &title_owned);
+    });
+
+    // Tray menu refresh so "Зараз грає" reflects new track.
+    crate::tray::notify_state_changed(app);
 }
 
 fn emit_stream_error(app: &AppHandle, stream_id: &str, message: &str, will_retry: bool) {
