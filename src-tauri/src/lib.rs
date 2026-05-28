@@ -7,6 +7,7 @@ mod profile;
 mod sanitize;
 mod shortcuts;
 mod settings;
+mod songs;
 mod stream;
 mod tags;
 mod tray;
