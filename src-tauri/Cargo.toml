@@ -66,6 +66,13 @@ nanoid = "0.4"
 chrono = { version = "0.4", features = ["serde"] }
 sys-locale = "0.3"
 
+# Win32 APIs for tray balloon notifications and MessageBox
+windows = { version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
 [profile.release]
 opt-level = "s"
 lto = true
