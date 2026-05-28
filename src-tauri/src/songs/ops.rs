@@ -46,6 +46,51 @@ pub fn rename_file(old: &Path, new_basename: &str) -> Result<PathBuf, RadioError
     Ok(final_path)
 }
 
+/// Send `path` to the Windows Recycle Bin via `SHFileOperationW`.
+/// Synchronous, no UI, no confirmation prompts. Returns Err if the operation
+/// fails (e.g. file is open by another process, path on a non-recyclable
+/// volume such as a network share, or path no longer exists).
+pub fn delete_to_recycle_bin(path: &Path) -> Result<(), RadioError> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows::core::PCWSTR;
+    use windows::Win32::UI::Shell::{
+        SHFileOperationW, SHFILEOPSTRUCTW, FO_DELETE, FOF_ALLOWUNDO,
+        FOF_NO_UI,
+    };
+
+    if !path.exists() {
+        return Err(RadioError::NotFound(path.to_string_lossy().to_string()));
+    }
+
+    // `pFrom` is a double-NULL-terminated wide string.
+    let mut wide: Vec<u16> = path.as_os_str().encode_wide().collect();
+    wide.push(0);
+    wide.push(0);
+
+    let mut op = SHFILEOPSTRUCTW {
+        hwnd: Default::default(),
+        wFunc: FO_DELETE as u32,
+        pFrom: PCWSTR(wide.as_ptr()),
+        pTo: PCWSTR::null(),
+        // FOF_NO_UI is the documented "all flags off" shortcut for silent ops.
+        fFlags: (FOF_ALLOWUNDO | FOF_NO_UI).0 as u16,
+        fAnyOperationsAborted: Default::default(),
+        hNameMappings: std::ptr::null_mut(),
+        lpszProgressTitle: PCWSTR::null(),
+    };
+
+    let rc = unsafe { SHFileOperationW(&mut op) };
+    if rc != 0 {
+        return Err(RadioError::Other(format!(
+            "SHFileOperationW failed: 0x{rc:X}"
+        )));
+    }
+    if op.fAnyOperationsAborted.as_bool() {
+        return Err(RadioError::Other("Recycle Bin operation aborted".into()));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -107,5 +152,13 @@ mod tests {
         fs::create_dir(&subdir).unwrap();
         let err = rename_file(&subdir, "renamed").unwrap_err();
         assert!(matches!(err, RadioError::Format(_)));
+    }
+
+    #[test]
+    fn delete_to_recycle_bin_returns_not_found_for_missing() {
+        let dir = tempdir().unwrap();
+        let missing = dir.path().join("nope.mp3");
+        let err = delete_to_recycle_bin(&missing).unwrap_err();
+        assert!(matches!(err, RadioError::NotFound(_)));
     }
 }
