@@ -249,6 +249,7 @@ fn emit_recording_status(app: &AppHandle, stream_id: &str, status: &str, error: 
         Ok(_) => debug!("[{}] Event emitted OK", stream_id),
         Err(e) => error!("[{}] Failed to emit event: {}", stream_id, e),
     }
+    crate::tray::notify_state_changed(app);
 }
 
 fn emit_track_changed(app: &AppHandle, stream_id: &str, artist: &str, title: &str, album: &str) {

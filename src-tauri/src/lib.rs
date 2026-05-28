@@ -57,10 +57,22 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { .. } = event {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 let app = window.app_handle().clone();
+                let state = app.state::<AppState>();
                 // CloseRequested is delivered on the main UI thread (not a tokio worker),
                 // so block_on is safe here and will not deadlock.
+                let minimize_to_tray = tauri::async_runtime::block_on(async {
+                    state.settings.read().await.minimize_to_tray
+                });
+
+                if minimize_to_tray {
+                    api.prevent_close();
+                    let _ = window.hide();
+                    crate::tray::notify_state_changed(&app);
+                    return;
+                }
+
                 tauri::async_runtime::block_on(async {
                     crate::app_state::graceful_shutdown(&app).await;
                 });

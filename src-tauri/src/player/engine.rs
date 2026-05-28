@@ -55,6 +55,16 @@ use log::info;
 
 // ── Internal runtime types (not serialized) ────────────────────────────────
 
+/// Emit `player-status` to the frontend and notify the tray. All callers
+/// inside this module should use this helper instead of calling
+/// `app.emit("player-status", ...)` directly.
+fn emit_player_status(app: &AppHandle, status: PlayerStatus) {
+    if let Err(e) = app.emit("player-status", status) {
+        log::warn!("Player: failed to emit player-status: {e}");
+    }
+    crate::tray::notify_state_changed(app);
+}
+
 // MixerDeviceSink wraps a cpal::Stream which is !Send on some platforms.
 // We store it behind a Mutex so it stays on a single thread conceptually,
 // and we never actually send it across threads — we only drop it.
@@ -185,7 +195,7 @@ impl PlayerEngine {
             }
             if ended_naturally {
                 let current_volume = *volume_arc.lock().await;
-                let _ = app_clone.emit("player-status", PlayerStatus {
+                emit_player_status(&app_clone, PlayerStatus {
                     state: PlaybackState::Stopped,
                     source: None,
                     volume: current_volume,
@@ -207,9 +217,7 @@ impl PlayerEngine {
         });
 
         let status = self.get_status().await;
-        if let Err(e) = app.emit("player-status", status) {
-            log::warn!("Player: failed to emit player-status: {e}");
-        }
+        emit_player_status(app, status);
         info!("Player: playing file {path}");
         Ok(())
     }
@@ -219,13 +227,13 @@ impl PlayerEngine {
     pub async fn stop_playback(&self, app: &AppHandle) -> Result<()> {
         self.stop_session().await;
         let volume = *self.volume.lock().await;
-        app.emit("player-status", PlayerStatus {
+        emit_player_status(app, PlayerStatus {
             state: PlaybackState::Stopped,
             source: None,
             volume,
             position_ms: None,
             duration_ms: None,
-        })?;
+        });
         info!("Player: stopped");
         Ok(())
     }
@@ -238,9 +246,7 @@ impl PlayerEngine {
         s.player.pause();
         drop(session);
         let status = self.get_status().await;
-        if let Err(e) = app.emit("player-status", status) {
-            log::warn!("Player: failed to emit player-status: {e}");
-        }
+        emit_player_status(app, status);
         Ok(())
     }
 }
@@ -252,9 +258,7 @@ impl PlayerEngine {
         s.player.play();
         drop(session);
         let status = self.get_status().await;
-        if let Err(e) = app.emit("player-status", status) {
-            log::warn!("Player: failed to emit player-status: {e}");
-        }
+        emit_player_status(app, status);
         Ok(())
     }
 }
@@ -273,9 +277,7 @@ impl PlayerEngine {
             // both locks dropped here
         }
         let status = self.get_status().await;
-        if let Err(e) = app.emit("player-status", status) {
-            log::warn!("Player: failed to emit player-status: {e}");
-        }
+        emit_player_status(app, status);
         Ok(())
     }
 
@@ -319,15 +321,13 @@ impl PlayerEngine {
         // Lock order: session (already released by stop_session) → volume → output_device_name
         let volume = *self.volume.lock().await;
         *self.output_device_name.lock().await = name;
-        if let Err(e) = app.emit("player-status", PlayerStatus {
+        emit_player_status(app, PlayerStatus {
             state: PlaybackState::Stopped,
             source: None,
             volume,
             position_ms: None,
             duration_ms: None,
-        }) {
-            log::warn!("Player: failed to emit player-status: {e}");
-        }
+        });
         Ok(())
     }
 }
@@ -780,15 +780,13 @@ impl PlayerEngine {
                     // HTTP stream ended or errored. Wait briefly for rodio to drain, then emit stopped.
                     tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
                     let current_volume = *volume_arc.lock().await;
-                    if let Err(e) = app_live.emit("player-status", PlayerStatus {
+                    emit_player_status(&app_live, PlayerStatus {
                         state: PlaybackState::Stopped,
                         source: None,
                         volume: current_volume,
                         position_ms: None,
                         duration_ms: None,
-                    }) {
-                        log::warn!("Player: failed to emit player-status on stream end: {e}");
-                    }
+                    });
                 }
             }
         });
@@ -803,9 +801,7 @@ impl PlayerEngine {
         });
 
         let status = self.get_status().await;
-        if let Err(e) = app.emit("player-status", status) {
-            log::warn!("Player: failed to emit player-status: {e}");
-        }
+        emit_player_status(app, status);
         info!("Player: playing live stream {stream_id}");
         Ok(())
     }
