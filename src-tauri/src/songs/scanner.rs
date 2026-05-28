@@ -104,6 +104,8 @@ pub fn scan(output_dir: &Path) -> Vec<Song> {
         return Vec::new();
     }
     let mut songs = Vec::new();
+    // `.flatten()` silently drops walker iteration errors (e.g. permission
+    // denied on a subdir); per-file read_song errors are logged below.
     for entry in WalkDir::new(output_dir).follow_links(false).into_iter().flatten() {
         let path = entry.path();
         if !entry.file_type().is_file() {
@@ -197,7 +199,7 @@ mod tests {
     }
 
     #[test]
-    fn scan_skips_corrupt_audio_files_and_continues() {
+    fn scan_does_not_panic_on_corrupt_audio_file() {
         let dir = tempdir().unwrap();
         // Empty MP3 file — lofty will reject it; scan should not panic.
         fs::write(dir.path().join("broken.mp3"), b"").unwrap();
