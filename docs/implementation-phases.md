@@ -19,7 +19,7 @@
 | 2C | SettingsDialog + Shortcuts | Повний діалог налаштувань, глобальні хоткеї, window state | ✅ Complete |
 | 3A | System Tray | Tray icon, minimize to tray, balloon tips, dynamic menu | ✅ Complete |
 | 3B | Stream Browser | Radio Browser API — пошук станцій | ✅ Complete |
-| 3C | Saved Songs Manager | Менеджер записаних файлів, редагування тегів | ⬜ |
+| 3C | Saved Songs Manager | Менеджер записаних файлів, редагування тегів | ✅ Complete |
 | 3D | Scheduler | Заплановані записи (одноразові + повторювані) | ⬜ |
 | 3E | Single Instance | Named Mutex, передача CLI args | ⬜ |
 | 3F | Profile Manager | Повний CRUD профілів, import/export | ⬜ |
@@ -353,13 +353,13 @@
 **Store:** `songs.ts` — список збережених треків, фільтри, сортування
 
 **Критерії "Done":**
-- [ ] Список усіх записаних файлів з metadata
-- [ ] Сортування за назвою, артистом, датою, розміром
-- [ ] Фільтрація та пошук
-- [ ] Контекстне меню: відтворити, відкрити в explorer, видалити, перейменувати, редагувати теги
-- [ ] TagEditor: зміна artist, title, album, genre
-- [ ] Confirm dialog при видаленні
-- [ ] NVDA: grid navigation, live region при операціях
+- [x] Список усіх записаних файлів з metadata
+- [x] Сортування за назвою, артистом, датою, розміром
+- [x] Фільтрація та пошук
+- [x] Контекстне меню: відтворити, відкрити в explorer, видалити, перейменувати, редагувати теги
+- [x] TagEditor: зміна artist, title, album, genre
+- [x] Confirm dialog при видаленні
+- [x] NVDA: composite-list navigation (FRD), live region при операціях
 
 ---
 
