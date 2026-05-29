@@ -4,17 +4,18 @@ import { $filteredSongs } from "../../stores/songs";
 import { useCompositeList } from "../../hooks/useCompositeList";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import { SongItem, getSongSegments } from "./SongItem";
+import type { SongAction } from "./SongContextMenu";
 import * as m from "../../i18n/paraglide/messages";
 
 interface Props {
   exitZone: (forward: boolean) => void;
   onEmpty: () => void;
   onPlay: (path: string) => void;
-  onContextMenu: (path: string) => void;
+  onAction: (path: string, action: SongAction) => void;
 }
 
 export const SongsList = forwardRef<ZoneEntry, Props>(
-  ({ exitZone, onEmpty, onPlay, onContextMenu }, ref) => {
+  ({ exitZone, onEmpty, onPlay, onAction }, ref) => {
     const songs = useStore($filteredSongs);
 
     const items = useMemo(
@@ -30,7 +31,10 @@ export const SongsList = forwardRef<ZoneEntry, Props>(
         onEmpty,
         onAction: (type, itemId, segment) => {
           if (type === "contextMenu") {
-            onContextMenu(itemId);
+            const menuBtn = listRef.current?.querySelector<HTMLButtonElement>(
+              `[data-item-id="${CSS.escape(itemId)}"][data-context-menu-trigger]`
+            );
+            menuBtn?.click();
             return;
           }
           if ((type === "primary" || type === "toggle") && segment === "summary") {
@@ -61,7 +65,7 @@ export const SongsList = forwardRef<ZoneEntry, Props>(
             isActiveRow={activeItemId === song.path}
             isFocused={(segment) => isFocused(song.path, segment)}
             onPlay={() => onPlay(song.path)}
-            onContextMenu={() => onContextMenu(song.path)}
+            onAction={(action) => onAction(song.path, action)}
           />
         ))}
       </ul>

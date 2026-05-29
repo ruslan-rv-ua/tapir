@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { SongAction } from "./SongContextMenu";
 import { useStore } from "@nanostores/react";
 import {
   $filteredSongs, $songs, $songsLoading, $songsError,
@@ -6,7 +7,6 @@ import {
 } from "../../stores/songs";
 import { SongsFilterBar } from "./SongsFilterBar";
 import { SongsList } from "./SongsList";
-import { SongContextMenu } from "./SongContextMenu";
 import { TagEditorDialog } from "./TagEditorDialog";
 import { RenameDialog } from "./RenameDialog";
 import { ConfirmDialog } from "../common/ConfirmDialog";
@@ -33,7 +33,6 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
   const filterRef = useRef<ZoneEntry | null>(null);
   const listRef = useRef<ZoneEntry | null>(null);
 
-  const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [tagEditorFor, setTagEditorFor] = useState<Song | null>(null);
   const [renameFor, setRenameFor] = useState<Song | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Song | null>(null);
@@ -72,15 +71,10 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
     tauri.playSavedSong(path).catch((err) => addToast(String(err), "error"));
   }, []);
 
-  const handleContextMenu = useCallback((path: string) => {
-    setActiveMenu(path);
-  }, []);
-
   const handleMenuAction = useCallback(
-    async (path: string, action: "play" | "explorer" | "rename" | "tags" | "delete") => {
+    async (path: string, action: SongAction) => {
       const song = findSong(path);
       if (!song) return;
-      setActiveMenu(null);
       switch (action) {
         case "play":
           handlePlay(path);
@@ -127,19 +121,9 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
           exitZone={(forward) => exitZone("songs-list", forward)}
           onEmpty={() => filterRef.current?.focus("forward")}
           onPlay={handlePlay}
-          onContextMenu={handleContextMenu}
+          onAction={handleMenuAction}
         />
       )}
-
-      {activeMenu && (() => {
-        const song = findSong(activeMenu);
-        return song ? (
-          <SongContextMenu
-            song={song}
-            onAction={(action) => handleMenuAction(activeMenu, action)}
-          />
-        ) : null;
-      })()}
 
       {tagEditorFor && (
         <TagEditorDialog

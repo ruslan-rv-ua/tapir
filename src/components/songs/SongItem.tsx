@@ -1,6 +1,7 @@
-import { Play, FileMusic, MoreHorizontal, AlertCircle } from "lucide-react";
+import { Play, FileMusic, AlertCircle } from "lucide-react";
 import type { Song } from "../../types/song";
 import type { SegmentKind } from "../../hooks/useCompositeList";
+import { SongContextMenu, type SongAction } from "./SongContextMenu";
 import * as m from "../../i18n/paraglide/messages";
 
 export interface SongItemData {
@@ -27,10 +28,10 @@ interface Props {
   isActiveRow: boolean;
   isFocused: (segment: "summary" | SegmentKind) => boolean;
   onPlay: () => void;
-  onContextMenu: () => void;
+  onAction: (action: SongAction) => void;
 }
 
-export function SongItem({ song, isActiveRow, isFocused, onPlay, onContextMenu }: Props) {
+export function SongItem({ song, isActiveRow, isFocused, onPlay, onAction }: Props) {
   const summaryLabel = m.songs_row_summary({
     title: song.title || song.fileName,
     artist: song.artist || "—",
@@ -96,18 +97,11 @@ export function SongItem({ song, isActiveRow, isFocused, onPlay, onContextMenu }
         <Play size={16} aria-hidden />
       </button>
 
-      <button
-        type="button"
-        onClick={onContextMenu}
-        data-context-menu-trigger
-        data-item-id={song.path}
-        data-segment="action-menu"
-        tabIndex={isFocused("action-menu") ? 0 : -1}
-        aria-label={m.songs_action_menu()}
-        className="rounded p-1.5 text-slate-300 outline-none hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:text-[ButtonText]"
-      >
-        <MoreHorizontal size={16} aria-hidden />
-      </button>
+      <SongContextMenu
+        song={song}
+        menuFocused={isFocused("action-menu")}
+        onAction={onAction}
+      />
     </li>
   );
 }
