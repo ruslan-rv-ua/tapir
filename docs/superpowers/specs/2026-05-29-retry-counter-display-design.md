@@ -57,6 +57,10 @@ const maxRetries = recordingSettings?.reconnect.maxRetries ?? 0;
 
 No other files change.
 
+## Paraglide codegen
+
+The project uses `@inlang/paraglide-vite`, which auto-generates TypeScript message functions from the JSON files during the Vite build/dev server. No manual codegen step is needed — adding the keys to `en.json` and `uk.json` is sufficient.
+
 ## Files affected
 
 | File | Change |
