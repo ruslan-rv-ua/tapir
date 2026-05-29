@@ -4,6 +4,8 @@ import { createPortal } from "react-dom";
 import { $streams, $statuses, $showAddStreamDialog } from "../../stores/streams";
 import { $commandPaletteOpen } from "../../stores/navigation";
 import { $settings } from "../../stores/settings";
+import { $freeSpace } from "../../stores/system";
+import { FreeSpaceMetric } from "./FreeSpaceMetric";
 import { StreamList } from "./StreamList";
 import { AddStreamDialog } from "./AddStreamDialog";
 import { ConfirmDialog } from "../common/ConfirmDialog";
@@ -31,6 +33,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const streams = useStore($streams);
   const statuses = useStore($statuses);
   const settings = useStore($settings);
+  const freeSpace = useStore($freeSpace);
   const isEmpty = streams.length === 0;
 
   // ── Metrics ──────────────────────────────────────────────
@@ -285,15 +288,10 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
               <strong className="text-sm text-slate-100">{errorText}</strong>
               <span className="text-xs text-slate-400">{m.metric_errors()}</span>
             </div>
-            <div
-              role="status"
-              aria-atomic="true"
-              aria-label={m.metric_free_space_unavailable()}
-              className="flex flex-col gap-1.5 rounded-2xl border border-white/[.06] bg-white/[.04] p-4 forced-colors:border-[ButtonText] forced-colors:bg-[Canvas]"
-            >
-              <strong className="text-sm text-slate-100" aria-hidden="true">—</strong>
-              <span className="text-xs text-slate-400" aria-hidden="true">{m.metric_free_space()}</span>
-            </div>
+            <FreeSpaceMetric
+              freeBytes={freeSpace}
+              thresholdGb={settings?.diskSpaceThresholdGb ?? 0}
+            />
           </div>
 
           {/* ── Workspace titlebar + Toolbar = streams-toolbar zone ── */}
