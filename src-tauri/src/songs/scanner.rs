@@ -1,6 +1,6 @@
 //! Walk recordings directory, read tags via lofty, return `Song` entries.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use chrono::{DateTime, Local};
 use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::prelude::*;
@@ -128,6 +128,7 @@ pub fn scan(output_dir: &Path) -> Vec<Song> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     #[test]
     fn format_from_extension_recognizes_mp3() {
