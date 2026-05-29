@@ -4,6 +4,11 @@ import * as tauri from "../lib/tauri";
 import { $freeSpace } from "../stores/system";
 import { useDiskSpacePolling } from "./useDiskSpacePolling";
 
+// Stub the Tauri IPC layer — there is no backend in jsdom.
+vi.mock("../lib/tauri", () => ({
+  getFreeSpace: vi.fn(),
+}));
+
 function Harness() {
   useDiskSpacePolling();
   return null;
@@ -12,10 +17,9 @@ function Harness() {
 beforeEach(() => {
   vi.useFakeTimers();
   $freeSpace.set(null);
-  vi.spyOn(tauri, "getFreeSpace");
+  vi.clearAllMocks();
 });
 afterEach(() => {
-  vi.restoreAllMocks();
   vi.useRealTimers();
 });
 
