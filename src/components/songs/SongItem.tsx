@@ -43,6 +43,7 @@ export function SongItem({ song, isActiveRow, isFocused, onPlay, onContextMenu }
     <li
       role="listitem"
       data-item-id={song.path}
+      data-segment="summary"
       aria-label={summaryLabel}
       tabIndex={isFocused("summary") ? 0 : -1}
       className={[
@@ -54,6 +55,8 @@ export function SongItem({ song, isActiveRow, isFocused, onPlay, onContextMenu }
       {!song.isComplete && (
         <span
           tabIndex={isFocused("status") ? 0 : -1}
+          data-item-id={song.path}
+          data-segment="status"
           aria-label={m.songs_incomplete_badge()}
           className="flex items-center gap-1 rounded bg-amber-500/20 px-1.5 py-0.5 text-xs text-amber-300 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:bg-[Mark] forced-colors:text-[MarkText]"
         >
@@ -63,6 +66,8 @@ export function SongItem({ song, isActiveRow, isFocused, onPlay, onContextMenu }
 
       <span
         tabIndex={isFocused("track") ? 0 : -1}
+        data-item-id={song.path}
+        data-segment="track"
         aria-label={song.title || song.fileName}
         className="flex flex-1 min-w-0 items-center gap-2 truncate text-sm text-slate-100 outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
       >
@@ -72,7 +77,8 @@ export function SongItem({ song, isActiveRow, isFocused, onPlay, onContextMenu }
 
       <span
         tabIndex={isFocused("tech") ? 0 : -1}
-        aria-label={`${song.artist || "—"} · ${song.album || "—"} · ${song.format} · ${formatMB(song.sizeBytes)} МБ`}
+        data-item-id={song.path}
+        data-segment="tech"
         className="hidden min-w-0 flex-1 truncate text-xs text-slate-400 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 md:block"
       >
         {song.artist} · {song.station}
@@ -81,6 +87,8 @@ export function SongItem({ song, isActiveRow, isFocused, onPlay, onContextMenu }
       <button
         type="button"
         onClick={onPlay}
+        data-item-id={song.path}
+        data-segment="action-play"
         tabIndex={isFocused("action-play") ? 0 : -1}
         aria-label={m.songs_action_play()}
         className="rounded p-1.5 text-slate-300 outline-none hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:text-[ButtonText]"
@@ -93,6 +101,7 @@ export function SongItem({ song, isActiveRow, isFocused, onPlay, onContextMenu }
         onClick={onContextMenu}
         data-context-menu-trigger
         data-item-id={song.path}
+        data-segment="action-menu"
         tabIndex={isFocused("action-menu") ? 0 : -1}
         aria-label={m.songs_action_menu()}
         className="rounded p-1.5 text-slate-300 outline-none hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:text-[ButtonText]"
