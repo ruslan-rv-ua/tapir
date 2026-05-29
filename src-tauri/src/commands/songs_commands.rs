@@ -1,22 +1,12 @@
 //! IPC commands for the Saved Songs Manager.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::app_state::AppState;
 use crate::portable;
 use crate::profile::AudioFormat;
 use crate::songs::{self, Song, scanner};
-
-/// Resolve `recording.output_dir` (which may be relative) to an absolute path.
-fn resolve_output_dir(rel: &str) -> PathBuf {
-    let p = PathBuf::from(rel);
-    if p.is_absolute() {
-        p
-    } else {
-        portable::data_dir().join(p)
-    }
-}
 
 fn format_from_path(path: &Path) -> Option<AudioFormat> {
     let ext = path
@@ -31,7 +21,7 @@ fn format_from_path(path: &Path) -> Option<AudioFormat> {
 pub async fn list_saved_songs(state: State<'_, AppState>) -> Result<Vec<Song>, String> {
     let output_dir = {
         let profile = state.active_profile.read().await;
-        resolve_output_dir(&profile.recording.output_dir)
+        portable::resolve_output_dir(&profile.recording.output_dir)
     };
     tokio::task::spawn_blocking(move || scanner::scan(&output_dir))
         .await
@@ -79,7 +69,7 @@ pub async fn rename_song(
     }
     let output_dir = {
         let profile = state.active_profile.read().await;
-        resolve_output_dir(&profile.recording.output_dir)
+        portable::resolve_output_dir(&profile.recording.output_dir)
     };
     let old_path_clone = old_path.clone();
     let result = tokio::task::spawn_blocking(move || -> Result<Song, String> {
@@ -119,7 +109,7 @@ pub async fn update_song_tags(
 ) -> Result<Song, String> {
     let output_dir = {
         let profile = state.active_profile.read().await;
-        resolve_output_dir(&profile.recording.output_dir)
+        portable::resolve_output_dir(&profile.recording.output_dir)
     };
     let path_clone = path.clone();
     let song = tokio::task::spawn_blocking(move || -> Result<Song, String> {
