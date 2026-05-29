@@ -69,7 +69,7 @@ pub fn delete_to_recycle_bin(path: &Path) -> Result<(), RadioError> {
 
     let mut op = SHFILEOPSTRUCTW {
         hwnd: Default::default(),
-        wFunc: FO_DELETE as u32,
+        wFunc: FO_DELETE,
         pFrom: PCWSTR(wide.as_ptr()),
         pTo: PCWSTR::null(),
         // FOF_NO_UI is the documented "all flags off" shortcut for silent ops.

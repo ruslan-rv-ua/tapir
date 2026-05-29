@@ -68,6 +68,15 @@ pub async fn rename_song(
     state: State<'_, AppState>,
     app: AppHandle,
 ) -> Result<Song, String> {
+    {
+        use crate::player::engine::PlaybackSource;
+        let status = state.player.get_status().await;
+        if let Some(PlaybackSource::File { path: playing }) = status.source.as_ref() {
+            if playing == &old_path {
+                return Err("Stop playback first: this file is currently playing".to_string());
+            }
+        }
+    }
     let output_dir = {
         let profile = state.active_profile.read().await;
         resolve_output_dir(&profile.recording.output_dir)
@@ -128,7 +137,20 @@ pub async fn update_song_tags(
 }
 
 #[tauri::command]
-pub async fn delete_song(path: String, app: AppHandle) -> Result<(), String> {
+pub async fn delete_song(
+    path: String,
+    state: State<'_, AppState>,
+    app: AppHandle,
+) -> Result<(), String> {
+    {
+        use crate::player::engine::PlaybackSource;
+        let status = state.player.get_status().await;
+        if let Some(PlaybackSource::File { path: playing }) = status.source.as_ref() {
+            if playing == &path {
+                return Err("Stop playback first: this file is currently playing".to_string());
+            }
+        }
+    }
     let path_clone = path.clone();
     tokio::task::spawn_blocking(move || songs::ops::delete_to_recycle_bin(Path::new(&path_clone)))
         .await
