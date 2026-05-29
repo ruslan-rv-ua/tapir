@@ -1,0 +1,29 @@
+/* eslint-disable */
+import { getLocale, experimentalStaticLocale } from '../runtime.js';
+
+/** @typedef {import('../runtime.js').LocalizedString} LocalizedString */
+
+/** @typedef {{ count: NonNullable<unknown> }} Errors_Count_OneInputs */
+
+const uk_errors_count_one = /** @type {(inputs: Errors_Count_OneInputs) => LocalizedString} */ (i) => {
+	return /** @type {LocalizedString} */ (`${i?.count} збій`)
+};
+
+const en_errors_count_one = /** @type {(inputs: Errors_Count_OneInputs) => LocalizedString} */ (i) => {
+	return /** @type {LocalizedString} */ (`${i?.count} error`)
+};
+
+/**
+* | output |
+* | --- |
+* | "{count} error" |
+*
+* @param {Errors_Count_OneInputs} inputs
+* @param {{ locale?: "uk" | "en" }} options
+* @returns {LocalizedString}
+*/
+export const errors_count_one = /** @type {((inputs: Errors_Count_OneInputs, options?: { locale?: "uk" | "en" }) => LocalizedString) & import('../runtime.js').MessageMetadata<Errors_Count_OneInputs, { locale?: "uk" | "en" }, {}>} */ ((inputs, options = {}) => {
+	const locale = experimentalStaticLocale ?? options.locale ?? getLocale()
+	if (locale === "uk") return uk_errors_count_one(inputs)
+	return en_errors_count_one(inputs)
+});

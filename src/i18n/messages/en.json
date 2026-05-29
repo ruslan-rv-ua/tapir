@@ -102,6 +102,8 @@
   "status_recording_label": "Recording",
   "status_recording_and_playing": "Recording and playing",
   "status_reconnecting": "Reconnecting...",
+  "status_reconnecting_attempt": "Attempt {attempt} of {max}",
+  "status_reconnecting_attempt_unlimited": "Attempt {attempt}",
   "status_error": "Error",
   "recording_started": "Recording started: {name}",
   "recording_stopped": "Recording stopped: {name}",

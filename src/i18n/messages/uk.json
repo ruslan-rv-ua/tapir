@@ -102,6 +102,8 @@
   "status_recording_label": "Записується",
   "status_recording_and_playing": "Записується і відтворюється",
   "status_reconnecting": "Перепідключення...",
+  "status_reconnecting_attempt": "Спроба {attempt} з {max}",
+  "status_reconnecting_attempt_unlimited": "Спроба {attempt}",
   "status_error": "Помилка",
   "recording_started": "Запис розпочато: {name}",
   "recording_stopped": "Запис зупинено: {name}",
