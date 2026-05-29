@@ -43,7 +43,7 @@ interface Props {
   onDelete: () => void;
 }
 
-export function StreamItem({ stream, status, isFocused, isActiveRow, maxRetries: _maxRetries, onPrimaryAction: _onPrimaryAction, onContextMenu: _onContextMenu, onDelete }: Props) {
+export function StreamItem({ stream, status, isFocused, isActiveRow, maxRetries, onPrimaryAction: _onPrimaryAction, onContextMenu: _onContextMenu, onDelete }: Props) {
   const state = status?.state ?? "idle";
   const isRecording = state === "recording";
   const playerStatus = useStore($playerStatus);
@@ -112,10 +112,16 @@ export function StreamItem({ stream, status, isFocused, isActiveRow, maxRetries:
 
   const techValue = formatBitrate(stream.bitrate);
 
+  const retryAttempt = status?.reconnectAttempt ?? null;
+  const retryLabel =
+    retryAttempt !== null && maxRetries > 0 ? m.status_reconnecting_attempt({ attempt: retryAttempt, max: maxRetries }) :
+    retryAttempt !== null                   ? m.status_reconnecting_attempt_unlimited({ attempt: retryAttempt }) :
+    m.status_reconnecting();
+
   const statusIconLabel =
     state === "recording"    ? m.status_recording_label() :
     state === "connecting"   ? m.status_connecting() :
-    state === "reconnecting" ? m.status_reconnecting() :
+    state === "reconnecting" ? retryLabel :
     state === "error"        ? m.status_error() :
     isThisStreamPlaying      ? m.segment_playing() :
     m.status_idle();
@@ -123,7 +129,7 @@ export function StreamItem({ stream, status, isFocused, isActiveRow, maxRetries:
   const statusValue =
     state === "recording"    ? formatDuration(elapsedMs) :
     state === "connecting"   ? m.status_connecting() :
-    state === "reconnecting" ? m.status_reconnecting() :
+    state === "reconnecting" ? retryLabel :
     m.status_idle();
   // Recording rows describe the value as a duration; others as stream status.
   const statusRoleDesc = state === "recording" ? m.segment_status_duration() : m.segment_status();
