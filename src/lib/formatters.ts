@@ -18,3 +18,9 @@ export function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
+
+/** True when free disk space is known and below the threshold. 0 = disabled. */
+export function isLowDiskSpace(freeBytes: number | null, thresholdGb: number): boolean {
+  if (thresholdGb <= 0 || freeBytes === null) return false;
+  return freeBytes < thresholdGb * 1024 ** 3;
+}

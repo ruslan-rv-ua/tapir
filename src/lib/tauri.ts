@@ -150,6 +150,9 @@ export async function getSettings(): Promise<GlobalSettings> {
 export async function saveSettings(settings: GlobalSettings): Promise<void> {
   return invoke("save_settings", { settings });
 }
+export async function getFreeSpace(): Promise<number> {
+  return invoke("get_free_space");
+}
 
 // ── Player types ──────────────────────────────────────────────────────────
 
