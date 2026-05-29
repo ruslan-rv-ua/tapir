@@ -14,6 +14,7 @@ import { SongsPanel } from "./components/songs/SongsPanel";
 import { PlayerPanel } from "./components/player/PlayerPanel";
 import { useZoneNavigation, type ZoneEntry } from "./hooks/useZoneNavigation";
 import { useTauriEvent } from "./hooks/useTauriEvent";
+import { useDiskSpacePolling } from "./hooks/useDiskSpacePolling";
 import { useAnnounce } from "./hooks/useAnnounce";
 import { $streams, updateStreamStatus } from "./stores/streams";
 import { $settings } from "./stores/settings";
@@ -286,6 +287,7 @@ function AppContent() {
   useTauriEvent<WishlistMatchPayload>("wishlist-match", handleWishlistMatch);
   useTauriEvent<TrackIgnoredPayload>("track-ignored", handleTrackIgnored);
   useTauriEvent("streams-changed", handleStreamsChanged);
+  useDiskSpacePolling();
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-200">
