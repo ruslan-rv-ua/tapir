@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Settings_Disk_Threshold_DescInputs */
 
 const uk_settings_disk_threshold_desc = /** @type {(inputs: Settings_Disk_Threshold_DescInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Зупинити запис при низькому місці на диску. 0 = вимкнено`)
+	return /** @type {LocalizedString} */ (`Попереджати, коли вільного місця менше за поріг. 0 = вимкнено`)
 };
 
 const en_settings_disk_threshold_desc = /** @type {(inputs: Settings_Disk_Threshold_DescInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Stop recording when disk space is low. 0 = disabled`)
+	return /** @type {LocalizedString} */ (`Warn when free disk space drops below this threshold. 0 = disabled`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Stop recording when disk space is low. 0 = disabled" |
+* | "Warn when free disk space drops below this threshold. 0 = disabled" |
 *
 * @param {Settings_Disk_Threshold_DescInputs} inputs
 * @param {{ locale?: "uk" | "en" }} options
