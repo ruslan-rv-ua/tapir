@@ -31,11 +31,13 @@ describe("useDiskSpacePolling", () => {
     expect(tauri.getFreeSpace).toHaveBeenCalledTimes(1);
   });
 
-  it("re-fetches after 30s", async () => {
+  it("re-fetches after 30s and updates the store", async () => {
     vi.mocked(tauri.getFreeSpace).mockResolvedValue(1);
     render(<Harness />);
     await vi.waitFor(() => expect(tauri.getFreeSpace).toHaveBeenCalledTimes(1));
+    vi.mocked(tauri.getFreeSpace).mockResolvedValue(9999);
     await vi.advanceTimersByTimeAsync(30_000);
+    await vi.waitFor(() => expect($freeSpace.get()).toBe(9999));
     expect(tauri.getFreeSpace).toHaveBeenCalledTimes(2);
   });
 
