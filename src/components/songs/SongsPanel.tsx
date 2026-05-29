@@ -1,11 +1,21 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useStore } from "@nanostores/react";
-import { $filteredSongs, $songsLoading, $songsError, loadSongs } from "../../stores/songs";
+import {
+  $filteredSongs, $songs, $songsLoading, $songsError,
+  loadSongs, replaceSongByPath, removeSongByPath,
+} from "../../stores/songs";
 import { SongsFilterBar } from "./SongsFilterBar";
 import { SongsList } from "./SongsList";
+import { SongContextMenu } from "./SongContextMenu";
+import { TagEditorDialog } from "./TagEditorDialog";
+import { RenameDialog } from "./RenameDialog";
+import { ConfirmDialog } from "../common/ConfirmDialog";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as tauri from "../../lib/tauri";
+import type { Song, SongDeletedPayload, SongRenamedPayload } from "../../types/song";
+import { useTauriEvent } from "../../hooks/useTauriEvent";
 import { addToast } from "../../stores/toasts";
+import { useAnnounce } from "../../hooks/useAnnounce";
 import * as m from "../../i18n/paraglide/messages";
 
 interface Props {
@@ -15,34 +25,93 @@ interface Props {
 
 export function SongsPanel({ onZonesChange, exitZone }: Props) {
   const songs = useStore($filteredSongs);
+  const allSongs = useStore($songs);
   const loading = useStore($songsLoading);
   const error = useStore($songsError);
+  const announce = useAnnounce();
 
   const filterRef = useRef<ZoneEntry | null>(null);
   const listRef = useRef<ZoneEntry | null>(null);
+
+  const [activeMenu, setActiveMenu] = useState<string | null>(null);
+  const [tagEditorFor, setTagEditorFor] = useState<Song | null>(null);
+  const [renameFor, setRenameFor] = useState<Song | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<Song | null>(null);
 
   useEffect(() => {
     loadSongs();
   }, []);
 
-  const refreshZones = useCallback(() => {
+  useEffect(() => {
     const zones: ZoneEntry[] = [];
     if (filterRef.current) zones.push(filterRef.current);
     if (listRef.current) zones.push(listRef.current);
     onZonesChange(zones);
-  }, [onZonesChange]);
+  }, [onZonesChange, songs.length]);
 
-  useEffect(() => {
-    refreshZones();
-  }, [refreshZones, songs.length]);
+  useTauriEvent<Song>("song-tags-updated", (payload) => {
+    replaceSongByPath(payload);
+  });
+  useTauriEvent<SongDeletedPayload>("song-deleted", (payload) => {
+    removeSongByPath(payload.path);
+    announce(m.songs_toast_deleted(), "assertive");
+  });
+  useTauriEvent<SongRenamedPayload>("song-renamed", (payload) => {
+    replaceSongByPath(payload.newSong, payload.oldPath);
+  });
+  useTauriEvent("recording-completed", () => {
+    loadSongs();
+  });
+
+  const findSong = useCallback(
+    (path: string) => allSongs.find((s) => s.path === path),
+    [allSongs]
+  );
 
   const handlePlay = useCallback((path: string) => {
     tauri.playSavedSong(path).catch((err) => addToast(String(err), "error"));
   }, []);
 
-  const handleContextMenu = useCallback((_path: string) => {
-    // Stub: real menu wired in Task 15.
+  const handleContextMenu = useCallback((path: string) => {
+    setActiveMenu(path);
   }, []);
+
+  const handleMenuAction = useCallback(
+    async (path: string, action: "play" | "explorer" | "rename" | "tags" | "delete") => {
+      const song = findSong(path);
+      if (!song) return;
+      setActiveMenu(null);
+      switch (action) {
+        case "play":
+          handlePlay(path);
+          break;
+        case "explorer":
+          try { await tauri.openSongInExplorer(path); }
+          catch (e) { addToast(m.songs_toast_failed({ error: String(e) }), "error"); }
+          break;
+        case "rename":
+          setRenameFor(song);
+          break;
+        case "tags":
+          setTagEditorFor(song);
+          break;
+        case "delete":
+          setConfirmDelete(song);
+          break;
+      }
+    },
+    [findSong, handlePlay]
+  );
+
+  const handleConfirmDelete = async () => {
+    if (!confirmDelete) return;
+    try {
+      await tauri.deleteSong(confirmDelete.path);
+    } catch (e) {
+      addToast(m.songs_toast_failed({ error: String(e) }), "error");
+    }
+    setConfirmDelete(null);
+  };
 
   return (
     <div role="region" aria-label={m.songs_section()} className="flex flex-1 flex-col overflow-hidden">
@@ -59,6 +128,42 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
           onEmpty={() => filterRef.current?.focus("forward")}
           onPlay={handlePlay}
           onContextMenu={handleContextMenu}
+        />
+      )}
+
+      {activeMenu && (() => {
+        const song = findSong(activeMenu);
+        return song ? (
+          <SongContextMenu
+            song={song}
+            onAction={(action) => handleMenuAction(activeMenu, action)}
+          />
+        ) : null;
+      })()}
+
+      {tagEditorFor && (
+        <TagEditorDialog
+          song={tagEditorFor}
+          onClose={() => setTagEditorFor(null)}
+          onSaved={(updated) => replaceSongByPath(updated)}
+        />
+      )}
+
+      {renameFor && (
+        <RenameDialog
+          song={renameFor}
+          onClose={() => setRenameFor(null)}
+          onSaved={(updated, oldPath) => replaceSongByPath(updated, oldPath)}
+        />
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title={m.songs_confirm_delete_title()}
+          message={m.songs_confirm_delete_body({ fileName: confirmDelete.fileName })}
+          confirmLabel={m.songs_action_delete()}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setConfirmDelete(null)}
         />
       )}
     </div>
