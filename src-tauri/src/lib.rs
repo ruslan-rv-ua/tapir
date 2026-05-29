@@ -106,6 +106,7 @@ pub fn run() {
             commands::settings_commands::save_settings,
             commands::settings_commands::get_recording_settings,
             commands::settings_commands::save_recording_settings,
+            commands::settings_commands::get_free_space,
             commands::settings_commands::register_hotkeys,
             commands::settings_commands::open_directory_picker,
             commands::player_commands::play_stream,
