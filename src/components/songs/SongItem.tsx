@@ -1,9 +1,8 @@
 import { Play, Square, FileMusic, AlertCircle } from "lucide-react";
-import { useStore } from "@nanostores/react";
-import { $playerStatus } from "../../stores/player";
 import type { Song } from "../../types/song";
 import type { SegmentKind } from "../../hooks/useCompositeList";
 import { SongContextMenu, type SongAction } from "./SongContextMenu";
+import { formatDuration } from "../../lib/formatters";
 import * as m from "../../i18n/paraglide/messages";
 
 export interface SongItemData {
@@ -17,34 +16,37 @@ export function getSongSegments(song: Song): SongItemData["segments"] {
   return song.isComplete ? base : ["status", ...base];
 }
 
-function formatMB(bytes: number): string {
-  return (bytes / 1_048_576).toFixed(1);
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
 function formatDate(iso: string): string {
-  return iso.replace("T", " ").slice(0, 16);
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric", month: "short", day: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  }).format(d);
 }
 
 interface Props {
   song: Song;
   isActiveRow: boolean;
+  isPlaying: boolean;
   isFocused: (segment: "summary" | SegmentKind) => boolean;
   onPlay: () => void;
   onAction: (action: SongAction) => void;
 }
 
-export function SongItem({ song, isActiveRow, isFocused, onPlay, onAction }: Props) {
-  const playerStatus = useStore($playerStatus);
-  const isThisSongPlaying =
-    playerStatus.state !== "stopped" &&
-    playerStatus.source?.type === "file" &&
-    playerStatus.source.path === song.path;
-
+export function SongItem({ song, isActiveRow, isPlaying, isFocused, onPlay, onAction }: Props) {
   const summaryLabel = m.songs_row_summary({
     title: song.title || song.fileName,
     artist: song.artist || "—",
     station: song.station,
-    sizeMb: formatMB(song.sizeBytes),
+    size: formatSize(song.sizeBytes),
     date: formatDate(song.recordedAt),
   });
 
@@ -88,9 +90,9 @@ export function SongItem({ song, isActiveRow, isFocused, onPlay, onAction }: Pro
         tabIndex={isFocused("tech") ? 0 : -1}
         data-item-id={song.path}
         data-segment="tech"
-        className="hidden min-w-0 flex-1 truncate text-xs text-slate-400 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 md:block"
+        className="min-w-0 flex-1 truncate text-xs text-slate-400 outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
       >
-        {song.artist} · {song.station}
+        {song.artist} · {song.station}{song.durationMs > 0 ? ` · ${formatDuration(song.durationMs)}` : ""}
       </span>
 
       <button
@@ -99,11 +101,11 @@ export function SongItem({ song, isActiveRow, isFocused, onPlay, onAction }: Pro
         data-item-id={song.path}
         data-segment="action-play"
         tabIndex={isFocused("action-play") ? 0 : -1}
-        aria-label={isThisSongPlaying ? m.songs_action_stop() : m.songs_action_play()}
-        aria-pressed={isThisSongPlaying}
+        aria-label={isPlaying ? m.songs_action_stop() : m.songs_action_play()}
+        aria-pressed={isPlaying}
         className="rounded p-1.5 text-slate-300 outline-none hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:text-[ButtonText]"
       >
-        {isThisSongPlaying ? <Square size={16} aria-hidden /> : <Play size={16} aria-hidden />}
+        {isPlaying ? <Square size={16} aria-hidden /> : <Play size={16} aria-hidden />}
       </button>
 
       <SongContextMenu

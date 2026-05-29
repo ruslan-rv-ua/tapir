@@ -62,7 +62,7 @@
   "songs_toast_tags_saved": "Теги оновлено",
   "songs_toast_failed": "Не вдалось виконати дію: {error}",
   "songs_incomplete_badge": "незавершений",
-  "songs_row_summary": "{title}, виконавець {artist}, станція {station}, {sizeMb} МБ, записано {date}",
+  "songs_row_summary": "{title}, виконавець {artist}, станція {station}, {size}, записано {date}",
   "tag_editor_title": "Редагувати теги",
   "tag_editor_artist": "Виконавець",
   "tag_editor_song_title": "Назва треку",

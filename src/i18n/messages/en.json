@@ -62,7 +62,7 @@
   "songs_toast_tags_saved": "Tags updated",
   "songs_toast_failed": "Action failed: {error}",
   "songs_incomplete_badge": "incomplete",
-  "songs_row_summary": "{title}, artist {artist}, station {station}, {sizeMb} MB, recorded {date}",
+  "songs_row_summary": "{title}, artist {artist}, station {station}, {size}, recorded {date}",
   "tag_editor_title": "Edit tags",
   "tag_editor_artist": "Artist",
   "tag_editor_song_title": "Track title",

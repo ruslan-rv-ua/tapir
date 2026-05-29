@@ -1,6 +1,7 @@
 import { forwardRef, useImperativeHandle, useMemo } from "react";
 import { useStore } from "@nanostores/react";
 import { $filteredSongs } from "../../stores/songs";
+import { $playerStatus } from "../../stores/player";
 import { useCompositeList } from "../../hooks/useCompositeList";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import { SongItem, getSongSegments } from "./SongItem";
@@ -17,6 +18,11 @@ interface Props {
 export const SongsList = forwardRef<ZoneEntry, Props>(
   ({ exitZone, onEmpty, onPlay, onAction }, ref) => {
     const songs = useStore($filteredSongs);
+    const playerStatus = useStore($playerStatus);
+    const playingPath =
+      playerStatus.state !== "stopped" && playerStatus.source?.type === "file"
+        ? playerStatus.source.path
+        : null;
 
     const items = useMemo(
       () => songs.map((s) => ({ id: s.path, segments: getSongSegments(s) })),
@@ -63,6 +69,7 @@ export const SongsList = forwardRef<ZoneEntry, Props>(
             key={song.path}
             song={song}
             isActiveRow={activeItemId === song.path}
+            isPlaying={playingPath === song.path}
             isFocused={(segment) => isFocused(song.path, segment)}
             onPlay={() => onPlay(song.path)}
             onAction={(action) => onAction(song.path, action)}

@@ -25,7 +25,6 @@ export function SongContextMenu({ song, menuFocused, onAction }: Props) {
         data-segment="action-menu"
         data-context-menu-trigger
         aria-label={m.songs_action_menu()}
-        title={m.songs_action_menu()}
         className="inline-flex shrink-0 items-center justify-center rounded bg-slate-700 px-2 py-1 text-xs text-slate-300 hover:bg-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText] forced-colors:focus-visible:outline-[Highlight]"
       >
         ⋯
