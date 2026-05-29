@@ -1,6 +1,7 @@
 import { forwardRef, useImperativeHandle, useMemo, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { $streams, $statuses } from "../../stores/streams";
+import { $recordingSettings } from "../../stores/settings";
 import { useCompositeList } from "../../hooks/useCompositeList";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import type { StreamInfo } from "../../lib/tauri";
@@ -21,6 +22,8 @@ interface Props {
 export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, streams: streamsProp }, ref) => {
   const allStreams = useStore($streams);
   const statuses = useStore($statuses);
+  const recordingSettings = useStore($recordingSettings);
+  const maxRetries = recordingSettings?.reconnect.maxRetries ?? 0;
   const streams = streamsProp ?? allStreams;
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
@@ -92,6 +95,7 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
             status={statuses[stream.id]}
             isActiveRow={activeItemId === stream.id}
             isFocused={(segment) => isFocused(stream.id, segment)}
+            maxRetries={maxRetries}
             onPrimaryAction={() => {
               const isRecording = statuses[stream.id]?.state === "recording";
               if (isRecording) tauri.stopRecording(stream.id).catch((e) => addToast(String(e), "error"));

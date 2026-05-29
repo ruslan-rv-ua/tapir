@@ -30,7 +30,7 @@ const mkStream = (over: Partial<StreamInfo> = {}): StreamInfo => ({
   ...over,
 });
 
-function renderItem(stream = mkStream(), status?: StreamStatus, focusedSeg = "summary") {
+function renderItem(stream = mkStream(), status?: StreamStatus, focusedSeg = "summary", maxRetries = 0) {
   return render(
     <ul>
       <StreamItem
@@ -38,6 +38,7 @@ function renderItem(stream = mkStream(), status?: StreamStatus, focusedSeg = "su
         status={status}
         isActiveRow
         isFocused={(seg) => seg === focusedSeg}
+        maxRetries={maxRetries}
         onPrimaryAction={() => {}}
         onContextMenu={() => {}}
         onDelete={() => {}}

@@ -37,12 +37,13 @@ interface Props {
   isFocused: (segment: 'summary' | SegmentKind) => boolean;
   /** This row is the active item — used for a subtle context highlight. */
   isActiveRow: boolean;
+  maxRetries: number;
   onPrimaryAction: () => void;
   onContextMenu: () => void;
   onDelete: () => void;
 }
 
-export function StreamItem({ stream, status, isFocused, isActiveRow, onPrimaryAction: _onPrimaryAction, onContextMenu: _onContextMenu, onDelete }: Props) {
+export function StreamItem({ stream, status, isFocused, isActiveRow, maxRetries: _maxRetries, onPrimaryAction: _onPrimaryAction, onContextMenu: _onContextMenu, onDelete }: Props) {
   const state = status?.state ?? "idle";
   const isRecording = state === "recording";
   const playerStatus = useStore($playerStatus);
