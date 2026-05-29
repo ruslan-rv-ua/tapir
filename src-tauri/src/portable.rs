@@ -31,7 +31,7 @@ pub fn logs_dir() -> PathBuf {
     data_dir().join("logs")
 }
 
-/// Resolve a (possibly relative) recording output dir to an absolute path.
+/// Resolve a possibly-relative path to an absolute path.
 /// Relative paths are joined onto `data_dir()`.
 pub fn resolve_output_dir(rel: &str) -> PathBuf {
     let p = PathBuf::from(rel);
