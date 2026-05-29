@@ -6,7 +6,7 @@
 
 - [ ] `data/recordings/` contains at least 3 MP3 files across 2 stations
 - [ ] At least one file has `_incomplete` suffix (or simulate by renaming)
-- [ ] Tapir built and launched (`pnpm tauri dev`, or release: `pnpm tauri build` then `src-tauri/target/release/tapir.exe`)
+- [  ] Tapir built and launched (`pnpm tauri dev`, or release: `pnpm tauri build` then `src-tauri/target/release/tapir.exe`)
 
 ## Navigation
 
