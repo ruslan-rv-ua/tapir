@@ -44,6 +44,24 @@ describe("$filteredSongs", () => {
     expect($filteredSongs.get()).toHaveLength(1);
   });
 
+  it("matches multi-word queries with AND across artist/title/album", () => {
+    $songs.set([
+      song({ artist: "Tycho", title: "Ambient Walk", album: "" }),
+      song({ artist: "Tycho", title: "Sunset", album: "" }),
+      song({ artist: "Other", title: "Ambient Theme", album: "" }),
+    ]);
+    $songsQuery.set("tycho ambient");
+    const result = $filteredSongs.get();
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("Ambient Walk");
+  });
+
+  it("treats extra whitespace in query as a single separator", () => {
+    $songs.set([song({ artist: "Tycho", title: "Walk" })]);
+    $songsQuery.set("  tycho   walk  ");
+    expect($filteredSongs.get()).toHaveLength(1);
+  });
+
   it("sorts by date desc by default", () => {
     $songs.set([
       song({ recordedAt: "2026-01-01T00:00:00", title: "old" }),

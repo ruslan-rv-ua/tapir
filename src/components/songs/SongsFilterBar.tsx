@@ -1,5 +1,5 @@
 import { useStore } from "@nanostores/react";
-import { forwardRef, useImperativeHandle, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import {
   $songsQuery, $songsStation, $songsSort, $songsStations,
 } from "../../stores/songs";
@@ -12,10 +12,24 @@ interface Props {
 }
 
 export const SongsFilterBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
-  const query = useStore($songsQuery);
+  const storeQuery = useStore($songsQuery);
+  const [localQuery, setLocalQuery] = useState(storeQuery);
   const station = useStore($songsStation);
   const sort = useStore($songsSort);
   const stations = useStore($songsStations);
+
+  // Push local → store after a short idle, so rapid keystrokes coalesce.
+  useEffect(() => {
+    if (localQuery === storeQuery) return;
+    const id = setTimeout(() => $songsQuery.set(localQuery), 200);
+    return () => clearTimeout(id);
+  }, [localQuery, storeQuery]);
+
+  // Reflect external store changes (e.g. clear on section switch) into local.
+  useEffect(() => {
+    if (storeQuery !== localQuery) setLocalQuery(storeQuery);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeQuery]);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const { restoreFocus } = useFocusBoundary(containerRef, exitZone);
@@ -38,8 +52,8 @@ export const SongsFilterBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) =
         <span className="sr-only">{m.songs_search_placeholder()}</span>
         <input
           type="search"
-          value={query}
-          onChange={(e) => $songsQuery.set(e.target.value)}
+          value={localQuery}
+          onChange={(e) => setLocalQuery(e.target.value)}
           placeholder={m.songs_search_placeholder()}
           className="rounded border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-slate-100 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:bg-[Field] forced-colors:text-[FieldText] forced-colors:border-[ButtonText]"
         />

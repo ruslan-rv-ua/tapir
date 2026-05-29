@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SongAction } from "./SongContextMenu";
 import { useStore } from "@nanostores/react";
 import {
@@ -62,6 +62,26 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
   useTauriEvent("recording-completed", () => {
     loadSongs();
   });
+
+  // Announce filter result count politely. Uses pluralized i18n.
+  const pluralRules = useMemo(() => new Intl.PluralRules(document.documentElement.lang || "uk"), []);
+  const announceCount = useCallback((count: number) => {
+    if (count === 0) {
+      announce(m.songs_loaded_zero(), "polite");
+      return;
+    }
+    const form = pluralRules.select(count);
+    const message =
+      form === "one" ? m.songs_loaded_one({ count: String(count) }) :
+      form === "few" ? m.songs_loaded_few({ count: String(count) }) :
+      m.songs_loaded_many({ count: String(count) });
+    announce(message, "polite");
+  }, [pluralRules, announce]);
+
+  useEffect(() => {
+    if (loading || error) return;
+    announceCount(songs.length);
+  }, [songs.length, loading, error, announceCount]);
 
   const findSong = useCallback(
     (path: string) => allSongs.find((s) => s.path === path),

@@ -19,14 +19,12 @@ export const $songsStations = computed($songs, (songs) =>
 export const $filteredSongs = computed(
   [$songs, $songsQuery, $songsStation, $songsSort],
   (songs, q, station, sort) => {
-    const qLower = q.trim().toLowerCase();
+    const tokens = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
     const filtered = songs.filter((s) => {
       if (station && s.station !== station) return false;
-      if (
-        qLower &&
-        !`${s.artist} ${s.title} ${s.album}`.toLowerCase().includes(qLower)
-      ) {
-        return false;
+      if (tokens.length > 0) {
+        const haystack = `${s.artist} ${s.title} ${s.album}`.toLowerCase();
+        if (!tokens.every((t) => haystack.includes(t))) return false;
       }
       return true;
     });
