@@ -160,7 +160,6 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
         <TagEditorDialog
           song={tagEditorFor}
           onClose={() => setTagEditorFor(null)}
-          onSaved={(updated) => replaceSongByPath(updated)}
         />
       )}
 
@@ -168,7 +167,6 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
         <RenameDialog
           song={renameFor}
           onClose={() => setRenameFor(null)}
-          onSaved={(updated, oldPath) => replaceSongByPath(updated, oldPath)}
         />
       )}
 
