@@ -47,7 +47,7 @@
   "songs_sort_artist": "За виконавцем",
   "songs_sort_size": "За розміром",
   "songs_filter_all": "Усі станції",
-  "songs_filter_station": "Станція: {station}",
+  "songs_filter_station_label": "Станція",
   "songs_action_play": "Грати",
   "songs_action_menu": "Дії",
   "songs_action_explorer": "Відкрити в Explorer",
