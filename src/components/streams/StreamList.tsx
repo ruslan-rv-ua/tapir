@@ -3,6 +3,7 @@ import { useStore } from "@nanostores/react";
 import { $streams, $statuses } from "../../stores/streams";
 import { useCompositeList } from "../../hooks/useCompositeList";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
+import type { StreamInfo } from "../../lib/tauri";
 import { StreamItem, getStreamSegments } from "./StreamItem";
 import * as tauri from "../../lib/tauri";
 import { addToast } from "../../stores/toasts";
@@ -13,11 +14,14 @@ import * as m from "../../i18n/paraglide/messages";
 interface Props {
   exitZone: (forward: boolean) => void;
   onEmpty: () => void;
+  /** Pre-filtered list to render. Defaults to all streams in the store. */
+  streams?: StreamInfo[];
 }
 
-export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty }, ref) => {
-  const streams = useStore($streams);
+export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, streams: streamsProp }, ref) => {
+  const allStreams = useStore($streams);
   const statuses = useStore($statuses);
+  const streams = streamsProp ?? allStreams;
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   // Build items with dynamic segments

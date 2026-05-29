@@ -8,6 +8,7 @@ import { StreamList } from "./StreamList";
 import { AddStreamDialog } from "./AddStreamDialog";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { useRovingFocus } from "../../hooks/useRovingFocus";
+import { useAnnounce } from "../../hooks/useAnnounce";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as tauri from "../../lib/tauri";
 import { addToast } from "../../stores/toasts";
@@ -18,12 +19,13 @@ interface Props {
   exitZone: (fromId: string, forward: boolean) => void;
 }
 
+type ChipId = "all" | "recording" | "errors";
+
 const FILTER_CHIPS = [
   { id: "all",       labelFn: () => m.filter_all() },
   { id: "recording", labelFn: () => m.filter_recording() },
   { id: "errors",    labelFn: () => m.filter_errors() },
-  { id: "selected",  labelFn: () => m.filter_selected() },
-] as const;
+] as const satisfies ReadonlyArray<{ id: ChipId; labelFn: () => string }>;
 
 export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const streams = useStore($streams);
@@ -85,11 +87,49 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     m.errors_count_many,
   );
 
-  // ── Filter chip stub state ────────────────────────────────
-  const [activeChip, setActiveChip] = useState<string>("all");
+  // ── Filter chip state ─────────────────────────────────────
+  const [activeChip, setActiveChip] = useState<ChipId>("all");
   const [confirmStopAll, setConfirmStopAll] = useState(false);
+  const announce = useAnnounce();
 
-  // ── Toolbar zone refs (7 items) ──────────────────────────
+  // Pluralized "Фільтр «X»: N потоків" used both for the live announcement
+  // when a chip is activated and the empty-filter status line.
+  const filterAnnouncement = useCallback(
+    (chipId: ChipId, count: number) => {
+      const chip = FILTER_CHIPS.find(c => c.id === chipId);
+      const label = chip ? chip.labelFn() : "";
+      return pluralize(
+        count,
+        () => m.streams_filter_changed_zero({ label }),
+        ({ count }) => m.streams_filter_changed_one({ label, count }),
+        ({ count }) => m.streams_filter_changed_few({ label, count }),
+        ({ count }) => m.streams_filter_changed_many({ label, count }),
+      );
+    },
+    [pluralize],
+  );
+
+  const filteredStreams = useMemo(() => {
+    if (activeChip === "all") return streams;
+    if (activeChip === "recording")
+      return streams.filter(s => statuses[s.id]?.state === "recording");
+    return streams.filter(s => statuses[s.id]?.state === "error");
+  }, [streams, statuses, activeChip]);
+
+  const filterHidesAll = !isEmpty && filteredStreams.length === 0;
+
+  const handleChipClick = (chipId: ChipId) => {
+    if (chipId === activeChip) return;
+    setActiveChip(chipId);
+    const count = chipId === "all"
+      ? streams.length
+      : chipId === "recording"
+      ? streams.filter(s => statuses[s.id]?.state === "recording").length
+      : streams.filter(s => statuses[s.id]?.state === "error").length;
+    announce(filterAnnouncement(chipId, count), "polite");
+  };
+
+  // ── Toolbar zone refs (6 items) ──────────────────────────
   const toolbarZoneRef = useRef<HTMLDivElement | null>(null);
   const cmdBtn     = useRef<HTMLButtonElement | null>(null);
   const addBtn     = useRef<HTMLButtonElement | null>(null);
@@ -97,10 +137,9 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const chip0Ref   = useRef<HTMLButtonElement | null>(null);
   const chip1Ref   = useRef<HTMLButtonElement | null>(null);
   const chip2Ref   = useRef<HTMLButtonElement | null>(null);
-  const chip3Ref   = useRef<HTMLButtonElement | null>(null);
-  const chipRefs = useMemo(() => [chip0Ref, chip1Ref, chip2Ref, chip3Ref], []);
+  const chipRefs = useMemo(() => [chip0Ref, chip1Ref, chip2Ref], []);
   const toolbarRefs = useMemo(
-    () => [cmdBtn, addBtn, stopAllBtn, chip0Ref, chip1Ref, chip2Ref, chip3Ref],
+    () => [cmdBtn, addBtn, stopAllBtn, chip0Ref, chip1Ref, chip2Ref],
     [],
   );
 
@@ -130,6 +169,15 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
       onTabOut: (forward) => exitZone("streams-empty", forward),
     });
 
+  // ── Filter-empty zone (streams exist but filter hides them) ─────
+  const filterEmptyZoneRef = useRef<HTMLDivElement | null>(null);
+  const resetFilterBtnRef  = useRef<HTMLButtonElement | null>(null);
+
+  const handleResetFilter = () => {
+    setActiveChip("all");
+    announce(filterAnnouncement("all", streams.length), "polite");
+  };
+
   // ── Zone registration ────────────────────────────────────
   useEffect(() => {
     if (isEmpty) {
@@ -149,12 +197,20 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
         focus: toolbarRestore,
       };
       const zones: ZoneEntry[] = [toolbarZone];
-      if (streamListRef.current) zones.push(streamListRef.current);
+      if (filterHidesAll) {
+        zones.push({
+          id: "streams-filter-empty",
+          get el() { return filterEmptyZoneRef.current!; },
+          focus: () => resetFilterBtnRef.current?.focus(),
+        });
+      } else if (streamListRef.current) {
+        zones.push(streamListRef.current);
+      }
       onZonesChange(zones);
     }
   // onZonesChange intentionally omitted — callers must pass a stable reference.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEmpty, toolbarRestore]);
+  }, [isEmpty, filterHidesAll, toolbarRestore]);
 
   const doStopAll = async () => {
     try { await tauri.stopAllRecordings(); }
@@ -292,14 +348,14 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
               <div className="mx-1 h-4 w-px bg-slate-700 forced-colors:bg-[ButtonText]" aria-hidden="true" />
 
-              {/* Indices 3–6: Filter chips */}
+              {/* Indices 3–5: Filter chips */}
               {FILTER_CHIPS.map((chip, i) => (
                 <button
                   key={chip.id}
                   ref={chipRefs[i]}
                   tabIndex={toolbarTabIndex(3 + i)}
                   aria-pressed={activeChip === chip.id}
-                  onClick={() => setActiveChip(chip.id)}
+                  onClick={() => handleChipClick(chip.id)}
                   className={`rounded-full px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
                     activeChip === chip.id
                       ? "border border-sky-300/[.22] bg-sky-400/[.14] text-slate-100 forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]"
@@ -330,12 +386,32 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
                 <span style={{ gridColumn: 6 }}>{m.column_actions()}</span>
               </div>
 
-              {/* ── Stream list zone ── */}
-              <StreamList
-                ref={streamListCallbackRef}
-                exitZone={(forward) => exitZone("streams-list", forward)}
-                onEmpty={() => {/* handled by isEmpty effect */}}
-              />
+              {/* ── Stream list zone OR filter-empty zone ── */}
+              {filterHidesAll ? (
+                <div
+                  ref={filterEmptyZoneRef}
+                  data-zone-id="streams-filter-empty"
+                  role="region"
+                  aria-label={m.streams_filter_empty()}
+                  className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-10 text-slate-400"
+                >
+                  <p className="text-sm">{m.streams_filter_empty()}</p>
+                  <button
+                    ref={resetFilterBtnRef}
+                    onClick={handleResetFilter}
+                    className="rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
+                  >
+                    {m.streams_filter_reset()}
+                  </button>
+                </div>
+              ) : (
+                <StreamList
+                  ref={streamListCallbackRef}
+                  streams={filteredStreams}
+                  exitZone={(forward) => exitZone("streams-list", forward)}
+                  onEmpty={() => {/* handled by isEmpty effect */}}
+                />
+              )}
             </div>
           </div>
         </>
