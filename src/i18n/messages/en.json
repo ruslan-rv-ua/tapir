@@ -49,6 +49,7 @@
   "songs_filter_all": "All stations",
   "songs_filter_station_label": "Station",
   "songs_action_play": "Play",
+  "songs_action_stop": "Stop",
   "songs_action_menu": "Actions",
   "songs_action_explorer": "Open in Explorer",
   "songs_action_rename": "Rename…",

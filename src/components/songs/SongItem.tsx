@@ -1,4 +1,6 @@
-import { Play, FileMusic, AlertCircle } from "lucide-react";
+import { Play, Square, FileMusic, AlertCircle } from "lucide-react";
+import { useStore } from "@nanostores/react";
+import { $playerStatus } from "../../stores/player";
 import type { Song } from "../../types/song";
 import type { SegmentKind } from "../../hooks/useCompositeList";
 import { SongContextMenu, type SongAction } from "./SongContextMenu";
@@ -32,6 +34,12 @@ interface Props {
 }
 
 export function SongItem({ song, isActiveRow, isFocused, onPlay, onAction }: Props) {
+  const playerStatus = useStore($playerStatus);
+  const isThisSongPlaying =
+    playerStatus.state !== "stopped" &&
+    playerStatus.source?.type === "file" &&
+    playerStatus.source.path === song.path;
+
   const summaryLabel = m.songs_row_summary({
     title: song.title || song.fileName,
     artist: song.artist || "—",
@@ -91,10 +99,11 @@ export function SongItem({ song, isActiveRow, isFocused, onPlay, onAction }: Pro
         data-item-id={song.path}
         data-segment="action-play"
         tabIndex={isFocused("action-play") ? 0 : -1}
-        aria-label={m.songs_action_play()}
+        aria-label={isThisSongPlaying ? m.songs_action_stop() : m.songs_action_play()}
+        aria-pressed={isThisSongPlaying}
         className="rounded p-1.5 text-slate-300 outline-none hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:text-[ButtonText]"
       >
-        <Play size={16} aria-hidden />
+        {isThisSongPlaying ? <Square size={16} aria-hidden /> : <Play size={16} aria-hidden />}
       </button>
 
       <SongContextMenu

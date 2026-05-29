@@ -49,9 +49,13 @@ pub async fn play_saved_song(
 
 #[tauri::command]
 pub async fn open_song_in_explorer(path: String) -> Result<(), String> {
-    // `/select,` highlights the file in its containing folder.
+    // explorer.exe parses /select, with its own non-CRT scheme. If Rust quotes
+    // the whole arg (because the path has spaces), Explorer mis-parses and just
+    // opens its default folder. Bypass Rust's auto-quoting with raw_arg and
+    // put the inner double quotes ourselves around the path.
+    use std::os::windows::process::CommandExt;
     std::process::Command::new("explorer.exe")
-        .args([format!("/select,{path}")])
+        .raw_arg(format!("/select,\"{path}\""))
         .spawn()
         .map(|_| ())
         .map_err(|e| e.to_string())

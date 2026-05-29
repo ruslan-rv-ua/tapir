@@ -5,6 +5,7 @@ import {
   $filteredSongs, $songs, $songsLoading, $songsError,
   loadSongs, replaceSongByPath, removeSongByPath,
 } from "../../stores/songs";
+import { $playerStatus } from "../../stores/player";
 import { SongsFilterBar } from "./SongsFilterBar";
 import { SongsList } from "./SongsList";
 import { TagEditorDialog } from "./TagEditorDialog";
@@ -67,8 +68,18 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
     [allSongs]
   );
 
-  const handlePlay = useCallback((path: string) => {
-    tauri.playSavedSong(path).catch((err) => addToast(String(err), "error"));
+  const handlePlay = useCallback(async (path: string) => {
+    const ps = $playerStatus.get();
+    const isThisPlaying =
+      ps.state !== "stopped" &&
+      ps.source?.type === "file" &&
+      ps.source.path === path;
+    try {
+      if (isThisPlaying) await tauri.stopPlayback();
+      else await tauri.playSavedSong(path);
+    } catch (err) {
+      addToast(String(err), "error");
+    }
   }, []);
 
   const handleMenuAction = useCallback(
