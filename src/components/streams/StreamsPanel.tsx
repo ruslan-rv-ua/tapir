@@ -300,7 +300,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
           <div
             ref={toolbarZoneRef}
             data-zone-id="streams-toolbar"
-            role="toolbar"
+            role="application"
             aria-label={m.zone_streams_toolbar()}
             className="border-b border-slate-700 forced-colors:border-[ButtonText]"
             onKeyDown={toolbarKeyDown}
