@@ -148,11 +148,14 @@ export function StreamItem({ stream, status, isFocused, isActiveRow, maxRetries,
 
   return (
     <li
-      // The <li> itself is the 'summary' (whole-row) focus stop. It carries a
-      // real `listitem` role, so aria-roledescription controls what NVDA reads
-      // (e.g. "Mera, потік") instead of the bogus "section" that an aria-label
-      // on a roleless <div> produced. The single whole-row focus ring comes from
-      // the global [tabindex]:focus-visible rule in styles.css.
+      // The <li> itself is the 'summary' (whole-row) focus stop. Its accessible
+      // name comes from aria-label, and aria-roledescription controls what NVDA
+      // reads (e.g. "Mera, потік") instead of the bogus "section" that an
+      // aria-label on a roleless <div> produced. (The parent list is
+      // role="application", so the <li>'s implicit listitem role is not exposed;
+      // the row is described entirely via aria-label + aria-roledescription.)
+      // The single whole-row focus ring comes from the global
+      // [tabindex]:focus-visible rule in styles.css.
       data-item-id={stream.id}
       data-segment="summary"
       tabIndex={isFocused("summary") ? 0 : -1}
