@@ -20,13 +20,39 @@ use profile::Profile;
 use tauri::Manager;
 use tauri_plugin_log::{Target, TargetKind, RotationStrategy};
 
+/// Maps the user's `log_rotation` toggle to a plugin rotation strategy.
+/// `true` (default) keeps disk bounded (KeepOne, == previous behavior);
+/// `false` keeps the full timestamped history (KeepAll).
+fn rotation_strategy_for(keep_recycling: bool) -> RotationStrategy {
+    if keep_recycling {
+        RotationStrategy::KeepOne
+    } else {
+        RotationStrategy::KeepAll
+    }
+}
+
 pub fn run() {
+    // Create data dirs before anything reads/writes them: the log plugin targets
+    // logs_dir() and GlobalSettings::load() may write default settings.json.
+    portable::ensure_data_dirs().expect("Failed to create data directories");
+
+    // Load settings once, before the builder, so the log plugin (which is built
+    // at startup and cannot change afterwards) reflects the user's choices.
+    let initial_settings = GlobalSettings::load().expect("Failed to load settings");
+
+    // Apply the user's level only to our own crate (`tapir_lib::*`). Dependencies
+    // are capped at Info: their debug/trace is noise and may leak request headers
+    // or stream credentials. So "detailed logging" means detailed *app* logs.
+    let app_filter = initial_settings.log_level.to_filter();
+    let dep_filter = app_filter.min(log::LevelFilter::Info);
+
     tauri::Builder::default()
         .plugin(
             tauri_plugin_log::Builder::new()
-                .level(log::LevelFilter::Debug)
-                .max_file_size(10_485_760) // 10 MB
-                .rotation_strategy(RotationStrategy::KeepOne)
+                .level(dep_filter)
+                .level_for("tapir_lib", app_filter)
+                .max_file_size(initial_settings.log_max_size_mb as u128 * 1_048_576)
+                .rotation_strategy(rotation_strategy_for(initial_settings.log_rotation))
                 .targets([
                     Target::new(TargetKind::Folder {
                         path: portable::logs_dir(),
@@ -40,10 +66,7 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_window_state::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
-        .setup(|app| {
-            portable::ensure_data_dirs()
-                .expect("Failed to create data directories");
-
+        .setup(move |app| {
             // Show and focus the main window as early as possible — while the
             // OS foreground-activation grant from the user's launch is still
             // valid. The window is configured `visible: false` so its restored
@@ -56,7 +79,7 @@ pub fn run() {
                 let _ = main_window.set_focus();
             }
 
-            let settings = GlobalSettings::load().expect("Failed to load settings");
+            let settings = initial_settings;
             let profile = Profile::load(&settings.active_profile).expect("Failed to load profile");
             let state = AppState::new(settings, profile, app.handle().clone())
                 .expect("Failed to initialize AppState (no audio device?)");
@@ -67,7 +90,7 @@ pub fn run() {
             let settings = tauri::async_runtime::block_on(state_ref.settings.read());
             let failed = shortcuts::register_global_shortcuts(app.handle(), &settings.hotkeys);
             if !failed.is_empty() {
-                tracing::warn!("Failed to register shortcuts: {:?}", failed);
+                log::warn!("Failed to register shortcuts: {:?}", failed);
             }
             drop(settings);
             Ok(())
@@ -152,4 +175,16 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rotation_true_keeps_one_false_keeps_all() {
+        // log_rotation == true preserves the current bounded-disk behavior (KeepOne).
+        assert!(matches!(rotation_strategy_for(true), RotationStrategy::KeepOne));
+        assert!(matches!(rotation_strategy_for(false), RotationStrategy::KeepAll));
+    }
 }

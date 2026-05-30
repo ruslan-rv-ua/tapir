@@ -438,6 +438,12 @@ impl LiveSource {
         let decoder = symphonia::default::get_codecs()
             .make(&track.codec_params, &DecoderOptions::default())
             .context("unsupported codec in live stream")?;
+        log::debug!(
+            "[LiveSource] format probed: codec={:?}, sample_rate={:?}, channels={:?}",
+            track.codec_params.codec,
+            track.codec_params.sample_rate,
+            track.codec_params.channels,
+        );
         let spec = SignalSpec::new(
             track.codec_params.sample_rate.unwrap_or(44100),
             track.codec_params.channels.unwrap_or_default(),

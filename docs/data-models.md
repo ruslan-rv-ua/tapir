@@ -54,6 +54,7 @@
 
   // Logging
   "logRotation": true,
+  "logLevel": "info",
   "logMaxSizeMb": 10
 }
 ```
@@ -75,6 +76,7 @@ interface GlobalSettings {
   autostart: boolean;
   hotkeys: HotkeyMap;
   logRotation: boolean;
+  logLevel: "error" | "warn" | "info" | "debug";
   logMaxSizeMb: number;
 }
 
@@ -106,6 +108,7 @@ pub struct GlobalSettings {
     pub autostart: bool,
     pub hotkeys: HotkeyMap,
     pub log_rotation: bool,
+    pub log_level: LogLevel,
     pub log_max_size_mb: u32,
 }
 
@@ -898,6 +901,7 @@ interface PostprocessErrorPayload {
     "toggleWindow": "Ctrl+Shift+H"
   },
   "logRotation": true,
+  "logLevel": "info",
   "logMaxSizeMb": 10
 }
 ```
@@ -966,6 +970,8 @@ pub struct GlobalSettings {
     
     #[serde(default)]
     pub log_rotation: bool,
+    #[serde(default)]
+    pub log_level: LogLevel,
     
     // Нові поля в майбутніх версіях додаються з #[serde(default)]
 }

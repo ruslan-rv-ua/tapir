@@ -3,7 +3,7 @@ use crate::player::engine::PlaybackState;
 use crate::settings::HotkeyMap;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
-use tracing::{info, warn};
+use log::{info, warn};
 
 /// Register all global shortcuts from the given HotkeyMap.
 /// Returns a list of shortcut combos that failed to register.

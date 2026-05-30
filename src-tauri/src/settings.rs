@@ -1,7 +1,7 @@
 use crate::errors::RadioError;
 use crate::portable;
 use serde::{Deserialize, Serialize};
-use tracing::info;
+use log::info;
 
 /// Strip UTF-8 BOM if present (Windows Notepad adds this).
 pub fn strip_bom(s: &str) -> &str {
@@ -39,6 +39,25 @@ pub struct GlobalSettings {
     pub log_rotation: bool,
     #[serde(default = "default_log_max_size_mb")]
     pub log_max_size_mb: u32,
+    #[serde(default, deserialize_with = "deserialize_log_level")]
+    pub log_level: LogLevel,
+}
+
+/// Deserialize `log_level` tolerantly: an unknown or legacy value (e.g. the
+/// removed "trace") falls back to the default instead of failing the whole
+/// settings load and panicking the app at startup.
+fn deserialize_log_level<'de, D>(deserializer: D) -> Result<LogLevel, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let raw = Option::<String>::deserialize(deserializer)?;
+    Ok(match raw.as_deref() {
+        Some("error") => LogLevel::Error,
+        Some("warn") => LogLevel::Warn,
+        Some("info") => LogLevel::Info,
+        Some("debug") => LogLevel::Debug,
+        _ => LogLevel::default(),
+    })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -56,6 +75,27 @@ pub enum DoubleClickAction {
     #[default]
     Record,
     Play,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum LogLevel {
+    Error,
+    Warn,
+    #[default]
+    Info,
+    Debug,
+}
+
+impl LogLevel {
+    pub fn to_filter(self) -> log::LevelFilter {
+        match self {
+            LogLevel::Error => log::LevelFilter::Error,
+            LogLevel::Warn => log::LevelFilter::Warn,
+            LogLevel::Info => log::LevelFilter::Info,
+            LogLevel::Debug => log::LevelFilter::Debug,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -109,6 +149,7 @@ impl Default for GlobalSettings {
             hotkeys: HotkeyMap::default(),
             log_rotation: true,
             log_max_size_mb: 10,
+            log_level: LogLevel::Info,
         }
     }
 }
@@ -135,5 +176,48 @@ impl GlobalSettings {
         std::fs::write(&tmp_path, &json)?;
         std::fs::rename(&tmp_path, &path)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn log_level_default_is_info() {
+        assert_eq!(LogLevel::default(), LogLevel::Info);
+    }
+
+    #[test]
+    fn log_level_to_filter_maps_each_variant() {
+        assert_eq!(LogLevel::Error.to_filter(), log::LevelFilter::Error);
+        assert_eq!(LogLevel::Warn.to_filter(), log::LevelFilter::Warn);
+        assert_eq!(LogLevel::Info.to_filter(), log::LevelFilter::Info);
+        assert_eq!(LogLevel::Debug.to_filter(), log::LevelFilter::Debug);
+    }
+
+    #[test]
+    fn settings_without_log_level_defaults_to_info() {
+        // An existing settings.json that predates this field must still load.
+        let json = r#"{ "language": "en-US", "theme": "auto", "activeProfile": "Default" }"#;
+        let settings: GlobalSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(settings.log_level, LogLevel::Info);
+    }
+
+    #[test]
+    fn log_level_unknown_value_falls_back_to_default() {
+        // A legacy/removed value (e.g. "trace") must not break the whole load.
+        let json = r#"{ "logLevel": "trace" }"#;
+        let settings: GlobalSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(settings.log_level, LogLevel::Info);
+    }
+
+    #[test]
+    fn log_level_serde_round_trip() {
+        let mut s = GlobalSettings::default();
+        s.log_level = LogLevel::Debug;
+        let json = serde_json::to_string(&s).unwrap();
+        let back: GlobalSettings = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.log_level, LogLevel::Debug);
     }
 }

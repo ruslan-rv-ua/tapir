@@ -51,8 +51,6 @@ futures-util = "0.3"
 bytes = "1"
 
 # Logging
-tracing = "0.1"
-tracing-log = "0.2"
 log = "0.4"
 
 # Errors
