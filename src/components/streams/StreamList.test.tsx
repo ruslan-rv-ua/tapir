@@ -89,4 +89,12 @@ describe("StreamList — integration with composite-list navigation", () => {
     fireEvent.keyDown(document.activeElement!, { key: "Tab" });
     expect(exitZone).toHaveBeenCalledWith(true);
   });
+
+  it("exposes the list as an application region (NVDA focus mode)", () => {
+    const { container } = renderList();
+    const ul = container.querySelector("ul")!;
+    expect(ul.getAttribute("role")).toBe("application");
+    expect(ul.getAttribute("data-zone-id")).toBe("streams-list");
+    expect(ul.getAttribute("aria-label")).toBeTruthy();
+  });
 });
