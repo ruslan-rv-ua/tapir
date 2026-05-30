@@ -61,6 +61,7 @@ export function SettingsDialog() {
             >
               <Tab
                 id="general"
+                autoFocus
                 className="cursor-pointer border-b-2 border-transparent px-3 py-2 text-sm text-slate-400 outline-none hover:text-slate-200 selected:border-blue-400 selected:text-slate-100 focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:text-[ButtonText] forced-colors:selected:border-[Highlight] forced-colors:selected:text-[HighlightText]"
               >
                 {m.settings_tab_general()}
