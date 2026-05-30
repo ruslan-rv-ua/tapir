@@ -193,3 +193,28 @@ New keys (English values shown; Ukrainian translations added in parallel):
 - `src/components/settings/GeneralTab.tsx` — Logging section + Advanced block.
 - `src/i18n/messages/en.json`, `src/i18n/messages/uk.json` — new keys.
 - `docs/data-models.md` — update the `GlobalSettings` documentation to include `logLevel`.
+
+## Revision (as implemented)
+
+After review of what logging the app actually emits, the design above was amended:
+
+1. **Trace level dropped.** The app contains zero `trace!` calls; enabling Trace only surfaced
+   dependency internals (hyper/reqwest wire logs, symphonia packet-level) — high volume, low signal,
+   and a credential-leak risk (request headers for password-protected streams). `LogLevel` is now
+   **`error | warn | info | debug`** (4 variants). The `settings_log_level_trace` key and the Trace
+   `<ListBoxItem>` are removed. The verbose checkbox simplifies to `isSelected = logLevel === "debug"`,
+   on→`debug`, off→`info`.
+
+2. **Per-module filtering** (previously a non-goal). The user's level applies to our crate only:
+   `.level(dep_filter).level_for("tapir_lib", app_filter)` where `dep_filter = app_filter.min(Info)`.
+   So "detailed logging" means detailed *app* logs while dependencies stay at Info — quiet and safe.
+
+3. **Single logging facade.** The codebase mixed `tracing::` and `log::`, but `tauri-plugin-log` only
+   consumes `log`; the `tracing::*` calls had no subscriber/bridge and likely never reached the file.
+   All `tracing::` usages were converted to `log::`, and the `tracing` / `tracing-log` dependencies
+   were removed.
+
+4. **Added diagnostic `debug!` points** so the new level is actually useful: reconnect attempts +
+   backoff delay (`stream/manager.rs`), raw ICY `StreamTitle` metadata (`stream/manager.rs`),
+   track-split decisions in `handle_splitter_action` (`stream/manager.rs`), and probed
+   codec/sample-rate/channels in `LiveSource::new` (`player/engine.rs`).
