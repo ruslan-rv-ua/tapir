@@ -77,8 +77,8 @@ export const StationList = forwardRef<ZoneEntry, Props>(
       <ul
         ref={listRef}
         data-zone-id="browser-results"
-        role="list"
         aria-label={m.zone_browser_results()}
+        role="application"
         className="flex-1 overflow-auto"
         onKeyDownCapture={onKeyDownCapture}
       >

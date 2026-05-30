@@ -58,9 +58,9 @@ export const SongsList = forwardRef<ZoneEntry, Props>(
     return (
       <ul
         ref={listRef}
-        role="list"
         data-zone-id="songs-list"
         aria-label={m.songs_zone_list()}
+        role="application"
         className="flex-1 overflow-y-auto overflow-x-hidden"
         onKeyDownCapture={onKeyDownCapture}
       >

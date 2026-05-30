@@ -77,8 +77,8 @@ export const PatternList = forwardRef<ZoneEntry, Props>(
         <ul
           ref={listRef}
           data-zone-id="wishlist-list"
-          role="list"
           aria-label={ariaLabel}
+          role="application"
           className="flex-1 overflow-auto"
           onKeyDownCapture={onKeyDownCapture}
         >
