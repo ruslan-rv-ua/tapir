@@ -23,7 +23,6 @@ import { $playerStatus, $muteState } from "./stores/player";
 import { $activeSection } from "./stores/navigation";
 import { $commandPaletteOpen } from "./stores/navigation";
 import { addToast } from "./stores/toasts";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import * as tauri from "./lib/tauri";
 import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, RecordingStartedPayload, RecordingCompletedPayload, StreamInfo, PlayerStatus, PlayerProgressPayload, WishlistMatchPayload, TrackIgnoredPayload } from "./lib/tauri";
 import * as m from "./i18n/paraglide/messages";
@@ -119,9 +118,11 @@ function AppContent() {
         $playerStatus.set(status);
       }),
     ]).catch(console.error).finally(() => {
-      getCurrentWindow().show()
-        .then(() => { activityBarZoneRef.current?.focus("forward"); })
-        .catch(console.error);
+      // The window is already visible and OS-foreground (shown from Rust setup —
+      // see src-tauri/src/lib.rs) so the webview initialized while foreground,
+      // which is what lets NVDA attach to the document. Now that initial data has
+      // loaded, move focus to the first nav item; NVDA announces it reliably.
+      activityBarZoneRef.current?.focus("forward");
     });
   }, []);
 

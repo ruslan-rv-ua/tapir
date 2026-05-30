@@ -43,6 +43,19 @@ pub fn run() {
         .setup(|app| {
             portable::ensure_data_dirs()
                 .expect("Failed to create data directories");
+
+            // Show and focus the main window as early as possible — while the
+            // OS foreground-activation grant from the user's launch is still
+            // valid. The window is configured `visible: false` so its restored
+            // position (tauri-plugin-window-state) is applied before it appears.
+            // Showing it here (rather than from JS after data loads) ensures the
+            // webview initializes while the window is already OS-foreground,
+            // which NVDA requires to attach to the document and announce focus.
+            if let Some(main_window) = app.get_webview_window("main") {
+                let _ = main_window.show();
+                let _ = main_window.set_focus();
+            }
+
             let settings = GlobalSettings::load().expect("Failed to load settings");
             let profile = Profile::load(&settings.active_profile).expect("Failed to load profile");
             let state = AppState::new(settings, profile, app.handle().clone())
