@@ -20,9 +20,12 @@ export const StatusBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
   const settings = useStore($settings);
   const freeLow = isLowDiskSpace(freeSpace, settings?.diskSpaceThresholdGb ?? 0);
   const freeText = freeSpace === null ? "—" : formatBytes(freeSpace);
-  const freeAria = freeLow
-    ? m.metric_free_space_low({ space: freeText })
-    : `${m.metric_free_space()}: ${freeText}`;
+  const freeAria =
+    freeSpace === null
+      ? m.metric_free_space_unavailable()
+      : freeLow
+        ? m.metric_free_space_low({ space: freeText })
+        : `${m.metric_free_space()}: ${freeText}`;
   const [tick, setTick] = useState(0);
   const footerRef = useRef<HTMLElement | null>(null);
   const seg0Ref = useRef<HTMLDivElement | null>(null);
@@ -109,8 +112,8 @@ export const StatusBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
         tabIndex={getTabIndex(1)}
         aria-label={freeAria}
         className={
-          "cursor-default rounded px-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 " +
-          (freeLow ? "text-amber-300" : "")
+          "cursor-default rounded px-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400" +
+          (freeLow ? " text-amber-300" : "")
         }
       >
         <strong className={freeLow ? "text-amber-300" : "text-slate-200"}>{freeText}</strong>

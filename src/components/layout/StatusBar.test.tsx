@@ -21,15 +21,17 @@ function renderBar() {
 }
 
 describe("StatusBar free-space segment", () => {
-  it("renders a dash when free space is unknown", () => {
+  it("renders a dash and unavailable aria when free space is unknown", () => {
     renderBar();
-    expect(screen.getByText("—")).toBeInTheDocument();
+    const seg = screen.getByText("—").closest("div")!;
+    expect(seg.getAttribute("aria-label")).toMatch(/not available|недоступно/i);
   });
 
-  it("renders the formatted free space when known", () => {
+  it("renders the formatted free space with labeled aria when known", () => {
     $freeSpace.set(5 * GiB);
     renderBar();
-    expect(screen.getByText("5.00 GB")).toBeInTheDocument();
+    const seg = screen.getByText("5.00 GB").closest("div")!;
+    expect(seg.getAttribute("aria-label")).toMatch(/(free space|вільно).*5\.00 GB/i);
   });
 
   it("marks the segment low when below threshold", () => {
