@@ -4,7 +4,9 @@ import { useRovingFocus } from "../../hooks/useRovingFocus";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import { $statuses } from "../../stores/streams";
-import { formatDuration } from "../../lib/formatters";
+import { $freeSpace } from "../../stores/system";
+import { $settings } from "../../stores/settings";
+import { formatBytes, formatDuration, isLowDiskSpace } from "../../lib/formatters";
 import * as m from "../../i18n/paraglide/messages";
 
 interface Props {
@@ -14,11 +16,19 @@ interface Props {
 export const StatusBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
   const announce = useAnnounce();
   const statuses = useStore($statuses);
+  const freeSpace = useStore($freeSpace);
+  const settings = useStore($settings);
+  const freeLow = isLowDiskSpace(freeSpace, settings?.diskSpaceThresholdGb ?? 0);
+  const freeText = freeSpace === null ? "—" : formatBytes(freeSpace);
+  const freeAria = freeLow
+    ? m.metric_free_space_low({ space: freeText })
+    : `${m.metric_free_space()}: ${freeText}`;
   const [tick, setTick] = useState(0);
   const footerRef = useRef<HTMLElement | null>(null);
   const seg0Ref = useRef<HTMLDivElement | null>(null);
   const seg1Ref = useRef<HTMLDivElement | null>(null);
-  const segRefs = useMemo(() => [seg0Ref, seg1Ref], []);
+  const seg2Ref = useRef<HTMLDivElement | null>(null);
+  const segRefs = useMemo(() => [seg0Ref, seg1Ref, seg2Ref], []);
 
   const activeStatuses = Object.values(statuses).filter((s) => s.state === "recording");
   const recordingCount = activeStatuses.length;
@@ -61,7 +71,7 @@ export const StatusBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
     [announce, restoreFocus],
   );
 
-  // Reset to seg0 when seg1 unmounts to avoid losing tabIndex=0
+  // Reset to seg0 when the conditional last segment (seg2) unmounts
   useEffect(() => {
     if (longestMs === 0) moveTo(0);
   }, [longestMs, moveTo]);
@@ -94,10 +104,22 @@ export const StatusBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
         <strong className="text-slate-200">{recordingsText}</strong>
       </div>
 
+      <div
+        ref={seg1Ref}
+        tabIndex={getTabIndex(1)}
+        aria-label={freeAria}
+        className={
+          "cursor-default rounded px-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 " +
+          (freeLow ? "text-amber-300" : "")
+        }
+      >
+        <strong className={freeLow ? "text-amber-300" : "text-slate-200"}>{freeText}</strong>
+      </div>
+
       {longestMs > 0 && (
         <div
-          ref={seg1Ref}
-          tabIndex={getTabIndex(1)}
+          ref={seg2Ref}
+          tabIndex={getTabIndex(2)}
           aria-label={`${m.segment_longest_recording()}: ${formatDuration(longestMs)}`}
           className="cursor-default rounded px-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
         >
