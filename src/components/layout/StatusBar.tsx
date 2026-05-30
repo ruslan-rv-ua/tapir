@@ -98,6 +98,7 @@ export const StatusBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
       className="flex items-center gap-4 border-t border-slate-700 px-4 py-1.5 text-sm text-slate-400 forced-colors:border-[ButtonText] forced-colors:text-[CanvasText]"
       onKeyDown={onKeyDown}
     >
+      <div role="application" aria-label={m.zone_status()} className="contents">
       <div
         ref={seg0Ref}
         tabIndex={getTabIndex(0)}
@@ -129,6 +130,7 @@ export const StatusBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
           <strong className="text-slate-200">{formatDuration(longestMs)}</strong>
         </div>
       )}
+      </div>
     </footer>
   );
 });

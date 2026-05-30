@@ -91,3 +91,17 @@ describe("StatusBar free-space segment", () => {
     expect(tabIndices(footer)).toEqual(["0", "-1"]); // back to first, no orphaned tabIndex
   });
 });
+
+describe("StatusBar — scoped application role", () => {
+  it("keeps the contentinfo landmark and nests an application wrapper", () => {
+    const { container } = renderBar();
+    const footer = container.querySelector("footer")!;
+    // Implicit contentinfo landmark must NOT be overridden.
+    expect(footer.getAttribute("role")).toBeNull();
+    const app = footer.querySelector('[role="application"]')!;
+    expect(app).toBeTruthy();
+    expect(app.getAttribute("aria-label")).toBeTruthy();
+    // Roving segments live inside the wrapper.
+    expect(app.querySelectorAll("[tabindex]").length).toBeGreaterThan(0);
+  });
+});
