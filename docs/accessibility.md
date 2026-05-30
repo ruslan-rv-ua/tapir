@@ -1026,3 +1026,16 @@ Tray menu — нативне контекстне меню Windows. Доступ
 | NVDA IA2 vs UIA | Bug NVDA #19276 — деякі ARIA атрибути ігноруються | Рекомендувати в FAQ: `Use UI Automation when available → Yes` |
 | JAWS virtual cursor | JAWS може конфліктувати з SPA routing | React Aria focus management вирішує |
 | Toast "PowerShell" | `tauri-plugin-notification` у portable mode | Balloon tip через system tray |
+| NVDA мовчить на старті | Вікно `visible:false` показували з JS після завантаження даних → інколи webview ініціалізувався, поки вікно ще не foreground; NVDA приєднувався «у фоні» й не озвучував фокус (≈кожен 5-й запуск працював) | `show()` + `set_focus()` у Rust `setup()`, до завантаження webview (§17.1). Детальніше: [docs/notes/screenreader-startup-foreground.md](notes/screenreader-startup-foreground.md) |
+
+### 17.1. Старт: вікно має бути foreground до ініціалізації webview
+
+**Правило:** якщо головне вікно стартує прихованим (`visible: false`), показуй і фокусуй його з **Rust** (`setup()`), а **не** з JS після `await` завантаження даних.
+
+**Чому.** NVDA приєднується до документа Chromium/WebView2 у момент його ініціалізації. Якщо тоді вікно ще не є OS-foreground, NVDA «чіпляється» до фонового документа й більше **не озвучує** події фокусу для цієї сесії — хоч би коли і куди ми потім ставили фокус. Показ вікна з JS відбувається на ~100+ мс пізніше (після `Promise.all` IPC-викликів), і до того часу Windows foreground-activation grant (виданий на запуск застосунку) часто вже згорів → `setFocus()` не отримує реального foreground.
+
+**Симптом.** Візуально все працює, але NVDA мовчить на старті частіше за все; немає переходу browse/focus mode. Інколи (коли таймінг збігся) — озвучує. Невідтворюваність == гонка.
+
+**Діагностична ознака (100% кореляція):** `document.hasFocus() === true` на момент ініціалізації webview ⇔ NVDA озвучує. `false` ⇔ мовчить.
+
+**Рішення:** [src-tauri/src/lib.rs](../src-tauri/src/lib.rs) — у `setup()` одразу `main_window.show()` + `main_window.set_focus()`. JS лише переводить фокус на перший елемент навігації після завантаження даних ([src/App.tsx](../src/App.tsx)).
