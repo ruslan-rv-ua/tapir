@@ -96,9 +96,12 @@ export const StationList = forwardRef<ZoneEntry, Props>(
           return (
             <li
               key={station.stationuuid}
-              // The <li> is the 'summary' (whole-row) focus stop; aria-roledescription
-              // makes NVDA read "{name}, станція". Single focus ring via the global
-              // [tabindex]:focus-visible rule.
+              // The <li> is the 'summary' (whole-row) focus stop. role="listitem"
+              // is EXPLICIT: under the role="application" parent the <li>'s implicit
+              // listitem role is dropped and NVDA announces nothing on focus. With
+              // the explicit role, aria-roledescription makes NVDA read "{name},
+              // станція". Single focus ring via the global [tabindex]:focus-visible rule.
+              role="listitem"
               data-item-id={station.stationuuid}
               data-segment="summary"
               tabIndex={isFocused(station.stationuuid, "summary") ? 0 : -1}

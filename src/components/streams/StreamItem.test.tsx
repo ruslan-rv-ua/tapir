@@ -54,6 +54,10 @@ describe("StreamItem — accessibility structure", () => {
     const { container } = renderItem();
     const li = container.querySelector<HTMLElement>('li[data-segment="summary"]');
     expect(li).toBeTruthy();
+    // Explicit role="listitem": under the list's role="application" parent the
+    // <li>'s implicit listitem role is dropped, leaving NVDA with nothing to
+    // announce. The explicit role keeps the row announceable.
+    expect(li!.getAttribute("role")).toBe("listitem");
     expect(li!.getAttribute("aria-label")).toContain("Radio Paradise");
     expect(li!.getAttribute("aria-roledescription")).toMatch(/потік|stream/i);
     // The <li> itself is the focus stop (tabIndex 0 while summary is active).
