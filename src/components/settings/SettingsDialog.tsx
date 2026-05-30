@@ -51,16 +51,17 @@ export function SettingsDialog() {
               aria-label={m.settings_close()}
               className="rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
             >
-              ✕
+              ✖
             </button>
           </div>
-          <Tabs className="flex flex-1 flex-col overflow-hidden">
+          <Tabs className="flex flex-1 flex-col">
             <TabList
               aria-label={m.settings_title()}
               className="flex gap-1 border-b border-slate-700 px-6"
             >
               <Tab
                 id="general"
+                autoFocus
                 className="cursor-pointer border-b-2 border-transparent px-3 py-2 text-sm text-slate-400 outline-none hover:text-slate-200 selected:border-blue-400 selected:text-slate-100 focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:text-[ButtonText] forced-colors:selected:border-[Highlight] forced-colors:selected:text-[HighlightText]"
               >
                 {m.settings_tab_general()}
