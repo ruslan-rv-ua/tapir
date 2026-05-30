@@ -470,10 +470,12 @@ async fn handle_splitter_action(
 ) {
     match action {
         splitter::SplitAction::Skip => {
+            debug!("[{}] Splitter: skip (first-incomplete/too-short/unchanged): {} - {}", stream_id, artist, title);
             emit_track_changed(app_handle, stream_id, artist, title, "");
             update_track_info(manager, stream_id, artist, title).await;
         }
         splitter::SplitAction::StartTrack(m) => {
+            debug!("[{}] Splitter: start track: {} - {}", stream_id, m.artist, m.title);
             if let Ok(file_name) = rec.start_track(&m.artist, &m.title).await {
                 emit_recording_started(app_handle, stream_id, &file_name);
             }
@@ -481,6 +483,7 @@ async fn handle_splitter_action(
             update_track_info(manager, stream_id, &m.artist, &m.title).await;
         }
         splitter::SplitAction::FinalizeAndStart { completed, new, duration_ms } => {
+            debug!("[{}] Splitter: finalize '{} - {}' ({}ms), start '{} - {}'", stream_id, completed.artist, completed.title, duration_ms, new.artist, new.title);
             if let Ok(Some(final_path)) = rec.finalize_track(&completed.artist, &completed.title, duration_ms).await {
                 update_tracks_recorded(manager, stream_id).await;
                 let file_name = final_path.file_name()
@@ -548,6 +551,7 @@ pub async fn recording_task(
                     break 'reconnect;
                 }
                 let delay = compute_backoff_delay(&reconnect, attempt);
+                debug!("[{}] Reconnecting in {}s (attempt {}/{})", stream_id, delay, attempt, reconnect.max_retries);
                 update_state_reconnecting(&manager, &stream_id, attempt).await;
                 emit_recording_status(&app_handle, &stream_id, "reconnecting", None);
                 tokio::select! {
@@ -716,6 +720,7 @@ pub async fn recording_task(
                         // Parse StreamTitle from metadata
                         let meta_str = String::from_utf8_lossy(&meta_buf);
                         let meta_str = meta_str.trim_end_matches('\0');
+                        log::debug!("[ICY reader] raw metadata: {:?}", meta_str);
                         if let Some(title_str) = parse_stream_title(meta_str) {
                             let (artist, title) = if let Some(pos) = title_str.find(" - ") {
                                 (
@@ -915,6 +920,7 @@ pub async fn recording_task(
             break 'reconnect;
         }
         let delay = compute_backoff_delay(&reconnect, attempt);
+        debug!("[{}] Reconnecting in {}s (attempt {}/{})", stream_id, delay, attempt, reconnect.max_retries);
         update_state_reconnecting(&manager, &stream_id, attempt).await;
         emit_recording_status(&app_handle, &stream_id, "reconnecting", None);
         tokio::select! {

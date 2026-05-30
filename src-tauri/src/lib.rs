@@ -40,10 +40,17 @@ pub fn run() {
     // at startup and cannot change afterwards) reflects the user's choices.
     let initial_settings = GlobalSettings::load().expect("Failed to load settings");
 
+    // Apply the user's level only to our own crate (`tapir_lib::*`). Dependencies
+    // are capped at Info: their debug/trace is noise and may leak request headers
+    // or stream credentials. So "detailed logging" means detailed *app* logs.
+    let app_filter = initial_settings.log_level.to_filter();
+    let dep_filter = app_filter.min(log::LevelFilter::Info);
+
     tauri::Builder::default()
         .plugin(
             tauri_plugin_log::Builder::new()
-                .level(initial_settings.log_level.to_filter())
+                .level(dep_filter)
+                .level_for("tapir_lib", app_filter)
                 .max_file_size(initial_settings.log_max_size_mb as u128 * 1_048_576)
                 .rotation_strategy(rotation_strategy_for(initial_settings.log_rotation))
                 .targets([
@@ -83,7 +90,7 @@ pub fn run() {
             let settings = tauri::async_runtime::block_on(state_ref.settings.read());
             let failed = shortcuts::register_global_shortcuts(app.handle(), &settings.hotkeys);
             if !failed.is_empty() {
-                tracing::warn!("Failed to register shortcuts: {:?}", failed);
+                log::warn!("Failed to register shortcuts: {:?}", failed);
             }
             drop(settings);
             Ok(())
