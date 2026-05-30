@@ -6,6 +6,9 @@ import { addToast } from "../../stores/toasts";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 
+// Number of options PageUp/PageDown jumps by.
+const PAGE_STEP = 8;
+
 interface PaletteItem {
   id: string;
   label: string;
@@ -139,6 +142,10 @@ export function CommandPalette() {
     if (e.key === "Escape") { e.preventDefault(); close(); }
     if (e.key === "ArrowDown") { e.preventDefault(); setSelectedIndex((i) => Math.min(i + 1, filtered.length - 1)); }
     if (e.key === "ArrowUp") { e.preventDefault(); setSelectedIndex((i) => Math.max(i - 1, 0)); }
+    if (e.key === "Home") { e.preventDefault(); setSelectedIndex(0); }
+    if (e.key === "End") { e.preventDefault(); setSelectedIndex(filtered.length - 1); }
+    if (e.key === "PageDown") { e.preventDefault(); setSelectedIndex((i) => Math.min(i + PAGE_STEP, filtered.length - 1)); }
+    if (e.key === "PageUp") { e.preventDefault(); setSelectedIndex((i) => Math.max(i - PAGE_STEP, 0)); }
     if (e.key === "Enter") {
       e.preventDefault();
       if (filtered[clampedIndex]) filtered[clampedIndex].action();
