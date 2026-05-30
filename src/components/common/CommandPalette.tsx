@@ -100,6 +100,16 @@ export function CommandPalette() {
 
   // Clamp selectedIndex
   const clampedIndex = Math.min(selectedIndex, Math.max(0, filtered.length - 1));
+  const activeItemId = filtered[clampedIndex]?.id;
+
+  // Keep the active option scrolled into view. With aria-activedescendant the
+  // browser does not move DOM focus, so it won't auto-scroll — we do it here.
+  useEffect(() => {
+    if (!activeItemId) return;
+    document
+      .getElementById(`palette-item-${activeItemId}`)
+      ?.scrollIntoView({ block: "nearest" });
+  }, [activeItemId]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Tab") {
