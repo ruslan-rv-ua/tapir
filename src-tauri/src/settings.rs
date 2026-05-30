@@ -39,8 +39,25 @@ pub struct GlobalSettings {
     pub log_rotation: bool,
     #[serde(default = "default_log_max_size_mb")]
     pub log_max_size_mb: u32,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_log_level")]
     pub log_level: LogLevel,
+}
+
+/// Deserialize `log_level` tolerantly: an unknown or legacy value (e.g. the
+/// removed "trace") falls back to the default instead of failing the whole
+/// settings load and panicking the app at startup.
+fn deserialize_log_level<'de, D>(deserializer: D) -> Result<LogLevel, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let raw = Option::<String>::deserialize(deserializer)?;
+    Ok(match raw.as_deref() {
+        Some("error") => LogLevel::Error,
+        Some("warn") => LogLevel::Warn,
+        Some("info") => LogLevel::Info,
+        Some("debug") => LogLevel::Debug,
+        _ => LogLevel::default(),
+    })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -183,6 +200,14 @@ mod tests {
     fn settings_without_log_level_defaults_to_info() {
         // An existing settings.json that predates this field must still load.
         let json = r#"{ "language": "en-US", "theme": "auto", "activeProfile": "Default" }"#;
+        let settings: GlobalSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(settings.log_level, LogLevel::Info);
+    }
+
+    #[test]
+    fn log_level_unknown_value_falls_back_to_default() {
+        // A legacy/removed value (e.g. "trace") must not break the whole load.
+        let json = r#"{ "logLevel": "trace" }"#;
         let settings: GlobalSettings = serde_json::from_str(json).unwrap();
         assert_eq!(settings.log_level, LogLevel::Info);
     }
