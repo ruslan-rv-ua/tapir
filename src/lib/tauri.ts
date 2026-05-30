@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { Song } from "../types/song";
+import type { LogLevel } from "./logLevel";
 
 // --- Types matching Rust structs (camelCase, as serialized) ---
 
@@ -81,6 +82,7 @@ export interface GlobalSettings {
   hotkeys: HotkeyMap;
   logRotation: boolean;
   logMaxSizeMb: number;
+  logLevel: LogLevel;
 }
 
 // --- IPC event payload types ---
