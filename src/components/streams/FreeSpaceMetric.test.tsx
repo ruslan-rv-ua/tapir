@@ -14,9 +14,13 @@ describe("FreeSpaceMetric", () => {
     );
   });
 
-  it("shows the formatted value when available", () => {
+  it("shows the formatted value and labeled aria when available", () => {
     render(<FreeSpaceMetric freeBytes={5 * GiB} thresholdGb={1} />);
     expect(screen.getByText("5.00 GB")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveAttribute(
+      "aria-label",
+      expect.stringMatching(/(free space|вільно).*5\.00 GB/i),
+    );
   });
 
   it("applies the low-space warning aria when below threshold", () => {
