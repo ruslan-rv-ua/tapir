@@ -76,7 +76,7 @@ interface GlobalSettings {
   autostart: boolean;
   hotkeys: HotkeyMap;
   logRotation: boolean;
-  logLevel: "error" | "warn" | "info" | "debug" | "trace";
+  logLevel: "error" | "warn" | "info" | "debug";
   logMaxSizeMb: number;
 }
 

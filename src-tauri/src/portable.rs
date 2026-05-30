@@ -1,5 +1,5 @@
 use std::path::{Path, PathBuf};
-use tracing::info;
+use log::info;
 
 /// Returns the directory containing the EXE.
 /// In dev mode, falls back to the current directory.

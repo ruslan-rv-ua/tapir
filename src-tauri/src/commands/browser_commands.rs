@@ -1,5 +1,5 @@
 use tauri::Emitter;
-use tracing::warn;
+use log::warn;
 
 use crate::app_state::AppState;
 use crate::browser::api::RadioBrowserClient;

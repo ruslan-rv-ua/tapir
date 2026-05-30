@@ -274,12 +274,6 @@ export function GeneralTab() {
                   >
                     {m.settings_log_level_debug()}
                   </ListBoxItem>
-                  <ListBoxItem
-                    id="trace"
-                    className="cursor-pointer px-3 py-2 text-sm text-slate-100 outline-none hover:bg-slate-600 focus:bg-slate-600"
-                  >
-                    {m.settings_log_level_trace()}
-                  </ListBoxItem>
                 </ListBox>
               </Popover>
             </Select>

@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use reqwest::Client;
 use serde::de::DeserializeOwned;
 use tokio::sync::RwLock;
-use tracing::warn;
+use log::warn;
 
 use crate::errors::RadioError;
 use super::types::*;

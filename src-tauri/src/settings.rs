@@ -1,7 +1,7 @@
 use crate::errors::RadioError;
 use crate::portable;
 use serde::{Deserialize, Serialize};
-use tracing::info;
+use log::info;
 
 /// Strip UTF-8 BOM if present (Windows Notepad adds this).
 pub fn strip_bom(s: &str) -> &str {
@@ -68,7 +68,6 @@ pub enum LogLevel {
     #[default]
     Info,
     Debug,
-    Trace,
 }
 
 impl LogLevel {
@@ -78,7 +77,6 @@ impl LogLevel {
             LogLevel::Warn => log::LevelFilter::Warn,
             LogLevel::Info => log::LevelFilter::Info,
             LogLevel::Debug => log::LevelFilter::Debug,
-            LogLevel::Trace => log::LevelFilter::Trace,
         }
     }
 }
@@ -179,7 +177,6 @@ mod tests {
         assert_eq!(LogLevel::Warn.to_filter(), log::LevelFilter::Warn);
         assert_eq!(LogLevel::Info.to_filter(), log::LevelFilter::Info);
         assert_eq!(LogLevel::Debug.to_filter(), log::LevelFilter::Debug);
-        assert_eq!(LogLevel::Trace.to_filter(), log::LevelFilter::Trace);
     }
 
     #[test]
@@ -193,9 +190,9 @@ mod tests {
     #[test]
     fn log_level_serde_round_trip() {
         let mut s = GlobalSettings::default();
-        s.log_level = LogLevel::Trace;
+        s.log_level = LogLevel::Debug;
         let json = serde_json::to_string(&s).unwrap();
         let back: GlobalSettings = serde_json::from_str(&json).unwrap();
-        assert_eq!(back.log_level, LogLevel::Trace);
+        assert_eq!(back.log_level, LogLevel::Debug);
     }
 }
