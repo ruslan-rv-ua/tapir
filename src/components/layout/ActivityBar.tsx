@@ -68,6 +68,7 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
       className="flex w-56 flex-col gap-1 border-r border-slate-700 bg-slate-900 py-2 px-2"
       onKeyDown={onKeyDown}
     >
+      <div role="application" aria-label={m.main_navigation()} className="contents">
       {SECTIONS.map((sec, i) => (
         <Button
           key={sec.id}
@@ -76,7 +77,7 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
           aria-pressed={activeSection === sec.id}
           aria-disabled={sec.disabled ? "true" : undefined}
           aria-describedby={sec.disabled ? `nav-${sec.id}-desc` : undefined}
-          {...{ tabIndex: getTabIndex(i) }}
+          excludeFromTabOrder={getTabIndex(i) === -1}
           onPress={() => {
             if (sec.disabled) return;
             $activeSection.set(sec.id);
@@ -115,7 +116,7 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
         <Button
           ref={settingsRef}
           aria-label={m.settings_title()}
-          {...{ tabIndex: getTabIndex(SECTIONS.length) }}
+          excludeFromTabOrder={getTabIndex(SECTIONS.length) === -1}
           onPress={() => $settingsDialogOpen.set(true)}
           className="flex items-center gap-3 w-full min-h-[58px] px-[14px] py-3 rounded-[18px] border border-slate-700/30 bg-white/[.02] text-slate-400 hover:bg-white/[.05] hover:border-slate-600/50 hover:text-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:text-[ButtonText] forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText] transition-colors"
         >
@@ -139,6 +140,7 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
             <span className="text-xs text-slate-500 truncate">{settings?.activeProfile ?? "Default"}</span>
           </div>
         </div>
+      </div>
       </div>
     </nav>
   );
