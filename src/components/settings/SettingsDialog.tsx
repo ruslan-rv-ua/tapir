@@ -54,7 +54,7 @@ export function SettingsDialog() {
               ✕
             </button>
           </div>
-          <Tabs className="flex flex-1 flex-col overflow-hidden">
+          <Tabs className="flex flex-1 flex-col">
             <TabList
               aria-label={m.settings_title()}
               className="flex gap-1 border-b border-slate-700 px-6"
