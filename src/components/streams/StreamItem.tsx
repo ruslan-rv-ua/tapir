@@ -94,8 +94,8 @@ export function StreamItem({ stream, status, isFocused, isActiveRow, maxRetries,
 
   const slot1Icon =
     state === "recording"    ? <Circle size={10} aria-hidden className="fill-red-500 text-red-500 motion-safe:animate-pulse forced-colors:fill-[Highlight] forced-colors:text-[Highlight]" /> :
-    state === "connecting"   ? <Loader2 size={14} aria-hidden className="text-amber-400 animate-spin forced-colors:text-[Highlight]" /> :
-    state === "reconnecting" ? <RefreshCw size={14} aria-hidden className="text-amber-400 animate-spin forced-colors:text-[Highlight]" /> :
+    state === "connecting"   ? <Loader2 size={14} aria-hidden className="text-amber-400 motion-safe:animate-spin forced-colors:text-[Highlight]" /> :
+    state === "reconnecting" ? <RefreshCw size={14} aria-hidden className="text-amber-400 motion-safe:animate-spin forced-colors:text-[Highlight]" /> :
     state === "error"        ? <AlertCircle size={14} aria-hidden className="text-red-500 forced-colors:text-[Highlight]" /> :
     null;
 
