@@ -36,7 +36,7 @@ pub struct ProfileMeta {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportPreview {
-    pub profile_json: String, // stripped of passwords, not yet saved
+    pub profile_json: String, // raw parsed JSON — passwords stripped at save_imported time (server-side)
     pub suggested_name: String,
     pub stream_count: usize,
     pub has_conflict: bool,
@@ -55,13 +55,15 @@ pub struct ImportPreview {
 | `Profile::delete(name: &str) -> Result<()>` | Delete file. Err if `name == "Default"`. |
 | `Profile::duplicate(src: &str, new_name: &str) -> Result<ProfileMeta>` | Load `src`, set `name = new_name`, save. |
 | `Profile::export_json(name: &str) -> Result<String>` | Load profile, set all `stream.password = None`, serialize to pretty JSON. |
-| `Profile::preview_import_json(json: &str) -> Result<ImportPreview>` | Parse JSON, strip passwords, detect name conflict, return preview without saving. Returns `RadioError::InvalidData` for unparseable content. |
-| `Profile::save_imported(json: &str, name: &str) -> Result<ProfileMeta>` | Validate `name`, deserialize `json`, override `profile.name = name`, save file. |
+| `Profile::preview_import_json(json: &str) -> Result<ImportPreview>` | Parse JSON, detect name conflict, return preview without saving. Passwords are NOT stripped here — stripping happens at save time. Returns `RadioError::InvalidData` for unparseable content. |
+| `Profile::save_imported(json: &str, name: &str) -> Result<ProfileMeta>` | Validate `name`, deserialize `json`, **strip all stream passwords** (`password = None`), override `profile.name = name`, save file. Password stripping is enforced server-side regardless of frontend input. |
 
 **Name validation rules** (shared helper `validate_profile_name`):
 - Not empty, ≤ 64 characters
 - Characters: letters, digits, spaces, `-`, `_` only (no `\ / : * ? " < > |`)
-- Not equal to "Default" (for create/rename/import)
+- No leading or trailing spaces or dots (Windows silently trims them)
+- Not a Windows reserved device name (case-insensitive): `CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`
+- Not equal to "Default" (for create/rename/import — "Default" is reserved)
 - Not a duplicate of any existing profile name (case-insensitive)
 
 ### 2.3. New `RadioError` variants
@@ -199,6 +201,7 @@ ProfileManager (Modal + Dialog)
   ProfileList (RadioGroup)
     aria-label: m.profile_list_label()
     RadioButton × N  — value=name, label=name + streamCount hint
+    Initial selection: active profile
 
   ProfileActions
     [Перемкнутися]  — disabled when selected == active
