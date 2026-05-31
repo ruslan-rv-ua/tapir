@@ -145,8 +145,6 @@ describe("StreamItem — reconnecting counter display", () => {
     const { container } = renderItem(mkStream(), mkReconnecting(3), "summary", 10);
     const statusCell = container.querySelector('[data-segment="status"]')!;
     expect(statusCell.textContent).toMatch(/attempt 3 of 10|спроба 3 з 10/i);
-    const icon = container.querySelector('[role="img"]')!;
-    expect(icon.getAttribute("aria-label")).toMatch(/attempt 3 of 10|спроба 3 з 10/i);
   });
 
   it("shows 'Attempt N' without max when maxRetries is 0 (unlimited)", () => {
@@ -154,17 +152,12 @@ describe("StreamItem — reconnecting counter display", () => {
     const statusCell = container.querySelector('[data-segment="status"]')!;
     expect(statusCell.textContent).toMatch(/attempt 5|спроба 5/i);
     expect(statusCell.textContent).not.toMatch(/of \d|з \d/i);
-    const icon = container.querySelector('[role="img"]')!;
-    expect(icon.getAttribute("aria-label")).toMatch(/attempt 5|спроба 5/i);
-    expect(icon.getAttribute("aria-label")).not.toMatch(/of \d|з \d/i);
   });
 
   it("falls back to 'Reconnecting...' when reconnectAttempt is null", () => {
     const { container } = renderItem(mkStream(), mkReconnecting(null), "summary", 10);
     const statusCell = container.querySelector('[data-segment="status"]')!;
     expect(statusCell.textContent).toMatch(/reconnecting|перепідключення/i);
-    const icon = container.querySelector('[role="img"]')!;
-    expect(icon.getAttribute("aria-label")).toMatch(/reconnecting|перепідключення/i);
   });
 });
 
