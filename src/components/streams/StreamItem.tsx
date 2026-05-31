@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { createPortal } from "react-dom";
-import { Mic, Loader2, RefreshCw, AlertCircle, Radio, Volume2 } from "lucide-react";
+import { Loader2, RefreshCw, AlertCircle, Volume2, Circle } from "lucide-react";
 import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import type { SegmentKind } from "../../hooks/useCompositeList";
 import { formatBitrate, formatDuration } from "../../lib/formatters";
@@ -92,6 +92,17 @@ export function StreamItem({ stream, status, isFocused, isActiveRow, maxRetries,
     null;
   const summaryLabel = stateLabel ? `${stateLabel}, ${stream.name}` : stream.name;
 
+  const slot1Icon =
+    state === "recording"    ? <Circle size={10} aria-hidden className="fill-red-500 text-red-500 motion-safe:animate-pulse forced-colors:fill-[Highlight] forced-colors:text-[Highlight]" /> :
+    state === "connecting"   ? <Loader2 size={14} aria-hidden className="text-amber-400 animate-spin forced-colors:text-[Highlight]" /> :
+    state === "reconnecting" ? <RefreshCw size={14} aria-hidden className="text-amber-400 animate-spin forced-colors:text-[Highlight]" /> :
+    state === "error"        ? <AlertCircle size={14} aria-hidden className="text-red-500 forced-colors:text-[Highlight]" /> :
+    null;
+
+  const slot2Icon = isThisStreamPlaying
+    ? <Volume2 size={14} aria-hidden className="text-blue-400 forced-colors:text-[Highlight]" />
+    : null;
+
   // Segment values. The segment *type* is announced via aria-roledescription on
   // each cell (a real role="group"), so a roleless named <div> — which Chromium
   // exposes as a "section" and NVDA reads as "розділ" — is avoided. The value
@@ -118,14 +129,6 @@ export function StreamItem({ stream, status, isFocused, isActiveRow, maxRetries,
     retryAttempt !== null && maxRetries > 0 ? m.status_reconnecting_attempt({ attempt: retryAttempt, max: maxRetries }) :
     retryAttempt !== null                   ? m.status_reconnecting_attempt_unlimited({ attempt: retryAttempt }) :
     m.status_reconnecting();
-
-  const statusIconLabel =
-    state === "recording"    ? m.status_recording_label() :
-    state === "connecting"   ? m.status_connecting() :
-    state === "reconnecting" ? retryLabel :
-    state === "error"        ? m.status_error() :
-    isThisStreamPlaying      ? m.segment_playing() :
-    m.status_idle();
 
   const statusValue =
     state === "recording"    ? formatDuration(elapsedMs) :
@@ -162,27 +165,17 @@ export function StreamItem({ stream, status, isFocused, isActiveRow, maxRetries,
       aria-label={summaryLabel}
       aria-roledescription={m.item_role_stream()}
       className={`grid border-b border-slate-800 forced-colors:border-[ButtonText] ${rowBg}`}
-      style={{ gridTemplateColumns: "100px minmax(0,1fr) minmax(0,1.5fr) 90px 90px auto" }}
+      style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1.5fr) 90px 90px auto" }}
     >
-      {/* Stream name — visual only; the row's accessible name is on the <li>. */}
-      <div className="flex items-center px-3 py-2" style={{ gridRow: 1, gridColumn: 2 }}>
+      {/* Stream name with inline status slots — visual only; the row's accessible name is on the <li>. */}
+      <div style={{ gridColumn: "1" }} className="flex items-center gap-1 min-w-0 px-3 py-2">
+        <span data-slot="record" aria-hidden="true" className="w-4 flex items-center justify-center shrink-0">
+          {slot1Icon}
+        </span>
+        <span data-slot="play" aria-hidden="true" className="w-4 flex items-center justify-center shrink-0">
+          {slot2Icon}
+        </span>
         <span className="font-medium text-slate-200 truncate">{stream.name}</span>
-      </div>
-
-      {/* Status icon — col 1 */}
-      <div
-        role="img"
-        aria-label={statusIconLabel}
-        title={statusIconLabel}
-        className="flex items-center justify-center px-3 py-2"
-        style={{ gridRow: 1, gridColumn: 1 }}
-      >
-        {state === "recording"    ? <Mic         aria-hidden size={16} className="text-red-500   forced-colors:text-[Highlight]" /> :
-         state === "connecting"   ? <Loader2     aria-hidden size={16} className="text-amber-400 animate-spin forced-colors:text-[Highlight]" /> :
-         state === "reconnecting" ? <RefreshCw   aria-hidden size={16} className="text-amber-400 animate-spin forced-colors:text-[Highlight]" /> :
-         state === "error"        ? <AlertCircle aria-hidden size={16} className="text-red-500   forced-colors:text-[Highlight]" /> :
-         isThisStreamPlaying      ? <Volume2     aria-hidden size={16} className="text-blue-400  forced-colors:text-[Highlight]" /> :
-                                    <Radio       aria-hidden size={16} className="text-green-500  forced-colors:text-[Highlight]" />}
       </div>
 
       {segments.map((kind) => {
@@ -196,7 +189,7 @@ export function StreamItem({ stream, status, isFocused, isActiveRow, maxRetries,
             aria-label={trackLabel}
             aria-roledescription={m.segment_track()}
             className={`px-3 py-2 text-sm ${trackTextClass} focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight] truncate`}
-            style={{ gridRow: 1, gridColumn: 3 }}
+            style={{ gridRow: 1, gridColumn: 2 }}
           >
             {trackValue}
           </div>
@@ -212,7 +205,7 @@ export function StreamItem({ stream, status, isFocused, isActiveRow, maxRetries,
             aria-label={techValue}
             aria-roledescription={m.segment_tech()}
             className="px-3 py-2 text-sm text-slate-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight]"
-            style={{ gridRow: 1, gridColumn: 4 }}
+            style={{ gridRow: 1, gridColumn: 3 }}
           >
             {techValue}
           </div>
@@ -228,7 +221,7 @@ export function StreamItem({ stream, status, isFocused, isActiveRow, maxRetries,
             aria-label={statusValue}
             aria-roledescription={statusRoleDesc}
             className="px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight]"
-            style={{ gridRow: 1, gridColumn: 5 }}
+            style={{ gridRow: 1, gridColumn: 4 }}
           >
             {statusValue}
           </div>
@@ -238,7 +231,7 @@ export function StreamItem({ stream, status, isFocused, isActiveRow, maxRetries,
       })}
 
       {/* Actions \u2014 each button is its own Left/Right focus stop (roving tabIndex). */}
-      <div className="flex gap-1 px-3 py-2" style={{ gridRow: 1, gridColumn: 6 }}>
+      <div className="flex gap-1 px-3 py-2" style={{ gridRow: 1, gridColumn: 5 }}>
         <button
           data-item-id={stream.id}
           data-segment="action-play"
