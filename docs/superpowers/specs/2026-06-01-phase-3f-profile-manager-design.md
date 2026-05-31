@@ -80,7 +80,7 @@ InvalidData(String), // corrupt/unparseable profile file
 | `list_profiles` | — | `Vec<ProfileMeta>` | |
 | `switch_profile` | `name: String` | `Profile` (new active) | Stop all recordings, save old, load new, update settings + AppState, emit `profile-changed` event. No-op if `name == active`. |
 | `create_profile` | `name: String` | `ProfileMeta` | |
-| `rename_profile` | `oldName, newName: String` | `ProfileMeta` | Cannot rename Default. Cannot rename the active profile (must switch away first). |
+| `rename_profile` | `oldName, newName: String` | `ProfileMeta` | Cannot rename "Default". Cannot rename the active profile. |
 | `delete_profile` | `name: String` | `()` | Cannot delete Default. Cannot delete active profile. |
 | `duplicate_profile` | `sourceName, newName: String` | `ProfileMeta` | |
 | `export_profile` | `name: String` | `()` | Opens a `tauri-plugin-dialog` save dialog with suggested filename `{name}.tapirprofile`, writes stripped JSON. Silent no-op if user cancels. |
@@ -123,6 +123,7 @@ Phase 3F does not interact with the scheduler subsystem.
 | `$wishlist` | Set to `profile.wishlist` from event payload |
 | `$ignorelist` | Set to `profile.ignorelist` from event payload |
 | `$settings` | Set `activeProfile` to `profile.name` (partial update) |
+| `$statuses` | Reset all stream statuses to idle (recordings were stopped during switch) |
 | `$playerStatus` | Not updated here — backend emits a separate `player-status` event after `set_volume`, which the existing listener handles |
 
 The hook uses `listen("profile-changed", handler)` and returns the unlisten function for cleanup.
@@ -201,7 +202,7 @@ ProfileManager (Modal + Dialog)
 
   ProfileActions
     [Перемкнутися]  — disabled when selected == active
-    [Перейменувати] — disabled when selected == "Default"
+    [Перейменувати] — disabled when selected == "Default" || selected == active
     [Дублювати]
     [Видалити]      — disabled when selected == "Default" || selected == active
     [Експортувати]
@@ -217,7 +218,11 @@ ProfileManager (Modal + Dialog)
   - Shows validation error inline if backend returns `RadioError::Conflict` or `RadioError::InvalidName`
 - **Delete confirm**: "Видалити профіль '{name}'? Ця дія незворотна."
 - **Switch confirm** (when active recordings): "Є активні записи. Зупинити їх і перейти до профілю '{name}'?"
-- **Import conflict**: "Профіль '{name}' вже існує. Введіть нову назву:" (TextField)
+- **Import**: After `begin_import` returns a preview, always show a confirmation dialog with an
+  editable `<TextField>` pre-filled with `suggestedName`. The user can change the name before
+  confirming. If the name is invalid or conflicted, show inline validation error — user must fix
+  before confirming. This handles invalid/reserved names (`Default`, forbidden chars, duplicates)
+  in one unified step without a separate conflict-only dialog.
 
 These are rendered as React Aria `AlertDialog` components.
 
