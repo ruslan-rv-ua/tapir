@@ -108,8 +108,9 @@ InvalidData(String), // corrupt/unparseable profile file
    // If save fails: log warning, continue (old profile data is still in AppState)
 8. Load new profile: Profile::load(name)
    // If load fails:
-   //   a. Emit app_handle.emit("player-status", PlayerStatus::Idle) so frontend
-   //      clears the player UI (player was stopped in step 4 but frontend is stale)
+   //   a. Emit app_handle.emit("player-status", PlayerStatus { state: PlaybackState::Stopped,
+   //      source: None, volume: player.current_volume(), position_ms: None, duration_ms: None })
+   //      so frontend clears the player UI (player was stopped in step 4 but frontend is stale)
    //   b. Return Err immediately. AppState still holds old profile (data intact —
    //      user can retry switch or restart).
 9. Apply new profile's player volume: player.set_volume(new_profile.player_session.volume)
@@ -254,7 +255,7 @@ ProfileManager (Modal + Dialog)
   before confirming. This handles invalid/reserved names (`Default`, forbidden chars, duplicates)
   in one unified step without a separate conflict-only dialog.
 
-These are rendered as React Aria `AlertDialog` components.
+These are rendered as `Modal + ModalOverlay + Dialog` components, with `<Dialog role="alertdialog">` — the same pattern as the existing `ConfirmDialog.tsx` component. There is no separate `AlertDialog` export in this codebase; `role="alertdialog"` is set on the `Dialog` element directly.
 
 ### 3.5. Stores
 
@@ -331,8 +332,8 @@ The `Profile` type mirrors the Rust struct (all fields of `profile.rs`).
 
 - `ProfileList` uses `RadioGroup` + `Radio` from React Aria — NVDA reads each profile as a radio button with state.
 - Action buttons are standard `Button` components — no dropdowns.
-- **ProfileManager itself** uses `Modal + Dialog` (ARIA `role="dialog"`) — not AlertDialog. This is the same pattern as `SettingsDialog`.
-- **Sub-dialogs** (rename, create, delete confirm, switch confirm, import confirm) use React Aria `AlertDialog` (`role="alertdialog"`) — NVDA announces these as alerts, interrupting reading.
+- **ProfileManager itself** uses `Modal + Dialog` (ARIA `role="dialog"`) — the same pattern as `SettingsDialog`.
+- **Sub-dialogs** (rename, create, delete confirm, switch confirm, import confirm) use `Modal + ModalOverlay + Dialog` with `<Dialog role="alertdialog">` — the same pattern as `ConfirmDialog.tsx`. There is no `AlertDialog` export; `role="alertdialog"` is set directly on the `Dialog` element. NVDA announces these as alerts.
 - The profile card button in ActivityBar has a descriptive `aria-label` including the active profile name.
 - No drag-and-drop, no visual-only indicators.
 
