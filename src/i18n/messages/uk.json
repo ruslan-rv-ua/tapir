@@ -279,6 +279,8 @@
   "filter_all": "Усі",
   "filter_recording": "Записуються",
   "filter_errors": "З помилками",
+  "streams_filter_group": "Фільтр потоків",
+  "streams_filter_chip_count": "{label}, {count}",
   "streams_filter_empty": "Немає потоків, що відповідають фільтру",
   "streams_filter_reset": "Скинути фільтр",
   "streams_filter_changed_zero": "Фільтр «{label}»: нічого не знайдено",
