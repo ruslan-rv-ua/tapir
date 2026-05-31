@@ -125,6 +125,8 @@ Phase 3F does not interact with the scheduler subsystem.
 | `$settings` | Set `activeProfile` to `profile.name` (partial update) |
 | `$statuses` | Reset all stream statuses to idle (recordings were stopped during switch) |
 | `$playerStatus` | Not updated here — backend emits a separate `player-status` event after `set_volume`, which the existing listener handles |
+| `$songs` | Call `loadSongs()` — songs come from the new profile's `outputDir`, so the list must be re-fetched |
+| `$recordingSettings` | Call `get_recording_settings()` IPC and set store — the new profile has its own recording config (outputDir, name template, reconnect params) |
 
 **Wishlist/Ignorelist refresh:** `WishlistPanel` and other panels that hold local copies of
 wishlist/ignorelist data must re-fetch on `profile-changed`. Phase 3F adds a `profile-changed`
