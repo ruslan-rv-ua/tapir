@@ -294,7 +294,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
           {/* ── Workspace titlebar + Toolbar = streams-toolbar zone ── */}
           {/* IMPORTANT: Both rows must live inside the zone div so mixed-boundary-handoff
-              sees all 7 interactive items (indices 0–6). h2 is structural, not focusable. */}
+              sees all 7 interactive items (indices 0–6). The heading is structural, not focusable. */}
           <div
             ref={toolbarZoneRef}
             data-zone-id="streams-toolbar"
@@ -305,7 +305,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
           >
             {/* Row 1: Title + Команди + Додати */}
             <div className="flex items-center justify-between px-4 py-3">
-              <h2 className="text-base font-semibold text-slate-100">{m.streams_section()}</h2>
+              <h1 className="text-base font-semibold text-slate-100">{m.streams_section()}</h1>
               <div className="flex items-center gap-2">
                 {/* Index 0: Команди */}
                 <button

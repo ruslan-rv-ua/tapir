@@ -85,7 +85,7 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
         data-zone-id="streams-list"
         aria-label={m.zone_streams_list()}
         role="application"
-        className="flex-1 overflow-y-auto overflow-x-hidden"
+        className="flex-1 overflow-y-auto overflow-x-hidden pt-1"
         onKeyDownCapture={onKeyDownCapture}
       >
         {streams.map((stream) => (

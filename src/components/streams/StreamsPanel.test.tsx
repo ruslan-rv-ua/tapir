@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, act } from "@testing-library/react";
+import { render, act, screen } from "@testing-library/react";
 import { $streams, $statuses, $streamFilter } from "../../stores/streams";
 import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import { StreamsPanel } from "./StreamsPanel";
@@ -79,6 +79,12 @@ describe("StreamsPanel — filter state persistence", () => {
 });
 
 describe("StreamsPanel — filter chip group semantics", () => {
+  it("renders the visible section title as a level-1 heading", () => {
+    renderPanel();
+
+    expect(screen.getByRole("heading", { level: 1, name: /потоки|streams/i })).toBeTruthy();
+  });
+
   it("wraps the three chips in a single labelled group", () => {
     const { container } = renderPanel();
     const { group, chips } = chipButtons(container);
