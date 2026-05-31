@@ -349,14 +349,14 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
                 {FILTER_CHIPS.map((chip, i) => {
                   const count = chip.id === "recording" ? activeCount
                               : chip.id === "errors"    ? errorCount
-                              : null;
+                              : streams.length;
                   return (
                     <button
                       key={chip.id}
                       ref={chipRefs[i]}
                       tabIndex={toolbarTabIndex(3 + i)}
                       aria-pressed={activeChip === chip.id}
-                      aria-label={count === null ? undefined : m.streams_filter_chip_count({ label: chip.labelFn(), count })}
+                      aria-label={m.streams_filter_chip_count({ label: chip.labelFn(), count })}
                       onClick={() => handleChipClick(chip.id)}
                       className={`inline-flex items-center rounded-full px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
                         activeChip === chip.id
@@ -365,14 +365,12 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
                       }`}
                     >
                       <span>{chip.labelFn()}</span>
-                      {count !== null && (
-                        <span
-                          aria-hidden="true"
-                          className="ml-1.5 inline-flex min-w-[1.25rem] justify-center rounded-full bg-slate-700/80 px-1 text-[10px] leading-4 text-slate-300 forced-colors:border forced-colors:border-[ButtonText] forced-colors:bg-[Canvas] forced-colors:text-[ButtonText]"
-                        >
-                          {count}
-                        </span>
-                      )}
+                      <span
+                        aria-hidden="true"
+                        className="ml-1.5 inline-flex min-w-[1.25rem] justify-center rounded-full bg-slate-700/80 px-1 text-[10px] leading-4 text-slate-300 forced-colors:border forced-colors:border-[ButtonText] forced-colors:bg-[Canvas] forced-colors:text-[ButtonText]"
+                      >
+                        {count}
+                      </span>
                     </button>
                   );
                 })}

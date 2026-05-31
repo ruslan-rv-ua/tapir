@@ -105,36 +105,34 @@ describe("StreamsPanel — chip counts", () => {
     });
   });
 
-  it("shows a visual count badge (hidden from AT) on recording and errors chips", () => {
+  it("shows a visual count badge (hidden from AT) on every chip", () => {
     const { container } = renderPanel();
     const { chips } = chipButtons(container);
-    const [, rec, err] = chips; // order: all, recording, errors
-    const recBadge = rec.querySelector('[aria-hidden="true"]');
-    const errBadge = err.querySelector('[aria-hidden="true"]');
-    expect(recBadge?.textContent).toBe("1");
-    expect(errBadge?.textContent).toBe("2");
+    const [all, rec, err] = chips; // order: all, recording, errors
+    expect(all.querySelector('[aria-hidden="true"]')?.textContent).toBe("3"); // total streams
+    expect(rec.querySelector('[aria-hidden="true"]')?.textContent).toBe("1");
+    expect(err.querySelector('[aria-hidden="true"]')?.textContent).toBe("2");
   });
 
-  it("folds the count into the chip aria-label with a comma; All has no numeric label", () => {
+  it("folds the count into every chip aria-label with a comma", () => {
     const { container } = renderPanel();
     const { chips } = chipButtons(container);
     const [all, rec, err] = chips;
-    expect(all.getAttribute("aria-label")).toBeNull();
+    expect(all.getAttribute("aria-label")).toMatch(/,\s*3$/); // total streams
     expect(rec.getAttribute("aria-label")).toMatch(/,\s*1$/);
     expect(err.getAttribute("aria-label")).toMatch(/,\s*2$/);
   });
 
-  it("still shows a 0 badge on counted chips when nothing matches; All stays bare", () => {
-    // 0 is a real count and must render (count !== null); "All" (count === null)
-    // never shows a badge or numeric label. Guards against a truthy-check regression.
+  it("still shows a 0 badge on a counted filter with no matches", () => {
+    // 0 is a real count and must render. "All" tracks the total stream count
+    // (3 here) independently of statuses. Guards a truthy-check regression.
     $statuses.set({});
     const { container } = renderPanel();
     const { chips } = chipButtons(container);
     const [all, rec, err] = chips;
+    expect(all.querySelector('[aria-hidden="true"]')?.textContent).toBe("3");
     expect(rec.querySelector('[aria-hidden="true"]')?.textContent).toBe("0");
     expect(err.querySelector('[aria-hidden="true"]')?.textContent).toBe("0");
     expect(rec.getAttribute("aria-label")).toMatch(/,\s*0$/);
-    expect(all.querySelector('[aria-hidden="true"]')).toBeNull();
-    expect(all.getAttribute("aria-label")).toBeNull();
   });
 });
