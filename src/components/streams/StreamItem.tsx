@@ -168,11 +168,11 @@ export function StreamItem({ stream, status, isFocused, isActiveRow, maxRetries,
       style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1.5fr) 90px 90px auto" }}
     >
       {/* Stream name with inline status slots — visual only; the row's accessible name is on the <li>. */}
-      <div style={{ gridColumn: "1" }} className="flex items-center gap-1 min-w-0 px-3 py-2">
-        <span data-slot="record" aria-hidden="true" className="w-4 flex items-center justify-center shrink-0">
+      <div style={{ gridRow: 1, gridColumn: 1 }} className="flex items-center gap-1 min-w-0 px-3 py-2">
+        <span data-slot="record" aria-hidden="true" className="w-4 h-4 flex items-center justify-center shrink-0">
           {slot1Icon}
         </span>
-        <span data-slot="play" aria-hidden="true" className="w-4 flex items-center justify-center shrink-0">
+        <span data-slot="play" aria-hidden="true" className="w-4 h-4 flex items-center justify-center shrink-0">
           {slot2Icon}
         </span>
         <span className="font-medium text-slate-200 truncate">{stream.name}</span>
