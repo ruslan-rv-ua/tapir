@@ -346,22 +346,36 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
               {/* Indices 3–5: Filter chips — semantic group, toggle chips kept */}
               <div role="group" aria-label={m.streams_filter_group()} className="flex items-center gap-2">
-                {FILTER_CHIPS.map((chip, i) => (
-                  <button
-                    key={chip.id}
-                    ref={chipRefs[i]}
-                    tabIndex={toolbarTabIndex(3 + i)}
-                    aria-pressed={activeChip === chip.id}
-                    onClick={() => handleChipClick(chip.id)}
-                    className={`rounded-full px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
-                      activeChip === chip.id
-                        ? "border border-sky-300/[.22] bg-sky-400/[.14] text-slate-100 forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]"
-                        : "border border-slate-700/50 text-slate-400 hover:bg-slate-800 forced-colors:text-[ButtonText] forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText]"
-                    }`}
-                  >
-                    {chip.labelFn()}
-                  </button>
-                ))}
+                {FILTER_CHIPS.map((chip, i) => {
+                  const count = chip.id === "recording" ? activeCount
+                              : chip.id === "errors"    ? errorCount
+                              : null;
+                  return (
+                    <button
+                      key={chip.id}
+                      ref={chipRefs[i]}
+                      tabIndex={toolbarTabIndex(3 + i)}
+                      aria-pressed={activeChip === chip.id}
+                      aria-label={count === null ? undefined : m.streams_filter_chip_count({ label: chip.labelFn(), count })}
+                      onClick={() => handleChipClick(chip.id)}
+                      className={`inline-flex items-center rounded-full px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
+                        activeChip === chip.id
+                          ? "border border-sky-300/[.22] bg-sky-400/[.14] text-slate-100 forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]"
+                          : "border border-slate-700/50 text-slate-400 hover:bg-slate-800 forced-colors:text-[ButtonText] forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText]"
+                      }`}
+                    >
+                      <span>{chip.labelFn()}</span>
+                      {count !== null && (
+                        <span
+                          aria-hidden="true"
+                          className="ml-1.5 inline-flex min-w-[1.25rem] justify-center rounded-full bg-slate-700/80 px-1 text-[10px] leading-4 text-slate-300 forced-colors:border forced-colors:border-[ButtonText] forced-colors:bg-[Canvas] forced-colors:text-[ButtonText]"
+                        >
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>

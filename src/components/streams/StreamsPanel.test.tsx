@@ -94,3 +94,33 @@ describe("StreamsPanel — filter chip group semantics", () => {
     expect(texts.some((t) => /зупинити|stop all/i.test(t ?? ""))).toBe(false);
   });
 });
+
+describe("StreamsPanel — chip counts", () => {
+  beforeEach(() => {
+    $streams.set([mkStream("a", "Alpha"), mkStream("b", "Bravo"), mkStream("c", "Charlie")]);
+    $statuses.set({
+      a: mkStatus("a", "recording"),
+      b: mkStatus("b", "error"),
+      c: mkStatus("c", "error"),
+    });
+  });
+
+  it("shows a visual count badge (hidden from AT) on recording and errors chips", () => {
+    const { container } = renderPanel();
+    const { chips } = chipButtons(container);
+    const [, rec, err] = chips; // order: all, recording, errors
+    const recBadge = rec.querySelector('[aria-hidden="true"]');
+    const errBadge = err.querySelector('[aria-hidden="true"]');
+    expect(recBadge?.textContent).toBe("1");
+    expect(errBadge?.textContent).toBe("2");
+  });
+
+  it("folds the count into the chip aria-label with a comma; All has no numeric label", () => {
+    const { container } = renderPanel();
+    const { chips } = chipButtons(container);
+    const [all, rec, err] = chips;
+    expect(all.getAttribute("aria-label")).toBeNull();
+    expect(rec.getAttribute("aria-label")).toMatch(/,\s*1$/);
+    expect(err.getAttribute("aria-label")).toMatch(/,\s*2$/);
+  });
+});
