@@ -6,7 +6,7 @@
 
 **Architecture:** Three focused changes to the existing streams panel. (1) Wrap the three filter chips in a `role="group"` while keeping their `aria-pressed` toggle semantics. (2) Render a count badge on the Recording/Errors chips, hidden from assistive tech, with the count folded into each chip's `aria-label` via a comma. (3) Lift the filter selection from component `useState` to an in-memory nanostore atom. No roving-focus rewiring.
 
-**Tech Stack:** React + TypeScript, nanostores (`@nanostores/react`), Vitest + @testing-library/react (jsdom), inlang/paraglide i18n (compiled via `pnpm compile-i18n`).
+**Tech Stack:** React + TypeScript, nanostores (`@nanostores/react`), Vitest + @testing-library/react (jsdom), inlang/paraglide i18n (compiled via the `paraglide-js` CLI; there is no `compile-i18n` npm script).
 
 **Spec:** [docs/superpowers/specs/2026-05-31-streams-filter-ux-design.md](../specs/2026-05-31-streams-filter-ux-design.md)
 
@@ -61,8 +61,8 @@ add:
 
 - [ ] **Step 3: Compile the messages**
 
-Run: `pnpm compile-i18n`
-Expected: completes without error; generates `src/i18n/paraglide/messages/streams_filter_group.js` and `src/i18n/paraglide/messages/streams_filter_chip_count.js`.
+Run: `pnpm exec paraglide-js compile --project ./project.inlang --outdir ./src/i18n/paraglide`
+Expected: prints `Compile complete.` (a deprecation notice for the CLI is normal and harmless); generates `src/i18n/paraglide/messages/streams_filter_group.js` and `src/i18n/paraglide/messages/streams_filter_chip_count.js`.
 
 - [ ] **Step 4: Verify the compiled message files exist**
 
@@ -252,8 +252,8 @@ Expected: PASS.
 
 - [ ] **Step 6: Typecheck**
 
-Run: `pnpm typecheck`
-Expected: no errors (confirms `ChipId` has no remaining references).
+Run: `pnpm exec tsc --noEmit`
+Expected: no errors / exit 0 (confirms `ChipId` has no remaining references).
 
 - [ ] **Step 7: Commit**
 
@@ -456,8 +456,8 @@ Expected: all tests pass, including the existing `StreamItem.test.tsx` / `Stream
 
 - [ ] **Step 2: Typecheck the project**
 
-Run: `pnpm typecheck`
-Expected: no errors.
+Run: `pnpm exec tsc --noEmit`
+Expected: no errors / exit 0.
 
 - [ ] **Step 3: Confirm clean tree**
 
