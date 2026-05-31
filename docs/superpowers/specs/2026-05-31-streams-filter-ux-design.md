@@ -30,11 +30,15 @@ The three filter chips in [StreamsPanel.tsx](../../../src/components/streams/Str
   A full `radiogroup`/`radio` refactor was considered and rejected for this
   branch because it would require reworking the `mixed-boundary-handoff`
   roving-focus group.
-- **Counts:** show a count only on **Recording** and **Errors** chips (always,
-  including `0`). **All** stays without a number. Rendered as a separate visual
-  **badge**, `aria-hidden`, with the count folded into the chip's `aria-label`
-  via a **comma** so NVDA inserts a micro-pause ("Errors, 2"). This comma-pause
-  technique is already used in [StreamItem.tsx:86](../../../src/components/streams/StreamItem.tsx).
+- **Counts:** show a count on **every** chip (always, including `0`): **All**
+  shows the total stream count, **Recording** and **Errors** their respective
+  counts. Rendered as a separate visual **badge**, `aria-hidden`, with the count
+  folded into the chip's `aria-label` via a **comma** so NVDA inserts a
+  micro-pause ("Errors, 2"). This comma-pause technique is already used in
+  [StreamItem.tsx:86](../../../src/components/streams/StreamItem.tsx).
+  (Revised after the initial build: the **All** chip originally stayed without a
+  number, but a total-count badge was added so the user sees the overall list
+  size alongside the filtered counts.)
 - **State:** lift to an **in-memory nanostore atom** `$streamFilter` in
   [streams.ts](../../../src/stores/streams.ts). Survives leaving/re-entering the
   section; resets to "all" only on app restart. No disk persistence (avoids the
@@ -70,29 +74,26 @@ render, not in the module-level `FILTER_CHIPS` constant. `FILTER_CHIPS` keeps
 {FILTER_CHIPS.map((chip, i) => {
   const count = chip.id === "recording" ? activeCount
               : chip.id === "errors"    ? errorCount
-              : null;
+              : streams.length;
   return (
     <button
       ...
-      aria-label={count === null ? undefined
-                 : m.streams_filter_chip_count({ label: chip.labelFn(), count })}
+      aria-label={m.streams_filter_chip_count({ label: chip.labelFn(), count })}
     >
       <span>{chip.labelFn()}</span>
-      {count !== null && (
-        <span aria-hidden="true" className="ml-1.5 inline-flex min-w-[1.25rem] justify-center rounded-full bg-slate-700/80 px-1 text-[10px] ...">
-          {count}
-        </span>
-      )}
+      <span aria-hidden="true" className="ml-1.5 inline-flex min-w-[1.25rem] justify-center rounded-full bg-slate-700/80 px-1 text-[10px] ...">
+        {count}
+      </span>
     </button>
   );
 })}
 ```
 
-- **Visual:** chip text + a small rounded badge with the number.
+- **Visual:** chip text + a small rounded badge with the number, on every chip.
 - **Screen reader:** the badge is `aria-hidden`; the count is read via the chip's
   `aria-label` with a comma → "Помилки, 2" (NVDA pauses on the comma).
-- **All** chip (`count === null`) keeps its text content as the accessible name,
-  no `aria-label`.
+- **All** chip's count is the total stream count (`streams.length`); like the
+  others it gets a badge and a comma `aria-label` ("Усі, 3").
 
 New i18n key `streams_filter_chip_count` = `«{label}, {count}»` → "Помилки, 2" /
 "Errors, 2".

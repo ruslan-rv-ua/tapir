@@ -342,6 +342,14 @@ git commit -m "feat(streams): group filter chips under role=group"
 
 ## Task 4: Render count badges on the Recording/Errors chips
 
+> **Revised after the build:** a follow-up change (commit `b6b43ab`) added a
+> count badge to the **All** chip too — it shows the total stream count
+> (`streams.length`). The `count` is therefore never `null`, so the final code
+> drops the `count === null` / `count !== null` guards: every chip computes a
+> count and always renders a badge + comma `aria-label`. The TDD steps below
+> describe the original Recording/Errors-only build; see the spec's "Counts"
+> decision for the current behaviour.
+
 **Files:**
 - Modify: `src/components/streams/StreamsPanel.tsx` (the `FILTER_CHIPS.map` block from Task 3)
 - Test: `src/components/streams/StreamsPanel.test.tsx`
