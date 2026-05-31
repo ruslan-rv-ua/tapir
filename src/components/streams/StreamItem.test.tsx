@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, fireEvent } from "@testing-library/react";
 import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import * as tauri from "../../lib/tauri";
 import { StreamItem } from "./StreamItem";
+import { $playerStatus } from "../../stores/player";
 
 // Stub the Tauri IPC layer — there is no backend in jsdom.
 vi.mock("../../lib/tauri", () => ({
@@ -48,6 +49,10 @@ function renderItem(stream = mkStream(), status?: StreamStatus, focusedSeg = "su
 }
 
 beforeEach(() => vi.clearAllMocks());
+
+afterEach(() => {
+  $playerStatus.set({ state: "stopped", source: null, volume: 0.75, positionMs: null, durationMs: null });
+});
 
 describe("StreamItem — accessibility structure", () => {
   it("exposes the row as a listitem named after the stream and described as a stream (no bare 'section')", () => {
@@ -145,8 +150,6 @@ describe("StreamItem — reconnecting counter display", () => {
     const { container } = renderItem(mkStream(), mkReconnecting(3), "summary", 10);
     const statusCell = container.querySelector('[data-segment="status"]')!;
     expect(statusCell.textContent).toMatch(/attempt 3 of 10|спроба 3 з 10/i);
-    const icon = container.querySelector('[role="img"]')!;
-    expect(icon.getAttribute("aria-label")).toMatch(/attempt 3 of 10|спроба 3 з 10/i);
   });
 
   it("shows 'Attempt N' without max when maxRetries is 0 (unlimited)", () => {
@@ -154,16 +157,139 @@ describe("StreamItem — reconnecting counter display", () => {
     const statusCell = container.querySelector('[data-segment="status"]')!;
     expect(statusCell.textContent).toMatch(/attempt 5|спроба 5/i);
     expect(statusCell.textContent).not.toMatch(/of \d|з \d/i);
-    const icon = container.querySelector('[role="img"]')!;
-    expect(icon.getAttribute("aria-label")).toMatch(/attempt 5|спроба 5/i);
-    expect(icon.getAttribute("aria-label")).not.toMatch(/of \d|з \d/i);
   });
 
   it("falls back to 'Reconnecting...' when reconnectAttempt is null", () => {
     const { container } = renderItem(mkStream(), mkReconnecting(null), "summary", 10);
     const statusCell = container.querySelector('[data-segment="status"]')!;
     expect(statusCell.textContent).toMatch(/reconnecting|перепідключення/i);
-    const icon = container.querySelector('[role="img"]')!;
-    expect(icon.getAttribute("aria-label")).toMatch(/reconnecting|перепідключення/i);
+  });
+});
+
+describe("StreamItem — error state accessibility (D9)", () => {
+  it("includes error label in the row aria-label so NVDA announces it", () => {
+    const status: StreamStatus = {
+      streamId: "s1",
+      state: "error",
+      currentTrack: null,
+      recordingStartedAt: null,
+      bytesRecorded: 0,
+      tracksRecorded: 0,
+      error: "Connection refused",
+      reconnectAttempt: null,
+    };
+    const { container } = renderItem(mkStream(), status);
+    const li = container.querySelector<HTMLElement>('li[data-segment="summary"]')!;
+    expect(li.getAttribute("aria-label")).toMatch(/error|помилка/i);
+    expect(li.getAttribute("aria-label")).toContain("Radio Paradise");
+  });
+});
+
+describe("StreamItem — inline icon slots (D1–D2)", () => {
+  const mkSt = (state: StreamStatus["state"], over: Partial<StreamStatus> = {}): StreamStatus => ({
+    streamId: "s1",
+    state,
+    currentTrack: null,
+    recordingStartedAt: state === "recording" ? "2026-01-01T00:00:00Z" : null,
+    bytesRecorded: 0,
+    tracksRecorded: 0,
+    error: null,
+    reconnectAttempt: null,
+    ...over,
+  });
+
+  it("renders both slot containers in idle state with no icons", () => {
+    const { container } = renderItem(mkStream(), mkSt("idle"));
+    expect(container.querySelector('[data-slot="record"]')).toBeTruthy();
+    expect(container.querySelector('[data-slot="play"]')).toBeTruthy();
+    expect(container.querySelector('[data-slot="record"] svg')).toBeFalsy();
+    expect(container.querySelector('[data-slot="play"] svg')).toBeFalsy();
+  });
+
+  it("shows record icon in R-slot and no play icon when recording", () => {
+    const { container } = renderItem(mkStream(), mkSt("recording"));
+    expect(container.querySelector('[data-slot="record"] svg')).toBeTruthy();
+    expect(container.querySelector('[data-slot="play"] svg')).toBeFalsy();
+  });
+
+  it("shows connecting icon in R-slot when connecting", () => {
+    const { container } = renderItem(mkStream(), mkSt("connecting"));
+    expect(container.querySelector('[data-slot="record"] svg')).toBeTruthy();
+    expect(container.querySelector('[data-slot="play"] svg')).toBeFalsy();
+  });
+
+  it("shows reconnecting icon in R-slot when reconnecting", () => {
+    const { container } = renderItem(mkStream(), mkSt("reconnecting", { reconnectAttempt: 1 }));
+    expect(container.querySelector('[data-slot="record"] svg')).toBeTruthy();
+    expect(container.querySelector('[data-slot="play"] svg')).toBeFalsy();
+  });
+
+  it("shows error icon in R-slot when in error state", () => {
+    const { container } = renderItem(mkStream(), mkSt("error", { error: "Connection refused" }));
+    expect(container.querySelector('[data-slot="record"] svg')).toBeTruthy();
+    expect(container.querySelector('[data-slot="play"] svg')).toBeFalsy();
+  });
+
+  it("shows play icon in P-slot when this stream is playing", () => {
+    $playerStatus.set({
+      state: "playing",
+      source: { type: "stream", streamId: "s1" },
+      volume: 0.75,
+      positionMs: null,
+      durationMs: null,
+    });
+    const { container } = renderItem(mkStream(), mkSt("idle"));
+    expect(container.querySelector('[data-slot="record"] svg')).toBeFalsy();
+    expect(container.querySelector('[data-slot="play"] svg')).toBeTruthy();
+  });
+
+  it("shows both icons when recording and playing simultaneously", () => {
+    $playerStatus.set({
+      state: "playing",
+      source: { type: "stream", streamId: "s1" },
+      volume: 0.75,
+      positionMs: null,
+      durationMs: null,
+    });
+    const { container } = renderItem(mkStream(), mkSt("recording"));
+    expect(container.querySelector('[data-slot="record"] svg')).toBeTruthy();
+    expect(container.querySelector('[data-slot="play"] svg')).toBeTruthy();
+  });
+
+  it("shows both icons when connecting and playing simultaneously", () => {
+    $playerStatus.set({
+      state: "playing",
+      source: { type: "stream", streamId: "s1" },
+      volume: 0.75,
+      positionMs: null,
+      durationMs: null,
+    });
+    const { container } = renderItem(mkStream(), mkSt("connecting"));
+    expect(container.querySelector('[data-slot="record"] svg')).toBeTruthy();
+    expect(container.querySelector('[data-slot="play"] svg')).toBeTruthy();
+  });
+
+  it("shows both icons when reconnecting and playing simultaneously", () => {
+    $playerStatus.set({
+      state: "playing",
+      source: { type: "stream", streamId: "s1" },
+      volume: 0.75,
+      positionMs: null,
+      durationMs: null,
+    });
+    const { container } = renderItem(mkStream(), mkSt("reconnecting", { reconnectAttempt: 1 }));
+    expect(container.querySelector('[data-slot="record"] svg')).toBeTruthy();
+    expect(container.querySelector('[data-slot="play"] svg')).toBeTruthy();
+  });
+
+  it("does not use role='img' on slot containers (D8: slots are aria-hidden)", () => {
+    const { container } = renderItem(mkStream(), mkSt("recording"));
+    expect(container.querySelector('[role="img"]')).toBeFalsy();
+  });
+
+  it("slot containers have aria-hidden attribute (D8)", () => {
+    const { container } = renderItem(mkStream(), mkSt("recording"));
+    expect(container.querySelector('[data-slot="record"]')?.getAttribute("aria-hidden")).toBe("true");
+    expect(container.querySelector('[data-slot="play"]')?.getAttribute("aria-hidden")).toBe("true");
   });
 });
