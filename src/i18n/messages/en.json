@@ -279,6 +279,8 @@
   "filter_all": "All",
   "filter_recording": "Recording",
   "filter_errors": "With errors",
+  "streams_filter_group": "Stream filter",
+  "streams_filter_chip_count": "{label}, {count}",
   "streams_filter_empty": "No streams match the filter",
   "streams_filter_reset": "Reset filter",
   "streams_filter_changed_zero": "Filter «{label}»: no matches",

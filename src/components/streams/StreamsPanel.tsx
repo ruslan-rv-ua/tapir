@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { createPortal } from "react-dom";
-import { $streams, $statuses, $showAddStreamDialog } from "../../stores/streams";
+import { $streams, $statuses, $showAddStreamDialog, $streamFilter, type StreamFilter } from "../../stores/streams";
 import { $commandPaletteOpen } from "../../stores/navigation";
 import { $settings } from "../../stores/settings";
 import { $freeSpace } from "../../stores/system";
@@ -21,13 +21,11 @@ interface Props {
   exitZone: (fromId: string, forward: boolean) => void;
 }
 
-type ChipId = "all" | "recording" | "errors";
-
 const FILTER_CHIPS = [
   { id: "all",       labelFn: () => m.filter_all() },
   { id: "recording", labelFn: () => m.filter_recording() },
   { id: "errors",    labelFn: () => m.filter_errors() },
-] as const satisfies ReadonlyArray<{ id: ChipId; labelFn: () => string }>;
+] as const satisfies ReadonlyArray<{ id: StreamFilter; labelFn: () => string }>;
 
 export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const streams = useStore($streams);
@@ -91,14 +89,14 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   );
 
   // ── Filter chip state ─────────────────────────────────────
-  const [activeChip, setActiveChip] = useState<ChipId>("all");
+  const activeChip = useStore($streamFilter);
   const [confirmStopAll, setConfirmStopAll] = useState(false);
   const announce = useAnnounce();
 
   // Pluralized "Фільтр «X»: N потоків" used both for the live announcement
   // when a chip is activated and the empty-filter status line.
   const filterAnnouncement = useCallback(
-    (chipId: ChipId, count: number) => {
+    (chipId: StreamFilter, count: number) => {
       const chip = FILTER_CHIPS.find(c => c.id === chipId);
       const label = chip ? chip.labelFn() : "";
       return pluralize(
@@ -121,9 +119,9 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
   const filterHidesAll = !isEmpty && filteredStreams.length === 0;
 
-  const handleChipClick = (chipId: ChipId) => {
+  const handleChipClick = (chipId: StreamFilter) => {
     if (chipId === activeChip) return;
-    setActiveChip(chipId);
+    $streamFilter.set(chipId);
     const count = chipId === "all"
       ? streams.length
       : chipId === "recording"
@@ -177,7 +175,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const resetFilterBtnRef  = useRef<HTMLButtonElement | null>(null);
 
   const handleResetFilter = () => {
-    setActiveChip("all");
+    $streamFilter.set("all");
     announce(filterAnnouncement("all", streams.length), "polite");
   };
 
@@ -346,23 +344,37 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
               <div className="mx-1 h-4 w-px bg-slate-700 forced-colors:bg-[ButtonText]" aria-hidden="true" />
 
-              {/* Indices 3–5: Filter chips */}
-              {FILTER_CHIPS.map((chip, i) => (
-                <button
-                  key={chip.id}
-                  ref={chipRefs[i]}
-                  tabIndex={toolbarTabIndex(3 + i)}
-                  aria-pressed={activeChip === chip.id}
-                  onClick={() => handleChipClick(chip.id)}
-                  className={`rounded-full px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
-                    activeChip === chip.id
-                      ? "border border-sky-300/[.22] bg-sky-400/[.14] text-slate-100 forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]"
-                      : "border border-slate-700/50 text-slate-400 hover:bg-slate-800 forced-colors:text-[ButtonText] forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText]"
-                  }`}
-                >
-                  {chip.labelFn()}
-                </button>
-              ))}
+              {/* Indices 3–5: Filter chips — semantic group, toggle chips kept */}
+              <div role="group" aria-label={m.streams_filter_group()} className="flex items-center gap-2">
+                {FILTER_CHIPS.map((chip, i) => {
+                  const count = chip.id === "recording" ? activeCount
+                              : chip.id === "errors"    ? errorCount
+                              : streams.length;
+                  return (
+                    <button
+                      key={chip.id}
+                      ref={chipRefs[i]}
+                      tabIndex={toolbarTabIndex(3 + i)}
+                      aria-pressed={activeChip === chip.id}
+                      aria-label={m.streams_filter_chip_count({ label: chip.labelFn(), count })}
+                      onClick={() => handleChipClick(chip.id)}
+                      className={`inline-flex items-center rounded-full px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
+                        activeChip === chip.id
+                          ? "border border-sky-300/[.22] bg-sky-400/[.14] text-slate-100 forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]"
+                          : "border border-slate-700/50 text-slate-400 hover:bg-slate-800 forced-colors:text-[ButtonText] forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText]"
+                      }`}
+                    >
+                      <span>{chip.labelFn()}</span>
+                      <span
+                        aria-hidden="true"
+                        className="ml-1.5 inline-flex min-w-[1.25rem] justify-center rounded-full bg-slate-700/80 px-1 text-[10px] leading-4 text-slate-300 forced-colors:border forced-colors:border-[ButtonText] forced-colors:bg-[Canvas] forced-colors:text-[ButtonText]"
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
