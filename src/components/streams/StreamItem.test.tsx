@@ -186,18 +186,20 @@ describe("StreamItem — error state accessibility (D9)", () => {
 });
 
 describe("StreamItem — inline icon slots (D1–D2)", () => {
+  const mkSt = (state: StreamStatus["state"], over: Partial<StreamStatus> = {}): StreamStatus => ({
+    streamId: "s1",
+    state,
+    currentTrack: null,
+    recordingStartedAt: state === "recording" ? "2026-01-01T00:00:00Z" : null,
+    bytesRecorded: 0,
+    tracksRecorded: 0,
+    error: null,
+    reconnectAttempt: null,
+    ...over,
+  });
+
   it("renders both slot containers in idle state with no icons", () => {
-    const status: StreamStatus = {
-      streamId: "s1",
-      state: "idle",
-      currentTrack: null,
-      recordingStartedAt: null,
-      bytesRecorded: 0,
-      tracksRecorded: 0,
-      error: null,
-      reconnectAttempt: null,
-    };
-    const { container } = renderItem(mkStream(), status);
+    const { container } = renderItem(mkStream(), mkSt("idle"));
     expect(container.querySelector('[data-slot="record"]')).toBeTruthy();
     expect(container.querySelector('[data-slot="play"]')).toBeTruthy();
     expect(container.querySelector('[data-slot="record"] svg')).toBeFalsy();
@@ -205,80 +207,30 @@ describe("StreamItem — inline icon slots (D1–D2)", () => {
   });
 
   it("shows record icon in R-slot and no play icon when recording", () => {
-    const status: StreamStatus = {
-      streamId: "s1",
-      state: "recording",
-      currentTrack: null,
-      recordingStartedAt: "2026-01-01T00:00:00Z",
-      bytesRecorded: 0,
-      tracksRecorded: 0,
-      error: null,
-      reconnectAttempt: null,
-    };
-    const { container } = renderItem(mkStream(), status);
+    const { container } = renderItem(mkStream(), mkSt("recording"));
     expect(container.querySelector('[data-slot="record"] svg')).toBeTruthy();
     expect(container.querySelector('[data-slot="play"] svg')).toBeFalsy();
   });
 
   it("shows connecting icon in R-slot when connecting", () => {
-    const status: StreamStatus = {
-      streamId: "s1",
-      state: "connecting",
-      currentTrack: null,
-      recordingStartedAt: null,
-      bytesRecorded: 0,
-      tracksRecorded: 0,
-      error: null,
-      reconnectAttempt: null,
-    };
-    const { container } = renderItem(mkStream(), status);
+    const { container } = renderItem(mkStream(), mkSt("connecting"));
     expect(container.querySelector('[data-slot="record"] svg')).toBeTruthy();
     expect(container.querySelector('[data-slot="play"] svg')).toBeFalsy();
   });
 
   it("shows reconnecting icon in R-slot when reconnecting", () => {
-    const status: StreamStatus = {
-      streamId: "s1",
-      state: "reconnecting",
-      currentTrack: null,
-      recordingStartedAt: null,
-      bytesRecorded: 0,
-      tracksRecorded: 0,
-      error: null,
-      reconnectAttempt: 1,
-    };
-    const { container } = renderItem(mkStream(), status);
+    const { container } = renderItem(mkStream(), mkSt("reconnecting", { reconnectAttempt: 1 }));
     expect(container.querySelector('[data-slot="record"] svg')).toBeTruthy();
     expect(container.querySelector('[data-slot="play"] svg')).toBeFalsy();
   });
 
   it("shows error icon in R-slot when in error state", () => {
-    const status: StreamStatus = {
-      streamId: "s1",
-      state: "error",
-      currentTrack: null,
-      recordingStartedAt: null,
-      bytesRecorded: 0,
-      tracksRecorded: 0,
-      error: "Connection refused",
-      reconnectAttempt: null,
-    };
-    const { container } = renderItem(mkStream(), status);
+    const { container } = renderItem(mkStream(), mkSt("error", { error: "Connection refused" }));
     expect(container.querySelector('[data-slot="record"] svg')).toBeTruthy();
     expect(container.querySelector('[data-slot="play"] svg')).toBeFalsy();
   });
 
   it("shows play icon in P-slot when this stream is playing", () => {
-    const status: StreamStatus = {
-      streamId: "s1",
-      state: "idle",
-      currentTrack: null,
-      recordingStartedAt: null,
-      bytesRecorded: 0,
-      tracksRecorded: 0,
-      error: null,
-      reconnectAttempt: null,
-    };
     $playerStatus.set({
       state: "playing",
       source: { type: "stream", streamId: "s1" },
@@ -286,22 +238,12 @@ describe("StreamItem — inline icon slots (D1–D2)", () => {
       positionMs: null,
       durationMs: null,
     });
-    const { container } = renderItem(mkStream(), status);
+    const { container } = renderItem(mkStream(), mkSt("idle"));
     expect(container.querySelector('[data-slot="record"] svg')).toBeFalsy();
     expect(container.querySelector('[data-slot="play"] svg')).toBeTruthy();
   });
 
   it("shows both icons when recording and playing simultaneously", () => {
-    const status: StreamStatus = {
-      streamId: "s1",
-      state: "recording",
-      currentTrack: null,
-      recordingStartedAt: "2026-01-01T00:00:00Z",
-      bytesRecorded: 0,
-      tracksRecorded: 0,
-      error: null,
-      reconnectAttempt: null,
-    };
     $playerStatus.set({
       state: "playing",
       source: { type: "stream", streamId: "s1" },
@@ -309,22 +251,12 @@ describe("StreamItem — inline icon slots (D1–D2)", () => {
       positionMs: null,
       durationMs: null,
     });
-    const { container } = renderItem(mkStream(), status);
+    const { container } = renderItem(mkStream(), mkSt("recording"));
     expect(container.querySelector('[data-slot="record"] svg')).toBeTruthy();
     expect(container.querySelector('[data-slot="play"] svg')).toBeTruthy();
   });
 
   it("shows both icons when connecting and playing simultaneously", () => {
-    const status: StreamStatus = {
-      streamId: "s1",
-      state: "connecting",
-      currentTrack: null,
-      recordingStartedAt: null,
-      bytesRecorded: 0,
-      tracksRecorded: 0,
-      error: null,
-      reconnectAttempt: null,
-    };
     $playerStatus.set({
       state: "playing",
       source: { type: "stream", streamId: "s1" },
@@ -332,22 +264,12 @@ describe("StreamItem — inline icon slots (D1–D2)", () => {
       positionMs: null,
       durationMs: null,
     });
-    const { container } = renderItem(mkStream(), status);
+    const { container } = renderItem(mkStream(), mkSt("connecting"));
     expect(container.querySelector('[data-slot="record"] svg')).toBeTruthy();
     expect(container.querySelector('[data-slot="play"] svg')).toBeTruthy();
   });
 
   it("shows both icons when reconnecting and playing simultaneously", () => {
-    const status: StreamStatus = {
-      streamId: "s1",
-      state: "reconnecting",
-      currentTrack: null,
-      recordingStartedAt: null,
-      bytesRecorded: 0,
-      tracksRecorded: 0,
-      error: null,
-      reconnectAttempt: 1,
-    };
     $playerStatus.set({
       state: "playing",
       source: { type: "stream", streamId: "s1" },
@@ -355,38 +277,18 @@ describe("StreamItem — inline icon slots (D1–D2)", () => {
       positionMs: null,
       durationMs: null,
     });
-    const { container } = renderItem(mkStream(), status);
+    const { container } = renderItem(mkStream(), mkSt("reconnecting", { reconnectAttempt: 1 }));
     expect(container.querySelector('[data-slot="record"] svg')).toBeTruthy();
     expect(container.querySelector('[data-slot="play"] svg')).toBeTruthy();
   });
 
   it("does not use role='img' on slot containers (D8: slots are aria-hidden)", () => {
-    const status: StreamStatus = {
-      streamId: "s1",
-      state: "recording",
-      currentTrack: null,
-      recordingStartedAt: "2026-01-01T00:00:00Z",
-      bytesRecorded: 0,
-      tracksRecorded: 0,
-      error: null,
-      reconnectAttempt: null,
-    };
-    const { container } = renderItem(mkStream(), status);
+    const { container } = renderItem(mkStream(), mkSt("recording"));
     expect(container.querySelector('[role="img"]')).toBeFalsy();
   });
 
   it("slot containers have aria-hidden attribute (D8)", () => {
-    const status: StreamStatus = {
-      streamId: "s1",
-      state: "recording",
-      currentTrack: null,
-      recordingStartedAt: "2026-01-01T00:00:00Z",
-      bytesRecorded: 0,
-      tracksRecorded: 0,
-      error: null,
-      reconnectAttempt: null,
-    };
-    const { container } = renderItem(mkStream(), status);
+    const { container } = renderItem(mkStream(), mkSt("recording"));
     expect(container.querySelector('[data-slot="record"]')?.getAttribute("aria-hidden")).toBe("true");
     expect(container.querySelector('[data-slot="play"]')?.getAttribute("aria-hidden")).toBe("true");
   });
