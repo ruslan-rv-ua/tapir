@@ -4,6 +4,10 @@
 **Status:** Approved  
 **Scope:** Full CRUD for profiles — create, rename, delete, duplicate, import/export, switch
 
+> **Supersedes:** The Phase 3F stub in `docs/implementation-phases.md` references a
+> `ProfileSwitcher.tsx` popover/placeholder. This spec replaces that with a modal dialog
+> opened from the ActivityBar profile card. The `ProfileSwitcher` component is not needed.
+
 ---
 
 ## 1. Overview
@@ -87,18 +91,28 @@ InvalidData(String), // corrupt/unparseable profile file
 
 ```
 1. If name == active_profile → return Ok(current profile)
-2. stream_manager.stop_all()          // stop all recordings
-3. player.stop_session_public().await // stop stream/file playback
-4. Wait ~500ms for in-flight I/O (same pattern as graceful_shutdown)
-5. Save current volume to old profile → profile.player_session.volume = player.current_volume()
-6. Save active_recording_urls = [] to old profile → profile.save()
-7. Load new profile: Profile::load(name)?
-8. Apply new profile's player volume: player.set_volume(new_profile.player_session.volume)
-9. Update AppState.active_profile = new profile
-10. Update GlobalSettings.active_profile = name → settings.save()
-11. Emit "profile-changed" event with full Profile payload
-12. Return new Profile
+2. Record old_name = active_profile.name (for rollback reference)
+3. stream_manager.stop_all()          // stop all recordings
+4. player.stop_session_public().await // stop stream/file playback
+5. Wait ~500ms for in-flight I/O (same pattern as graceful_shutdown)
+6. Save current volume to old profile → profile.player_session.volume = player.current_volume()
+7. Save active_recording_urls = [] to old profile → profile.save()
+   // If save fails: log warning, continue (old profile data is still in AppState)
+8. Load new profile: Profile::load(name)?
+   // If load fails: return Err immediately. AppState still holds old profile (recordings
+   // are stopped, but old data is intact — user can retry switch or restart).
+9. Apply new profile's player volume: player.set_volume(new_profile.player_session.volume)
+   // If volume fails: log warning, continue (non-critical)
+10. Update AppState.active_profile = new profile
+11. Update GlobalSettings.active_profile = name → settings.save()
+    // If settings.save() fails: log error, continue (memory is correct; next save corrects disk)
+12. Emit "profile-changed" event with full Profile payload
+13. Return new Profile
 ```
+
+**Scheduler on switch:** The new profile's `scheduled_recordings` field is loaded into memory
+as part of the `Profile` struct but no scheduler reload occurs — that is Phase 3D's responsibility.
+Phase 3F does not interact with the scheduler subsystem.
 
 **Frontend `profile-changed` event handler** — registered in `App.tsx` as a `useProfileSync` hook. On event received:
 
@@ -286,6 +300,14 @@ The `Profile` type mirrors the Rust struct (all fields of `profile.rs`).
 - The profile card button in ActivityBar has a descriptive `aria-label` including the active profile name.
 - No drag-and-drop, no visual-only indicators.
 
+**Live announcements** (`aria-live="polite"` region in ProfileManager):
+- After create: "Профіль '{name}' створено"
+- After rename: "Профіль перейменовано на '{name}'"
+- After delete: "Профіль '{name}' видалено"
+- After switch: "Активний профіль: '{name}'"
+- After import: "Профіль '{name}' імпортовано"
+- On error (toast): error message is announced
+
 **Focus behaviour after operations:**
 
 | Operation | Focus after |
@@ -329,3 +351,4 @@ The `Profile` type mirrors the Rust struct (all fields of `profile.rs`).
 - Profile-level hotkeys
 - Cloud sync / backup
 - Profile password lock
+- **Scheduler reload on profile switch** — `scheduled_recordings` in the new profile is stored in memory but the scheduler subsystem (Phase 3D) is not activated. Phase 3D will implement scheduler reload on switch.
