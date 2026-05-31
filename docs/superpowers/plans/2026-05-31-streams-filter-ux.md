@@ -62,7 +62,7 @@ add:
 - [ ] **Step 3: Compile the messages**
 
 Run: `pnpm exec paraglide-js compile --project ./project.inlang --outdir ./src/i18n/paraglide`
-Expected: prints `Compile complete.` (a deprecation notice for the CLI is normal and harmless); generates `src/i18n/paraglide/messages/streams_filter_group.js` and `src/i18n/paraglide/messages/streams_filter_chip_count.js`.
+Expected: prints `✔ Successfully compiled inlang project.`; generates `src/i18n/paraglide/messages/streams_filter_group.js` and `src/i18n/paraglide/messages/streams_filter_chip_count.js`. (Compiling also regenerates `runtime.js`/`README.md` under `src/i18n/paraglide/` — committing them alongside the new keys in Step 5 is fine.)
 
 - [ ] **Step 4: Verify the compiled message files exist**
 
@@ -252,8 +252,8 @@ Expected: PASS.
 
 - [ ] **Step 6: Typecheck**
 
-Run: `pnpm exec tsc --noEmit`
-Expected: no errors / exit 0 (confirms `ChipId` has no remaining references).
+Run: `pnpm exec tsc --noEmit; echo "EXIT: $?"`
+Expected: `EXIT: 0`. Note: this repo already prints pre-existing `TS7016` errors about `../../i18n/paraglide/messages` having no declaration file — those are unrelated noise and `tsc` still exits 0. The check is the exit code, plus the absence of any **new** error mentioning `ChipId` or `StreamsPanel.tsx` for the lines you changed.
 
 - [ ] **Step 7: Commit**
 
@@ -456,8 +456,8 @@ Expected: all tests pass, including the existing `StreamItem.test.tsx` / `Stream
 
 - [ ] **Step 2: Typecheck the project**
 
-Run: `pnpm exec tsc --noEmit`
-Expected: no errors / exit 0.
+Run: `pnpm exec tsc --noEmit; echo "EXIT: $?"`
+Expected: `EXIT: 0`, with only the pre-existing `TS7016` paraglide-messages noise (no new errors from this change).
 
 - [ ] **Step 3: Confirm clean tree**
 
