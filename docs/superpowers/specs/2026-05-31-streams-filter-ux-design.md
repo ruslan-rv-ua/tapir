@@ -130,9 +130,9 @@ covering:
 
 1. **Group role** — the three chips are wrapped in an element with
    `role="group"` and the expected `aria-label`.
-2. **Count badge + aria-label** — Recording/Errors chips render the count badge
-   (`aria-hidden`) and expose `aria-label` with the comma form; "All" has no
-   numeric label.
+2. **Count badge + aria-label** — every chip renders the count badge
+   (`aria-hidden`) and exposes an `aria-label` with the comma form; "All"
+   carries the total stream count, including the `0`-count edge case.
 3. **Store persistence** — setting `$streamFilter`, unmounting, and remounting
    the panel preserves the active chip (verifies the lift out of `useState`).
 
