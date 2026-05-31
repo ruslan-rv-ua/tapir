@@ -115,10 +115,13 @@ InvalidData(String), // corrupt/unparseable profile file
    //      user can retry switch or restart).
 9. Apply new profile's player volume: player.set_volume(new_profile.player_session.volume)
    // If volume fails: log warning, continue (non-critical)
-10. Update AppState.active_profile = new profile
-11. Update GlobalSettings.active_profile = name → settings.save()
-    // If settings.save() fails: log error, continue (memory is correct; next save corrects disk)
-12. Emit "profile-changed" event with full Profile payload
+10. Update GlobalSettings.active_profile = name → settings.save()
+    // If settings.save() fails: return Err immediately. AppState still holds old profile (disk
+    // and memory remain consistent). Frontend sees an error toast. User can retry.
+11. Update AppState.active_profile = new profile
+    // Only update AppState AFTER settings.save() succeeds — this keeps disk and memory in sync.
+12. Emit "profile-changed" event with payload `{ profile: <full Profile> }`
+    // Payload shape matches data-models.md ProfileChangedPayload: `{ profile: Profile }`
 13. Return new Profile
 ```
 
@@ -130,8 +133,8 @@ Phase 3F does not interact with the scheduler subsystem.
 
 | Store | Update |
 |-------|--------|
-| `$profile` | Set to `{ name, recording, wishlist, ignorelist }` from event payload |
-| `$streams` | Set to `profile.streams` from event payload |
+| `$profile` | Set to `{ name, recording, wishlist, ignorelist }` from `event.payload.profile` |
+| `$streams` | Set to `event.payload.profile.streams` |
 | `$settings` | Set `activeProfile` to `profile.name` (partial update) |
 | `$statuses` | Reset all stream statuses to idle (recordings were stopped during switch) |
 | `$playerStatus` | Not updated here — backend emits a separate `player-status` event after `set_volume`, which the existing listener handles |
@@ -146,7 +149,7 @@ stored as local component state, Phase 3F must lift them into Nanostores
 (`$wishlist`, `$ignorelist`) and update `WishlistPanel` to read from those stores.
 This is a prerequisite for correct multi-profile behaviour.
 
-The hook uses `listen("profile-changed", handler)` and returns the unlisten function for cleanup.
+The hook uses `listen("profile-changed", (event) => handler(event.payload.profile))` and returns the unlisten function for cleanup. Payload type: `ProfileChangedPayload = { profile: Profile }` (matching `docs/data-models.md`).
 
 ### 2.6. Error transport
 
