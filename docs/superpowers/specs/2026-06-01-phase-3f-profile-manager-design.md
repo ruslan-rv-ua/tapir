@@ -86,7 +86,7 @@ InvalidData(String), // corrupt/unparseable profile file
 | `delete_profile` | `name: String` | `()` | Cannot delete Default. Cannot delete active profile. |
 | `duplicate_profile` | `sourceName, newName: String` | `ProfileMeta` | |
 | `export_profile` | `name: String` | `()` | Opens a `tauri-plugin-dialog` save dialog with suggested filename `{name}.tapirprofile`, writes stripped JSON. Silent no-op if user cancels. |
-| `begin_import` | — | `Option<ImportPreview>` | Opens an open dialog (`*.tapirprofile`). Parses file, strips passwords, returns preview (`hasConflict` signals name clash). Does NOT save. Returns `None` (not an error) if user cancels dialog. Returns `Err(RadioError::InvalidData)` for corrupt/unparseable files. |
+| `begin_import` | — | `Option<ImportPreview>` | Opens an open dialog (`*.tapirprofile`). Parses file, returns preview (`hasConflict` signals name clash). Does NOT save and does NOT strip passwords — passwords are stripped later by `save_imported`. Returns `None` (not an error) if user cancels dialog. Returns `Err(RadioError::InvalidData)` for corrupt/unparseable files. |
 | `commit_import` | `profileJson: String, name: String` | `ProfileMeta` | Validates `name`, saves profile. Returns `RadioError::Conflict` if name still taken, `RadioError::InvalidName` for bad names. |
 
 ### 2.5. `switch_profile` logic
@@ -122,11 +122,17 @@ Phase 3F does not interact with the scheduler subsystem.
 |-------|--------|
 | `$profile` | Set to `{ name, recording, wishlist, ignorelist }` from event payload |
 | `$streams` | Set to `profile.streams` from event payload |
-| `$wishlist` | Set to `profile.wishlist` from event payload |
-| `$ignorelist` | Set to `profile.ignorelist` from event payload |
 | `$settings` | Set `activeProfile` to `profile.name` (partial update) |
 | `$statuses` | Reset all stream statuses to idle (recordings were stopped during switch) |
 | `$playerStatus` | Not updated here — backend emits a separate `player-status` event after `set_volume`, which the existing listener handles |
+
+**Wishlist/Ignorelist refresh:** `WishlistPanel` and other panels that hold local copies of
+wishlist/ignorelist data must re-fetch on `profile-changed`. Phase 3F adds a `profile-changed`
+listener **in `App.tsx`** that calls `get_wishlist()` and `get_ignorelist()` and updates
+whatever stores or re-render triggers those panels use. If wishlist/ignorelist are currently
+stored as local component state, Phase 3F must lift them into Nanostores
+(`$wishlist`, `$ignorelist`) and update `WishlistPanel` to read from those stores.
+This is a prerequisite for correct multi-profile behaviour.
 
 The hook uses `listen("profile-changed", handler)` and returns the unlisten function for cleanup.
 
@@ -177,8 +183,9 @@ src/
     ProfileActions.tsx      — action buttons panel
   stores/
     profileManager.ts       — $profileManagerOpen, $profileList atoms
+    wishlist.ts             — $wishlist, $ignorelist atoms (created or lifted here if not yet Nanostores)
   lib/
-    tauri.ts                — append ProfileMeta type + IPC wrappers
+    tauri.ts                — append ProfileMeta, ImportPreview types + IPC wrappers
   i18n/messages/
     uk.json                 — ~15 new keys
     en.json                 — ~15 new keys
@@ -242,8 +249,8 @@ export const $profileList = atom<ProfileMeta[]>([]);
 **Existing stores updated by `useProfileSync` hook on `profile-changed` event:**
 - `$profile` (`src/stores/profile.ts`) — `ProfileState` with `name`, `recording`, `wishlist`, `ignorelist`
 - `$streams` — set from `profile.streams`
-- `$wishlist` — set from `profile.wishlist`
-- `$ignorelist` — set from `profile.ignorelist`
+- `$wishlist` — set from `get_wishlist()` IPC call (or from `profile.wishlist` if already a Nanostore); **Phase 3F must ensure this is a Nanostore** so panels re-render on profile switch
+- `$ignorelist` — same as `$wishlist` above
 - `$settings` — `activeProfile` field updated (partial merge)
 
 ### 3.6. `tauri.ts` additions
@@ -304,7 +311,8 @@ The `Profile` type mirrors the Rust struct (all fields of `profile.rs`).
 
 - `ProfileList` uses `RadioGroup` + `Radio` from React Aria — NVDA reads each profile as a radio button with state.
 - Action buttons are standard `Button` components — no dropdowns.
-- All dialogs use `AlertDialog` (React Aria) — NVDA announces them as alerts.
+- **ProfileManager itself** uses `Modal + Dialog` (ARIA `role="dialog"`) — not AlertDialog. This is the same pattern as `SettingsDialog`.
+- **Sub-dialogs** (rename, create, delete confirm, switch confirm, import confirm) use React Aria `AlertDialog` (`role="alertdialog"`) — NVDA announces these as alerts, interrupting reading.
 - The profile card button in ActivityBar has a descriptive `aria-label` including the active profile name.
 - No drag-and-drop, no visual-only indicators.
 
