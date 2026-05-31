@@ -6,6 +6,9 @@ export const $statuses = map<Record<string, StreamStatus>>({});
 export const $showAddStreamDialog = atom<boolean>(false);
 export const $editStream = atom<StreamInfo | null>(null);
 
+export type StreamFilter = "all" | "recording" | "errors";
+export const $streamFilter = atom<StreamFilter>("all");
+
 export function updateStreamStatus(streamId: string, status: Partial<StreamStatus>) {
   const current = $statuses.get()[streamId] ?? {
     streamId,

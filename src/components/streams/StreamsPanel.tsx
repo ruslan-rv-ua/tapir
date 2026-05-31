@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { createPortal } from "react-dom";
-import { $streams, $statuses, $showAddStreamDialog } from "../../stores/streams";
+import { $streams, $statuses, $showAddStreamDialog, $streamFilter, type StreamFilter } from "../../stores/streams";
 import { $commandPaletteOpen } from "../../stores/navigation";
 import { $settings } from "../../stores/settings";
 import { $freeSpace } from "../../stores/system";
@@ -21,13 +21,11 @@ interface Props {
   exitZone: (fromId: string, forward: boolean) => void;
 }
 
-type ChipId = "all" | "recording" | "errors";
-
 const FILTER_CHIPS = [
   { id: "all",       labelFn: () => m.filter_all() },
   { id: "recording", labelFn: () => m.filter_recording() },
   { id: "errors",    labelFn: () => m.filter_errors() },
-] as const satisfies ReadonlyArray<{ id: ChipId; labelFn: () => string }>;
+] as const satisfies ReadonlyArray<{ id: StreamFilter; labelFn: () => string }>;
 
 export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const streams = useStore($streams);
@@ -91,14 +89,14 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   );
 
   // ── Filter chip state ─────────────────────────────────────
-  const [activeChip, setActiveChip] = useState<ChipId>("all");
+  const activeChip = useStore($streamFilter);
   const [confirmStopAll, setConfirmStopAll] = useState(false);
   const announce = useAnnounce();
 
   // Pluralized "Фільтр «X»: N потоків" used both for the live announcement
   // when a chip is activated and the empty-filter status line.
   const filterAnnouncement = useCallback(
-    (chipId: ChipId, count: number) => {
+    (chipId: StreamFilter, count: number) => {
       const chip = FILTER_CHIPS.find(c => c.id === chipId);
       const label = chip ? chip.labelFn() : "";
       return pluralize(
@@ -121,9 +119,9 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
   const filterHidesAll = !isEmpty && filteredStreams.length === 0;
 
-  const handleChipClick = (chipId: ChipId) => {
+  const handleChipClick = (chipId: StreamFilter) => {
     if (chipId === activeChip) return;
-    setActiveChip(chipId);
+    $streamFilter.set(chipId);
     const count = chipId === "all"
       ? streams.length
       : chipId === "recording"
@@ -177,7 +175,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const resetFilterBtnRef  = useRef<HTMLButtonElement | null>(null);
 
   const handleResetFilter = () => {
-    setActiveChip("all");
+    $streamFilter.set("all");
     announce(filterAnnouncement("all", streams.length), "polite");
   };
 
