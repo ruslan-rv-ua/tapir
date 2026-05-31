@@ -123,4 +123,18 @@ describe("StreamsPanel — chip counts", () => {
     expect(rec.getAttribute("aria-label")).toMatch(/,\s*1$/);
     expect(err.getAttribute("aria-label")).toMatch(/,\s*2$/);
   });
+
+  it("still shows a 0 badge on counted chips when nothing matches; All stays bare", () => {
+    // 0 is a real count and must render (count !== null); "All" (count === null)
+    // never shows a badge or numeric label. Guards against a truthy-check regression.
+    $statuses.set({});
+    const { container } = renderPanel();
+    const { chips } = chipButtons(container);
+    const [all, rec, err] = chips;
+    expect(rec.querySelector('[aria-hidden="true"]')?.textContent).toBe("0");
+    expect(err.querySelector('[aria-hidden="true"]')?.textContent).toBe("0");
+    expect(rec.getAttribute("aria-label")).toMatch(/,\s*0$/);
+    expect(all.querySelector('[aria-hidden="true"]')).toBeNull();
+    expect(all.getAttribute("aria-label")).toBeNull();
+  });
 });
