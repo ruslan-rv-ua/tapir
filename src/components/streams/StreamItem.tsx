@@ -88,6 +88,7 @@ export function StreamItem({ stream, status, isFocused, isActiveRow, maxRetries,
     isRecording && isThisStreamPlaying ? m.status_recording_and_playing() :
     isRecording                        ? m.status_recording_label() :
     isThisStreamPlaying                ? m.segment_playing() :
+    state === "error"                  ? m.status_error() :
     null;
   const summaryLabel = stateLabel ? `${stateLabel}, ${stream.name}` : stream.name;
 

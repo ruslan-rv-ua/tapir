@@ -167,3 +167,22 @@ describe("StreamItem — reconnecting counter display", () => {
     expect(icon.getAttribute("aria-label")).toMatch(/reconnecting|перепідключення/i);
   });
 });
+
+describe("StreamItem — error state accessibility (D9)", () => {
+  it("includes error label in the row aria-label so NVDA announces it", () => {
+    const status: StreamStatus = {
+      streamId: "s1",
+      state: "error",
+      currentTrack: null,
+      recordingStartedAt: null,
+      bytesRecorded: 0,
+      tracksRecorded: 0,
+      error: "Connection refused",
+      reconnectAttempt: null,
+    };
+    const { container } = renderItem(mkStream(), status);
+    const li = container.querySelector<HTMLElement>('li[data-segment="summary"]')!;
+    expect(li.getAttribute("aria-label")).toMatch(/error|помилка/i);
+    expect(li.getAttribute("aria-label")).toContain("Radio Paradise");
+  });
+});
