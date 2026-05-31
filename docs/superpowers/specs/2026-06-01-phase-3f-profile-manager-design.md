@@ -80,34 +80,69 @@ InvalidData(String), // corrupt/unparseable profile file
 | `delete_profile` | `name: String` | `()` | Cannot delete Default. Cannot delete active profile. |
 | `duplicate_profile` | `sourceName, newName: String` | `ProfileMeta` | |
 | `export_profile` | `name: String` | `()` | Opens a `tauri-plugin-dialog` save dialog with suggested filename `{name}.tapirprofile`, writes stripped JSON. Silent no-op if user cancels. |
-| `begin_import` | — | `ImportPreview` | Opens an open dialog (`*.tapirprofile`). Parses file, strips passwords, returns preview (json + name + streamCount + hasConflict). Does NOT save. Returns `RadioError::InvalidData` for corrupt/unparseable files. Silent no-op (returns `None`) if user cancels dialog. |
+| `begin_import` | — | `Option<ImportPreview>` | Opens an open dialog (`*.tapirprofile`). Parses file, strips passwords, returns preview (`hasConflict` signals name clash). Does NOT save. Returns `None` (not an error) if user cancels dialog. Returns `Err(RadioError::InvalidData)` for corrupt/unparseable files. |
 | `commit_import` | `profileJson: String, name: String` | `ProfileMeta` | Validates `name`, saves profile. Returns `RadioError::Conflict` if name still taken, `RadioError::InvalidName` for bad names. |
 
 ### 2.5. `switch_profile` logic
 
 ```
 1. If name == active_profile → return Ok(current profile)
-2. stream_manager.stop_all()
-3. Wait ~500ms for in-flight I/O (same pattern as graceful_shutdown)
-4. Save current volume to old profile → profile.player_session.volume = player.current_volume()
-5. Save active_recording_urls = [] to old profile → profile.save()
-6. Load new profile: Profile::load(name)?
-7. Apply new profile's player volume: player.set_volume(new_profile.player_session.volume)
-8. Update AppState.active_profile = new profile
-9. Update GlobalSettings.active_profile = name → settings.save()
-10. Emit "profile-changed" event with full Profile payload
-11. Return new Profile
+2. stream_manager.stop_all()          // stop all recordings
+3. player.stop_session_public().await // stop stream/file playback
+4. Wait ~500ms for in-flight I/O (same pattern as graceful_shutdown)
+5. Save current volume to old profile → profile.player_session.volume = player.current_volume()
+6. Save active_recording_urls = [] to old profile → profile.save()
+7. Load new profile: Profile::load(name)?
+8. Apply new profile's player volume: player.set_volume(new_profile.player_session.volume)
+9. Update AppState.active_profile = new profile
+10. Update GlobalSettings.active_profile = name → settings.save()
+11. Emit "profile-changed" event with full Profile payload
+12. Return new Profile
 ```
 
-**Frontend `profile-changed` event handler** (registered in `App.tsx` or `useProfileSync` hook):
-- Update `$profile` store (name, recording, wishlist, ignorelist)
-- Re-fetch `$streams` from `profile.streams`
-- Re-fetch `$wishlist` from `profile.wishlist`
-- Re-fetch `$ignorelist` from `profile.ignorelist`
-- Update `$settings.activeProfile` to match new profile name
-- Update player volume display (via existing `$playerStatus` or direct volume update)
+**Frontend `profile-changed` event handler** — registered in `App.tsx` as a `useProfileSync` hook. On event received:
 
-### 2.6. Register commands in `lib.rs`
+| Store | Update |
+|-------|--------|
+| `$profile` | Set to `{ name, recording, wishlist, ignorelist }` from event payload |
+| `$streams` | Set to `profile.streams` from event payload |
+| `$wishlist` | Set to `profile.wishlist` from event payload |
+| `$ignorelist` | Set to `profile.ignorelist` from event payload |
+| `$settings` | Set `activeProfile` to `profile.name` (partial update) |
+| `$playerStatus` | Not updated here — backend emits a separate `player-status` event after `set_volume`, which the existing listener handles |
+
+The hook uses `listen("profile-changed", handler)` and returns the unlisten function for cleanup.
+
+### 2.6. Error transport
+
+Tauri IPC serializes `Err(RadioError)` as a plain string via `Display`. The frontend receives
+error strings and distinguishes error types by prefix:
+
+| `RadioError` variant | Display string prefix | Frontend action |
+|---------------------|----------------------|-----------------|
+| `Conflict(msg)` | `"Conflict: …"` | Show inline error in name TextField |
+| `Forbidden(msg)` | `"Forbidden: …"` | Show toast notification |
+| `InvalidName(msg)` | `"InvalidName: …"` | Show inline error in name TextField |
+| `InvalidData(msg)` | `"InvalidData: …"` | Show toast notification |
+
+All profile command wrappers in `tauri.ts` catch thrown errors. Components using name input
+(create/rename/duplicate/import-conflict) inspect the error string prefix and set an inline
+`validationError` state on the TextField. All other errors are shown as toast notifications
+via the existing toast/notification mechanism.
+
+The new `RadioError` variants must implement `Display` with the matching prefix:
+```rust
+#[error("Conflict: {0}")]
+Conflict(String),
+#[error("Forbidden: {0}")]
+Forbidden(String),
+#[error("InvalidName: {0}")]
+InvalidName(String),
+#[error("InvalidData: {0}")]
+InvalidData(String),
+```
+
+### 2.7. Register commands in `lib.rs`
 
 Add all profile commands to `invoke_handler!` and add `pub mod profile_commands;` to `commands/mod.rs`.
 
@@ -172,15 +207,22 @@ ProfileManager (Modal + Dialog)
 
 These are rendered as React Aria `AlertDialog` components.
 
-### 3.5. Store
+### 3.5. Stores
 
+**New store** (`src/stores/profileManager.ts`):
 ```ts
-// src/stores/profileManager.ts
 export const $profileManagerOpen = atom<boolean>(false);
 export const $profileList = atom<ProfileMeta[]>([]);
 ```
 
 `ProfileManager` fetches `list_profiles` when `isOpen` becomes true and after every mutating operation.
+
+**Existing stores updated by `useProfileSync` hook on `profile-changed` event:**
+- `$profile` (`src/stores/profile.ts`) — `ProfileState` with `name`, `recording`, `wishlist`, `ignorelist`
+- `$streams` — set from `profile.streams`
+- `$wishlist` — set from `profile.wishlist`
+- `$ignorelist` — set from `profile.ignorelist`
+- `$settings` — `activeProfile` field updated (partial merge)
 
 ### 3.6. `tauri.ts` additions
 
@@ -244,6 +286,20 @@ The `Profile` type mirrors the Rust struct (all fields of `profile.rs`).
 - The profile card button in ActivityBar has a descriptive `aria-label` including the active profile name.
 - No drag-and-drop, no visual-only indicators.
 
+**Focus behaviour after operations:**
+
+| Operation | Focus after |
+|-----------|-------------|
+| Create / Duplicate / Import | Newly created profile in the RadioGroup list |
+| Rename | Same profile (now with new name) |
+| Delete | "Default" profile (always present) |
+| Switch | Dialog stays open; selected radio stays on the (now-active) profile |
+
+**Dialog close behaviour:**
+- `×` button and Escape close ProfileManager.
+- Successful Switch does NOT auto-close (user may want further operations).
+- Successful Create / Rename / Delete / Import / Export does NOT auto-close.
+
 ---
 
 ## 5. Criteria for Done
@@ -262,7 +318,8 @@ The `Profile` type mirrors the Rust struct (all fields of `profile.rs`).
 - [ ] ProfileManager lists profiles, shows active
 - [ ] ActivityBar profile card shows current profile name after switch
 - [ ] All operations accessible via NVDA
-- [ ] `profile-changed` event updates frontend state ($profile / $settings store)
+- [ ] `profile-changed` event updates `$profile`, `$streams`, `$wishlist`, `$ignorelist`, `$settings.activeProfile`
+- [ ] Switch also stops active playback (stream + file)
 
 ---
 
