@@ -77,3 +77,20 @@ describe("StreamsPanel — filter state persistence", () => {
     expect(pressed.textContent).toMatch(/помилк|error/i);
   });
 });
+
+describe("StreamsPanel — filter chip group semantics", () => {
+  it("wraps the three chips in a single labelled group", () => {
+    const { container } = renderPanel();
+    const { group, chips } = chipButtons(container);
+    expect(group).toBeTruthy();
+    expect(group!.getAttribute("aria-label")).toMatch(/фільтр потоків|stream filter/i);
+    expect(chips).toHaveLength(3);
+  });
+
+  it("keeps the Stop-all button outside the group", () => {
+    const { container } = renderPanel();
+    const { group } = chipButtons(container);
+    const texts = Array.from(group!.querySelectorAll("button")).map((b) => b.textContent);
+    expect(texts.some((t) => /зупинити|stop all/i.test(t ?? ""))).toBe(false);
+  });
+});

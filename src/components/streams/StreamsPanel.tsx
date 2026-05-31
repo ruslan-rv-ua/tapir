@@ -344,23 +344,25 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
               <div className="mx-1 h-4 w-px bg-slate-700 forced-colors:bg-[ButtonText]" aria-hidden="true" />
 
-              {/* Indices 3–5: Filter chips */}
-              {FILTER_CHIPS.map((chip, i) => (
-                <button
-                  key={chip.id}
-                  ref={chipRefs[i]}
-                  tabIndex={toolbarTabIndex(3 + i)}
-                  aria-pressed={activeChip === chip.id}
-                  onClick={() => handleChipClick(chip.id)}
-                  className={`rounded-full px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
-                    activeChip === chip.id
-                      ? "border border-sky-300/[.22] bg-sky-400/[.14] text-slate-100 forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]"
-                      : "border border-slate-700/50 text-slate-400 hover:bg-slate-800 forced-colors:text-[ButtonText] forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText]"
-                  }`}
-                >
-                  {chip.labelFn()}
-                </button>
-              ))}
+              {/* Indices 3–5: Filter chips — semantic group, toggle chips kept */}
+              <div role="group" aria-label={m.streams_filter_group()} className="flex items-center gap-2">
+                {FILTER_CHIPS.map((chip, i) => (
+                  <button
+                    key={chip.id}
+                    ref={chipRefs[i]}
+                    tabIndex={toolbarTabIndex(3 + i)}
+                    aria-pressed={activeChip === chip.id}
+                    onClick={() => handleChipClick(chip.id)}
+                    className={`rounded-full px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
+                      activeChip === chip.id
+                        ? "border border-sky-300/[.22] bg-sky-400/[.14] text-slate-100 forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]"
+                        : "border border-slate-700/50 text-slate-400 hover:bg-slate-800 forced-colors:text-[ButtonText] forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText]"
+                    }`}
+                  >
+                    {chip.labelFn()}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
