@@ -3,10 +3,17 @@ import { render } from "@testing-library/react";
 import { ProfileList } from "./ProfileList";
 import type { ProfileMeta } from "../../lib/tauri";
 
+vi.mock("../../i18n/paraglide/runtime", () => ({
+  getLocale: () => "uk",
+}));
+
 vi.mock("../../i18n/paraglide/messages", () => ({
   profile_list_label: () => "Profiles",
   profile_active_badge: () => "active",
-  profile_stream_count_hint: ({ count }: { count: number }) => `${count} streams`,
+  profile_stream_count_one: ({ count }: { count: number }) => `${count} потік`,
+  profile_stream_count_few: ({ count }: { count: number }) => `${count} потоки`,
+  profile_stream_count_many: ({ count }: { count: number }) => `${count} потоків`,
+  profile_stream_count_other: ({ count }: { count: number }) => `${count} потоки`,
 }));
 
 const profiles: ProfileMeta[] = [
@@ -47,5 +54,19 @@ describe("ProfileList", () => {
     const options = getAllByRole("option");
     expect(options[0]).toHaveAttribute("aria-selected", "true");
     expect(options[1]).toHaveAttribute("aria-selected", "false");
+  });
+
+  it("pluralizes the stream count for Ukrainian (1/3/5)", () => {
+    const ukProfiles: ProfileMeta[] = [
+      { name: "A", streamCount: 1, isActive: false },
+      { name: "B", streamCount: 3, isActive: false },
+      { name: "C", streamCount: 5, isActive: false },
+    ];
+    const { getByText } = render(
+      <ProfileList profiles={ukProfiles} selected="A" onSelect={() => {}} />
+    );
+    expect(getByText("1 потік")).toBeInTheDocument();
+    expect(getByText("3 потоки")).toBeInTheDocument();
+    expect(getByText("5 потоків")).toBeInTheDocument();
   });
 });

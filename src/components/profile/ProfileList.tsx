@@ -1,6 +1,17 @@
 import { ListBox, ListBoxItem, type Selection } from "react-aria-components";
 import type { ProfileMeta } from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
+import { getLocale } from "../../i18n/paraglide/runtime";
+
+function streamCountLabel(count: number): string {
+  const category = new Intl.PluralRules(getLocale()).select(count);
+  switch (category) {
+    case "one": return m.profile_stream_count_one({ count });
+    case "few": return m.profile_stream_count_few({ count });
+    case "many": return m.profile_stream_count_many({ count });
+    default: return m.profile_stream_count_other({ count });
+  }
+}
 
 interface Props {
   profiles: ProfileMeta[];
@@ -36,7 +47,7 @@ export function ProfileList({ profiles, selected, onSelect, autoFocus }: Props) 
             <span className="text-xs text-sky-400 ml-1">({m.profile_active_badge()})</span>
           )}
           <span className="text-xs text-slate-500 ml-auto">
-            {m.profile_stream_count_hint({ count: p.streamCount })}
+            {streamCountLabel(p.streamCount)}
           </span>
         </ListBoxItem>
       ))}
