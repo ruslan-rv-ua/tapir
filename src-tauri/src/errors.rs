@@ -31,10 +31,35 @@ pub enum RadioError {
 
     #[error("Stream with this URL already exists")]
     DuplicateStream,
+
+    #[error("Conflict: {0}")]
+    Conflict(String),
+
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
+
+    #[error("InvalidName: {0}")]
+    InvalidName(String),
+
+    #[error("InvalidData: {0}")]
+    InvalidData(String),
 }
 
 impl From<RadioError> for String {
     fn from(e: RadioError) -> String {
         e.to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn error_display_prefixes() {
+        assert_eq!(RadioError::Conflict("x".into()).to_string(), "Conflict: x");
+        assert_eq!(RadioError::Forbidden("x".into()).to_string(), "Forbidden: x");
+        assert_eq!(RadioError::InvalidName("x".into()).to_string(), "InvalidName: x");
+        assert_eq!(RadioError::InvalidData("x".into()).to_string(), "InvalidData: x");
     }
 }
