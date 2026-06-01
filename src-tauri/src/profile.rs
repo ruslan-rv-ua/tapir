@@ -396,6 +396,70 @@ impl Profile {
         });
         Ok(metas)
     }
+
+    pub fn create(name: &str) -> Result<Self, RadioError> {
+        let existing = Self::list(name)?.iter().map(|m| m.name.clone()).collect::<Vec<_>>();
+        validate_profile_name(name, &existing)?;
+        let mut profile = Self::create_default();
+        profile.name = name.to_string();
+        profile.save()?;
+        Ok(profile)
+    }
+
+    pub fn rename(old_name: &str, new_name: &str) -> Result<ProfileMeta, RadioError> {
+        if old_name == "Default" {
+            return Err(RadioError::Forbidden("Cannot rename 'Default' profile".into()));
+        }
+        let existing: Vec<String> = Self::list(old_name)?
+            .iter()
+            .filter(|m| m.name != old_name)
+            .map(|m| m.name.clone())
+            .collect();
+        validate_profile_name(new_name, &existing)?;
+        let mut profile = Self::load(old_name)?;
+        let old_path = portable::profiles_dir().join(format!("{}.tapirprofile", old_name));
+        let new_path = portable::profiles_dir().join(format!("{}.tapirprofile", new_name));
+        // Guard against clobbering an existing file that validate missed (e.g. corrupt, unreadable)
+        if new_path.exists() {
+            return Err(RadioError::Conflict(format!("A profile file named '{new_name}' already exists")));
+        }
+        profile.name = new_name.to_string();
+        let json = serde_json::to_string_pretty(&profile)?;
+        std::fs::write(&new_path, &json)?;
+        std::fs::remove_file(&old_path)?;
+        Ok(ProfileMeta {
+            name: new_name.to_string(),
+            stream_count: profile.streams.len(),
+            is_active: false, // caller must check
+        })
+    }
+
+    pub fn delete(name: &str) -> Result<(), RadioError> {
+        if name == "Default" {
+            return Err(RadioError::Forbidden("Cannot delete 'Default' profile".into()));
+        }
+        let path = portable::profiles_dir().join(format!("{}.tapirprofile", name));
+        if !path.exists() {
+            return Err(RadioError::NotFound(format!("Profile '{name}' not found")));
+        }
+        std::fs::remove_file(&path)?;
+        Ok(())
+    }
+
+    pub fn duplicate(src_name: &str, new_name: &str) -> Result<ProfileMeta, RadioError> {
+        let existing: Vec<String> = Self::list(src_name)?.iter().map(|m| m.name.clone()).collect();
+        validate_profile_name(new_name, &existing)?;
+        let mut profile = Self::load(src_name)?;
+        profile.name = new_name.to_string();
+        // Clear session state — duplicated profile starts fresh
+        profile.active_recording_urls = vec![];
+        profile.save()?;
+        Ok(ProfileMeta {
+            name: new_name.to_string(),
+            stream_count: profile.streams.len(),
+            is_active: false,
+        })
+    }
 }
 
 #[cfg(test)]
@@ -495,5 +559,36 @@ mod tests {
         assert_eq!(metas[0].name, "Default");
         assert_eq!(metas[1].name, "Alpha");
         assert_eq!(metas[2].name, "Zebra");
+    }
+
+    #[test]
+    fn create_rejects_invalid_name() {
+        let err = Profile::create("").unwrap_err();
+        assert!(err.to_string().starts_with("InvalidName:"), "got: {err}");
+    }
+
+    #[test]
+    fn create_rejects_forbidden_default_name() {
+        let err = Profile::create("Default").unwrap_err();
+        assert!(err.to_string().starts_with("InvalidName:"), "got: {err}");
+    }
+
+    #[test]
+    fn rename_default_is_forbidden() {
+        let err = Profile::rename("Default", "Anything").unwrap_err();
+        assert!(err.to_string().starts_with("Forbidden:"), "got: {err}");
+    }
+
+    #[test]
+    fn delete_default_is_forbidden() {
+        let err = Profile::delete("Default").unwrap_err();
+        assert!(err.to_string().starts_with("Forbidden:"), "got: {err}");
+    }
+
+    #[test]
+    fn delete_nonexistent_is_not_found() {
+        let err = Profile::delete("__nonexistent_profile_xyz__").unwrap_err();
+        assert!(err.to_string().to_lowercase().contains("not found") ||
+                err.to_string().contains("NotFound"), "got: {err}");
     }
 }
