@@ -134,7 +134,7 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
         <Button
           ref={profileRef}
           aria-label={`${m.profile_manager_open()} — ${settings?.activeProfile ?? "Default"}`}
-          excludeFromTabOrder={getTabIndex(6) === -1}
+          excludeFromTabOrder={getTabIndex(SECTIONS.length + 1) === -1}
           onPress={() => $profileManagerOpen.set(true)}
           className="flex items-center gap-3 w-full min-h-[58px] px-[14px] py-3 rounded-[18px] border border-slate-700/30 bg-white/[.02] text-slate-400 hover:bg-white/[.05] hover:border-slate-600/50 hover:text-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:text-[ButtonText] forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText] transition-colors"
         >
