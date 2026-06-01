@@ -103,4 +103,21 @@ describe("ProfileManager", () => {
       expect(document.activeElement).toBe(screen.getByRole("option", { name: /Default/ }));
     });
   });
+
+  it("uses a localized OK label in the name dialog", async () => {
+    const user = userEvent.setup();
+    render(<ProfileManager />);
+    await screen.findByText("Jazz");
+    await user.click(screen.getByRole("button", { name: /New profile/ }));
+    expect(await screen.findByRole("button", { name: /^OK$/ })).toBeInTheDocument();
+  });
+
+  it("gives sub-dialog footer buttons a visible focus outline class", async () => {
+    const user = userEvent.setup();
+    render(<ProfileManager />);
+    await screen.findByText("Jazz");
+    await user.click(screen.getByRole("button", { name: /New profile/ }));
+    const cancel = await screen.findByRole("button", { name: /Cancel/ });
+    expect(cancel.className).toMatch(/focus-visible:outline/);
+  });
 });

@@ -238,7 +238,7 @@ export function ProfileManager() {
             aria-label={m.profile_manager_title()}
             className="flex flex-col h-full outline-none p-6 gap-4"
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between border-b border-slate-700 pb-3">
               <Heading slot="title" className="text-lg font-semibold text-slate-100">
                 {m.profile_manager_title()}
               </Heading>
@@ -288,7 +288,7 @@ export function ProfileManager() {
           isOpen
           onOpenChange={(open) => { if (!open) { setSubDialog(null); setNameInput(""); } }}
         >
-          <Modal className="w-80 rounded-lg bg-slate-800 p-6 shadow-2xl outline-none">
+          <Modal className="w-80 rounded-lg bg-slate-800 p-6 shadow-2xl outline-none forced-colors:bg-[Canvas] forced-colors:border forced-colors:border-[ButtonText]">
             <Dialog role="alertdialog" className="outline-none flex flex-col gap-4">
               <Heading slot="title" className="text-base font-semibold text-slate-100">
                 {subDialog.type === "create" && m.profile_create()}
@@ -312,9 +312,9 @@ export function ProfileManager() {
               <div className="flex justify-end gap-2">
                 <button
                   onClick={() => { setSubDialog(null); setNameInput(""); }}
-                  className="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700"
+                  className="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:text-[ButtonText]"
                 >
-                  {m.cancel?.() ?? "Cancel"}
+                  {m.cancel()}
                 </button>
                 <button
                   onClick={() => {
@@ -324,9 +324,9 @@ export function ProfileManager() {
                     else if (subDialog.type === "import") handleCommitImport();
                   }}
                   disabled={busy || !nameInput.trim()}
-                  className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
                 >
-                  OK
+                  {m.ok()}
                 </button>
               </div>
             </Dialog>
@@ -341,7 +341,7 @@ export function ProfileManager() {
           isOpen
           onOpenChange={(open) => { if (!open) setSubDialog(null); }}
         >
-          <Modal className="w-80 rounded-lg bg-slate-800 p-6 shadow-2xl outline-none">
+          <Modal className="w-80 rounded-lg bg-slate-800 p-6 shadow-2xl outline-none forced-colors:bg-[Canvas] forced-colors:border forced-colors:border-[ButtonText]">
             <Dialog role="alertdialog" className="outline-none">
               <Heading slot="title" className="text-base font-semibold text-slate-100 mb-3">
                 {m.profile_delete()}
@@ -351,11 +351,11 @@ export function ProfileManager() {
               </p>
               <div className="flex justify-end gap-2">
                 <button autoFocus onClick={() => setSubDialog(null)}
-                  className="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700">
-                  {m.cancel?.() ?? "Cancel"}
+                  className="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:text-[ButtonText]">
+                  {m.cancel()}
                 </button>
                 <button onClick={handleDelete} disabled={busy}
-                  className="rounded bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700 disabled:opacity-50">
+                  className="rounded bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700 disabled:opacity-50 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]">
                   {m.profile_delete()}
                 </button>
               </div>
@@ -371,7 +371,7 @@ export function ProfileManager() {
           isOpen
           onOpenChange={(open) => { if (!open) setSubDialog(null); }}
         >
-          <Modal className="w-80 rounded-lg bg-slate-800 p-6 shadow-2xl outline-none">
+          <Modal className="w-80 rounded-lg bg-slate-800 p-6 shadow-2xl outline-none forced-colors:bg-[Canvas] forced-colors:border forced-colors:border-[ButtonText]">
             <Dialog role="alertdialog" className="outline-none">
               <Heading slot="title" className="text-base font-semibold text-slate-100 mb-3">
                 {m.profile_switch()}
@@ -381,11 +381,11 @@ export function ProfileManager() {
               </p>
               <div className="flex justify-end gap-2">
                 <button autoFocus onClick={() => setSubDialog(null)}
-                  className="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700">
-                  {m.cancel?.() ?? "Cancel"}
+                  className="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:text-[ButtonText]">
+                  {m.cancel()}
                 </button>
                 <button onClick={doSwitch} disabled={busy}
-                  className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50">
+                  className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]">
                   {m.profile_switch()}
                 </button>
               </div>
