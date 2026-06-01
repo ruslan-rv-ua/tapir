@@ -15,6 +15,7 @@ import { PlayerPanel } from "./components/player/PlayerPanel";
 import { useZoneNavigation, type ZoneEntry } from "./hooks/useZoneNavigation";
 import { useTauriEvent } from "./hooks/useTauriEvent";
 import { useDiskSpacePolling } from "./hooks/useDiskSpacePolling";
+import { useProfileSync } from "./hooks/useProfileSync";
 import { useAnnounce } from "./hooks/useAnnounce";
 import { $streams, updateStreamStatus } from "./stores/streams";
 import { $settings } from "./stores/settings";
@@ -289,6 +290,7 @@ function AppContent() {
   useTauriEvent<TrackIgnoredPayload>("track-ignored", handleTrackIgnored);
   useTauriEvent("streams-changed", handleStreamsChanged);
   useDiskSpacePolling();
+  useProfileSync();
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-200">
