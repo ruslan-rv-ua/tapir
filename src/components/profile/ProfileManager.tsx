@@ -45,6 +45,10 @@ export function ProfileManager() {
 
   const close = () => {
     $profileManagerOpen.set(false);
+    setSubDialog(null);
+    setNameInput("");
+    setNameError(null);
+    setBusy(false);
   };
 
   const announce = (msg: string) => {
@@ -66,13 +70,17 @@ export function ProfileManager() {
   };
 
   const handleSwitch = async () => {
-    const statuses = await tauri.getAllStatuses?.() ?? [];
-    const hasRecordings = statuses.some((s) => s.state === "recording");
-    if (hasRecordings) {
-      setSubDialog({ type: "switch-confirm" });
-      return;
+    try {
+      const statuses = await tauri.getAllStatuses?.() ?? [];
+      const hasRecordings = statuses.some((s) => s.state === "recording");
+      if (hasRecordings) {
+        setSubDialog({ type: "switch-confirm" });
+        return;
+      }
+      doSwitch();
+    } catch (e) {
+      addToast(String(e), "error");
     }
-    doSwitch();
   };
 
   const doSwitch = async () => {
@@ -240,6 +248,7 @@ export function ProfileManager() {
               <ProfileActions
                 selected={selected}
                 activeProfile={activeProfile}
+                busy={busy}
                 onSwitch={handleSwitch}
                 onRename={() => { setNameInput(selected); setNameError(null); setSubDialog({ type: "rename" }); }}
                 onDelete={() => setSubDialog({ type: "delete" })}

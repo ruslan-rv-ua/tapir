@@ -4,6 +4,7 @@ import * as m from "../../i18n/paraglide/messages";
 interface Props {
   selected: string;
   activeProfile: string;
+  busy?: boolean;
   onSwitch: () => void;
   onRename: () => void;
   onDelete: () => void;
@@ -14,7 +15,7 @@ interface Props {
 }
 
 export function ProfileActions({
-  selected, activeProfile,
+  selected, activeProfile, busy,
   onSwitch, onRename, onDelete, onDuplicate, onExport, onImport, onNew,
 }: Props) {
   const isActive = selected === activeProfile;
@@ -22,19 +23,19 @@ export function ProfileActions({
 
   return (
     <div className="flex flex-col gap-2" role="group" aria-label="Profile actions">
-      <ActionButton onPress={onSwitch} isDisabled={isActive}>
+      <ActionButton onPress={onSwitch} isDisabled={isActive || busy}>
         {m.profile_switch()}
       </ActionButton>
-      <ActionButton onPress={onRename} isDisabled={isDefault || isActive}>
+      <ActionButton onPress={onRename} isDisabled={isDefault || isActive || busy}>
         {m.profile_rename()}
       </ActionButton>
-      <ActionButton onPress={onDuplicate}>{m.profile_duplicate()}</ActionButton>
-      <ActionButton onPress={onDelete} isDisabled={isDefault || isActive}>
+      <ActionButton onPress={onDuplicate} isDisabled={busy}>{m.profile_duplicate()}</ActionButton>
+      <ActionButton onPress={onDelete} isDisabled={isDefault || isActive || busy}>
         {m.profile_delete()}
       </ActionButton>
-      <ActionButton onPress={onExport}>{m.profile_export()}</ActionButton>
-      <ActionButton onPress={onImport}>{m.profile_import()}</ActionButton>
-      <ActionButton onPress={onNew}>{m.profile_create()}</ActionButton>
+      <ActionButton onPress={onExport} isDisabled={busy}>{m.profile_export()}</ActionButton>
+      <ActionButton onPress={onImport} isDisabled={busy}>{m.profile_import()}</ActionButton>
+      <ActionButton onPress={onNew} isDisabled={busy}>{m.profile_create()}</ActionButton>
     </div>
   );
 }
