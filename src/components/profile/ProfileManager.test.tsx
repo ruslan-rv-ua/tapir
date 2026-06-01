@@ -16,6 +16,7 @@ vi.mock("../../lib/tauri", () => ({
   deleteProfile: vi.fn(async () => {}),
   createProfile: vi.fn(async (name: string) => ({ name, streamCount: 0, isActive: false })),
   getAllStatuses: vi.fn(async () => []),
+  exportProfile: vi.fn(async () => {}),
 }));
 
 vi.mock("../../i18n/paraglide/runtime", () => ({ getLocale: () => "uk" }));
@@ -110,6 +111,18 @@ describe("ProfileManager", () => {
     await screen.findByText("Jazz");
     await user.click(screen.getByRole("button", { name: /New profile/ }));
     expect(await screen.findByRole("button", { name: /^OK$/ })).toBeInTheDocument();
+  });
+
+  it("announces after a successful export", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<ProfileManager />);
+    await screen.findByText("Jazz");
+    await user.click(screen.getByRole("option", { name: /Jazz/ }));
+    await user.click(screen.getByRole("button", { name: /^Export$/ }));
+    await waitFor(() => {
+      const live = container.querySelector('[aria-live="polite"]');
+      expect(live?.textContent).toBe("Exported Jazz");
+    });
   });
 
   it("gives sub-dialog footer buttons a visible focus outline class", async () => {

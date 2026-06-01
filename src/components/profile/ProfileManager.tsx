@@ -181,6 +181,7 @@ export function ProfileManager() {
     setBusy(true);
     try {
       await tauri.exportProfile(selected);
+      announce(m.profile_exported_announcement({ name: selected }));
     } catch (e) {
       addToast(String(e), "error");
     } finally {
