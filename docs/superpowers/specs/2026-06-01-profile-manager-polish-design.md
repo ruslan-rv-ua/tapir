@@ -26,18 +26,27 @@ Out of scope: layout restructuring, duplicate-name prefill, backend behaviour, n
 
 ### 2.1. ProfileList (`ProfileList.tsx`)
 
-Each `ListBoxItem` gains a clearer active/selected language:
+Each `ListBoxItem` gains a clearer active/selected language. **All visual primitives reuse existing
+app patterns** — the active badge follows the `LiveBadge`/`RecordingBadge` recipe, and the row
+accent follows `StreamItem`'s active-row treatment — rather than inventing new ones.
 
-- **Active profile** (`p.isActive`): an accent dot at the left (`bg-sky-400`, ~7px), the name in
-  the brighter `text-slate-100`, a pill badge `активний` (`text-sky-300` on `bg-sky-400/15`,
-  rounded-full), and an accent left bar via `shadow-[inset_2px_0_0_theme(colors.sky.400)]`.
+- **Active profile** (`p.isActive`): an `активний` **pill badge** built exactly like
+  `RecordingBadge`/`LiveBadge` — `inline-flex items-center rounded-full bg-sky-500/15
+  border border-sky-500/25 text-sky-300 text-xs font-semibold forced-colors:border-[ButtonText]
+  forced-colors:text-[ButtonText]` — with the status dot **inside the pill** (a ~7px
+  `rounded-full bg-sky-400 forced-colors:bg-[ButtonText]`, `aria-hidden`), mirroring `LiveBadge`'s
+  internal dot. The row also gets a left accent `border-l-2 border-l-sky-500` exactly like
+  `StreamItem`'s active rows. Name in the brighter `text-slate-100`.
 - **Selected, not active**: existing fill highlight only (`data-[selected]:bg-sky-600/20`), name in
-  `text-slate-200`. A 7px spacer keeps the name column aligned with active rows (no dot).
+  `text-slate-200`. A matching `border-l-2 border-l-transparent` keeps left padding aligned with
+  active rows (no layout shift).
 - **Stream count**: unchanged position (`ml-auto`, muted), but text comes from the new pluralized
   message (see §3.3).
-- Keep the existing `focus-visible:ring-2 focus-visible:ring-blue-400`, hover, and `forced-colors`
-  behaviour. The pill and dot must degrade gracefully in `forced-colors` (use `forced-colors:hidden`
-  on the dot/bar; keep the textual `активний` badge so high-contrast users still see state).
+- **Focus style — switch to the app convention.** The rest of the app uses
+  `focus-visible:outline outline-2 outline-blue-400` (SettingsDialog, AddStreamDialog, StreamItem);
+  the profile components are the only ones using `ring`. Align the touched profile components to the
+  `outline` pattern for app-wide consistency. Keep hover and `forced-colors` behaviour. The badge
+  is text-based so it survives `forced-colors`; the inner dot uses `forced-colors:bg-[ButtonText]`.
 
 ### 2.2. ProfileActions (`ProfileActions.tsx`)
 
@@ -56,11 +65,14 @@ Reorder and group the buttons. Group separators are non-interactive `.label`-sty
 [ ↓ Імпорт ]               Download
 ```
 
-- **Switch** becomes the visually primary action: `bg-blue-600 text-white hover:bg-blue-700`
-  (matches the OK/confirm buttons), keeping its disabled state when `selected === active`.
+- **Switch** becomes the visually primary action, reusing the app's primary-button recipe
+  (`bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50` — same as AddStreamDialog's
+  submit and the sub-dialog OK), keeping its disabled state when `selected === active`.
 - All other buttons keep the subtle `bg-white/[.04]` treatment but gain a leading lucide icon
   (`size={14}`, `aria-hidden`, `opacity-70`). Icon is decorative; the text label remains the
   accessible name.
+- Focus style aligned to the app convention `focus-visible:outline outline-2 outline-blue-400`
+  (replacing the current `ring`), per §2.1.
 - Group caption labels are localized: reuse-or-add keys `profile_group_profile` ("Профіль" /
   "Profile") and `profile_group_file` ("Файл" / "File"). They are `aria-hidden` visual captions —
   the buttons themselves are already inside the labelled `role="group"`, so the captions are not
@@ -68,11 +80,15 @@ Reorder and group the buttons. Group separators are non-interactive `.label`-sty
 - Disabled rules unchanged: Switch (active), Rename/Delete (Default or active), others always
   enabled except while `busy`.
 
-### 2.3. ProfileManager sub-dialogs (`ProfileManager.tsx`)
+### 2.3. ProfileManager sub-dialogs & header (`ProfileManager.tsx`)
 
 - Add the same `forced-colors` fallback used on the main `Modal`
   (`forced-colors:bg-[Canvas] forced-colors:border forced-colors:border-[ButtonText]`) to each
-  sub-dialog `Modal`.
+  sub-dialog `Modal` (matches `ConfirmDialog`/`AddStreamDialog`).
+- **Header divider for consistency:** give the ProfileManager header the same treatment as the
+  sibling management dialog `SettingsDialog` — a `border-b border-slate-700` under the title row.
+  (`SettingsDialog` is the closest analogue; aligning makes the two management dialogs feel like
+  one family.)
 - Icon set is imported from `lucide-react`, consistent with the existing `X` import.
 
 No change to the dialog width strategy, max-height, or scroll containers (those were already
@@ -104,15 +120,19 @@ patched in recent commits).
 ### 3.2. Bug 2 — Sub-dialog Cancel/OK buttons have no visible focus (MEDIUM, a11y)
 
 **Symptom:** The Cancel/OK buttons in the name dialog, the delete-confirm dialog, and the
-switch-confirm dialog are raw `<button onClick>` elements. Cancel has only `hover:` styling and no
-`focus-visible` ring, so keyboard focus is invisible; OK rings inconsistently. They also bypass
-React Aria press handling used everywhere else.
+switch-confirm dialog are raw `<button onClick>` elements with no `focus-visible` styling, so
+keyboard focus is invisible. (The same omission exists in `ConfirmDialog.tsx`'s Cancel button —
+out of scope here, but noted.)
 
-**Fix:** Convert all sub-dialog footer buttons to React Aria `<Button onPress>` with the standard
-`outline-none focus-visible:ring-2 focus-visible:ring-blue-400` treatment. Preserve existing
-variants: neutral (Cancel), primary blue (OK / Switch confirm), destructive red (Delete confirm).
-Preserve `disabled={busy || !nameInput.trim()}` semantics via `isDisabled`. Keep `autoFocus`
-placement (Cancel in destructive dialogs, name field in input dialogs).
+**Fix — keep the app convention, add the missing focus style.** The app deliberately uses raw
+`<button onClick>` for dialog footers everywhere (`ConfirmDialog`, `AddStreamDialog`,
+`SettingsDialog`) — do **not** switch to React Aria `<Button>`. Instead add the app's standard
+focus treatment `focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400`
+(exactly as `AddStreamDialog`'s footer buttons) to every sub-dialog footer button. Keep the
+existing variants and recipes: neutral Cancel (`text-slate-300 hover:bg-slate-700`), primary blue
+OK / Switch-confirm (`bg-blue-600 hover:bg-blue-700 disabled:opacity-50`), destructive red
+Delete-confirm (`bg-red-600 hover:bg-red-700`). Preserve `disabled={busy || !nameInput.trim()}`
+and existing `autoFocus` placement.
 
 ### 3.3. Bug 3 — Stream count not pluralized (MEDIUM, i18n)
 
@@ -183,9 +203,9 @@ is trivial.
 
 | File | Change |
 |------|--------|
-| `src/components/profile/ProfileList.tsx` | Active dot+pill+bar, aligned spacer, pluralized count helper, `forwardRef` for focus, `forced-colors` degradation |
-| `src/components/profile/ProfileActions.tsx` | Regroup buttons, primary Switch, lucide icons, group captions |
-| `src/components/profile/ProfileManager.tsx` | React Aria sub-dialog buttons, `m.ok()`, export announcement, focus-to-list after switch/delete, sub-dialog `forced-colors` |
+| `src/components/profile/ProfileList.tsx` | Active pill (badge recipe, dot inside) + `border-l-2` row accent, pluralized count helper, `forwardRef` for focus, `outline` focus style, `forced-colors` |
+| `src/components/profile/ProfileActions.tsx` | Regroup buttons, primary Switch (app recipe), lucide icons, group captions, `outline` focus style |
+| `src/components/profile/ProfileManager.tsx` | Raw `<button>` footers + `outline` focus style, `m.ok()`, export announcement, focus-to-list after switch/delete, sub-dialog `forced-colors`, header `border-b` |
 | `src/i18n/messages/uk.json`, `en.json` | Key changes per §4; regenerate paraglide |
 
 ---
@@ -199,8 +219,8 @@ are updated/extended:
   1 / 2 / 5 in uk (потік / потоки / потоків) and 1 / 5 in en (stream / streams).
 - **ProfileActions**: buttons render in the new order; Switch carries the primary styling hook;
   group captions are present and `aria-hidden`; disabled rules unchanged.
-- **ProfileManager**: sub-dialog footer buttons are focusable React Aria buttons; OK uses the
-  localized label; after a simulated successful switch and delete, focus is on the ListBox (not
+- **ProfileManager**: sub-dialog footer buttons carry the `focus-visible:outline` class; OK uses
+  the localized label; after a simulated successful switch and delete, focus is on the ListBox (not
   `body`); export triggers a live-region announcement.
 
 Run the existing frontend test suite; all profile tests must pass.
@@ -209,9 +229,11 @@ Run the existing frontend test suite; all profile tests must pass.
 
 ## 7. Criteria for Done
 
-- [ ] Active profile shows dot + pill + accent bar; selected-not-active shows fill only; columns aligned
+- [ ] Active profile shows the badge-recipe pill (dot inside) + `border-l-2` row accent; selected-not-active shows fill only; columns aligned
 - [ ] Action buttons regrouped (Switch primary; Профіль group; Файл group) with lucide icons and localized captions
-- [ ] Sub-dialog Cancel/OK/confirm buttons are React Aria `<Button>` with visible focus rings; OK localized
+- [ ] Sub-dialog footer buttons stay raw `<button>` and gain the app's `focus-visible:outline` treatment; OK localized
+- [ ] Touched profile components use the app's `outline` focus convention (not `ring`)
+- [ ] ProfileManager header has the `border-b border-slate-700` divider like SettingsDialog
 - [ ] Stream count pluralizes correctly in uk (1/3/5) and en (1/5)
 - [ ] Focus returns to the profile list (selected item) after Switch and after Delete, in all paths
 - [ ] Successful export makes a localized `aria-live` announcement
