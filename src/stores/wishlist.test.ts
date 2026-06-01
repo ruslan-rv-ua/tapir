@@ -21,4 +21,9 @@ describe("$wishlist", () => {
 
 describe("$ignorelist", () => {
   it("defaults to empty", () => { expect($ignorelist.get()).toHaveLength(0); });
+  it("stores patterns", () => {
+    $ignorelist.set(["Jazz", "Pop"]);
+    expect($ignorelist.get()).toContain("Jazz");
+    expect($ignorelist.get()).toHaveLength(2);
+  });
 });
