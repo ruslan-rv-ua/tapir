@@ -11,6 +11,8 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   profile_import: () => "Import",
   profile_create: () => "New profile",
   profile_actions_label: () => "Profile actions",
+  profile_group_profile: () => "Profile",
+  profile_group_file: () => "File",
 }));
 
 describe("ProfileActions", () => {
@@ -55,5 +57,19 @@ describe("ProfileActions", () => {
       <ProfileActions {...baseProps} selected="Default" activeProfile="Jazz" />
     );
     expect(getByRole("button", { name: /delete/i })).toBeDisabled();
+  });
+
+  it("renders the group captions", () => {
+    const { getByText } = render(<ProfileActions {...baseProps} />);
+    expect(getByText("Profile")).toBeInTheDocument();
+    expect(getByText("File")).toBeInTheDocument();
+  });
+
+  it("orders buttons: Switch, New, Duplicate, Rename, Delete, Export, Import", () => {
+    const { getAllByRole } = render(<ProfileActions {...baseProps} />);
+    const names = getAllByRole("button").map((b) => b.textContent?.trim());
+    expect(names).toEqual([
+      "Switch", "New profile", "Duplicate", "Rename", "Delete", "Export", "Import",
+    ]);
   });
 });
