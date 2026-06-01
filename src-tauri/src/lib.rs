@@ -180,6 +180,7 @@ pub fn run() {
             commands::profile_commands::export_profile,
             commands::profile_commands::begin_import,
             commands::profile_commands::commit_import,
+            commands::profile_commands::switch_profile,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
