@@ -6,7 +6,7 @@ import {
 import { X } from "lucide-react";
 import { $profileManagerOpen, $profileList } from "../../stores/profileManager";
 import { $settings } from "../../stores/settings";
-import { ProfileList } from "./ProfileList";
+import { ProfileList, type ProfileListHandle } from "./ProfileList";
 import { ProfileActions } from "./ProfileActions";
 import { addToast } from "../../stores/toasts";
 import * as tauri from "../../lib/tauri";
@@ -34,6 +34,8 @@ export function ProfileManager() {
   const [nameError, setNameError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const liveRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<ProfileListHandle>(null);
+  const refocusList = useRef(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -42,6 +44,13 @@ export function ProfileManager() {
       .then((list) => $profileList.set(list))
       .catch((e) => addToast(String(e), "error"));
   }, [isOpen, activeProfile]);
+
+  useEffect(() => {
+    if (refocusList.current) {
+      refocusList.current = false;
+      listRef.current?.focusSelected();
+    }
+  });
 
   const close = () => {
     $profileManagerOpen.set(false);
@@ -89,6 +98,7 @@ export function ProfileManager() {
       await tauri.switchProfile(selected);
       await refreshList();
       announce(m.profile_switch() + ": " + selected);
+      refocusList.current = true;
       setSubDialog(null);
     } catch (e) {
       addToast(String(e), "error");
@@ -155,6 +165,7 @@ export function ProfileManager() {
       await refreshList();
       setSelected("Default");
       announce(m.profile_delete() + ": " + selected);
+      refocusList.current = true;
       setSubDialog(null);
     } catch (e) {
       addToast(String(e), "error");
@@ -240,6 +251,7 @@ export function ProfileManager() {
             <div className="flex gap-4 flex-1 overflow-hidden">
               <div className="flex-1 overflow-y-auto">
                 <ProfileList
+                  ref={listRef}
                   profiles={profiles}
                   selected={selected}
                   onSelect={setSelected}
