@@ -270,6 +270,43 @@ pub struct ImportPreview {
     pub has_conflict: bool,
 }
 
+/// Validate a profile name for create/rename/import operations.
+/// `existing` = list of existing profile names (for duplicate check, case-insensitive).
+pub fn validate_profile_name(name: &str, existing: &[String]) -> Result<(), RadioError> {
+    if name.is_empty() {
+        return Err(RadioError::InvalidName("Name cannot be empty".into()));
+    }
+    if name.len() > 64 {
+        return Err(RadioError::InvalidName("Name cannot exceed 64 characters".into()));
+    }
+    if name.starts_with(' ') || name.ends_with(' ') || name.starts_with('.') || name.ends_with('.') {
+        return Err(RadioError::InvalidName(
+            "Name cannot start or end with a space or dot".into(),
+        ));
+    }
+    let forbidden_chars = ['\\', '/', ':', '*', '?', '"', '<', '>', '|'];
+    if let Some(ch) = name.chars().find(|c| forbidden_chars.contains(c)) {
+        return Err(RadioError::InvalidName(format!("Forbidden character: {ch}")));
+    }
+    let upper = name.to_uppercase();
+    let reserved = [
+        "CON", "PRN", "AUX", "NUL",
+        "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+        "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+    ];
+    if reserved.contains(&upper.as_str()) {
+        return Err(RadioError::InvalidName(format!("'{name}' is a reserved Windows device name")));
+    }
+    if name.to_lowercase() == "default" {
+        return Err(RadioError::InvalidName("'Default' is a reserved name".into()));
+    }
+    let lower = name.to_lowercase();
+    if existing.iter().any(|e| e.to_lowercase() == lower) {
+        return Err(RadioError::Conflict(format!("Profile '{name}' already exists")));
+    }
+    Ok(())
+}
+
 impl Profile {
     pub fn load(name: &str) -> Result<Self, RadioError> {
         let path = portable::profiles_dir().join(format!("{}.tapirprofile", name));
@@ -337,5 +374,60 @@ mod tests {
         let json = serde_json::to_string(&p).unwrap();
         assert!(json.contains("\"suggestedName\":\"Imported\""));
         assert!(json.contains("\"hasConflict\":false"));
+    }
+
+    #[test]
+    fn validate_name_rejects_empty() {
+        assert!(validate_profile_name("", &[]).is_err());
+    }
+
+    #[test]
+    fn validate_name_rejects_too_long() {
+        let long = "a".repeat(65);
+        assert!(validate_profile_name(&long, &[]).is_err());
+    }
+
+    #[test]
+    fn validate_name_rejects_default() {
+        assert!(validate_profile_name("Default", &[]).is_err());
+        assert!(validate_profile_name("default", &[]).is_err());
+        assert!(validate_profile_name("DEFAULT", &[]).is_err());
+    }
+
+    #[test]
+    fn validate_name_rejects_windows_reserved() {
+        for name in &["CON", "con", "NUL", "COM1", "LPT9", "PRN", "AUX"] {
+            assert!(validate_profile_name(name, &[]).is_err(), "{name} should be rejected");
+        }
+    }
+
+    #[test]
+    fn validate_name_rejects_forbidden_chars() {
+        for ch in &['\\', '/', ':', '*', '?', '"', '<', '>', '|'] {
+            let name = format!("test{ch}name");
+            assert!(validate_profile_name(&name, &[]).is_err(), "char {ch} should be rejected");
+        }
+    }
+
+    #[test]
+    fn validate_name_rejects_leading_trailing_dot_space() {
+        assert!(validate_profile_name(" Work", &[]).is_err());
+        assert!(validate_profile_name("Work ", &[]).is_err());
+        assert!(validate_profile_name(".Work", &[]).is_err());
+        assert!(validate_profile_name("Work.", &[]).is_err());
+    }
+
+    #[test]
+    fn validate_name_rejects_duplicate_case_insensitive() {
+        let existing = vec!["Jazz".to_string(), "Rock".to_string()];
+        assert!(validate_profile_name("jazz", &existing).is_err());
+        assert!(validate_profile_name("JAZZ", &existing).is_err());
+    }
+
+    #[test]
+    fn validate_name_accepts_valid() {
+        assert!(validate_profile_name("My Profile", &[]).is_ok());
+        assert!(validate_profile_name("Jazz-2026", &[]).is_ok());
+        assert!(validate_profile_name("Work_EU", &[]).is_ok());
     }
 }
