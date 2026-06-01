@@ -7,6 +7,7 @@ import { ToastContainer } from "./components/common/ToastContainer";
 import { CommandPalette } from "./components/common/CommandPalette";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import { SettingsDialog } from "./components/settings/SettingsDialog";
+import { ProfileManager } from "./components/profile/ProfileManager";
 import { StreamsPanel } from "./components/streams/StreamsPanel";
 import { WishlistPanel } from "./components/wishlist/WishlistPanel";
 import { BrowserPanel } from "./components/browser/BrowserPanel";
@@ -313,6 +314,7 @@ function App() {
       <AppContent />
       <CommandPalette />
       <SettingsDialog />
+      <ProfileManager />
       <LiveAnnouncer />
       <ToastContainer />
     </ErrorBoundary>
