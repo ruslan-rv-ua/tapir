@@ -1,6 +1,6 @@
 import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 import { Button } from "react-aria-components";
-import { Radio, Globe, Heart, Calendar, Music, Settings, User } from "lucide-react";
+import { Radio, Globe, Heart, Calendar, Music, Settings, Layers } from "lucide-react";
 import { useStore } from "@nanostores/react";
 import { $activeSection } from "../../stores/navigation";
 import { $settingsDialogOpen, $settings } from "../../stores/settings";
@@ -139,7 +139,7 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
           className="flex items-center gap-3 w-full min-h-[58px] px-[14px] py-3 rounded-[18px] border border-slate-700/30 bg-white/[.02] text-slate-400 hover:bg-white/[.05] hover:border-slate-600/50 hover:text-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:text-[ButtonText] forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText] transition-colors"
         >
           <span className="flex items-center justify-center w-[42px] h-[42px] flex-none rounded-[14px] bg-sky-400/[.12] text-sky-200">
-            <User size={20} aria-hidden={true} />
+            <Layers size={20} aria-hidden={true} />
           </span>
           <div className="flex flex-col gap-0.5 min-w-0">
             <strong className="text-sm font-bold text-slate-300 truncate leading-tight">{m.profile_name()}</strong>
