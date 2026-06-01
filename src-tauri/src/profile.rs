@@ -348,6 +348,54 @@ impl Profile {
             active_recording_urls: vec![],
         }
     }
+
+    pub fn list(active: &str) -> Result<Vec<ProfileMeta>, RadioError> {
+        let dir = portable::profiles_dir();
+        if !dir.exists() {
+            return Ok(vec![ProfileMeta {
+                name: "Default".to_string(),
+                stream_count: 0,
+                is_active: active == "Default",
+            }]);
+        }
+        let mut metas: Vec<ProfileMeta> = std::fs::read_dir(&dir)?
+            .filter_map(|e| e.ok())
+            .filter(|e| {
+                e.path().extension().and_then(|s| s.to_str()) == Some("tapirprofile")
+            })
+            .filter_map(|e| {
+                let path = e.path();
+                let name = path.file_stem()?.to_str()?.to_string();
+                match std::fs::read_to_string(&path) {
+                    Ok(content) => {
+                        let stripped = strip_bom(&content);
+                        match serde_json::from_str::<Profile>(stripped) {
+                            Ok(p) => Some(ProfileMeta {
+                                name: name.clone(),
+                                stream_count: p.streams.len(),
+                                is_active: name == active,
+                            }),
+                            Err(e) => {
+                                log::warn!("Skipping corrupt profile '{name}': {e}");
+                                None
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        log::warn!("Cannot read profile file '{}': {e}", path.display());
+                        None
+                    }
+                }
+            })
+            .collect();
+
+        metas.sort_by(|a, b| {
+            if a.name == "Default" { return std::cmp::Ordering::Less; }
+            if b.name == "Default" { return std::cmp::Ordering::Greater; }
+            a.name.cmp(&b.name)
+        });
+        Ok(metas)
+    }
 }
 
 #[cfg(test)]
@@ -429,5 +477,23 @@ mod tests {
         assert!(validate_profile_name("My Profile", &[]).is_ok());
         assert!(validate_profile_name("Jazz-2026", &[]).is_ok());
         assert!(validate_profile_name("Work_EU", &[]).is_ok());
+    }
+
+    #[test]
+    fn list_sort_puts_default_first() {
+        // Test the sort algorithm used by Profile::list()
+        let mut metas = vec![
+            ProfileMeta { name: "Zebra".into(), stream_count: 0, is_active: false },
+            ProfileMeta { name: "Default".into(), stream_count: 0, is_active: true },
+            ProfileMeta { name: "Alpha".into(), stream_count: 0, is_active: false },
+        ];
+        metas.sort_by(|a, b| {
+            if a.name == "Default" { return std::cmp::Ordering::Less; }
+            if b.name == "Default" { return std::cmp::Ordering::Greater; }
+            a.name.cmp(&b.name)
+        });
+        assert_eq!(metas[0].name, "Default");
+        assert_eq!(metas[1].name, "Alpha");
+        assert_eq!(metas[2].name, "Zebra");
     }
 }
