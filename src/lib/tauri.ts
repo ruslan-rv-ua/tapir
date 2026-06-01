@@ -365,3 +365,77 @@ export async function updateSongTags(
 export async function deleteSong(path: string): Promise<void> {
   return invoke("delete_song", { path });
 }
+
+// ── Profile types ─────────────────────────────────────────────────────────
+
+export interface ProfileMeta {
+  name: string;
+  streamCount: number;
+  isActive: boolean;
+}
+
+export interface ImportPreview {
+  profileJson: string;
+  suggestedName: string;
+  streamCount: number;
+  hasConflict: boolean;
+}
+
+export interface Profile {
+  name: string;
+  version: number;
+  streams: StreamInfo[];
+  wishlist: WishlistEntry[];
+  ignorelist: string[];
+  scheduledRecordings: unknown[];
+  recording: RecordingSettings;
+  postprocess: {
+    enabled: boolean;
+    command: string;
+    arguments: string;
+    timeoutSecs: number;
+    runOnComplete: boolean;
+    runOnIncomplete: boolean;
+  };
+  playerSession: {
+    volume: number;
+    lastStreamId: string | null;
+    lastFilePosition: { path: string; positionMs: number } | null;
+  };
+  savedTracks: unknown[];
+  activeRecordingUrls: string[];
+}
+
+export interface ProfileChangedPayload {
+  profile: Profile;
+}
+
+// ── Profile IPC wrappers ──────────────────────────────────────────────────
+
+export async function listProfiles(): Promise<ProfileMeta[]> {
+  return invoke("list_profiles");
+}
+export async function switchProfile(name: string): Promise<Profile> {
+  return invoke("switch_profile", { name });
+}
+export async function createProfile(name: string): Promise<ProfileMeta> {
+  return invoke("create_profile", { name });
+}
+export async function renameProfile(oldName: string, newName: string): Promise<ProfileMeta> {
+  return invoke("rename_profile", { oldName, newName });
+}
+export async function deleteProfile(name: string): Promise<void> {
+  return invoke("delete_profile", { name });
+}
+export async function duplicateProfile(sourceName: string, newName: string): Promise<ProfileMeta> {
+  return invoke("duplicate_profile", { sourceName, newName });
+}
+export async function exportProfile(name: string): Promise<void> {
+  return invoke("export_profile", { name });
+}
+export async function beginImport(): Promise<ImportPreview | null> {
+  return invoke("begin_import");
+}
+export async function commitImport(profileJson: string, name: string): Promise<ProfileMeta> {
+  return invoke("commit_import", { profileJson, name });
+}
