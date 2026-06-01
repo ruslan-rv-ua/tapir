@@ -253,6 +253,23 @@ pub struct Profile {
     pub active_recording_urls: Vec<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProfileMeta {
+    pub name: String,
+    pub stream_count: usize,
+    pub is_active: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportPreview {
+    pub profile_json: String,
+    pub suggested_name: String,
+    pub stream_count: usize,
+    pub has_conflict: bool,
+}
+
 impl Profile {
     pub fn load(name: &str) -> Result<Self, RadioError> {
         let path = portable::profiles_dir().join(format!("{}.tapirprofile", name));
@@ -293,5 +310,32 @@ impl Profile {
             saved_tracks: vec![],
             active_recording_urls: vec![],
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn profile_meta_serializes() {
+        let m = ProfileMeta { name: "Test".into(), stream_count: 3, is_active: true };
+        let json = serde_json::to_string(&m).unwrap();
+        assert!(json.contains("\"streamCount\":3"));
+        assert!(json.contains("\"isActive\":true"));
+        assert!(json.contains("\"name\":\"Test\""));
+    }
+
+    #[test]
+    fn import_preview_serializes() {
+        let p = ImportPreview {
+            profile_json: "{}".into(),
+            suggested_name: "Imported".into(),
+            stream_count: 0,
+            has_conflict: false,
+        };
+        let json = serde_json::to_string(&p).unwrap();
+        assert!(json.contains("\"suggestedName\":\"Imported\""));
+        assert!(json.contains("\"hasConflict\":false"));
     }
 }
