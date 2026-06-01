@@ -460,6 +460,60 @@ impl Profile {
             is_active: false,
         })
     }
+
+    /// Serialize this profile to JSON with all stream passwords stripped.
+    pub fn export_json_str(&self) -> String {
+        let mut copy = self.clone();
+        for stream in &mut copy.streams {
+            stream.password = None;
+        }
+        serde_json::to_string_pretty(&copy).unwrap_or_default()
+    }
+
+    /// Parse JSON and return a preview. Does NOT save, does NOT strip passwords.
+    pub fn preview_import_json(json: &str) -> Result<ImportPreview, RadioError> {
+        let existing = Self::list("").map(|v| v.into_iter().map(|m| m.name).collect::<Vec<_>>())
+            .unwrap_or_default();
+        Self::preview_import_json_with_existing(json, &existing)
+    }
+
+    pub fn preview_import_json_with_existing(json: &str, existing: &[String]) -> Result<ImportPreview, RadioError> {
+        let profile: Profile = serde_json::from_str(json)
+            .map_err(|e| RadioError::InvalidData(format!("Cannot parse profile: {e}")))?;
+        let has_conflict = existing.iter().any(|e| e.to_lowercase() == profile.name.to_lowercase());
+        Ok(ImportPreview {
+            profile_json: json.to_string(),
+            suggested_name: profile.name.clone(),
+            stream_count: profile.streams.len(),
+            has_conflict,
+        })
+    }
+
+    /// Validate name, strip passwords, override profile name, save.
+    pub fn save_imported(json: &str, name: &str) -> Result<ProfileMeta, RadioError> {
+        let existing: Vec<String> = Self::list("")?.iter().map(|m| m.name.clone()).collect();
+        validate_profile_name(name, &existing)?;
+        let mut profile: Profile = serde_json::from_str(json)
+            .map_err(|e| RadioError::InvalidData(format!("Cannot parse profile: {e}")))?;
+        // Strip passwords server-side regardless of what the frontend sends
+        for stream in &mut profile.streams {
+            stream.password = None;
+        }
+        profile.name = name.to_string();
+        profile.active_recording_urls = vec![];
+        profile.save()?;
+        Ok(ProfileMeta {
+            name: name.to_string(),
+            stream_count: profile.streams.len(),
+            is_active: false,
+        })
+    }
+
+    /// Load profile, strip passwords, return JSON for file export.
+    pub fn export_json(name: &str) -> Result<String, RadioError> {
+        let profile = Self::load(name)?;
+        Ok(profile.export_json_str())
+    }
 }
 
 #[cfg(test)]
@@ -590,5 +644,47 @@ mod tests {
         let err = Profile::delete("__nonexistent_profile_xyz__").unwrap_err();
         assert!(err.to_string().to_lowercase().contains("not found") ||
                 err.to_string().contains("NotFound"), "got: {err}");
+    }
+
+    #[test]
+    fn export_json_strips_all_passwords() {
+        let mut profile = Profile::create_default();
+        profile.streams.push(StreamInfo {
+            id: "1".into(), url: "http://x".into(), name: "X".into(),
+            format: None, bitrate: None, icy_name: None, icy_genre: None,
+            icy_url: None, ignorelist: vec![], username: Some("user".into()),
+            password: Some("hunter2".into()), added_at: "2026-01-01".into(),
+        });
+        let json = profile.export_json_str();
+        assert!(!json.contains("hunter2"), "password must be stripped from export");
+        assert!(json.contains("user"), "username may remain");
+    }
+
+    #[test]
+    fn preview_import_returns_err_for_invalid_json() {
+        let result = Profile::preview_import_json("not json at all");
+        assert!(matches!(result, Err(RadioError::InvalidData(_))));
+    }
+
+    #[test]
+    fn preview_import_detects_conflict() {
+        let profile = Profile::create_default();
+        let json = serde_json::to_string(&profile).unwrap();
+        let preview = Profile::preview_import_json_with_existing(&json, &["Default".to_string()]);
+        assert!(preview.unwrap().has_conflict);
+    }
+
+    #[test]
+    fn save_imported_rejects_invalid_name() {
+        let profile = Profile::create_default();
+        let json = serde_json::to_string(&profile).unwrap();
+        let err = Profile::save_imported(&json, "").unwrap_err();
+        assert!(err.to_string().starts_with("InvalidName:"), "got: {err}");
+    }
+
+    #[test]
+    fn save_imported_rejects_invalid_json() {
+        let err = Profile::save_imported("not valid json", "ValidName").unwrap_err();
+        assert!(err.to_string().starts_with("InvalidData:"), "got: {err}");
     }
 }
