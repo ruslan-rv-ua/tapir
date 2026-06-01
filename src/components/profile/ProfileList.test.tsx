@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
+import { createRef } from "react";
 import { render } from "@testing-library/react";
 import { ProfileList } from "./ProfileList";
+import type { ProfileListHandle } from "./ProfileList";
 import type { ProfileMeta } from "../../lib/tauri";
 
 vi.mock("../../i18n/paraglide/runtime", () => ({
@@ -54,6 +56,24 @@ describe("ProfileList", () => {
     const options = getAllByRole("option");
     expect(options[0]).toHaveAttribute("aria-selected", "true");
     expect(options[1]).toHaveAttribute("aria-selected", "false");
+  });
+
+  it("renders an 'active' pill only for the active profile", () => {
+    const { getAllByText, getByText } = render(
+      <ProfileList profiles={profiles} selected="Default" onSelect={() => {}} />
+    );
+    expect(getAllByText("active")).toHaveLength(1);
+    expect(getByText("active")).toBeInTheDocument();
+  });
+
+  it("exposes focusSelected() that focuses the selected option", () => {
+    const ref = createRef<ProfileListHandle>();
+    const { getByRole } = render(
+      <ProfileList ref={ref} profiles={profiles} selected="Jazz" onSelect={() => {}} />
+    );
+    ref.current!.focusSelected();
+    const jazz = getByRole("option", { name: /Jazz/ });
+    expect(document.activeElement).toBe(jazz);
   });
 
   it("pluralizes the stream count for Ukrainian (1/3/5)", () => {
