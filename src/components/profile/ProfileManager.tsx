@@ -245,18 +245,20 @@ export function ProfileManager() {
                   onSelect={setSelected}
                 />
               </div>
-              <ProfileActions
-                selected={selected}
-                activeProfile={activeProfile}
-                busy={busy}
-                onSwitch={handleSwitch}
-                onRename={() => { setNameInput(selected); setNameError(null); setSubDialog({ type: "rename" }); }}
-                onDelete={() => setSubDialog({ type: "delete" })}
-                onDuplicate={() => { setNameInput(""); setNameError(null); setSubDialog({ type: "duplicate" }); }}
-                onExport={handleExport}
-                onImport={handleImport}
-                onNew={() => { setNameInput(""); setNameError(null); setSubDialog({ type: "create" }); }}
-              />
+              <div className="overflow-y-auto flex-shrink-0">
+                <ProfileActions
+                  selected={selected}
+                  activeProfile={activeProfile}
+                  busy={busy}
+                  onSwitch={handleSwitch}
+                  onRename={() => { setNameInput(selected); setNameError(null); setSubDialog({ type: "rename" }); }}
+                  onDelete={() => setSubDialog({ type: "delete" })}
+                  onDuplicate={() => { setNameInput(""); setNameError(null); setSubDialog({ type: "duplicate" }); }}
+                  onExport={handleExport}
+                  onImport={handleImport}
+                  onNew={() => { setNameInput(""); setNameError(null); setSubDialog({ type: "create" }); }}
+                />
+              </div>
             </div>
           </Dialog>
         </Modal>
