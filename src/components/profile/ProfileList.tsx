@@ -1,4 +1,4 @@
-import { RadioGroup, Radio } from "react-aria-components";
+import { ListBox, ListBoxItem, type Selection } from "react-aria-components";
 import type { ProfileMeta } from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 
@@ -11,17 +11,24 @@ interface Props {
 
 export function ProfileList({ profiles, selected, onSelect, autoFocus }: Props) {
   return (
-    <RadioGroup
+    <ListBox
       aria-label={m.profile_list_label()}
-      value={selected}
-      onChange={onSelect}
+      selectionMode="single"
+      disallowEmptySelection
+      selectedKeys={[selected]}
+      onSelectionChange={(keys: Selection) => {
+        if (keys === "all") return;
+        const key = [...keys][0];
+        if (key !== undefined) onSelect(String(key));
+      }}
       autoFocus={autoFocus}
-      className="flex flex-col gap-1"
+      className="flex flex-col gap-1 outline-none"
     >
       {profiles.map((p) => (
-        <Radio
+        <ListBoxItem
           key={p.name}
-          value={p.name}
+          id={p.name}
+          textValue={p.name}
           className="flex items-center gap-2 cursor-pointer rounded px-3 py-2 text-slate-200 hover:bg-white/[.06] data-[selected]:bg-sky-600/20 outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
         >
           <span className="font-medium">{p.name}</span>
@@ -31,8 +38,8 @@ export function ProfileList({ profiles, selected, onSelect, autoFocus }: Props) 
           <span className="text-xs text-slate-500 ml-auto">
             {m.profile_stream_count_hint({ count: p.streamCount })}
           </span>
-        </Radio>
+        </ListBoxItem>
       ))}
-    </RadioGroup>
+    </ListBox>
   );
 }

@@ -15,7 +15,7 @@ const profiles: ProfileMeta[] = [
 ];
 
 describe("ProfileList", () => {
-  it("renders all profiles as radio buttons", () => {
+  it("renders all profiles as list options", () => {
     const { getAllByRole } = render(
       <ProfileList
         profiles={profiles}
@@ -23,16 +23,29 @@ describe("ProfileList", () => {
         onSelect={() => {}}
       />
     );
-    const radios = getAllByRole("radio");
-    expect(radios).toHaveLength(2);
+    const options = getAllByRole("option");
+    expect(options).toHaveLength(2);
   });
 
-  it("marks the selected profile as checked", () => {
+  it("marks the selected profile as selected", () => {
     const { getAllByRole } = render(
       <ProfileList profiles={profiles} selected="Default" onSelect={() => {}} />
     );
-    const radios = getAllByRole("radio");
-    expect(radios[0]).toBeChecked();
-    expect(radios[1]).not.toBeChecked();
+    const options = getAllByRole("option");
+    expect(options[0]).toHaveAttribute("aria-selected", "true");
+    expect(options[1]).toHaveAttribute("aria-selected", "false");
+  });
+
+  it("marks only one item when profile names share a prefix (Default vs Default1)", () => {
+    const prefixProfiles: ProfileMeta[] = [
+      { name: "Default", streamCount: 10, isActive: true },
+      { name: "Default1", streamCount: 10, isActive: false },
+    ];
+    const { getAllByRole } = render(
+      <ProfileList profiles={prefixProfiles} selected="Default" onSelect={() => {}} />
+    );
+    const options = getAllByRole("option");
+    expect(options[0]).toHaveAttribute("aria-selected", "true");
+    expect(options[1]).toHaveAttribute("aria-selected", "false");
   });
 });
