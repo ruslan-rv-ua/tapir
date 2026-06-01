@@ -177,6 +177,9 @@ pub fn run() {
             commands::profile_commands::rename_profile,
             commands::profile_commands::delete_profile,
             commands::profile_commands::duplicate_profile,
+            commands::profile_commands::export_profile,
+            commands::profile_commands::begin_import,
+            commands::profile_commands::commit_import,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
