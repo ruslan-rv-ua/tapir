@@ -35,7 +35,7 @@ export function ProfileManager() {
   const [busy, setBusy] = useState(false);
   const liveRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<ProfileListHandle>(null);
-  const refocusList = useRef(false);
+  const [refocusList, setRefocusList] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -45,12 +45,15 @@ export function ProfileManager() {
       .catch((e) => addToast(String(e), "error"));
   }, [isOpen, activeProfile]);
 
+  // After a successful switch/delete the triggering action button becomes disabled,
+  // so we move focus back to the (now re-rendered) selected profile in the list.
+  // Gated on a state flag so this runs on the committed render after setSubDialog(null).
   useEffect(() => {
-    if (refocusList.current) {
-      refocusList.current = false;
+    if (refocusList) {
+      setRefocusList(false);
       listRef.current?.focusSelected();
     }
-  });
+  }, [refocusList]);
 
   const close = () => {
     $profileManagerOpen.set(false);
@@ -98,7 +101,7 @@ export function ProfileManager() {
       await tauri.switchProfile(selected);
       await refreshList();
       announce(m.profile_switch() + ": " + selected);
-      refocusList.current = true;
+      setRefocusList(true);
       setSubDialog(null);
     } catch (e) {
       addToast(String(e), "error");
@@ -165,7 +168,7 @@ export function ProfileManager() {
       await refreshList();
       setSelected("Default");
       announce(m.profile_delete() + ": " + selected);
-      refocusList.current = true;
+      setRefocusList(true);
       setSubDialog(null);
     } catch (e) {
       addToast(String(e), "error");
