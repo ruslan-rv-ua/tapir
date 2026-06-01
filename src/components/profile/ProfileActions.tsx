@@ -22,7 +22,7 @@ export function ProfileActions({
   const isDefault = selected === "Default";
 
   return (
-    <div className="flex flex-col gap-2" role="group" aria-label="Profile actions">
+    <div className="flex flex-col gap-2" role="group" aria-label={m.profile_actions_label()}>
       <ActionButton onPress={onSwitch} isDisabled={isActive || busy}>
         {m.profile_switch()}
       </ActionButton>

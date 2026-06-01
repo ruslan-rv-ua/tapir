@@ -10,6 +10,7 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   profile_export: () => "Export",
   profile_import: () => "Import",
   profile_create: () => "New profile",
+  profile_actions_label: () => "Profile actions",
 }));
 
 describe("ProfileActions", () => {

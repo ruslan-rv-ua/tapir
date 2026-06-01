@@ -328,5 +328,6 @@
   "profile_conflict_error": "Профіль із такою назвою вже існує",
   "profile_invalid_name_error": "Недопустима назва профілю",
   "profile_stream_count_hint": "{count} потоків",
-  "profile_active_badge": "активний"
+  "profile_active_badge": "активний",
+  "profile_actions_label": "Дії профілю"
 }
