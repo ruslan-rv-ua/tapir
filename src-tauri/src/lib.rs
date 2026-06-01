@@ -172,6 +172,11 @@ pub fn run() {
             commands::songs_commands::rename_song,
             commands::songs_commands::update_song_tags,
             commands::songs_commands::delete_song,
+            commands::profile_commands::list_profiles,
+            commands::profile_commands::create_profile,
+            commands::profile_commands::rename_profile,
+            commands::profile_commands::delete_profile,
+            commands::profile_commands::duplicate_profile,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
