@@ -92,6 +92,7 @@
   "stream_url": "Stream URL",
   "stream_name": "Name (optional)",
   "cancel": "Cancel",
+  "ok": "OK",
   "save": "Save",
   "delete": "Delete",
   "confirm_delete_stream": "Delete stream \"{name}\"?",
@@ -327,7 +328,13 @@
   "profile_switch_confirm": "Active recordings exist. Stop them and switch to \"{name}\"?",
   "profile_conflict_error": "A profile with this name already exists",
   "profile_invalid_name_error": "Invalid profile name",
-  "profile_stream_count_hint": "{count} streams",
+  "profile_stream_count_one": "{count} stream",
+  "profile_stream_count_few": "{count} streams",
+  "profile_stream_count_many": "{count} streams",
+  "profile_stream_count_other": "{count} streams",
+  "profile_group_profile": "Profile",
+  "profile_group_file": "File",
+  "profile_exported_announcement": "Profile exported: {name}",
   "profile_active_badge": "active",
   "profile_actions_label": "Profile actions"
 }

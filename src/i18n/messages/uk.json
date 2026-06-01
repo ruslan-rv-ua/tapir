@@ -92,6 +92,7 @@
   "stream_url": "URL потоку",
   "stream_name": "Назва (опціонально)",
   "cancel": "Скасувати",
+  "ok": "Гаразд",
   "save": "Зберегти",
   "delete": "Видалити",
   "confirm_delete_stream": "Видалити потік \"{name}\"?",
@@ -327,7 +328,13 @@
   "profile_switch_confirm": "Є активні записи. Зупинити їх і перейти до \"{name}\"?",
   "profile_conflict_error": "Профіль із такою назвою вже існує",
   "profile_invalid_name_error": "Недопустима назва профілю",
-  "profile_stream_count_hint": "{count} потоків",
+  "profile_stream_count_one": "{count} потік",
+  "profile_stream_count_few": "{count} потоки",
+  "profile_stream_count_many": "{count} потоків",
+  "profile_stream_count_other": "{count} потоки",
+  "profile_group_profile": "Профіль",
+  "profile_group_file": "Файл",
+  "profile_exported_announcement": "Профіль експортовано: {name}",
   "profile_active_badge": "активний",
   "profile_actions_label": "Дії профілю"
 }
