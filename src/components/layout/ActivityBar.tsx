@@ -4,6 +4,7 @@ import { Radio, Globe, Heart, Calendar, Music, Settings, User } from "lucide-rea
 import { useStore } from "@nanostores/react";
 import { $activeSection } from "../../stores/navigation";
 import { $settingsDialogOpen, $settings } from "../../stores/settings";
+import { $profileManagerOpen } from "../../stores/profileManager";
 import { useRovingFocus } from "../../hooks/useRovingFocus";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import type { Section } from "../../stores/navigation";
@@ -40,9 +41,10 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
   const ref3 = useRef<HTMLButtonElement | null>(null);
   const ref4 = useRef<HTMLButtonElement | null>(null);
   const settingsRef = useRef<HTMLButtonElement | null>(null);
+  const profileRef = useRef<HTMLButtonElement | null>(null);
 
   const allRefs = useMemo(
-    () => [ref0, ref1, ref2, ref3, ref4, settingsRef],
+    () => [ref0, ref1, ref2, ref3, ref4, settingsRef, profileRef],
     [],
   );
 
@@ -128,9 +130,13 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
           </span>
         </Button>
 
-        {/* Profile card — not focusable; NVDA reads as passive text */}
-        <div
-          className="flex items-center gap-3 px-[14px] py-3 rounded-[18px] border border-slate-700/30 bg-white/[.02] text-slate-400"
+        {/* Profile button — opens profile manager */}
+        <Button
+          ref={profileRef}
+          aria-label={`${m.profile_manager_open()} — ${settings?.activeProfile ?? "Default"}`}
+          excludeFromTabOrder={getTabIndex(6) === -1}
+          onPress={() => $profileManagerOpen.set(true)}
+          className="flex items-center gap-3 w-full min-h-[58px] px-[14px] py-3 rounded-[18px] border border-slate-700/30 bg-white/[.02] text-slate-400 hover:bg-white/[.05] hover:border-slate-600/50 hover:text-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:text-[ButtonText] forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText] transition-colors"
         >
           <span className="flex items-center justify-center w-[42px] h-[42px] flex-none rounded-[14px] bg-sky-400/[.12] text-sky-200">
             <User size={20} aria-hidden={true} />
@@ -139,7 +145,7 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
             <strong className="text-sm font-bold text-slate-300 truncate leading-tight">{m.profile_name()}</strong>
             <span className="text-xs text-slate-500 truncate">{settings?.activeProfile ?? "Default"}</span>
           </div>
-        </div>
+        </Button>
       </div>
       </div>
     </nav>
