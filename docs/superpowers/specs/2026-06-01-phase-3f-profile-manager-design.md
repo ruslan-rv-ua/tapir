@@ -97,31 +97,34 @@ InvalidData(String), // corrupt/unparseable profile file
 3. Let handles = stream_manager.stop_all()
    // stop_all() MUST be enhanced to return Vec<JoinHandle<()>> so that recording
    // tasks can be joined. This prevents any task from writing to active_profile
-   // after the swap (step 10). If the existing stop_all() is fire-and-forget,
+  // after the swap (step 11). If the existing stop_all() is fire-and-forget,
    // Phase 3F must add stop_all_async() → Vec<JoinHandle<()>>.
-4. player.stop_session_public().await // stop stream/file playback
+4. player.stop_playback(app_handle).await
+  // Use stop_playback (not stop_session_public) — it internally calls emit_player_status
+  // which emits "player-status" AND calls tray::notify_state_changed. This keeps frontend
+  // and tray in sync immediately after stop.
 5. join_all(handles).await (timeout 2s)
-   // Await all recording task handles. After this point, no recording task is
-   // running — no concurrent writes to active_profile are possible.
+  // Await all recording task handles. After this point, no recording task is
+  // running — no concurrent writes to active_profile are possible.
 6. Save current volume to old profile → profile.player_session.volume = player.current_volume()
 7. Save active_recording_urls = [] to old profile → profile.save()
-   // If save fails: log warning, continue (old profile data is still in AppState)
+  // If save fails: log warning, continue (old profile data is still in AppState)
 8. Load new profile: Profile::load(name)
-   // If load fails:
-   //   a. Emit app_handle.emit("player-status", PlayerStatus { state: PlaybackState::Stopped,
-   //      source: None, volume: player.current_volume(), position_ms: None, duration_ms: None })
-   //      so frontend clears the player UI (player was stopped in step 4 but frontend is stale)
-   //   b. Return Err immediately. AppState still holds old profile (data intact —
-   //      user can retry switch or restart).
-9. Apply new profile's player volume: player.set_volume(new_profile.player_session.volume)
+  // If load fails: return Err immediately. AppState still holds old profile (data intact —
+  // user can retry switch or restart). Frontend and tray are already consistent because
+  // stop_playback in step 4 already emitted the stopped status.
+9. Update GlobalSettings.active_profile = name → settings.save()
+  // If settings.save() fails: return Err immediately. AppState still holds old profile (disk
+  // and memory remain consistent). Frontend sees an error toast. User can retry.
+  // NOTE: set_volume is intentionally deferred to step 10, AFTER save succeeds, to avoid
+  // leaving the player at the new profile's volume when the switch is rolled back.
+10. Apply new profile's player volume: player.set_volume(new_profile.player_session.volume, app_handle).await
    // If volume fails: log warning, continue (non-critical)
-10. Update GlobalSettings.active_profile = name → settings.save()
-    // If settings.save() fails: return Err immediately. AppState still holds old profile (disk
-    // and memory remain consistent). Frontend sees an error toast. User can retry.
+   // set_volume already emits "player-status" and notifies tray via the engine helper.
 11. Update AppState.active_profile = new profile
-    // Only update AppState AFTER settings.save() succeeds — this keeps disk and memory in sync.
+   // Only update AppState AFTER settings.save() succeeds — this keeps disk and memory in sync.
 12. Emit "profile-changed" event with payload `{ profile: <full Profile> }`
-    // Payload shape matches data-models.md ProfileChangedPayload: `{ profile: Profile }`
+   // Payload shape matches data-models.md ProfileChangedPayload: `{ profile: Profile }`
 13. Return new Profile
 ```
 
@@ -209,7 +212,8 @@ src/
 ### 3.2. ActivityBar change
 
 The passive profile card (`<div>`) becomes a `<Button>` (React Aria):
-- `aria-label`: `{m.profile_manager_open()} — {settings.activeProfile}`
+- `aria-label`: `{m.profile_manager_open()} — {settings?.activeProfile ?? "Default"}`
+  (null guard required: `$settings` is `null` until async load completes on first render)
 - `onPress`: `$profileManagerOpen.set(true)`
 
 **Roving focus integration:** The new button must join the existing `useRovingFocus` group in
