@@ -106,7 +106,7 @@ InvalidData(String), // corrupt/unparseable profile file
 5. join_all(handles).await (timeout 2s)
   // Await all recording task handles. After this point, no recording task is
   // running — no concurrent writes to active_profile are possible.
-6. Save current volume to old profile → profile.player_session.volume = player.current_volume()
+6. Save current volume to old profile → profile.player_session.volume = player.current_volume().await
 7. Save active_recording_urls = [] to old profile → profile.save()
   // If save fails: log warning, continue (old profile data is still in AppState)
 8. Load new profile: Profile::load(name)
@@ -152,7 +152,7 @@ stored as local component state, Phase 3F must lift them into Nanostores
 (`$wishlist`, `$ignorelist`) and update `WishlistPanel` to read from those stores.
 This is a prerequisite for correct multi-profile behaviour.
 
-The hook uses `listen("profile-changed", (event) => handler(event.payload.profile))` and returns the unlisten function for cleanup. Payload type: `ProfileChangedPayload = { profile: Profile }` (matching `docs/data-models.md`).
+The hook uses `listen<ProfileChangedPayload>("profile-changed", (event) => handler(event.payload.profile))` and returns the unlisten function for cleanup. Payload type: `ProfileChangedPayload = { profile: Profile }` (matching `docs/data-models.md`). The generic type parameter is required for TypeScript compilation under strict mode.
 
 ### 2.6. Error transport
 
