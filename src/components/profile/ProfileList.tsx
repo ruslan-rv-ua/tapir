@@ -6,14 +6,16 @@ interface Props {
   profiles: ProfileMeta[];
   selected: string;
   onSelect: (name: string) => void;
+  autoFocus?: boolean;
 }
 
-export function ProfileList({ profiles, selected, onSelect }: Props) {
+export function ProfileList({ profiles, selected, onSelect, autoFocus }: Props) {
   return (
     <RadioGroup
       aria-label={m.profile_list_label()}
       value={selected}
       onChange={onSelect}
+      autoFocus={autoFocus}
       className="flex flex-col gap-1"
     >
       {profiles.map((p) => (

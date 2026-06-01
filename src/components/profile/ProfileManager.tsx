@@ -243,6 +243,7 @@ export function ProfileManager() {
                   profiles={profiles}
                   selected={selected}
                   onSelect={setSelected}
+                  autoFocus
                 />
               </div>
               <div className="overflow-y-auto flex-shrink-0">
