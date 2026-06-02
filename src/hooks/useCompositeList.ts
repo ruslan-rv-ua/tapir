@@ -12,10 +12,15 @@ export type SegmentKind =
   // reached via Left/Right and activated natively (Enter/Space/click).
   | 'action-play'
   | 'action-record'
-  | 'action-menu' // streams
+  | 'action-menu' // streams / profiles
   | 'action-add' // browser results
   | 'action-edit'
-  | 'action-delete'; // wishlist / ignorelist
+  | 'action-delete' // wishlist / ignorelist / profiles
+  // Profile rows
+  | 'action-switch'
+  | 'action-duplicate'
+  | 'action-rename'
+  | 'action-export';
 
 export type ActionType = 'primary' | 'toggle' | 'delete' | 'contextMenu';
 
@@ -197,6 +202,15 @@ export function useCompositeList<T extends CompositeListItem>({
     [],
   );
 
+  /** Programmatically move focus to a specific item's segment (default summary). */
+  const focusItem = useCallback(
+    (itemId: string, segment: SegmentKind = 'summary') => {
+      if (!items.some((it) => it.id === itemId)) return;
+      moveFocus(itemId, segment);
+    },
+    [items, moveFocus],
+  );
+
   // Attached in the CAPTURE phase (see return value) so navigation keys are
   // handled before any descendant control reacts — notably the React Aria menu
   // trigger, which would otherwise open its menu on Up/Down.
@@ -373,5 +387,5 @@ export function useCompositeList<T extends CompositeListItem>({
     [items],
   );
 
-  return { listRef, onKeyDownCapture, isFocused, restoreFocus, activeItemId, activeSegment };
+  return { listRef, onKeyDownCapture, isFocused, restoreFocus, focusItem, activeItemId, activeSegment };
 }

@@ -7,6 +7,7 @@ import { ToastContainer } from "./components/common/ToastContainer";
 import { CommandPalette } from "./components/common/CommandPalette";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import { SettingsDialog } from "./components/settings/SettingsDialog";
+import { ProfilesPanel } from "./components/profile/ProfilesPanel";
 import { StreamsPanel } from "./components/streams/StreamsPanel";
 import { WishlistPanel } from "./components/wishlist/WishlistPanel";
 import { BrowserPanel } from "./components/browser/BrowserPanel";
@@ -15,6 +16,7 @@ import { PlayerPanel } from "./components/player/PlayerPanel";
 import { useZoneNavigation, type ZoneEntry } from "./hooks/useZoneNavigation";
 import { useTauriEvent } from "./hooks/useTauriEvent";
 import { useDiskSpacePolling } from "./hooks/useDiskSpacePolling";
+import { useProfileSync } from "./hooks/useProfileSync";
 import { useAnnounce } from "./hooks/useAnnounce";
 import { $streams, updateStreamStatus } from "./stores/streams";
 import { $settings } from "./stores/settings";
@@ -289,6 +291,7 @@ function AppContent() {
   useTauriEvent<TrackIgnoredPayload>("track-ignored", handleTrackIgnored);
   useTauriEvent("streams-changed", handleStreamsChanged);
   useDiskSpacePolling();
+  useProfileSync();
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-200">
@@ -298,6 +301,7 @@ function AppContent() {
         {activeSection === "wishlist" && <WishlistPanel onZonesChange={onZonesChange} exitZone={exitZone} />}
         {activeSection === "browser" && <BrowserPanel onZonesChange={onZonesChange} exitZone={exitZone} />}
         {activeSection === "songs" && <SongsPanel onZonesChange={onZonesChange} exitZone={exitZone} />}
+        {activeSection === "profiles" && <ProfilesPanel onZonesChange={onZonesChange} exitZone={exitZone} />}
         <PlayerPanel ref={playerZoneRef} exitZone={(forward: boolean) => exitZone("player", forward)} />
         <StatusBar ref={statusBarZoneRef} exitZone={(forward: boolean) => exitZone("status-bar", forward)} />
       </main>

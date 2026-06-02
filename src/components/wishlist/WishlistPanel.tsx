@@ -1,14 +1,15 @@
 import { Button, Tabs, TabList, Tab, TabPanel } from "react-aria-components";
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useStore } from "@nanostores/react";
 import { PatternList } from "./PatternList";
 import { AddPatternDialog } from "./AddPatternDialog";
 import { useFocusBoundary } from "../../hooks/useFocusBoundary";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import { addToast } from "../../stores/toasts";
 import { $commandPaletteOpen } from "../../stores/navigation";
+import { $wishlist, $ignorelist } from "../../stores/wishlist";
 import * as tauri from "../../lib/tauri";
-import type { WishlistEntry } from "../../lib/tauri";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as m from "../../i18n/paraglide/messages";
 
@@ -23,26 +24,26 @@ interface Props {
 }
 
 export function WishlistPanel({ onZonesChange, exitZone }: Props) {
-  // --- Existing state ---
-  const [wishlist, setWishlist] = useState<WishlistEntry[]>([]);
-  const [ignorelist, setIgnorelist] = useState<string[]>([]);
-  const [dialog, setDialog] = useState<DialogState>(null);
-  const announce = useAnnounce();
+  // --- Store subscriptions ---
+  const wishlist = useStore($wishlist);
+  const ignorelist = useStore($ignorelist);
 
-  // --- New state ---
+  // --- Local state ---
+  const [dialog, setDialog] = useState<DialogState>(null);
   const [activeTab, setActiveTab] = useState<"wishlist" | "ignorelist">("wishlist");
+  const announce = useAnnounce();
 
   // Load data on mount
   useEffect(() => {
-    tauri.getWishlist().then(setWishlist).catch(console.error);
-    tauri.getIgnorelist().then(setIgnorelist).catch(console.error);
+    tauri.getWishlist().then((w) => $wishlist.set(w)).catch(console.error);
+    tauri.getIgnorelist().then((i) => $ignorelist.set(i)).catch(console.error);
   }, []);
 
   // --- Wishlist handlers ---
   const handleAddWishlist = useCallback(async (pattern: string) => {
     try {
       const entry = await tauri.addToWishlist(pattern);
-      setWishlist((prev) => [...prev.filter((e) => e.pattern !== pattern), entry]);
+      $wishlist.set([...$wishlist.get().filter((e) => e.pattern !== pattern), entry]);
       announce(m.announcement_pattern_added({ pattern }), "polite");
       setDialog(null);
     } catch (err) {
@@ -54,7 +55,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
     if (!dialog || dialog.mode !== "edit") return;
     try {
       const entry = await tauri.updateWishlistPattern(dialog.pattern, newPattern);
-      setWishlist((prev) => prev.map((e) => e.pattern === dialog.pattern ? entry : e));
+      $wishlist.set($wishlist.get().map((e) => e.pattern === dialog.pattern ? entry : e));
       announce(m.announcement_pattern_updated({ pattern: newPattern }), "polite");
       setDialog(null);
     } catch (err) {
@@ -65,7 +66,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   const handleRemoveWishlist = useCallback(async (pattern: string) => {
     try {
       await tauri.removeFromWishlist(pattern);
-      setWishlist((prev) => prev.filter((e) => e.pattern !== pattern));
+      $wishlist.set($wishlist.get().filter((e) => e.pattern !== pattern));
       announce(m.announcement_pattern_removed({ pattern }), "polite");
     } catch (err) {
       addToast(String(err), "error");
@@ -76,7 +77,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   const handleAddIgnorelist = useCallback(async (pattern: string) => {
     try {
       await tauri.addToIgnorelist(pattern);
-      setIgnorelist((prev) => [...prev.filter((p) => p !== pattern), pattern]);
+      $ignorelist.set([...$ignorelist.get().filter((p) => p !== pattern), pattern]);
       announce(m.announcement_pattern_added({ pattern }), "polite");
       setDialog(null);
     } catch (err) {
@@ -88,7 +89,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
     if (!dialog || dialog.mode !== "edit") return;
     try {
       await tauri.updateIgnorelistPattern(dialog.pattern, newPattern);
-      setIgnorelist((prev) => prev.map((p) => p === dialog.pattern ? newPattern : p));
+      $ignorelist.set($ignorelist.get().map((p) => p === dialog.pattern ? newPattern : p));
       announce(m.announcement_pattern_updated({ pattern: newPattern }), "polite");
       setDialog(null);
     } catch (err) {
@@ -99,7 +100,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   const handleRemoveIgnorelist = useCallback(async (pattern: string) => {
     try {
       await tauri.removeFromIgnorelist(pattern);
-      setIgnorelist((prev) => prev.filter((p) => p !== pattern));
+      $ignorelist.set($ignorelist.get().filter((p) => p !== pattern));
       announce(m.announcement_pattern_removed({ pattern }), "polite");
     } catch (err) {
       addToast(String(err), "error");
