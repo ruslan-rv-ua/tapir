@@ -1,4 +1,3 @@
-import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { createPortal } from "react-dom";
@@ -6,7 +5,6 @@ import { $profileList } from "../../stores/profileManager";
 import { $settings } from "../../stores/settings";
 import { $commandPaletteOpen } from "../../stores/navigation";
 import { ProfileList, type ProfileListHandle } from "./ProfileList";
-import { ProfileActions } from "./ProfileActions";
 import { ProfileNameDialog } from "./ProfileNameDialog";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { useRovingFocus } from "../../hooks/useRovingFocus";
@@ -37,19 +35,16 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
   const activeProfile = settings?.activeProfile ?? "Default";
   const announce = useAnnounce();
 
-  const [selected, setSelected] = useState(activeProfile);
+  // `target` is the profile a dialog currently operates on (rename/duplicate/delete/switch-confirm).
+  const [target, setTarget] = useState(activeProfile);
   const [subDialog, setSubDialog] = useState<SubDialog>(null);
   const [nameInput, setNameInput] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const listRef = useRef<ProfileListHandle>(null);
-  const listWrapperRef = useRef<HTMLDivElement | null>(null);
-  const actionsRef = useRef<ZoneEntry | null>(null);
 
-  // ── Load profiles on mount / active-profile change ──
   useEffect(() => {
-    setSelected(activeProfile);
     tauri.listProfiles()
       .then((list) => $profileList.set(list))
       .catch((e) => addToast(String(e), "error"));
@@ -60,11 +55,12 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
     $profileList.set(list);
   };
 
-  // After switch/delete the trigger button becomes disabled; return focus to the
-  // list. rAF ensures the disabled state has committed before we move focus.
-  const refocusList = () => {
-    requestAnimationFrame(() => listRef.current?.focusSelected());
-  };
+  // Focus helpers — rAF lets the list re-render with refreshed data (and the
+  // updated focusProfile closure) before we move focus.
+  const refocusProfile = (name: string) =>
+    requestAnimationFrame(() => listRef.current?.focusProfile(name));
+  const refocusList = () =>
+    requestAnimationFrame(() => listRef.current?.focus("forward"));
 
   const handleError = (e: unknown) => {
     const msg = String(e);
@@ -75,72 +71,78 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
     }
   };
 
-  const handleSwitch = async () => {
+  // ── Switch (inline button / context menu / Enter on row summary) ──
+  const handleSwitch = async (name: string) => {
+    if (name === activeProfile) { announce(m.profile_already_active()); return; }
+    setTarget(name);
     try {
       const statuses = await tauri.getAllStatuses?.() ?? [];
       const hasRecordings = statuses.some((s) => s.state === "recording");
       if (hasRecordings) { setSubDialog({ type: "switch-confirm" }); return; }
-      doSwitch();
+      await doSwitch(name);
     } catch (e) { addToast(String(e), "error"); }
   };
 
-  const doSwitch = async () => {
+  const doSwitch = async (name: string) => {
     setBusy(true);
     try {
-      await tauri.switchProfile(selected);
+      await tauri.switchProfile(name);
       await refreshList();
-      announce(m.profile_switch() + ": " + selected);
+      announce(m.profile_switch() + ": " + name);
       setSubDialog(null);
-      refocusList();
-    } catch (e) { addToast(String(e), "error"); }
-    finally { setBusy(false); }
+      refocusProfile(name);
+    } catch (e) { addToast(String(e), "error"); } finally { setBusy(false); }
   };
 
   const handleCreate = async () => {
     setNameError(null); setBusy(true);
     try {
       const meta = await tauri.createProfile(nameInput.trim());
-      await refreshList(); setSelected(meta.name);
+      await refreshList();
       announce(m.profile_create() + ": " + meta.name);
       setSubDialog(null); setNameInput("");
+      refocusProfile(meta.name);
     } catch (e) { handleError(e); } finally { setBusy(false); }
   };
 
   const handleRename = async () => {
     setNameError(null); setBusy(true);
     try {
-      const meta = await tauri.renameProfile(selected, nameInput.trim());
-      await refreshList(); setSelected(meta.name);
+      const meta = await tauri.renameProfile(target, nameInput.trim());
+      await refreshList();
       announce(m.profile_rename() + ": " + meta.name);
       setSubDialog(null); setNameInput("");
+      refocusProfile(meta.name);
     } catch (e) { handleError(e); } finally { setBusy(false); }
   };
 
   const handleDuplicate = async () => {
     setNameError(null); setBusy(true);
     try {
-      const meta = await tauri.duplicateProfile(selected, nameInput.trim());
-      await refreshList(); setSelected(meta.name);
+      const meta = await tauri.duplicateProfile(target, nameInput.trim());
+      await refreshList();
       announce(m.profile_duplicate() + ": " + meta.name);
       setSubDialog(null); setNameInput("");
+      refocusProfile(meta.name);
     } catch (e) { handleError(e); } finally { setBusy(false); }
   };
 
   const handleDelete = async () => {
     setBusy(true);
     try {
-      await tauri.deleteProfile(selected);
-      await refreshList(); setSelected("Default");
-      announce(m.profile_delete() + ": " + selected);
-      setSubDialog(null); refocusList();
+      await tauri.deleteProfile(target);
+      await refreshList();
+      announce(m.profile_delete() + ": " + target);
+      setSubDialog(null);
+      refocusList();
     } catch (e) { addToast(String(e), "error"); } finally { setBusy(false); }
   };
 
-  const handleExport = async () => {
+  const handleExport = async (name: string) => {
     setBusy(true);
     try {
-      await tauri.exportProfile(selected);
-      announce(m.profile_exported_announcement({ name: selected }));
+      await tauri.exportProfile(name);
+      announce(m.profile_exported_announcement({ name }));
     } catch (e) { addToast(String(e), "error"); } finally { setBusy(false); }
   };
 
@@ -160,9 +162,10 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
     setNameError(null); setBusy(true);
     try {
       const meta = await tauri.commitImport(subDialog.preview.profileJson, nameInput.trim());
-      await refreshList(); setSelected(meta.name);
+      await refreshList();
       announce(m.profile_import() + ": " + meta.name);
       setSubDialog(null); setNameInput("");
+      refocusProfile(meta.name);
     } catch (e) { handleError(e); } finally { setBusy(false); }
   };
 
@@ -181,7 +184,7 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
     onTabBoundary: (forward) => exitZone("profiles-toolbar", forward),
   });
 
-  // ── Zone registration (static: toolbar / list / actions) ──
+  // ── Zone registration (toolbar + list) ──
   useEffect(() => {
     const toolbarZone: ZoneEntry = {
       id: "profiles-toolbar",
@@ -190,27 +193,13 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
     };
     const listZone: ZoneEntry = {
       id: "profiles-list",
-      get el() { return listWrapperRef.current!; },
-      focus: () => listRef.current?.focusSelected(),
+      get el() { return listRef.current?.el!; },
+      focus: (dir) => listRef.current?.focus(dir),
     };
-    const actionsZone: ZoneEntry = {
-      id: "profiles-actions",
-      get el() { return actionsRef.current!.el; },
-      focus: (dir) => actionsRef.current?.focus(dir),
-    };
-    onZonesChange([toolbarZone, listZone, actionsZone]);
+    onZonesChange([toolbarZone, listZone]);
   // onZonesChange must be a stable reference from the caller.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toolbarRestore]);
-
-  // List is a single tab-stop zone — any Tab exits to the next/prev zone.
-  const handleListKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Tab") {
-      e.preventDefault();
-      e.stopPropagation();
-      exitZone("profiles-list", !e.shiftKey);
-    }
-  };
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden" role="region" aria-label={m.profile_name()}>
@@ -239,7 +228,7 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
               ref={newBtn}
               tabIndex={toolbarTabIndex(1)}
               onClick={() => { setNameInput(""); setNameError(null); setSubDialog({ type: "create" }); }}
-              className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
+              className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:border forced-colors:border-[ButtonText] forced-colors:bg-[ButtonFace] forced-colors:text-[ButtonText]"
             >
               {m.profile_create()}
             </button>
@@ -255,35 +244,19 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
         </div>
       </div>
 
-      {/* ── List + Actions ── */}
-      <div className="flex flex-1 gap-4 overflow-hidden px-4 py-3">
-        <div
-          ref={listWrapperRef}
-          data-zone-id="profiles-list"
-          className="flex-1 overflow-y-auto"
-          onKeyDown={handleListKeyDown}
-        >
-          <ProfileList
-            ref={listRef}
-            profiles={profiles}
-            selected={selected}
-            onSelect={setSelected}
-          />
-        </div>
-        <div className="w-56 flex-shrink-0 overflow-y-auto">
-          <ProfileActions
-            ref={actionsRef}
-            selected={selected}
-            activeProfile={activeProfile}
-            busy={busy}
-            onSwitch={handleSwitch}
-            onRename={() => { setNameInput(selected); setNameError(null); setSubDialog({ type: "rename" }); }}
-            onDelete={() => setSubDialog({ type: "delete" })}
-            onDuplicate={() => { setNameInput(""); setNameError(null); setSubDialog({ type: "duplicate" }); }}
-            onExport={handleExport}
-            exitZone={(forward) => exitZone("profiles-actions", forward)}
-          />
-        </div>
+      {/* ── List ── */}
+      <div className="flex flex-1 flex-col overflow-hidden px-4 py-3">
+        <ProfileList
+          ref={listRef}
+          profiles={profiles}
+          activeProfile={activeProfile}
+          exitZone={(forward) => exitZone("profiles-list", forward)}
+          onSwitch={handleSwitch}
+          onDuplicate={(name) => { setTarget(name); setNameInput(""); setNameError(null); setSubDialog({ type: "duplicate" }); }}
+          onRename={(name) => { setTarget(name); setNameInput(name); setNameError(null); setSubDialog({ type: "rename" }); }}
+          onDelete={(name) => { setTarget(name); setSubDialog({ type: "delete" }); }}
+          onExport={handleExport}
+        />
       </div>
 
       {/* ── Sub-dialogs (single level, portalled) ── */}
@@ -314,7 +287,7 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
       {subDialog?.type === "delete" && createPortal(
         <ConfirmDialog
           title={m.profile_delete()}
-          message={m.profile_delete_confirm({ name: selected })}
+          message={m.profile_delete_confirm({ name: target })}
           confirmLabel={m.profile_delete()}
           onConfirm={handleDelete}
           onCancel={() => setSubDialog(null)}
@@ -325,9 +298,9 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
       {subDialog?.type === "switch-confirm" && createPortal(
         <ConfirmDialog
           title={m.profile_switch()}
-          message={m.profile_switch_confirm({ name: selected })}
+          message={m.profile_switch_confirm({ name: target })}
           confirmLabel={m.profile_switch()}
-          onConfirm={doSwitch}
+          onConfirm={() => doSwitch(target)}
           onCancel={() => setSubDialog(null)}
         />,
         document.body,
