@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { useStore } from "@nanostores/react";
 import { PatternList } from "./PatternList";
 import { AddPatternDialog } from "./AddPatternDialog";
+import { ScreenZone } from "../layout/ScreenZone";
 import { useFocusBoundary } from "../../hooks/useFocusBoundary";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import { addToast } from "../../stores/toasts";
@@ -171,10 +172,12 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
         className="flex flex-1 flex-col overflow-hidden"
       >
         {/* Controls zone */}
-        <div
+        <ScreenZone
           ref={controlsRef}
-          data-zone-id="wishlist-controls"
-          className="flex items-center gap-2 border-b border-slate-700 px-3 py-2 forced-colors:border-[ButtonText]"
+          id="wishlist-controls"
+          role="group"
+          label={m.zone_wishlist_controls()}
+          className="flex items-center gap-2 px-3 py-2"
         >
           <TabList
             aria-label={m.wishlist_section()}
@@ -200,7 +203,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
           >
             {m.add_pattern()}
           </Button>
-        </div>
+        </ScreenZone>
 
         {/* Pattern list zones */}
         <TabPanel id="wishlist" className="flex flex-1 flex-col overflow-hidden">

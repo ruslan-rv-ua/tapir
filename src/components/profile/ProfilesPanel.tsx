@@ -6,6 +6,8 @@ import { $settings } from "../../stores/settings";
 import { ProfileList, type ProfileListHandle } from "./ProfileList";
 import { ProfileNameDialog } from "./ProfileNameDialog";
 import { ConfirmDialog } from "../common/ConfirmDialog";
+import { ScreenZone } from "../layout/ScreenZone";
+import { ScreenHeader } from "../layout/ScreenHeader";
 import { useRovingFocus } from "../../hooks/useRovingFocus";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
@@ -202,36 +204,32 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
   return (
     <div className="flex flex-1 flex-col overflow-hidden" role="region" aria-label={m.profile_name()}>
       {/* ── Toolbar zone ── */}
-      <div
+      <ScreenZone
         ref={toolbarZoneRef}
-        data-zone-id="profiles-toolbar"
+        id="profiles-toolbar"
         role="application"
-        aria-label={m.zone_profiles_toolbar()}
-        className="border-b border-slate-700 forced-colors:border-[ButtonText]"
+        label={m.zone_profiles_toolbar()}
         onKeyDown={toolbarKeyDown}
       >
-        <div className="flex items-center justify-between px-4 py-3">
-          <h1 className="text-base font-semibold text-slate-100">{m.profile_name()}</h1>
-          <div className="flex items-center gap-2">
-            <button
-              ref={newBtn}
-              tabIndex={toolbarTabIndex(0)}
-              onClick={() => { setNameInput(""); setNameError(null); setSubDialog({ type: "create" }); }}
-              className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:border forced-colors:border-[ButtonText] forced-colors:bg-[ButtonFace] forced-colors:text-[ButtonText]"
-            >
-              {m.profile_create()}
-            </button>
-            <button
-              ref={importBtn}
-              tabIndex={toolbarTabIndex(1)}
-              onClick={handleImport}
-              className="rounded px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
-            >
-              {m.profile_import()}
-            </button>
-          </div>
-        </div>
-      </div>
+        <ScreenHeader title={m.profile_name()}>
+          <button
+            ref={newBtn}
+            tabIndex={toolbarTabIndex(0)}
+            onClick={() => { setNameInput(""); setNameError(null); setSubDialog({ type: "create" }); }}
+            className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:border forced-colors:border-[ButtonText] forced-colors:bg-[ButtonFace] forced-colors:text-[ButtonText]"
+          >
+            {m.profile_create()}
+          </button>
+          <button
+            ref={importBtn}
+            tabIndex={toolbarTabIndex(1)}
+            onClick={handleImport}
+            className="rounded px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
+          >
+            {m.profile_import()}
+          </button>
+        </ScreenHeader>
+      </ScreenZone>
 
       {/* ── List ── */}
       <div className="flex flex-1 flex-col overflow-hidden px-4 py-3">

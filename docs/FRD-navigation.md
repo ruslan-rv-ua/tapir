@@ -36,7 +36,7 @@
 
 На момент написання документа в репозиторії вже існують:
 
-- головне вікно з `ActivityBar`, `SectionHeader`, основною панеллю, `PlayerPanel`, `StatusBar`;
+- головне вікно з `ActivityBar`, `ScreenHeader`/`ScreenZone`, основною панеллю, `PlayerPanel`, `StatusBar`;
 - реалізовані екрани: Потоки, Браузер потоків, Wishlist/Ignorelist, Налаштування, Command Palette;
 - ще не реалізовані, але вже заплановані екрани: Збережені пісні, Розклад;
 - поточні списки на кількох екранах побудовані як `Table` з React Aria Components.
