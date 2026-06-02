@@ -129,7 +129,8 @@ src/
 ├── components/
 │   ├── layout/
 │   │   ├── ActivityBar.tsx     # Left sidebar: section icons + ⚙️ gear + profile switcher
-│   │   ├── SectionHeader.tsx   # Top: section title + command palette trigger
+│   │   ├── ScreenHeader.tsx    # Per-screen <h1> title row (+ optional actions)
+│   │   ├── ScreenZone.tsx      # Navigable zone container (id + role + a11y name)
 │   │   └── StatusBar.tsx      # Bottom: recording count, disk space, longest recording
 │   ├── streams/
 │   │   ├── StreamsPanel.tsx   # Tab panel: stream list + controls

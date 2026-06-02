@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { useStore } from "@nanostores/react";
 import { SearchForm } from "./SearchForm";
 import { StationList } from "./StationList";
+import { ScreenHeader } from "../layout/ScreenHeader";
 import {
   $searchResults, $searchLoading, $searchError,
   $popularStations, $popularLoading, $popularError,
@@ -66,9 +67,7 @@ export function BrowserPanel({ onZonesChange, exitZone }: Props) {
 
   return (
     <div role="region" aria-label={m.browser_section()} className="flex flex-1 flex-col overflow-hidden">
-      <div className="flex items-center px-4 py-3">
-        <h1 className="text-base font-semibold text-slate-100">{m.browser_section()}</h1>
-      </div>
+      <ScreenHeader title={m.browser_section()} />
       <SearchForm
         containerRef={searchContainerRef}
         exitZone={(forward) => exitZone("browser-search", forward)}

@@ -8,6 +8,8 @@ import { FreeSpaceMetric } from "./FreeSpaceMetric";
 import { StreamList } from "./StreamList";
 import { AddStreamDialog } from "./AddStreamDialog";
 import { ConfirmDialog } from "../common/ConfirmDialog";
+import { ScreenZone } from "../layout/ScreenZone";
+import { ScreenHeader } from "../layout/ScreenHeader";
 import { useRovingFocus } from "../../hooks/useRovingFocus";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
@@ -278,31 +280,26 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
           </div>
 
           {/* ── Workspace titlebar + Toolbar = streams-toolbar zone ── */}
-          {/* IMPORTANT: Both rows must live inside the zone div so mixed-boundary-handoff
+          {/* IMPORTANT: Both rows must live inside ScreenZone so mixed-boundary-handoff
               sees all 5 interactive items (indices 0–4). The heading is structural, not focusable. */}
-          <div
+          <ScreenZone
             ref={toolbarZoneRef}
-            data-zone-id="streams-toolbar"
+            id="streams-toolbar"
             role="application"
-            aria-label={m.zone_streams_actions()}
-            className="border-b border-slate-700 forced-colors:border-[ButtonText]"
+            label={m.zone_streams_actions()}
             onKeyDown={toolbarKeyDown}
           >
-            {/* Row 1: Title + Додати */}
-            <div className="flex items-center justify-between px-4 py-3">
-              <h1 className="text-base font-semibold text-slate-100">{m.streams_section()}</h1>
-              <div className="flex items-center gap-2">
-                {/* Index 0: Додати потік */}
-                <button
-                  ref={addBtn}
-                  tabIndex={toolbarTabIndex(0)}
-                  onClick={() => $showAddStreamDialog.set(true)}
-                  className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
-                >
-                  {m.add_stream()}
-                </button>
-              </div>
-            </div>
+            {/* Row 1: Title + Додати (Index 0) */}
+            <ScreenHeader title={m.streams_section()}>
+              <button
+                ref={addBtn}
+                tabIndex={toolbarTabIndex(0)}
+                onClick={() => $showAddStreamDialog.set(true)}
+                className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
+              >
+                {m.add_stream()}
+              </button>
+            </ScreenHeader>
 
             {/* Row 2: Зупинити все + Chips */}
             <div className="flex items-center gap-2 px-4 py-2">
@@ -319,7 +316,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
               <div className="mx-1 h-4 w-px bg-slate-700 forced-colors:bg-[ButtonText]" aria-hidden="true" />
 
-              {/* Indices 3–5: Filter chips — semantic group, toggle chips kept */}
+              {/* Indices 2–4: Filter chips — semantic group, toggle chips kept */}
               <div role="group" aria-label={m.streams_filter_group()} className="flex items-center gap-2">
                 {FILTER_CHIPS.map((chip, i) => {
                   const count = chip.id === "recording" ? activeCount
@@ -351,7 +348,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
                 })}
               </div>
             </div>
-          </div>
+          </ScreenZone>
 
           {/* Content pad wrapper */}
           <div className="flex flex-1 flex-col overflow-hidden px-4 py-3">

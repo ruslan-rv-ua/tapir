@@ -9,6 +9,7 @@ import {
   resetSearch,
 } from "../../stores/browser";
 import { useFocusBoundary } from "../../hooks/useFocusBoundary";
+import { ScreenZone } from "../layout/ScreenZone";
 import type { SearchParams } from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 
@@ -68,7 +69,7 @@ export function SearchForm({ containerRef, exitZone }: SearchFormProps = {}) {
   }, []);
 
   return (
-    <div ref={effectiveRef} data-zone-id="browser-search" role="search" aria-label={m.zone_browser_search()} className="flex flex-wrap items-end gap-3 border-b border-slate-700 px-4 py-3 forced-colors:border-[ButtonText]">
+    <ScreenZone ref={effectiveRef} id="browser-search" role="search" label={m.zone_browser_search()} className="flex flex-wrap items-end gap-3 px-4 py-3">
       <SearchField
         aria-label={m.browser_search_placeholder()}
         value={params.query ?? ""}
@@ -169,6 +170,6 @@ export function SearchForm({ containerRef, exitZone }: SearchFormProps = {}) {
           </NumberField>
         </>
       )}
-    </div>
+    </ScreenZone>
   );
 }
