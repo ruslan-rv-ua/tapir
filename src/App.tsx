@@ -7,7 +7,7 @@ import { ToastContainer } from "./components/common/ToastContainer";
 import { CommandPalette } from "./components/common/CommandPalette";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import { SettingsDialog } from "./components/settings/SettingsDialog";
-import { ProfileManager } from "./components/profile/ProfileManager";
+import { ProfilesPanel } from "./components/profile/ProfilesPanel";
 import { StreamsPanel } from "./components/streams/StreamsPanel";
 import { WishlistPanel } from "./components/wishlist/WishlistPanel";
 import { BrowserPanel } from "./components/browser/BrowserPanel";
@@ -301,6 +301,7 @@ function AppContent() {
         {activeSection === "wishlist" && <WishlistPanel onZonesChange={onZonesChange} exitZone={exitZone} />}
         {activeSection === "browser" && <BrowserPanel onZonesChange={onZonesChange} exitZone={exitZone} />}
         {activeSection === "songs" && <SongsPanel onZonesChange={onZonesChange} exitZone={exitZone} />}
+        {activeSection === "profiles" && <ProfilesPanel onZonesChange={onZonesChange} exitZone={exitZone} />}
         <PlayerPanel ref={playerZoneRef} exitZone={(forward: boolean) => exitZone("player", forward)} />
         <StatusBar ref={statusBarZoneRef} exitZone={(forward: boolean) => exitZone("status-bar", forward)} />
       </main>
@@ -314,7 +315,6 @@ function App() {
       <AppContent />
       <CommandPalette />
       <SettingsDialog />
-      <ProfileManager />
       <LiveAnnouncer />
       <ToastContainer />
     </ErrorBoundary>
