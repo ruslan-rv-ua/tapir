@@ -276,6 +276,7 @@
   "errors_count_few": "{count} errors",
   "errors_count_many": "{count} errors",
   "zone_streams_toolbar": "Search and filters",
+  "zone_profiles_toolbar": "Profile actions",
   "streams_search_label": "Search streams or URL",
   "filter_all": "All",
   "filter_recording": "Recording",

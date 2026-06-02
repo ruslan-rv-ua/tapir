@@ -276,6 +276,7 @@
   "errors_count_few": "{count} збої",
   "errors_count_many": "{count} збоїв",
   "zone_streams_toolbar": "Пошук і фільтри",
+  "zone_profiles_toolbar": "Дії з профілями",
   "streams_search_label": "Пошук потоків або URL",
   "filter_all": "Усі",
   "filter_recording": "Записуються",
