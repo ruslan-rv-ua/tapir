@@ -2,34 +2,31 @@
 
 ## Project State
 
-Active development — **Phase 3** (System Tray + Stream Browser + Manager + Scheduler).
+Active development — **Phase 3F** (Profile Manager).
 Breaking changes are expected at any time — no migrations, no backward-compatibility guarantees.
 See [docs/implementation-phases.md](docs/implementation-phases.md) for the full roadmap.
 
 | Фаза | Статус | Гілка |
 |------|--------|-------|
 | Phase 1 — Core Recording | ✅ Complete | `feature/refine-phase-1` |
-| Phase 2A — Player subsystem | ✅ Complete | `feature/phase-2` (not yet merged) |
+| Phase 2A — Player subsystem | ✅ Complete | `feature/phase-2` |
 | Phase 2B — Wishlist + Ignorelist + Context Menu | ✅ Complete | `feature/phase-2b` |
 | Phase 2C — SettingsDialog + Shortcuts | ✅ Complete | `feature/phase-2c` |
-| Phase 3A — System Tray | ⬜ Not started | — |
+| Phase 3A — System Tray | ✅ Complete | merged to `develop` |
 | Phase 3B — Stream Browser | ✅ Complete | `feature/phase-3b` |
-| Phase 3C — Saved Songs Manager | ⬜ Not started | — |
+| Phase 3C — Saved Songs Manager | ✅ Complete | merged to `develop` |
 | Phase 3D — Scheduler | ⬜ Not started | — |
-| Phase 3E–3I — Single Instance, Profiles, CLI, Post-processing, Polish | ⬜ Not started | — |
+| Phase 3E — Single Instance | ⬜ Not started | — |
+| Phase 3F — Profile Manager | 🔄 In progress | `feature/pahse-3F-profiles` |
+| Phase 3G — CLI Arguments | ⬜ Not started | — |
+| Phase 3H — Post-processing | ⬜ Not started | — |
+| Phase 3I — Polish Bundle | ⬜ Not started | — |
 
-**Phase 2C SettingsDialog — що реалізовано:**
-- SettingsDialog — модальний діалог з 5 табами (React Aria Tabs)
-- GeneralTab — мова, тема, чекбокси, подвійний клік, поріг диску
-- RecordingTab — папка записів, шаблони імен, чекбокси, мін. тривалість треку
-- ReconnectionTab — 4 NumberField для конфігурації перепідключення
-- HotkeysTab — 5 глобальних хоткеїв з KeyRecorder + валідація дублікатів
-- AudioTab — вибір пристрою виведення (list_output_devices + set_output_device)
-- useAutoSave — debounce 300ms + flush on unmount + toast при помилках
-- `shortcuts.rs` — реєстрація глобальних хоткеїв через tauri-plugin-global-shortcut
-- `tauri-plugin-window-state` — збереження позиції/розміру вікна
-- Ctrl+, для відкриття налаштувань, кнопка ⚙️ в ActivityBar
-- 52+ i18n ключів (uk + en)
+**Phase 3F Profile Manager — поточна робота:**
+- ADR прийнято: менеджер профілів стає **екраном** (не модалкою). Див. [docs/decisions/2026-06-02-profiles-as-screen.md](docs/decisions/2026-06-02-profiles-as-screen.md).
+- Spec і план: [docs/superpowers/plans/2026-06-01-phase-3f-profile-manager.md](docs/superpowers/plans/2026-06-01-phase-3f-profile-manager.md)
+- Backend: `profile.rs` CRUD + `commands/profile_commands.rs` IPC
+- Frontend: `ProfilesPanel` як окрема секція в ActivityBar (поряд з Streams/Browser/Songs тощо)
 
 ## Developer Context
 
@@ -83,9 +80,4 @@ All project documentation lives in `docs/`. Key files:
 - [implementation-phases.md](docs/implementation-phases.md) — roadmap і scope кожної фази
 
 **Manual testing** (`docs/testing/`):
-- [manual-testing-phase1.md](docs/testing/manual-testing-phase1.md) — чекліст для Phase 1
-- [manual-testing-phase2-player.md](docs/testing/manual-testing-phase2-player.md) — чекліст для Phase 2 Player
 - [test-streams.md](docs/testing/test-streams.md) — тестові URL радіо-потоків
-
-**Research** (`docs/research/`):
-- [research-tapir-post-v1-roadmap.md](docs/research/research-tapir-post-v1-roadmap.md) — дослідження для планування фаз
