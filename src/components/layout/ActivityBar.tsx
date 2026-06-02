@@ -44,11 +44,11 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
   const settingsRef = useRef<HTMLButtonElement | null>(null);
   const sectionRefs = useMemo(() => [ref0, ref1, ref2, ref3, ref4], []);
   const allRefs = useMemo(
-    () => [profileRef, ref0, ref1, ref2, ref3, ref4, settingsRef],
+    () => [profileRef, ...sectionRefs, settingsRef],
     [sectionRefs],
   );
 
-  const { onKeyDown, getTabIndex, restoreFocus, moveTo } = useRovingFocus(
+  const { onKeyDown, getTabIndex, moveTo } = useRovingFocus(
     allRefs,
     "both",
     { mode: "composite-exit", onTabOut: exitZone },
@@ -58,17 +58,15 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
   // sections offset by +1, Settings is footer-only and never the launch anchor).
   const activeNavIndex = useMemo(() => {
     if (activeSection === "profiles") return 0;
-    const si = SECTIONS.findIndex((s) => s.id === activeSection);
+    const si = SECTIONS.findIndex((s) => s.id === activeSection && !s.disabled);
     return si >= 0 ? si + 1 : 1;
   }, [activeSection]);
 
   useImperativeHandle(ref, () => ({
     id: "activity-bar",
     get el() { return navRef.current!; },
-    focus: () => moveTo(activeNavIndex),
+    focus: (_direction) => moveTo(activeNavIndex),
   }), [moveTo, activeNavIndex]);
-
-  void restoreFocus; // superseded by active-section launch focus
 
   return (
     <nav
