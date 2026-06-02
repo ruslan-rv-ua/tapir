@@ -54,8 +54,9 @@ All data (settings, profiles, recordings) is stored in a `data\` subfolder next 
 
 ## Recording a Stream
 
-1. Press **Ctrl+N** or use the *Add Stream* button to add a radio station URL
-2. Select the stream in the list and press **Space** or **Enter** to start recording
+1. Open the **Streams** section
+2. Use the *Add Stream* button to add a radio station URL
+3. Select the stream in the list and press **Space** or **Enter** to start recording
 3. Recorded files appear in `data\recordings\<Station Name>\` by default
 
 Track splits happen automatically whenever the stream metadata changes — each song becomes a separate file with artist/title tags.
@@ -64,17 +65,28 @@ Track splits happen automatically whenever the stream metadata changes — each 
 
 ## Keyboard Navigation
 
-Tapir is fully keyboard-operable. Key shortcuts:
+Tapir is fully keyboard-operable.
+
+**In-app shortcuts:**
 
 | Action | Shortcut |
 |--------|----------|
-| Add stream | Ctrl+N |
-| Start / stop recording | Space (on selected stream) |
+| Activate focused item (start/stop recording, play, etc.) | Space or Enter |
 | Open settings | Ctrl+, |
 | Command palette | Ctrl+K |
-| Navigate sections | Tab / Shift+Tab |
+| Move between UI zones (Activity Bar ↔ Content) | Tab / Shift+Tab |
+| Navigate between sections in Activity Bar | ↑ / ↓ arrows |
+| Close a dialog | Escape |
 
-Global hotkeys are configurable in Settings → Hotkeys.
+**Global hotkeys** (active system-wide, configurable in Settings → Hotkeys):
+
+| Action | Default |
+|--------|---------|
+| Toggle recording (selected stream) | Ctrl+Shift+R |
+| Toggle playback | Ctrl+Shift+P |
+| Volume up | Ctrl+Shift+↑ |
+| Volume down | Ctrl+Shift+↓ |
+| Show / hide window | Ctrl+Shift+H |
 
 ---
 
