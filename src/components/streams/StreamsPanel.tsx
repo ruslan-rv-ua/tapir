@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { createPortal } from "react-dom";
 import { $streams, $statuses, $showAddStreamDialog, $streamFilter, type StreamFilter } from "../../stores/streams";
-import { $commandPaletteOpen } from "../../stores/navigation";
 import { $settings } from "../../stores/settings";
 import { $freeSpace } from "../../stores/system";
 import { FreeSpaceMetric } from "./FreeSpaceMetric";
@@ -132,7 +131,6 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
   // ── Toolbar zone refs (6 items) ──────────────────────────
   const toolbarZoneRef = useRef<HTMLDivElement | null>(null);
-  const cmdBtn     = useRef<HTMLButtonElement | null>(null);
   const addBtn     = useRef<HTMLButtonElement | null>(null);
   const stopAllBtn = useRef<HTMLButtonElement | null>(null);
   const chip0Ref   = useRef<HTMLButtonElement | null>(null);
@@ -140,7 +138,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const chip2Ref   = useRef<HTMLButtonElement | null>(null);
   const chipRefs = useMemo(() => [chip0Ref, chip1Ref, chip2Ref], []);
   const toolbarRefs = useMemo(
-    () => [cmdBtn, addBtn, stopAllBtn, chip0Ref, chip1Ref, chip2Ref],
+    () => [addBtn, stopAllBtn, chip0Ref, chip1Ref, chip2Ref],
     [],
   );
 
@@ -161,9 +159,8 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
   // ── Empty-state zone ─────────────────────────────────────
   const emptyZoneRef      = useRef<HTMLDivElement | null>(null);
-  const emptyPaletteBtnRef = useRef<HTMLButtonElement | null>(null);
   const emptyCtaRef       = useRef<HTMLButtonElement | null>(null);
-  const emptyBtns = useMemo(() => [emptyPaletteBtnRef, emptyCtaRef], []);
+  const emptyBtns = useMemo(() => [emptyCtaRef], []);
   const { onKeyDown: emptyKeyDown, getTabIndex: emptyTabIndex } =
     useRovingFocus(emptyBtns, "horizontal", {
       mode: "composite-exit",
@@ -185,10 +182,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
       const emptyZone: ZoneEntry = {
         id: "streams-empty",
         get el() { return emptyZoneRef.current!; },
-        focus: (dir) => {
-          if (dir === "forward") emptyCtaRef.current?.focus();
-          else (emptyPaletteBtnRef.current ?? emptyCtaRef.current)?.focus();
-        },
+        focus: () => emptyCtaRef.current?.focus(),
       };
       onZonesChange([emptyZone]);
     } else {
@@ -237,17 +231,8 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
         >
           <span id={emptyDescId} className="sr-only">{m.streams_empty_description()}</span>
           <button
-            ref={emptyPaletteBtnRef}
-            tabIndex={emptyTabIndex(0)}
-            aria-label={m.command_palette_label()}
-            onClick={() => $commandPaletteOpen.set(true)}
-            className="rounded px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
-          >
-            {m.command_palette_label()}
-          </button>
-          <button
             ref={emptyCtaRef}
-            tabIndex={emptyTabIndex(1)}
+            tabIndex={emptyTabIndex(0)}
             aria-describedby={emptyDescId}
             onClick={() => $showAddStreamDialog.set(true)}
             className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
@@ -294,33 +279,23 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
           {/* ── Workspace titlebar + Toolbar = streams-toolbar zone ── */}
           {/* IMPORTANT: Both rows must live inside the zone div so mixed-boundary-handoff
-              sees all 7 interactive items (indices 0–6). The heading is structural, not focusable. */}
+              sees all 5 interactive items (indices 0–4). The heading is structural, not focusable. */}
           <div
             ref={toolbarZoneRef}
             data-zone-id="streams-toolbar"
             role="application"
-            aria-label={m.zone_streams_toolbar()}
+            aria-label={m.zone_streams_actions()}
             className="border-b border-slate-700 forced-colors:border-[ButtonText]"
             onKeyDown={toolbarKeyDown}
           >
-            {/* Row 1: Title + Команди + Додати */}
+            {/* Row 1: Title + Додати */}
             <div className="flex items-center justify-between px-4 py-3">
               <h1 className="text-base font-semibold text-slate-100">{m.streams_section()}</h1>
               <div className="flex items-center gap-2">
-                {/* Index 0: Команди */}
-                <button
-                  ref={cmdBtn}
-                  tabIndex={toolbarTabIndex(0)}
-                  aria-label={m.command_palette_label()}
-                  onClick={() => $commandPaletteOpen.set(true)}
-                  className="rounded px-2 py-1 text-xs text-slate-400 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
-                >
-                  {m.commands_label()}
-                </button>
-                {/* Index 1: Додати потік */}
+                {/* Index 0: Додати потік */}
                 <button
                   ref={addBtn}
-                  tabIndex={toolbarTabIndex(1)}
+                  tabIndex={toolbarTabIndex(0)}
                   onClick={() => $showAddStreamDialog.set(true)}
                   className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
                 >
@@ -331,10 +306,10 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
             {/* Row 2: Зупинити все + Chips */}
             <div className="flex items-center gap-2 px-4 py-2">
-              {/* Index 2: Зупинити все */}
+              {/* Index 1: Зупинити все */}
               <button
                 ref={stopAllBtn}
-                tabIndex={toolbarTabIndex(2)}
+                tabIndex={toolbarTabIndex(1)}
                 onClick={handleStopAll}
                 disabled={activeCount === 0}
                 className="rounded px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
@@ -354,7 +329,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
                     <button
                       key={chip.id}
                       ref={chipRefs[i]}
-                      tabIndex={toolbarTabIndex(3 + i)}
+                      tabIndex={toolbarTabIndex(2 + i)}
                       aria-pressed={activeChip === chip.id}
                       aria-label={m.streams_filter_chip_count({ label: chip.labelFn(), count })}
                       onClick={() => handleChipClick(chip.id)}

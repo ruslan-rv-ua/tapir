@@ -7,7 +7,6 @@ import { AddPatternDialog } from "./AddPatternDialog";
 import { useFocusBoundary } from "../../hooks/useFocusBoundary";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import { addToast } from "../../stores/toasts";
-import { $commandPaletteOpen } from "../../stores/navigation";
 import { $wishlist, $ignorelist } from "../../stores/wishlist";
 import * as tauri from "../../lib/tauri";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
@@ -177,13 +176,6 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
           data-zone-id="wishlist-controls"
           className="flex items-center gap-2 border-b border-slate-700 px-3 py-2 forced-colors:border-[ButtonText]"
         >
-          <button
-            onClick={() => $commandPaletteOpen.set(true)}
-            aria-label={m.command_palette_label()}
-            className="rounded px-2 py-1 text-xs text-slate-400 hover:bg-slate-700 hover:text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
-          >
-            &gt;_
-          </button>
           <TabList
             aria-label={m.wishlist_section()}
             className="flex flex-1 gap-1"

@@ -131,11 +131,13 @@ function AppContent() {
   // Ctrl+K and Ctrl+, keyboard handlers
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+      // Use e.code (physical key) not e.key — e.key === "k" never matches on a
+      // Cyrillic layout (physical K yields "л"), per docs/accessibility.md §6.5.
+      if ((e.ctrlKey || e.metaKey) && e.code === "KeyK") {
         e.preventDefault();
         $commandPaletteOpen.set(!$commandPaletteOpen.get());
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === ",") {
+      if ((e.ctrlKey || e.metaKey) && e.code === "Comma") {
         e.preventDefault();
         $settingsDialogOpen.set(!$settingsDialogOpen.get());
       }

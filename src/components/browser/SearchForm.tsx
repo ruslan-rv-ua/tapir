@@ -8,7 +8,6 @@ import {
   updateSearchParam,
   resetSearch,
 } from "../../stores/browser";
-import { $commandPaletteOpen } from "../../stores/navigation";
 import { useFocusBoundary } from "../../hooks/useFocusBoundary";
 import type { SearchParams } from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
@@ -69,15 +68,7 @@ export function SearchForm({ containerRef, exitZone }: SearchFormProps = {}) {
   }, []);
 
   return (
-    <div ref={effectiveRef} data-zone-id="browser-search" className="flex flex-wrap items-end gap-3 border-b border-slate-700 px-4 py-3 forced-colors:border-[ButtonText]">
-      {/* Command Palette trigger — must be first tabbable so FRD §7.4.2 is satisfied */}
-      <button
-        onClick={() => $commandPaletteOpen.set(true)}
-        aria-label={m.command_palette_label()}
-        className="rounded px-2 py-1 text-xs text-slate-400 hover:bg-slate-700 hover:text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
-      >
-        &gt;_
-      </button>
+    <div ref={effectiveRef} data-zone-id="browser-search" role="search" aria-label={m.zone_browser_search()} className="flex flex-wrap items-end gap-3 border-b border-slate-700 px-4 py-3 forced-colors:border-[ButtonText]">
       <SearchField
         aria-label={m.browser_search_placeholder()}
         value={params.query ?? ""}

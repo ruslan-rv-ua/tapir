@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Zone_Browser_SearchInputs */
 
 const uk_zone_browser_search = /** @type {(inputs: Zone_Browser_SearchInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Пошук`)
+	return /** @type {LocalizedString} */ (`Пошук і фільтри`)
 };
 
 const en_zone_browser_search = /** @type {(inputs: Zone_Browser_SearchInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Search`)
+	return /** @type {LocalizedString} */ (`Search and filters`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Search" |
+* | "Search and filters" |
 *
 * @param {Zone_Browser_SearchInputs} inputs
 * @param {{ locale?: "uk" | "en" }} options

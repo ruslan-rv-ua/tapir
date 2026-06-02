@@ -3,7 +3,6 @@ import { useStore } from "@nanostores/react";
 import { createPortal } from "react-dom";
 import { $profileList } from "../../stores/profileManager";
 import { $settings } from "../../stores/settings";
-import { $commandPaletteOpen } from "../../stores/navigation";
 import { ProfileList, type ProfileListHandle } from "./ProfileList";
 import { ProfileNameDialog } from "./ProfileNameDialog";
 import { ConfirmDialog } from "../common/ConfirmDialog";
@@ -171,10 +170,9 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
 
   // ── Toolbar zone (3 items) ──
   const toolbarZoneRef = useRef<HTMLDivElement | null>(null);
-  const cmdBtn = useRef<HTMLButtonElement | null>(null);
   const newBtn = useRef<HTMLButtonElement | null>(null);
   const importBtn = useRef<HTMLButtonElement | null>(null);
-  const toolbarRefs = useMemo(() => [cmdBtn, newBtn, importBtn], []);
+  const toolbarRefs = useMemo(() => [newBtn, importBtn], []);
   const {
     onKeyDown: toolbarKeyDown,
     getTabIndex: toolbarTabIndex,
@@ -216,17 +214,8 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
           <h1 className="text-base font-semibold text-slate-100">{m.profile_name()}</h1>
           <div className="flex items-center gap-2">
             <button
-              ref={cmdBtn}
-              tabIndex={toolbarTabIndex(0)}
-              aria-label={m.command_palette_label()}
-              onClick={() => $commandPaletteOpen.set(true)}
-              className="rounded px-2 py-1 text-xs text-slate-400 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
-            >
-              {m.commands_label()}
-            </button>
-            <button
               ref={newBtn}
-              tabIndex={toolbarTabIndex(1)}
+              tabIndex={toolbarTabIndex(0)}
               onClick={() => { setNameInput(""); setNameError(null); setSubDialog({ type: "create" }); }}
               className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:border forced-colors:border-[ButtonText] forced-colors:bg-[ButtonFace] forced-colors:text-[ButtonText]"
             >
@@ -234,7 +223,7 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
             </button>
             <button
               ref={importBtn}
-              tabIndex={toolbarTabIndex(2)}
+              tabIndex={toolbarTabIndex(1)}
               onClick={handleImport}
               className="rounded px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
             >

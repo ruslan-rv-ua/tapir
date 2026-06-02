@@ -66,6 +66,9 @@ export function BrowserPanel({ onZonesChange, exitZone }: Props) {
 
   return (
     <div role="region" aria-label={m.browser_section()} className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex items-center px-4 py-3">
+        <h1 className="text-base font-semibold text-slate-100">{m.browser_section()}</h1>
+      </div>
       <SearchForm
         containerRef={searchContainerRef}
         exitZone={(forward) => exitZone("browser-search", forward)}
