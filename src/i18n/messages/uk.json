@@ -337,5 +337,16 @@
   "profile_group_file": "Файл",
   "profile_exported_announcement": "Профіль експортовано: {name}",
   "profile_active_badge": "активний",
-  "profile_actions_label": "Дії профілю"
+  "profile_actions_label": "Дії профілю",
+  "zone_profiles_list": "Список профілів",
+  "item_role_profile": "профіль",
+  "profile_already_active": "Профіль уже активний",
+  "profile_actions": "Дії для {name}",
+  "profile_context_menu": "Контекстне меню профілю",
+  "profile_row_actions": "Дії для профілю {name}",
+  "profile_switch_named": "Перемкнутися на {name}",
+  "profile_duplicate_named": "Дублювати {name}",
+  "profile_rename_named": "Перейменувати {name}",
+  "profile_delete_named": "Видалити {name}",
+  "profile_export_named": "Експортувати {name}"
 }

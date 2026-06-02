@@ -2,7 +2,7 @@
 
 > Auto-generated i18n message functions. Import `messages.js` to use translated strings.
 
-Compiled from: `./project.inlang`
+Compiled from: `C:\dev\Tapir\project.inlang`
 
 
 ## What is this folder?

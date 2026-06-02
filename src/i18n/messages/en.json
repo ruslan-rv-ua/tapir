@@ -337,5 +337,16 @@
   "profile_group_file": "File",
   "profile_exported_announcement": "Profile exported: {name}",
   "profile_active_badge": "active",
-  "profile_actions_label": "Profile actions"
+  "profile_actions_label": "Profile actions",
+  "zone_profiles_list": "Profiles list",
+  "item_role_profile": "profile",
+  "profile_already_active": "Profile is already active",
+  "profile_actions": "Actions for {name}",
+  "profile_context_menu": "Profile context menu",
+  "profile_row_actions": "Actions for profile {name}",
+  "profile_switch_named": "Switch to {name}",
+  "profile_duplicate_named": "Duplicate {name}",
+  "profile_rename_named": "Rename {name}",
+  "profile_delete_named": "Delete {name}",
+  "profile_export_named": "Export {name}"
 }
