@@ -78,9 +78,7 @@ export function ProfileItem({
       tabIndex={isFocused("summary") ? 0 : -1}
       aria-label={rowLabel}
       aria-roledescription={m.item_role_profile()}
-      className={`flex items-center gap-2 border-b border-slate-800 px-3 py-2 forced-colors:border-[ButtonText] ${
-        isActive ? "border-l-2 border-l-sky-500 forced-colors:border-l-[Highlight]" : "border-l-2 border-l-transparent"
-      } ${isActiveRow ? "bg-slate-800/60" : ""}`}
+      className={`flex items-center gap-2 border-b border-slate-800 px-3 py-2 forced-colors:border-[ButtonText] ${isActiveRow ? "bg-slate-800/60" : ""}`}
     >
       <span aria-hidden="true" className="flex h-4 w-4 shrink-0 items-center justify-center">
         {isActive ? <CheckCircle size={14} className="text-sky-400 forced-colors:text-[Highlight]" /> : null}

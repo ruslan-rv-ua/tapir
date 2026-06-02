@@ -67,7 +67,7 @@ export const ProfileList = forwardRef<ProfileListHandle, Props>(function Profile
       data-zone-id="profiles-list"
       aria-label={m.zone_profiles_list()}
       role="application"
-      className="flex-1 overflow-y-auto overflow-x-hidden"
+      className="flex-1 overflow-y-auto overflow-x-hidden pt-1"
       onKeyDownCapture={onKeyDownCapture}
     >
       {profiles.map((p) => (
