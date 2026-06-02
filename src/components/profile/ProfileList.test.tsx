@@ -1,17 +1,27 @@
-import { describe, it, expect, vi } from "vitest";
 import { createRef } from "react";
-import { render } from "@testing-library/react";
-import { ProfileList } from "./ProfileList";
-import type { ProfileListHandle } from "./ProfileList";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, fireEvent, act } from "@testing-library/react";
 import type { ProfileMeta } from "../../lib/tauri";
+import { ProfileList, type ProfileListHandle } from "./ProfileList";
 
-vi.mock("../../i18n/paraglide/runtime", () => ({
-  getLocale: () => "uk",
-}));
-
+vi.mock("../../i18n/paraglide/runtime", () => ({ getLocale: () => "uk" }));
 vi.mock("../../i18n/paraglide/messages", () => ({
-  profile_list_label: () => "Profiles",
-  profile_active_badge: () => "active",
+  zone_profiles_list: () => "Список профілів",
+  item_role_profile: () => "профіль",
+  profile_active_badge: () => "активний",
+  profile_row_actions: ({ name }: { name: string }) => `Дії для профілю ${name}`,
+  profile_actions: ({ name }: { name: string }) => `Дії для ${name}`,
+  profile_context_menu: () => "Контекстне меню профілю",
+  profile_switch: () => "Перемкнутися",
+  profile_duplicate: () => "Дублювати",
+  profile_rename: () => "Перейменувати",
+  profile_delete: () => "Видалити",
+  profile_export: () => "Експортувати",
+  profile_switch_named: ({ name }: { name: string }) => `Перемкнутися на ${name}`,
+  profile_duplicate_named: ({ name }: { name: string }) => `Дублювати ${name}`,
+  profile_rename_named: ({ name }: { name: string }) => `Перейменувати ${name}`,
+  profile_delete_named: ({ name }: { name: string }) => `Видалити ${name}`,
+  profile_export_named: ({ name }: { name: string }) => `Експортувати ${name}`,
   profile_stream_count_one: ({ count }: { count: number }) => `${count} потік`,
   profile_stream_count_few: ({ count }: { count: number }) => `${count} потоки`,
   profile_stream_count_many: ({ count }: { count: number }) => `${count} потоків`,
@@ -21,72 +31,86 @@ vi.mock("../../i18n/paraglide/messages", () => ({
 const profiles: ProfileMeta[] = [
   { name: "Default", streamCount: 2, isActive: true },
   { name: "Jazz", streamCount: 5, isActive: false },
+  { name: "Rock", streamCount: 3, isActive: false },
 ];
 
-describe("ProfileList", () => {
-  it("renders all profiles as list options", () => {
-    const { getAllByRole } = render(
-      <ProfileList
-        profiles={profiles}
-        selected="Default"
-        onSelect={() => {}}
-      />
-    );
-    const options = getAllByRole("option");
-    expect(options).toHaveLength(2);
+function renderList(activeProfile = "Default", handlers = {}) {
+  const ref = createRef<ProfileListHandle>();
+  const h = {
+    onSwitch: vi.fn(), onDuplicate: vi.fn(), onRename: vi.fn(),
+    onDelete: vi.fn(), onExport: vi.fn(), exitZone: vi.fn(), ...handlers,
+  };
+  const utils = render(
+    <ProfileList ref={ref} profiles={profiles} activeProfile={activeProfile} {...h} />,
+  );
+  return { ref, ...h, ...utils };
+}
+
+const activeAttrs = () => ({
+  id: document.activeElement?.getAttribute("data-item-id") ?? null,
+  seg: document.activeElement?.getAttribute("data-segment") ?? null,
+});
+
+beforeEach(() => vi.clearAllMocks());
+
+describe("ProfileList — composite navigation", () => {
+  it("renders one row per profile, each described as a profile", () => {
+    const { container } = renderList();
+    const rows = container.querySelectorAll('li[data-segment="summary"]');
+    expect(rows).toHaveLength(3);
+    rows.forEach((li) => expect(li.getAttribute("aria-roledescription")).toBe("профіль"));
   });
 
-  it("marks the selected profile as selected", () => {
-    const { getAllByRole } = render(
-      <ProfileList profiles={profiles} selected="Default" onSelect={() => {}} />
-    );
-    const options = getAllByRole("option");
-    expect(options[0]).toHaveAttribute("aria-selected", "true");
-    expect(options[1]).toHaveAttribute("aria-selected", "false");
+  it("exposes the list as an application region", () => {
+    const { container } = renderList();
+    const ul = container.querySelector("ul")!;
+    expect(ul.getAttribute("role")).toBe("application");
+    expect(ul.getAttribute("data-zone-id")).toBe("profiles-list");
+    expect(ul.getAttribute("aria-label")).toBe("Список профілів");
   });
 
-  it("marks only one item when profile names share a prefix (Default vs Default1)", () => {
-    const prefixProfiles: ProfileMeta[] = [
-      { name: "Default", streamCount: 10, isActive: true },
-      { name: "Default1", streamCount: 10, isActive: false },
-    ];
-    const { getAllByRole } = render(
-      <ProfileList profiles={prefixProfiles} selected="Default" onSelect={() => {}} />
-    );
-    const options = getAllByRole("option");
-    expect(options[0]).toHaveAttribute("aria-selected", "true");
-    expect(options[1]).toHaveAttribute("aria-selected", "false");
+  it("focuses the first row on entry; ArrowDown moves to the next row", () => {
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward"));
+    expect(activeAttrs()).toEqual({ id: "Default", seg: "summary" });
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+    expect(activeAttrs()).toEqual({ id: "Jazz", seg: "summary" });
   });
 
-  it("renders an 'active' pill only for the active profile", () => {
-    const { getAllByText, getByText } = render(
-      <ProfileList profiles={profiles} selected="Default" onSelect={() => {}} />
-    );
-    expect(getAllByText("active")).toHaveLength(1);
-    expect(getByText("active")).toBeInTheDocument();
+  it("Right drills into enabled segments, skipping disabled actions on the active row", () => {
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward")); // Default (active) summary
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowRight" });
+    // Default is active → no switch; first stop is duplicate.
+    expect(activeAttrs()).toEqual({ id: "Default", seg: "action-duplicate" });
   });
 
-  it("exposes focusSelected() that focuses the selected option", () => {
-    const ref = createRef<ProfileListHandle>();
-    const { getByRole } = render(
-      <ProfileList ref={ref} profiles={profiles} selected="Jazz" onSelect={() => {}} />
-    );
-    ref.current!.focusSelected();
-    const jazz = getByRole("option", { name: /Jazz/ });
-    expect(document.activeElement).toBe(jazz);
+  it("Enter on a row summary triggers onSwitch with the row name", () => {
+    const { ref, onSwitch } = renderList();
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" }); // Jazz
+    fireEvent.keyDown(document.activeElement!, { key: "Enter" });
+    expect(onSwitch).toHaveBeenCalledWith("Jazz");
   });
 
-  it("pluralizes the stream count for Ukrainian (1/3/5)", () => {
-    const ukProfiles: ProfileMeta[] = [
-      { name: "A", streamCount: 1, isActive: false },
-      { name: "B", streamCount: 3, isActive: false },
-      { name: "C", streamCount: 5, isActive: false },
-    ];
-    const { getByText } = render(
-      <ProfileList profiles={ukProfiles} selected="A" onSelect={() => {}} />
-    );
-    expect(getByText("1 потік")).toBeInTheDocument();
-    expect(getByText("3 потоки")).toBeInTheDocument();
-    expect(getByText("5 потоків")).toBeInTheDocument();
+  it("Delete key triggers onDelete with the row name", () => {
+    const { ref, onDelete } = renderList();
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" }); // Jazz
+    fireEvent.keyDown(document.activeElement!, { key: "Delete" });
+    expect(onDelete).toHaveBeenCalledWith("Jazz");
+  });
+
+  it("Tab exits the zone forward", () => {
+    const { ref, exitZone } = renderList();
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: "Tab" });
+    expect(exitZone).toHaveBeenCalledWith(true);
+  });
+
+  it("focusProfile(name) moves focus to that row's summary", () => {
+    const { ref } = renderList();
+    act(() => ref.current!.focusProfile("Rock"));
+    expect(activeAttrs()).toEqual({ id: "Rock", seg: "summary" });
   });
 });
