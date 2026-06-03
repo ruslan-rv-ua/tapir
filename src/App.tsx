@@ -285,7 +285,8 @@ function AppContent() {
   useTauriEvent<TrackChangedPayload>("track-changed", handleTrackChanged);
   useTauriEvent<StreamErrorPayload>("stream-error", handleStreamError);
   useTauriEvent<StreamInfo>("stream-info-updated", handleStreamInfoUpdated);
-  useTauriEvent<RecordingStartedPayload>("recording-started", () => {});
+  const handleRecordingStarted = useCallback(() => {}, []);
+  useTauriEvent<RecordingStartedPayload>("recording-started", handleRecordingStarted);
   useTauriEvent<RecordingCompletedPayload>("recording-completed", handleRecordingCompleted);
   useTauriEvent<PlayerStatus>("player-status", handlePlayerStatus);
   useTauriEvent<PlayerProgressPayload>("player-progress", handlePlayerProgress);
