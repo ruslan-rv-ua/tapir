@@ -247,7 +247,7 @@
   "zone_status": "Status",
   "segment_track": "Track",
   "segment_track_last": "Last played: {track}",
-  "segment_tech": "Technical info",
+  "segment_tech": "bitrate",
   "segment_status_duration": "Recording duration",
   "segment_playing": "Playing",
   "segment_actions": "Actions",
