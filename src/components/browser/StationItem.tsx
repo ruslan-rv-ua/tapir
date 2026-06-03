@@ -1,5 +1,14 @@
+import type { ReactNode } from "react";
+import { useStore } from "@nanostores/react";
+import { Play, Square, Plus, Check, TriangleAlert, Globe, Languages, Music, Signal, Tag, Headphones } from "lucide-react";
 import type { StationResult } from "../../lib/tauri";
 import type { SegmentKind } from "../../hooks/useCompositeList";
+import { CompositeRow, CompositeSegment, CompositeAction, COMPOSITE_FOCUS_RING } from "../common/composite-list";
+import { $playerStatus } from "../../stores/player";
+import { previewStation, stopPlayback } from "../../lib/tauri";
+import { addToast } from "../../stores/toasts";
+import { useAnnounce } from "../../hooks/useAnnounce";
+import * as m from "../../i18n/paraglide/messages";
 
 /**
  * Left/Right focus-stop order for a station row (Layout A: one stop per value).
@@ -16,4 +25,163 @@ export function getStationSegments(station: StationResult): Exclude<SegmentKind,
   if (station.clickcount) segments.push("popularity"); // 0 = unknown from API
   segments.push("action-play", "action-add");
   return segments;
+}
+
+interface StationItemProps {
+  station: StationResult;
+  isFocused: (segment: SegmentKind) => boolean;
+  isActiveRow: boolean;
+  isAdded: boolean;
+  /** lastcheckok === 0 OR a preview attempt has failed this session. */
+  isUnavailable: boolean;
+  onAdd: () => void;
+  onPreviewFailed: () => void;
+}
+
+export function StationItem({
+  station,
+  isFocused,
+  isActiveRow,
+  isAdded,
+  isUnavailable,
+  onAdd,
+  onPreviewFailed,
+}: StationItemProps) {
+  const playerStatus = useStore($playerStatus);
+  const announce = useAnnounce();
+  const resolved = station.urlResolved || station.url;
+  const isPreviewing =
+    playerStatus.state !== "stopped" &&
+    playerStatus.source?.type === "preview" &&
+    playerStatus.source.url === resolved;
+
+  const handlePreviewToggle = async () => {
+    if (isPreviewing) {
+      try {
+        await stopPlayback();
+      } catch (err) {
+        addToast(String(err), "error");
+      }
+      return;
+    }
+    try {
+      await previewStation(resolved, station.name);
+    } catch (err) {
+      addToast(String(err), "error");
+      announce(m.station_preview_failed({ name: station.name }), "polite");
+      onPreviewFailed();
+    }
+  };
+
+  // Down-scan summary: name + country + genre, with a state prefix when relevant.
+  const summaryMeta = [station.country, station.tags].filter(Boolean).join(", ");
+  const summaryName = summaryMeta ? `${station.name}, ${summaryMeta}` : station.name;
+  const summaryLabel = isPreviewing
+    ? m.station_summary_previewing({ name: summaryName })
+    : isUnavailable
+      ? m.station_summary_offline({ name: summaryName })
+      : summaryName;
+
+  const previewLabel = isPreviewing
+    ? m.station_preview_stop({ name: station.name })
+    : m.station_preview_play({ name: station.name });
+  const addLabel = isAdded ? m.browser_added() : m.add_stream();
+
+  const metaCells: {
+    kind: Exclude<SegmentKind, "summary">;
+    show: boolean;
+    icon: ReactNode;
+    role: string;
+    value: string;
+  }[] = [
+    { kind: "country",    show: !!station.country,    icon: <Globe size={12} aria-hidden />,      role: m.segment_country(),    value: station.country },
+    { kind: "language",   show: !!station.language,   icon: <Languages size={12} aria-hidden />,  role: m.segment_language(),   value: station.language },
+    { kind: "codec",      show: !!station.codec,      icon: <Music size={12} aria-hidden />,      role: m.segment_codec(),      value: station.codec },
+    { kind: "bitrate",    show: !!station.bitrate,    icon: <Signal size={12} aria-hidden />,     role: m.segment_bitrate(),    value: `${station.bitrate} kbps` },
+    { kind: "genre",      show: !!station.tags,       icon: <Tag size={12} aria-hidden />,        role: m.segment_genre(),      value: station.tags },
+    { kind: "popularity", show: !!station.clickcount, icon: <Headphones size={12} aria-hidden />, role: m.segment_popularity(), value: String(station.clickcount) },
+  ];
+
+  return (
+    <CompositeRow
+      itemId={station.stationuuid}
+      isFocused={isFocused}
+      isActiveRow={isActiveRow}
+      label={summaryLabel}
+      roleDescription={m.item_role_station()}
+      className="border-b border-slate-800 px-3 py-2 forced-colors:border-[ButtonText]"
+      activeClassName="bg-slate-800/60"
+    >
+      {/* Line 1: name + action buttons */}
+      <div className="flex items-center gap-2">
+        {isUnavailable && (
+          <TriangleAlert size={14} aria-hidden className="shrink-0 text-amber-500 forced-colors:text-[Highlight]" />
+        )}
+        <span
+          className={`truncate font-medium ${
+            isUnavailable ? "text-slate-400 line-through decoration-slate-600" : "text-slate-100"
+          }`}
+        >
+          {station.name}
+        </span>
+        <div className="ml-auto flex shrink-0 gap-1">
+          <CompositeAction
+            itemId={station.stationuuid}
+            segment="action-play"
+            isFocused={isFocused}
+            ariaPressed={isPreviewing}
+            onClick={handlePreviewToggle}
+            label={previewLabel}
+            title={previewLabel}
+            className={`inline-flex items-center justify-center rounded-md p-1.5 ${
+              isPreviewing
+                ? "bg-blue-700 text-white forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]"
+                : "bg-slate-700 text-slate-200 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText]"
+            }`}
+          >
+            {isPreviewing ? <Square size={16} aria-hidden /> : <Play size={16} aria-hidden />}
+          </CompositeAction>
+          <button
+            type="button"
+            data-item-id={station.stationuuid}
+            data-segment="action-add"
+            tabIndex={isFocused("action-add") ? 0 : -1}
+            aria-disabled={isAdded || undefined}
+            aria-label={addLabel}
+            title={addLabel}
+            onClick={() => {
+              if (!isAdded) onAdd();
+            }}
+            className={`inline-flex items-center justify-center rounded-md p-1.5 ${COMPOSITE_FOCUS_RING} ${
+              isAdded
+                ? "cursor-not-allowed text-emerald-400"
+                : "bg-blue-600 text-white hover:bg-blue-700 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
+            }`}
+          >
+            {isAdded ? <Check size={16} aria-hidden /> : <Plus size={16} aria-hidden />}
+          </button>
+        </div>
+      </div>
+
+      {/* Line 2: per-value metadata stops */}
+      <div className="mt-1 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-sm text-slate-400">
+        {metaCells
+          .filter((c) => c.show)
+          .map((c) => (
+            <CompositeSegment
+              key={c.kind}
+              itemId={station.stationuuid}
+              segment={c.kind}
+              isFocused={isFocused}
+              label={c.value}
+              roleDescription={c.role}
+              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5"
+            >
+              <span className="text-slate-500">{c.icon}</span>
+              <span>{c.value}</span>
+            </CompositeSegment>
+          ))}
+      </div>
+    </CompositeRow>
+  );
 }

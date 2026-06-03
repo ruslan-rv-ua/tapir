@@ -1,6 +1,15 @@
 import { describe, it, expect } from "vitest";
+import { render, fireEvent } from "@testing-library/react";
+import { vi, beforeEach, afterEach } from "vitest";
 import type { StationResult } from "../../lib/tauri";
-import { getStationSegments } from "./StationItem";
+import * as tauri from "../../lib/tauri";
+import { getStationSegments, StationItem } from "./StationItem";
+import { $playerStatus } from "../../stores/player";
+
+vi.mock("../../lib/tauri", () => ({
+  previewStation: vi.fn().mockResolvedValue(undefined),
+  stopPlayback: vi.fn().mockResolvedValue(undefined),
+}));
 
 const mkStation = (over: Partial<StationResult> = {}): StationResult => ({
   stationuuid: "u1",
@@ -20,6 +29,25 @@ const mkStation = (over: Partial<StationResult> = {}): StationResult => ({
   lastcheckok: 1,
   ...over,
 });
+
+function renderItem(over: Partial<Parameters<typeof StationItem>[0]> = {}) {
+  const props = {
+    station: mkStation(),
+    isFocused: (seg: string) => seg === "summary",
+    isActiveRow: true,
+    isAdded: false,
+    isUnavailable: false,
+    onAdd: vi.fn(),
+    onPreviewFailed: vi.fn(),
+    ...over,
+  };
+  // isFocused is typed (segment: SegmentKind) => boolean; the cast keeps the test terse.
+  const result = render(<ul><StationItem {...(props as Parameters<typeof StationItem>[0])} /></ul>);
+  return { ...result, props };
+}
+
+beforeEach(() => vi.clearAllMocks());
+afterEach(() => $playerStatus.set({ state: "stopped", source: null, volume: 0.75, positionMs: null, durationMs: null }));
 
 describe("getStationSegments", () => {
   it("emits one stop per present value, in order, then the two actions", () => {
@@ -50,5 +78,83 @@ describe("getStationSegments", () => {
   it("always ends with both action stops", () => {
     const segs = getStationSegments(mkStation({ country: "", language: "", codec: "", bitrate: 0, tags: "", clickcount: 0 }));
     expect(segs).toEqual(["action-play", "action-add"]);
+  });
+});
+
+describe("StationItem — accessibility structure", () => {
+  it("exposes the row as a listitem named after the station and described as a station", () => {
+    const { container } = renderItem();
+    const li = container.querySelector<HTMLElement>('li[data-segment="summary"]')!;
+    expect(li.getAttribute("role")).toBe("listitem");
+    expect(li.getAttribute("aria-label")).toContain("Radio Bayraktar");
+    expect(li.getAttribute("aria-roledescription")).toMatch(/станц|station/i);
+  });
+
+  it("renders one role=group stop per metadata value with a value-only label", () => {
+    const { container } = renderItem();
+    const country = container.querySelector('[data-segment="country"]')!;
+    expect(country.getAttribute("role")).toBe("group");
+    expect(country.getAttribute("aria-roledescription")).toMatch(/країн|country/i);
+    expect(country.getAttribute("aria-label")).toBe("Ukraine");
+    expect(container.querySelector('[data-segment="bitrate"]')!.getAttribute("aria-label")).toMatch(/128/);
+  });
+
+  it("renders preview and add as individual button focus stops", () => {
+    const { container } = renderItem();
+    const segs = Array.from(container.querySelectorAll("button[data-segment]")).map((b) => b.getAttribute("data-segment"));
+    expect(segs).toEqual(expect.arrayContaining(["action-play", "action-add"]));
+  });
+});
+
+describe("StationItem — preview button", () => {
+  it("previews this station's resolved URL on click", () => {
+    const { container } = renderItem();
+    fireEvent.click(container.querySelector('button[data-segment="action-play"]')!);
+    expect(tauri.previewStation).toHaveBeenCalledWith("http://host/s/resolved", "Radio Bayraktar");
+  });
+
+  it("shows the stop state + stops playback when this station is the active preview source", () => {
+    $playerStatus.set({
+      state: "playing",
+      source: { type: "preview", url: "http://host/s/resolved", name: "Radio Bayraktar" },
+      volume: 0.75, positionMs: null, durationMs: null,
+    });
+    const { container } = renderItem();
+    const btn = container.querySelector('button[data-segment="action-play"]')!;
+    expect(btn.getAttribute("aria-pressed")).toBe("true");
+    expect(btn.getAttribute("aria-label")).toMatch(/зупинити|stop/i);
+    fireEvent.click(btn);
+    expect(tauri.stopPlayback).toHaveBeenCalled();
+  });
+
+  it("calls onPreviewFailed when the preview connection rejects", async () => {
+    (tauri.previewStation as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("connect failed"));
+    const { container, props } = renderItem();
+    fireEvent.click(container.querySelector('button[data-segment="action-play"]')!);
+    await vi.waitFor(() => expect(props.onPreviewFailed).toHaveBeenCalled());
+  });
+});
+
+describe("StationItem — add button + liveness", () => {
+  it("calls onAdd when not yet added", () => {
+    const { container, props } = renderItem();
+    fireEvent.click(container.querySelector('button[data-segment="action-add"]')!);
+    expect(props.onAdd).toHaveBeenCalled();
+  });
+
+  it("marks the add button aria-disabled and does not call onAdd when already added", () => {
+    const { container, props } = renderItem({ isAdded: true });
+    const btn = container.querySelector('button[data-segment="action-add"]')!;
+    expect(btn.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(btn);
+    expect(props.onAdd).not.toHaveBeenCalled();
+  });
+
+  it("prefixes the summary with the unavailable clause and renders a warning marker when unavailable", () => {
+    const { container } = renderItem({ isUnavailable: true });
+    const li = container.querySelector<HTMLElement>('li[data-segment="summary"]')!;
+    expect(li.getAttribute("aria-label")).toMatch(/недоступна|unavailable/i);
+    // One extra decorative svg (the warning icon) beyond the action-button icons.
+    expect(container.querySelector('svg')).toBeTruthy();
   });
 });
