@@ -10,9 +10,13 @@ import { loadSongs } from "../stores/songs";
 
 export function useProfileSync(): void {
   useEffect(() => {
+    let cancelled = false;
+
     const unlisten = listen<ProfileChangedPayload>(
       "profile-changed",
       async (event) => {
+        if (cancelled) return;
+
         const profile = event.payload.profile;
 
         // Update stores from profile data
@@ -39,6 +43,7 @@ export function useProfileSync(): void {
             tauri.getWishlist(),
             tauri.getIgnorelist(),
           ]);
+          if (cancelled) return;
           $wishlist.set(wl);
           $ignorelist.set(il);
         } catch (e) {
@@ -46,17 +51,22 @@ export function useProfileSync(): void {
         }
 
         // Songs — re-fetch for new profile's outputDir
-        loadSongs();
+        if (!cancelled) loadSongs();
 
         // RecordingSettings — re-fetch for new profile's recording config
         try {
           const rec = await tauri.getRecordingSettings();
+          if (cancelled) return;
           $recordingSettings.set(rec);
         } catch (e) {
           console.error("useProfileSync: failed to refresh recording settings", e);
         }
       }
     );
-    return () => { unlisten.then((fn) => fn()); };
+
+    return () => {
+      cancelled = true;
+      unlisten.then((fn) => fn());
+    };
   }, []);
 }
