@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { ProgressBar, Slider, SliderThumb, SliderTrack } from "react-aria-components";
 import { useStore } from "@nanostores/react";
@@ -21,6 +21,8 @@ function formatTime(ms: number): string {
 export function PlaybackPosition({ inputRef, onNavigate }: PlaybackPositionProps) {
   const { state, source, positionMs, durationMs } = useStore($playerStatus);
   const [dragPos, setDragPos] = useState<number | null>(null);
+  // Ref mirrors dragPos for synchronous access in event handlers (React state is stale in closures).
+  const dragPosRef = useRef<number | null>(null);
 
   // Patch tabIndex after every render — slider conditionally mounts, so ref.current
   // becomes available at an unpredictable render. No dep array ensures we patch
@@ -45,10 +47,15 @@ export function PlaybackPosition({ inputRef, onNavigate }: PlaybackPositionProps
         maxValue={dur}
         step={5000}
         value={pos}
-        onChange={(v) => setDragPos(v)}
+        onChange={(v) => { dragPosRef.current = v; setDragPos(v); }}
         onChangeEnd={(v) => {
-          setDragPos(null);
-          tauri.seekPlayback(v).catch(console.error);
+          // For mouse: dragPosRef is still set here (onKeyUp won't have cleared it).
+          // For keyboard: onKeyUp clears dragPosRef first, so we skip to avoid double-seek.
+          if (dragPosRef.current !== null) {
+            dragPosRef.current = null;
+            setDragPos(null);
+            tauri.seekPlayback(v).catch(console.error);
+          }
         }}
         className="flex items-center gap-2 flex-1"
       >
@@ -81,8 +88,13 @@ export function PlaybackPosition({ inputRef, onNavigate }: PlaybackPositionProps
             }}
             onKeyUp={(e) => {
               // onChangeEnd may not fire for keyboard in RAC — seek on key release instead.
-              if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && dragPos !== null) {
-                tauri.seekPlayback(dragPos).catch(console.error);
+              // Use dragPosRef (synchronous) rather than dragPos state (stale in closure).
+              if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && dragPosRef.current !== null) {
+                const target = dragPosRef.current;
+                dragPosRef.current = null;
+                tauri.seekPlayback(target).catch(console.error);
+                // Pre-update store so slider doesn't snap to stale position while backend responds.
+                $playerStatus.set({ ...$playerStatus.get(), positionMs: target });
                 setDragPos(null);
               }
             }}

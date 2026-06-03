@@ -370,11 +370,10 @@ impl PlayerEngine {
                 s.player
                     .try_seek(std::time::Duration::from_millis(position_ms))
                     .map_err(|e| anyhow::anyhow!("seek failed: {e}"))?;
-                let pos = s.player.get_pos().as_millis() as u64;
                 let dur = s.duration_ms.unwrap_or(0);
                 drop(session);
                 if let Err(e) = app.emit("player-progress", PlayerProgressPayload {
-                    position_ms: pos,
+                    position_ms,
                     duration_ms: dur,
                 }) {
                     log::warn!("Player: failed to emit player-progress: {e}");
