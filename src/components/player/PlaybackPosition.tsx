@@ -79,6 +79,13 @@ export function PlaybackPosition({ inputRef, onNavigate }: PlaybackPositionProps
               }
               // ArrowUp / ArrowDown: pass through to RAC for value adjustment.
             }}
+            onKeyUp={(e) => {
+              // onChangeEnd may not fire for keyboard in RAC — seek on key release instead.
+              if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && dragPos !== null) {
+                tauri.seekPlayback(dragPos).catch(console.error);
+                setDragPos(null);
+              }
+            }}
             className="w-3 h-3 rounded-full bg-white top-1/2 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1 forced-colors:bg-[ButtonText]"
           />
         </SliderTrack>
