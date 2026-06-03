@@ -6,7 +6,8 @@ use std::path::{Path, PathBuf};
 /// %d = date (YYYY-MM-DD), %time = time (HH-MM-SS)
 ///
 /// Template example: "%s\%a - %t" → "SomaFM Groove Salad\Tycho - Past is Prologue"
-/// Note: %time must be checked before %t to avoid partial replacement.
+/// Uses single-pass expansion so values containing placeholder sequences (e.g. "%s" in
+/// an artist name) are never re-expanded — only the original template is scanned.
 pub fn render_template(
     template: &str,
     artist: &str,
@@ -24,15 +25,46 @@ pub fn render_template(
     let artist = sanitize_component(artist);
     let title = sanitize_component(title);
     let station = sanitize_component(station);
+    let track_str = format!("{:03}", track_number);
 
-    // Order matters: %time before %t, %n before nothing
-    template
-        .replace("%time", &time)
-        .replace("%a", &artist)
-        .replace("%t", &title)
-        .replace("%s", &station)
-        .replace("%n", &format!("{:03}", track_number))
-        .replace("%d", &date)
+    // Single-pass expansion to prevent template injection: values containing
+    // placeholder sequences (e.g. artist = "Beat%s") cannot inject further
+    // expansions because we only scan the TEMPLATE string, never the output.
+    // Longest patterns (%time) must precede shorter ones (%t) in the slice.
+    let placeholders: &[(&str, &str)] = &[
+        ("%time", time.as_str()),
+        ("%a",    artist.as_str()),
+        ("%t",    title.as_str()),
+        ("%s",    station.as_str()),
+        ("%n",    track_str.as_str()),
+        ("%d",    date.as_str()),
+    ];
+
+    let mut out = String::with_capacity(template.len() + 64);
+    let mut rest = template;
+    while !rest.is_empty() {
+        match rest.find('%') {
+            None => {
+                out.push_str(rest);
+                break;
+            }
+            Some(pos) => {
+                out.push_str(&rest[..pos]);
+                rest = &rest[pos..];
+                match placeholders.iter().find(|(pat, _)| rest.starts_with(pat)) {
+                    Some((pat, val)) => {
+                        out.push_str(val);
+                        rest = &rest[pat.len()..];
+                    }
+                    None => {
+                        out.push('%');
+                        rest = &rest[1..];
+                    }
+                }
+            }
+        }
+    }
+    out
 }
 
 /// Replace Windows-forbidden characters in a filename component (not a path).
@@ -222,5 +254,21 @@ mod tests {
         // The station component should have no path separators from the URL
         assert!(!result.contains("http://"), "URL slashes must be sanitized in: {}", result);
         assert!(result.contains("http___stream.example.com_path"), "URL should be flat in: {}", result);
+    }
+
+    #[test]
+    fn test_render_template_no_injection() {
+        // Artist name containing a placeholder sequence must not be re-expanded.
+        // "Beat%s" should appear literally in the output, not be replaced with the station name.
+        let result = render_template("%a - %t", "Beat%s", "Song", "RadioFM", 1);
+        assert_eq!(result, "Beat%s - Song", "placeholder in artist must not be re-expanded, got: {}", result);
+
+        // Artist containing %d should not be replaced with the date
+        let result2 = render_template("%a - %t", "Top%d", "Track", "S", 1);
+        assert!(result2.starts_with("Top%d"), "placeholder in artist must not be re-expanded, got: {}", result2);
+
+        // Title containing %a should not expand to the artist name
+        let result3 = render_template("%a - %t", "X", "%a Remix", "S", 1);
+        assert_eq!(result3, "X - %a Remix", "placeholder in title must not be re-expanded, got: {}", result3);
     }
 }
