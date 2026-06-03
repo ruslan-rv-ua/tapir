@@ -40,8 +40,6 @@ function renderItem(stream = mkStream(), status?: StreamStatus, focusedSeg = "su
         isActiveRow
         isFocused={(seg) => seg === focusedSeg}
         maxRetries={maxRetries}
-        onPrimaryAction={() => {}}
-        onContextMenu={() => {}}
         onDelete={() => {}}
       />
     </ul>,

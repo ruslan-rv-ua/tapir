@@ -87,17 +87,6 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
               isActiveRow={isActive}
               isFocused={isFocused}
               maxRetries={maxRetries}
-              onPrimaryAction={() => {
-                const isRecording = statuses[id]?.state === "recording";
-                if (isRecording) tauri.stopRecording(id).catch((e) => addToast(String(e), "error"));
-                else tauri.startRecording(id).catch((e) => addToast(String(e), "error"));
-              }}
-              onContextMenu={() => {
-                const menuBtn = document.querySelector<HTMLButtonElement>(
-                  `[data-item-id="${CSS.escape(id)}"] [data-context-menu-trigger]`,
-                );
-                menuBtn?.click();
-              }}
               onDelete={() => setPendingDeleteId(id)}
             />
           );

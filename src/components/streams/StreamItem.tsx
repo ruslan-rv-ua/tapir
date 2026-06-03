@@ -39,8 +39,6 @@ interface Props {
   /** This row is the active item — used for a subtle context highlight. */
   isActiveRow: boolean;
   maxRetries: number;
-  onPrimaryAction: () => void;
-  onContextMenu: () => void;
   onDelete: () => void;
 }
 
@@ -50,8 +48,6 @@ export function StreamItem({
   isFocused,
   isActiveRow,
   maxRetries,
-  onPrimaryAction: _onPrimaryAction,
-  onContextMenu: _onContextMenu,
   onDelete,
 }: Props) {
   const state = status?.state ?? "idle";
