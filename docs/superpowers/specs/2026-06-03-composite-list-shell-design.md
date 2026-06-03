@@ -45,10 +45,20 @@ Schedule screen here; only prepare the foundation.
 
 ## Chosen approach
 
-**Approach A — `<CompositeList>` wrapper + React context + a11y helper
-components.** The wrapper owns the hook, the `<ul>`, the `ZoneEntry`/forwardRef,
-and optional empty-state slots; a private context distributes focus state to
-helper components that render accessibility-correct DOM.
+**Approach A — `<CompositeList>` wrapper + a11y helper components.** The wrapper
+owns the hook, the `<ul>`, the `ZoneEntry`/forwardRef, and optional empty-state
+slots; helper components render accessibility-correct DOM.
+
+**Focus state is threaded as props, not via context.** Originally a private
+context was considered, but the existing item tests (`ProfileItem.test.tsx`,
+`StreamItem.test.tsx`) render items *bare* — directly inside a plain `<ul>`,
+passing `isFocused`/`isActiveRow` as props, with no provider in the tree. A
+context-reading helper would throw there and break the "existing tests pass
+unchanged" guarantee. So the wrapper passes a row-bound `isFocused` (and
+`isActive`) through `renderRow`; items forward them into the prop-based helpers.
+Item prop APIs (`isFocused`, `isActiveRow`) are unchanged, so bare-item tests
+stay green, and the a11y attributes are still centralised in the helpers (the
+actual goal).
 
 Rejected:
 - **B — primitives + hook helper only:** keeps each list rendering its own
@@ -59,12 +69,6 @@ Rejected:
 ## Architecture
 
 New directory: `src/components/common/composite-list/`.
-
-### `CompositeListContext` (internal, not exported)
-
-Carries `{ isFocused, activeItemId }` from the shell to row helpers so they can
-compute their own roving `tabIndex` and active-row highlight without prop
-threading.
 
 ### `<CompositeList>` — `forwardRef<ZoneEntry | TExtraHandle>`
 
@@ -92,7 +96,11 @@ interface CompositeListProps<T extends CompositeListItem> {
   onTabOut: (forward: boolean) => void;
   onAction: (type: ActionType, itemId: string, segment: SegmentKind) => void;
   onEmpty?: () => void;
-  renderRow: (row: { id: string; isActive: boolean }) => ReactNode;
+  renderRow: (row: {
+    id: string;
+    isActive: boolean;
+    isFocused: (segment: SegmentKind) => boolean;
+  }) => ReactNode;
   className?: string;
   loading?: ReactNode;
   error?: ReactNode;
@@ -104,20 +112,25 @@ interface CompositeListProps<T extends CompositeListItem> {
 
 ### Accessibility helper components
 
-Each bakes in the semantics every list currently writes by hand. They read
-focus state from context; `tabIndex`/`aria-*` are never written by callers
-again.
+Each bakes in the semantics every list currently writes by hand. They receive a
+row-bound `isFocused` (and, for the row, `isActiveRow`) as props;
+`tabIndex`/`aria-*` are never written by callers again.
 
-- **`<CompositeRow itemId roleDescription label className activeClassName>`**
-  → `<li role="listitem" data-item-id data-segment="summary" tabIndex
-  aria-label aria-roledescription>`, applies `activeClassName` when
-  `activeItemId === itemId`.
-- **`<CompositeSegment itemId segment label roleDescription>`**
-  → `<div role="group" data-item-id data-segment tabIndex aria-label
-  aria-roledescription>` with the shared `focus-visible:outline` ring.
-- **`<CompositeAction itemId segment label onClick …>`**
-  → native `<button>` with roving `tabIndex` and the shared focus ring,
-  self-activating (Enter/Space/click handled natively, as today).
+- **`<CompositeRow itemId isFocused isActiveRow roleDescription label className
+  activeClassName style>`** → `<li role="listitem" data-item-id
+  data-segment="summary" tabIndex aria-label aria-roledescription>`, appends
+  `activeClassName` when `isActiveRow`.
+- **`<CompositeSegment itemId segment isFocused label roleDescription className
+  style>`** → `<div role="group" data-item-id data-segment tabIndex aria-label
+  aria-roledescription>` with the shared `focus-visible:outline` ring appended.
+- **`<CompositeAction itemId segment isFocused label onClick className title
+  ariaPressed ariaDisabled>`** → native `<button type="button">` with roving
+  `tabIndex` and the shared focus ring, self-activating (Enter/Space/click
+  handled natively, as today).
+
+Context-menu triggers (`StreamContextMenu`, `ProfileContextMenu`,
+`SongContextMenu`) are *not* `CompositeAction`s — they stay as-is and keep
+receiving `menuFocused={isFocused("action-menu")}`.
 
 ## Behaviour-preservation principle
 
