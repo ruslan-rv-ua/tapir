@@ -38,6 +38,12 @@ export function useRovingFocus(
       const count = refs.length;
       if (count === 0) return;
       const clamped = Math.max(0, Math.min(index, count - 1));
+      // No-op when the index is unchanged: setActiveIndex would bail the
+      // re-render, so the useLayoutEffect that consumes pendingFocusRef never
+      // fires. Scheduling focus here would leave a stale pending entry that
+      // hijacks focus on the next unrelated render. Callers that must move DOM
+      // focus on entry (e.g. ActivityBar) focus the element directly.
+      if (clamped === activeIndexRef.current) return;
       activeIndexRef.current = clamped;
       setActiveIndex(clamped);
       pendingFocusRef.current = clamped;
