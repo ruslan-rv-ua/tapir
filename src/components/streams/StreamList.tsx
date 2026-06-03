@@ -53,7 +53,7 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
         zoneId="streams-list"
         ariaLabel={m.zone_streams_list()}
         items={items}
-        className="flex-1 overflow-y-auto overflow-x-hidden pt-1"
+        className="flex-1 overflow-y-auto overflow-x-hidden"
         onTabOut={exitZone}
         onEmpty={onEmpty}
         onAction={(type, itemId, segment) => {

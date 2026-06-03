@@ -36,7 +36,7 @@ export const ProfileList = forwardRef<ProfileListHandle, Props>(function Profile
       zoneId="profiles-list"
       ariaLabel={m.zone_profiles_list()}
       items={items}
-      className="flex-1 overflow-y-auto overflow-x-hidden pt-1"
+      className="flex-1 overflow-y-auto overflow-x-hidden"
       onTabOut={exitZone}
       imperativeExtra={({ focusItem }) => ({
         focusProfile: (name: string) => focusItem(name, "summary"),

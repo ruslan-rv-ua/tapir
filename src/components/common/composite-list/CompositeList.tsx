@@ -100,13 +100,17 @@ function CompositeListInner<H extends ZoneEntry = ZoneEntry>(
   if (error != null) return <>{error}</>;
   if (items.length === 0 && empty != null) return <>{empty}</>;
 
+  // The <ul> adds py-1 so each row's focus outline (global rule in styles.css:
+  // outline-offset 2px + 2px width) isn't clipped at the scroll container's
+  // top/bottom edges — without it the first row loses its top line and the last
+  // row its bottom line. Left/right are intentionally clipped to horizontal lines.
   return (
     <ul
       ref={listRef}
       data-zone-id={zoneId}
       role="application"
       aria-label={ariaLabel}
-      className={className}
+      className={`py-1 ${className}`}
       onKeyDownCapture={onKeyDownCapture}
     >
       {items.map((it) =>
