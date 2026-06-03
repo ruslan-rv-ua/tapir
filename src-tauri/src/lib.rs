@@ -158,6 +158,7 @@ pub fn run() {
             commands::settings_commands::register_hotkeys,
             commands::settings_commands::open_directory_picker,
             commands::player_commands::play_stream,
+            commands::player_commands::preview_station,
             commands::player_commands::play_file,
             commands::player_commands::pause_playback,
             commands::player_commands::resume_playback,

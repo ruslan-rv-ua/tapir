@@ -542,10 +542,11 @@ impl Source for LiveSource {
 }
 
 impl PlayerEngine {
-    pub async fn play_stream(
+    async fn play_live(
         &self,
         stream_id: String,
         url: String,
+        source: PlaybackSource,
         app: &AppHandle,
     ) -> Result<()> {
         use crate::stream::connection;
@@ -832,7 +833,7 @@ impl PlayerEngine {
         *self.session.lock().await = Some(PlaybackSession {
             player: Arc::clone(&player),
             cancel,
-            source: PlaybackSource::Stream { stream_id: stream_id.clone() },
+            source,
             duration_ms: None,
             progress_task,
             _device_sink: device_sink_arc,
@@ -842,6 +843,26 @@ impl PlayerEngine {
         emit_player_status(app, status);
         info!("Player: playing live stream {stream_id}");
         Ok(())
+    }
+
+    pub async fn play_stream(
+        &self,
+        stream_id: String,
+        url: String,
+        app: &AppHandle,
+    ) -> Result<()> {
+        self.play_live(stream_id.clone(), url, PlaybackSource::Stream { stream_id }, app).await
+    }
+
+    pub async fn preview(
+        &self,
+        url: String,
+        name: String,
+        app: &AppHandle,
+    ) -> Result<()> {
+        let source = PlaybackSource::Preview { url: url.clone(), name };
+        // Empty stream_id: a preview has no profile stream to key track events to.
+        self.play_live(String::new(), url, source, app).await
     }
 }
 

@@ -19,6 +19,16 @@ pub async fn play_stream(
 }
 
 #[tauri::command]
+pub async fn preview_station(
+    url: String,
+    name: String,
+    state: State<'_, AppState>,
+    app: AppHandle,
+) -> Result<(), String> {
+    state.player.preview(url, name, &app).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn play_file(
     path: String,
     state: State<'_, AppState>,
