@@ -176,8 +176,11 @@ impl PlayerEngine {
 
         let file = std::fs::File::open(&path)
             .with_context(|| format!("File not found: {path}"))?;
-        let reader = std::io::BufReader::new(file);
-        let decoder = Decoder::new(reader)
+        // `Decoder::try_from(File)` reads the file length from metadata and sets
+        // `byte_len` + `is_seekable` on the symphonia source. Without those, backward
+        // seeks on headerless CBR MP3 (ICY-stream recordings) fail with `ForwardOnly`
+        // → `RandomAccessNotSupported`. `Decoder::new(BufReader)` leaves them unset.
+        let decoder = Decoder::try_from(file)
             .context("Unsupported audio format")?;
 
         let duration_ms = decoder.total_duration().map(|d| d.as_millis() as u64)
