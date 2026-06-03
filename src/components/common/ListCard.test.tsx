@@ -11,6 +11,17 @@ describe("ListCard", () => {
     );
     expect(screen.getByText("card content")).toBeInTheDocument();
   });
+
+  it("applies a custom className to the inner card element", () => {
+    const { container } = render(
+      <ListCard className="custom-marker">
+        <span>x</span>
+      </ListCard>,
+    );
+    const inner = container.querySelector(".custom-marker");
+    expect(inner).not.toBeNull();
+    expect(inner?.className).toContain("rounded-[18px]");
+  });
 });
 
 describe("ListCardState", () => {

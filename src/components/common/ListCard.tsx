@@ -6,6 +6,9 @@ import type { ReactNode, HTMLAttributes } from "react";
  * scroll lives on its <ul> (CompositeList) inside. Visual only — does not affect
  * zone / roving navigation. See docs/FRD-navigation.md and
  * docs/superpowers/specs/2026-06-03-list-card-shell-design.md.
+ *
+ * The optional `className` is appended to the inner card element only (not the
+ * outer padding wrapper); use it for rare per-screen tweaks to the card itself.
  */
 export function ListCard({ children, className }: { children: ReactNode; className?: string }) {
   return (
