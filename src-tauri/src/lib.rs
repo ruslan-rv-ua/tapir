@@ -18,6 +18,7 @@ use app_state::AppState;
 use settings::GlobalSettings;
 use profile::Profile;
 use tauri::Manager;
+use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_log::{Target, TargetKind, RotationStrategy};
 
 /// Maps the user's `log_rotation` toggle to a plugin rotation strategy.
@@ -81,8 +82,19 @@ pub fn run() {
 
             let settings = initial_settings;
             let profile = Profile::load(&settings.active_profile).expect("Failed to load profile");
-            let state = AppState::new(settings, profile, app.handle().clone())
-                .expect("Failed to initialize AppState (no audio device?)");
+            let state = match AppState::new(settings, profile, app.handle().clone()) {
+                Ok(s) => s,
+                Err(e) => {
+                    log::error!("Failed to initialize AppState: {e}");
+                    app.dialog()
+                        .message(format!(
+                            "Не вдалося запустити Tapir:\n\n{e}\n\nПереконайтеся, що аудіо-пристрій підключено, і спробуйте ще раз."
+                        ))
+                        .title("Помилка запуску")
+                        .blocking_show();
+                    return Err(e.into());
+                }
+            };
             app.manage(state);
             tray::setup_tray(app.handle()).expect("Failed to set up system tray");
             tray::notify::register_aumid(&app.config().identifier, "Tapir");
