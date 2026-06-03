@@ -162,7 +162,8 @@ export type PlaybackState = "stopped" | "playing" | "paused";
 
 export type PlaybackSource =
   | { type: "stream"; streamId: string }
-  | { type: "file"; path: string };
+  | { type: "file"; path: string }
+  | { type: "preview"; url: string; name: string };
 
 export interface PlayerStatus {
   state: PlaybackState;
@@ -186,6 +187,9 @@ export interface AudioDevice {
 
 export async function playStream(streamId: string): Promise<void> {
   return invoke("play_stream", { streamId });
+}
+export async function previewStation(url: string, name: string): Promise<void> {
+  return invoke("preview_station", { url, name });
 }
 export async function playFile(path: string): Promise<void> {
   return invoke("play_file", { path });

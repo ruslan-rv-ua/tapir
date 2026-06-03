@@ -31,6 +31,7 @@ function useSourceLabel(): string {
     const stream = streams.find((s) => s.id === source.streamId);
     return stream?.name ?? source.streamId;
   }
+  if (source.type === "preview") return source.name;
   return source.path.split(/[\\/]/).pop() ?? source.path;
 }
 
