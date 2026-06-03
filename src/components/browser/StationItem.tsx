@@ -10,6 +10,15 @@ import { addToast } from "../../stores/toasts";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import * as m from "../../i18n/paraglide/messages";
 
+const SEGMENT_ICONS: Partial<Record<Exclude<SegmentKind, "summary">, ReactNode>> = {
+  country: <Globe size={12} aria-hidden />,
+  language: <Languages size={12} aria-hidden />,
+  codec: <Music size={12} aria-hidden />,
+  bitrate: <Signal size={12} aria-hidden />,
+  genre: <Tag size={12} aria-hidden />,
+  popularity: <Headphones size={12} aria-hidden />,
+};
+
 /**
  * Left/Right focus-stop order for a station row (Layout A: one stop per value).
  * Each metadata stop is included only when its value is present; the two action
@@ -51,6 +60,7 @@ export function StationItem({
   const announce = useAnnounce();
   const resolved = station.urlResolved || station.url;
   const isPreviewing =
+    !!resolved &&
     playerStatus.state !== "stopped" &&
     playerStatus.source?.type === "preview" &&
     playerStatus.source.url === resolved;
@@ -90,16 +100,15 @@ export function StationItem({
   const metaCells: {
     kind: Exclude<SegmentKind, "summary">;
     show: boolean;
-    icon: ReactNode;
     role: string;
     value: string;
   }[] = [
-    { kind: "country",    show: !!station.country,    icon: <Globe size={12} aria-hidden />,      role: m.segment_country(),    value: station.country },
-    { kind: "language",   show: !!station.language,   icon: <Languages size={12} aria-hidden />,  role: m.segment_language(),   value: station.language },
-    { kind: "codec",      show: !!station.codec,      icon: <Music size={12} aria-hidden />,      role: m.segment_codec(),      value: station.codec },
-    { kind: "bitrate",    show: !!station.bitrate,    icon: <Signal size={12} aria-hidden />,     role: m.segment_bitrate(),    value: `${station.bitrate} kbps` },
-    { kind: "genre",      show: !!station.tags,       icon: <Tag size={12} aria-hidden />,        role: m.segment_genre(),      value: station.tags },
-    { kind: "popularity", show: !!station.clickcount, icon: <Headphones size={12} aria-hidden />, role: m.segment_popularity(), value: String(station.clickcount) },
+    { kind: "country",    show: !!station.country,    role: m.segment_country(),    value: station.country },
+    { kind: "language",   show: !!station.language,   role: m.segment_language(),   value: station.language },
+    { kind: "codec",      show: !!station.codec,      role: m.segment_codec(),      value: station.codec },
+    { kind: "bitrate",    show: !!station.bitrate,    role: m.segment_bitrate(),    value: `${station.bitrate} kbps` },
+    { kind: "genre",      show: !!station.tags,       role: m.segment_genre(),      value: station.tags },
+    { kind: "popularity", show: !!station.clickcount, role: m.segment_popularity(), value: String(station.clickcount) },
   ];
 
   return (
@@ -177,7 +186,7 @@ export function StationItem({
               roleDescription={c.role}
               className="inline-flex items-center gap-1 rounded px-1.5 py-0.5"
             >
-              <span className="text-slate-500">{c.icon}</span>
+              <span className="text-slate-500">{SEGMENT_ICONS[c.kind]}</span>
               <span>{c.value}</span>
             </CompositeSegment>
           ))}
