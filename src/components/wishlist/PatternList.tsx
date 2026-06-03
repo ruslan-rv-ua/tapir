@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { CompositeList, CompositeRow, CompositeSegment, CompositeAction } from "../common/composite-list";
 import type { SegmentKind } from "../../hooks/useCompositeList";
 import { ConfirmDialog } from "../common/ConfirmDialog";
+import { ListCardState } from "../common/ListCard";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as m from "../../i18n/paraglide/messages";
 
@@ -51,9 +52,7 @@ export const PatternList = forwardRef<ZoneEntry, Props>(
           onTabOut={exitZone}
           onEmpty={onEmpty}
           empty={
-            <div role="status" className="py-4 text-center text-sm text-slate-500">
-              {emptyMessage}
-            </div>
+            <ListCardState role="status">{emptyMessage}</ListCardState>
           }
           onAction={(type, itemId, segment) => {
             if (type === "delete") {
