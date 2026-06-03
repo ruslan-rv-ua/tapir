@@ -143,6 +143,9 @@ pub async fn build_now_playing_label(
                 .unwrap_or("?");
             Some(format!("Файл: {basename}"))
         }
+        PlaybackSource::Preview { name, .. } => {
+            Some(format!("Прев'ю: {name}"))
+        }
     }
 }
 

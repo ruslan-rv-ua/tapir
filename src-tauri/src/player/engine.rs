@@ -27,6 +27,8 @@ pub enum PlaybackSource {
     Stream { stream_id: String },
     #[serde(rename = "file", rename_all = "camelCase")]
     File { path: String },
+    #[serde(rename = "preview", rename_all = "camelCase")]
+    Preview { url: String, name: String },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -366,7 +368,7 @@ impl PlayerEngine {
         let s = session.as_ref().ok_or_else(|| anyhow::anyhow!("not playing"))?;
 
         match &s.source {
-            PlaybackSource::Stream { .. } => {
+            PlaybackSource::Stream { .. } | PlaybackSource::Preview { .. } => {
                 return Err(anyhow::anyhow!("seek unavailable for live stream"));
             }
             PlaybackSource::File { .. } => {
@@ -898,6 +900,18 @@ mod tests {
         let json = serde_json::to_string(&src).unwrap();
         assert!(json.contains("\"type\":\"file\""));
         assert!(json.contains("\"path\":\"recordings/test.mp3\""));
+    }
+
+    #[test]
+    fn playback_source_preview_serializes() {
+        let src = PlaybackSource::Preview { url: "http://host/stream".into(), name: "Radio X".into() };
+        let json = serde_json::to_string(&src).unwrap();
+        assert!(json.contains("\"type\":\"preview\""));
+        assert!(json.contains("\"url\":\"http://host/stream\""));
+        assert!(json.contains("\"name\":\"Radio X\""));
+        // round-trips back to the same variant
+        let back: PlaybackSource = serde_json::from_str(&json).unwrap();
+        assert!(matches!(back, PlaybackSource::Preview { .. }));
     }
 
     #[test]
