@@ -374,7 +374,7 @@ struct RtrbReader {
 impl Read for RtrbReader {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         if buf.is_empty() { return Ok(0); }
-        let mut consumer = self.consumer.lock().unwrap();
+        let mut consumer = self.consumer.lock().unwrap_or_else(|e| e.into_inner());
         loop {
             let available = consumer.slots();
             if available == 0 {
