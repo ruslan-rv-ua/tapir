@@ -723,26 +723,30 @@ impl PlayerEngine {
                         match event {
                             None | Some(IcyEvent::Eof) | Some(IcyEvent::Error) => break,
                             Some(IcyEvent::Metadata(artist, title)) => {
-                                #[derive(serde::Serialize, Clone)]
-                                #[serde(rename_all = "camelCase")]
-                                struct TrackChangedPayload {
-                                    stream_id: String,
-                                    artist: String,
-                                    title: String,
-                                    album: String,
+                                // Previews carry an empty stream_id (no profile stream); skip
+                                // per-track events/notifications for them.
+                                if !stream_id_writer.is_empty() {
+                                    #[derive(serde::Serialize, Clone)]
+                                    #[serde(rename_all = "camelCase")]
+                                    struct TrackChangedPayload {
+                                        stream_id: String,
+                                        artist: String,
+                                        title: String,
+                                        album: String,
+                                    }
+                                    let _ = app_writer.emit(
+                                        "track-changed",
+                                        TrackChangedPayload {
+                                            stream_id: stream_id_writer.clone(),
+                                            artist: artist.clone(),
+                                            title: title.clone(),
+                                            album: String::new(),
+                                        },
+                                    );
+                                    crate::tray::notify::notify_track_change(
+                                        &app_writer, &stream_id_writer, &artist, &title,
+                                    );
                                 }
-                                let _ = app_writer.emit(
-                                    "track-changed",
-                                    TrackChangedPayload {
-                                        stream_id: stream_id_writer.clone(),
-                                        artist: artist.clone(),
-                                        title: title.clone(),
-                                        album: String::new(),
-                                    },
-                                );
-                                crate::tray::notify::notify_track_change(
-                                    &app_writer, &stream_id_writer, &artist, &title,
-                                );
                             }
                             Some(IcyEvent::Audio(data)) => {
                                 let mut remaining: &[u8] = data.as_slice();
