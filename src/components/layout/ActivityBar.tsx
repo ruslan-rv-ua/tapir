@@ -65,8 +65,15 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
   useImperativeHandle(ref, () => ({
     id: "activity-bar",
     get el() { return navRef.current!; },
-    focus: (_direction) => moveTo(activeNavIndex),
-  }), [moveTo, activeNavIndex]);
+    focus: (_direction) => {
+      // moveTo syncs the roving tabindex, but it focuses via a state-change-driven
+      // layout effect that bails when the index is unchanged — which is the common
+      // case on re-entry (Shift+Tab back from the screen lands on the same active
+      // section). Focus the element directly so the handoff always lands.
+      moveTo(activeNavIndex);
+      allRefs[activeNavIndex]?.current?.focus();
+    },
+  }), [moveTo, activeNavIndex, allRefs]);
 
   return (
     <nav

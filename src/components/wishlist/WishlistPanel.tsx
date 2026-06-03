@@ -5,6 +5,8 @@ import { useStore } from "@nanostores/react";
 import { PatternList } from "./PatternList";
 import { AddPatternDialog } from "./AddPatternDialog";
 import { ScreenZone } from "../layout/ScreenZone";
+import { ScreenHeader } from "../layout/ScreenHeader";
+import { ListCard } from "../common/ListCard";
 import { useFocusBoundary } from "../../hooks/useFocusBoundary";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import { addToast } from "../../stores/toasts";
@@ -171,13 +173,17 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
         aria-label={m.wishlist_section()}
         className="flex flex-1 flex-col overflow-hidden"
       >
+        {/* Screen title. The Add action lives in the controls zone below (with the
+            Wishlist/Ignorelist tabs), so the <h1> itself carries no actions and is
+            not part of a zone (FRD §7.1.3). */}
+        <ScreenHeader title={m.wishlist_section()} />
         {/* Controls zone */}
         <ScreenZone
           ref={controlsRef}
           id="wishlist-controls"
           role="group"
           label={m.zone_wishlist_controls()}
-          className="flex items-center gap-2 px-3 py-2"
+          className="flex items-center gap-2 px-4 py-2"
         >
           <TabList
             aria-label={m.wishlist_section()}
@@ -207,30 +213,34 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
 
         {/* Pattern list zones */}
         <TabPanel id="wishlist" className="flex flex-1 flex-col overflow-hidden">
-          <PatternList
-            ref={patternListCallbackRef}
-            items={wishlistItems}
-            ariaLabel={m.wishlist_section_title()}
-            showDate={true}
-            emptyMessage={m.empty_wishlist()}
-            exitZone={(forward) => exitZone("wishlist-list", forward)}
-            onEmpty={() => addPatternBtnRef.current?.focus()}
-            onEdit={(pattern) => setDialog({ mode: "edit", listType: "wishlist", pattern })}
-            onRemove={handleRemoveWishlist}
-          />
+          <ListCard>
+            <PatternList
+              ref={patternListCallbackRef}
+              items={wishlistItems}
+              ariaLabel={m.wishlist_section_title()}
+              showDate={true}
+              emptyMessage={m.empty_wishlist()}
+              exitZone={(forward) => exitZone("wishlist-list", forward)}
+              onEmpty={() => addPatternBtnRef.current?.focus()}
+              onEdit={(pattern) => setDialog({ mode: "edit", listType: "wishlist", pattern })}
+              onRemove={handleRemoveWishlist}
+            />
+          </ListCard>
         </TabPanel>
         <TabPanel id="ignorelist" className="flex flex-1 flex-col overflow-hidden">
-          <PatternList
-            ref={patternListCallbackRef}
-            items={ignorelistItems}
-            ariaLabel={m.ignorelist_section_title()}
-            showDate={false}
-            emptyMessage={m.empty_ignorelist()}
-            exitZone={(forward) => exitZone("wishlist-list", forward)}
-            onEmpty={() => addPatternBtnRef.current?.focus()}
-            onEdit={(pattern) => setDialog({ mode: "edit", listType: "ignorelist", pattern })}
-            onRemove={handleRemoveIgnorelist}
-          />
+          <ListCard>
+            <PatternList
+              ref={patternListCallbackRef}
+              items={ignorelistItems}
+              ariaLabel={m.ignorelist_section_title()}
+              showDate={false}
+              emptyMessage={m.empty_ignorelist()}
+              exitZone={(forward) => exitZone("wishlist-list", forward)}
+              onEmpty={() => addPatternBtnRef.current?.focus()}
+              onEdit={(pattern) => setDialog({ mode: "edit", listType: "ignorelist", pattern })}
+              onRemove={handleRemoveIgnorelist}
+            />
+          </ListCard>
         </TabPanel>
       </div>
 

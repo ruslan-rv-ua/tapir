@@ -11,6 +11,8 @@ import { SongsList } from "./SongsList";
 import { TagEditorDialog } from "./TagEditorDialog";
 import { RenameDialog } from "./RenameDialog";
 import { ConfirmDialog } from "../common/ConfirmDialog";
+import { ListCard, ListCardState } from "../common/ListCard";
+import { ScreenHeader } from "../layout/ScreenHeader";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as tauri from "../../lib/tauri";
 import type { Song, SongDeletedPayload, SongRenamedPayload } from "../../types/song";
@@ -140,21 +142,25 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
 
   return (
     <div role="region" aria-label={m.songs_section()} className="flex flex-1 flex-col overflow-hidden">
+      {/* No header actions → standalone <h1>, not part of a zone (FRD §7.1.3). */}
+      <ScreenHeader title={m.songs_section()} />
       <SongsFilterBar ref={filterRef} exitZone={(forward) => exitZone("songs-filter", forward)} />
-      {loading && <p className="p-4 text-slate-400" role="status">{m.songs_loading()}</p>}
-      {error && <p className="p-4 text-red-400" role="alert">{m.songs_error({ error })}</p>}
-      {!loading && !error && songs.length === 0 && (
-        <p className="p-4 text-slate-400">{m.songs_empty()}</p>
-      )}
-      {!loading && !error && songs.length > 0 && (
-        <SongsList
-          ref={listRef}
-          exitZone={(forward) => exitZone("songs-list", forward)}
-          onEmpty={() => filterRef.current?.focus("forward")}
-          onPlay={handlePlay}
-          onAction={handleMenuAction}
-        />
-      )}
+      <ListCard>
+        {loading && <ListCardState role="status" className="text-slate-400">{m.songs_loading()}</ListCardState>}
+        {error && <ListCardState role="alert" className="text-red-400">{m.songs_error({ error })}</ListCardState>}
+        {!loading && !error && songs.length === 0 && (
+          <ListCardState role="status">{m.songs_empty()}</ListCardState>
+        )}
+        {!loading && !error && songs.length > 0 && (
+          <SongsList
+            ref={listRef}
+            exitZone={(forward) => exitZone("songs-list", forward)}
+            onEmpty={() => filterRef.current?.focus("forward")}
+            onPlay={handlePlay}
+            onAction={handleMenuAction}
+          />
+        )}
+      </ListCard>
 
       {tagEditorFor && (
         <TagEditorDialog

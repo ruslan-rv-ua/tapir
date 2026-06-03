@@ -13,6 +13,16 @@ type RovingFocusOptions =
  * composite-exit mode: Tab at ANY element calls onTabOut and stops propagation.
  * mixed-boundary-handoff mode: Tab only at first/last boundary calls onTabBoundary.
  */
+/**
+ * A native `disabled` control cannot receive DOM focus, so `.focus()` on it
+ * silently no-ops and the screen reader goes quiet. Arrow / Home / End traversal
+ * must skip such elements. `aria-disabled` elements stay focusable on purpose
+ * (e.g. ActivityBar's unimplemented sections must remain discoverable, FRD
+ * §7.2.3), so they are NOT skipped here.
+ */
+const isFocusable = (el: HTMLElement | null): el is HTMLElement =>
+  el !== null && !(el as HTMLButtonElement).disabled;
+
 export function useRovingFocus(
   refs: React.RefObject<HTMLElement | null>[],
   axis: 'horizontal' | 'vertical' | 'both',
@@ -38,6 +48,12 @@ export function useRovingFocus(
       const count = refs.length;
       if (count === 0) return;
       const clamped = Math.max(0, Math.min(index, count - 1));
+      // No-op when the index is unchanged: setActiveIndex would bail the
+      // re-render, so the useLayoutEffect that consumes pendingFocusRef never
+      // fires. Scheduling focus here would leave a stale pending entry that
+      // hijacks focus on the next unrelated render. Callers that must move DOM
+      // focus on entry (e.g. ActivityBar) focus the element directly.
+      if (clamped === activeIndexRef.current) return;
       activeIndexRef.current = clamped;
       setActiveIndex(clamped);
       pendingFocusRef.current = clamped;
@@ -51,6 +67,16 @@ export function useRovingFocus(
       if (count === 0) return;
       const idx = activeIndexRef.current;
 
+      // Find the nearest focusable index from `start`, scanning by `step` (no
+      // wrap). Returns null if every candidate in that direction is unfocusable,
+      // in which case the caller leaves focus where it is.
+      const seekFocusable = (start: number, step: number): number | null => {
+        for (let i = start; i >= 0 && i < count; i += step) {
+          if (isFocusable(refs[i]?.current ?? null)) return i;
+        }
+        return null;
+      };
+
       const isPrev =
         (axis === 'vertical' && e.key === 'ArrowUp') ||
         (axis === 'horizontal' && e.key === 'ArrowLeft') ||
@@ -62,16 +88,28 @@ export function useRovingFocus(
 
       if (isPrev) {
         e.preventDefault();
-        moveTo(idx - 1);
+        const target = seekFocusable(idx - 1, -1);
+        if (target !== null) moveTo(target);
         return;
       }
       if (isNext) {
         e.preventDefault();
-        moveTo(idx + 1);
+        const target = seekFocusable(idx + 1, 1);
+        if (target !== null) moveTo(target);
         return;
       }
-      if (e.key === 'Home') { e.preventDefault(); moveTo(0); return; }
-      if (e.key === 'End') { e.preventDefault(); moveTo(count - 1); return; }
+      if (e.key === 'Home') {
+        e.preventDefault();
+        const target = seekFocusable(0, 1);
+        if (target !== null) moveTo(target);
+        return;
+      }
+      if (e.key === 'End') {
+        e.preventDefault();
+        const target = seekFocusable(count - 1, -1);
+        if (target !== null) moveTo(target);
+        return;
+      }
 
       if (e.key === 'Tab') {
         const opts = optionsRef.current;
@@ -103,8 +141,11 @@ export function useRovingFocus(
       const count = refs.length;
       if (count === 0) return;
 
+      // On entry, land on an actionable control: skip native `disabled` (via
+      // isFocusable) AND `aria-disabled` (which arrow traversal keeps, but which
+      // is not a sensible entry anchor).
       const isEnabled = (el: HTMLElement | null): el is HTMLElement =>
-        el !== null && !(el as HTMLButtonElement).disabled && !el.hasAttribute('aria-disabled');
+        isFocusable(el) && !el.hasAttribute('aria-disabled');
 
       // Try remembered index first, then scan in travel direction for an enabled element
       const startIdx = activeIndexRef.current;

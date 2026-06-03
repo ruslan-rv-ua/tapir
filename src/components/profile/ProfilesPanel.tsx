@@ -6,6 +6,7 @@ import { $settings } from "../../stores/settings";
 import { ProfileList, type ProfileListHandle } from "./ProfileList";
 import { ProfileNameDialog } from "./ProfileNameDialog";
 import { ConfirmDialog } from "../common/ConfirmDialog";
+import { ListCard } from "../common/ListCard";
 import { ScreenZone } from "../layout/ScreenZone";
 import { ScreenHeader } from "../layout/ScreenHeader";
 import { useRovingFocus } from "../../hooks/useRovingFocus";
@@ -232,7 +233,7 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
       </ScreenZone>
 
       {/* ── List ── */}
-      <div className="flex flex-1 flex-col overflow-hidden px-4 py-3">
+      <ListCard>
         <ProfileList
           ref={listRef}
           profiles={profiles}
@@ -244,7 +245,7 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
           onDelete={(name) => { setTarget(name); setSubDialog({ type: "delete" }); }}
           onExport={handleExport}
         />
-      </div>
+      </ListCard>
 
       {/* ── Sub-dialogs (single level, portalled) ── */}
       {(subDialog?.type === "create" || subDialog?.type === "rename" ||

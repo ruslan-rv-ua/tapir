@@ -1,7 +1,9 @@
-import { forwardRef, useImperativeHandle, useMemo, useState } from "react";
+import { forwardRef, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { useCompositeList, type SegmentKind } from "../../hooks/useCompositeList";
+import { CompositeList, CompositeRow, CompositeSegment, CompositeAction } from "../common/composite-list";
+import type { SegmentKind } from "../../hooks/useCompositeList";
 import { ConfirmDialog } from "../common/ConfirmDialog";
+import { ListCardState } from "../common/ListCard";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as m from "../../i18n/paraglide/messages";
 
@@ -39,129 +41,100 @@ export const PatternList = forwardRef<ZoneEntry, Props>(
     );
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-    const { listRef, onKeyDownCapture, isFocused, restoreFocus, activeItemId } = useCompositeList({
-      zoneId: "wishlist-list",
-      items: listItems,
-      onTabOut: exitZone,
-      onEmpty,
-      onAction: (type, itemId, segment) => {
-        if (type === "delete") {
-          setConfirmDelete(itemId);
-          return;
-        }
-        // Edit/Delete buttons self-activate; Enter/Space on the whole-row summary edits.
-        if ((type === "primary" || type === "toggle") && segment === "summary") {
-          onEdit(itemId);
-        }
-      },
-    });
-
-    useImperativeHandle(ref, () => ({
-      id: "wishlist-list",
-      get el() {
-        return listRef.current!;
-      },
-      focus: restoreFocus,
-    }), [restoreFocus]);
-
-    if (items.length === 0) {
-      return (
-        <div role="status" className="py-4 text-center text-sm text-slate-500">
-          {emptyMessage}
-        </div>
-      );
-    }
-
     return (
       <>
-        <ul
-          ref={listRef}
-          data-zone-id="wishlist-list"
-          aria-label={ariaLabel}
-          role="application"
+        <CompositeList
+          ref={ref}
+          zoneId="wishlist-list"
+          ariaLabel={ariaLabel}
+          items={listItems}
           className="flex-1 overflow-auto"
-          onKeyDownCapture={onKeyDownCapture}
-        >
-          {items.map((item) => {
-            // Value only; the "Умови" type is announced via aria-roledescription.
-            const conditionsValue = showDate && item.addedAt
-              ? `${m.column_added_at()}, ${formatDate(item.addedAt)}`
-              : m.empty_conditions();
-            const activeRow = activeItemId === item.pattern;
-
+          onTabOut={exitZone}
+          onEmpty={onEmpty}
+          empty={
+            <ListCardState role="status">{emptyMessage}</ListCardState>
+          }
+          onAction={(type, itemId, segment) => {
+            if (type === "delete") {
+              setConfirmDelete(itemId);
+              return;
+            }
+            // Edit/Delete buttons self-activate; Enter/Space on the whole-row summary edits.
+            if ((type === "primary" || type === "toggle") && segment === "summary") {
+              onEdit(itemId);
+            }
+          }}
+          renderRow={({ id, isActive, isFocused }) => {
+            const item = items.find((it) => it.pattern === id)!;
+            // Value only; the "conditions" type is announced via aria-roledescription.
+            const conditionsValue =
+              showDate && item.addedAt
+                ? `${m.column_added_at()}, ${formatDate(item.addedAt)}`
+                : m.empty_conditions();
             return (
-              <li
-                key={item.pattern}
-                // The <li> is the 'summary' (whole-row) focus stop. role="listitem"
-                // is EXPLICIT: under the role="application" parent the <li>'s implicit
-                // listitem role is dropped and NVDA announces nothing on focus. With
-                // the explicit role, aria-roledescription makes NVDA read "{pattern},
-                // патерн". Single focus ring via the global [tabindex]:focus-visible rule.
-                role="listitem"
-                data-item-id={item.pattern}
-                data-segment="summary"
-                tabIndex={isFocused(item.pattern, "summary") ? 0 : -1}
-                aria-label={item.pattern}
-                aria-roledescription={m.item_role_pattern()}
-                className={`border-b border-slate-800 forced-colors:border-[ButtonText] ${activeRow ? "bg-slate-800/60" : ""}`}
+              <CompositeRow
+                key={id}
+                itemId={id}
+                isFocused={isFocused}
+                isActiveRow={isActive}
+                label={id}
+                roleDescription={m.item_role_pattern()}
+                className="border-b border-slate-800 forced-colors:border-[ButtonText]"
+                activeClassName="bg-slate-800/60"
               >
                 {/* Pattern text — visual only; the row's accessible name is on the <li>. */}
-                <div className="px-3 py-2 font-mono text-slate-200">
-                  {item.pattern}
-                </div>
+                <div className="px-3 py-2 font-mono text-slate-200">{id}</div>
 
-                {/* Conditions segment */}
-                <div
-                  role="group"
-                  data-item-id={item.pattern}
-                  data-segment="conditions"
-                  tabIndex={isFocused(item.pattern, "conditions") ? 0 : -1}
-                  aria-label={conditionsValue}
-                  aria-roledescription={m.segment_conditions()}
-                  className="px-3 py-1 text-sm text-slate-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight]"
+                <CompositeSegment
+                  itemId={id}
+                  segment="conditions"
+                  isFocused={isFocused}
+                  label={conditionsValue}
+                  roleDescription={m.segment_conditions()}
+                  className="px-3 py-1 text-sm text-slate-400"
                 >
                   {showDate && item.addedAt ? formatDate(item.addedAt) : "—"}
-                </div>
+                </CompositeSegment>
 
-                {/* Actions — each button is its own focus stop (roving tabIndex). */}
                 <div className="flex justify-end gap-1 px-3 py-1">
-                  <button
-                    data-item-id={item.pattern}
-                    data-segment="action-edit"
-                    tabIndex={isFocused(item.pattern, "action-edit") ? 0 : -1}
-                    onClick={() => onEdit(item.pattern)}
-                    aria-label={`${m.edit_pattern()}: ${item.pattern}`}
-                    className="rounded px-2 py-0.5 text-xs text-slate-500 hover:bg-slate-700 hover:text-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight]"
+                  <CompositeAction
+                    itemId={id}
+                    segment="action-edit"
+                    isFocused={isFocused}
+                    onClick={() => onEdit(id)}
+                    label={`${m.edit_pattern()}: ${id}`}
+                    className="rounded px-2 py-0.5 text-xs text-slate-500 hover:bg-slate-700 hover:text-slate-300"
                   >
                     ✎
-                  </button>
-                  <button
-                    data-item-id={item.pattern}
-                    data-segment="action-delete"
-                    tabIndex={isFocused(item.pattern, "action-delete") ? 0 : -1}
-                    onClick={() => setConfirmDelete(item.pattern)}
-                    aria-label={`${m.remove_pattern()}: ${item.pattern}`}
-                    className="rounded px-2 py-0.5 text-xs text-slate-500 hover:bg-slate-700 hover:text-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:focus-visible:outline-[Highlight]"
+                  </CompositeAction>
+                  <CompositeAction
+                    itemId={id}
+                    segment="action-delete"
+                    isFocused={isFocused}
+                    onClick={() => setConfirmDelete(id)}
+                    label={`${m.remove_pattern()}: ${id}`}
+                    className="rounded px-2 py-0.5 text-xs text-slate-500 hover:bg-slate-700 hover:text-slate-300"
                   >
                     ✕
-                  </button>
+                  </CompositeAction>
                 </div>
-              </li>
+              </CompositeRow>
             );
-          })}
-        </ul>
-        {confirmDelete && createPortal(
-          <ConfirmDialog
-            title={m.remove_pattern()}
-            message={m.confirm_remove_pattern({ pattern: confirmDelete })}
-            onConfirm={() => {
-              onRemove(confirmDelete);
-              setConfirmDelete(null);
-            }}
-            onCancel={() => setConfirmDelete(null)}
-          />,
-          document.body,
-        )}
+          }}
+        />
+        {confirmDelete &&
+          createPortal(
+            <ConfirmDialog
+              title={m.remove_pattern()}
+              message={m.confirm_remove_pattern({ pattern: confirmDelete })}
+              onConfirm={() => {
+                onRemove(confirmDelete);
+                setConfirmDelete(null);
+              }}
+              onCancel={() => setConfirmDelete(null)}
+            />,
+            document.body,
+          )}
       </>
     );
   },

@@ -1,0 +1,99 @@
+import { describe, it, expect, vi } from "vitest";
+import { render, fireEvent } from "@testing-library/react";
+import type { Song } from "../../types/song";
+import { SongItem } from "./SongItem";
+
+vi.mock("../../i18n/paraglide/messages", () => ({
+  item_role_song: () => "пісня",
+  songs_row_summary: ({ title }: { title: string }) => `${title} summary`,
+  songs_incomplete_badge: () => "неповний",
+  songs_action_play: () => "Відтворити",
+  songs_action_stop: () => "Зупинити",
+  songs_action_menu: () => "Меню",
+  songs_action_explorer: () => "Провідник",
+  songs_action_rename: () => "Перейменувати",
+  songs_action_tags: () => "Теги",
+  songs_action_delete: () => "Видалити",
+}));
+
+const mk = (over: Partial<Song> = {}): Song => ({
+  path: "/songs/a.mp3",
+  fileName: "a.mp3",
+  title: "Title A",
+  artist: "Artist A",
+  album: "",
+  genre: "",
+  station: "Radio X",
+  format: "mp3",
+  sizeBytes: 2048,
+  durationMs: 60000,
+  recordedAt: "2026-01-01T00:00:00Z",
+  isComplete: true,
+  ...over,
+});
+
+function renderItem(song = mk(), focusedSeg: string = "summary", isPlaying = false) {
+  return render(
+    <ul>
+      <SongItem
+        song={song}
+        isActiveRow
+        isPlaying={isPlaying}
+        isFocused={(seg) => seg === focusedSeg}
+        onPlay={() => {}}
+        onAction={() => {}}
+      />
+    </ul>,
+  );
+}
+
+describe("SongItem — a11y structure (drift fixes)", () => {
+  it("describes the row as a song via aria-roledescription", () => {
+    const { container } = renderItem();
+    const li = container.querySelector<HTMLElement>('li[data-segment="summary"]')!;
+    expect(li.getAttribute("role")).toBe("listitem");
+    expect(li.getAttribute("aria-roledescription")).toBe("пісня");
+    expect(li.getAttribute("aria-label")).toContain("Title A");
+    expect(li.tabIndex).toBe(0);
+  });
+
+  it("renders track and tech segments as role=group", () => {
+    const { container } = renderItem();
+    expect(container.querySelector('[data-segment="track"]')!.getAttribute("role")).toBe("group");
+    expect(container.querySelector('[data-segment="tech"]')!.getAttribute("role")).toBe("group");
+  });
+
+  it("renders the incomplete badge as a role=group status segment", () => {
+    const { container } = renderItem(mk({ isComplete: false }));
+    const status = container.querySelector('[data-segment="status"]')!;
+    expect(status.getAttribute("role")).toBe("group");
+    expect(status.getAttribute("aria-label")).toBe("неповний");
+  });
+
+  it("uses the shared outline focus ring (not ring-2) on segments", () => {
+    const { container } = renderItem();
+    const track = container.querySelector('[data-segment="track"]')!;
+    expect(track.className).toMatch(/focus-visible:outline/);
+    expect(track.className).not.toMatch(/focus-visible:ring-2/);
+  });
+
+  it("renders play as a button focus stop that calls onPlay", () => {
+    const onPlay = vi.fn();
+    const { container } = render(
+      <ul>
+        <SongItem
+          song={mk()}
+          isActiveRow
+          isPlaying={false}
+          isFocused={(seg) => seg === "summary"}
+          onPlay={onPlay}
+          onAction={() => {}}
+        />
+      </ul>,
+    );
+    const btn = container.querySelector('button[data-segment="action-play"]')!;
+    expect(btn.tagName).toBe("BUTTON");
+    fireEvent.click(btn);
+    expect(onPlay).toHaveBeenCalled();
+  });
+});

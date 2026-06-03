@@ -78,4 +78,26 @@ describe("ActivityBar — launch focus (P3)", () => {
     const buttons = container.querySelectorAll<HTMLButtonElement>("button");
     expect(document.activeElement).toBe(buttons[2]);
   });
+
+  it("re-focuses the active section button on re-entry, even when the roving index is unchanged", () => {
+    // streams active → activeNavIndex = 1. Regression test for Shift+Tab back to
+    // the nav: the first entry sets the roving index to 1; on re-entry the target
+    // index already equals the roving index, so the state-change-driven focus
+    // effect bails. Focus must still land on the section button, not be swallowed.
+    $activeSection.set("streams");
+    const { container, ref } = renderBar();
+    const buttons = container.querySelectorAll<HTMLButtonElement>("button");
+
+    act(() => ref.current!.focus("forward"));
+    expect(document.activeElement).toBe(buttons[1]);
+
+    // Simulate Tab into another zone — DOM focus leaves the bar without changing
+    // the roving index.
+    act(() => buttons[3].focus());
+    expect(document.activeElement).toBe(buttons[3]);
+
+    // Shift+Tab back into the nav re-enters at the same active-section index.
+    act(() => ref.current!.focus("backward"));
+    expect(document.activeElement).toBe(buttons[1]);
+  });
 });

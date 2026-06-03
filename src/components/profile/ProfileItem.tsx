@@ -1,7 +1,8 @@
-import type React from "react";
 import { CheckCircle, ArrowRightLeft, Copy, Pencil, Trash2, Upload } from "lucide-react";
+import type React from "react";
 import type { ProfileMeta } from "../../lib/tauri";
 import type { SegmentKind } from "../../hooks/useCompositeList";
+import { CompositeRow, CompositeAction } from "../common/composite-list";
 import { ProfileContextMenu } from "./ProfileContextMenu";
 import { getLocale } from "../../i18n/paraglide/runtime";
 import * as m from "../../i18n/paraglide/messages";
@@ -25,7 +26,10 @@ export function getProfileSegments(profile: ProfileMeta, activeProfile: string):
   const segs: ProfileSegment[] = [];
   if (!isActive) segs.push("action-switch");
   segs.push("action-duplicate");
-  if (!isDefault && !isActive) { segs.push("action-rename"); segs.push("action-delete"); }
+  if (!isDefault && !isActive) {
+    segs.push("action-rename");
+    segs.push("action-delete");
+  }
   segs.push("action-export");
   segs.push("action-menu");
   return segs;
@@ -34,10 +38,14 @@ export function getProfileSegments(profile: ProfileMeta, activeProfile: string):
 function streamCountLabel(count: number): string {
   const category = new Intl.PluralRules(getLocale()).select(count);
   switch (category) {
-    case "one": return m.profile_stream_count_one({ count });
-    case "few": return m.profile_stream_count_few({ count });
-    case "many": return m.profile_stream_count_many({ count });
-    default: return m.profile_stream_count_other({ count });
+    case "one":
+      return m.profile_stream_count_one({ count });
+    case "few":
+      return m.profile_stream_count_few({ count });
+    case "many":
+      return m.profile_stream_count_many({ count });
+    default:
+      return m.profile_stream_count_other({ count });
   }
 }
 
@@ -55,8 +63,15 @@ interface Props {
 }
 
 export function ProfileItem({
-  profile, activeProfile, isFocused, isActiveRow,
-  onSwitch, onDuplicate, onRename, onDelete, onExport,
+  profile,
+  activeProfile,
+  isFocused,
+  isActiveRow,
+  onSwitch,
+  onDuplicate,
+  onRename,
+  onDelete,
+  onExport,
 }: Props) {
   const isActive = profile.name === activeProfile;
   const isDefault = profile.name === "Default";
@@ -68,41 +83,74 @@ export function ProfileItem({
     : `${profile.name}, ${countLabel}`;
 
   return (
-    <li
-      // Explicit role="listitem": the parent <ul> is role="application", which
-      // drops the implicit listitem role and would leave NVDA with nothing to
-      // announce on focus. Mirrors StreamItem.
-      role="listitem"
-      data-item-id={profile.name}
-      data-segment="summary"
-      tabIndex={isFocused("summary") ? 0 : -1}
-      aria-label={rowLabel}
-      aria-roledescription={m.item_role_profile()}
-      className={`flex items-center gap-2 border-b border-slate-800 px-3 py-2 forced-colors:border-[ButtonText] ${isActiveRow ? "bg-slate-800/60" : ""}`}
+    <CompositeRow
+      itemId={profile.name}
+      isFocused={isFocused}
+      isActiveRow={isActiveRow}
+      label={rowLabel}
+      roleDescription={m.item_role_profile()}
+      className="flex items-center gap-2 border-b border-slate-800 px-3 py-2 forced-colors:border-[ButtonText]"
+      activeClassName="bg-slate-800/60"
     >
       <span aria-hidden="true" className="flex h-4 w-4 shrink-0 items-center justify-center">
         {isActive ? <CheckCircle size={14} className="text-sky-400 forced-colors:text-[Highlight]" /> : null}
       </span>
       <span className="truncate font-medium text-slate-200">{profile.name}</span>
-      <span aria-hidden="true" className="ml-auto text-xs text-slate-500">{countLabel}</span>
+      <span aria-hidden="true" className="ml-auto text-xs text-slate-500">
+        {countLabel}
+      </span>
 
-      <div role="group" aria-label={m.profile_row_actions({ name: profile.name })} className="flex items-center gap-1">
+      <div
+        role="group"
+        aria-label={m.profile_row_actions({ name: profile.name })}
+        className="flex items-center gap-1"
+      >
         {!isActive && (
-          <IconButton itemId={profile.name} segment="action-switch" focused={isFocused("action-switch")}
-            onClick={() => onSwitch(profile.name)} label={m.profile_switch_named({ name: profile.name })} Icon={ArrowRightLeft} />
+          <IconButton
+            name={profile.name}
+            segment="action-switch"
+            isFocused={isFocused}
+            onClick={() => onSwitch(profile.name)}
+            label={m.profile_switch_named({ name: profile.name })}
+            Icon={ArrowRightLeft}
+          />
         )}
-        <IconButton itemId={profile.name} segment="action-duplicate" focused={isFocused("action-duplicate")}
-          onClick={() => onDuplicate(profile.name)} label={m.profile_duplicate_named({ name: profile.name })} Icon={Copy} />
+        <IconButton
+          name={profile.name}
+          segment="action-duplicate"
+          isFocused={isFocused}
+          onClick={() => onDuplicate(profile.name)}
+          label={m.profile_duplicate_named({ name: profile.name })}
+          Icon={Copy}
+        />
         {!isDefault && !isActive && (
           <>
-            <IconButton itemId={profile.name} segment="action-rename" focused={isFocused("action-rename")}
-              onClick={() => onRename(profile.name)} label={m.profile_rename_named({ name: profile.name })} Icon={Pencil} />
-            <IconButton itemId={profile.name} segment="action-delete" focused={isFocused("action-delete")}
-              onClick={() => onDelete(profile.name)} label={m.profile_delete_named({ name: profile.name })} Icon={Trash2} />
+            <IconButton
+              name={profile.name}
+              segment="action-rename"
+              isFocused={isFocused}
+              onClick={() => onRename(profile.name)}
+              label={m.profile_rename_named({ name: profile.name })}
+              Icon={Pencil}
+            />
+            <IconButton
+              name={profile.name}
+              segment="action-delete"
+              isFocused={isFocused}
+              onClick={() => onDelete(profile.name)}
+              label={m.profile_delete_named({ name: profile.name })}
+              Icon={Trash2}
+            />
           </>
         )}
-        <IconButton itemId={profile.name} segment="action-export" focused={isFocused("action-export")}
-          onClick={() => onExport(profile.name)} label={m.profile_export_named({ name: profile.name })} Icon={Upload} />
+        <IconButton
+          name={profile.name}
+          segment="action-export"
+          isFocused={isFocused}
+          onClick={() => onExport(profile.name)}
+          label={m.profile_export_named({ name: profile.name })}
+          Icon={Upload}
+        />
         <ProfileContextMenu
           profile={profile}
           isActive={isActive}
@@ -115,31 +163,36 @@ export function ProfileItem({
           onExport={() => onExport(profile.name)}
         />
       </div>
-    </li>
+    </CompositeRow>
   );
 }
 
 function IconButton({
-  itemId, segment, focused, onClick, label, Icon,
+  name,
+  segment,
+  isFocused,
+  onClick,
+  label,
+  Icon,
 }: {
-  itemId: string;
+  name: string;
   segment: ProfileSegment;
-  focused: boolean;
+  isFocused: (segment: "summary" | SegmentKind) => boolean;
   onClick: () => void;
   label: string;
   Icon: React.ComponentType<{ size?: number; className?: string; "aria-hidden"?: boolean }>;
 }) {
   return (
-    <button
-      data-item-id={itemId}
-      data-segment={segment}
-      tabIndex={focused ? 0 : -1}
+    <CompositeAction
+      itemId={name}
+      segment={segment}
+      isFocused={isFocused}
       onClick={onClick}
-      aria-label={label}
+      label={label}
       title={label}
-      className="inline-flex shrink-0 items-center justify-center rounded bg-slate-700 px-2 py-1 text-xs text-slate-300 hover:bg-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:border forced-colors:border-[ButtonText] forced-colors:bg-[ButtonFace] forced-colors:text-[ButtonText] forced-colors:focus-visible:outline-[Highlight]"
+      className="inline-flex shrink-0 items-center justify-center rounded bg-slate-700 px-2 py-1 text-xs text-slate-300 hover:bg-slate-600 forced-colors:border forced-colors:border-[ButtonText] forced-colors:bg-[ButtonFace] forced-colors:text-[ButtonText]"
     >
       <Icon size={14} aria-hidden className="opacity-80" />
-    </button>
+    </CompositeAction>
   );
 }
