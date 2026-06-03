@@ -3,6 +3,7 @@ import { useStore } from "@nanostores/react";
 import { $streams } from "../../stores/streams";
 import { addStation } from "../../stores/browser";
 import { CompositeList, CompositeRow, CompositeSegment, COMPOSITE_FOCUS_RING } from "../common/composite-list";
+import { ListCardState } from "../common/ListCard";
 import type { SegmentKind } from "../../hooks/useCompositeList";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import type { StationResult } from "../../lib/tauri";
@@ -61,13 +62,13 @@ export const StationList = forwardRef<ZoneEntry, Props>(
         onTabOut={exitZone}
         loading={
           loading ? (
-            <div role="status" aria-live="polite" className="p-4 text-sm text-slate-400">
+            <ListCardState role="status" aria-live="polite" className="text-slate-400">
               {m.browser_loading()}
-            </div>
+            </ListCardState>
           ) : undefined
         }
-        error={error ? <div role="alert" className="p-4 text-sm text-red-400">{error}</div> : undefined}
-        empty={<div role="status" className="p-4 text-center text-sm text-slate-500">{emptyMessage}</div>}
+        error={error ? <ListCardState role="alert" className="text-red-400">{error}</ListCardState> : undefined}
+        empty={<ListCardState role="status">{emptyMessage}</ListCardState>}
         footer={
           hasMore && onLoadMore ? (
             <li>

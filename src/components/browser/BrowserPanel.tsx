@@ -3,6 +3,7 @@ import { useStore } from "@nanostores/react";
 import { SearchForm } from "./SearchForm";
 import { StationList } from "./StationList";
 import { ScreenHeader } from "../layout/ScreenHeader";
+import { ListCard } from "../common/ListCard";
 import {
   $searchResults, $searchLoading, $searchError,
   $popularStations, $popularLoading, $popularError,
@@ -70,16 +71,18 @@ export function BrowserPanel({ onZonesChange, exitZone }: Props) {
       {!showSearchResults && (
         <h2 className="px-4 py-2 text-sm font-medium text-slate-300">{m.browser_popular_title()}</h2>
       )}
-      <StationList
-        ref={resultsCallbackRef}
-        stations={stations}
-        loading={loading}
-        error={error}
-        hasMore={showSearchResults ? hasMore : false}
-        onLoadMore={showSearchResults ? loadMore : undefined}
-        emptyMessage={emptyMessage}
-        exitZone={(forward) => exitZone("browser-results", forward)}
-      />
+      <ListCard>
+        <StationList
+          ref={resultsCallbackRef}
+          stations={stations}
+          loading={loading}
+          error={error}
+          hasMore={showSearchResults ? hasMore : false}
+          onLoadMore={showSearchResults ? loadMore : undefined}
+          emptyMessage={emptyMessage}
+          exitZone={(forward) => exitZone("browser-results", forward)}
+        />
+      </ListCard>
     </div>
   );
 }
