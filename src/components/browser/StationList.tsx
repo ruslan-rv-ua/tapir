@@ -117,7 +117,8 @@ export const StationList = forwardRef<ZoneEntry, Props>(
                 roleDescription={m.segment_metadata()}
                 className="px-3 py-1 text-sm text-slate-400"
               >
-                {[station.name, station.country, station.codec, station.bitrate && `${station.bitrate} kbps`]
+                {/* Name is the row summary (above) — omit it here to avoid a visible duplicate. */}
+                {[station.country, station.codec, station.bitrate && `${station.bitrate} kbps`]
                   .filter(Boolean)
                   .join(" · ")}
               </CompositeSegment>

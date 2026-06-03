@@ -1,4 +1,4 @@
-import { useRef, useCallback, useEffect, type RefObject } from "react";
+import { useRef, useCallback, useEffect, useImperativeHandle, forwardRef } from "react";
 import { useStore } from "@nanostores/react";
 import { SearchField, Input, Button, Label, Select, SelectValue, Popover, ListBox, ListBoxItem, NumberField, Group } from "react-aria-components";
 import {
@@ -10,27 +10,32 @@ import {
 } from "../../stores/browser";
 import { useFocusBoundary } from "../../hooks/useFocusBoundary";
 import { ScreenZone } from "../layout/ScreenZone";
+import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import type { SearchParams } from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 
 interface SearchFormProps {
-  containerRef?: RefObject<HTMLDivElement | null>;
-  exitZone?: (forward: boolean) => void;
+  exitZone: (forward: boolean) => void;
 }
 
-export function SearchForm({ containerRef, exitZone }: SearchFormProps = {}) {
+export const SearchForm = forwardRef<ZoneEntry, SearchFormProps>(function SearchForm({ exitZone }, ref) {
   const params = useStore($searchParams);
   const filters = useStore($browserFilters);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const internalRef = useRef<HTMLDivElement | null>(null);
-  const effectiveRef = containerRef ?? internalRef;
-  const { refreshBoundary } = useFocusBoundary(
-    effectiveRef,
-    exitZone ?? (() => {}),
-  );
+  // Single source of truth for this zone's Tab-exit boundary. The filter fields
+  // render asynchronously (after $browserFilters loads), so the boundary's
+  // first/last elements change — refreshBoundary() re-discovers them.
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const { refreshBoundary, restoreFocus } = useFocusBoundary(containerRef, exitZone);
 
   useEffect(() => { refreshBoundary(); }, [filters, refreshBoundary]);
+
+  useImperativeHandle(ref, () => ({
+    id: "browser-search",
+    get el() { return containerRef.current!; },
+    focus: restoreFocus,
+  }), [restoreFocus]);
 
   // Debounced text search
   const handleQueryChange = useCallback((value: string) => {
@@ -69,7 +74,7 @@ export function SearchForm({ containerRef, exitZone }: SearchFormProps = {}) {
   }, []);
 
   return (
-    <ScreenZone ref={effectiveRef} id="browser-search" role="search" label={m.zone_browser_search()} className="flex flex-wrap items-end gap-3 px-4 py-3">
+    <ScreenZone ref={containerRef} id="browser-search" role="search" label={m.zone_browser_search()} className="flex flex-wrap items-end gap-3 px-4 py-3">
       <SearchField
         aria-label={m.browser_search_placeholder()}
         value={params.query ?? ""}
@@ -172,4 +177,5 @@ export function SearchForm({ containerRef, exitZone }: SearchFormProps = {}) {
       )}
     </ScreenZone>
   );
-}
+});
+SearchForm.displayName = "SearchForm";
