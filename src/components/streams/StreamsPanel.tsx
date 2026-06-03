@@ -8,6 +8,7 @@ import { FreeSpaceMetric } from "./FreeSpaceMetric";
 import { StreamList } from "./StreamList";
 import { AddStreamDialog } from "./AddStreamDialog";
 import { ConfirmDialog } from "../common/ConfirmDialog";
+import { ListCard } from "../common/ListCard";
 import { ScreenZone } from "../layout/ScreenZone";
 import { ScreenHeader } from "../layout/ScreenHeader";
 import { useRovingFocus } from "../../hooks/useRovingFocus";
@@ -350,10 +351,8 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
             </div>
           </ScreenZone>
 
-          {/* Content pad wrapper */}
-          <div className="flex flex-1 flex-col overflow-hidden px-4 py-3">
-            {/* Rounded card container */}
-            <div className="flex flex-1 flex-col overflow-hidden rounded-[18px] border border-slate-700/60 bg-white/[.02] forced-colors:border-[ButtonText]">
+          {/* Framed list container (shared ListCard) */}
+          <ListCard>
               {/* ── Column headers (visual only) ── */}
               <div
                 aria-hidden="true"
@@ -394,8 +393,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
                   onEmpty={() => {/* handled by isEmpty effect */}}
                 />
               )}
-            </div>
-          </div>
+          </ListCard>
         </>
       )}
 
