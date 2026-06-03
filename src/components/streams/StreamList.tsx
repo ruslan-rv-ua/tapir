@@ -1,8 +1,8 @@
-import { forwardRef, useImperativeHandle, useMemo, useState } from "react";
+import { forwardRef, useMemo, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { $streams, $statuses } from "../../stores/streams";
 import { $recordingSettings } from "../../stores/settings";
-import { useCompositeList } from "../../hooks/useCompositeList";
+import { CompositeList } from "../common/composite-list";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import type { StreamInfo } from "../../lib/tauri";
 import { StreamItem, getStreamSegments } from "./StreamItem";
@@ -30,96 +30,89 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
   // Build items with dynamic segments
   const items = useMemo(
     () => streams.map((s) => ({ id: s.id, segments: getStreamSegments(statuses[s.id]) })),
-    [streams, statuses]
+    [streams, statuses],
   );
-
-  const { listRef, onKeyDownCapture, isFocused, restoreFocus, activeItemId } =
-    useCompositeList({
-      zoneId: "streams-list",
-      items,
-      onTabOut: exitZone,
-      onEmpty,
-      onAction: (type, itemId, segment) => {
-        if (type === "delete") {
-          setPendingDeleteId(itemId);
-          return;
-        }
-        if (type === "contextMenu") {
-          const menuBtn = listRef.current?.querySelector<HTMLButtonElement>(
-            `[data-item-id="${CSS.escape(itemId)}"][data-context-menu-trigger]`
-          );
-          menuBtn?.click();
-          return;
-        }
-        // Action buttons self-activate; only Enter/Space on the whole-row summary
-        // triggers the row's primary action (record toggle).
-        if ((type === "primary" || type === "toggle") && segment === "summary") {
-          const isRecording = statuses[itemId]?.state === "recording";
-          (isRecording ? tauri.stopRecording(itemId) : tauri.startRecording(itemId))
-            .catch((err) => addToast(String(err), "error"));
-        }
-      },
-    });
-
-  useImperativeHandle(ref, () => ({
-    id: "streams-list",
-    get el() { return listRef.current!; },
-    focus: restoreFocus,
-  }), [restoreFocus]);
 
   const handleConfirmDelete = async () => {
     if (!pendingDeleteId) return;
-    const streamName = streams.find(s => s.id === pendingDeleteId)?.name ?? "";
+    const streamName = streams.find((s) => s.id === pendingDeleteId)?.name ?? "";
     try {
       await tauri.removeStream(pendingDeleteId);
       $streams.set($streams.get().filter((s) => s.id !== pendingDeleteId));
       addToast(m.stream_removed({ name: streamName }), "info");
-    } catch (err) { addToast(String(err), "error"); }
+    } catch (err) {
+      addToast(String(err), "error");
+    }
     setPendingDeleteId(null);
   };
 
   return (
     <>
-      <ul
-        ref={listRef}
-        data-zone-id="streams-list"
-        aria-label={m.zone_streams_list()}
-        role="application"
+      <CompositeList
+        ref={ref}
+        zoneId="streams-list"
+        ariaLabel={m.zone_streams_list()}
+        items={items}
         className="flex-1 overflow-y-auto overflow-x-hidden pt-1"
-        onKeyDownCapture={onKeyDownCapture}
-      >
-        {streams.map((stream) => (
-          <StreamItem
-            key={stream.id}
-            stream={stream}
-            status={statuses[stream.id]}
-            isActiveRow={activeItemId === stream.id}
-            isFocused={(segment) => isFocused(stream.id, segment)}
-            maxRetries={maxRetries}
-            onPrimaryAction={() => {
-              const isRecording = statuses[stream.id]?.state === "recording";
-              if (isRecording) tauri.stopRecording(stream.id).catch((e) => addToast(String(e), "error"));
-              else tauri.startRecording(stream.id).catch((e) => addToast(String(e), "error"));
-            }}
-            onContextMenu={() => {
-              const menuBtn = listRef.current?.querySelector<HTMLButtonElement>(
-                `[data-item-id="${CSS.escape(stream.id)}"] [data-context-menu-trigger]`
-              );
-              menuBtn?.click();
-            }}
-            onDelete={() => setPendingDeleteId(stream.id)}
-          />
-        ))}
-      </ul>
-      {pendingDeleteId && createPortal(
-        <ConfirmDialog
-          title={m.remove_stream()}
-          message={m.confirm_delete_stream({ name: streams.find(s => s.id === pendingDeleteId)?.name ?? "" })}
-          onConfirm={handleConfirmDelete}
-          onCancel={() => setPendingDeleteId(null)}
-        />,
-        document.body
-      )}
+        onTabOut={exitZone}
+        onEmpty={onEmpty}
+        onAction={(type, itemId, segment) => {
+          if (type === "delete") {
+            setPendingDeleteId(itemId);
+            return;
+          }
+          if (type === "contextMenu") {
+            const menuBtn = document.querySelector<HTMLButtonElement>(
+              `[data-item-id="${CSS.escape(itemId)}"][data-context-menu-trigger]`,
+            );
+            menuBtn?.click();
+            return;
+          }
+          // Action buttons self-activate; only Enter/Space on the whole-row summary
+          // triggers the row's primary action (record toggle).
+          if ((type === "primary" || type === "toggle") && segment === "summary") {
+            const isRecording = statuses[itemId]?.state === "recording";
+            (isRecording ? tauri.stopRecording(itemId) : tauri.startRecording(itemId)).catch((err) =>
+              addToast(String(err), "error"),
+            );
+          }
+        }}
+        renderRow={({ id, isActive, isFocused }) => {
+          const stream = streams.find((s) => s.id === id)!;
+          return (
+            <StreamItem
+              key={id}
+              stream={stream}
+              status={statuses[id]}
+              isActiveRow={isActive}
+              isFocused={isFocused}
+              maxRetries={maxRetries}
+              onPrimaryAction={() => {
+                const isRecording = statuses[id]?.state === "recording";
+                if (isRecording) tauri.stopRecording(id).catch((e) => addToast(String(e), "error"));
+                else tauri.startRecording(id).catch((e) => addToast(String(e), "error"));
+              }}
+              onContextMenu={() => {
+                const menuBtn = document.querySelector<HTMLButtonElement>(
+                  `[data-item-id="${CSS.escape(id)}"] [data-context-menu-trigger]`,
+                );
+                menuBtn?.click();
+              }}
+              onDelete={() => setPendingDeleteId(id)}
+            />
+          );
+        }}
+      />
+      {pendingDeleteId &&
+        createPortal(
+          <ConfirmDialog
+            title={m.remove_stream()}
+            message={m.confirm_delete_stream({ name: streams.find((s) => s.id === pendingDeleteId)?.name ?? "" })}
+            onConfirm={handleConfirmDelete}
+            onCancel={() => setPendingDeleteId(null)}
+          />,
+          document.body,
+        )}
     </>
   );
 });
