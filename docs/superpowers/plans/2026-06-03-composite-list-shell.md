@@ -15,7 +15,7 @@
 **Conventions for every task:**
 - Run a single test file with: `pnpm exec vitest run <path>`
 - Run the whole suite with: `pnpm test`
-- Typecheck with: `pnpm exec tsc --noEmit`
+- **Typecheck gate (IMPORTANT):** this repo does **not** typecheck clean — `pnpm exec tsc --noEmit` reports a stable **baseline of 51 pre-existing errors**, dominated by `TS7016` (the generated Paraglide `src/i18n/paraglide/messages.js` ships no `.d.ts`, so every `import * as m` is untyped) plus a few unrelated ones (`ProfileContextMenu` `title`, `SettingsDialog` `autoFocus`, `ProfilesPanel.test`). The project compiles via Vite/esbuild, not `tsc`. So the gate is **"no regression":** after a task, `pnpm exec tsc --noEmit 2>&1 | grep -cE "error TS"` must be **≤ 51**, and `… | grep "<changed-file>"` must show **only** `TS7016` lines (or nothing), never a new error kind. The real compile gate is `pnpm vite:build` (run once at the end).
 - The branch carries unrelated pre-existing edits in `src/components/browser/BrowserPanel.tsx` and `src/components/browser/SearchForm.tsx`. **Never `git add` those.** Stage only the files each task names.
 
 ---
