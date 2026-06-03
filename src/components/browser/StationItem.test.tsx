@@ -33,6 +33,10 @@ describe("getStationSegments", () => {
     expect(getStationSegments(mkStation({ country: "" }))).not.toContain("country");
   });
 
+  it("omits language when empty", () => {
+    expect(getStationSegments(mkStation({ language: "" }))).not.toContain("language");
+  });
+
   it("omits genre when tags is empty", () => {
     expect(getStationSegments(mkStation({ tags: "" }))).not.toContain("genre");
   });

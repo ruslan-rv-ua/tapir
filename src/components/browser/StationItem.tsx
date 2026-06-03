@@ -11,9 +11,9 @@ export function getStationSegments(station: StationResult): Exclude<SegmentKind,
   if (station.country) segments.push("country");
   if (station.language) segments.push("language");
   if (station.codec) segments.push("codec");
-  if (station.bitrate) segments.push("bitrate");
+  if (station.bitrate) segments.push("bitrate"); // 0 = unknown from API
   if (station.tags) segments.push("genre");
-  if (station.clickcount) segments.push("popularity");
+  if (station.clickcount) segments.push("popularity"); // 0 = unknown from API
   segments.push("action-play", "action-add");
   return segments;
 }
