@@ -7,6 +7,12 @@ export type SegmentKind =
   | 'tech'
   | 'status'
   | 'metadata'
+  | 'country'
+  | 'language'
+  | 'codec'
+  | 'bitrate'
+  | 'genre'
+  | 'popularity'
   | 'conditions'
   // Per-button action stops — each action button is its own focus stop,
   // reached via Left/Right and activated natively (Enter/Space/click).
