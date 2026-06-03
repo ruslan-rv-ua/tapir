@@ -146,6 +146,30 @@ impl PlayerEngine {
     }
 }
 
+/// Probe a file for duration using symphonia when rodio's Decoder cannot determine it.
+/// Needed for CBR MP3 files recorded from ICY streams (no Xing/LAME header).
+fn probe_file_duration(path: &str) -> Option<u64> {
+    let file = std::fs::File::open(path).ok()?;
+    let mss = symphonia::core::io::MediaSourceStream::new(Box::new(file), Default::default());
+    let mut hint = symphonia::core::probe::Hint::new();
+    if let Some(ext) = std::path::Path::new(path).extension().and_then(|e| e.to_str()) {
+        hint.with_extension(ext);
+    }
+    let probed = symphonia::default::get_probe()
+        .format(
+            &hint,
+            mss,
+            &symphonia::core::formats::FormatOptions::default(),
+            &symphonia::core::meta::MetadataOptions::default(),
+        )
+        .ok()?;
+    let track = probed.format.default_track()?;
+    let n_frames = track.codec_params.n_frames?;
+    let tb = track.codec_params.time_base?;
+    let ms = (n_frames as f64 * tb.numer as f64 / tb.denom as f64 * 1000.0) as u64;
+    (ms > 0).then_some(ms)
+}
+
 impl PlayerEngine {
     pub async fn play_file(&self, path: String, app: &AppHandle) -> Result<()> {
         self.stop_session().await;
@@ -156,7 +180,8 @@ impl PlayerEngine {
         let decoder = Decoder::new(reader)
             .context("Unsupported audio format")?;
 
-        let duration_ms = decoder.total_duration().map(|d| d.as_millis() as u64);
+        let duration_ms = decoder.total_duration().map(|d| d.as_millis() as u64)
+            .or_else(|| probe_file_duration(&path));
 
         let device_name = self.output_device_name.lock().await.clone();
         let device_sink = open_device_sink(device_name.as_deref())
