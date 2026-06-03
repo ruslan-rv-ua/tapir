@@ -259,6 +259,7 @@
   "item_role_stream": "потік",
   "item_role_station": "станція",
   "item_role_pattern": "патерн",
+  "item_role_song": "пісня",
   "empty_conditions": "без умов",
   "command_palette_label": "Командна палітра",
   "streams_empty_description": "Список потоків порожній. Натисніть Enter, щоб додати перший потік.",

@@ -259,6 +259,7 @@
   "item_role_stream": "stream",
   "item_role_station": "station",
   "item_role_pattern": "pattern",
+  "item_role_song": "song",
   "empty_conditions": "no conditions",
   "command_palette_label": "Command palette",
   "streams_empty_description": "No streams yet. Press Enter to add the first stream.",
