@@ -229,6 +229,29 @@ impl StreamManager {
             .collect()
     }
 
+    /// Start recording every stream not already active. Returns the number of
+    /// streams newly started. Streams already present in `entries`
+    /// (recording / connecting / reconnecting) are skipped; a per-stream start
+    /// error is logged and does NOT abort the batch.
+    pub fn start_all(
+        &mut self,
+        streams: Vec<StreamInfo>,
+        settings: RecordingSettings,
+        manager_ref: Arc<RwLock<Self>>,
+    ) -> usize {
+        let mut started = 0;
+        for stream in streams {
+            if self.entries.contains_key(&stream.id) {
+                continue;
+            }
+            match self.start_recording(stream, settings.clone(), manager_ref.clone()) {
+                Ok(()) => started += 1,
+                Err(e) => warn!("start_all: failed to start stream: {}", e),
+            }
+        }
+        started
+    }
+
     pub fn get_status(&self, stream_id: &str) -> Option<StreamStatus> {
         self.entries.get(stream_id).map(|e| e.status.clone())
     }
@@ -961,5 +984,18 @@ mod tests {
         // The real contract (tasks terminate) is verified via integration testing.
         let _: fn(&mut StreamManager) -> Vec<tokio::task::JoinHandle<()>> =
             StreamManager::stop_all_async;
+    }
+
+    #[test]
+    fn start_all_has_expected_signature() {
+        // Contract check: a full behavioural test needs a Tauri AppHandle, which
+        // isn't available in a unit test. Mirror the stop_all_async test and just
+        // pin the signature so refactors can't silently change it.
+        let _: fn(
+            &mut StreamManager,
+            Vec<StreamInfo>,
+            RecordingSettings,
+            Arc<RwLock<StreamManager>>,
+        ) -> usize = StreamManager::start_all;
     }
 }
