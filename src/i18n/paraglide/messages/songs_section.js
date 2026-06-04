@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Songs_SectionInputs */
 
 const uk_songs_section = /** @type {(inputs: Songs_SectionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Збережені пісні`)
+	return /** @type {LocalizedString} */ (`Записи`)
 };
 
 const en_songs_section = /** @type {(inputs: Songs_SectionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Saved Songs`)
+	return /** @type {LocalizedString} */ (`Recordings`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Saved Songs" |
+* | "Recordings" |
 *
 * @param {Songs_SectionInputs} inputs
 * @param {{ locale?: "uk" | "en" }} options

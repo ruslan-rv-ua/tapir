@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Songs_EmptyInputs */
 
 const uk_songs_empty = /** @type {(inputs: Songs_EmptyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Поки що немає записаних пісень`)
+	return /** @type {LocalizedString} */ (`Поки що немає записів`)
 };
 
 const en_songs_empty = /** @type {(inputs: Songs_EmptyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`No recorded songs yet`)
+	return /** @type {LocalizedString} */ (`No recordings yet`)
 };
 
 /**
 * | output |
 * | --- |
-* | "No recorded songs yet" |
+* | "No recordings yet" |
 *
 * @param {Songs_EmptyInputs} inputs
 * @param {{ locale?: "uk" | "en" }} options

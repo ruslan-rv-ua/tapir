@@ -6,7 +6,7 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{ title: NonNullable<unknown> }} Announcement_Wishlist_MatchInputs */
 
 const uk_announcement_wishlist_match = /** @type {(inputs: Announcement_Wishlist_MatchInputs) => LocalizedString} */ (i) => {
-	return /** @type {LocalizedString} */ (`Знайдено бажану пісню: ${i?.title}`)
+	return /** @type {LocalizedString} */ (`Знайдено бажаний трек: ${i?.title}`)
 };
 
 const en_announcement_wishlist_match = /** @type {(inputs: Announcement_Wishlist_MatchInputs) => LocalizedString} */ (i) => {

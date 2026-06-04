@@ -4,7 +4,7 @@ import type { Song } from "../../types/song";
 import { SongItem } from "./SongItem";
 
 vi.mock("../../i18n/paraglide/messages", () => ({
-  item_role_song: () => "пісня",
+  item_role_song: () => "запис",
   songs_row_summary: ({ title }: { title: string }) => `${title} summary`,
   songs_incomplete_badge: () => "неповний",
   songs_action_play: () => "Відтворити",
@@ -52,7 +52,7 @@ describe("SongItem — a11y structure (drift fixes)", () => {
     const { container } = renderItem();
     const li = container.querySelector<HTMLElement>('li[data-segment="summary"]')!;
     expect(li.getAttribute("role")).toBe("listitem");
-    expect(li.getAttribute("aria-roledescription")).toBe("пісня");
+    expect(li.getAttribute("aria-roledescription")).toBe("запис");
     expect(li.getAttribute("aria-label")).toContain("Title A");
     expect(li.tabIndex).toBe(0);
   });

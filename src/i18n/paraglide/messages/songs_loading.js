@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Songs_LoadingInputs */
 
 const uk_songs_loading = /** @type {(inputs: Songs_LoadingInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Завантаження пісень…`)
+	return /** @type {LocalizedString} */ (`Завантаження записів…`)
 };
 
 const en_songs_loading = /** @type {(inputs: Songs_LoadingInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Loading songs…`)
+	return /** @type {LocalizedString} */ (`Loading recordings…`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Loading songs…" |
+* | "Loading recordings…" |
 *
 * @param {Songs_LoadingInputs} inputs
 * @param {{ locale?: "uk" | "en" }} options

@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Songs_Loaded_ZeroInputs */
 
 const uk_songs_loaded_zero = /** @type {(inputs: Songs_Loaded_ZeroInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Немає збережених пісень`)
+	return /** @type {LocalizedString} */ (`Немає записів`)
 };
 
 const en_songs_loaded_zero = /** @type {(inputs: Songs_Loaded_ZeroInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`No saved songs`)
+	return /** @type {LocalizedString} */ (`No recordings`)
 };
 
 /**
 * | output |
 * | --- |
-* | "No saved songs" |
+* | "No recordings" |
 *
 * @param {Songs_Loaded_ZeroInputs} inputs
 * @param {{ locale?: "uk" | "en" }} options
