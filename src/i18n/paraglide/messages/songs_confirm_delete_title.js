@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Songs_Confirm_Delete_TitleInputs */
 
 const uk_songs_confirm_delete_title = /** @type {(inputs: Songs_Confirm_Delete_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Видалити пісню?`)
+	return /** @type {LocalizedString} */ (`Видалити запис?`)
 };
 
 const en_songs_confirm_delete_title = /** @type {(inputs: Songs_Confirm_Delete_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Delete song?`)
+	return /** @type {LocalizedString} */ (`Delete recording?`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Delete song?" |
+* | "Delete recording?" |
 *
 * @param {Songs_Confirm_Delete_TitleInputs} inputs
 * @param {{ locale?: "uk" | "en" }} options

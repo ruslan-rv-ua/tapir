@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{ count: NonNullable<unknown> }} Songs_Loaded_ManyInputs */
 
 const uk_songs_loaded_many = /** @type {(inputs: Songs_Loaded_ManyInputs) => LocalizedString} */ (i) => {
-	return /** @type {LocalizedString} */ (`Знайдено ${i?.count} пісень`)
+	return /** @type {LocalizedString} */ (`Знайдено ${i?.count} записів`)
 };
 
 const en_songs_loaded_many = /** @type {(inputs: Songs_Loaded_ManyInputs) => LocalizedString} */ (i) => {
-	return /** @type {LocalizedString} */ (`Found ${i?.count} songs`)
+	return /** @type {LocalizedString} */ (`Found ${i?.count} recordings`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Found {count} songs" |
+* | "Found {count} recordings" |
 *
 * @param {Songs_Loaded_ManyInputs} inputs
 * @param {{ locale?: "uk" | "en" }} options

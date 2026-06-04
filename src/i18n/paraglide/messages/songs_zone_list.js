@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Songs_Zone_ListInputs */
 
 const uk_songs_zone_list = /** @type {(inputs: Songs_Zone_ListInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Список збережених пісень`)
+	return /** @type {LocalizedString} */ (`Список записів`)
 };
 
 const en_songs_zone_list = /** @type {(inputs: Songs_Zone_ListInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Saved songs list`)
+	return /** @type {LocalizedString} */ (`Recordings list`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Saved songs list" |
+* | "Recordings list" |
 *
 * @param {Songs_Zone_ListInputs} inputs
 * @param {{ locale?: "uk" | "en" }} options
