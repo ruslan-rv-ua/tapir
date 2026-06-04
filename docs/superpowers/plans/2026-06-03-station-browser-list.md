@@ -784,7 +784,7 @@ git commit -m "feat(browser): StationItem row with per-value stops + preview/add
 **Files:**
 - Modify: `src/components/browser/StationList.tsx` (full rewrite of the body)
 
-- [ ] **Step 1: Rewrite `StationList.tsx` to render `StationItem`**
+- [x] **Step 1: Rewrite `StationList.tsx` to render `StationItem`**
 
 Replace the entire contents of `src/components/browser/StationList.tsx` with:
 
@@ -904,17 +904,18 @@ export const StationList = forwardRef<ZoneEntry, Props>(
 StationList.displayName = "StationList";
 ```
 
-- [ ] **Step 2: Run the full frontend test suite**
+- [x] **Step 2: Run the full frontend test suite**
 
 Run: `pnpm test`
 Expected: PASS — StationItem tests green; existing `CompositeList.test.tsx`, `StreamItem.test.tsx`, etc. unaffected.
+(Done: 181 passed. Also fixed a stale assertion in `StreamItem.test.tsx` left by commit `337d2f8` — the `segment_tech` role description had been renamed to "bitrate".)
 
-- [ ] **Step 3: Build**
+- [x] **Step 3: Build**
 
 Run: `pnpm vite:build`
 Expected: PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/components/browser/StationList.tsx
