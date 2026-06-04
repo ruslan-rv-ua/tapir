@@ -19,6 +19,30 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
+/** Compact localized date, no time (e.g. "Jun 15, 2026"). For dense list rows. */
+export function formatDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(d);
+}
+
+/** Localized date + time (e.g. "Jun 15, 2026, 02:30"). For accessible names. */
+export function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
+}
+
 /** True when free disk space is known and below the threshold. 0 = disabled. */
 export function isLowDiskSpace(freeBytes: number | null, thresholdGb: number): boolean {
   if (thresholdGb <= 0 || freeBytes === null) return false;
