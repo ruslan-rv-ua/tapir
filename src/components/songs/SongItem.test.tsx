@@ -125,6 +125,17 @@ describe("SongItem — a11y structure (drift fixes)", () => {
     expect(tech.textContent).toContain("2026");    // compact date includes the year
   });
 
+  it("exposes line-2 metadata as the tech segment's accessible name", () => {
+    // role=group announces only aria-label, not child text, so the Right/Left
+    // drill-down stop must carry the values on aria-label to be readable.
+    const { container } = renderItem(mk({ recordedAt: "2026-06-15T12:00:00Z" }));
+    const label = container.querySelector('[data-segment="tech"]')!.getAttribute("aria-label") ?? "";
+    expect(label).toContain("Artist A");
+    expect(label).toContain("Radio X");
+    expect(label).toContain("2.0 KB");
+    expect(label).toContain("2026");
+  });
+
   it("renders play as a button focus stop that calls onPlay", () => {
     const onPlay = vi.fn();
     const { container } = render(

@@ -46,6 +46,19 @@ export function SongItem({ song, isActiveRow, isPlaying, isFocused, onPlay, onAc
     .filter(Boolean)
     .join(" · ");
 
+  // Spoken name for the metadata stop. role="group" announces only aria-label,
+  // not the child text — without this the Right/Left drill-down to line 2 is
+  // silent. Comma-joined for natural screen-reader pauses (visible text uses ·).
+  const techLabel = [
+    song.artist || "—",
+    song.station,
+    song.durationMs > 0 ? formatDuration(song.durationMs) : null,
+    formatBytes(song.sizeBytes),
+    formatDate(song.recordedAt),
+  ]
+    .filter(Boolean)
+    .join(", ");
+
   return (
     <CompositeRow
       itemId={song.path}
@@ -99,6 +112,7 @@ export function SongItem({ song, isActiveRow, isPlaying, isFocused, onPlay, onAc
         itemId={song.path}
         segment="tech"
         isFocused={isFocused}
+        label={techLabel}
         className="mt-1 flex items-center gap-1 text-xs text-slate-400"
       >
         <span className="min-w-0 flex-1 truncate">
