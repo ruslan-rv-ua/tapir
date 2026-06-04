@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Stop_AllInputs */
 
 const uk_stop_all = /** @type {(inputs: Stop_AllInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Зупинити всі`)
+	return /** @type {LocalizedString} */ (`Зупинити запис`)
 };
 
 const en_stop_all = /** @type {(inputs: Stop_AllInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Stop all`)
+	return /** @type {LocalizedString} */ (`Stop recording`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Stop all" |
+* | "Stop recording" |
 *
 * @param {Stop_AllInputs} inputs
 * @param {{ locale?: "uk" | "en" }} options
