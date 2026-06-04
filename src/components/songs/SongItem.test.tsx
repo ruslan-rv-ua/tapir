@@ -117,6 +117,14 @@ describe("SongItem — a11y structure (drift fixes)", () => {
     expect(track.className).not.toMatch(/focus-visible:ring-2/);
   });
 
+  it("surfaces size and date in the metadata (tech) segment", () => {
+    // Midday UTC keeps the rendered year stable across timezones.
+    const { container } = renderItem(mk({ recordedAt: "2026-06-15T12:00:00Z" }));
+    const tech = container.querySelector('[data-segment="tech"]')!;
+    expect(tech.textContent).toContain("2.0 KB"); // formatBytes(2048)
+    expect(tech.textContent).toContain("2026");    // compact date includes the year
+  });
+
   it("renders play as a button focus stop that calls onPlay", () => {
     const onPlay = vi.fn();
     const { container } = render(

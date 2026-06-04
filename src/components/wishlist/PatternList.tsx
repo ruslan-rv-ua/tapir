@@ -5,6 +5,7 @@ import type { SegmentKind } from "../../hooks/useCompositeList";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { ListCardState } from "../common/ListCard";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
+import { formatDate } from "../../lib/formatters";
 import * as m from "../../i18n/paraglide/messages";
 
 interface PatternItem {
@@ -24,14 +25,6 @@ interface Props {
 }
 
 const PATTERN_SEGMENTS: Exclude<SegmentKind, "summary">[] = ["conditions", "action-edit", "action-delete"];
-
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString();
-  } catch {
-    return iso;
-  }
-}
 
 export const PatternList = forwardRef<ZoneEntry, Props>(
   ({ items, ariaLabel, showDate, emptyMessage, exitZone, onEmpty, onEdit, onRemove }, ref) => {

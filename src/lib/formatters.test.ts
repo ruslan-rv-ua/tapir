@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isLowDiskSpace } from "./formatters";
+import { isLowDiskSpace, formatBytes, formatDate, formatDateTime } from "./formatters";
 
 const GiB = 1024 ** 3;
 
@@ -16,5 +16,33 @@ describe("isLowDiskSpace", () => {
   it("is false when free bytes are at or above threshold", () => {
     expect(isLowDiskSpace(5 * GiB, 5)).toBe(false);
     expect(isLowDiskSpace(6 * GiB, 5)).toBe(false);
+  });
+});
+
+describe("formatBytes", () => {
+  it("formats across unit boundaries", () => {
+    expect(formatBytes(512)).toBe("512 B");
+    expect(formatBytes(2048)).toBe("2.0 KB");
+    expect(formatBytes(5 * 1024 * 1024)).toBe("5.0 MB");
+  });
+});
+
+describe("formatDate / formatDateTime", () => {
+  // Midday UTC so the local date never crosses a day/year boundary in any TZ.
+  const iso = "2026-06-15T12:00:00Z";
+
+  it("formatDate includes the year and omits the time", () => {
+    const out = formatDate(iso);
+    expect(out).toContain("2026");
+    expect(out).not.toMatch(/\d\d:\d\d/);
+  });
+
+  it("formatDateTime includes the time", () => {
+    expect(formatDateTime(iso)).toMatch(/\d\d:\d\d/);
+  });
+
+  it("returns the raw input for an unparseable date", () => {
+    expect(formatDate("not-a-date")).toBe("not-a-date");
+    expect(formatDateTime("not-a-date")).toBe("not-a-date");
   });
 });
