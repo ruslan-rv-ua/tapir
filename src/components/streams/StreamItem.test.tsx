@@ -71,7 +71,7 @@ describe("StreamItem — accessibility structure", () => {
     const { container } = renderItem();
     const tech = container.querySelector('[data-segment="tech"]')!;
     expect(tech.getAttribute("role")).toBe("group");
-    expect(tech.getAttribute("aria-roledescription")).toMatch(/техн|tech/i);
+    expect(tech.getAttribute("aria-roledescription")).toMatch(/бітрейт|bitrate/i);
     // Value only — the segment type lives in aria-roledescription, not the label.
     expect(tech.getAttribute("aria-label")).toMatch(/192/);
   });
