@@ -60,6 +60,14 @@ export function CommandPalette() {
       },
     },
     {
+      id: "record-all",
+      label: m.record_all(),
+      action: async () => {
+        close();
+        try { await tauri.startAllRecordings(); } catch (e) { addToast(String(e), "error"); }
+      },
+    },
+    {
       id: "stop-all",
       label: m.stop_all(),
       action: async () => {
