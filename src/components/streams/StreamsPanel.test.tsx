@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, act, screen } from "@testing-library/react";
+import { render, act, screen, fireEvent } from "@testing-library/react";
+import * as tauri from "../../lib/tauri";
 import { $streams, $statuses, $streamFilter } from "../../stores/streams";
 import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import { StreamsPanel } from "./StreamsPanel";
@@ -11,6 +12,7 @@ vi.mock("../../lib/tauri", () => ({
   startRecording: vi.fn().mockResolvedValue(undefined),
   stopRecording: vi.fn().mockResolvedValue(undefined),
   stopAllRecordings: vi.fn().mockResolvedValue(undefined),
+  startAllRecordings: vi.fn().mockResolvedValue(0),
   removeStream: vi.fn().mockResolvedValue(undefined),
   addToWishlist: vi.fn().mockResolvedValue(undefined),
   addToIgnorelist: vi.fn().mockResolvedValue(undefined),
@@ -140,5 +142,54 @@ describe("StreamsPanel — chip counts", () => {
     expect(rec.querySelector('[aria-hidden="true"]')?.textContent).toBe("0");
     expect(err.querySelector('[aria-hidden="true"]')?.textContent).toBe("0");
     expect(rec.getAttribute("aria-label")).toMatch(/,\s*0$/);
+  });
+});
+
+describe("StreamsPanel — record all", () => {
+  it("renders the Record-all primary button", () => {
+    renderPanel();
+    expect(
+      screen.getByRole("button", { name: /записати все|record all/i }),
+    ).toBeTruthy();
+  });
+
+  it("calls startAllRecordings when clicked", async () => {
+    renderPanel();
+    const btn = screen.getByRole("button", { name: /записати все|record all/i });
+    await act(async () => {
+      fireEvent.click(btn);
+    });
+    expect(tauri.startAllRecordings).toHaveBeenCalledOnce();
+  });
+
+  it("disables Record-all when every stream is already active", () => {
+    $streams.set([mkStream("a", "Alpha")]);
+    $statuses.set({ a: mkStatus("a", "recording") });
+    renderPanel();
+    const btn = screen.getByRole("button", {
+      name: /записати все|record all/i,
+    }) as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+  });
+
+  it("enables Record-all when a stream is idle or errored", () => {
+    $streams.set([mkStream("a", "Alpha"), mkStream("b", "Bravo")]);
+    $statuses.set({ a: mkStatus("a", "recording"), b: mkStatus("b", "error") });
+    renderPanel();
+    const btn = screen.getByRole("button", {
+      name: /записати все|record all/i,
+    }) as HTMLButtonElement;
+    expect(btn.disabled).toBe(false);
+  });
+});
+
+describe("StreamsPanel — stop button label", () => {
+  it("labels the stop button as stopping recording", () => {
+    $streams.set([mkStream("a", "Alpha")]);
+    $statuses.set({ a: mkStatus("a", "recording") });
+    renderPanel();
+    expect(
+      screen.getByRole("button", { name: /^зупинити запис$|^stop recording$/i }),
+    ).toBeTruthy();
   });
 });

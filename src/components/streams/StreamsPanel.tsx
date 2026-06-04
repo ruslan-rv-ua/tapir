@@ -47,6 +47,14 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const activeCount = visibleStatuses.filter(s => s.state === "recording").length;
   const errorCount  = visibleStatuses.filter(s => s.state === "error").length;
 
+  // Streams whose recording task is NOT currently live (idle / error / stopped /
+  // never-started) — these are what "Записати все" will start. Backend skips any
+  // already-active stream, so this only drives the button's disabled state.
+  const startableCount = useMemo(() => {
+    const active = new Set(["recording", "connecting", "reconnecting"]);
+    return streams.filter((s) => !active.has(statuses[s.id]?.state ?? "idle")).length;
+  }, [streams, statuses]);
+
   const pluralRules = useMemo(
     () => new Intl.PluralRules(settings?.language || document.documentElement.lang || "uk"),
     [settings?.language],
@@ -134,14 +142,15 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
   // ── Toolbar zone refs (6 items) ──────────────────────────
   const toolbarZoneRef = useRef<HTMLDivElement | null>(null);
-  const addBtn     = useRef<HTMLButtonElement | null>(null);
-  const stopAllBtn = useRef<HTMLButtonElement | null>(null);
+  const addBtn       = useRef<HTMLButtonElement | null>(null);
+  const recordAllBtn = useRef<HTMLButtonElement | null>(null);
+  const stopAllBtn   = useRef<HTMLButtonElement | null>(null);
   const chip0Ref   = useRef<HTMLButtonElement | null>(null);
   const chip1Ref   = useRef<HTMLButtonElement | null>(null);
   const chip2Ref   = useRef<HTMLButtonElement | null>(null);
   const chipRefs = useMemo(() => [chip0Ref, chip1Ref, chip2Ref], []);
   const toolbarRefs = useMemo(
-    () => [addBtn, stopAllBtn, chip0Ref, chip1Ref, chip2Ref],
+    () => [addBtn, recordAllBtn, stopAllBtn, chip0Ref, chip1Ref, chip2Ref],
     [],
   );
 
@@ -220,6 +229,28 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     else doStopAll();
   };
 
+  const recordAllAnnouncement = useCallback(
+    (count: number) =>
+      pluralize(
+        count,
+        m.record_all_announce_zero,
+        m.record_all_announce_one,
+        m.record_all_announce_few,
+        m.record_all_announce_many,
+      ),
+    [pluralize],
+  );
+
+  const handleRecordAll = async () => {
+    if (startableCount === 0) return;
+    try {
+      const started = await tauri.startAllRecordings();
+      announce(recordAllAnnouncement(started), "polite");
+    } catch (err) {
+      addToast(String(err), "error");
+    }
+  };
+
   const emptyDescId = "streams-empty-desc";
 
   return (
@@ -282,7 +313,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
           {/* ── Workspace titlebar + Toolbar = streams-toolbar zone ── */}
           {/* IMPORTANT: Both rows must live inside ScreenZone so mixed-boundary-handoff
-              sees all 5 interactive items (indices 0–4). The heading is structural, not focusable. */}
+              sees all 6 interactive items (indices 0–5). The heading is structural, not focusable. */}
           <ScreenZone
             ref={toolbarZoneRef}
             id="streams-toolbar"
@@ -302,12 +333,23 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
               </button>
             </ScreenHeader>
 
-            {/* Row 2: Зупинити все + Chips */}
+            {/* Row 2: Записати все + Зупинити запис + Chips */}
             <div className="flex items-center gap-2 px-4 py-2">
-              {/* Index 1: Зупинити все */}
+              {/* Index 1: Записати все (primary) */}
+              <button
+                ref={recordAllBtn}
+                tabIndex={toolbarTabIndex(1)}
+                onClick={handleRecordAll}
+                disabled={startableCount === 0}
+                className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-600 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
+              >
+                {m.record_all()}
+              </button>
+
+              {/* Index 2: Зупинити запис */}
               <button
                 ref={stopAllBtn}
-                tabIndex={toolbarTabIndex(1)}
+                tabIndex={toolbarTabIndex(2)}
                 onClick={handleStopAll}
                 disabled={activeCount === 0}
                 className="rounded px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
@@ -317,7 +359,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
               <div className="mx-1 h-4 w-px bg-slate-700 forced-colors:bg-[ButtonText]" aria-hidden="true" />
 
-              {/* Indices 2–4: Filter chips — semantic group, toggle chips kept */}
+              {/* Indices 3–5: Filter chips — semantic group, toggle chips kept */}
               <div role="group" aria-label={m.streams_filter_group()} className="flex items-center gap-2">
                 {FILTER_CHIPS.map((chip, i) => {
                   const count = chip.id === "recording" ? activeCount
@@ -327,7 +369,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
                     <button
                       key={chip.id}
                       ref={chipRefs[i]}
-                      tabIndex={toolbarTabIndex(2 + i)}
+                      tabIndex={toolbarTabIndex(3 + i)}
                       aria-pressed={activeChip === chip.id}
                       aria-label={m.streams_filter_chip_count({ label: chip.labelFn(), count })}
                       onClick={() => handleChipClick(chip.id)}
