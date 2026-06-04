@@ -12,6 +12,10 @@ pub struct Recorder {
     track_file: Option<File>,
     track_incomplete_path: Option<PathBuf>,
     track_final_path: Option<PathBuf>,
+    /// Metadata of the in-progress track, kept so close() can tag a track that
+    /// is stopped mid-recording and preserved as an `_incomplete` file.
+    track_artist: String,
+    track_title: String,
     output_dir: PathBuf,
     settings: RecordingSettings,
     format: AudioFormat,
@@ -32,6 +36,8 @@ impl Recorder {
             track_file: None,
             track_incomplete_path: None,
             track_final_path: None,
+            track_artist: String::new(),
+            track_title: String::new(),
             output_dir,
             settings,
             format,
@@ -96,6 +102,8 @@ impl Recorder {
         self.track_incomplete_path = Some(incomplete_path.clone());
         self.track_final_path = Some(final_path);
         self.track_file = Some(file);
+        self.track_artist = artist.to_string();
+        self.track_title = title.to_string();
 
         let file_name = incomplete_path
             .file_name()
@@ -213,16 +221,30 @@ impl Recorder {
     }
 
     /// Close all open files, optionally deleting the stream file.
-    pub async fn close(&mut self) -> Result<(), RadioError> {
-        // Flush and close track file
+    ///
+    /// A track that is still being recorded when the stream stops (user stop,
+    /// EOF, or read error) is *kept* on disk under its `_incomplete` name rather
+    /// than discarded — see PRD §5.2. Returns the preserved incomplete path, if
+    /// any, so callers can react to it.
+    pub async fn close(&mut self) -> Result<Option<PathBuf>, RadioError> {
+        // Flush and close the track file (drop the handle so tags can be written).
         if let Some(mut f) = self.track_file.take() {
             let _ = f.flush().await; // best-effort flush
         }
-        // Delete the incomplete file if one exists
-        if let Some(path) = self.track_incomplete_path.take() {
-            if path.exists() {
-                let _ = tokio::fs::remove_file(&path).await;
-            }
+        // Preserve the in-progress track as an `_incomplete` file instead of
+        // deleting it. The file is already named with the incomplete template.
+        // (incomplete_path is only ever Some while a track file was open.)
+        let kept_incomplete = self.track_incomplete_path.take();
+        if let Some(ref path) = kept_incomplete {
+            // Tag the partial file (non-fatal: it is still valid audio).
+            let _ = tags::writer::write_tags(
+                path,
+                &self.format,
+                &self.track_artist,
+                &self.track_title,
+                "",
+                &self.station_name,
+            );
         }
         self.track_final_path = None;
 
@@ -241,7 +263,7 @@ impl Recorder {
             self.stream_file_path = None;
         }
 
-        Ok(())
+        Ok(kept_incomplete)
     }
 }
 
@@ -249,5 +271,98 @@ fn audio_format_ext(format: &AudioFormat) -> &'static str {
     match format {
         AudioFormat::Mp3 => "mp3",
         AudioFormat::Aac => "aac",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    fn test_settings() -> RecordingSettings {
+        // Keep files flat in the output dir (no `%s\` subfolder) for easy assertions.
+        RecordingSettings {
+            file_name_template: "%a - %t".to_string(),
+            incomplete_file_name_template: "%a - %t_incomplete".to_string(),
+            save_stream_file: false,
+            skip_short_tracks_ms: 0,
+            auto_correct_case: false,
+            ..RecordingSettings::default()
+        }
+    }
+
+    fn count_files_ending_with(dir: &std::path::Path, suffix: &str) -> usize {
+        std::fs::read_dir(dir)
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_name().to_string_lossy().ends_with(suffix))
+            .count()
+    }
+
+    // Regression: stopping mid-track must NOT delete the in-progress recording.
+    // PRD §5.2 — incomplete tracks are kept on disk with the `_incomplete`
+    // suffix and are not removed automatically. Previously close() deleted them.
+    #[tokio::test]
+    async fn close_keeps_in_progress_incomplete_track() {
+        let dir = tempdir().unwrap();
+        let mut rec = Recorder::new(
+            dir.path().to_path_buf(),
+            test_settings(),
+            AudioFormat::Mp3,
+            "TestRadio".to_string(),
+        );
+
+        rec.start_track("Tycho", "A Walk").await.unwrap();
+        rec.write_bytes(b"some audio bytes").await.unwrap();
+
+        let kept = rec.close().await.unwrap();
+
+        let kept = kept.expect("close() must report the preserved incomplete path");
+        assert!(kept.exists(), "the reported incomplete file must exist on disk");
+        assert!(kept.to_string_lossy().ends_with("_incomplete.mp3"));
+        assert_eq!(
+            count_files_ending_with(dir.path(), "_incomplete.mp3"),
+            1,
+            "the in-progress track must be preserved as an _incomplete file on stop"
+        );
+    }
+
+    #[tokio::test]
+    async fn close_with_no_active_track_succeeds() {
+        let dir = tempdir().unwrap();
+        let mut rec = Recorder::new(
+            dir.path().to_path_buf(),
+            test_settings(),
+            AudioFormat::Mp3,
+            "TestRadio".to_string(),
+        );
+
+        // No start_track called — closing must be a no-op, not an error.
+        rec.close().await.unwrap();
+        assert_eq!(count_files_ending_with(dir.path(), ".mp3"), 0);
+    }
+
+    // Normal split path is unchanged: a completed track is renamed
+    // incomplete → final and the _incomplete file no longer exists.
+    #[tokio::test]
+    async fn finalize_track_renames_incomplete_to_final() {
+        let dir = tempdir().unwrap();
+        let mut rec = Recorder::new(
+            dir.path().to_path_buf(),
+            test_settings(),
+            AudioFormat::Mp3,
+            "TestRadio".to_string(),
+        );
+
+        rec.start_track("Tycho", "A Walk").await.unwrap();
+        rec.write_bytes(b"some audio bytes").await.unwrap();
+        let final_path = rec
+            .finalize_track("Tycho", "A Walk", 60_000)
+            .await
+            .unwrap();
+
+        assert!(final_path.is_some(), "track above min duration must be kept");
+        assert_eq!(count_files_ending_with(dir.path(), "_incomplete.mp3"), 0);
+        assert_eq!(count_files_ending_with(dir.path(), "A Walk.mp3"), 1);
     }
 }
