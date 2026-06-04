@@ -142,6 +142,12 @@ describe("StationItem — add button + liveness", () => {
     expect(props.onAdd).toHaveBeenCalled();
   });
 
+  it("includes the station name in the add button aria-label", () => {
+    const { container } = renderItem();
+    const btn = container.querySelector('button[data-segment="action-add"]')!;
+    expect(btn.getAttribute("aria-label")).toMatch(/Radio Bayraktar/i);
+  });
+
   it("marks the add button aria-disabled and does not call onAdd when already added", () => {
     const { container, props } = renderItem({ isAdded: true });
     const btn = container.querySelector('button[data-segment="action-add"]')!;

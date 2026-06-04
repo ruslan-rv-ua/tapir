@@ -95,7 +95,7 @@ export function StationItem({
   const previewLabel = isPreviewing
     ? m.station_preview_stop({ name: station.name })
     : m.station_preview_play({ name: station.name });
-  const addLabel = isAdded ? m.browser_added() : m.add_stream();
+  const addLabel = isAdded ? m.browser_added() : m.browser_add_station({ name: station.name });
 
   const metaCells: {
     kind: Exclude<SegmentKind, "summary">;
