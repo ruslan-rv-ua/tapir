@@ -1,14 +1,14 @@
-import { forwardRef, useCallback, useMemo } from "react";
+import { forwardRef, useCallback, useMemo, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { $streams } from "../../stores/streams";
 import { addStation } from "../../stores/browser";
-import { CompositeList, CompositeRow, CompositeSegment, COMPOSITE_FOCUS_RING } from "../common/composite-list";
+import { CompositeList } from "../common/composite-list";
 import { ListCardState } from "../common/ListCard";
-import type { SegmentKind } from "../../hooks/useCompositeList";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import type { StationResult } from "../../lib/tauri";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import { addToast } from "../../stores/toasts";
+import { StationItem, getStationSegments } from "./StationItem";
 import * as m from "../../i18n/paraglide/messages";
 
 interface Props {
@@ -21,12 +21,11 @@ interface Props {
   exitZone: (forward: boolean) => void;
 }
 
-const STATION_SEGMENTS: Exclude<SegmentKind, "summary">[] = ["metadata", "action-add"];
-
 export const StationList = forwardRef<ZoneEntry, Props>(
   ({ stations, loading, error, hasMore, onLoadMore, emptyMessage, exitZone }, ref) => {
     const streams = useStore($streams);
     const announce = useAnnounce();
+    const [failedPreview, setFailedPreview] = useState<Set<string>>(new Set());
 
     const existingUrls = useMemo(() => new Set(streams.map((s) => s.url)), [streams]);
     const isAlreadyAdded = useCallback(
@@ -35,7 +34,7 @@ export const StationList = forwardRef<ZoneEntry, Props>(
     );
 
     const items = useMemo(
-      () => stations.map((s) => ({ id: s.stationuuid, segments: STATION_SEGMENTS })),
+      () => stations.map((s) => ({ id: s.stationuuid, segments: getStationSegments(s) })),
       [stations],
     );
 
@@ -51,6 +50,14 @@ export const StationList = forwardRef<ZoneEntry, Props>(
       },
       [isAlreadyAdded, announce],
     );
+
+    const markPreviewFailed = useCallback((id: string) => {
+      setFailedPreview((prev) => {
+        const next = new Set(prev);
+        next.add(id);
+        return next;
+      });
+    }, []);
 
     return (
       <CompositeList
@@ -78,7 +85,7 @@ export const StationList = forwardRef<ZoneEntry, Props>(
             </li>
           ) : undefined
         }
-        // The Add button self-activates; Enter on the whole-row summary also adds.
+        // Enter on the whole-row summary adds the station (primary action).
         onAction={(type, itemId, segment) => {
           if (type !== "primary" || segment !== "summary") return;
           const station = stations.find((s) => s.stationuuid === itemId);
@@ -86,66 +93,17 @@ export const StationList = forwardRef<ZoneEntry, Props>(
         }}
         renderRow={({ id, isActive, isFocused }) => {
           const station = stations.find((s) => s.stationuuid === id)!;
-          const added = isAlreadyAdded(station);
-          // Value only; the "Метадані" type is announced via aria-roledescription.
-          const metaValue = [
-            station.country,
-            station.codec,
-            station.bitrate ? `${station.bitrate} кбіт/с` : null,
-            station.clickcount ? String(station.clickcount) : null,
-          ]
-            .filter(Boolean)
-            .join(", ");
           return (
-            <CompositeRow
+            <StationItem
               key={id}
-              itemId={id}
+              station={station}
               isFocused={isFocused}
               isActiveRow={isActive}
-              label={station.name}
-              roleDescription={m.item_role_station()}
-              className="border-b border-slate-800 forced-colors:border-[ButtonText]"
-              activeClassName="bg-slate-800/60"
-            >
-              {/* Station name — visual only; the row's accessible name is on the <li>. */}
-              <div className="px-3 py-2 font-medium text-slate-100">{station.name}</div>
-
-              <CompositeSegment
-                itemId={id}
-                segment="metadata"
-                isFocused={isFocused}
-                label={metaValue}
-                roleDescription={m.segment_metadata()}
-                className="px-3 py-1 text-sm text-slate-400"
-              >
-                {/* Name is the row summary (above) — omit it here to avoid a visible duplicate. */}
-                {[station.country, station.codec, station.bitrate && `${station.bitrate} kbps`]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </CompositeSegment>
-
-              {/* Action — individual focus stop (roving tabIndex). Uses aria-disabled
-                  (not a CompositeAction) because the "added" state is non-interactive. */}
-              <div className="px-3 py-1">
-                <button
-                  data-item-id={id}
-                  data-segment="action-add"
-                  tabIndex={isFocused("action-add") ? 0 : -1}
-                  aria-disabled={added || undefined}
-                  aria-label={added ? m.browser_added() : m.add_stream()}
-                  onClick={() => {
-                    if (!added) void handleAdd(station);
-                  }}
-                  className={`rounded px-2 py-0.5 text-xs ${COMPOSITE_FOCUS_RING} ${
-                    added
-                      ? "cursor-not-allowed text-slate-600"
-                      : "bg-blue-600 text-white hover:bg-blue-700 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
-                  }`}
-                >
-                  {added ? m.browser_added() : m.add_stream()}
-                </button>
-              </div>
-            </CompositeRow>
+              isAdded={isAlreadyAdded(station)}
+              isUnavailable={station.lastcheckok === 0 || failedPreview.has(id)}
+              onAdd={() => void handleAdd(station)}
+              onPreviewFailed={() => markPreviewFailed(id)}
+            />
           );
         }}
       />
