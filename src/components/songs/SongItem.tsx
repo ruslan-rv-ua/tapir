@@ -12,7 +12,7 @@ export interface SongItemData {
   segments: Exclude<SegmentKind, "summary">[];
 }
 
-export function getSongSegments(_song: Song): SongItemData["segments"] {
+export function getSongSegments(): SongItemData["segments"] {
   return ["track", "tech", "action-play", "action-menu"];
 }
 

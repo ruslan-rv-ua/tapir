@@ -92,6 +92,24 @@ describe("SongItem — a11y structure (drift fixes)", () => {
     ).not.toBeNull();
   });
 
+  it("shows FileMusic when complete and AlertCircle when incomplete", () => {
+    const complete = renderItem(mk({ isComplete: true }));
+    expect(
+      complete.container.querySelector('[data-segment="track"] svg.lucide-file-music'),
+    ).not.toBeNull();
+    expect(
+      complete.container.querySelector('[data-segment="track"] svg.lucide-circle-alert'),
+    ).toBeNull();
+
+    const incomplete = renderItem(mk({ isComplete: false }));
+    expect(
+      incomplete.container.querySelector('[data-segment="track"] svg.lucide-circle-alert'),
+    ).not.toBeNull();
+    expect(
+      incomplete.container.querySelector('[data-segment="track"] svg.lucide-file-music'),
+    ).toBeNull();
+  });
+
   it("uses the shared outline focus ring (not ring-2) on segments", () => {
     const { container } = renderItem();
     const track = container.querySelector('[data-segment="track"]')!;
