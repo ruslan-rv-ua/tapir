@@ -23,7 +23,7 @@ export const SongsList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, onPl
       ? playerStatus.source.path
       : null;
 
-  const items = useMemo(() => songs.map((s) => ({ id: s.path, segments: getSongSegments(s) })), [songs]);
+  const items = useMemo(() => songs.map((s) => ({ id: s.path, segments: getSongSegments() })), [songs]);
 
   return (
     <CompositeList
