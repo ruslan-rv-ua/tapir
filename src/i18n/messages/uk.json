@@ -13,6 +13,7 @@
   "browser_popular_loading": "Завантаження популярних станцій...",
   "browser_empty": "Введіть запит або оберіть фільтри для пошуку радіостанцій",
   "browser_no_results": "Станцій не знайдено. Спробуйте інший запит.",
+  "browser_reset_filters": "Скинути фільтри",
   "browser_error": "Помилка пошуку: {error}",
   "browser_add_station": "Додати {name}",
   "browser_station_added": "Станцію «{name}» додано",

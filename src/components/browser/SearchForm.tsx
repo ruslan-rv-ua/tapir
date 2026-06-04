@@ -4,6 +4,7 @@ import { SearchField, Input, Button, Label, Select, SelectValue, Popover, ListBo
 import {
   $searchParams,
   $browserFilters,
+  $isSearchActive,
   searchStations,
   updateSearchParam,
   resetSearch,
@@ -21,7 +22,9 @@ interface SearchFormProps {
 export const SearchForm = forwardRef<ZoneEntry, SearchFormProps>(function SearchForm({ exitZone }, ref) {
   const params = useStore($searchParams);
   const filters = useStore($browserFilters);
+  const isActive = useStore($isSearchActive);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Single source of truth for this zone's Tab-exit boundary. The filter fields
   // render asynchronously (after $browserFilters loads), so the boundary's
@@ -29,7 +32,7 @@ export const SearchForm = forwardRef<ZoneEntry, SearchFormProps>(function Search
   const containerRef = useRef<HTMLDivElement | null>(null);
   const { refreshBoundary, restoreFocus } = useFocusBoundary(containerRef, exitZone);
 
-  useEffect(() => { refreshBoundary(); }, [filters, refreshBoundary]);
+  useEffect(() => { refreshBoundary(); }, [filters, isActive, refreshBoundary]);
 
   useImperativeHandle(ref, () => ({
     id: "browser-search",
@@ -63,9 +66,21 @@ export const SearchForm = forwardRef<ZoneEntry, SearchFormProps>(function Search
     }, 500);
   }, []);
 
+  // SearchField clear (Escape / clear button) only clears the text query —
+  // dropdown filters and bitrate are left intact. Full reset is the dedicated button.
   const handleClear = useCallback(() => {
     clearTimeout(debounceRef.current);
+    updateSearchParam("query", undefined);
+    setTimeout(() => searchStations($searchParams.get()), 0);
+  }, []);
+
+  // Dedicated "Reset filters" button: clears every filter and returns to Popular.
+  // The button unmounts once isActive flips false, so move focus to the search
+  // input to avoid focus loss (matters for screen readers).
+  const handleReset = useCallback(() => {
+    clearTimeout(debounceRef.current);
     resetSearch();
+    searchInputRef.current?.focus();
   }, []);
 
   // Cleanup on unmount
@@ -84,6 +99,7 @@ export const SearchForm = forwardRef<ZoneEntry, SearchFormProps>(function Search
         className="flex-1 min-w-48"
       >
         <Input
+          ref={searchInputRef}
           placeholder={m.browser_search_placeholder()}
           className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText] forced-colors:text-[CanvasText] forced-colors:focus:border-[Highlight]"
         />
@@ -174,6 +190,15 @@ export const SearchForm = forwardRef<ZoneEntry, SearchFormProps>(function Search
             </Group>
           </NumberField>
         </>
+      )}
+
+      {isActive && (
+        <Button
+          onPress={handleReset}
+          className="self-end rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
+        >
+          {m.browser_reset_filters()}
+        </Button>
       )}
     </ScreenZone>
   );
