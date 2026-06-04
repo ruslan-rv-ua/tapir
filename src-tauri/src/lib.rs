@@ -148,6 +148,7 @@ pub fn run() {
             commands::stream_commands::start_recording,
             commands::stream_commands::stop_recording,
             commands::stream_commands::stop_all_recordings,
+            commands::stream_commands::start_all_recordings,
             commands::stream_commands::get_stream_status,
             commands::stream_commands::get_all_statuses,
             commands::settings_commands::get_settings,

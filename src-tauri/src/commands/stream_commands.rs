@@ -144,6 +144,18 @@ pub async fn stop_all_recordings(state: tauri::State<'_, AppState>) -> Result<()
 }
 
 #[tauri::command]
+pub async fn start_all_recordings(state: tauri::State<'_, AppState>) -> Result<usize, String> {
+    let (streams, settings) = {
+        let profile = state.active_profile.read().await;
+        (profile.streams.clone(), profile.recording.clone())
+    };
+
+    let manager_arc = state.stream_manager.clone();
+    let mut manager = manager_arc.write().await;
+    Ok(manager.start_all(streams, settings, manager_arc.clone()))
+}
+
+#[tauri::command]
 pub async fn get_stream_status(
     stream_id: String,
     state: tauri::State<'_, AppState>,
