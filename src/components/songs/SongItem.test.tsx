@@ -63,11 +63,33 @@ describe("SongItem — a11y structure (drift fixes)", () => {
     expect(container.querySelector('[data-segment="tech"]')!.getAttribute("role")).toBe("group");
   });
 
-  it("renders the incomplete badge as a role=group status segment", () => {
+  it("prefixes the incomplete state onto the row's accessible name", () => {
     const { container } = renderItem(mk({ isComplete: false }));
-    const status = container.querySelector('[data-segment="status"]')!;
-    expect(status.getAttribute("role")).toBe("group");
-    expect(status.getAttribute("aria-label")).toBe("неповний");
+    const li = container.querySelector<HTMLElement>('li[data-segment="summary"]')!;
+    expect(li.getAttribute("aria-label")).toMatch(/^неповний, /);
+    expect(li.getAttribute("aria-label")).toContain("Title A summary");
+  });
+
+  it("does not prefix the name for a complete recording", () => {
+    const { container } = renderItem(mk({ isComplete: true }));
+    const li = container.querySelector<HTMLElement>('li[data-segment="summary"]')!;
+    expect(li.getAttribute("aria-label")).not.toContain("неповний");
+  });
+
+  it("drops the standalone status segment (state moves to the row name)", () => {
+    const { container } = renderItem(mk({ isComplete: false }));
+    expect(container.querySelector('[data-segment="status"]')).toBeNull();
+  });
+
+  it("always renders an aria-hidden icon in the track segment, both states", () => {
+    const complete = renderItem(mk({ isComplete: true }));
+    expect(
+      complete.container.querySelector('[data-segment="track"] svg[aria-hidden="true"]'),
+    ).not.toBeNull();
+    const incomplete = renderItem(mk({ isComplete: false }));
+    expect(
+      incomplete.container.querySelector('[data-segment="track"] svg[aria-hidden="true"]'),
+    ).not.toBeNull();
   });
 
   it("uses the shared outline focus ring (not ring-2) on segments", () => {
