@@ -4,13 +4,25 @@ import { render, fireEvent } from "@testing-library/react";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 import { $announcer } from "../../stores/announcer";
+import { $settings } from "../../stores/settings";
 import { PlayerPanel } from "./PlayerPanel";
 import { $playerStatus } from "../../stores/player";
 import { $streams } from "../../stores/streams";
 import { $songs, $songsQuery, $songsStation, $songsSort } from "../../stores/songs";
-import type { StreamInfo } from "../../lib/tauri";
+import type { GlobalSettings, StreamInfo } from "../../lib/tauri";
 import type { Song } from "../../types/song";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
+
+const baseSettings: GlobalSettings = {
+  language: "en-US", theme: "auto", activeProfile: "Default", outputDevice: null,
+  minimizeToTray: true, showTrayNotifications: true, showTrackInTitle: true,
+  diskSpaceThresholdGb: 1, doubleClickAction: "play", bandwidthLimitKbps: 0,
+  autostart: false, autoAdvance: true, prevRestartThresholdMs: 0,
+  hotkeys: {
+    toggleRecording: "", togglePlayback: "", volumeUp: "", volumeDown: "", toggleWindow: "",
+  },
+  logRotation: true, logMaxSizeMb: 10, logLevel: "info",
+};
 
 // Stub the Tauri IPC layer — there is no backend in jsdom.
 vi.mock("../../lib/tauri", () => ({
@@ -20,6 +32,7 @@ vi.mock("../../lib/tauri", () => ({
   pausePlayback: vi.fn().mockResolvedValue(undefined),
   resumePlayback: vi.fn().mockResolvedValue(undefined),
   stopPlayback: vi.fn().mockResolvedValue(undefined),
+  seekPlayback: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Isolate prev/next logic from the slider children (which mount react-aria sliders).
@@ -95,6 +108,7 @@ afterEach(() => {
   $songsQuery.set("");
   $songsStation.set(null);
   $songsSort.set("date");
+  $settings.set(null);
 });
 
 describe("PlayerPanel — prev/next enabled states", () => {
@@ -181,6 +195,49 @@ describe("PlayerPanel — prev/next error handling", () => {
     fireEvent.click(getByRole("button", { name: m.player_next() }));
     await vi.waitFor(() => {
       expect($announcer.get()?.message).toBe(m.playback_error());
+    });
+  });
+});
+
+describe("PlayerPanel — prev restart threshold", () => {
+  function playingFileAt(path: string, positionMs: number, thresholdMs: number) {
+    $songs.set([mkSong("a.mp3", "A"), mkSong("b.mp3", "B"), mkSong("c.mp3", "C")]);
+    $songsSort.set("title");
+    $settings.set({ ...baseSettings, prevRestartThresholdMs: thresholdMs });
+    $playerStatus.set({
+      state: "playing", source: { type: "file", path }, volume: 0.75,
+      positionMs, durationMs: 200000,
+    });
+  }
+
+  it("restarts the current track (seek 0) instead of going to previous, past the threshold", () => {
+    playingFileAt("b.mp3", 5000, 3000);
+    const { getByRole } = renderPanel();
+    fireEvent.click(getByRole("button", { name: m.player_prev() }));
+    expect(tauri.seekPlayback).toHaveBeenCalledWith(0);
+    expect(tauri.playSavedSong).not.toHaveBeenCalled();
+  });
+
+  it("goes to the previous track when below the threshold", () => {
+    playingFileAt("b.mp3", 1000, 3000);
+    const { getByRole } = renderPanel();
+    fireEvent.click(getByRole("button", { name: m.player_prev() }));
+    expect(tauri.playSavedSong).toHaveBeenCalledWith("a.mp3");
+    expect(tauri.seekPlayback).not.toHaveBeenCalled();
+  });
+
+  it("enables Prev on the first track once played past the threshold", () => {
+    playingFileAt("a.mp3", 5000, 3000); // first track, no previous neighbor
+    const { getByRole } = renderPanel();
+    expect(getByRole("button", { name: m.player_prev() })).toBeEnabled();
+  });
+
+  it("announces a restart when seeking past the threshold", async () => {
+    playingFileAt("b.mp3", 5000, 3000);
+    const { getByRole } = renderPanel();
+    fireEvent.click(getByRole("button", { name: m.player_prev() }));
+    await vi.waitFor(() => {
+      expect($announcer.get()?.message).toBe(m.player_restarted());
     });
   });
 });

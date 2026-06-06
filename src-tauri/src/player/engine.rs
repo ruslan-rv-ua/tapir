@@ -45,6 +45,12 @@ pub struct PlayerProgressPayload {
     pub duration_ms: u64,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayerEndedPayload {
+    pub path: String,
+}
+
 use std::sync::Arc;
 use std::time::Duration;
 use anyhow::{Context, Result};
@@ -202,7 +208,7 @@ impl PlayerEngine {
         let player_clone = Arc::clone(&player);
         let app_clone = app.clone();
         let dur = duration_ms.unwrap_or(0);
-        let volume_arc = Arc::clone(&self.volume);
+        let path_for_end = path.clone();
 
         let progress_task = tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(1));
@@ -224,14 +230,13 @@ impl PlayerEngine {
                 }
             }
             if ended_naturally {
-                let current_volume = *volume_arc.lock().await;
-                emit_player_status(&app_clone, PlayerStatus {
-                    state: PlaybackState::Stopped,
-                    source: None,
-                    volume: current_volume,
-                    position_ms: None,
-                    duration_ms: None,
-                });
+                // Surface natural completion as a distinct event; the frontend
+                // decides whether to auto-advance or stop. We intentionally do NOT
+                // emit Stopped here, so App.tsx doesn't announce "playback stopped"
+                // before an auto-advance.
+                if let Err(e) = app_clone.emit("player-ended", PlayerEndedPayload { path: path_for_end }) {
+                    log::warn!("Player: failed to emit player-ended: {e}");
+                }
             }
         });
 
@@ -954,5 +959,12 @@ mod tests {
         assert_eq!(playing,  "\"playing\"");
         assert_eq!(paused,   "\"paused\"");
         assert_eq!(stopped,  "\"stopped\"");
+    }
+
+    #[test]
+    fn player_ended_payload_serializes_camel_case() {
+        let p = PlayerEndedPayload { path: "C:/music/song.mp3".to_string() };
+        let json = serde_json::to_string(&p).unwrap();
+        assert_eq!(json, r#"{"path":"C:/music/song.mp3"}"#);
     }
 }

@@ -79,6 +79,8 @@ export interface GlobalSettings {
   doubleClickAction: "record" | "play";
   bandwidthLimitKbps: number;
   autostart: boolean;
+  autoAdvance: boolean;
+  prevRestartThresholdMs: number;
   hotkeys: HotkeyMap;
   logRotation: boolean;
   logMaxSizeMb: number;
@@ -179,6 +181,10 @@ export interface PlayerStatus {
 export interface PlayerProgressPayload {
   positionMs: number;
   durationMs: number;
+}
+
+export interface PlayerEndedPayload {
+  path: string;
 }
 
 export interface AudioDevice {

@@ -41,6 +41,10 @@ pub struct GlobalSettings {
     pub log_max_size_mb: u32,
     #[serde(default, deserialize_with = "deserialize_log_level")]
     pub log_level: LogLevel,
+    #[serde(default = "default_true")]
+    pub auto_advance: bool,
+    #[serde(default)]
+    pub prev_restart_threshold_ms: u32,
 }
 
 /// Deserialize `log_level` tolerantly: an unknown or legacy value (e.g. the
@@ -150,6 +154,8 @@ impl Default for GlobalSettings {
             log_rotation: true,
             log_max_size_mb: 10,
             log_level: LogLevel::Info,
+            auto_advance: true,
+            prev_restart_threshold_ms: 0,
         }
     }
 }
@@ -219,5 +225,21 @@ mod tests {
         let json = serde_json::to_string(&s).unwrap();
         let back: GlobalSettings = serde_json::from_str(&json).unwrap();
         assert_eq!(back.log_level, LogLevel::Debug);
+    }
+
+    #[test]
+    fn playback_settings_defaults() {
+        let s = GlobalSettings::default();
+        assert!(s.auto_advance);
+        assert_eq!(s.prev_restart_threshold_ms, 0);
+    }
+
+    #[test]
+    fn legacy_config_without_playback_fields_uses_defaults() {
+        // A config saved before these fields existed must still deserialize.
+        let json = r#"{"language":"en-US","theme":"auto","activeProfile":"Default"}"#;
+        let s: GlobalSettings = serde_json::from_str(json).unwrap();
+        assert!(s.auto_advance);
+        assert_eq!(s.prev_restart_threshold_ms, 0);
     }
 }
