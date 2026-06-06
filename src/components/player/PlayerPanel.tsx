@@ -12,7 +12,8 @@ import { useStore } from "@nanostores/react";
 import { $playerStatus, $muteState } from "../../stores/player";
 import { $streams, $statuses } from "../../stores/streams";
 import { $filteredSongs } from "../../stores/songs";
-import { $playbackNeighbors, computePlaybackNeighbors, type NeighborTarget } from "../../stores/playbackNeighbors";
+import { $playbackNeighbors, computePlaybackNeighbors } from "../../stores/playbackNeighbors";
+import { resolveTransportAction, type TransportAction, type TransportContext } from "../../lib/playbackTransport";
 import { $settings } from "../../stores/settings";
 import { PlaybackPosition } from "./PlaybackPosition";
 import { VolumeSlider } from "./VolumeSlider";
@@ -24,6 +25,38 @@ import { LiveBadge } from "./LiveBadge";
 import { RecordingBadge } from "./RecordingBadge";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
+
+type SkipTrigger = "prev" | "next";
+
+/**
+ * Will the just-pressed skip button resolve to "none" after `action` applies?
+ * Used to pre-move focus to Play/Pause before the stops set collapses, so the
+ * usePlayerZoneNav remap doesn't strand focus on Mute.
+ */
+function pressedBecomesDisabled(
+  trigger: SkipTrigger,
+  action: TransportAction,
+  ctx: TransportContext,
+): boolean {
+  if (action.kind === "seek-start") {
+    // Same source; position resets to 0 → prev no longer offers a restart.
+    return resolveTransportAction("prev", { ...ctx, positionMs: 0 }).kind === "none";
+  }
+  if (action.kind === "play-stream" || action.kind === "play-file") {
+    const newSource =
+      action.kind === "play-stream"
+        ? ({ type: "stream", streamId: action.id } as const)
+        : ({ type: "file", path: action.path } as const);
+    const newNeighbors = computePlaybackNeighbors(newSource, $streams.get(), $filteredSongs.get());
+    return resolveTransportAction(trigger, {
+      source: newSource,
+      positionMs: 0,
+      neighbors: newNeighbors,
+      prevRestartThresholdMs: ctx.prevRestartThresholdMs,
+    }).kind === "none";
+  }
+  return false;
+}
 
 function useSourceLabel(): string {
   const { source } = useStore($playerStatus);
@@ -74,8 +107,11 @@ export const PlayerPanel = forwardRef<
   const hasPositionSlider = source?.type === 'file' && (durationMs ?? 0) > 0;
 
   const neighbors = useStore($playbackNeighbors);
-  const canPrev = isActive && neighbors.prev !== null;
-  const canNext = isActive && neighbors.next !== null;
+  const positionMs = playerStatus.positionMs;
+  const prevRestartThresholdMs = settings?.prevRestartThresholdMs ?? 0;
+  const transportCtx: TransportContext = { source, positionMs, neighbors, prevRestartThresholdMs };
+  const canPrev = isActive && resolveTransportAction("prev", transportCtx).kind !== "none";
+  const canNext = isActive && resolveTransportAction("next", transportCtx).kind !== "none";
 
   const mutePendingRef = useRef(false);
   const navPendingRef = useRef(false);
@@ -164,26 +200,30 @@ export const PlayerPanel = forwardRef<
   };
 
   const handleSkip = useCallback(
-    async (target: NeighborTarget | null, direction: "prev" | "next") => {
-      if (!target || navPendingRef.current) return;
+    async (trigger: SkipTrigger) => {
+      if (navPendingRef.current) return;
+      const status = $playerStatus.get();
+      const ctx: TransportContext = {
+        source: status.source,
+        positionMs: status.positionMs,
+        neighbors: $playbackNeighbors.get(),
+        prevRestartThresholdMs: $settings.get()?.prevRestartThresholdMs ?? 0,
+      };
+      const action = resolveTransportAction(trigger, ctx);
+      if (action.kind === "none") return;
       navPendingRef.current = true;
       try {
-        // Predict whether the pressed button will disable after this move. If so,
-        // anchor focus to Play/Pause BEFORE the source change collapses the stops
-        // set, so usePlayerZoneNav's remap effect doesn't strand focus on Mute.
-        // Mid-list (button stays enabled) we leave focus on the pressed skip button
-        // so repeated presses keep walking the list.
-        const targetSource =
-          target.kind === "stream"
-            ? ({ type: "stream", streamId: target.id } as const)
-            : ({ type: "file", path: target.path } as const);
-        const after = computePlaybackNeighbors(targetSource, $streams.get(), $filteredSongs.get());
-        const willDisablePressed = direction === "next" ? !after.next : !after.prev;
-        if (willDisablePressed) playPauseRef.current?.focus();
-
-        if (target.kind === "stream") await tauri.playStream(target.id);
-        else await tauri.playSavedSong(target.path);
-        // No announce here — App.tsx announces "Playing: {name}" on player-status.
+        if (pressedBecomesDisabled(trigger, action, ctx)) playPauseRef.current?.focus();
+        switch (action.kind) {
+          case "play-stream": await tauri.playStream(action.id); break;
+          case "play-file":   await tauri.playSavedSong(action.path); break;
+          case "seek-start":
+            await tauri.seekPlayback(0);
+            announce(m.player_restarted(), "assertive");
+            break;
+          // "stop" cannot occur for prev/next (only auto-advance) — no-op.
+        }
+        // play-* announce "Playing: {name}" via App.tsx player-status.
       } catch (e) {
         console.error(e);
         announce(m.playback_error(), "assertive");
@@ -317,7 +357,7 @@ export const PlayerPanel = forwardRef<
               ref={prevRef}
               aria-label={m.player_prev()}
               isDisabled={!canPrev}
-              onPress={() => handleSkip(neighbors.prev, "prev")}
+              onPress={() => handleSkip("prev")}
               // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
               tabIndex={-1}
               className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText]"
@@ -353,7 +393,7 @@ export const PlayerPanel = forwardRef<
               ref={nextRef}
               aria-label={m.player_next()}
               isDisabled={!canNext}
-              onPress={() => handleSkip(neighbors.next, "next")}
+              onPress={() => handleSkip("next")}
               // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
               tabIndex={-1}
               className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText]"
