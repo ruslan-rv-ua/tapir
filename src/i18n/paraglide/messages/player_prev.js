@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Player_PrevInputs */
 
 const uk_player_prev = /** @type {(inputs: Player_PrevInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Попередній потік`)
+	return /** @type {LocalizedString} */ (`Попередній трек`)
 };
 
 const en_player_prev = /** @type {(inputs: Player_PrevInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Previous stream`)
+	return /** @type {LocalizedString} */ (`Previous track`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Previous stream" |
+* | "Previous track" |
 *
 * @param {Player_PrevInputs} inputs
 * @param {{ locale?: "uk" | "en" }} options
