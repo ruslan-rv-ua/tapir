@@ -14,7 +14,9 @@ export interface PlaybackNeighbors {
   next: NeighborTarget | null;
 }
 
-const NONE: PlaybackNeighbors = { prev: null, next: null };
+// Frozen + shared: returning one reference keeps the computed store's equality
+// check stable (no spurious notifications) and prevents accidental mutation.
+const NONE: PlaybackNeighbors = Object.freeze({ prev: null, next: null });
 
 /**
  * Compute the previous/next transport targets for the current playback context.

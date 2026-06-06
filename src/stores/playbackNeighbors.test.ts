@@ -1,7 +1,10 @@
-import { describe, it, expect } from "vitest";
-import { computePlaybackNeighbors } from "./playbackNeighbors";
+import { describe, it, expect, afterEach } from "vitest";
+import { computePlaybackNeighbors, $playbackNeighbors } from "./playbackNeighbors";
 import type { StreamInfo, PlaybackSource } from "../lib/tauri";
 import type { Song } from "../types/song";
+import { $playerStatus } from "./player";
+import { $streams } from "./streams";
+import { $songs, $songsQuery, $songsStation, $songsSort } from "./songs";
 
 const mkStream = (id: string): StreamInfo => ({
   id,
@@ -22,7 +25,7 @@ const mkSong = (path: string): Song => ({
   path,
   fileName: path,
   artist: "a",
-  title: path,
+  title: path, // title is irrelevant — the function consumes a pre-ordered array
   album: "",
   genre: "",
   station: "st",
@@ -128,6 +131,32 @@ describe("computePlaybackNeighbors — file context", () => {
     expect(computePlaybackNeighbors(fileSrc("a.mp3"), streams, reordered)).toEqual({
       prev: { kind: "file", path: "c.mp3" },
       next: { kind: "file", path: "b.mp3" },
+    });
+  });
+});
+
+describe("$playbackNeighbors store wiring", () => {
+  afterEach(() => {
+    $playerStatus.set({ state: "stopped", source: null, volume: 0.75, positionMs: null, durationMs: null });
+    $streams.set([]);
+    $songs.set([]);
+    $songsQuery.set("");
+    $songsStation.set(null);
+    $songsSort.set("date");
+  });
+
+  it("reflects the correct neighbors through live atom state", () => {
+    $streams.set([mkStream("s1"), mkStream("s2"), mkStream("s3")]);
+    $playerStatus.set({
+      state: "playing",
+      source: { type: "stream", streamId: "s2" },
+      volume: 0.75,
+      positionMs: null,
+      durationMs: null,
+    });
+    expect($playbackNeighbors.get()).toEqual({
+      prev: { kind: "stream", id: "s1" },
+      next: { kind: "stream", id: "s3" },
     });
   });
 });
