@@ -7,13 +7,17 @@ import {
   Popover,
   ListBox,
   ListBoxItem,
+  Checkbox,
+  NumberField,
+  Input,
+  Group,
 } from "react-aria-components";
 import { useStore } from "@nanostores/react";
 import { $settings } from "../../stores/settings";
 import { addToast } from "../../stores/toasts";
 import { useAutoSave } from "../../hooks/useAutoSave";
 import * as tauri from "../../lib/tauri";
-import type { AudioDevice } from "../../lib/tauri";
+import type { AudioDevice, GlobalSettings } from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 
 export function AudioTab() {
@@ -37,6 +41,13 @@ export function AudioTab() {
     const current = $settings.get();
     if (current) await tauri.saveSettings(current);
   });
+
+  function update(patch: Partial<GlobalSettings>) {
+    const current = $settings.get();
+    if (!current) return;
+    $settings.set({ ...current, ...patch });
+    save();
+  }
 
   if (!settings) return null;
 
@@ -98,6 +109,42 @@ export function AudioTab() {
       >
         {m.settings_output_device_refresh()}
       </Button>
+
+      <div className="space-y-4 border-t border-slate-700 pt-4">
+        <h3 className="text-sm font-semibold text-slate-200">
+          {m.player_controls()}
+        </h3>
+
+        {/* Auto-advance */}
+        <Checkbox
+          isSelected={settings.autoAdvance}
+          onChange={(val) => update({ autoAdvance: val })}
+          className="flex items-center gap-2 text-sm text-slate-300"
+        >
+          <div className="flex h-5 w-5 items-center justify-center rounded border border-slate-600 bg-slate-700">
+            {settings.autoAdvance && <span>✓</span>}
+          </div>
+          <Label>{m.settings_auto_advance()}</Label>
+        </Checkbox>
+
+        {/* Prev-restart threshold (shown in seconds; stored as ms) */}
+        <NumberField
+          value={Math.round((settings.prevRestartThresholdMs ?? 0) / 1000)}
+          onChange={(val) => {
+            if (!Number.isNaN(val)) update({ prevRestartThresholdMs: Math.max(0, val) * 1000 });
+          }}
+          minValue={0}
+          maxValue={30}
+          step={1}
+        >
+          <Label className="block text-sm font-medium text-slate-300">
+            {m.settings_prev_restart_threshold()}
+          </Label>
+          <Group className="mt-1 flex w-32">
+            <Input className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400" />
+          </Group>
+        </NumberField>
+      </div>
     </div>
   );
 }
