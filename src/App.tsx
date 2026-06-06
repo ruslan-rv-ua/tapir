@@ -26,7 +26,10 @@ import { $activeSection } from "./stores/navigation";
 import { $commandPaletteOpen } from "./stores/navigation";
 import { addToast } from "./stores/toasts";
 import * as tauri from "./lib/tauri";
-import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, RecordingStartedPayload, RecordingCompletedPayload, StreamInfo, PlayerStatus, PlayerProgressPayload, WishlistMatchPayload, TrackIgnoredPayload } from "./lib/tauri";
+import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, RecordingStartedPayload, RecordingCompletedPayload, StreamInfo, PlayerStatus, PlayerProgressPayload, WishlistMatchPayload, TrackIgnoredPayload, PlayerEndedPayload } from "./lib/tauri";
+import { $filteredSongs } from "./stores/songs";
+import { computePlaybackNeighbors } from "./stores/playbackNeighbors";
+import { resolveEndedAction } from "./lib/playbackTransport";
 import * as m from "./i18n/paraglide/messages";
 
 const PERMANENT_ZONE_IDS = new Set(["activity-bar", "player", "status-bar"]);
@@ -263,6 +266,24 @@ function AppContent() {
     });
   }, []);
 
+  const handlePlayerEnded = useCallback(async (payload: PlayerEndedPayload) => {
+    const autoAdvance = $settings.get()?.autoAdvance ?? true;
+    const neighbors = computePlaybackNeighbors(
+      { type: "file", path: payload.path },
+      $streams.get(),
+      $filteredSongs.get(),
+    );
+    const action = resolveEndedAction(autoAdvance, neighbors);
+    try {
+      if (action.kind === "play-file") await tauri.playSavedSong(action.path);
+      else await tauri.stopPlayback(); // end of list or autoAdvance off
+    } catch (e) {
+      console.error(e);
+      // Skip-on-error guard: never loop through broken files — just stop.
+      await tauri.stopPlayback().catch(() => {});
+    }
+  }, []);
+
   const handleRecordingCompleted = useCallback((payload: RecordingCompletedPayload) => {
     const stream = $streams.get().find((s) => s.id === payload.streamId);
     const name = stream?.name ?? payload.streamId;
@@ -290,6 +311,7 @@ function AppContent() {
   useTauriEvent<RecordingCompletedPayload>("recording-completed", handleRecordingCompleted);
   useTauriEvent<PlayerStatus>("player-status", handlePlayerStatus);
   useTauriEvent<PlayerProgressPayload>("player-progress", handlePlayerProgress);
+  useTauriEvent<PlayerEndedPayload>("player-ended", handlePlayerEnded);
   useTauriEvent<WishlistMatchPayload>("wishlist-match", handleWishlistMatch);
   useTauriEvent<TrackIgnoredPayload>("track-ignored", handleTrackIgnored);
   useTauriEvent("streams-changed", handleStreamsChanged);
