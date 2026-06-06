@@ -39,7 +39,7 @@ function pressedBecomesDisabled(
   ctx: TransportContext,
 ): boolean {
   if (action.kind === "seek-start") {
-    // Same source; position resets to 0 → prev no longer offers a restart.
+    // seek-start is only ever produced for the "prev" trigger; re-check prev at position 0.
     return resolveTransportAction("prev", { ...ctx, positionMs: 0 }).kind === "none";
   }
   if (action.kind === "play-stream" || action.kind === "play-file") {

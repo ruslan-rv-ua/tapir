@@ -9,9 +9,20 @@ import { PlayerPanel } from "./PlayerPanel";
 import { $playerStatus } from "../../stores/player";
 import { $streams } from "../../stores/streams";
 import { $songs, $songsQuery, $songsStation, $songsSort } from "../../stores/songs";
-import type { StreamInfo } from "../../lib/tauri";
+import type { GlobalSettings, StreamInfo } from "../../lib/tauri";
 import type { Song } from "../../types/song";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
+
+const baseSettings: GlobalSettings = {
+  language: "en-US", theme: "auto", activeProfile: "Default", outputDevice: null,
+  minimizeToTray: true, showTrayNotifications: true, showTrackInTitle: true,
+  diskSpaceThresholdGb: 1, doubleClickAction: "play", bandwidthLimitKbps: 0,
+  autostart: false, autoAdvance: true, prevRestartThresholdMs: 0,
+  hotkeys: {
+    toggleRecording: "", togglePlayback: "", volumeUp: "", volumeDown: "", toggleWindow: "",
+  },
+  logRotation: true, logMaxSizeMb: 10, logLevel: "info",
+};
 
 // Stub the Tauri IPC layer — there is no backend in jsdom.
 vi.mock("../../lib/tauri", () => ({
@@ -192,12 +203,7 @@ describe("PlayerPanel — prev restart threshold", () => {
   function playingFileAt(path: string, positionMs: number, thresholdMs: number) {
     $songs.set([mkSong("a.mp3", "A"), mkSong("b.mp3", "B"), mkSong("c.mp3", "C")]);
     $songsSort.set("title");
-    $settings.set({
-      language: "en-US", theme: "auto", activeProfile: "Default", outputDevice: null,
-      minimizeToTray: true, showTrayNotifications: true, showTrackInTitle: true,
-      diskSpaceThresholdGb: 1, doubleClickAction: "play", bandwidthLimitKbps: 0,
-      autostart: false, autoAdvance: true, prevRestartThresholdMs: thresholdMs,
-    } as never);
+    $settings.set({ ...baseSettings, prevRestartThresholdMs: thresholdMs });
     $playerStatus.set({
       state: "playing", source: { type: "file", path }, volume: 0.75,
       positionMs, durationMs: 200000,
@@ -224,5 +230,14 @@ describe("PlayerPanel — prev restart threshold", () => {
     playingFileAt("a.mp3", 5000, 3000); // first track, no previous neighbor
     const { getByRole } = renderPanel();
     expect(getByRole("button", { name: m.player_prev() })).toBeEnabled();
+  });
+
+  it("announces a restart when seeking past the threshold", async () => {
+    playingFileAt("b.mp3", 5000, 3000);
+    const { getByRole } = renderPanel();
+    fireEvent.click(getByRole("button", { name: m.player_prev() }));
+    await vi.waitFor(() => {
+      expect($announcer.get()?.message).toBe(m.player_restarted());
+    });
   });
 });
