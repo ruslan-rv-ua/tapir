@@ -11,6 +11,8 @@ import { Play, Pause, Square, SkipBack, SkipForward, Volume2, VolumeX } from "lu
 import { useStore } from "@nanostores/react";
 import { $playerStatus, $muteState } from "../../stores/player";
 import { $streams, $statuses } from "../../stores/streams";
+import { $filteredSongs } from "../../stores/songs";
+import { $playbackNeighbors, computePlaybackNeighbors, type NeighborTarget } from "../../stores/playbackNeighbors";
 import { $settings } from "../../stores/settings";
 import { PlaybackPosition } from "./PlaybackPosition";
 import { VolumeSlider } from "./VolumeSlider";
@@ -71,9 +73,16 @@ export const PlayerPanel = forwardRef<
   const isStream = source?.type === 'stream';
   const hasPositionSlider = source?.type === 'file' && (durationMs ?? 0) > 0;
 
+  const neighbors = useStore($playbackNeighbors);
+  const canPrev = isActive && neighbors.prev !== null;
+  const canNext = isActive && neighbors.next !== null;
+
   const mutePendingRef = useRef(false);
+  const navPendingRef = useRef(false);
   const playerRootRef = useRef<HTMLDivElement>(null);
+  const prevRef = useRef<HTMLButtonElement>(null);
   const playPauseRef = useRef<HTMLButtonElement>(null);
+  const nextRef = useRef<HTMLButtonElement>(null);
   const stopRef = useRef<HTMLButtonElement>(null);
   const muteRef = useRef<HTMLButtonElement>(null);
   const appRef = useRef<HTMLDivElement>(null);
@@ -90,13 +99,15 @@ export const PlayerPanel = forwardRef<
     { ref: sourceNameRef,                                                enabled: isActive },
     { ref: trackNameRef,                                                 enabled: isActive && hasTrackName },
     { ref: bitrateRowRef,                                                enabled: isActive && isStream },
+    { ref: prevRef      as RefObject<HTMLElement | null>,                enabled: canPrev },
     { ref: playPauseRef as RefObject<HTMLElement | null>,                enabled: isActive },
     { ref: stopRef      as RefObject<HTMLElement | null>,                enabled: isActive },
+    { ref: nextRef      as RefObject<HTMLElement | null>,                enabled: canNext },
     { ref: muteRef      as RefObject<HTMLElement | null>,                enabled: isActive },
     { ref: positionInputRef as unknown as RefObject<HTMLElement | null>, enabled: isActive && hasPositionSlider },
     { ref: outputDeviceRef,                                              enabled: isActive },
     { ref: volumeInputRef   as unknown as RefObject<HTMLElement | null>, enabled: isActive },
-  ], [isActive, hasTrackName, isStream, hasPositionSlider]);
+  ], [isActive, hasTrackName, isStream, hasPositionSlider, canPrev, canNext]);
 
   const { onRootKeyDown, enterZone, navigate } = usePlayerZoneNav(appRef, stops, exitZone);
 
@@ -151,6 +162,37 @@ export const PlayerPanel = forwardRef<
       mutePendingRef.current = false;
     }
   };
+
+  const handleSkip = useCallback(
+    async (target: NeighborTarget | null, direction: "prev" | "next") => {
+      if (!target || navPendingRef.current) return;
+      navPendingRef.current = true;
+      // Predict whether the pressed button will disable after this move. If so,
+      // anchor focus to Play/Pause BEFORE the source change collapses the stops
+      // set, so usePlayerZoneNav's remap effect doesn't strand focus on Mute.
+      // Mid-list (button stays enabled) we leave focus on the pressed skip button
+      // so repeated presses keep walking the list.
+      const targetSource =
+        target.kind === "stream"
+          ? ({ type: "stream", streamId: target.id } as const)
+          : ({ type: "file", path: target.path } as const);
+      const after = computePlaybackNeighbors(targetSource, $streams.get(), $filteredSongs.get());
+      const willDisablePressed = direction === "next" ? !after.next : !after.prev;
+      if (willDisablePressed) playPauseRef.current?.focus();
+
+      try {
+        if (target.kind === "stream") await tauri.playStream(target.id);
+        else await tauri.playSavedSong(target.path);
+        // No announce here — App.tsx announces "Playing: {name}" on player-status.
+      } catch (e) {
+        console.error(e);
+        announce(m.playback_error(), "assertive");
+      } finally {
+        navPendingRef.current = false;
+      }
+    },
+    [announce],
+  );
 
   const handlePlayPause = async () => {
     try {
@@ -271,10 +313,11 @@ export const PlayerPanel = forwardRef<
             {m.player_controls()}
           </h3>
           <div className="flex items-center justify-center gap-2">
-            {/* Prev (stub, always disabled — not a focus stop) */}
             <Button
+              ref={prevRef}
               aria-label={m.player_prev()}
-              isDisabled={true}
+              isDisabled={!canPrev}
+              onPress={() => handleSkip(neighbors.prev, "prev")}
               // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
               tabIndex={-1}
               className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText]"
@@ -306,10 +349,11 @@ export const PlayerPanel = forwardRef<
               <Square aria-hidden={true} size={18} />
             </Button>
 
-            {/* Next (stub, always disabled — not a focus stop) */}
             <Button
+              ref={nextRef}
               aria-label={m.player_next()}
-              isDisabled={true}
+              isDisabled={!canNext}
+              onPress={() => handleSkip(neighbors.next, "next")}
               // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
               tabIndex={-1}
               className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText]"
