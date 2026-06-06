@@ -167,20 +167,20 @@ export const PlayerPanel = forwardRef<
     async (target: NeighborTarget | null, direction: "prev" | "next") => {
       if (!target || navPendingRef.current) return;
       navPendingRef.current = true;
-      // Predict whether the pressed button will disable after this move. If so,
-      // anchor focus to Play/Pause BEFORE the source change collapses the stops
-      // set, so usePlayerZoneNav's remap effect doesn't strand focus on Mute.
-      // Mid-list (button stays enabled) we leave focus on the pressed skip button
-      // so repeated presses keep walking the list.
-      const targetSource =
-        target.kind === "stream"
-          ? ({ type: "stream", streamId: target.id } as const)
-          : ({ type: "file", path: target.path } as const);
-      const after = computePlaybackNeighbors(targetSource, $streams.get(), $filteredSongs.get());
-      const willDisablePressed = direction === "next" ? !after.next : !after.prev;
-      if (willDisablePressed) playPauseRef.current?.focus();
-
       try {
+        // Predict whether the pressed button will disable after this move. If so,
+        // anchor focus to Play/Pause BEFORE the source change collapses the stops
+        // set, so usePlayerZoneNav's remap effect doesn't strand focus on Mute.
+        // Mid-list (button stays enabled) we leave focus on the pressed skip button
+        // so repeated presses keep walking the list.
+        const targetSource =
+          target.kind === "stream"
+            ? ({ type: "stream", streamId: target.id } as const)
+            : ({ type: "file", path: target.path } as const);
+        const after = computePlaybackNeighbors(targetSource, $streams.get(), $filteredSongs.get());
+        const willDisablePressed = direction === "next" ? !after.next : !after.prev;
+        if (willDisablePressed) playPauseRef.current?.focus();
+
         if (target.kind === "stream") await tauri.playStream(target.id);
         else await tauri.playSavedSong(target.path);
         // No announce here — App.tsx announces "Playing: {name}" on player-status.

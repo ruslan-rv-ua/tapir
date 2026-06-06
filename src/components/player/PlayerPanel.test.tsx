@@ -3,6 +3,7 @@ import { createRef } from "react";
 import { render, fireEvent } from "@testing-library/react";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
+import { $announcer } from "../../stores/announcer";
 import { PlayerPanel } from "./PlayerPanel";
 import { $playerStatus } from "../../stores/player";
 import { $streams } from "../../stores/streams";
@@ -141,7 +142,7 @@ describe("PlayerPanel — prev/next dispatch", () => {
 });
 
 describe("PlayerPanel — prev/next race guard", () => {
-  it("ignores a second press while a transition is in flight", () => {
+  it("ignores a second press while a transition is in flight, then releases", async () => {
     let release: () => void = () => {};
     vi.mocked(tauri.playStream).mockImplementation(
       () => new Promise<void>((resolve) => { release = resolve; }),
@@ -151,8 +152,14 @@ describe("PlayerPanel — prev/next race guard", () => {
     const next = getByRole("button", { name: m.player_next() });
     fireEvent.click(next);
     fireEvent.click(next);
-    expect(tauri.playStream).toHaveBeenCalledTimes(1);
-    release(); // let the pending promise settle so no unhandled rejection lingers
+    expect(tauri.playStream).toHaveBeenCalledTimes(1); // second press blocked
+
+    release();                 // settle the in-flight call
+    await Promise.resolve();   // let handleSkip's finally run (add more flushes if needed)
+    await Promise.resolve();
+    fireEvent.click(next);
+    expect(tauri.playStream).toHaveBeenCalledTimes(2); // guard released
+    release();                 // settle the last call
   });
 });
 
@@ -163,5 +170,17 @@ describe("PlayerPanel — boundary focus", () => {
     fireEvent.click(getByRole("button", { name: m.player_next() }));
     // While playing, the central control is labelled with the Pause action.
     expect(document.activeElement).toBe(getByRole("button", { name: m.pause() }));
+  });
+});
+
+describe("PlayerPanel — prev/next error handling", () => {
+  it("announces a playback error when the skip IPC rejects", async () => {
+    vi.mocked(tauri.playStream).mockRejectedValueOnce(new Error("IPC fail"));
+    playingStream("s2");
+    const { getByRole } = renderPanel();
+    fireEvent.click(getByRole("button", { name: m.player_next() }));
+    await vi.waitFor(() => {
+      expect($announcer.get()?.message).toBe(m.playback_error());
+    });
   });
 });
