@@ -5,7 +5,7 @@
 > **Скрінрідери:** NVDA 2023+, JAWS 2023+, Windows Narrator  
 > **Технології:** React Aria Components, WebView2 (Chromium ARIA → UIA mapping)
 
-> **Примітка (2026-04-23):** описи `StreamTable`, `ResultsTable`, `WishlistTable`, `SongsTable` і `ScheduleTable` у цьому документі відображають поточний або історичний table/grid-підхід. Для refactor зонної навігації та композиційних списків пріоритет має `docs/FRD-navigation.md`.
+> **Примітка (2026-04-23):** описи `StreamTable`, `ResultsTable`, `WishlistTable`, `SongsTable` і `ScheduleTable` у цьому документі відображають поточний або історичний table/grid-підхід. Для refactor зонної навігації та композиційних списків пріоритет мав `docs/FRD-navigation.md` (видалено).
 
 ---
 
