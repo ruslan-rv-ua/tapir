@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Player_NextInputs */
 
 const uk_player_next = /** @type {(inputs: Player_NextInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Наступний потік`)
+	return /** @type {LocalizedString} */ (`Наступний трек`)
 };
 
 const en_player_next = /** @type {(inputs: Player_NextInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Next stream`)
+	return /** @type {LocalizedString} */ (`Next track`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Next stream" |
+* | "Next track" |
 *
 * @param {Player_NextInputs} inputs
 * @param {{ locale?: "uk" | "en" }} options
