@@ -3,7 +3,9 @@ use crate::player::engine::PlaybackState;
 use crate::settings::HotkeyMap;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
-use log::{info, warn};
+use log::{info, warn, debug};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Register all global shortcuts from the given HotkeyMap.
 /// Returns a list of shortcut combos that failed to register.
@@ -43,6 +45,24 @@ pub fn register_global_shortcuts(app: &AppHandle, hotkeys: &HotkeyMap) -> Vec<St
     failed
 }
 
+static LAST_TOGGLE_RECORDING_MS: AtomicU64 = AtomicU64::new(0);
+const TOGGLE_RECORDING_DEBOUNCE_MS: u64 = 500;
+
+/// True if `toggle_recording` already fired within the debounce window.
+/// Swallows OS key auto-repeat so a held Ctrl+Shift+R can't flap start/stop.
+fn recently_toggled_recording() -> bool {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    let last = LAST_TOGGLE_RECORDING_MS.load(Ordering::Relaxed);
+    if now.saturating_sub(last) < TOGGLE_RECORDING_DEBOUNCE_MS {
+        return true;
+    }
+    LAST_TOGGLE_RECORDING_MS.store(now, Ordering::Relaxed);
+    false
+}
+
 fn handle_shortcut_action(app: &AppHandle, action: &str) {
     let app = app.clone();
     let action = action.to_string();
@@ -50,7 +70,13 @@ fn handle_shortcut_action(app: &AppHandle, action: &str) {
         let state = app.state::<AppState>();
         match action.as_str() {
             "toggle_recording" => {
-                info!("Global shortcut: toggle_recording (no selected stream context)");
+                if recently_toggled_recording() {
+                    debug!("Global shortcut: toggle_recording ignored (debounce)");
+                } else {
+                    let outcome = crate::recording_control::toggle_all(state.inner()).await;
+                    info!("Global shortcut: toggle_recording → {outcome:?}");
+                    crate::tray::notify::notify_recording_toggle(&app, outcome);
+                }
             }
             "toggle_playback" => {
                 let status = state.player.get_status().await;
