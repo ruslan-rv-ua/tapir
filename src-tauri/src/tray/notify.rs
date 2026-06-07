@@ -153,6 +153,8 @@ fn plural_streams(n: usize) -> &'static str {
 /// for a backgrounded hotkey, not ambient track chatter, so it must always fire.
 /// Strings are Ukrainian-only, matching the other native surfaces here.
 pub fn notify_recording_toggle(app: &tauri::AppHandle, outcome: ToggleOutcome) {
+    // Synchronous (no spawn): the shortcut handler already calls this from a
+    // spawned task after awaiting toggle_all, and notification show() is non-blocking.
     let body = match outcome {
         ToggleOutcome::Started(n) => format!("Запис розпочато: {n} {}", plural_streams(n)),
         ToggleOutcome::Stopped(n) => format!("Запис зупинено: {n} {}", plural_streams(n)),
@@ -196,6 +198,7 @@ mod tests {
         assert_eq!(plural_streams(5), "потоків");
         assert_eq!(plural_streams(11), "потоків");
         assert_eq!(plural_streams(12), "потоків");
+        assert_eq!(plural_streams(13), "потоків");
         assert_eq!(plural_streams(14), "потоків");
         assert_eq!(plural_streams(25), "потоків");
     }
