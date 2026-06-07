@@ -63,8 +63,9 @@ pub async fn toggle_all(state: &AppState) -> ToggleOutcome {
     match decide(active) {
         ToggleAction::Stop => {
             let mut mgr = state.stream_manager.write().await;
+            let stopped = count_active(&mgr.get_all_statuses());
             mgr.stop_all();
-            ToggleOutcome::Stopped(active)
+            ToggleOutcome::Stopped(stopped)
         }
         ToggleAction::Start => {
             let (streams, settings) = {
