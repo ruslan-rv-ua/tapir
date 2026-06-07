@@ -72,15 +72,7 @@ pub async fn confirm_quit_if_recording(app: &tauri::AppHandle) -> bool {
     let state = tauri::Manager::state::<crate::app_state::AppState>(app);
     let active = {
         let mgr = state.stream_manager.read().await;
-        mgr.get_all_statuses()
-            .iter()
-            .filter(|s| matches!(
-                s.state,
-                crate::stream::manager::StreamState::Recording
-                    | crate::stream::manager::StreamState::Connecting
-                    | crate::stream::manager::StreamState::Reconnecting
-            ))
-            .count()
+        crate::recording_control::count_active(&mgr.get_all_statuses())
     };
 
     if active == 0 { return true; }
