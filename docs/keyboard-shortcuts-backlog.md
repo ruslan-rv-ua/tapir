@@ -71,11 +71,25 @@ ID (`KB-NN`) стабільні — на них зручно посилатис�
   тепер фокус-/модаль-залежні; self-close по тій же клавіші зник, але `Escape`
   закриває). Тести: [shortcutGuard.test.ts](../src/lib/shortcutGuard.test.ts).
 
-### ☐ KB-05 · 🔍 `Ctrl+N` може перехопити WebView2
+### [x] KB-05 · 🔍 `Ctrl+N` може перехопити WebView2
 На Windows `Ctrl+N` історично = «нове вікно». Переконатися, що подія доходить до
 JS у Tauri-webview.
 - **Готово коли:** підтверджено, що handler отримує `Ctrl+N` (або обрано інший
   біндинг, якщо ні).
+- **Зроблено (2026-06-07):** біндинг лишаємо — `Ctrl+N` **не** перехоплюється.
+  Застереження стосувалося повного Edge/Chrome (там є browser-shell із «новим
+  вікном»); Tapir живе у *вбудованому* контролі WebView2 (wry 0.54.4 → tao →
+  tauri 2.10.3), де такої команди немає (єдиний шлях нового вікна —
+  `window.open`/`NewWindowRequested`, програмний). Докази: (1) `Ctrl+N` не входить
+  до набору browser-accelerator клавіш WebView2 — лише Find/Print/Reload/Zoom/
+  DevTools + спец-клавіші Back/Forward/Search ([MS docs: AreBrowserAcceleratorKeysEnabled](https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/winrt/microsoft_web_webview2_core/corewebview2settings#arebrowseracceleratorkeysenabled)).
+  (2) Той самий window-слухач уже отримує `Ctrl+K`/`Ctrl+,` (✅ у реєстрі,
+  [App.tsx:144-148](../src/App.tsx#L144-L148)) — `Ctrl+N` той самий клас Ctrl+letter,
+  що не є акселератором. (3) wry лишає `AreBrowserAcceleratorKeysEnabled` у дефолті
+  `true`, Tapir його не чіпає; на крайній випадок є рубильник
+  `with_browser_accelerator_keys(false)`, плюс `preventDefault()` на комбо
+  (конвенція №3) як запобіжник. Лишилось: ручний прес `Ctrl+N` у вікні під час
+  NVDA-приймальні (разом із KB-01).
 
 ### ☐ KB-06 · ✨ Ігнорувати `e.repeat` для toggle-дій
 Утримання клавіші не має багаторазово перемикати палітру/mute.
