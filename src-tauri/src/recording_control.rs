@@ -75,6 +75,9 @@ pub async fn toggle_all(state: &AppState) -> ToggleOutcome {
             let mgr_arc = state.stream_manager.clone();
             let mut mgr = mgr_arc.write().await;
             let started = mgr.start_all(streams, settings, mgr_arc.clone());
+            // We only reach Start when active == 0, so `entries` holds no
+            // startable streams (Error streams are already dropped from it);
+            // started == 0 therefore means the profile has nothing to record.
             if started == 0 {
                 ToggleOutcome::NothingToStart
             } else {
