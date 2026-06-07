@@ -7,6 +7,7 @@ import { KeyRecorder } from "./KeyRecorder";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 import type { HotkeyMap } from "../../lib/tauri";
+import { findReservedConflict } from "../../lib/reservedShortcuts";
 
 const HOTKEY_FIELDS: { key: keyof HotkeyMap; label: () => string }[] = [
   { key: "toggleRecording", label: () => m.settings_hotkey_toggle_recording() },
@@ -47,6 +48,10 @@ export function HotkeysTab() {
   function validateHotkey(currentKey: keyof HotkeyMap) {
     return (combo: string): string | null => {
       if (!combo) return null;
+      // Reserved webview combos win over the Tier-1 duplicate check: the user
+      // cannot resolve them by reassigning, so report that first (KB-09).
+      const reserved = findReservedConflict(combo);
+      if (reserved) return m.settings_hotkey_reserved({ action: reserved() });
       const hotkeys = $settings.get()?.hotkeys;
       if (!hotkeys) return null;
       for (const field of HOTKEY_FIELDS) {
