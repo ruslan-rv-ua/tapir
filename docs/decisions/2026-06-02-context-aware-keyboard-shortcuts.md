@@ -13,7 +13,9 @@
 **Глобальний обробник в `App.tsx` з умовою на `$activeSection`.**
 
 ```ts
-if ((e.ctrlKey || e.metaKey) && e.key === "n" && $activeSection.get() === "streams") {
+// e.code (фізична клавіша), не e.key — на кирилиці e.key === "n" не спрацює.
+// Конвенція: docs/keyboard-shortcuts.md, accessibility.md §12.
+if ((e.ctrlKey || e.metaKey) && e.code === "KeyN" && $activeSection.get() === "streams") {
   e.preventDefault();
   $showAddStreamDialog.set(true);
 }

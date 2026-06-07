@@ -135,7 +135,7 @@ function AppContent() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       // Use e.code (physical key) not e.key — e.key === "k" never matches on a
-      // Cyrillic layout (physical K yields "л"), per docs/accessibility.md §6.5.
+      // Cyrillic layout (physical K yields "л"), per docs/accessibility.md §12.
       if ((e.ctrlKey || e.metaKey) && e.code === "KeyK") {
         e.preventDefault();
         $commandPaletteOpen.set(!$commandPaletteOpen.get());

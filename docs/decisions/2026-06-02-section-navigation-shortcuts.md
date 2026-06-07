@@ -44,9 +44,12 @@ if (e.altKey && !e.ctrlKey && !e.shiftKey) {
     "schedule",  // Alt+4
     "songs",     // Alt+5
   ];
-  const idx = parseInt(e.key);
-  if (!isNaN(idx) && idx < sections.length) {
-    const section = sections[idx];
+  // e.code, не e.key — фізичний цифровий ряд це "Digit0".."Digit9",
+  // незалежно від розкладки (конвенція: accessibility.md §12). Numpad навмисно
+  // не матчимо: Alt+Numpad на Windows — це введення alt-кодів символів.
+  const digit = /^Digit(\d)$/.exec(e.code);
+  if (digit) {
+    const section = sections[parseInt(digit[1], 10)];
     if (section) {
       e.preventDefault();
       $activeSection.set(section);

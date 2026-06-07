@@ -129,6 +129,7 @@ Shift+F6: зворотній напрямок
 - Escape — закрити, фокус повертається на попередній елемент
 - Fuzzy search: секції, станції, пісні, налаштування
 - Live region: `aria-live="polite"` — кількість результатів
+- Повний перелік клавіатурних шорткатів застосунку — [keyboard-shortcuts.md](keyboard-shortcuts.md)
 
 ### 2.5. Profile Switcher [Phase 4]
 
