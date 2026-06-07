@@ -30,7 +30,7 @@ ID (`KB-NN`) стабільні — на них зручно посилатис�
   `docs/superpowers/{specs,plans}/2026-06-07-kb01-global-toggle-recording*`.
   Лишилось: ручна NVDA-приймальня (fg + у фоні).
 
-### ☐ KB-02 · 🐞 KeyRecorder ловить `e.key`, а не `e.code`
+### [x] KB-02 · 🐞 KeyRecorder ловить `e.key`, а не `e.code`
 [KeyRecorder.tsx:33,46-48](../src/components/settings/KeyRecorder.tsx#L33)
 нормалізує символ (`key.toUpperCase()`). На кирилиці запис `Ctrl+Shift+R` збереже
 `Ctrl+Shift+К` → акселератор невалідний/не матчиться ОС → хоткей мовчки не працює.
@@ -38,6 +38,13 @@ ID (`KB-NN`) стабільні — на них зручно посилатис�
   `ArrowUp`→`Up`, …), за §12.
 - **Готово коли:** запис будь-якого комбо на кириличній розкладці дає коректний
   латинський акселератор, що реєструється й спрацьовує.
+- **Зроблено (2026-06-07):** `KeyRecorder` бере токен із `e.code` через чистий
+  `codeToToken` ([KeyRecorder.tsx](../src/components/settings/KeyRecorder.tsx)) —
+  фізична позиція замість символу, за §12. Підтримані сім'ї: `KeyA–KeyZ`,
+  `Digit0–9`, стрілки, `Space`, `F1–F24`; усе інше (пунктуація, numpad, самотні
+  модифікатори) ігнорується — рекордер лишається активним замість збереження
+  нереєстрованого комбо. Побічно полагоджено `Shift+1`→`!`. Тести:
+  [KeyRecorder.test.tsx](../src/components/settings/KeyRecorder.test.tsx).
 
 ---
 
