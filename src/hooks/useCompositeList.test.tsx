@@ -62,6 +62,7 @@ function Harness({
                   key={seg}
                   data-item-id={item.id}
                   data-segment={seg}
+                  data-context-menu-trigger={seg === "action-menu" ? "" : undefined}
                   tabIndex={isFocused(item.id, seg) ? 0 : -1}
                   onClick={() => onButtonClick?.(item.id, seg)}
                 >
@@ -103,6 +104,11 @@ function press(key: string, init: KeyboardEventInit = {}) {
   fireEvent.keyDown(target, { key, bubbles: true, ...init });
 }
 
+/** Dispatch a contextmenu event; returns false when preventDefault was called. */
+function rightClick(el: HTMLElement) {
+  return fireEvent.contextMenu(el, { bubbles: true });
+}
+
 function focusStart(id = "a") {
   act(() => stop(id, "summary").focus());
 }
@@ -116,7 +122,7 @@ function expectActive(id: string | null, seg: string | null) {
 const makeItems = (): CompositeListItem[] => [
   { id: "a", segments: ["track", "tech", "action-play", "action-record", "action-menu"] },
   { id: "b", segments: ["track", "tech"] },
-  { id: "c", segments: ["metadata", "action-add"] },
+  { id: "c", segments: ["metadata", "action-add", "action-menu"] },
 ];
 
 /* ================================================================== */
@@ -242,7 +248,7 @@ describe("activation keys", () => {
     expect(onAction).toHaveBeenCalledWith("primary", "a", "track");
   });
 
-  it("Delete fires delete; ContextMenu and Shift+F10 fire contextMenu; bare F10 does not", () => {
+  it("Delete fires delete; bare F10 does not fire contextMenu", () => {
     const onAction = vi.fn();
     render(<Harness items={makeItems()} onAction={onAction} />);
     focusStart("a");
@@ -250,16 +256,41 @@ describe("activation keys", () => {
     press("Delete");
     expect(onAction).toHaveBeenCalledWith("delete", "a", "summary");
 
-    press("ContextMenu");
-    expect(onAction).toHaveBeenCalledWith("contextMenu", "a", "summary");
-
-    onAction.mockClear();
-    press("F10", { shiftKey: true });
-    expect(onAction).toHaveBeenCalledWith("contextMenu", "a", "summary");
-
     onAction.mockClear();
     press("F10"); // no shift
     expect(onAction).not.toHaveBeenCalled();
+  });
+
+  it("contextmenu on a row suppresses the native menu and clicks the row's trigger", () => {
+    const onButtonClick = vi.fn();
+    render(<Harness items={makeItems()} onButtonClick={onButtonClick} />);
+    focusStart("a");
+
+    // Right-click anywhere on row 'a' (its summary <li>) opens that row's menu.
+    const prevented = rightClick(stop("a", "summary")) === false;
+    expect(prevented).toBe(true); // preventDefault → native menu suppressed
+    expect(onButtonClick).toHaveBeenCalledWith("a", "action-menu");
+  });
+
+  it("contextmenu on a non-active row makes it active before opening", () => {
+    const onButtonClick = vi.fn();
+    render(<Harness items={makeItems()} onButtonClick={onButtonClick} />);
+    focusStart("a"); // active row is 'a'
+
+    // Row 'c' carries an action-menu trigger; right-click moves activity to it.
+    rightClick(stop("c", "action-menu"));
+    expect(stop("c", "summary").getAttribute("tabindex")).toBe("0");
+    expect(onButtonClick).toHaveBeenCalledWith("c", "action-menu");
+  });
+
+  it("contextmenu on empty list space suppresses the native menu and opens nothing", () => {
+    const onButtonClick = vi.fn();
+    render(<Harness items={makeItems()} onButtonClick={onButtonClick} />);
+    focusStart("a");
+
+    const prevented = rightClick(list()) === false; // the <ul> itself, no row
+    expect(prevented).toBe(true);
+    expect(onButtonClick).not.toHaveBeenCalled();
   });
 
   it("does NOT synthesize onAction for Enter/Space on a native action button", () => {
