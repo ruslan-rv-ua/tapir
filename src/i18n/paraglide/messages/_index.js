@@ -1,6 +1,12 @@
 /* eslint-disable */
 /** @typedef {import('../runtime.js').LocalizedString} LocalizedString */
 export * from './app_name.js'
+export * from './shortcuts_help_title.js'
+export * from './shortcuts_help_action.js'
+export * from './shortcuts_group_global.js'
+export * from './shortcuts_group_navigation.js'
+export * from './shortcuts_group_context.js'
+export * from './shortcuts_group_list.js'
 export * from './streams_section.js'
 export * from './profiles_section.js'
 export * from './browser_section.js'

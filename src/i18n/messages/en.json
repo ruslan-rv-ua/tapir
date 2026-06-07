@@ -1,5 +1,11 @@
 {
   "app_name": "Tapir",
+  "shortcuts_help_title": "Keyboard shortcuts",
+  "shortcuts_help_action": "Keyboard shortcuts help",
+  "shortcuts_group_global": "Global",
+  "shortcuts_group_navigation": "Navigation",
+  "shortcuts_group_context": "Context",
+  "shortcuts_group_list": "Lists",
   "streams_section": "Streams",
   "profiles_section": "Profiles",
   "browser_section": "Station Browser",
