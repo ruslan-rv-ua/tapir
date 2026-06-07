@@ -4,6 +4,7 @@ mod errors;
 mod player;
 mod portable;
 mod profile;
+mod recording_control;
 mod sanitize;
 mod shortcuts;
 mod settings;
