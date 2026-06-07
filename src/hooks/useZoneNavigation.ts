@@ -1,4 +1,5 @@
 import { RefObject, useCallback, useEffect } from 'react';
+import { isInModal } from '../lib/shortcutGuard';
 
 export interface ZoneEntry {
   /** Must match the element's data-zone-id attribute. */
@@ -7,13 +8,6 @@ export interface ZoneEntry {
   readonly el: HTMLElement;
   /** Called to give focus to this zone. */
   focus(direction: 'forward' | 'backward'): void;
-}
-
-const MODAL_SELECTOR =
-  '[role="dialog"], [role="alertdialog"], [aria-modal="true"], [data-modal="true"]';
-
-function isInModal(): boolean {
-  return !!document.activeElement?.closest(MODAL_SELECTOR);
 }
 
 /**

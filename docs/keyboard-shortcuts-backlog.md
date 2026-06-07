@@ -50,8 +50,8 @@ ID (`KB-NN`) стабільні — на них зручно посилатис�
 
 ## P1 — робастність перед реалізацією `Alt+digit` / `Ctrl+N`
 
-### ☐ KB-04 · ✨ Гард на фокус/модалі у глобальному слухачі
-Слухач [App.tsx:135-150](../src/App.tsx#L135-L150) спрацьовує з `window`
+### [x] KB-04 · ✨ Гард на фокус/модалі у глобальному слухачі
+Слухач [App.tsx:135-150](../src/App.tsx#L135-L150) спрацьовував з `window`
 незалежно від фокуса. `Ctrl+N`/`Alt+digit` не повинні стріляти, коли фокус у
 текстовому полі (пошук Browser), відкрито модаль, або KeyRecorder у режимі запису.
 - Перевикористати наявні патерни: `isContentEditable`
@@ -59,6 +59,17 @@ ID (`KB-NN`) стабільні — на них зручно посилатис�
   `closest(MODAL_SELECTOR)` ([useZoneNavigation.ts:16](../src/hooks/useZoneNavigation.ts#L16)).
 - **Готово коли:** контекстні/навігаційні хоткеї ігноруються при редагуванні
   тексту й при відкритому модалі/рекордері.
+- **Зроблено (2026-06-07):** єдиний гард `shouldIgnoreShortcut()`
+  ([shortcutGuard.ts](../src/lib/shortcutGuard.ts)) — ранній `return` на початку
+  window-слухача ([App.tsx](../src/App.tsx#L135)). Блокує, коли: фокус у
+  текстовому полі (allowlist text-типів `<input>` + `<textarea>` +
+  `contentEditable`; `<input type=range>` слайдерів навмисно НЕ блокується), або
+  фокус у модалі (`MODAL_SELECTOR` — він же покриває KeyRecorder, бо той живе в
+  діалозі Settings). `MODAL_SELECTOR`/`isInModal` винесено в `shortcutGuard.ts` і
+  перевикористано в [useZoneNavigation.ts](../src/hooks/useZoneNavigation.ts).
+  Гард застосовано і до наявних `Ctrl+K`/`Ctrl+,` (узгоджено для всього Tier-2:
+  тепер фокус-/модаль-залежні; self-close по тій же клавіші зник, але `Escape`
+  закриває). Тести: [shortcutGuard.test.ts](../src/lib/shortcutGuard.test.ts).
 
 ### ☐ KB-05 · 🔍 `Ctrl+N` може перехопити WebView2
 На Windows `Ctrl+N` історично = «нове вікно». Переконатися, що подія доходить до

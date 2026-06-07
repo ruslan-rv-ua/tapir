@@ -30,6 +30,7 @@ import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, R
 import { $filteredSongs } from "./stores/songs";
 import { computePlaybackNeighbors } from "./stores/playbackNeighbors";
 import { resolveEndedAction } from "./lib/playbackTransport";
+import { shouldIgnoreShortcut } from "./lib/shortcutGuard";
 import * as m from "./i18n/paraglide/messages";
 
 const PERMANENT_ZONE_IDS = new Set(["activity-bar", "player", "status-bar"]);
@@ -134,6 +135,10 @@ function AppContent() {
   // Ctrl+K and Ctrl+, keyboard handlers
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // KB-04: this listener is on `window`, so it fires regardless of focus.
+      // Ignore Tier-2 shortcuts while the user is typing in a text field or a
+      // modal/recorder is open. See src/lib/shortcutGuard.ts.
+      if (shouldIgnoreShortcut()) return;
       // Use e.code (physical key) not e.key — e.key === "k" never matches on a
       // Cyrillic layout (physical K yields "л"), per docs/accessibility.md §12.
       if ((e.ctrlKey || e.metaKey) && e.code === "KeyK") {
