@@ -59,8 +59,11 @@ fn recently_toggled_recording() -> bool {
     if now.saturating_sub(last) < TOGGLE_RECORDING_DEBOUNCE_MS {
         return true;
     }
-    LAST_TOGGLE_RECORDING_MS.store(now, Ordering::Relaxed);
-    false
+    // CAS so two near-simultaneous fires can't both pass: only one caller wins
+    // the swap; the loser is treated as a repeat (returns true → debounced).
+    LAST_TOGGLE_RECORDING_MS
+        .compare_exchange(last, now, Ordering::Relaxed, Ordering::Relaxed)
+        .is_err()
 }
 
 fn handle_shortcut_action(app: &AppHandle, action: &str) {
