@@ -54,9 +54,33 @@ pub fn decide(active_count: usize) -> ToggleAction {
 
 /// Toggle recording for the whole active profile. Reads the manager to decide,
 /// then reuses `stop_all` / `start_all`. Returns the outcome for the toast.
-/// (Implemented in Task 3 — left stubbed here.)
-pub async fn toggle_all(_state: &AppState) -> ToggleOutcome {
-    todo!()
+pub async fn toggle_all(state: &AppState) -> ToggleOutcome {
+    let active = {
+        let mgr = state.stream_manager.read().await;
+        count_active(&mgr.get_all_statuses())
+    };
+
+    match decide(active) {
+        ToggleAction::Stop => {
+            let mut mgr = state.stream_manager.write().await;
+            mgr.stop_all();
+            ToggleOutcome::Stopped(active)
+        }
+        ToggleAction::Start => {
+            let (streams, settings) = {
+                let profile = state.active_profile.read().await;
+                (profile.streams.clone(), profile.recording.clone())
+            };
+            let mgr_arc = state.stream_manager.clone();
+            let mut mgr = mgr_arc.write().await;
+            let started = mgr.start_all(streams, settings, mgr_arc.clone());
+            if started == 0 {
+                ToggleOutcome::NothingToStart
+            } else {
+                ToggleOutcome::Started(started)
+            }
+        }
+    }
 }
 
 #[cfg(test)]
