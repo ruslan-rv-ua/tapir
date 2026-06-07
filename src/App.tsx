@@ -135,6 +135,12 @@ function AppContent() {
   // Ctrl+K and Ctrl+, keyboard handlers
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // KB-06: Tier-2 shortcuts are toggles / open-once actions — none of them
+      // want OS key auto-repeat, so a held Ctrl+K can't be allowed to flap the
+      // palette open/closed. Drop synthetic repeats before matching any combo.
+      // (The mute button needs no such guard: react-aria's usePress already
+      // ignores e.repeat.)
+      if (e.repeat) return;
       // KB-04: this listener is on `window`, so it fires regardless of focus.
       // Ignore Tier-2 shortcuts while the user is typing in a text field or a
       // modal/recorder is open. See src/lib/shortcutGuard.ts.
