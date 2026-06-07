@@ -28,7 +28,7 @@ export type SegmentKind =
   | 'action-rename'
   | 'action-export';
 
-export type ActionType = 'primary' | 'toggle' | 'delete' | 'contextMenu';
+export type ActionType = 'primary' | 'toggle' | 'delete';
 
 /**
  * True when `el` is a native interactive control that handles its own
@@ -329,17 +329,6 @@ export function useCompositeList<T extends CompositeListItem>({
           onActionRef.current('delete', activeItemId, activeSegment);
           break;
 
-        case 'ContextMenu':
-          consume();
-          onActionRef.current('contextMenu', activeItemId, activeSegment);
-          break;
-
-        case 'F10':
-          if (!e.shiftKey) break;
-          consume();
-          onActionRef.current('contextMenu', activeItemId, activeSegment);
-          break;
-
         case 'Tab':
           consume();
           onTabOutRef.current(!e.shiftKey);
@@ -348,6 +337,33 @@ export function useCompositeList<T extends CompositeListItem>({
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [activeItemId, activeSegment, items, moveFocus],
+  );
+
+  // Single source of truth for the per-row context menu: WebView2 emits a
+  // `contextmenu` event for right-click, the Menu key, AND Shift+F10. Handling
+  // it here suppresses the native menu and opens the row's own menu for all three.
+  const onContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      // Always suppress the native WebView2 menu inside the list — a role=application
+      // list has no selectable text or inputs, so the native menu shows nothing useful.
+      e.preventDefault();
+
+      const row = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-item-id]');
+      const itemId = row?.dataset.itemId;
+      if (!itemId || !items.some((it) => it.id === itemId)) return; // empty list space → just suppress
+
+      // Make the row active WITHOUT queuing programmatic focus (no pendingFocusRef):
+      // React Aria owns focus once the menu opens, and a pending focus would fight it.
+      setActiveItemId(itemId);
+      setActiveSegment('summary');
+
+      // Open the menu, anchored to this row's ⋯ trigger (shared DOM convention).
+      const trigger = listRef.current?.querySelector<HTMLElement>(
+        `[data-item-id="${CSS.escape(itemId)}"][data-context-menu-trigger]`,
+      );
+      trigger?.click();
+    },
+    [items],
   );
 
   /** isFocused(itemId, segment) → true iff this element should have tabIndex=0 */
@@ -393,5 +409,5 @@ export function useCompositeList<T extends CompositeListItem>({
     [items],
   );
 
-  return { listRef, onKeyDownCapture, isFocused, restoreFocus, focusItem, activeItemId, activeSegment };
+  return { listRef, onKeyDownCapture, onContextMenu, isFocused, restoreFocus, focusItem, activeItemId, activeSegment };
 }

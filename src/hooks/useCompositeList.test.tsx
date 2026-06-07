@@ -31,7 +31,7 @@ function Harness({
   onButtonClick,
   onParentKeyDown,
 }: HarnessProps) {
-  const { listRef, onKeyDownCapture, isFocused, restoreFocus } = useCompositeList({
+  const { listRef, onKeyDownCapture, onContextMenu, isFocused, restoreFocus } = useCompositeList({
     zoneId: "test",
     items,
     onTabOut,
@@ -47,7 +47,7 @@ function Harness({
       <button data-testid="restore" onClick={() => restoreFocus("forward")}>
         restore
       </button>
-      <ul ref={listRef} role="list" data-testid="list" onKeyDownCapture={onKeyDownCapture}>
+      <ul ref={listRef} role="list" data-testid="list" onKeyDownCapture={onKeyDownCapture} onContextMenu={onContextMenu}>
         {items.map((item) => (
           <li
             key={item.id}
