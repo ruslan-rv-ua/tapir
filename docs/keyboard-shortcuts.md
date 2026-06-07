@@ -22,6 +22,10 @@ ARIA-клавіші) узагальнено абзацом, бо це не «н�
 ([shortcuts.rs](../src-tauri/src/shortcuts.rs)); дефолти — у `HotkeyMap`
 ([settings.rs:115-122](../src-tauri/src/settings.rs#L115-L122)); перепризначаються
 користувачем у Settings → Hotkeys ([KeyRecorder.tsx](../src/components/settings/KeyRecorder.tsx)).
+Записане комбо валідується проти зарезервованих webview-клавіш
+([reservedShortcuts.ts](../src/lib/reservedShortcuts.ts)): не можна призначити
+OS-хоткей на `Ctrl+K`/`Alt+digit`/`F6`/… — гард і реєстр поділяють той самий
+намір (KB-09).
 
 | Комбо (дефолт) | Дія | Scope | Стан |
 |---|---|---|---|

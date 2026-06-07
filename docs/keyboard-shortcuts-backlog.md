@@ -132,11 +132,23 @@ JS у Tauri-webview.
 - `Escape` — закрити палітру/діалог.
 - **Готово коли:** реєстр містить ці записи з посиланнями на код.
 
-### ☐ KB-09 · 🔍 Детект колізій у KeyRecorder
+### [x] KB-09 · 🔍 Детект колізій у KeyRecorder
 Шов `onValidate` існує ([KeyRecorder.tsx:9,52](../src/components/settings/KeyRecorder.tsx#L52)).
 Перевірити, чи він відхиляє комбо, зайняте іншою дією, і попереджає про збіг із
 фіксованими webview-клавішами.
 - **Готово коли:** не можна призначити дубльоване комбо без попередження.
+- **Зроблено (2026-06-07):** дублікати Tier-1 уже відхилялись; додано перевірку
+  проти **фіксованих webview-комбо** (Tier 2 + Tier 2′). Новий чистий lib
+  [reservedShortcuts.ts](../src/lib/reservedShortcuts.ts) (`RESERVED_WEBVIEW_COMBOS`
+  + `findReservedConflict`, за зразком `shortcutGuard.ts`) скомпоновано у
+  `HotkeysTab.validateHotkey` ([HotkeysTab.tsx](../src/components/settings/HotkeysTab.tsx))
+  — зарезервоване має пріоритет над дублікатом, бо його не обійти переназначенням.
+  `KeyRecorder` без змін: блокуючий рядок іде в наявний `role="alert"`, `onChange`
+  не викликається. Повідомлення називає дію (`settings_hotkey_reserved`), реюз
+  наявних i18n-міток + 4 нові ключі. Спека/план:
+  `docs/superpowers/{specs,plans}/2026-06-07-kb09-keyrecorder-collision-detection*`.
+  Тести: [reservedShortcuts.test.ts](../src/lib/reservedShortcuts.test.ts),
+  [HotkeysTab.test.tsx](../src/components/settings/HotkeysTab.test.tsx).
 
 ### ☐ KB-10 · 🔍 Reset-to-defaults для хоткеїв
 Перевірити наявність відкату до дефолтів у Settings → Hotkeys.
