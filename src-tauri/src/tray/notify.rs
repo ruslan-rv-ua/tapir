@@ -19,6 +19,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use tauri_plugin_notification::NotificationExt;
 
+use crate::recording_control::ToggleOutcome;
+
 /// Register our AppUserModelID under HKCU so Windows treats our toast
 /// notifications as coming from a known app. Without this, WinRT silently
 /// drops toasts dispatched from portable builds (no installer ⇒ no Start Menu
@@ -130,4 +132,71 @@ pub fn notify_track_change(app: &tauri::AppHandle, stream_id: &str, artist: &str
             log::warn!("notify_track_change: failed to show toast: {e}");
         }
     });
+}
+
+/// Ukrainian plural for "потік": 1 → потік; 2–4 → потоки; 0, 5–20, … → потоків.
+fn plural_streams(n: usize) -> &'static str {
+    let n100 = n % 100;
+    let n10 = n % 10;
+    if n10 == 1 && n100 != 11 {
+        "потік"
+    } else if (2..=4).contains(&n10) && !(12..=14).contains(&n100) {
+        "потоки"
+    } else {
+        "потоків"
+    }
+}
+
+/// Show the NVDA-readable toast for a global recording toggle.
+///
+/// Intentionally bypasses `show_tray_notifications`: this is the *only* feedback
+/// for a backgrounded hotkey, not ambient track chatter, so it must always fire.
+/// Strings are Ukrainian-only, matching the other native surfaces here.
+pub fn notify_recording_toggle(app: &tauri::AppHandle, outcome: ToggleOutcome) {
+    let body = match outcome {
+        ToggleOutcome::Started(n) => format!("Запис розпочато: {n} {}", plural_streams(n)),
+        ToggleOutcome::Stopped(n) => format!("Запис зупинено: {n} {}", plural_streams(n)),
+        ToggleOutcome::NothingToStart => "Немає потоків для запису".to_string(),
+    };
+
+    log::info!("notify_recording_toggle: {body:?}");
+    if let Err(e) = app
+        .notification()
+        .builder()
+        .title("Tapir")
+        .body(&body)
+        .show()
+    {
+        log::warn!("notify_recording_toggle: failed to show toast: {e}");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn plural_streams_singular() {
+        assert_eq!(plural_streams(1), "потік");
+        assert_eq!(plural_streams(21), "потік");
+        assert_eq!(plural_streams(101), "потік");
+    }
+
+    #[test]
+    fn plural_streams_few() {
+        assert_eq!(plural_streams(2), "потоки");
+        assert_eq!(plural_streams(3), "потоки");
+        assert_eq!(plural_streams(4), "потоки");
+        assert_eq!(plural_streams(22), "потоки");
+    }
+
+    #[test]
+    fn plural_streams_many() {
+        assert_eq!(plural_streams(0), "потоків");
+        assert_eq!(plural_streams(5), "потоків");
+        assert_eq!(plural_streams(11), "потоків");
+        assert_eq!(plural_streams(12), "потоків");
+        assert_eq!(plural_streams(14), "потоків");
+        assert_eq!(plural_streams(25), "потоків");
+    }
 }
