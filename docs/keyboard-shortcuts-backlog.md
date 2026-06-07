@@ -108,29 +108,30 @@ JS у Tauri-webview.
 
 ## P2 — відкривність (найбільший a11y-виграш)
 
-### ☐ KB-07 · ✨ In-app перелік шорткатів
-Зараз єдина підказка — бейдж `Ctrl+K` у порожньому стані. Додати `?`/`F1` →
-діалог-шпаргалку **або** команду «Показати клавіатурні шорткати» в палітрі.
-- **Готово коли:** з будь-якого екрана можна відкрити повний перелік; NVDA його
-  читає.
-
-### ☐ KB-08 · ✨ `aria-keyshortcuts` на самих кнопках
-[Command-palette ADR S4](decisions/2026-05-31-command-palette-and-search-ux.md#L100)
-відхилив його лише для нефокусованих лендмарків — на *фокусованих контролах* він
-надійний. Кнопка «Додати потік» → `aria-keyshortcuts="Control+N"`, тригер палітри
-→ `Control+K`.
-- **Готово коли:** ключові кнопки оголошують свій хоткей через NVDA.
 
 ---
 
 ## P3 — консистентність, конфіг, docs, нові клавіші
 
-### ☐ KB-03 · 🐞 Доповнити реєстр уже наявними клавішами
-У [keyboard-shortcuts.md](keyboard-shortcuts.md) бракує named-клавіш:
+### [x] KB-03 · 🐞 Доповнити реєстр уже наявними клавішами
+У [keyboard-shortcuts.md](keyboard-shortcuts.md) бракувало named-клавіш:
 - `F6` / `Shift+F6` — циклічна навігація по зонах ([accessibility.md:124](accessibility.md));
 - `Shift+F10` / `ContextMenu` — меню рядка ([accessibility.md:358](accessibility.md#L358));
 - `Escape` — закрити палітру/діалог.
 - **Готово коли:** реєстр містить ці записи з посиланнями на код.
+- **Зроблено (2026-06-07):** новий розділ «Tier 2′ — named-навігація / керування»
+  у [keyboard-shortcuts.md](keyboard-shortcuts.md) — таблиця з усіма трьома
+  записами + посиланнями на код. `F6`/`Shift+F6` →
+  [useZoneNavigation.ts:45-58](../src/hooks/useZoneNavigation.ts#L45-L58)
+  (§2.3.1); `Shift+F10`/`ContextMenu` →
+  [useCompositeList.ts:342-367](../src/hooks/useCompositeList.ts#L342-L367)
+  (один `contextmenu` event WebView2 на ПКМ/Menu/Shift+F10, §3.6); `Escape` →
+  палітра [CommandPalette.tsx:150](../src/components/common/CommandPalette.tsx#L150),
+  Settings — нативний react-aria `isDismissable`
+  [SettingsDialog.tsx:35](../src/components/settings/SettingsDialog.tsx#L35),
+  рекордер [KeyRecorder.tsx:51](../src/components/settings/KeyRecorder.tsx#L51).
+  Це окремий клас (named, але не app-дії й не конфігуровні) — не Tier 2 і не
+  Tier 3.
 
 ### [x] KB-09 · 🔍 Детект колізій у KeyRecorder
 Шов `onValidate` існує ([KeyRecorder.tsx:9,52](../src/components/settings/KeyRecorder.tsx#L52)).

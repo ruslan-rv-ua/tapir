@@ -61,6 +61,25 @@ OS-хоткей на `Ctrl+K`/`Alt+digit`/`F6`/… — гард і реєстр 
 > в майбутньому означати різне на різних екранах (Browser → wishlist, Profiles →
 > новий профіль) — таблиця-розширення в context-aware ADR.
 
+## Tier 2′ — named-навігація / керування (не app-дії)
+
+Названі клавіші, що є навігаційними/керувальними примітивами, а **не**
+перемикачами app-дій — тому живуть **не** в App.tsx-слухачі Tier 2 і **не**
+конфігуровні. Колізій із Tier 1–2 не дають (функційні/спец-клавіші). Scope —
+`webview` (фокус у вікні).
+
+| Клавіша | Дія | Умова | Реалізація | Стан |
+|---|---|---|---|---|
+| `F6` / `Shift+F6` | циклічна навігація по зонах (вперед / назад), оголошення зони NVDA | поза модалем (`isInModal` — focus trap) | [useZoneNavigation.ts:45-58](../src/hooks/useZoneNavigation.ts#L45-L58) · [accessibility.md §2.3.1](accessibility.md#L109) | ✅ |
+| `Shift+F10` / `ContextMenu` | меню рядка (еквівалент ПКМ) | фокус на рядку списку | [useCompositeList.ts:342-367](../src/hooks/useCompositeList.ts#L342-L367) · [accessibility.md §3.6](accessibility.md#L333) | ✅ |
+| `Escape` | закрити палітру / діалог (або скасувати запис хоткея) | палітра / модаль / рекордер відкриті | палітра [CommandPalette.tsx:150](../src/components/common/CommandPalette.tsx#L150); Settings — react-aria `isDismissable` [SettingsDialog.tsx:35](../src/components/settings/SettingsDialog.tsx#L35); рекордер [KeyRecorder.tsx:51](../src/components/settings/KeyRecorder.tsx#L51) | ✅ |
+
+> `Shift+F10`/`ContextMenu` не обробляються окремо: WebView2 для всіх трьох
+> (ПКМ, клавіша Menu, `Shift+F10`) емітить один `contextmenu` event — його й
+> ловить `onContextMenu`, гасячи нативне меню та відкриваючи меню рядка. `Escape`
+> у модалях Settings — нативний react-aria (`ModalOverlay isDismissable`); у
+> hand-rolled палітрі — явний `if (e.key === "Escape")`.
+
 ## Tier 3 — віджетні / ARIA (не named-шорткати)
 
 Інтринсік патернів роумінг-фокуса й слайдерів; конвенційні, в реєстрі не
