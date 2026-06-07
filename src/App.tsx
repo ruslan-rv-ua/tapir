@@ -18,12 +18,12 @@ import { useTauriEvent } from "./hooks/useTauriEvent";
 import { useDiskSpacePolling } from "./hooks/useDiskSpacePolling";
 import { useProfileSync } from "./hooks/useProfileSync";
 import { useAnnounce } from "./hooks/useAnnounce";
-import { $streams, updateStreamStatus } from "./stores/streams";
+import { $streams, updateStreamStatus, $showAddStreamDialog } from "./stores/streams";
 import { $settings } from "./stores/settings";
 import { $settingsDialogOpen } from "./stores/settings";
 import { $playerStatus, $muteState } from "./stores/player";
+import { $commandPaletteOpen, $shortcutsHelpOpen } from "./stores/navigation";
 import { $activeSection } from "./stores/navigation";
-import { $commandPaletteOpen } from "./stores/navigation";
 import { addToast } from "./stores/toasts";
 import * as tauri from "./lib/tauri";
 import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, RecordingStartedPayload, RecordingCompletedPayload, StreamInfo, PlayerStatus, PlayerProgressPayload, WishlistMatchPayload, TrackIgnoredPayload, PlayerEndedPayload } from "./lib/tauri";
@@ -31,6 +31,7 @@ import { $filteredSongs } from "./stores/songs";
 import { computePlaybackNeighbors } from "./stores/playbackNeighbors";
 import { resolveEndedAction } from "./lib/playbackTransport";
 import { shouldIgnoreShortcut } from "./lib/shortcutGuard";
+import { matchShortcut, type ShortcutActions } from "./lib/shortcuts";
 import * as m from "./i18n/paraglide/messages";
 
 const PERMANENT_ZONE_IDS = new Set(["activity-bar", "player", "status-bar"]);
@@ -132,28 +133,26 @@ function AppContent() {
     });
   }, []);
 
-  // Ctrl+K and Ctrl+, keyboard handlers
+  // Tier-2 webview shortcuts — single dispatch through the shortcut registry.
+  // matchShortcut is pure (src/lib/shortcuts.ts); side effects are injected here
+  // as `actions`. Guards kept from KB-04/KB-06: drop key auto-repeat, and ignore
+  // shortcuts while typing in a field or with a modal/recorder open.
   useEffect(() => {
+    const actions: ShortcutActions = {
+      setSection: (s) => $activeSection.set(s),
+      toggleCommandPalette: () => $commandPaletteOpen.set(!$commandPaletteOpen.get()),
+      toggleSettings: () => $settingsDialogOpen.set(!$settingsDialogOpen.get()),
+      openAddStream: () => $showAddStreamDialog.set(true),
+      openHelp: () => $shortcutsHelpOpen.set(true),
+    };
     const handler = (e: KeyboardEvent) => {
-      // KB-06: Tier-2 shortcuts are toggles / open-once actions — none of them
-      // want OS key auto-repeat, so a held Ctrl+K can't be allowed to flap the
-      // palette open/closed. Drop synthetic repeats before matching any combo.
-      // (The mute button needs no such guard: react-aria's usePress already
-      // ignores e.repeat.)
       if (e.repeat) return;
-      // KB-04: this listener is on `window`, so it fires regardless of focus.
-      // Ignore Tier-2 shortcuts while the user is typing in a text field or a
-      // modal/recorder is open. See src/lib/shortcutGuard.ts.
       if (shouldIgnoreShortcut()) return;
-      // Use e.code (physical key) not e.key — e.key === "k" never matches on a
-      // Cyrillic layout (physical K yields "л"), per docs/accessibility.md §12.
-      if ((e.ctrlKey || e.metaKey) && e.code === "KeyK") {
+      const ctx = { activeSection: $activeSection.get() };
+      const hit = matchShortcut(e, ctx);
+      if (hit) {
         e.preventDefault();
-        $commandPaletteOpen.set(!$commandPaletteOpen.get());
-      }
-      if ((e.ctrlKey || e.metaKey) && e.code === "Comma") {
-        e.preventDefault();
-        $settingsDialogOpen.set(!$settingsDialogOpen.get());
+        hit.run?.(actions, ctx);
       }
     };
     window.addEventListener("keydown", handler);
