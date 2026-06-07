@@ -87,13 +87,6 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
             setPendingDeleteId(itemId);
             return;
           }
-          if (type === "contextMenu") {
-            const menuBtn = document.querySelector<HTMLButtonElement>(
-              `[data-item-id="${CSS.escape(itemId)}"][data-context-menu-trigger]`,
-            );
-            menuBtn?.click();
-            return;
-          }
           // Action buttons self-activate; only Enter/Space on the whole-row
           // summary triggers the row's primary action.
           if ((type === "primary" || type === "toggle") && segment === "summary") {

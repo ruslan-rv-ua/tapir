@@ -35,13 +35,6 @@ export const SongsList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, onPl
       onTabOut={exitZone}
       onEmpty={onEmpty}
       onAction={(type, itemId, segment) => {
-        if (type === "contextMenu") {
-          const menuBtn = document.querySelector<HTMLButtonElement>(
-            `[data-item-id="${CSS.escape(itemId)}"][data-context-menu-trigger]`,
-          );
-          menuBtn?.click();
-          return;
-        }
         if ((type === "primary" || type === "toggle") && segment === "summary") {
           onPlay(itemId);
         }

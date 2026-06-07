@@ -46,13 +46,6 @@ export const ProfileList = forwardRef<ProfileListHandle, Props>(function Profile
           onDelete(itemId);
           return;
         }
-        if (type === "contextMenu") {
-          const btn = document.querySelector<HTMLButtonElement>(
-            `[data-item-id="${CSS.escape(itemId)}"][data-context-menu-trigger]`,
-          );
-          btn?.click();
-          return;
-        }
         // Enter/Space on the whole-row summary switches to that profile.
         if ((type === "primary" || type === "toggle") && segment === "summary") {
           onSwitch(itemId);
