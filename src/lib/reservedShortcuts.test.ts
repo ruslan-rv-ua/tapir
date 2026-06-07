@@ -1,0 +1,45 @@
+import { describe, it, expect } from "vitest";
+import * as m from "../i18n/paraglide/messages";
+import { RESERVED_WEBVIEW_COMBOS, findReservedConflict } from "./reservedShortcuts";
+
+describe("RESERVED_WEBVIEW_COMBOS", () => {
+  it("reserves exactly the documented webview combos, in registry order", () => {
+    expect(RESERVED_WEBVIEW_COMBOS.map((r) => r.combo)).toEqual([
+      "Ctrl+K", "Ctrl+,",
+      "Alt+1", "Alt+2", "Alt+3", "Alt+4", "Alt+5", "Alt+0",
+      "Ctrl+N",
+      "F6", "Shift+F6", "Shift+F10",
+    ]);
+  });
+});
+
+describe("findReservedConflict", () => {
+  it("flags every reserved combo with a non-null label getter", () => {
+    for (const { combo } of RESERVED_WEBVIEW_COMBOS) {
+      expect(findReservedConflict(combo)).not.toBeNull();
+    }
+  });
+
+  it("returns the command-palette label for Ctrl+K", () => {
+    expect(findReservedConflict("Ctrl+K")?.()).toBe(m.command_palette_label());
+  });
+
+  it("returns the Add Stream label for Ctrl+N", () => {
+    expect(findReservedConflict("Ctrl+N")?.()).toBe(m.add_stream());
+  });
+
+  it("covers Tier 2′ named keys that KeyRecorder can record", () => {
+    expect(findReservedConflict("F6")).not.toBeNull();
+    expect(findReservedConflict("Shift+F6")).not.toBeNull();
+    expect(findReservedConflict("Shift+F10")).not.toBeNull();
+  });
+
+  it("returns null for a free combo", () => {
+    expect(findReservedConflict("Ctrl+Shift+J")).toBeNull();
+  });
+
+  it("matches exactly — wrong case or a Tier-1 default does not collide", () => {
+    expect(findReservedConflict("ctrl+k")).toBeNull();
+    expect(findReservedConflict("Ctrl+Shift+R")).toBeNull();
+  });
+});
