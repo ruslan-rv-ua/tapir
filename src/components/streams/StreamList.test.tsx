@@ -2,8 +2,11 @@ import { createRef } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent, act } from "@testing-library/react";
 import { $streams, $statuses } from "../../stores/streams";
+import { $settings } from "../../stores/settings";
+import { $playerStatus } from "../../stores/player";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
-import type { StreamInfo } from "../../lib/tauri";
+import type { StreamInfo, GlobalSettings } from "../../lib/tauri";
+import * as tauri from "../../lib/tauri";
 import { StreamList } from "./StreamList";
 
 vi.mock("../../lib/tauri", () => ({
@@ -31,9 +34,20 @@ const mkStream = (id: string, name: string): StreamInfo => ({
   addedAt: "2026-01-01T00:00:00Z",
 });
 
+const baseSettings: GlobalSettings = {
+  language: "uk", theme: "auto", activeProfile: "Default", outputDevice: null,
+  minimizeToTray: false, showTrayNotifications: false, showTrackInTitle: false,
+  diskSpaceThresholdGb: 0, doubleClickAction: "record", bandwidthLimitKbps: 0,
+  autostart: false, autoAdvance: false, prevRestartThresholdMs: 0,
+  hotkeys: { toggleRecording: "", togglePlayback: "", volumeUp: "", volumeDown: "", toggleWindow: "" },
+  logRotation: false, logMaxSizeMb: 10, logLevel: "info",
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   $statuses.set({});
+  $settings.set(null);
+  $playerStatus.set({ state: "stopped", source: null, volume: 0.75, positionMs: null, durationMs: null });
   $streams.set([mkStream("a", "Alpha"), mkStream("b", "Bravo"), mkStream("c", "Charlie")]);
 });
 
@@ -96,5 +110,81 @@ describe("StreamList — integration with composite-list navigation", () => {
     expect(ul.getAttribute("role")).toBe("application");
     expect(ul.getAttribute("data-zone-id")).toBe("streams-list");
     expect(ul.getAttribute("aria-label")).toBeTruthy();
+  });
+});
+
+describe("StreamList — row activation honors doubleClickAction", () => {
+  const focusFirstRow = () => {
+    const ref = createRef<ZoneEntry>();
+    render(<StreamList ref={ref} exitZone={vi.fn()} onEmpty={vi.fn()} />);
+    act(() => ref.current!.focus("forward"));
+  };
+
+  it("Enter on a row starts recording when doubleClickAction is 'record'", () => {
+    $settings.set({ ...baseSettings, doubleClickAction: "record" });
+    focusFirstRow();
+    fireEvent.keyDown(document.activeElement!, { key: "Enter" });
+    expect(tauri.startRecording).toHaveBeenCalledWith("a");
+    expect(tauri.playStream).not.toHaveBeenCalled();
+  });
+
+  it("Enter on a row starts playback when doubleClickAction is 'play'", () => {
+    $settings.set({ ...baseSettings, doubleClickAction: "play" });
+    focusFirstRow();
+    fireEvent.keyDown(document.activeElement!, { key: "Enter" });
+    expect(tauri.playStream).toHaveBeenCalledWith("a");
+    expect(tauri.startRecording).not.toHaveBeenCalled();
+  });
+
+  it("Enter stops playback when 'play' and this stream is already playing", () => {
+    $settings.set({ ...baseSettings, doubleClickAction: "play" });
+    $playerStatus.set({
+      state: "playing", source: { type: "stream", streamId: "a" },
+      volume: 0.75, positionMs: null, durationMs: null,
+    });
+    focusFirstRow();
+    fireEvent.keyDown(document.activeElement!, { key: "Enter" });
+    expect(tauri.stopPlayback).toHaveBeenCalled();
+    expect(tauri.playStream).not.toHaveBeenCalled();
+  });
+
+  it("defaults to recording when settings are not loaded yet", () => {
+    $settings.set(null);
+    focusFirstRow();
+    fireEvent.keyDown(document.activeElement!, { key: "Enter" });
+    expect(tauri.startRecording).toHaveBeenCalledWith("a");
+    expect(tauri.playStream).not.toHaveBeenCalled();
+  });
+});
+
+describe("StreamList — mouse double-click honors doubleClickAction", () => {
+  const row = (container: HTMLElement, id: string) =>
+    container.querySelector<HTMLElement>(`li[data-item-id="${id}"][data-segment="summary"]`)!;
+
+  it("double-click on a row starts recording when doubleClickAction is 'record'", () => {
+    $settings.set({ ...baseSettings, doubleClickAction: "record" });
+    const { container } = renderList();
+    fireEvent.doubleClick(row(container, "b"));
+    expect(tauri.startRecording).toHaveBeenCalledWith("b");
+    expect(tauri.playStream).not.toHaveBeenCalled();
+  });
+
+  it("double-click on a row starts playback when doubleClickAction is 'play'", () => {
+    $settings.set({ ...baseSettings, doubleClickAction: "play" });
+    const { container } = renderList();
+    fireEvent.doubleClick(row(container, "b"));
+    expect(tauri.playStream).toHaveBeenCalledWith("b");
+    expect(tauri.startRecording).not.toHaveBeenCalled();
+  });
+
+  it("double-click on an action button does not also trigger row activation", () => {
+    $settings.set({ ...baseSettings, doubleClickAction: "record" });
+    const { container } = renderList();
+    const recordBtn = container.querySelector<HTMLElement>(
+      'li[data-item-id="b"] button[data-segment="action-record"]',
+    )!;
+    fireEvent.doubleClick(recordBtn);
+    // The interactive-control guard must swallow the row's dblclick.
+    expect(tauri.startRecording).not.toHaveBeenCalled();
   });
 });

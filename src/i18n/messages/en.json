@@ -183,7 +183,7 @@
   "settings_minimize_to_tray": "Minimize to tray instead of closing",
   "settings_show_tray_notifications": "Notifications on track change",
   "settings_show_track_in_title": "Show track name in window title",
-  "settings_double_click_action": "Action on double-click on stream",
+  "settings_double_click_action": "Action on stream activation (Enter or double-click)",
   "settings_double_click_record": "Record",
   "settings_double_click_play": "Play",
   "settings_disk_threshold": "Disk threshold (GB)",

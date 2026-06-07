@@ -183,7 +183,7 @@
   "settings_minimize_to_tray": "Згортати до tray замість закриття",
   "settings_show_tray_notifications": "Сповіщення при зміні треку",
   "settings_show_track_in_title": "Показувати назву треку в заголовку вікна",
-  "settings_double_click_action": "Дія при подвійному кліку на потоці",
+  "settings_double_click_action": "Дія при активації потоку (Enter або подвійний клік)",
   "settings_double_click_record": "Запис",
   "settings_double_click_play": "Відтворення",
   "settings_disk_threshold": "Поріг диску (ГБ)",

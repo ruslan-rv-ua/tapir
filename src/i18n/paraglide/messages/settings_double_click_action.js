@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Settings_Double_Click_ActionInputs */
 
 const uk_settings_double_click_action = /** @type {(inputs: Settings_Double_Click_ActionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Дія при подвійному кліку на потоці`)
+	return /** @type {LocalizedString} */ (`Дія при активації потоку (Enter або подвійний клік)`)
 };
 
 const en_settings_double_click_action = /** @type {(inputs: Settings_Double_Click_ActionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Action on double-click on stream`)
+	return /** @type {LocalizedString} */ (`Action on stream activation (Enter or double-click)`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Action on double-click on stream" |
+* | "Action on stream activation (Enter or double-click)" |
 *
 * @param {Settings_Double_Click_ActionInputs} inputs
 * @param {{ locale?: "uk" | "en" }} options

@@ -692,7 +692,7 @@ SettingsDialog (role="dialog", aria-label="Налаштування")
 │   ├── Checkbox: Сповіщення при зміні треку
 │   ├── Checkbox: Назва треку в заголовку
 │   ├── Checkbox: Автозапуск з Windows
-│   ├── Select: Дія при подвійному кліку
+│   ├── Select: Дія при активації потоку (Enter / подвійний клік)
 │   └── NumberField: Поріг диску (ГБ)
 │
 ├── <h2> Запис

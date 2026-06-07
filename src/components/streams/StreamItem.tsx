@@ -40,6 +40,8 @@ interface Props {
   isActiveRow: boolean;
   maxRetries: number;
   onDelete: () => void;
+  /** Primary action on a mouse double-click of the row (record/play per setting). */
+  onActivate?: () => void;
 }
 
 export function StreamItem({
@@ -49,6 +51,7 @@ export function StreamItem({
   isActiveRow,
   maxRetries,
   onDelete,
+  onActivate,
 }: Props) {
   const state = status?.state ?? "idle";
   const isRecording = state === "recording";
@@ -179,6 +182,7 @@ export function StreamItem({
       roleDescription={m.item_role_stream()}
       className={`grid border-b border-slate-800 forced-colors:border-[ButtonText] ${rowBg}`}
       style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1.5fr) 90px 90px auto" }}
+      onActivate={onActivate}
     >
       {/* Stream name with inline status slots — visual only; the row's accessible name is on the <li>. */}
       <div style={{ gridRow: 1, gridColumn: 1 }} className="flex items-center gap-1 min-w-0 px-3 py-2">

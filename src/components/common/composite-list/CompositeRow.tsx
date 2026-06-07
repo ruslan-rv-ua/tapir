@@ -15,6 +15,12 @@ interface CompositeRowProps {
   /** Appended when isActiveRow is true. */
   activeClassName?: string;
   style?: CSSProperties;
+  /**
+   * Primary action for a mouse double-click anywhere on the row except its own
+   * interactive controls (buttons/links/inputs), which keep their native click
+   * behaviour. Mirrors the keyboard "primary" action (Enter on the summary).
+   */
+  onActivate?: () => void;
   children: ReactNode;
 }
 
@@ -33,6 +39,7 @@ export function CompositeRow({
   className,
   activeClassName,
   style,
+  onActivate,
   children,
 }: CompositeRowProps) {
   return (
@@ -45,6 +52,14 @@ export function CompositeRow({
       aria-roledescription={roleDescription}
       className={[className, isActiveRow ? activeClassName : ""].filter(Boolean).join(" ")}
       style={style}
+      onDoubleClick={
+        onActivate &&
+        ((e) => {
+          // Let the row's own controls handle their own activation.
+          if ((e.target as HTMLElement).closest("button, a, input, select, textarea")) return;
+          onActivate();
+        })
+      }
     >
       {children}
     </li>

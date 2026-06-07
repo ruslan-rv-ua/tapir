@@ -1,7 +1,8 @@
-import { forwardRef, useMemo, useState } from "react";
+import { forwardRef, useCallback, useMemo, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { $streams, $statuses } from "../../stores/streams";
-import { $recordingSettings } from "../../stores/settings";
+import { $recordingSettings, $settings } from "../../stores/settings";
+import { $playerStatus } from "../../stores/player";
 import { CompositeList } from "../common/composite-list";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import type { StreamInfo } from "../../lib/tauri";
@@ -23,6 +24,8 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
   const allStreams = useStore($streams);
   const statuses = useStore($statuses);
   const recordingSettings = useStore($recordingSettings);
+  const settings = useStore($settings);
+  const playerStatus = useStore($playerStatus);
   const maxRetries = recordingSettings?.reconnect.maxRetries ?? 0;
   const streams = streamsProp ?? allStreams;
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -31,6 +34,29 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
   const items = useMemo(
     () => streams.map((s) => ({ id: s.id, segments: getStreamSegments(statuses[s.id]) })),
     [streams, statuses],
+  );
+
+  // The row's primary action, shared by keyboard activation (Enter/Space on the
+  // summary) and a mouse double-click. Per `doubleClickAction` it toggles either
+  // playback or recording (the default).
+  const activateStream = useCallback(
+    (itemId: string) => {
+      if (settings?.doubleClickAction === "play") {
+        const isPlaying =
+          playerStatus.state !== "stopped" &&
+          playerStatus.source?.type === "stream" &&
+          playerStatus.source.streamId === itemId;
+        (isPlaying ? tauri.stopPlayback() : tauri.playStream(itemId)).catch((err) =>
+          addToast(String(err), "error"),
+        );
+      } else {
+        const isRecording = statuses[itemId]?.state === "recording";
+        (isRecording ? tauri.stopRecording(itemId) : tauri.startRecording(itemId)).catch((err) =>
+          addToast(String(err), "error"),
+        );
+      }
+    },
+    [settings, playerStatus, statuses],
   );
 
   const handleConfirmDelete = async () => {
@@ -68,13 +94,10 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
             menuBtn?.click();
             return;
           }
-          // Action buttons self-activate; only Enter/Space on the whole-row summary
-          // triggers the row's primary action (record toggle).
+          // Action buttons self-activate; only Enter/Space on the whole-row
+          // summary triggers the row's primary action.
           if ((type === "primary" || type === "toggle") && segment === "summary") {
-            const isRecording = statuses[itemId]?.state === "recording";
-            (isRecording ? tauri.stopRecording(itemId) : tauri.startRecording(itemId)).catch((err) =>
-              addToast(String(err), "error"),
-            );
+            activateStream(itemId);
           }
         }}
         renderRow={({ id, isActive, isFocused }) => {
@@ -88,6 +111,7 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
               isFocused={isFocused}
               maxRetries={maxRetries}
               onDelete={() => setPendingDeleteId(id)}
+              onActivate={() => activateStream(id)}
             />
           );
         }}
