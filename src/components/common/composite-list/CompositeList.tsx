@@ -58,7 +58,7 @@ function CompositeListInner<H extends ZoneEntry = ZoneEntry>(
     imperativeExtra,
   } = props;
 
-  const { listRef, onKeyDownCapture, isFocused, restoreFocus, focusItem, activeItemId } =
+  const { listRef, onKeyDownCapture, onContextMenu, isFocused, restoreFocus, focusItem, activeItemId } =
     useCompositeList({ zoneId, items, onTabOut, onAction, onEmpty });
 
   /**
@@ -112,6 +112,7 @@ function CompositeListInner<H extends ZoneEntry = ZoneEntry>(
       aria-label={ariaLabel}
       className={`py-1 ${className}`}
       onKeyDownCapture={onKeyDownCapture}
+      onContextMenu={onContextMenu}
     >
       {items.map((it) =>
         renderRow({

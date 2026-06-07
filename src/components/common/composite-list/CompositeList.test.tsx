@@ -51,6 +51,14 @@ function renderList(extra: Record<string, unknown> = {}) {
           >
             x
           </CompositeAction>
+          <button
+            data-item-id={id}
+            data-context-menu-trigger
+            data-testid={`trigger-${id}`}
+            onClick={() => onAction("primary", id, "action-menu")}
+          >
+            ⋯
+          </button>
         </CompositeRow>
       )}
       {...extra}
@@ -140,6 +148,14 @@ describe("CompositeList", () => {
     );
     expect(container.querySelector("ul")).toBeNull();
     expect(queryByText("loading…")).toBeTruthy();
+  });
+
+  it("right-click on a row suppresses the native menu and clicks the row's trigger", () => {
+    const { container, onAction } = renderList();
+    const row = container.querySelector<HTMLElement>('[data-item-id="a"][data-segment="summary"]')!;
+    const prevented = fireEvent.contextMenu(row, { bubbles: true }) === false;
+    expect(prevented).toBe(true);
+    expect(onAction).toHaveBeenCalledWith("primary", "a", "action-menu");
   });
 
   it("renders the footer after the rows inside the <ul>", () => {
