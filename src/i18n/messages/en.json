@@ -1,6 +1,7 @@
 {
   "app_name": "Tapir",
   "streams_section": "Streams",
+  "profiles_section": "Profiles",
   "browser_section": "Station Browser",
   "browser_search_placeholder": "Station name or genre...",
   "browser_filter_country": "Country",
@@ -227,6 +228,9 @@
   "settings_hotkey_press_keys": "Press keys...",
   "settings_hotkey_clear": "Clear hotkey",
   "settings_hotkey_duplicate": "This combination is already used for: {action}",
+  "settings_hotkey_reserved": "This combination is reserved for: {action}",
+  "settings_hotkey_action_zone_nav": "Zone navigation",
+  "settings_hotkey_action_row_menu": "Row menu",
   "settings_hotkey_changed": "Hotkey changed: {combo}",
   "settings_hotkey_registration_failed": "Failed to register hotkey {combo}",
   "settings_auto_advance": "Auto-play next track",

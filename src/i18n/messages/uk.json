@@ -1,6 +1,7 @@
 {
   "app_name": "Tapir",
   "streams_section": "Потоки",
+  "profiles_section": "Профілі",
   "browser_section": "Браузер станцій",
   "browser_search_placeholder": "Назва станції або жанр...",
   "browser_filter_country": "Країна",
@@ -227,6 +228,9 @@
   "settings_hotkey_press_keys": "Натисніть клавіші...",
   "settings_hotkey_clear": "Очистити хоткей",
   "settings_hotkey_duplicate": "Цю комбінацію вже використано для: {action}",
+  "settings_hotkey_reserved": "Цю комбінацію зарезервовано для: {action}",
+  "settings_hotkey_action_zone_nav": "Навігація по зонах",
+  "settings_hotkey_action_row_menu": "Меню рядка",
   "settings_hotkey_changed": "Хоткей змінено: {combo}",
   "settings_hotkey_registration_failed": "Не вдалося зареєструвати хоткей {combo}",
   "settings_auto_advance": "Автоматично відтворювати наступний трек",
