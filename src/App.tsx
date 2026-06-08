@@ -23,8 +23,7 @@ import { $streams, updateStreamStatus, $showAddStreamDialog } from "./stores/str
 import { $settings } from "./stores/settings";
 import { $settingsDialogOpen } from "./stores/settings";
 import { $playerStatus, $muteState } from "./stores/player";
-import { $commandPaletteOpen, $shortcutsHelpOpen } from "./stores/navigation";
-import { $activeSection } from "./stores/navigation";
+import { $activeSection, $commandPaletteOpen, $shortcutsHelpOpen } from "./stores/navigation";
 import { addToast } from "./stores/toasts";
 import * as tauri from "./lib/tauri";
 import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, RecordingStartedPayload, RecordingCompletedPayload, StreamInfo, PlayerStatus, PlayerProgressPayload, WishlistMatchPayload, TrackIgnoredPayload, PlayerEndedPayload } from "./lib/tauri";

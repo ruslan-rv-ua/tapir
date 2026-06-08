@@ -112,7 +112,7 @@ export const SHORTCUTS: readonly Shortcut[] = [
   {
     id: "zone-nav-back",
     combo: "Shift+F6",
-    label: m.settings_hotkey_action_zone_nav,
+    label: m.settings_hotkey_action_zone_nav_back,
     group: "navigation",
     reserved: true,
   },

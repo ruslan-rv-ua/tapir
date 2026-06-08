@@ -236,6 +236,7 @@
   "settings_hotkey_duplicate": "This combination is already used for: {action}",
   "settings_hotkey_reserved": "This combination is reserved for: {action}",
   "settings_hotkey_action_zone_nav": "Zone navigation",
+  "settings_hotkey_action_zone_nav_back": "Zone navigation (back)",
   "settings_hotkey_action_row_menu": "Row menu",
   "settings_hotkey_changed": "Hotkey changed: {combo}",
   "settings_hotkey_registration_failed": "Failed to register hotkey {combo}",
