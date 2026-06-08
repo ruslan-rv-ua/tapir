@@ -46,6 +46,19 @@ export function BrowserPanel({ onZonesChange, exitZone }: Props) {
     resultsListRef.current = zone;
   }, []);
 
+  // Stable proxy for the results list zone. StationList's CompositeList drops its
+  // <ul> (and recreates its ZoneEntry) while loading/empty and on each new result
+  // set; the registration effect only re-runs on showSearchResults/stations.length,
+  // so without the proxy a same-count refresh could leave App holding a stale
+  // ZoneEntry whose focus() no-ops and F6 stalls. The proxy is created once and
+  // always delegates to the CURRENT handle (the pattern App.tsx uses for permanent
+  // zones).
+  const resultsProxyRef = useRef<ZoneEntry>({
+    id: "browser-results",
+    get el() { return resultsListRef.current?.el as HTMLElement; },
+    focus: (dir) => resultsListRef.current?.focus(dir),
+  });
+
   const showSearchResults = isSearchActive && (searchResults.length > 0 || searchLoading || !!searchError);
   const stations = showSearchResults ? searchResults : popularStations;
   const loading = showSearchResults ? searchLoading : popularLoading;
@@ -57,7 +70,7 @@ export function BrowserPanel({ onZonesChange, exitZone }: Props) {
   useEffect(() => {
     const zones: ZoneEntry[] = [];
     if (searchZoneRef.current) zones.push(searchZoneRef.current);
-    if (resultsListRef.current) zones.push(resultsListRef.current);
+    if (resultsListRef.current) zones.push(resultsProxyRef.current);
     onZonesChange(zones);
   }, [onZonesChange, showSearchResults, stations.length]);
 

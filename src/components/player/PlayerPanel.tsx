@@ -149,18 +149,16 @@ export const PlayerPanel = forwardRef<
 
   const restoreFocusPlayer = useCallback(
     (direction: "forward" | "backward") => {
-      // Skipped zone (nothing playing) must pass through silently — announce the
-      // zone label only when focus actually lands here. Announcing before the skip
-      // guard causes a double announcement ("Програвач" + the next zone's label).
-      // See docs/accessibility.md §2.3.1: "Пропускає приховані зони (Player…)".
-      if (state === "stopped" || !source) {
-        exitZone(direction === "forward");
-        return;
-      }
+      // Nothing playing → take no focus and stay silent. The central zone cycler
+      // (useZoneNavigation.cycleZone) sees that focus didn't move and advances to
+      // the next zone on its own. Announcing here would double up with the zone
+      // that actually receives focus. See docs/accessibility.md §2.3.1:
+      // "Пропускає приховані зони (Player…)".
+      if (state === "stopped" || !source) return;
       announce(m.zone_player(), "polite");
       enterZone(direction);
     },
-    [announce, state, source, exitZone, enterZone],
+    [announce, state, source, enterZone],
   );
 
   useImperativeHandle(

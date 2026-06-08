@@ -148,6 +148,18 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
     patternListRef.current = zone;
   }, []);
 
+  // Stable proxy for the list zone. PatternList's ZoneEntry is recreated when its
+  // items change (and the list remounts when switching tabs), but the registration
+  // effect only re-runs on activeTab — so without the proxy a same-tab data change
+  // could leave App holding a stale ZoneEntry whose focus() no-ops and F6 stalls.
+  // The proxy is created once and always delegates to the CURRENT handle (the same
+  // pattern App.tsx uses for permanent zones).
+  const patternListProxyRef = useRef<ZoneEntry>({
+    id: "wishlist-list",
+    get el() { return patternListRef.current?.el as HTMLElement; },
+    focus: (dir) => patternListRef.current?.focus(dir),
+  });
+
   // Register zones whenever tab or controls restore changes
   useEffect(() => {
     const controlsZone: ZoneEntry = {
@@ -156,7 +168,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
       focus: controlsRestore,
     };
     const zones: ZoneEntry[] = [controlsZone];
-    if (patternListRef.current) zones.push(patternListRef.current);
+    if (patternListRef.current) zones.push(patternListProxyRef.current);
     onZonesChange(zones);
     // onZonesChange intentionally omitted — callers must pass a stable (useCallback-wrapped) reference.
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -134,7 +134,7 @@ JS у Tauri-webview.
 - **Зроблено (2026-06-07):** новий розділ «Tier 2′ — named-навігація / керування»
   у [keyboard-shortcuts.md](keyboard-shortcuts.md) — таблиця з усіма трьома
   записами + посиланнями на код. `F6`/`Shift+F6` →
-  [useZoneNavigation.ts:45-58](../src/hooks/useZoneNavigation.ts#L45-L58)
+  [useZoneNavigation.ts:58-71](../src/hooks/useZoneNavigation.ts#L58-L71)
   (§2.3.1); `Shift+F10`/`ContextMenu` →
   [useCompositeList.ts:342-367](../src/hooks/useCompositeList.ts#L342-L367)
   (один `contextmenu` event WebView2 на ПКМ/Menu/Shift+F10, §3.6); `Escape` →

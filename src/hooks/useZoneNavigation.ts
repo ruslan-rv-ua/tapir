@@ -16,28 +16,41 @@ export interface ZoneEntry {
  * App.tsx calls `useZoneNavigation(orderedZonesRef)` and passes
  * `exitZone` down to each zone so Tab/Shift+Tab at zone boundaries
  * also triggers cycling.
+ *
+ * `cycleZone` does NOT assume the next zone will accept focus. A zone can
+ * decline it: an empty/hidden list, the Player while nothing is playing, or a
+ * briefly-stale ZoneEntry left behind by an unmount/remount. After asking a
+ * zone to focus, we check whether `document.activeElement` actually moved; if
+ * not, we advance to the zone after it, bounded by one full lap. This is the
+ * single place that guarantees F6 makes progress — individual zones therefore
+ * no longer need to self-skip (see PlayerPanel.restoreFocusPlayer).
  */
 export function useZoneNavigation(orderedZonesRef: RefObject<ZoneEntry[]>) {
   const cycleZone = useCallback(
     (fromId: string | null, forward: boolean) => {
       const zones = orderedZonesRef.current;
       if (!zones || zones.length === 0) return;
+      const dir = forward ? 'forward' : 'backward';
+
+      // Index of the zone we're leaving. With no current zone, sit just before
+      // the first (forward) / after the last (backward) so step 1 lands there.
+      let fromIdx: number;
       if (!fromId) {
-        // No current zone — focus first or last
-        const target = zones[forward ? 0 : zones.length - 1];
-        target?.focus(forward ? 'forward' : 'backward');
-        return;
+        fromIdx = forward ? -1 : zones.length;
+      } else {
+        const idx = zones.findIndex((z) => z.id === fromId);
+        fromIdx = idx < 0 ? (forward ? -1 : zones.length) : idx;
       }
-      const idx = zones.findIndex((z) => z.id === fromId);
-      if (idx < 0) {
-        const fallback = zones[forward ? 0 : zones.length - 1];
-        fallback?.focus(forward ? 'forward' : 'backward');
-        return;
+
+      const activeBefore = document.activeElement;
+      // Ask each subsequent zone to focus, in order, until one actually does.
+      for (let step = 1; step <= zones.length; step++) {
+        const offset = forward ? step : -step;
+        const nextIdx = (((fromIdx + offset) % zones.length) + zones.length) % zones.length;
+        zones[nextIdx]?.focus(dir);
+        if (document.activeElement !== activeBefore) return;
       }
-      const nextIdx = forward
-        ? (idx + 1) % zones.length
-        : (idx - 1 + zones.length) % zones.length;
-      zones[nextIdx]?.focus(forward ? 'forward' : 'backward');
+      // No zone accepted focus — leave it where it was.
     },
     [orderedZonesRef],
   );

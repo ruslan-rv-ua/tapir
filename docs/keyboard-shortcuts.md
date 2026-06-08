@@ -104,7 +104,7 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 
 | Клавіша | Дія | Умова | Реалізація | Стан |
 |---|---|---|---|---|
-| `F6` / `Shift+F6` | циклічна навігація по зонах (вперед / назад), оголошення зони NVDA | поза модалем (`isInModal` — focus trap) | [useZoneNavigation.ts:45-58](../src/hooks/useZoneNavigation.ts#L45-L58) · [accessibility.md §2.3.1](accessibility.md#L109) | ✅ |
+| `F6` / `Shift+F6` | циклічна навігація по зонах (вперед / назад), оголошення зони NVDA | поза модалем (`isInModal` — focus trap) | [useZoneNavigation.ts:58-71](../src/hooks/useZoneNavigation.ts#L58-L71) · [accessibility.md §2.3.1](accessibility.md#L109) | ✅ |
 | `Shift+F10` / `ContextMenu` | меню рядка (еквівалент ПКМ) | фокус на рядку списку | [useCompositeList.ts:342-367](../src/hooks/useCompositeList.ts#L342-L367) · [accessibility.md §3.6](accessibility.md#L333) | ✅ |
 | `Enter` | активувати рядок (Streams: play/stop · Songs: play · Profiles: switch) | фокус на рядку списку | — | ⬜ |
 | `F2` | редагувати / перейменувати рядок (Streams: edit · Songs/Profiles: rename) | фокус на рядку (де застосовно) | — | ⬜ |

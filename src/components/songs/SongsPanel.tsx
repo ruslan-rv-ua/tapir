@@ -36,6 +36,19 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
   const filterRef = useRef<ZoneEntry | null>(null);
   const listRef = useRef<ZoneEntry | null>(null);
 
+  // Stable proxy for the list zone. SongsList (and its CompositeList) unmounts
+  // and remounts whenever $songsLoading toggles — e.g. a rescan after a recording
+  // completes — which recreates its ZoneEntry. The zone-registration effect below
+  // only re-runs on songs.length, so a rescan that keeps the same count would
+  // otherwise leave App holding a dead ZoneEntry whose focus() no-ops and F6
+  // silently stalls. The proxy is created once and always delegates to the CURRENT
+  // handle — the same pattern App.tsx uses for permanent zones.
+  const listProxyRef = useRef<ZoneEntry>({
+    id: "songs-list",
+    get el() { return listRef.current?.el as HTMLElement; },
+    focus: (dir) => listRef.current?.focus(dir),
+  });
+
   const [tagEditorFor, setTagEditorFor] = useState<Song | null>(null);
   const [renameFor, setRenameFor] = useState<Song | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Song | null>(null);
@@ -47,7 +60,7 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
   useEffect(() => {
     const zones: ZoneEntry[] = [];
     if (filterRef.current) zones.push(filterRef.current);
-    if (listRef.current) zones.push(listRef.current);
+    if (listRef.current) zones.push(listProxyRef.current);
     onZonesChange(zones);
   }, [onZonesChange, songs.length]);
 
