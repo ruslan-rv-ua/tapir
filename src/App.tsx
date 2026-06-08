@@ -23,6 +23,7 @@ import { $streams, updateStreamStatus } from "./stores/streams";
 import { $settings } from "./stores/settings";
 import { $playerStatus, $muteState } from "./stores/player";
 import { $activeSection } from "./stores/navigation";
+import { SECTIONS } from "./lib/sections";
 import { addToast } from "./stores/toasts";
 import * as tauri from "./lib/tauri";
 import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, RecordingStartedPayload, RecordingCompletedPayload, StreamInfo, PlayerStatus, PlayerProgressPayload, WishlistMatchPayload, TrackIgnoredPayload, PlayerEndedPayload } from "./lib/tauri";
@@ -88,6 +89,11 @@ function AppContent() {
   useEffect(() => {
     if (prevSectionRef.current === activeSection) return;
     prevSectionRef.current = activeSection;
+    // Announce the section name so screen-reader users get the section identity
+    // regardless of where focus subsequently lands. Polite + bare label, sourced
+    // from the shared SECTIONS registry (locale-aware getter).
+    const sectionLabel = SECTIONS.find((s) => s.id === activeSection)?.label();
+    if (sectionLabel) announceRef.current(sectionLabel, "polite");
     const rafId = requestAnimationFrame(() => {
       const firstScreen = orderedZonesRef.current.find(
         (z) => !PERMANENT_ZONE_IDS.has(z.id)
