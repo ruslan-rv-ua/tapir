@@ -47,10 +47,11 @@ OS-хоткей на `Ctrl+K`/`Alt+digit`/`F6`/… — гард і реєстр 
 
 ## Tier 2 — глобальні у webview
 
-Один `window` keydown-listener в [App.tsx:135-150](../src/App.tsx#L135-L150)
-(той самий `useEffect`). Усі майбутні app-level шорткати додавати **сюди**, не в
-панелі (надійніше за `onKeyDown` контейнера — bubbling рядків може зупинятися).
-Хардкод (не конфігуровні) — свідомо, бо scope=webview: колізії лише в нашому контролі
+Один **capture**-фазний `window` keydown-listener
+([useGlobalShortcuts.ts](../src/hooks/useGlobalShortcuts.ts)). Усі майбутні
+app-level шорткати додавати в реєстр `SHORTCUTS`, не в панелі (надійніше за
+`onKeyDown` контейнера — react-aria контроли поглинають bubbling). Хардкод (не
+конфігуровні) — свідомо, бо scope=webview: колізії лише в нашому контролі
 ([ADR](decisions/2026-06-07-shortcut-configurability-asymmetry.md)).
 
 | Комбо | Дія | Умова | Scope | Стан | Джерело мотивації |
@@ -77,19 +78,22 @@ OS-хоткей на `Ctrl+K`/`Alt+digit`/`F6`/… — гард і реєстр 
 > новий профіль) — таблиця-розширення в context-aware ADR.
 >
 > Реалізація: диспетч єдиний — чистий `matchShortcut` ([shortcuts.ts](../src/lib/shortcuts.ts))
-> над реєстром `SHORTCUTS`, що його поділяють слухач App.tsx, гард
+> над реєстром `SHORTCUTS`, що його поділяють слухач
+> [useGlobalShortcuts.ts](../src/hooks/useGlobalShortcuts.ts), гард
 > [reservedShortcuts.ts](../src/lib/reservedShortcuts.ts) і F1-довідник
 > ([KeyboardShortcutsDialog.tsx](../src/components/common/KeyboardShortcutsDialog.tsx)).
 > Порядок/digit секцій — спільний [sections.ts](../src/lib/sections.ts) (його ж
 > читає ActivityBar) → застереження section-navigation ADR про дрейф нумерації
 > знято: число й секція більше не дублюються.
 >
-> Подавлення: слухач глушиться **лише** коли відкрита модаль (`isInModal`,
-> [shortcutGuard.ts](../src/lib/shortcutGuard.ts)) — як і `F6` зон-навігація.
-> Текстове поле хоткеї **не** глушить: усі Tier-2 комбо під модифікатором або
-> `F1`, тож `Alt+2` працює навіть із фокусом у пошуку Browser. Колізію з набором
-> тексту мають лише немодифіковані клавіші рядка Tier 2′ (`Enter`/`F2`/`Delete`) —
-> їх блокуватиме `useCompositeList`, не цей слухач (KB-14).
+> Фаза/подавлення: слухач працює у **capture**-фазі (як `F6`) і глушиться **лише**
+> коли відкрита модаль (`isInModal`, [shortcutGuard.ts](../src/lib/shortcutGuard.ts)).
+> Capture — бо react-aria контроли (напр. `SearchField` пошуку Browser) поглинають
+> keydown у фазі спливання; bubble-слухач втрачав би хоткей із фокусом у такому
+> полі. Текстове поле само хоткеї **не** глушить: усі Tier-2 комбо під модифікатором
+> або `F1`, тож `Alt+2` працює навіть із фокусом у пошуку. Колізію з набором тексту
+> мають лише немодифіковані клавіші рядка Tier 2′ (`Enter`/`F2`/`Delete`) — їх
+> блокуватиме `useCompositeList`, не цей слухач (KB-14).
 
 ## Tier 2′ — named-навігація / керування (не app-дії)
 

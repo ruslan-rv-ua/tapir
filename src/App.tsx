@@ -19,19 +19,17 @@ import { useTauriEvent } from "./hooks/useTauriEvent";
 import { useDiskSpacePolling } from "./hooks/useDiskSpacePolling";
 import { useProfileSync } from "./hooks/useProfileSync";
 import { useAnnounce } from "./hooks/useAnnounce";
-import { $streams, updateStreamStatus, $showAddStreamDialog } from "./stores/streams";
+import { $streams, updateStreamStatus } from "./stores/streams";
 import { $settings } from "./stores/settings";
-import { $settingsDialogOpen } from "./stores/settings";
 import { $playerStatus, $muteState } from "./stores/player";
-import { $activeSection, $commandPaletteOpen, $shortcutsHelpOpen } from "./stores/navigation";
+import { $activeSection } from "./stores/navigation";
 import { addToast } from "./stores/toasts";
 import * as tauri from "./lib/tauri";
 import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, RecordingStartedPayload, RecordingCompletedPayload, StreamInfo, PlayerStatus, PlayerProgressPayload, WishlistMatchPayload, TrackIgnoredPayload, PlayerEndedPayload } from "./lib/tauri";
 import { $filteredSongs } from "./stores/songs";
 import { computePlaybackNeighbors } from "./stores/playbackNeighbors";
 import { resolveEndedAction } from "./lib/playbackTransport";
-import { isInModal } from "./lib/shortcutGuard";
-import { matchShortcut, type ShortcutActions } from "./lib/shortcuts";
+import { useGlobalShortcuts } from "./hooks/useGlobalShortcuts";
 import * as m from "./i18n/paraglide/messages";
 
 const PERMANENT_ZONE_IDS = new Set(["activity-bar", "player", "status-bar"]);
@@ -133,34 +131,9 @@ function AppContent() {
     });
   }, []);
 
-  // Tier-2 webview shortcuts — single dispatch through the shortcut registry.
-  // matchShortcut is pure (src/lib/shortcuts.ts); side effects are injected here
-  // as `actions`. Guards: drop key auto-repeat (KB-06); suppress only while a
-  // modal/recorder is open (KB-14). These combos are all modified or F1, so —
-  // like F6 zone-nav — they deliberately still fire from a focused text field
-  // (e.g. Alt+2 while typing in Browser search). Text-entry collision is the
-  // concern of unmodified row keys, handled in useCompositeList, not here.
-  useEffect(() => {
-    const actions: ShortcutActions = {
-      setSection: (s) => $activeSection.set(s),
-      toggleCommandPalette: () => $commandPaletteOpen.set(!$commandPaletteOpen.get()),
-      toggleSettings: () => $settingsDialogOpen.set(!$settingsDialogOpen.get()),
-      openAddStream: () => $showAddStreamDialog.set(true),
-      openHelp: () => $shortcutsHelpOpen.set(true),
-    };
-    const handler = (e: KeyboardEvent) => {
-      if (e.repeat) return;
-      if (isInModal()) return;
-      const ctx = { activeSection: $activeSection.get() };
-      const hit = matchShortcut(e, ctx);
-      if (hit) {
-        e.preventDefault();
-        hit.run?.(actions, ctx);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
+  // Global Tier-2 webview shortcuts (Alt+digit, Ctrl+K, Ctrl+,, Ctrl+N, F1).
+  // Capture-phase window listener extracted to a hook — see useGlobalShortcuts.
+  useGlobalShortcuts();
 
   // Subscribe to Tauri events
   const handleRecordingStatus = useCallback((payload: RecordingStatusPayload) => {

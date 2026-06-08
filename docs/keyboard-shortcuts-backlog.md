@@ -206,3 +206,13 @@ Tier 1 (OS) конфігуровний, Tier 2 (`Ctrl+K`/`Alt+digit`) — хар
   тепер імпортує спільний `isInModal` замість інлайн-літерала (лагодить дрейф
   `aria-modal`). Тести: оновлено [shortcutGuard.test.ts](../src/lib/shortcutGuard.test.ts),
   регресія на `aria-modal` у [useCompositeList.test.tsx](../src/hooks/useCompositeList.test.tsx).
+- **Capture-фаза (2026-06-08):** ручна перевірка показала, що модаль-онлі замало —
+  `Alt+1`/`Ctrl+K` усе одно не спрацьовували з фокусом у react-aria `SearchField`
+  (поле пошуку), хоча в `NumberField` (бітрейт) працювали. Причина: `SearchField`
+  поглинає keydown у фазі **спливання**, тож bubble-слухач його не бачив — а `F6`
+  (capture) бачив. Слухач винесено в хук
+  [useGlobalShortcuts.ts](../src/hooks/useGlobalShortcuts.ts) і переведено на
+  **capture**-фазу (як `useZoneNavigation`); збіг → `preventDefault` +
+  `stopPropagation`, щоб контрол не діяв повторно. Тест:
+  [useGlobalShortcuts.test.tsx](../src/hooks/useGlobalShortcuts.test.tsx) (зокрема
+  «спрацьовує попри поле, що глушить bubble»).
