@@ -358,6 +358,27 @@ describe("capture phase: consumes navigation keys, passes through the rest", () 
   });
 });
 
+describe("modal containment", () => {
+  it("swallows nothing while inside an aria-modal container (canonical MODAL_SELECTOR)", () => {
+    // Regression: the modal check must share shortcutGuard's MODAL_SELECTOR, which
+    // includes [aria-modal="true"]. A dialog that sets only aria-modal (no role or
+    // data-modal) must still suppress the list's key handling — otherwise the list
+    // hijacks navigation keys behind an open modal.
+    const onParentKeyDown = vi.fn();
+    render(
+      <div aria-modal="true">
+        <Harness items={makeItems()} onParentKeyDown={onParentKeyDown} />
+      </div>,
+    );
+    focusStart("a");
+
+    press("ArrowDown");
+    // The hook bailed: focus did not move and the event bubbled to the parent.
+    expectActive("a", "summary");
+    expect(onParentKeyDown).toHaveBeenCalled();
+  });
+});
+
 describe("restoreFocus (zone re-entry)", () => {
   it("returns to the remembered item and segment", () => {
     render(<Harness items={makeItems()} />);
