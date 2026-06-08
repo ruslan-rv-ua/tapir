@@ -1,5 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState, useEffect } from 'react';
 import type React from 'react'; // for React.KeyboardEvent type
+import { isInModal } from '../lib/shortcutGuard';
 
 export type SegmentKind =
   | 'summary'
@@ -229,11 +230,10 @@ export function useCompositeList<T extends CompositeListItem>({
         e.stopPropagation();
       };
 
-      // Swallow nothing while inside a modal
-      const isInModal = !!document.activeElement?.closest(
-        '[role="dialog"], [role="alertdialog"], [data-modal="true"]',
-      );
-      if (isInModal) return;
+      // Swallow nothing while inside a modal. Shares shortcutGuard's
+      // MODAL_SELECTOR (incl. [aria-modal="true"]) — keep this off the inline
+      // literal it used to be, which had drifted and missed aria-modal.
+      if (isInModal()) return;
 
       if (!activeItemId) {
         if (e.key === 'Tab') {

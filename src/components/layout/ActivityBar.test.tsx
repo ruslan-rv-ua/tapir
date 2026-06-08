@@ -46,6 +46,14 @@ describe("ActivityBar — structure", () => {
     const { container } = renderBar();
     expect(container.querySelector('[role="separator"]')).toBeTruthy();
   });
+
+  it("marks the Schedule button disabled (from shared SECTIONS)", () => {
+    const { container } = renderBar();
+    const schedule = Array.from(container.querySelectorAll("button")).find((b) =>
+      b.getAttribute("aria-disabled") === "true",
+    );
+    expect(schedule).toBeTruthy();
+  });
 });
 
 describe("ActivityBar — profile section behaviour", () => {

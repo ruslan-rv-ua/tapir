@@ -37,26 +37,37 @@ OS-хоткей на `Ctrl+K`/`Alt+digit`/`F6`/… — гард і реєстр 
 | `Ctrl+Shift+Up` | volume_up (+5%) | OS | ✅ |
 | `Ctrl+Shift+Down` | volume_down (−5%) | OS | ✅ |
 | `Ctrl+Shift+H` | toggle_window (показати/сховати) | OS | ✅ |
+| `Ctrl+Shift+M` | toggle_mute (вимкнути/увімкнути звук) | OS | ⬜ |
+| `Ctrl+Shift+S` | stop_all (зупинити весь запис) | OS | ⬜ |
+| `Ctrl+Shift+Right` / `Ctrl+Shift+Left` | наступний / попередній трек у плеєрі (потребує моделі черги) | OS | ⬜ |
+
+> ⬜-кандидати `Ctrl+Shift+M` / `Ctrl+Shift+S` / `Ctrl+Shift+←→` — з
+> [KB-12](keyboard-shortcuts-backlog.md#L173); патерн `Ctrl+Shift+*`, без колізій з
+> webview-резервами (валідація KeyRecorder, KB-09).
 
 ## Tier 2 — глобальні у webview
 
-Один `window` keydown-listener в [App.tsx:135-150](../src/App.tsx#L135-L150)
-(той самий `useEffect`). Усі майбутні app-level шорткати додавати **сюди**, не в
-панелі (надійніше за `onKeyDown` контейнера — bubbling рядків може зупинятися).
-Хардкод (не конфігуровні) — свідомо, бо scope=webview: колізії лише в нашому контролі
+Один **capture**-фазний `window` keydown-listener
+([useGlobalShortcuts.ts](../src/hooks/useGlobalShortcuts.ts)). Усі майбутні
+app-level шорткати додавати в реєстр `SHORTCUTS`, не в панелі (надійніше за
+`onKeyDown` контейнера — react-aria контроли поглинають bubbling). Хардкод (не
+конфігуровні) — свідомо, бо scope=webview: колізії лише в нашому контролі
 ([ADR](decisions/2026-06-07-shortcut-configurability-asymmetry.md)).
 
 | Комбо | Дія | Умова | Scope | Стан | Джерело мотивації |
 |---|---|---|---|---|---|
 | `Ctrl+K` | командна палітра (toggle) | — | webview | ✅ | [command-palette ADR](decisions/2026-05-31-command-palette-and-search-ux.md) · [accessibility.md §2.4](accessibility.md) |
 | `Ctrl+,` | діалог налаштувань (toggle) | — | webview | ✅ | — |
-| `Alt+1` | секція Streams | — | webview | ⬜ | [section-navigation ADR](decisions/2026-06-02-section-navigation-shortcuts.md) |
-| `Alt+2` | секція Browser | — | webview | ⬜ | ↑ |
-| `Alt+3` | секція Wishlist | — | webview | ⬜ | ↑ |
+| `Alt+1` | секція Streams | — | webview | ✅ | [section-navigation ADR](decisions/2026-06-02-section-navigation-shortcuts.md) |
+| `Alt+2` | секція Browser | — | webview | ✅ | ↑ |
+| `Alt+3` | секція Wishlist | — | webview | ✅ | ↑ |
 | `Alt+4` | секція Schedule | після Phase 3D | webview | ⬜ | ↑ |
-| `Alt+5` | секція Songs | — | webview | ⬜ | ↑ |
-| `Alt+0` | секція Profiles | після Phase 3F | webview | ⬜ | ↑ |
-| `Ctrl+N` | Add Stream | `$activeSection === "streams"` | webview | ⬜ | [context-aware ADR](decisions/2026-06-02-context-aware-keyboard-shortcuts.md) |
+| `Alt+5` | секція Songs | — | webview | ✅ | ↑ |
+| `Alt+0` | секція Profiles | після Phase 3F | webview | ✅ | ↑ |
+| `Ctrl+N` | Add Stream | `$activeSection === "streams"` | webview | ✅ | [context-aware ADR](decisions/2026-06-02-context-aware-keyboard-shortcuts.md) |
+| `Ctrl+N` | Додати патерн до wishlist | `$activeSection === "wishlist"` | webview | ⬜ | ↑ |
+| `Ctrl+N` | Новий профіль | `$activeSection === "profiles"` | webview | ⬜ | ↑ |
+| `F1` | довідник гарячих клавіш (open-once, модаль з реєстру) | — | webview | ✅ | відкривність (a11y) |
 
 > `Alt+digit` нумерує секції за порядком в ActivityBar; `Alt+0` — Profiles
 > (винесено окремо вгорі). Чому `Alt`, а не `Ctrl`: NVDA у browse mode перехоплює
@@ -65,6 +76,24 @@ OS-хоткей на `Ctrl+K`/`Alt+digit`/`F6`/… — гард і реєстр 
 > Контекстні дії (як `Ctrl+N`) гейтяться на `$activeSection`. Той самий ключ може
 > в майбутньому означати різне на різних екранах (Browser → wishlist, Profiles →
 > новий профіль) — таблиця-розширення в context-aware ADR.
+>
+> Реалізація: диспетч єдиний — чистий `matchShortcut` ([shortcuts.ts](../src/lib/shortcuts.ts))
+> над реєстром `SHORTCUTS`, що його поділяють слухач
+> [useGlobalShortcuts.ts](../src/hooks/useGlobalShortcuts.ts), гард
+> [reservedShortcuts.ts](../src/lib/reservedShortcuts.ts) і F1-довідник
+> ([KeyboardShortcutsDialog.tsx](../src/components/common/KeyboardShortcutsDialog.tsx)).
+> Порядок/digit секцій — спільний [sections.ts](../src/lib/sections.ts) (його ж
+> читає ActivityBar) → застереження section-navigation ADR про дрейф нумерації
+> знято: число й секція більше не дублюються.
+>
+> Фаза/подавлення: слухач працює у **capture**-фазі (як `F6`) і глушиться **лише**
+> коли відкрита модаль (`isInModal`, [shortcutGuard.ts](../src/lib/shortcutGuard.ts)).
+> Capture — бо react-aria контроли (напр. `SearchField` пошуку Browser) поглинають
+> keydown у фазі спливання; bubble-слухач втрачав би хоткей із фокусом у такому
+> полі. Текстове поле само хоткеї **не** глушить: усі Tier-2 комбо під модифікатором
+> або `F1`, тож `Alt+2` працює навіть із фокусом у пошуку. Колізію з набором тексту
+> мають лише немодифіковані клавіші рядка Tier 2′ (`Enter`/`F2`/`Delete`) — їх
+> блокуватиме `useCompositeList`, не цей слухач (KB-14).
 
 ## Tier 2′ — named-навігація / керування (не app-дії)
 
@@ -77,6 +106,9 @@ OS-хоткей на `Ctrl+K`/`Alt+digit`/`F6`/… — гард і реєстр 
 |---|---|---|---|---|
 | `F6` / `Shift+F6` | циклічна навігація по зонах (вперед / назад), оголошення зони NVDA | поза модалем (`isInModal` — focus trap) | [useZoneNavigation.ts:45-58](../src/hooks/useZoneNavigation.ts#L45-L58) · [accessibility.md §2.3.1](accessibility.md#L109) | ✅ |
 | `Shift+F10` / `ContextMenu` | меню рядка (еквівалент ПКМ) | фокус на рядку списку | [useCompositeList.ts:342-367](../src/hooks/useCompositeList.ts#L342-L367) · [accessibility.md §3.6](accessibility.md#L333) | ✅ |
+| `Enter` | активувати рядок (Streams: play/stop · Songs: play · Profiles: switch) | фокус на рядку списку | — | ⬜ |
+| `F2` | редагувати / перейменувати рядок (Streams: edit · Songs/Profiles: rename) | фокус на рядку (де застосовно) | — | ⬜ |
+| `Delete` | видалити рядок (з підтвердженням) | фокус на рядку списку | — | ⬜ |
 | `Escape` | закрити палітру / діалог (або скасувати запис хоткея) | палітра / модаль / рекордер відкриті | палітра [CommandPalette.tsx:150](../src/components/common/CommandPalette.tsx#L150); Settings — react-aria `isDismissable` [SettingsDialog.tsx:35](../src/components/settings/SettingsDialog.tsx#L35); рекордер [KeyRecorder.tsx:51](../src/components/settings/KeyRecorder.tsx#L51) | ✅ |
 
 > `Shift+F10`/`ContextMenu` не обробляються окремо: WebView2 для всіх трьох
@@ -84,6 +116,11 @@ OS-хоткей на `Ctrl+K`/`Alt+digit`/`F6`/… — гард і реєстр 
 > ловить `onContextMenu`, гасячи нативне меню та відкриваючи меню рядка. `Escape`
 > у модалях Settings — нативний react-aria (`ModalOverlay isDismissable`); у
 > hand-rolled палітрі — явний `if (e.key === "Escape")`.
+
+> `Enter` / `F2` / `Delete` — нові ⬜ контекстні дії рядка (focus mode), за
+> desktop-list конвенцією. `duplicate` (Profiles) і per-row `record` свідомо
+> лишаємо **тільки** в меню рядка (`Shift+F10`): голий `Ctrl`-letter ризикований у
+> NVDA browse mode і ламав би інваріант Tier 2′ (лише функційні/спец-клавіші).
 
 ## Tier 3 — віджетні / ARIA (не named-шорткати)
 
