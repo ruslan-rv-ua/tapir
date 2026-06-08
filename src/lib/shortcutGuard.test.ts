@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { isTextEntryTarget, isInModal, shouldIgnoreShortcut } from "./shortcutGuard";
+import { isTextEntryTarget, isInModal } from "./shortcutGuard";
 
 function makeInput(type?: string): HTMLInputElement {
   const el = document.createElement("input");
@@ -77,30 +77,14 @@ describe("isInModal", () => {
     expect(isInModal(loose)).toBe(false);
     expect(isInModal(null)).toBe(false);
   });
-});
 
-describe("shouldIgnoreShortcut", () => {
-  it("ignores while typing in a text field", () => {
-    expect(shouldIgnoreShortcut(makeInput("search"))).toBe(true);
-  });
-
-  it("ignores while a modal/recorder is open", () => {
-    const modal = document.createElement("div");
-    modal.setAttribute("role", "dialog");
-    const inner = document.createElement("button"); // e.g. an armed KeyRecorder button
-    modal.appendChild(inner);
-    document.body.appendChild(modal);
-    expect(shouldIgnoreShortcut(inner)).toBe(true);
-  });
-
-  it("does NOT ignore on a slider thumb or a plain focused control", () => {
-    expect(shouldIgnoreShortcut(makeInput("range"))).toBe(false);
-    const btn = document.createElement("button");
-    document.body.appendChild(btn);
-    expect(shouldIgnoreShortcut(btn)).toBe(false);
-  });
-
-  it("does NOT ignore when nothing relevant is focused (null)", () => {
-    expect(shouldIgnoreShortcut(null)).toBe(false);
+  it("is false for a text field outside any modal", () => {
+    // The global Tier-2 listener gates on isInModal only, so a focused search box
+    // (not inside a modal) does NOT suppress shortcuts — e.g. Alt+2 still switches
+    // section while typing. Text-entry collision is the concern of unmodified row
+    // keys (useCompositeList), not these modified/F-key global combos.
+    const input = makeInput("search");
+    document.body.appendChild(input);
+    expect(isInModal(input)).toBe(false);
   });
 });

@@ -1,14 +1,20 @@
 /**
- * Focus/modal guard for the Tier-2 global keyboard listener (App.tsx).
+ * Focus/modal helpers for the global keyboard layers (App.tsx Tier-2 listener,
+ * useZoneNavigation, useCompositeList).
  *
- * The listener is attached to `window`, so without a guard it fires regardless
- * of where focus is — meaning a contextual/navigational hotkey (`Ctrl+N`,
- * `Alt+digit`) would steal a keystroke from a search field or fire on top of an
- * open dialog. This module centralises the "should this global shortcut be
- * ignored right now?" decision. See docs/keyboard-shortcuts-backlog.md (KB-04).
+ * Two distinct reasons exist to suppress a key, and they have different scope:
+ *   - CONTEXT (a modal/dialog is open, incl. an armed KeyRecorder): universal —
+ *     no global handler should act behind a modal. Every global layer gates on
+ *     `isInModal()`. See KB-04 / KB-14 in docs/keyboard-shortcuts-backlog.md.
+ *   - COLLISION (the focused control consumes the keystroke, e.g. typing in a
+ *     field): key-specific. The Tier-2 global combos are all modified or `F1`,
+ *     so they never collide with text entry — which is why the global listener
+ *     does NOT gate on `isTextEntryTarget`. That predicate is retained for the
+ *     not-yet-built Tier 2′ row keys (`Enter`/`F2`/`Delete`), which DO collide
+ *     with an inline-edit field and live in useCompositeList, not here.
  *
- * Reuses the existing app patterns: `el.isContentEditable`
- * (see useCompositeList.ts) and `closest(MODAL_SELECTOR)` (see useZoneNavigation.ts).
+ * Reuses the existing app patterns: `el.isContentEditable` and
+ * `closest(MODAL_SELECTOR)`.
  */
 
 /**
@@ -50,24 +56,13 @@ export function isTextEntryTarget(el: Element | null): boolean {
   return false;
 }
 
-/** True when `el` (or its closest ancestor) is an open modal/dialog. */
+/**
+ * True when `el` (or its closest ancestor) is an open modal/dialog. Defaults to
+ * `document.activeElement`; pass an element explicitly for testing. This is the
+ * universal context gate — the App.tsx Tier-2 listener, useZoneNavigation, and
+ * useCompositeList all suppress on it. It also covers the KeyRecorder, which is
+ * armed inside the Settings dialog, so a combo it records never leaks out.
+ */
 export function isInModal(el: Element | null = document.activeElement): boolean {
   return !!el?.closest(MODAL_SELECTOR);
-}
-
-/**
- * Whether a Tier-2 global shortcut should be ignored given current focus.
- * Suppressed while:
- *   - typing in a text field (e.g. the Browser search box), or
- *   - a modal/dialog is open — which also covers the KeyRecorder: it lives
- *     inside the Settings dialog while armed, so a combo it is recording never
- *     leaks out to fire a global shortcut.
- *
- * Defaults to `document.activeElement` to match the `isInModal()` convention in
- * useZoneNavigation; pass an element explicitly for testing.
- */
-export function shouldIgnoreShortcut(
-  active: Element | null = document.activeElement,
-): boolean {
-  return isTextEntryTarget(active) || isInModal(active);
 }

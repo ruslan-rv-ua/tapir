@@ -30,7 +30,7 @@ import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, R
 import { $filteredSongs } from "./stores/songs";
 import { computePlaybackNeighbors } from "./stores/playbackNeighbors";
 import { resolveEndedAction } from "./lib/playbackTransport";
-import { shouldIgnoreShortcut } from "./lib/shortcutGuard";
+import { isInModal } from "./lib/shortcutGuard";
 import { matchShortcut, type ShortcutActions } from "./lib/shortcuts";
 import * as m from "./i18n/paraglide/messages";
 
@@ -135,8 +135,11 @@ function AppContent() {
 
   // Tier-2 webview shortcuts — single dispatch through the shortcut registry.
   // matchShortcut is pure (src/lib/shortcuts.ts); side effects are injected here
-  // as `actions`. Guards kept from KB-04/KB-06: drop key auto-repeat, and ignore
-  // shortcuts while typing in a field or with a modal/recorder open.
+  // as `actions`. Guards: drop key auto-repeat (KB-06); suppress only while a
+  // modal/recorder is open (KB-14). These combos are all modified or F1, so —
+  // like F6 zone-nav — they deliberately still fire from a focused text field
+  // (e.g. Alt+2 while typing in Browser search). Text-entry collision is the
+  // concern of unmodified row keys, handled in useCompositeList, not here.
   useEffect(() => {
     const actions: ShortcutActions = {
       setSection: (s) => $activeSection.set(s),
@@ -147,7 +150,7 @@ function AppContent() {
     };
     const handler = (e: KeyboardEvent) => {
       if (e.repeat) return;
-      if (shouldIgnoreShortcut()) return;
+      if (isInModal()) return;
       const ctx = { activeSection: $activeSection.get() };
       const hit = matchShortcut(e, ctx);
       if (hit) {
