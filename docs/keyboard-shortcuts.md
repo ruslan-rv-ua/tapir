@@ -57,16 +57,16 @@ OS-хоткей на `Ctrl+K`/`Alt+digit`/`F6`/… — гард і реєстр 
 |---|---|---|---|---|---|
 | `Ctrl+K` | командна палітра (toggle) | — | webview | ✅ | [command-palette ADR](decisions/2026-05-31-command-palette-and-search-ux.md) · [accessibility.md §2.4](accessibility.md) |
 | `Ctrl+,` | діалог налаштувань (toggle) | — | webview | ✅ | — |
-| `Alt+1` | секція Streams | — | webview | ⬜ | [section-navigation ADR](decisions/2026-06-02-section-navigation-shortcuts.md) |
-| `Alt+2` | секція Browser | — | webview | ⬜ | ↑ |
-| `Alt+3` | секція Wishlist | — | webview | ⬜ | ↑ |
+| `Alt+1` | секція Streams | — | webview | ✅ | [section-navigation ADR](decisions/2026-06-02-section-navigation-shortcuts.md) |
+| `Alt+2` | секція Browser | — | webview | ✅ | ↑ |
+| `Alt+3` | секція Wishlist | — | webview | ✅ | ↑ |
 | `Alt+4` | секція Schedule | після Phase 3D | webview | ⬜ | ↑ |
-| `Alt+5` | секція Songs | — | webview | ⬜ | ↑ |
-| `Alt+0` | секція Profiles | після Phase 3F | webview | ⬜ | ↑ |
-| `Ctrl+N` | Add Stream | `$activeSection === "streams"` | webview | ⬜ | [context-aware ADR](decisions/2026-06-02-context-aware-keyboard-shortcuts.md) |
+| `Alt+5` | секція Songs | — | webview | ✅ | ↑ |
+| `Alt+0` | секція Profiles | після Phase 3F | webview | ✅ | ↑ |
+| `Ctrl+N` | Add Stream | `$activeSection === "streams"` | webview | ✅ | [context-aware ADR](decisions/2026-06-02-context-aware-keyboard-shortcuts.md) |
 | `Ctrl+N` | Додати патерн до wishlist | `$activeSection === "wishlist"` | webview | ⬜ | ↑ |
 | `Ctrl+N` | Новий профіль | `$activeSection === "profiles"` | webview | ⬜ | ↑ |
-| `F1` | довідник гарячих клавіш / допомога (open-once) | — | webview | ⬜ | відкривність (a11y) |
+| `F1` | довідник гарячих клавіш (open-once, модаль з реєстру) | — | webview | ✅ | відкривність (a11y) |
 
 > `Alt+digit` нумерує секції за порядком в ActivityBar; `Alt+0` — Profiles
 > (винесено окремо вгорі). Чому `Alt`, а не `Ctrl`: NVDA у browse mode перехоплює
@@ -75,6 +75,14 @@ OS-хоткей на `Ctrl+K`/`Alt+digit`/`F6`/… — гард і реєстр 
 > Контекстні дії (як `Ctrl+N`) гейтяться на `$activeSection`. Той самий ключ може
 > в майбутньому означати різне на різних екранах (Browser → wishlist, Profiles →
 > новий профіль) — таблиця-розширення в context-aware ADR.
+>
+> Реалізація: диспетч єдиний — чистий `matchShortcut` ([shortcuts.ts](../src/lib/shortcuts.ts))
+> над реєстром `SHORTCUTS`, що його поділяють слухач App.tsx, гард
+> [reservedShortcuts.ts](../src/lib/reservedShortcuts.ts) і F1-довідник
+> ([KeyboardShortcutsDialog.tsx](../src/components/common/KeyboardShortcutsDialog.tsx)).
+> Порядок/digit секцій — спільний [sections.ts](../src/lib/sections.ts) (його ж
+> читає ActivityBar) → застереження section-navigation ADR про дрейф нумерації
+> знято: число й секція більше не дублюються.
 
 ## Tier 2′ — named-навігація / керування (не app-дії)
 

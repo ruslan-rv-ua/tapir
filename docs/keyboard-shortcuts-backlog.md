@@ -108,6 +108,15 @@ JS у Tauri-webview.
 
 ## P2 — відкривність (найбільший a11y-виграш)
 
+### [x] KB-13 · ✨ F1 — довідник гарячих клавіш
+Відкривність: жодного способу побачити список клавіш не було.
+- **Готово коли:** `F1` відкриває модаль зі списком названих шорткатів, згенерованим
+  з реєстру (не дрейфує від реальних біндингів).
+- **Зроблено (2026-06-08):** модаль [KeyboardShortcutsDialog.tsx](../src/components/common/KeyboardShortcutsDialog.tsx)
+  рендерить `SHORTCUTS` ([shortcuts.ts](../src/lib/shortcuts.ts)), згруповані по
+  `group`; `F1` (open-once) / `Escape`. Реалізовано разом із `Alt+digit`/`Ctrl+N`
+  (єдиний диспетч). Спека/план:
+  `docs/superpowers/{specs,plans}/2026-06-07-webview-shortcut-dispatch-and-help*`.
 
 ---
 
