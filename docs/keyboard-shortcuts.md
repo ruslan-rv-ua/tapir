@@ -37,6 +37,13 @@ OS-хоткей на `Ctrl+K`/`Alt+digit`/`F6`/… — гард і реєстр 
 | `Ctrl+Shift+Up` | volume_up (+5%) | OS | ✅ |
 | `Ctrl+Shift+Down` | volume_down (−5%) | OS | ✅ |
 | `Ctrl+Shift+H` | toggle_window (показати/сховати) | OS | ✅ |
+| `Ctrl+Shift+M` | toggle_mute (вимкнути/увімкнути звук) | OS | ⬜ |
+| `Ctrl+Shift+S` | stop_all (зупинити весь запис) | OS | ⬜ |
+| `Ctrl+Shift+Right` / `Ctrl+Shift+Left` | наступний / попередній трек у плеєрі (потребує моделі черги) | OS | ⬜ |
+
+> ⬜-кандидати `Ctrl+Shift+M` / `Ctrl+Shift+S` / `Ctrl+Shift+←→` — з
+> [KB-12](keyboard-shortcuts-backlog.md#L173); патерн `Ctrl+Shift+*`, без колізій з
+> webview-резервами (валідація KeyRecorder, KB-09).
 
 ## Tier 2 — глобальні у webview
 
@@ -57,6 +64,9 @@ OS-хоткей на `Ctrl+K`/`Alt+digit`/`F6`/… — гард і реєстр 
 | `Alt+5` | секція Songs | — | webview | ⬜ | ↑ |
 | `Alt+0` | секція Profiles | після Phase 3F | webview | ⬜ | ↑ |
 | `Ctrl+N` | Add Stream | `$activeSection === "streams"` | webview | ⬜ | [context-aware ADR](decisions/2026-06-02-context-aware-keyboard-shortcuts.md) |
+| `Ctrl+N` | Додати патерн до wishlist | `$activeSection === "wishlist"` | webview | ⬜ | ↑ |
+| `Ctrl+N` | Новий профіль | `$activeSection === "profiles"` | webview | ⬜ | ↑ |
+| `F1` | довідник гарячих клавіш / допомога (open-once) | — | webview | ⬜ | відкривність (a11y) |
 
 > `Alt+digit` нумерує секції за порядком в ActivityBar; `Alt+0` — Profiles
 > (винесено окремо вгорі). Чому `Alt`, а не `Ctrl`: NVDA у browse mode перехоплює
@@ -77,6 +87,9 @@ OS-хоткей на `Ctrl+K`/`Alt+digit`/`F6`/… — гард і реєстр 
 |---|---|---|---|---|
 | `F6` / `Shift+F6` | циклічна навігація по зонах (вперед / назад), оголошення зони NVDA | поза модалем (`isInModal` — focus trap) | [useZoneNavigation.ts:45-58](../src/hooks/useZoneNavigation.ts#L45-L58) · [accessibility.md §2.3.1](accessibility.md#L109) | ✅ |
 | `Shift+F10` / `ContextMenu` | меню рядка (еквівалент ПКМ) | фокус на рядку списку | [useCompositeList.ts:342-367](../src/hooks/useCompositeList.ts#L342-L367) · [accessibility.md §3.6](accessibility.md#L333) | ✅ |
+| `Enter` | активувати рядок (Streams: play/stop · Songs: play · Profiles: switch) | фокус на рядку списку | — | ⬜ |
+| `F2` | редагувати / перейменувати рядок (Streams: edit · Songs/Profiles: rename) | фокус на рядку (де застосовно) | — | ⬜ |
+| `Delete` | видалити рядок (з підтвердженням) | фокус на рядку списку | — | ⬜ |
 | `Escape` | закрити палітру / діалог (або скасувати запис хоткея) | палітра / модаль / рекордер відкриті | палітра [CommandPalette.tsx:150](../src/components/common/CommandPalette.tsx#L150); Settings — react-aria `isDismissable` [SettingsDialog.tsx:35](../src/components/settings/SettingsDialog.tsx#L35); рекордер [KeyRecorder.tsx:51](../src/components/settings/KeyRecorder.tsx#L51) | ✅ |
 
 > `Shift+F10`/`ContextMenu` не обробляються окремо: WebView2 для всіх трьох
@@ -84,6 +97,11 @@ OS-хоткей на `Ctrl+K`/`Alt+digit`/`F6`/… — гард і реєстр 
 > ловить `onContextMenu`, гасячи нативне меню та відкриваючи меню рядка. `Escape`
 > у модалях Settings — нативний react-aria (`ModalOverlay isDismissable`); у
 > hand-rolled палітрі — явний `if (e.key === "Escape")`.
+
+> `Enter` / `F2` / `Delete` — нові ⬜ контекстні дії рядка (focus mode), за
+> desktop-list конвенцією. `duplicate` (Profiles) і per-row `record` свідомо
+> лишаємо **тільки** в меню рядка (`Shift+F10`): голий `Ctrl`-letter ризикований у
+> NVDA browse mode і ламав би інваріант Tier 2′ (лише функційні/спец-клавіші).
 
 ## Tier 3 — віджетні / ARIA (не named-шорткати)
 
