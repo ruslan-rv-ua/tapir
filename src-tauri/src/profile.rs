@@ -333,6 +333,17 @@ impl Profile {
         Ok(())
     }
 
+    /// Append `stream` unless this profile already holds a stream with the same
+    /// URL. On a duplicate, returns `Conflict(self.name)` so the caller can tell
+    /// the user which profile already has it. Does not save.
+    pub fn add_stream_checked(&mut self, stream: StreamInfo) -> Result<(), RadioError> {
+        if self.streams.iter().any(|s| s.url == stream.url) {
+            return Err(RadioError::Conflict(self.name.clone()));
+        }
+        self.streams.push(stream);
+        Ok(())
+    }
+
     pub fn create_default() -> Self {
         Self {
             name: "Default".to_string(),
@@ -686,5 +697,33 @@ mod tests {
     fn save_imported_rejects_invalid_json() {
         let err = Profile::save_imported("not valid json", "ValidName").unwrap_err();
         assert!(err.to_string().starts_with("InvalidData:"), "got: {err}");
+    }
+
+    #[test]
+    fn add_stream_checked_appends_when_url_is_new() {
+        let mut p = Profile::create_default();
+        let s = StreamInfo {
+            id: "1".into(), url: "http://a".into(), name: "A".into(),
+            format: None, bitrate: None, icy_name: None, icy_genre: None,
+            icy_url: None, ignorelist: vec![], username: None, password: None,
+            added_at: "2026-01-01".into(),
+        };
+        assert!(p.add_stream_checked(s).is_ok());
+        assert_eq!(p.streams.len(), 1);
+    }
+
+    #[test]
+    fn add_stream_checked_rejects_duplicate_url() {
+        let mut p = Profile::create_default();
+        let mk = |id: &str| StreamInfo {
+            id: id.into(), url: "http://dup".into(), name: "X".into(),
+            format: None, bitrate: None, icy_name: None, icy_genre: None,
+            icy_url: None, ignorelist: vec![], username: None, password: None,
+            added_at: "2026-01-01".into(),
+        };
+        p.add_stream_checked(mk("1")).unwrap();
+        let err = p.add_stream_checked(mk("2")).unwrap_err();
+        assert!(matches!(err, RadioError::Conflict(_)));
+        assert_eq!(p.streams.len(), 1, "duplicate must not be appended");
     }
 }
