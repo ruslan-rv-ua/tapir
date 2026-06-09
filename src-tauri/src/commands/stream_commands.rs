@@ -1,5 +1,6 @@
 use crate::app_state::AppState;
-use crate::profile::StreamInfo;
+use crate::errors::RadioError;
+use crate::profile::{Profile, StreamInfo};
 use crate::stream::manager::{StreamState, StreamStatus};
 use crate::stream::playlist;
 
@@ -202,6 +203,90 @@ pub async fn get_stream_status(
 pub async fn get_all_statuses(state: tauri::State<'_, AppState>) -> Result<Vec<StreamStatus>, String> {
     let manager = state.stream_manager.read().await;
     Ok(manager.get_all_statuses())
+}
+
+/// Copy or move a stream into another (non-active) profile.
+/// - `Copy` leaves the source in the active profile; the inserted clone gets a
+///   fresh id.
+/// - `Move` removes the source from the active profile after the target saves.
+/// Refuses to move a stream that is currently recording/connecting/reconnecting,
+/// and refuses any transfer into the active profile or into a profile that
+/// already holds a stream with the same URL (`Conflict`).
+#[tauri::command]
+pub async fn transfer_stream_to_profile(
+    stream_id: String,
+    target_profile: String,
+    mode: TransferMode,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), String> {
+    // 1. Guard: never transfer into the active profile.
+    {
+        let profile = state.active_profile.read().await;
+        if profile.name == target_profile {
+            return Err(RadioError::Forbidden(
+                "Cannot transfer a stream into the active profile".into(),
+            ).to_string());
+        }
+    }
+
+    // 2. Find the source stream in the active profile.
+    let source = {
+        let profile = state.active_profile.read().await;
+        profile.streams.iter().find(|s| s.id == stream_id).cloned().ok_or_else(|| {
+            RadioError::NotFound(format!("Stream '{stream_id}' not found")).to_string()
+        })?
+    };
+
+    // 3. Move-guard: refuse while the stream is active (matches the UI's disabled
+    //    condition). An `Error`-state entry may linger during retries, so check
+    //    the state rather than mere presence.
+    if mode == TransferMode::Move {
+        let manager = state.stream_manager.read().await;
+        if let Some(status) = manager.get_status(&stream_id) {
+            if move_blocked_by_state(&status.state) {
+                return Err(RadioError::Forbidden(
+                    "Cannot move a stream while it is active".into(),
+                ).to_string());
+            }
+        }
+    }
+
+    // 4. Load the target profile off the async worker.
+    let target_name = target_profile.clone();
+    let mut target = tokio::task::spawn_blocking(move || Profile::load(&target_name))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?;
+
+    // 5. Build the entry and insert with URL dedup.
+    let inserted = prepare_transfer_stream(&source, &mode, chrono::Local::now().to_rfc3339());
+    target.add_stream_checked(inserted).map_err(|e| e.to_string())?;
+
+    // 6. Save the target.
+    tokio::task::spawn_blocking(move || target.save())
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?;
+
+    // 7. Move only: remove from the active profile and persist (mirrors
+    //    remove_stream; the stop is a harmless no-op for an idle stream).
+    if mode == TransferMode::Move {
+        {
+            let mut manager = state.stream_manager.write().await;
+            let _ = manager.stop_recording(&stream_id);
+        }
+        let snapshot = {
+            let mut profile = state.active_profile.write().await;
+            profile.streams.retain(|s| s.id != stream_id);
+            profile.clone()
+        };
+        tokio::task::spawn_blocking(move || snapshot.save())
+            .await
+            .map_err(|e| e.to_string())?
+            .map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
