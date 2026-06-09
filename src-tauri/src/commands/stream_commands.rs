@@ -1,7 +1,39 @@
 use crate::app_state::AppState;
 use crate::profile::StreamInfo;
-use crate::stream::manager::StreamStatus;
+use crate::stream::manager::{StreamState, StreamStatus};
 use crate::stream::playlist;
+
+/// Whether a stream transfer leaves the source in place (`Copy`) or removes it
+/// from the active profile (`Move`). Deserialized from the JS string "copy"/"move".
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TransferMode {
+    Copy,
+    Move,
+}
+
+/// Build the `StreamInfo` to insert into the target profile. For `Copy` it gets a
+/// fresh id + `added_at` so it is a distinct entry; for `Move` the id and
+/// `added_at` are preserved. Passwords/usernames/ignorelist are always kept (a
+/// local transfer keeps DPAPI ciphertext valid).
+fn prepare_transfer_stream(source: &StreamInfo, mode: &TransferMode, now: String) -> StreamInfo {
+    let mut out = source.clone();
+    if *mode == TransferMode::Copy {
+        out.id = nanoid::nanoid!();
+        out.added_at = now;
+    }
+    out
+}
+
+/// A move is blocked only while the source stream is actively recording /
+/// connecting / reconnecting. An `Error`-state manager entry can linger during
+/// retries but must not block a move (matches the UI's disabled condition).
+fn move_blocked_by_state(state: &StreamState) -> bool {
+    matches!(
+        state,
+        StreamState::Recording | StreamState::Connecting | StreamState::Reconnecting
+    )
+}
 
 #[tauri::command]
 pub async fn get_streams(state: tauri::State<'_, AppState>) -> Result<Vec<StreamInfo>, String> {
@@ -170,4 +202,49 @@ pub async fn get_stream_status(
 pub async fn get_all_statuses(state: tauri::State<'_, AppState>) -> Result<Vec<StreamStatus>, String> {
     let manager = state.stream_manager.read().await;
     Ok(manager.get_all_statuses())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample() -> StreamInfo {
+        StreamInfo {
+            id: "src-id".into(), url: "http://x".into(), name: "X".into(),
+            format: None, bitrate: None, icy_name: None, icy_genre: None,
+            icy_url: None, ignorelist: vec!["*ad*".into()],
+            username: Some("u".into()), password: Some("DPAPI:abc".into()),
+            added_at: "2026-01-01".into(),
+        }
+    }
+
+    #[test]
+    fn copy_assigns_fresh_id_and_added_at_but_keeps_password() {
+        let src = sample();
+        let out = prepare_transfer_stream(&src, &TransferMode::Copy, "NOW".into());
+        assert_ne!(out.id, src.id, "copy must get a fresh id");
+        assert_eq!(out.added_at, "NOW");
+        assert_eq!(out.password.as_deref(), Some("DPAPI:abc"), "password preserved");
+        assert_eq!(out.url, "http://x");
+        assert_eq!(out.ignorelist, vec!["*ad*".to_string()]);
+    }
+
+    #[test]
+    fn move_preserves_id_and_added_at() {
+        let src = sample();
+        let out = prepare_transfer_stream(&src, &TransferMode::Move, "NOW".into());
+        assert_eq!(out.id, "src-id");
+        assert_eq!(out.added_at, "2026-01-01");
+        assert_eq!(out.password.as_deref(), Some("DPAPI:abc"));
+    }
+
+    #[test]
+    fn move_blocked_only_for_active_states() {
+        assert!(move_blocked_by_state(&StreamState::Recording));
+        assert!(move_blocked_by_state(&StreamState::Connecting));
+        assert!(move_blocked_by_state(&StreamState::Reconnecting));
+        assert!(!move_blocked_by_state(&StreamState::Idle));
+        // An Error-state entry can linger during retries; it must NOT block a move.
+        assert!(!move_blocked_by_state(&StreamState::Error));
+    }
 }
