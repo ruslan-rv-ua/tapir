@@ -1,4 +1,5 @@
 import { Menu, MenuItem, MenuTrigger, Popover, Button, Separator } from "react-aria-components";
+import { Copy, FolderInput } from "lucide-react";
 import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import * as tauri from "../../lib/tauri";
 import { $editStream } from "../../stores/streams";
@@ -14,10 +15,12 @@ interface Props {
   menuFocused: boolean;
   onAddToWishlist: (currentTrack: string) => void;
   onAddToIgnorelist: (currentTrack: string) => void;
+  onCopyToProfile: () => void;
+  onMoveToProfile: () => void;
   onDelete: () => void;
 }
 
-export function StreamContextMenu({ stream, status, menuFocused, onAddToWishlist, onAddToIgnorelist, onDelete }: Props) {
+export function StreamContextMenu({ stream, status, menuFocused, onAddToWishlist, onAddToIgnorelist, onCopyToProfile, onMoveToProfile, onDelete }: Props) {
   const playerStatus = useStore($playerStatus);
   const state = status?.state ?? "idle";
   const isRecording = state === "recording";
@@ -25,6 +28,9 @@ export function StreamContextMenu({ stream, status, menuFocused, onAddToWishlist
     playerStatus.state !== "stopped" &&
     playerStatus.source?.type === "stream" &&
     playerStatus.source.streamId === stream.id;
+
+  const moveDisabled =
+    state === "recording" || state === "connecting" || state === "reconnecting" || isThisStreamPlaying;
 
   const currentTrack = status?.currentTrack
     ? `${status.currentTrack.artist} - ${status.currentTrack.title}`.replace(/^ - | - $/g, "").trim()
@@ -49,6 +55,12 @@ export function StreamContextMenu({ stream, status, menuFocused, onAddToWishlist
           break;
         case "add-ignorelist":
           if (currentTrack) onAddToIgnorelist(currentTrack);
+          break;
+        case "copy-to-profile":
+          onCopyToProfile();
+          break;
+        case "move-to-profile":
+          onMoveToProfile();
           break;
         case "delete":
           onDelete();
@@ -117,6 +129,20 @@ export function StreamContextMenu({ stream, status, menuFocused, onAddToWishlist
               </MenuItem>
             </>
           )}
+          <MenuItem
+            id="copy-to-profile"
+            className="cursor-pointer px-3 py-1.5 text-sm text-slate-200 outline-none hover:bg-slate-700 focus:bg-slate-700"
+          >
+            <span aria-hidden="true" className="mr-2 inline-flex"><Copy size={14} /></span>{m.copy_to_profile()}
+          </MenuItem>
+          <MenuItem
+            id="move-to-profile"
+            isDisabled={moveDisabled}
+            title={moveDisabled ? m.move_disabled_reason() : undefined}
+            className="cursor-pointer px-3 py-1.5 text-sm text-slate-200 outline-none hover:bg-slate-700 focus:bg-slate-700 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-40"
+          >
+            <span aria-hidden="true" className="mr-2 inline-flex"><FolderInput size={14} /></span>{m.move_to_profile()}
+          </MenuItem>
           <Separator className="my-1 border-t border-slate-700" />
           <MenuItem
             id="delete"

@@ -1,0 +1,87 @@
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { render, fireEvent, screen } from "@testing-library/react";
+import type { StreamInfo, StreamStatus } from "../../lib/tauri";
+import { StreamContextMenu } from "./StreamContextMenu";
+import { $playerStatus } from "../../stores/player";
+
+vi.mock("../../i18n/paraglide/messages", () => ({
+  stream_actions: ({ name }: { name: string }) => `Дії для ${name}`,
+  stream_context_menu: () => "Контекстне меню потоку",
+  play_stream: () => "Відтворити потік",
+  stop_stream_playback: () => "Зупинити відтворення",
+  start_recording: () => "Почати запис",
+  stop_recording: () => "Зупинити запис",
+  edit_stream: () => "Редагувати потік",
+  add_to_wishlist: () => "Додати до бажаних",
+  add_to_ignorelist: () => "Додати до ігнор-листа",
+  remove_stream: () => "Видалити потік",
+  copy_to_profile: () => "Копіювати в профіль…",
+  move_to_profile: () => "Перемістити в профіль…",
+  move_disabled_reason: () => "Не можна перемістити активний потік",
+}));
+
+const mkStream = (over: Partial<StreamInfo> = {}): StreamInfo => ({
+  id: "s1", url: "http://x/s1", name: "Radio Paradise", format: "mp3", bitrate: 192,
+  icyName: null, icyGenre: null, icyUrl: null, ignorelist: [], username: null,
+  password: null, addedAt: "2026-01-01T00:00:00Z", ...over,
+});
+
+const mkStatus = (state: StreamStatus["state"]): StreamStatus => ({
+  streamId: "s1", state, currentTrack: null, recordingStartedAt: null,
+  bytesRecorded: 0, tracksRecorded: 0, error: null, reconnectAttempt: null,
+});
+
+function renderMenu(status?: StreamStatus) {
+  const h = {
+    onAddToWishlist: vi.fn(), onAddToIgnorelist: vi.fn(), onDelete: vi.fn(),
+    onCopyToProfile: vi.fn(), onMoveToProfile: vi.fn(),
+  };
+  const utils = render(
+    <StreamContextMenu stream={mkStream()} status={status} menuFocused {...h} />,
+  );
+  return { ...utils, ...h };
+}
+
+afterEach(() => {
+  $playerStatus.set({ state: "stopped", source: null, volume: 0.75, positionMs: null, durationMs: null });
+});
+
+describe("StreamContextMenu — copy/move to profile", () => {
+  const open = (container: HTMLElement) =>
+    fireEvent.click(container.querySelector('button[data-segment="action-menu"]')!);
+
+  it("shows both items and calls handlers when clicked", async () => {
+    const { container, onCopyToProfile, onMoveToProfile } = renderMenu(mkStatus("idle"));
+    open(container);
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Копіювати в профіль…" }));
+    expect(onCopyToProfile).toHaveBeenCalled();
+    open(container);
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Перемістити в профіль…" }));
+    expect(onMoveToProfile).toHaveBeenCalled();
+  });
+
+  it("disables Move while recording", async () => {
+    const { container } = renderMenu(mkStatus("recording"));
+    open(container);
+    const move = await screen.findByRole("menuitem", { name: "Перемістити в профіль…" });
+    expect(move.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("disables Move while this stream is playing", async () => {
+    $playerStatus.set({
+      state: "playing", source: { type: "stream", streamId: "s1" },
+      volume: 0.75, positionMs: null, durationMs: null,
+    });
+    const { container } = renderMenu(mkStatus("idle"));
+    open(container);
+    const move = await screen.findByRole("menuitem", { name: "Перемістити в профіль…" });
+    expect(move.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("keeps Copy enabled while recording", async () => {
+    const { container } = renderMenu(mkStatus("recording"));
+    open(container);
+    const copy = await screen.findByRole("menuitem", { name: "Копіювати в профіль…" });
+    expect(copy.getAttribute("aria-disabled")).not.toBe("true");
+  });
+});
