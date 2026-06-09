@@ -41,6 +41,8 @@ function renderItem(stream = mkStream(), status?: StreamStatus, focusedSeg = "su
         isFocused={(seg) => seg === focusedSeg}
         maxRetries={maxRetries}
         onDelete={() => {}}
+        onCopyToProfile={() => {}}
+        onMoveToProfile={() => {}}
       />
     </ul>,
   );

@@ -1,6 +1,7 @@
 import { createRef } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, fireEvent, act } from "@testing-library/react";
+import { render, fireEvent, act, waitFor, screen } from "@testing-library/react";
+import * as m from "../../i18n/paraglide/messages";
 import { $streams, $statuses } from "../../stores/streams";
 import { $settings } from "../../stores/settings";
 import { $playerStatus } from "../../stores/player";
@@ -17,6 +18,13 @@ vi.mock("../../lib/tauri", () => ({
   removeStream: vi.fn().mockResolvedValue(undefined),
   addToWishlist: vi.fn().mockResolvedValue(undefined),
   addToIgnorelist: vi.fn().mockResolvedValue(undefined),
+  listProfiles: vi.fn().mockResolvedValue([
+    { name: "Default", streamCount: 3, isActive: true },
+    { name: "Jazz", streamCount: 0, isActive: false },
+  ]),
+  copyStreamToProfile: vi.fn().mockResolvedValue(undefined),
+  moveStreamToProfile: vi.fn().mockResolvedValue(undefined),
+  createProfile: vi.fn().mockResolvedValue({ name: "Fresh", streamCount: 0, isActive: false }),
 }));
 
 const mkStream = (id: string, name: string): StreamInfo => ({
@@ -186,5 +194,49 @@ describe("StreamList — mouse double-click honors doubleClickAction", () => {
     fireEvent.doubleClick(recordBtn);
     // The interactive-control guard must swallow the row's dblclick.
     expect(tauri.startRecording).not.toHaveBeenCalled();
+  });
+});
+
+describe("StreamList — copy/move stream to profile", () => {
+  const openMenu = (container: HTMLElement, id: string) =>
+    fireEvent.click(
+      container.querySelector<HTMLElement>(`li[data-item-id="${id}"] button[data-segment="action-menu"]`)!,
+    );
+
+  it("move: sends to the chosen profile and optimistically removes the row", async () => {
+    const { container } = renderList();
+    openMenu(container, "a");
+    fireEvent.click(await screen.findByRole("menuitem", { name: m.move_to_profile() }));
+
+    fireEvent.click(await screen.findByRole("button", { name: "Jazz" }));
+
+    await waitFor(() => expect(tauri.moveStreamToProfile).toHaveBeenCalledWith("a", "Jazz"));
+    await waitFor(() => expect($streams.get().some((s) => s.id === "a")).toBe(false));
+  });
+
+  it("copy: sends to the chosen profile and keeps the row", async () => {
+    const { container } = renderList();
+    openMenu(container, "b");
+    fireEvent.click(await screen.findByRole("menuitem", { name: m.copy_to_profile() }));
+
+    fireEvent.click(await screen.findByRole("button", { name: "Jazz" }));
+
+    await waitFor(() => expect(tauri.copyStreamToProfile).toHaveBeenCalledWith("b", "Jazz"));
+    expect($streams.get().some((s) => s.id === "b")).toBe(true);
+  });
+
+  it("create-new: creates a profile then transfers into it", async () => {
+    const { container } = renderList();
+    openMenu(container, "c");
+    fireEvent.click(await screen.findByRole("menuitem", { name: m.copy_to_profile() }));
+
+    fireEvent.click(await screen.findByRole("button", { name: m.transfer_create_new_profile() }));
+
+    const input = await screen.findByRole("textbox");
+    fireEvent.change(input, { target: { value: "Fresh" } });
+    fireEvent.click(screen.getByRole("button", { name: m.ok() }));
+
+    await waitFor(() => expect(tauri.createProfile).toHaveBeenCalledWith("Fresh"));
+    await waitFor(() => expect(tauri.copyStreamToProfile).toHaveBeenCalledWith("c", "Fresh"));
   });
 });

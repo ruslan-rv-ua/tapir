@@ -40,6 +40,8 @@ interface Props {
   isActiveRow: boolean;
   maxRetries: number;
   onDelete: () => void;
+  onCopyToProfile: () => void;
+  onMoveToProfile: () => void;
   /** Primary action on a mouse double-click of the row (record/play per setting). */
   onActivate?: () => void;
 }
@@ -51,6 +53,8 @@ export function StreamItem({
   isActiveRow,
   maxRetries,
   onDelete,
+  onCopyToProfile,
+  onMoveToProfile,
   onActivate,
 }: Props) {
   const state = status?.state ?? "idle";
@@ -293,6 +297,8 @@ export function StreamItem({
           menuFocused={isFocused("action-menu")}
           onAddToWishlist={(track) => setPatternDialog({ listType: "wishlist", initialPattern: track })}
           onAddToIgnorelist={(track) => setPatternDialog({ listType: "ignorelist", initialPattern: track })}
+          onCopyToProfile={onCopyToProfile}
+          onMoveToProfile={onMoveToProfile}
           onDelete={onDelete}
         />
       </div>
