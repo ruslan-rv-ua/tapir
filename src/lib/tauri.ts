@@ -452,3 +452,9 @@ export async function beginImport(): Promise<ImportPreview | null> {
 export async function commitImport(profileJson: string, name: string): Promise<ProfileMeta> {
   return invoke("commit_import", { profileJson, name });
 }
+export async function copyStreamToProfile(streamId: string, targetProfile: string): Promise<void> {
+  return invoke("transfer_stream_to_profile", { streamId, targetProfile, mode: "copy" });
+}
+export async function moveStreamToProfile(streamId: string, targetProfile: string): Promise<void> {
+  return invoke("transfer_stream_to_profile", { streamId, targetProfile, mode: "move" });
+}
