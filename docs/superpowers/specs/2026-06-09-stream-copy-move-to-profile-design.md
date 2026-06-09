@@ -79,13 +79,15 @@ Steps:
    safety net).
 2. **Find the source stream** by `id` in the active profile (clone it). Not
    found → error.
-3. **Move-guard** — if a live recording task exists for this `id` in
-   `stream_manager`, return `Forbidden`. (UI also disables the item; this guards
-   data integrity if bypassed.) The player-source case is **UI-only**: the menu
-   disables move while playing, but the backend does not hard-guard it, because
-   the player holds the resolved URL rather than the profile entry, so removing
-   the entry does not interrupt playback — it is a UX nicety, not an integrity
-   concern.
+3. **Move-guard** — if `stream_manager.entries.contains_key(&stream_id)`, return
+   `Forbidden`. The manager holds an entry for a stream exactly while it is
+   recording / connecting / reconnecting (this is the same set `start_all`
+   skips), so this single check matches the UI's disabled condition. A stream in
+   `error` state has no entry, so move is allowed (consistent with the UI). The
+   player-source case is **UI-only**: the menu disables move while playing, but
+   the backend does not hard-guard it, because the player holds the resolved URL
+   rather than the profile entry, so removing the entry does not interrupt
+   playback — it is a UX nicety, not an integrity concern.
 4. **Load target** profile from disk (`Profile::load(target)`), on a blocking
    thread.
 5. **Dedup by URL** — if any `target.streams[*].url == source.url`, return a
@@ -102,6 +104,10 @@ Steps:
    (`profile.streams.retain(|s| s.id != stream_id)`) and persist a snapshot —
    mirroring `remove_stream` (best-effort `stop_recording` is unnecessary because
    move is guarded against active streams, but a best-effort stop is harmless).
+   Like `remove_stream`, move does **not** touch `scheduled_recordings` /
+   `playerSession`: scheduling is a data-model field with no scheduler reading it
+   yet, so there is no dangling-reference behavior to define here — staying
+   identical to delete keeps it consistent.
 9. Return `()`. The frontend updates its store optimistically.
 
 Error types reuse `RadioError` (`Forbidden`, `NotFound`, `Conflict`,
@@ -138,14 +144,23 @@ following `ConfirmDialog` / `ProfileNameDialog` structure:
   ("Копіювати потік у профіль" / "Перемістити потік у профіль", including the
   stream name).
 - A keyboard-navigable list of **non-active** profiles (from `listProfiles()`,
-  filtered `!isActive`), each selectable; selecting one performs the transfer.
+  filtered `!isActive`), each row showing name + stream count (`streamCount` from
+  `ProfileMeta`); selecting one performs the transfer.
 - A trailing **"+ Новий профіль…"** entry.
 - Empty state when no other profiles exist → only the create-new path is shown.
-- Escape / Cancel closes; focus returns to the originating ⋯ trigger.
+- Escape / Cancel closes the dialog.
 
-**Create-new sub-flow:** the "Новий профіль…" entry opens the existing
-`ProfileNameDialog` → `createProfile(name)` (reusing its name validation and
-inline error display) → then immediately copy/move into the new profile.
+**Create-new sub-flow (single-level, no stacked modals):** selecting
+"Новий профіль…" **replaces** the picker with the existing `ProfileNameDialog`
+(same one-dialog-at-a-time pattern as `ProfilesPanel`'s `subDialog`) →
+`createProfile(name)` (reusing its name validation and inline error display) →
+then immediately copy/move into the new profile. Only one modal is ever mounted.
+
+**Focus return on close:**
+- Copy success, or any cancel → focus returns to the originating ⋯ trigger.
+- **Move success → the row (and its ⋯ trigger) is removed**, so focus is *not*
+  returned to it; `CompositeList` handles moving focus to an adjacent row, exactly
+  as on delete.
 
 **State ownership:** lift transfer state into
 [StreamList.tsx](../../../src/components/streams/StreamList.tsx), which already
@@ -178,8 +193,8 @@ untyped-paraglide errors and is not a gate).
 
 ### 6. Accessibility
 
-- Dialog: `aria-modal`, focus trap, Escape closes, focus returns to the ⋯
-  trigger on close.
+- Dialog: `aria-modal`, focus trap, Escape closes. Focus return follows the
+  rules above (⋯ trigger on copy/cancel; `CompositeList` on move success).
 - Profile list fully keyboard-navigable.
 - Disabled "Перемістити" conveys its reason via `title` / `aria`.
 - Polite announcements via `useAnnounce` on copy/move success, consistent with
@@ -202,6 +217,8 @@ untyped-paraglide errors and is not a gate).
 - "Перемістити" is disabled when recording / connecting / reconnecting / playing.
 - the picker lists non-active profiles + the create-new entry.
 - selecting a profile calls the correct `tauri` wrapper.
+- the "Новий профіль…" entry creates a profile then transfers into it
+  (`createProfile` followed by the copy/move wrapper).
 - move optimistically removes the stream from `$streams`.
 - a duplicate conflict surfaces the "already in profile" message.
 
@@ -215,3 +232,6 @@ untyped-paraglide errors and is not a gate).
 - **Save failure on the target:** error surfaced; for move, the source is only
   removed *after* the target save succeeds, so a failed target save leaves the
   source intact.
+- **Create-new then transfer fails:** the two backend calls are not atomic, but a
+  freshly created profile is empty so the URL dedup cannot conflict; the only
+  realistic failure is a disk error, which leaves a harmless empty new profile.
