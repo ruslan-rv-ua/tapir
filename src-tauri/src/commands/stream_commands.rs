@@ -252,8 +252,7 @@ pub async fn transfer_stream_to_profile(
     }
 
     // 4. Load the target profile off the async worker.
-    let target_name = target_profile.clone();
-    let mut target = tokio::task::spawn_blocking(move || Profile::load(&target_name))
+    let mut target = tokio::task::spawn_blocking(move || Profile::load(&target_profile))
         .await
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())?;
