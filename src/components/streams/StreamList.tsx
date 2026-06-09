@@ -54,7 +54,7 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
   };
 
   const doTransfer = async (mode: "copy" | "move", streamId: string, targetProfile: string) => {
-    const name = streams.find((s) => s.id === streamId)?.name ?? "";
+    const name = $streams.get().find((s) => s.id === streamId)?.name ?? "";
     try {
       if (mode === "copy") await tauri.copyStreamToProfile(streamId, targetProfile);
       else await tauri.moveStreamToProfile(streamId, targetProfile);
@@ -71,11 +71,12 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
     } catch (e) {
       const msg = String(e);
       if (msg.startsWith("Conflict:")) {
+        // Keep the picker open so the user can pick a different profile.
         addToast(m.stream_already_in_profile({ name, profile: targetProfile }), "info");
       } else {
         addToast(msg, "error");
+        setTransfer(null);
       }
-      setTransfer(null);
     }
   };
 

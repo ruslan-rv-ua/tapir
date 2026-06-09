@@ -5,6 +5,7 @@ import * as m from "../../i18n/paraglide/messages";
 import { $streams, $statuses } from "../../stores/streams";
 import { $settings } from "../../stores/settings";
 import { $playerStatus } from "../../stores/player";
+import { $toasts } from "../../stores/toasts";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import type { StreamInfo, GlobalSettings } from "../../lib/tauri";
 import * as tauri from "../../lib/tauri";
@@ -57,6 +58,7 @@ beforeEach(() => {
   $settings.set(null);
   $playerStatus.set({ state: "stopped", source: null, volume: 0.75, positionMs: null, durationMs: null });
   $streams.set([mkStream("a", "Alpha"), mkStream("b", "Bravo"), mkStream("c", "Charlie")]);
+  $toasts.set([]);
 });
 
 function renderList() {
@@ -238,5 +240,24 @@ describe("StreamList — copy/move stream to profile", () => {
 
     await waitFor(() => expect(tauri.createProfile).toHaveBeenCalledWith("Fresh"));
     await waitFor(() => expect(tauri.copyStreamToProfile).toHaveBeenCalledWith("c", "Fresh"));
+  });
+
+  it("conflict: shows a toast but keeps the picker open and does not remove the row", async () => {
+    vi.mocked(tauri.moveStreamToProfile).mockRejectedValueOnce("Conflict: Jazz");
+
+    const { container } = renderList();
+    openMenu(container, "a");
+    fireEvent.click(await screen.findByRole("menuitem", { name: m.move_to_profile() }));
+
+    fireEvent.click(await screen.findByRole("button", { name: "Jazz" }));
+
+    await waitFor(() => expect(tauri.moveStreamToProfile).toHaveBeenCalledWith("a", "Jazz"));
+    expect($streams.get().some((s) => s.id === "a")).toBe(true);
+    await waitFor(() =>
+      expect(
+        $toasts.get().some((t) => t.message === m.stream_already_in_profile({ name: "Alpha", profile: "Jazz" })),
+      ).toBe(true),
+    );
+    expect(screen.getByRole("button", { name: "Jazz" })).toBeTruthy();
   });
 });
