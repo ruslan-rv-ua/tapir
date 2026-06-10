@@ -22,7 +22,7 @@
 | 3C | Saved Songs Manager | Менеджер записаних файлів, редагування тегів | ✅ Complete |
 | 3D | Scheduler | Заплановані записи (одноразові + повторювані) | ⬜ |
 | 3E | Single Instance | Named Mutex, передача CLI args | ⬜ |
-| 3F | Profile Manager | Повний CRUD профілів, import/export | ⬜ |
+| 3F | Profile Manager | Повний CRUD профілів, import/export | ✅ Complete |
 | 3G | CLI Arguments | Аргументи командного рядка | ⬜ |
 | 3H | Post-processing | Зовнішні програми після запису | ⬜ |
 | 3I | Polish Bundle | High Contrast, Autostart, Log rotation, Bandwidth limiting | ⬜ |
@@ -437,13 +437,13 @@
 | `ProfileSwitcher.tsx` (оновлення) | Активувати повний функціонал замість disabled placeholder |
 
 **Критерії "Done":**
-- [ ] Список профілів з поточним позначеним
-- [ ] Створення нового профілю
-- [ ] Перемикання між профілями
-- [ ] Видалення профілю (крім Default, з confirm)
-- [ ] Export/import `.tapirprofile` файлу
-- [ ] Confirm при switch якщо є активні записи
-- [ ] ProfileSwitcher у ActivityBar працює
+- [x] Список профілів з поточним позначеним
+- [x] Створення нового профілю
+- [x] Перемикання між профілями
+- [x] Видалення профілю (крім Default, з confirm)
+- [x] Export/import `.tapirprofile` файлу
+- [x] Confirm при switch якщо є активні записи
+- [x] ProfileSwitcher у ActivityBar працює
 
 ---
 

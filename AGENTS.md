@@ -17,16 +17,10 @@ See [docs/implementation-phases.md](docs/implementation-phases.md) for the full 
 | Phase 3C — Saved Songs Manager | ✅ Complete | merged to `develop` |
 | Phase 3D — Scheduler | ⬜ Not started | — |
 | Phase 3E — Single Instance | ⬜ Not started | — |
-| Phase 3F — Profile Manager | 🔄 In progress | `feature/pahse-3F-profiles` |
+| Phase 3F — Profile Manager | ✅ Complete | `feature/pahse-3F-profiles` |
 | Phase 3G — CLI Arguments | ⬜ Not started | — |
 | Phase 3H — Post-processing | ⬜ Not started | — |
 | Phase 3I — Polish Bundle | ⬜ Not started | — |
-
-**Phase 3F Profile Manager — поточна робота:**
-- ADR прийнято: менеджер профілів стає **екраном** (не модалкою). Див. [docs/decisions/2026-06-02-profiles-as-screen.md](docs/decisions/2026-06-02-profiles-as-screen.md).
-- Spec і план: [docs/superpowers/plans/2026-06-01-phase-3f-profile-manager.md](docs/superpowers/plans/2026-06-01-phase-3f-profile-manager.md)
-- Backend: `profile.rs` CRUD + `commands/profile_commands.rs` IPC
-- Frontend: `ProfilesPanel` як окрема секція в ActivityBar (поряд з Streams/Browser/Songs тощо)
 
 ## Developer Context
 
