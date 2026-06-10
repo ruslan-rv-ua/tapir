@@ -173,6 +173,35 @@ pub fn notify_recording_toggle(app: &tauri::AppHandle, outcome: ToggleOutcome) {
     }
 }
 
+/// Body for the stop-all toast. `0` is not "stopped 0 streams" — recording
+/// simply wasn't running, and the silent no-op is unacceptable for NVDA.
+fn stop_all_toast_body(stopped: usize) -> String {
+    if stopped > 0 {
+        format!("Запис зупинено: {stopped} {}", plural_streams(stopped))
+    } else {
+        "Запис не йшов".to_string()
+    }
+}
+
+/// Show the NVDA-readable toast for the global stop-all shortcut (KB-12).
+///
+/// Like `notify_recording_toggle`: intentionally bypasses
+/// `show_tray_notifications` (sole feedback for a backgrounded hotkey) and is
+/// synchronous — the shortcut handler calls it from a spawned task.
+pub fn notify_stop_all(app: &tauri::AppHandle, stopped: usize) {
+    let body = stop_all_toast_body(stopped);
+    log::info!("notify_stop_all: {body:?}");
+    if let Err(e) = app
+        .notification()
+        .builder()
+        .title("Tapir")
+        .body(&body)
+        .show()
+    {
+        log::warn!("notify_stop_all: failed to show toast: {e}");
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -201,5 +230,17 @@ mod tests {
         assert_eq!(plural_streams(13), "потоків");
         assert_eq!(plural_streams(14), "потоків");
         assert_eq!(plural_streams(25), "потоків");
+    }
+
+    #[test]
+    fn stop_all_toast_body_with_streams() {
+        assert_eq!(stop_all_toast_body(1), "Запис зупинено: 1 потік");
+        assert_eq!(stop_all_toast_body(3), "Запис зупинено: 3 потоки");
+        assert_eq!(stop_all_toast_body(5), "Запис зупинено: 5 потоків");
+    }
+
+    #[test]
+    fn stop_all_toast_body_when_idle() {
+        assert_eq!(stop_all_toast_body(0), "Запис не йшов");
     }
 }
