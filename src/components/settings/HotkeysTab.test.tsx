@@ -93,9 +93,9 @@ describe("HotkeysTab — reset to defaults (KB-10)", () => {
     // Store gets the defaults from the backend command.
     await waitFor(() => {
       expect($settings.get()?.hotkeys.toggleRecording).toBe("Ctrl+Shift+R");
+      expect($settings.get()?.hotkeys.toggleWindow).toBe("Ctrl+Shift+H");
+      expect($announcer.get()?.message).toBe(m.settings_hotkeys_reset_done());
     });
-    expect($settings.get()?.hotkeys.toggleWindow).toBe("Ctrl+Shift+H");
-    expect($announcer.get()?.message).toBe(m.settings_hotkeys_reset_done());
 
     // Debounced auto-save (300ms) persists and re-registers.
     await waitFor(() => {
