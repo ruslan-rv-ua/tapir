@@ -1,6 +1,6 @@
 import { useStore } from "@nanostores/react";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { $streams, $statuses, $showAddStreamDialog, $importCandidates, $showExportStreamsDialog } from "../../stores/streams";
+import { $streams, $statuses, $showAddStreamDialog } from "../../stores/streams";
 import { $commandPaletteOpen } from "../../stores/navigation";
 import { addToast } from "../../stores/toasts";
 import * as tauri from "../../lib/tauri";
@@ -57,28 +57,6 @@ export function CommandPalette() {
       action: () => {
         close();
         $showAddStreamDialog.set(true);
-      },
-    },
-    {
-      id: "import-streams",
-      label: m.streams_import_action(),
-      action: async () => {
-        close();
-        try {
-          const candidates = await tauri.beginStreamImport();
-          if (!candidates) { addToast(m.streams_import_none(), "info"); return; }
-          $importCandidates.set(candidates);
-        } catch (e) {
-          addToast(String(e), "error");
-        }
-      },
-    },
-    {
-      id: "export-streams",
-      label: m.streams_export_action(),
-      action: () => {
-        close();
-        $showExportStreamsDialog.set(true);
       },
     },
     {

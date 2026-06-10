@@ -16,7 +16,12 @@ vi.mock("../../lib/tauri", () => ({
   removeStream: vi.fn().mockResolvedValue(undefined),
   addToWishlist: vi.fn().mockResolvedValue(undefined),
   addToIgnorelist: vi.fn().mockResolvedValue(undefined),
+  beginStreamImport: vi.fn().mockResolvedValue(null),
 }));
+
+// ImportStreamsDialog uses useTauriEvent; stub it so jsdom doesn't try to call
+// the Tauri event bridge (which doesn't exist in the test environment).
+vi.mock("../../hooks/useTauriEvent", () => ({ useTauriEvent: vi.fn() }));
 
 const mkStream = (id: string, name: string): StreamInfo => ({
   id,
