@@ -1,13 +1,22 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, fireEvent } from "@testing-library/react";
+import { render, fireEvent, waitFor } from "@testing-library/react";
 import * as m from "../../i18n/paraglide/messages";
 import { HotkeysTab } from "./HotkeysTab";
 import { $settings } from "../../stores/settings";
 import type { GlobalSettings } from "../../lib/tauri";
+import * as tauri from "../../lib/tauri";
+import { $announcer } from "../../stores/announcer";
 
 vi.mock("../../lib/tauri", () => ({
   saveSettings: vi.fn().mockResolvedValue(undefined),
   registerHotkeys: vi.fn().mockResolvedValue([]),
+  defaultHotkeys: vi.fn().mockResolvedValue({
+    toggleRecording: "Ctrl+Shift+R",
+    togglePlayback: "Ctrl+Shift+P",
+    volumeUp: "Ctrl+Shift+Up",
+    volumeDown: "Ctrl+Shift+Down",
+    toggleWindow: "Ctrl+Shift+H",
+  }),
 }));
 
 const baseSettings: GlobalSettings = {
@@ -39,6 +48,7 @@ const baseSettings: GlobalSettings = {
 beforeEach(() => {
   vi.clearAllMocks();
   $settings.set(baseSettings);
+  $announcer.set(null);
 });
 
 afterEach(() => {
@@ -72,5 +82,25 @@ describe("HotkeysTab — reserved-combo collision (KB-09)", () => {
     fireEvent.keyDown(button, { code: "KeyJ", key: "j", ctrlKey: true, shiftKey: true });
 
     expect($settings.get()?.hotkeys.toggleRecording).toBe("Ctrl+Shift+J");
+  });
+});
+
+describe("HotkeysTab — reset to defaults (KB-10)", () => {
+  it("resets all combos, saves, re-registers and announces", async () => {
+    const { getByRole } = render(<HotkeysTab />);
+    fireEvent.click(getByRole("button", { name: m.settings_hotkeys_reset() }));
+
+    // Store gets the defaults from the backend command.
+    await waitFor(() => {
+      expect($settings.get()?.hotkeys.toggleRecording).toBe("Ctrl+Shift+R");
+    });
+    expect($settings.get()?.hotkeys.toggleWindow).toBe("Ctrl+Shift+H");
+    expect($announcer.get()?.message).toBe(m.settings_hotkeys_reset_done());
+
+    // Debounced auto-save (300ms) persists and re-registers.
+    await waitFor(() => {
+      expect(tauri.saveSettings).toHaveBeenCalled();
+      expect(tauri.registerHotkeys).toHaveBeenCalled();
+    });
   });
 });

@@ -45,6 +45,15 @@ export function HotkeysTab() {
     }
   }
 
+  async function resetToDefaults() {
+    const defaults = await tauri.defaultHotkeys();
+    const current = $settings.get();
+    if (!current) return;
+    $settings.set({ ...current, hotkeys: defaults });
+    save();
+    announce(m.settings_hotkeys_reset_done(), "polite");
+  }
+
   function validateHotkey(currentKey: keyof HotkeyMap) {
     return (combo: string): string | null => {
       if (!combo) return null;
@@ -74,6 +83,13 @@ export function HotkeysTab() {
           onValidate={validateHotkey(key)}
         />
       ))}
+
+      <button
+        onClick={resetToDefaults}
+        className="rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-600 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText]"
+      >
+        {m.settings_hotkeys_reset()}
+      </button>
 
       {registrationErrors.length > 0 && (
         <div
