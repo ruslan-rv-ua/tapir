@@ -3,6 +3,7 @@ import type { RefObject } from "react";
 import { Slider, SliderThumb, SliderTrack } from "react-aria-components";
 import { useStore } from "@nanostores/react";
 import { $playerStatus } from "../../stores/player";
+import { $settings } from "../../stores/settings";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 
@@ -13,6 +14,7 @@ interface VolumeSliderProps {
 
 export function VolumeSlider({ inputRef, onNavigate }: VolumeSliderProps) {
   const { volume } = useStore($playerStatus);
+  const step = useStore($settings)?.volumeStepPercent ?? 5;
   const storePercent = Math.round(volume * 100);
   const [dragPercent, setDragPercent] = useState<number | null>(null);
   const percent = dragPercent ?? storePercent;
@@ -36,7 +38,7 @@ export function VolumeSlider({ inputRef, onNavigate }: VolumeSliderProps) {
       minValue={0}
       maxValue={100}
       value={percent}
-      step={1}
+      step={step}
       onChange={(v) => {
         setDragPercent(v);
         if (!isDraggingRef.current) {
