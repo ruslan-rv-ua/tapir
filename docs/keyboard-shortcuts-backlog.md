@@ -163,9 +163,19 @@ JS у Tauri-webview.
   Тести: [reservedShortcuts.test.ts](../src/lib/reservedShortcuts.test.ts),
   [HotkeysTab.test.tsx](../src/components/settings/HotkeysTab.test.tsx).
 
-### ☐ KB-10 · 🔍 Reset-to-defaults для хоткеїв
+### [x] KB-10 · 🔍 Reset-to-defaults для хоткеїв
 Перевірити наявність відкату до дефолтів у Settings → Hotkeys.
 - **Готово коли:** користувач може повернути дефолтні комбінації однією дією.
+- **Зроблено (2026-06-10):** відкату не було — додано кнопку «Скинути до
+  стандартних» у Settings → Hotkeys
+  ([HotkeysTab.tsx](../src/components/settings/HotkeysTab.tsx)). Дефолти віддає
+  нова Tauri-команда `default_hotkeys`
+  ([settings_commands.rs](../src-tauri/src/commands/settings_commands.rs)) —
+  єдине джерело правди `HotkeyMap::default()`. Далі звичний шлях: store →
+  auto-save → `registerHotkeys`; помилки реєстрації — у наявний `role="alert"`;
+  polite-оголошення для NVDA. Без підтвердження (дія відворотна). Спека/план:
+  `docs/superpowers/{specs,plans}/2026-06-10-kb10-hotkeys-reset*`. Тест:
+  [HotkeysTab.test.tsx](../src/components/settings/HotkeysTab.test.tsx).
 
 ### [x] KB-11 · ✨ Зафіксувати позицію щодо асиметрії конфігурованості
 Tier 1 (OS) конфігуровний, Tier 2 (`Ctrl+K`/`Alt+digit`) — хардкод. Зробити це
