@@ -31,6 +31,7 @@ const baseSettings: GlobalSettings = {
     volumeUp: "",
     volumeDown: "",
     toggleWindow: "",
+    stopAll: "",
   },
   logRotation: true,
   logMaxSizeMb: 10,

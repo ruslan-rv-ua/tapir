@@ -3,7 +3,7 @@
 - **Тип:** живий довідник (reference), **не** ADR. Тут — *що забіндано зараз*;
   *чому* саме так — у відповідних ADR (посилання в рядках).
 - **Оновлювати:** при кожному додаванні/зміні названого шортката (Tier 1–2).
-- **Останнє звірення з кодом:** 2026-06-07.
+- **Останнє звірення з кодом:** 2026-06-10.
 
 ## Як читати
 
@@ -37,13 +37,14 @@ OS-хоткей на `Ctrl+K`/`Alt+digit`/`F6`/… — гард і реєстр 
 | `Ctrl+Shift+Up` | volume_up (+5%) | OS | ✅ |
 | `Ctrl+Shift+Down` | volume_down (−5%) | OS | ✅ |
 | `Ctrl+Shift+H` | toggle_window (показати/сховати) | OS | ✅ |
+| `Ctrl+Shift+S` | stop_all (зупинити весь запис, тост для NVDA) | OS | ✅ |
 | `Ctrl+Shift+M` | toggle_mute (вимкнути/увімкнути звук) | OS | ⬜ |
-| `Ctrl+Shift+S` | stop_all (зупинити весь запис) | OS | ⬜ |
-| `Ctrl+Shift+Right` / `Ctrl+Shift+Left` | наступний / попередній трек у плеєрі (потребує моделі черги) | OS | ⬜ |
 
-> ⬜-кандидати `Ctrl+Shift+M` / `Ctrl+Shift+S` / `Ctrl+Shift+←→` — з
-> [KB-12](keyboard-shortcuts-backlog.md#L173); патерн `Ctrl+Shift+*`, без колізій з
-> webview-резервами (валідація KeyRecorder, KB-09).
+> ⬜-кандидат `Ctrl+Shift+M` — з [KB-12](keyboard-shortcuts-backlog.md#L195):
+> відкладено (2026-06-10) — mute-логіка живе у фронтенді (`$muteState`),
+> глобальний хоткей потребує моста Rust→webview. Там само вирішено: глобальний
+> stop-playback не додаємо (`Ctrl+Shift+P` достатньо), next/prev трек
+> (`Ctrl+Shift+←/→`) відхилено до появи моделі черги плеєра.
 
 ## Tier 2 — глобальні у webview
 

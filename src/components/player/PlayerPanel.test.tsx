@@ -19,7 +19,7 @@ const baseSettings: GlobalSettings = {
   diskSpaceThresholdGb: 1, doubleClickAction: "play", bandwidthLimitKbps: 0,
   autostart: false, autoAdvance: true, prevRestartThresholdMs: 0,
   hotkeys: {
-    toggleRecording: "", togglePlayback: "", volumeUp: "", volumeDown: "", toggleWindow: "",
+    toggleRecording: "", togglePlayback: "", volumeUp: "", volumeDown: "", toggleWindow: "", stopAll: "",
   },
   logRotation: true, logMaxSizeMb: 10, logLevel: "info",
 };

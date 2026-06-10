@@ -3,7 +3,8 @@
 //! Used by the global `toggle_recording` shortcut. The pure helpers
 //! (`is_active`, `count_active`, `decide`) are unit-tested; `toggle_all` is
 //! thin orchestration over `StreamManager::{start_all, stop_all}` and is
-//! exercised via manual/integration runs.
+//! exercised via manual/integration runs. `stop_all_now` (global stop-all
+//! shortcut, KB-12) is likewise thin orchestration.
 
 use crate::app_state::AppState;
 use crate::stream::manager::{StreamState, StreamStatus};
@@ -52,6 +53,16 @@ pub fn decide(active_count: usize) -> ToggleAction {
     }
 }
 
+/// Stop all active recordings unconditionally; returns how many were active.
+/// Used by the global `stop_all` shortcut (KB-12): unlike `toggle_all` it can
+/// never start anything, so it is safe to mash.
+pub async fn stop_all_now(state: &AppState) -> usize {
+    let mut mgr = state.stream_manager.write().await;
+    let stopped = count_active(&mgr.get_all_statuses());
+    mgr.stop_all();
+    stopped
+}
+
 /// Toggle recording for the whole active profile. Reads the manager to decide,
 /// then reuses `stop_all` / `start_all`. Returns the outcome for the toast.
 pub async fn toggle_all(state: &AppState) -> ToggleOutcome {
@@ -61,12 +72,7 @@ pub async fn toggle_all(state: &AppState) -> ToggleOutcome {
     };
 
     match decide(active) {
-        ToggleAction::Stop => {
-            let mut mgr = state.stream_manager.write().await;
-            let stopped = count_active(&mgr.get_all_statuses());
-            mgr.stop_all();
-            ToggleOutcome::Stopped(stopped)
-        }
+        ToggleAction::Stop => ToggleOutcome::Stopped(stop_all_now(state).await),
         ToggleAction::Start => {
             let (streams, settings) = {
                 let profile = state.active_profile.read().await;
