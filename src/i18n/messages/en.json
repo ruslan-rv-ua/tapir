@@ -251,6 +251,8 @@
   "settings_hotkey_action_row_menu": "Row menu",
   "settings_hotkey_changed": "Hotkey changed: {combo}",
   "settings_hotkey_registration_failed": "Failed to register hotkey {combo}",
+  "settings_hotkeys_reset": "Reset to defaults",
+  "settings_hotkeys_reset_done": "Hotkeys reset to defaults",
   "settings_auto_advance": "Auto-play next track",
   "settings_prev_restart_threshold": "“Previous” restarts the track if played longer than (seconds, 0 = off)",
   "settings_output_device": "Output device",
