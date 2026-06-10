@@ -66,21 +66,25 @@ export function CommandPalette() {
         close();
         try {
           const candidates = await tauri.beginStreamImport();
-          if (!candidates) { addToast(m.streams_import_none(), "info"); return; }
+          if (candidates === null) return; // file picker cancelled — stay silent
+          if (candidates.length === 0) { addToast(m.streams_import_none(), "info"); return; }
           $importCandidates.set(candidates);
         } catch (e) {
           addToast(String(e), "error");
         }
       },
     },
-    {
-      id: "export-streams",
-      label: m.streams_export_action(),
-      action: () => {
-        close();
-        $showExportStreamsDialog.set(true);
-      },
-    },
+    // Nothing to export from an empty profile — mirror the toolbar's disabled state.
+    ...(streams.length > 0
+      ? [{
+          id: "export-streams",
+          label: m.streams_export_action(),
+          action: () => {
+            close();
+            $showExportStreamsDialog.set(true);
+          },
+        }]
+      : []),
     {
       id: "record-all",
       label: m.record_all(),

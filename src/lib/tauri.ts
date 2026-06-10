@@ -486,6 +486,7 @@ export interface StreamImportResult {
   skipped: number;
 }
 
+/** `null` = the user cancelled the file picker; `[]` = the file held no streams. */
 export async function beginStreamImport(): Promise<ImportCandidate[] | null> {
   return invoke("begin_stream_import");
 }
@@ -497,6 +498,7 @@ export async function commitStreamImport(
 ): Promise<StreamImportResult> {
   return invoke("commit_stream_import", { selected });
 }
-export async function exportStreams(format: "m3u8" | "pls"): Promise<void> {
+/** Resolves to `true` when a file was written, `false` when the save dialog was cancelled. */
+export async function exportStreams(format: "m3u8" | "pls"): Promise<boolean> {
   return invoke("export_streams", { format });
 }

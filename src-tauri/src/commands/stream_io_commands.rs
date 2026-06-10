@@ -58,8 +58,19 @@ pub fn build_candidates(entries: Vec<playlist::ParsedEntry>, existing_urls: &[St
         .collect()
 }
 
-/// Open a file picker, parse the chosen playlist, and return candidates. Returns
-/// `None` when the user cancels or the file holds no importable streams.
+/// Decode playlist bytes: UTF-8 when valid (BOM stripped), otherwise fall back
+/// to Windows-1251 — legacy Winamp/SHOUTcast playlists with Cyrillic titles are
+/// almost always cp1251.
+fn decode_playlist_bytes(bytes: &[u8]) -> String {
+    match std::str::from_utf8(bytes) {
+        Ok(s) => crate::settings::strip_bom(s).to_string(),
+        Err(_) => encoding_rs::WINDOWS_1251.decode(bytes).0.into_owned(),
+    }
+}
+
+/// Open a file picker, parse the chosen playlist, and return candidates.
+/// `None` means the user cancelled the picker; an empty Vec means the chosen
+/// file held no importable streams — the frontend reports those differently.
 #[tauri::command]
 pub async fn begin_stream_import(
     app: AppHandle,
@@ -74,12 +85,9 @@ pub async fn begin_stream_import(
         Some(FilePath::Path(p)) => p,
         _ => return Ok(None),
     };
-    let content = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    let content = crate::settings::strip_bom(&content);
-    let entries = playlist::parse_playlist_all(content);
-    if entries.is_empty() {
-        return Ok(None);
-    }
+    let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
+    let content = decode_playlist_bytes(&bytes);
+    let entries = playlist::parse_playlist_all(&content);
     let existing: Vec<String> = {
         let profile = state.active_profile.read().await;
         profile.streams.iter().map(|s| s.url.clone()).collect()
@@ -159,13 +167,15 @@ pub async fn commit_stream_import(
 }
 
 /// Serialize the active profile's streams to the chosen format and write them to
-/// a user-picked file. `fmt` is "m3u8" (default) or "pls".
+/// a user-picked file. `format` is "m3u8" (default) or "pls". Returns `true`
+/// when a file was actually written, `false` when the user cancelled the save
+/// dialog — so the frontend only announces success for a real write.
 #[tauri::command]
 pub async fn export_streams(
     app: AppHandle,
     format: String,
     state: State<'_, AppState>,
-) -> Result<(), String> {
+) -> Result<bool, String> {
     let (streams, profile_name) = {
         let profile = state.active_profile.read().await;
         (profile.streams.clone(), profile.name.clone())
@@ -182,8 +192,11 @@ pub async fn export_streams(
         .add_filter("Playlist", &[ext])
         .blocking_save_file();
     match path {
-        Some(FilePath::Path(p)) => std::fs::write(&p, content).map_err(|e| e.to_string()),
-        _ => Ok(()),
+        Some(FilePath::Path(p)) => {
+            std::fs::write(&p, content).map_err(|e| e.to_string())?;
+            Ok(true)
+        }
+        _ => Ok(false),
     }
 }
 
@@ -193,6 +206,22 @@ mod tests {
 
     fn entry(url: &str, title: Option<&str>) -> playlist::ParsedEntry {
         playlist::ParsedEntry { url: url.into(), title: title.map(|t| t.to_string()) }
+    }
+
+    #[test]
+    fn decode_playlist_bytes_strips_utf8_bom() {
+        let bytes = b"\xEF\xBB\xBF[playlist]\nFile1=https://a/1\n";
+        assert_eq!(decode_playlist_bytes(bytes), "[playlist]\nFile1=https://a/1\n");
+    }
+
+    #[test]
+    fn decode_playlist_bytes_falls_back_to_cp1251() {
+        // "Радіо" in Windows-1251 (invalid as UTF-8)
+        let mut bytes = b"#EXTM3U\n#EXTINF:-1,".to_vec();
+        bytes.extend_from_slice(&[0xD0, 0xE0, 0xE4, 0xB3, 0xEE]);
+        bytes.extend_from_slice(b"\nhttps://a/1\n");
+        let decoded = decode_playlist_bytes(&bytes);
+        assert!(decoded.contains("Радіо"), "got: {decoded}");
     }
 
     #[test]

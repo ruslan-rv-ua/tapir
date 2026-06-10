@@ -244,7 +244,8 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const handleImport = async () => {
     try {
       const candidates = await tauri.beginStreamImport();
-      if (!candidates) { addToast(m.streams_import_none(), "info"); return; }
+      if (candidates === null) return; // file picker cancelled — stay silent
+      if (candidates.length === 0) { addToast(m.streams_import_none(), "info"); return; }
       $importCandidates.set(candidates);
     } catch (e) {
       addToast(String(e), "error");

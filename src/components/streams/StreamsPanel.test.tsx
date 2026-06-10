@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, act, screen, fireEvent } from "@testing-library/react";
 import * as tauri from "../../lib/tauri";
 import { $streams, $statuses, $streamFilter } from "../../stores/streams";
+import { $toasts } from "../../stores/toasts";
 import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import { StreamsPanel } from "./StreamsPanel";
 
@@ -71,6 +72,7 @@ beforeEach(() => {
   $statuses.set({});
   $streamFilter.set("all");
   $streams.set([mkStream("a", "Alpha")]);
+  $toasts.set([]);
 });
 
 describe("StreamsPanel — filter state persistence", () => {
@@ -208,6 +210,29 @@ describe("StreamsPanel — empty profile keeps the toolbar", () => {
     renderPanel();
     const exportBtn = screen.getByRole("button", { name: /експорт|export/i });
     expect(exportBtn.getAttribute("aria-disabled")).toBeNull();
+  });
+});
+
+describe("StreamsPanel — import button outcomes", () => {
+  const importBtn = () => screen.getByRole("button", { name: /імпорт|import/i });
+
+  it("stays silent when the file picker is cancelled (null)", async () => {
+    vi.mocked(tauri.beginStreamImport).mockResolvedValueOnce(null);
+    renderPanel();
+    await act(async () => {
+      fireEvent.click(importBtn());
+    });
+    expect($toasts.get()).toHaveLength(0);
+  });
+
+  it("toasts when the chosen playlist holds no streams ([])", async () => {
+    vi.mocked(tauri.beginStreamImport).mockResolvedValueOnce([]);
+    renderPanel();
+    await act(async () => {
+      fireEvent.click(importBtn());
+    });
+    const messages = $toasts.get().map((t) => t.message);
+    expect(messages.some((msg) => /не знайдено потоків|no streams found/i.test(msg))).toBe(true);
   });
 });
 
