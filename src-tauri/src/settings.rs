@@ -45,6 +45,8 @@ pub struct GlobalSettings {
     pub auto_advance: bool,
     #[serde(default)]
     pub prev_restart_threshold_ms: u32,
+    #[serde(default = "default_volume_step_percent")]
+    pub volume_step_percent: u8,
 }
 
 /// Deserialize `log_level` tolerantly: an unknown or legacy value (e.g. the
@@ -153,6 +155,7 @@ fn default_active_profile() -> String { "Default".to_string() }
 fn default_true() -> bool { true }
 fn default_disk_space_threshold_gb() -> u32 { 1 }
 fn default_log_max_size_mb() -> u32 { 10 }
+fn default_volume_step_percent() -> u8 { 5 }
 
 impl Default for GlobalSettings {
     fn default() -> Self {
@@ -174,6 +177,7 @@ impl Default for GlobalSettings {
             log_level: LogLevel::Info,
             auto_advance: true,
             prev_restart_threshold_ms: 0,
+            volume_step_percent: 5,
         }
     }
 }
@@ -281,5 +285,17 @@ mod tests {
         let settings: GlobalSettings = serde_json::from_str(json).unwrap();
         assert_eq!(settings.hotkeys.stop_all, "Ctrl+Shift+S");
         assert_eq!(settings.hotkeys.toggle_window, "Ctrl+Alt+J");
+    }
+
+    #[test]
+    fn volume_step_defaults_to_5() {
+        assert_eq!(GlobalSettings::default().volume_step_percent, 5);
+    }
+
+    #[test]
+    fn legacy_config_without_volume_step_uses_default() {
+        let json = r#"{"language":"en-US","theme":"auto","activeProfile":"Default"}"#;
+        let s: GlobalSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(s.volume_step_percent, 5);
     }
 }
