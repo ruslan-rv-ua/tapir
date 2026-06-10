@@ -242,6 +242,8 @@
   "settings_hotkey_volume_down": "Гучність −",
   "settings_hotkey_toggle_window": "Показати/сховати вікно",
   "settings_hotkey_stop_all": "Зупинити весь запис",
+  "settings_hotkey_prev_track": "Попередній трек",
+  "settings_hotkey_next_track": "Наступний трек",
   "settings_hotkey_press_to_change": "Натисніть щоб змінити",
   "settings_hotkey_press_keys": "Натисніть клавіші...",
   "settings_hotkey_clear": "Очистити хоткей",

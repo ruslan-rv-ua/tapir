@@ -48,7 +48,7 @@ const baseSettings: GlobalSettings = {
   minimizeToTray: false, showTrayNotifications: false, showTrackInTitle: false,
   diskSpaceThresholdGb: 0, doubleClickAction: "record", bandwidthLimitKbps: 0,
   autostart: false, autoAdvance: false, prevRestartThresholdMs: 0,
-  hotkeys: { toggleRecording: "", togglePlayback: "", volumeUp: "", volumeDown: "", toggleWindow: "", stopAll: "" },
+  hotkeys: { toggleRecording: "", togglePlayback: "", volumeUp: "", volumeDown: "", toggleWindow: "", stopAll: "", prevTrack: "", nextTrack: "" },
   logRotation: false, logMaxSizeMb: 10, logLevel: "info",
 };
 

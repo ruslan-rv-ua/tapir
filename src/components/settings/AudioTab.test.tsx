@@ -32,6 +32,8 @@ const baseSettings: GlobalSettings = {
     volumeDown: "",
     toggleWindow: "",
     stopAll: "",
+    prevTrack: "",
+    nextTrack: "",
   },
   logRotation: true,
   logMaxSizeMb: 10,

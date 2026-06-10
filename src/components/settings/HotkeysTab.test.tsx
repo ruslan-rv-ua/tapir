@@ -17,6 +17,8 @@ vi.mock("../../lib/tauri", () => ({
     volumeDown: "Ctrl+Shift+Down",
     toggleWindow: "Ctrl+Shift+H",
     stopAll: "Ctrl+Shift+S",
+    prevTrack: "Ctrl+Alt+Left",
+    nextTrack: "Ctrl+Alt+Right",
   }),
 }));
 
@@ -41,6 +43,8 @@ const baseSettings: GlobalSettings = {
     volumeDown: "",
     toggleWindow: "",
     stopAll: "",
+    prevTrack: "",
+    nextTrack: "",
   },
   logRotation: true,
   logMaxSizeMb: 10,

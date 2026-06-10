@@ -242,6 +242,8 @@
   "settings_hotkey_volume_down": "Volume down",
   "settings_hotkey_toggle_window": "Show/hide window",
   "settings_hotkey_stop_all": "Stop all recording",
+  "settings_hotkey_prev_track": "Previous track",
+  "settings_hotkey_next_track": "Next track",
   "settings_hotkey_press_to_change": "Press to change",
   "settings_hotkey_press_keys": "Press keys...",
   "settings_hotkey_clear": "Clear hotkey",
