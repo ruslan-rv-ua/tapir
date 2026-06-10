@@ -6,8 +6,11 @@ import { $showExportStreamsDialog } from "../../stores/streams";
 import * as tauri from "../../lib/tauri";
 
 vi.mock("../../lib/tauri", () => ({
-  exportStreams: vi.fn(async () => {}),
+  exportStreams: vi.fn(async () => true),
 }));
+
+const announceSpy = vi.hoisted(() => vi.fn());
+vi.mock("../../hooks/useAnnounce", () => ({ useAnnounce: () => announceSpy }));
 
 vi.mock("../../i18n/paraglide/messages", () => ({
   streams_export_title: () => "Export streams",
@@ -34,6 +37,13 @@ describe("ExportFormatDialog", () => {
     await waitFor(() => expect(tauri.exportStreams).toHaveBeenCalledWith("m3u8"));
   });
 
+  it("focuses the selected format radio on open", async () => {
+    $showExportStreamsDialog.set(true);
+    render(<ExportFormatDialog />);
+    const m3u8 = await screen.findByRole("radio", { name: "M3U8" });
+    expect(m3u8).toHaveFocus();
+  });
+
   it("describes each format card for AT", async () => {
     $showExportStreamsDialog.set(true);
     render(<ExportFormatDialog />);
@@ -51,5 +61,24 @@ describe("ExportFormatDialog", () => {
     await user.click(screen.getByRole("radio", { name: "PLS" }));
     await user.click(screen.getByRole("button", { name: "Export" }));
     await waitFor(() => expect(tauri.exportStreams).toHaveBeenCalledWith("pls"));
+  });
+
+  it("announces success when a file was written", async () => {
+    const user = userEvent.setup();
+    $showExportStreamsDialog.set(true);
+    render(<ExportFormatDialog />);
+    await user.click(await screen.findByRole("button", { name: "Export" }));
+    await waitFor(() => expect(announceSpy).toHaveBeenCalledWith("Stream list exported"));
+  });
+
+  it("stays silent when the save dialog was cancelled", async () => {
+    const user = userEvent.setup();
+    vi.mocked(tauri.exportStreams).mockResolvedValueOnce(false);
+    $showExportStreamsDialog.set(true);
+    render(<ExportFormatDialog />);
+    await user.click(await screen.findByRole("button", { name: "Export" }));
+    await waitFor(() => expect(tauri.exportStreams).toHaveBeenCalled());
+    expect(announceSpy).not.toHaveBeenCalled();
+    expect($showExportStreamsDialog.get()).toBe(false); // dialog still closes
   });
 });

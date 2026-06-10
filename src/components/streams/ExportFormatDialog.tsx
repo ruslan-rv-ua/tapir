@@ -30,8 +30,9 @@ export function ExportFormatDialog() {
   const handleExport = async () => {
     setBusy(true);
     try {
-      await tauri.exportStreams(format);
-      announce(m.streams_export_done());
+      // false = the user cancelled the save dialog — close without claiming success
+      const written = await tauri.exportStreams(format);
+      if (written) announce(m.streams_export_done());
       close();
     } catch (e) {
       addToast(String(e), "error");
@@ -61,6 +62,8 @@ export function ExportFormatDialog() {
               <Radio
                 key={f.value}
                 value={f.value}
+                // Focus the default format on open (RAC RadioGroup itself has no autoFocus)
+                autoFocus={f.value === "m3u8"}
                 aria-label={f.label}
                 aria-describedby={`export-format-desc-${f.value}`}
                 className="group flex cursor-pointer items-start gap-3 rounded-2xl border border-white/[.06] bg-white/[.04] p-4 hover:bg-white/[.08] data-[selected]:border-blue-500/60 data-[selected]:bg-blue-600/10 data-[focus-visible]:outline data-[focus-visible]:outline-2 data-[focus-visible]:outline-blue-400 forced-colors:border-[ButtonText] forced-colors:bg-[Canvas] forced-colors:data-[selected]:bg-[Highlight] forced-colors:data-[selected]:text-[HighlightText]"

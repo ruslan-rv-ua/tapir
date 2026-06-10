@@ -165,6 +165,7 @@ export function ImportStreamsDialog() {
             <input
               ref={selectAllRef}
               type="checkbox"
+              autoFocus
               checked={allSelected}
               onChange={toggleAll}
               className="accent-blue-600"

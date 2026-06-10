@@ -86,6 +86,13 @@ describe("ImportStreamsDialog", () => {
     expect(await screen.findByText("1 working, 1 failed, 1 already in profile")).toBeVisible();
   });
 
+  it("focuses the select-all checkbox on open", async () => {
+    $importCandidates.set(CANDIDATES);
+    render(<ImportStreamsDialog />);
+    await screen.findByText("Alpha");
+    expect(screen.getByLabelText("Select all")).toHaveFocus();
+  });
+
   it("select-all checkbox unchecks and rechecks every selectable row", async () => {
     const user = userEvent.setup();
     $importCandidates.set(CANDIDATES);
