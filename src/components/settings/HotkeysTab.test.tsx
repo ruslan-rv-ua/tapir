@@ -16,6 +16,7 @@ vi.mock("../../lib/tauri", () => ({
     volumeUp: "Ctrl+Shift+Up",
     volumeDown: "Ctrl+Shift+Down",
     toggleWindow: "Ctrl+Shift+H",
+    stopAll: "Ctrl+Shift+S",
   }),
 }));
 
@@ -39,6 +40,7 @@ const baseSettings: GlobalSettings = {
     volumeUp: "",
     volumeDown: "",
     toggleWindow: "",
+    stopAll: "",
   },
   logRotation: true,
   logMaxSizeMb: 10,
@@ -102,5 +104,31 @@ describe("HotkeysTab — reset to defaults (KB-10)", () => {
       expect(tauri.saveSettings).toHaveBeenCalled();
       expect(tauri.registerHotkeys).toHaveBeenCalled();
     });
+  });
+});
+
+describe("HotkeysTab — global stop_all (KB-12)", () => {
+  it("renders a recorder row for the stop-all hotkey", () => {
+    const { getByRole } = render(<HotkeysTab />);
+    const label = m.settings_hotkey_stop_all();
+    expect(
+      getByRole("button", { name: (name: string) => name.startsWith(label) }),
+    ).toBeInTheDocument();
+  });
+
+  it("rejects a combo already taken by stop_all as a duplicate", () => {
+    $settings.set({
+      ...baseSettings,
+      hotkeys: { ...baseSettings.hotkeys, stopAll: "Ctrl+Shift+J" },
+    });
+    const { getByRole } = render(<HotkeysTab />);
+    const button = recordButton(getByRole);
+    fireEvent.click(button); // arm the recorder
+    fireEvent.keyDown(button, { code: "KeyJ", key: "j", ctrlKey: true, shiftKey: true });
+
+    expect(getByRole("alert")).toHaveTextContent(
+      m.settings_hotkey_duplicate({ action: m.settings_hotkey_stop_all() }),
+    );
+    expect($settings.get()?.hotkeys.toggleRecording).toBe("");
   });
 });

@@ -15,6 +15,7 @@ const HOTKEY_FIELDS: { key: keyof HotkeyMap; label: () => string }[] = [
   { key: "volumeUp", label: () => m.settings_hotkey_volume_up() },
   { key: "volumeDown", label: () => m.settings_hotkey_volume_down() },
   { key: "toggleWindow", label: () => m.settings_hotkey_toggle_window() },
+  { key: "stopAll", label: () => m.settings_hotkey_stop_all() },
 ];
 
 export function HotkeysTab() {

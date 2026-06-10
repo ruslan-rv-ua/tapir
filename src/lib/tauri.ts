@@ -65,6 +65,7 @@ export interface HotkeyMap {
   volumeUp: string;
   volumeDown: string;
   toggleWindow: string;
+  stopAll: string;
 }
 
 export interface GlobalSettings {
