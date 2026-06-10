@@ -22,12 +22,12 @@ A Windows desktop application for recording internet radio streams. Supports ICY
 - **Saved Songs Manager** — browse, play, and edit tags of your recorded files
 - **System Tray** — minimize to tray, balloon notifications, tray menu
 - **Settings** — recording folder, file naming templates, reconnection policy, global hotkeys, audio output device
+- **Profile Manager** — create, switch, rename, duplicate, delete profiles; import/export `.tapirprofile` files
 
 ### Planned
 
 | Feature | Status |
 |---------|--------|
-| Profile Manager — full CRUD, import/export | 🔄 In progress |
 | Scheduler — timed and recurring recordings | Planned |
 | CLI arguments | Planned |
 | Post-processing — run external tools after recording | Planned |
@@ -60,6 +60,46 @@ All data (settings, profiles, recordings) is stored in a `data\` subfolder next 
 3. Recorded files appear in `data\recordings\<Station Name>\` by default
 
 Track splits happen automatically whenever the stream metadata changes — each song becomes a separate file with artist/title tags.
+
+---
+
+## Wishlist & Ignorelist
+
+### Wishlist — record only the tracks you want
+
+Add patterns to your wishlist and Tapir will alert you (and your screen reader will announce) whenever a matching track starts playing. The track is recorded normally — you don't miss it even if you're not watching.
+
+**Example:** add `Tycho*` to your wishlist → next time the stream plays any Tycho track, your screen reader announces *"Desired track found: Tycho - Dive"*.
+
+### Ignorelist — skip tracks you don't want
+
+Add patterns to the ignorelist and Tapir will not start a new file for those tracks. The previous track finishes cleanly; the unwanted track is simply not recorded.
+
+**Example:** add `*jingle*` → "Station Jingle 3", "Promo Jingle" and similar tracks are silently skipped.
+
+Each stream also has its own per-stream ignorelist (right-click → Edit), useful for station-specific intros, ads, or news breaks.
+
+### Pattern syntax
+
+| Pattern | Matches |
+|---------|---------|
+| `Tycho*` | "Tycho - Dive", "Tycho - Awake", "Tycho Live" |
+| `*jingle*` | "Station Jingle 3", "Intro Jingle", "daily jingle" |
+| `T?cho - *` | "Tycho - Dive", "Ticho - Anything" |
+| `Portishead - Glory Box` | Exactly this track |
+
+- `*` — any number of characters (including none)
+- `?` — exactly one character
+- Matching is **case-insensitive**
+
+### Priority
+
+When a track matches multiple rules, the order is:
+
+1. Per-stream ignorelist — track is skipped
+2. Global ignorelist — track is skipped
+3. Wishlist — track is recorded, screen reader announces
+4. No match — track is recorded normally
 
 ---
 
