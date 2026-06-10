@@ -122,6 +122,10 @@ pub struct HotkeyMap {
     pub toggle_window: String,
     #[serde(default = "default_hk_stop_all")]
     pub stop_all: String,
+    #[serde(default = "default_hk_prev_track")]
+    pub prev_track: String,
+    #[serde(default = "default_hk_next_track")]
+    pub next_track: String,
 }
 
 fn default_hk_toggle_recording() -> String { "Ctrl+Shift+R".to_string() }
@@ -130,6 +134,8 @@ fn default_hk_volume_up() -> String { "Ctrl+Shift+Up".to_string() }
 fn default_hk_volume_down() -> String { "Ctrl+Shift+Down".to_string() }
 fn default_hk_toggle_window() -> String { "Ctrl+Shift+H".to_string() }
 fn default_hk_stop_all() -> String { "Ctrl+Shift+S".to_string() }
+fn default_hk_prev_track() -> String { "Ctrl+Alt+Left".to_string() }
+fn default_hk_next_track() -> String { "Ctrl+Alt+Right".to_string() }
 
 impl Default for HotkeyMap {
     fn default() -> Self {
@@ -140,6 +146,8 @@ impl Default for HotkeyMap {
             volume_down: default_hk_volume_down(),
             toggle_window: default_hk_toggle_window(),
             stop_all: default_hk_stop_all(),
+            prev_track: default_hk_prev_track(),
+            next_track: default_hk_next_track(),
         }
     }
 }
@@ -284,6 +292,32 @@ mod tests {
         } }"#;
         let settings: GlobalSettings = serde_json::from_str(json).unwrap();
         assert_eq!(settings.hotkeys.stop_all, "Ctrl+Shift+S");
+        assert_eq!(settings.hotkeys.toggle_window, "Ctrl+Alt+J");
+    }
+
+    #[test]
+    fn default_track_combos() {
+        let hk = HotkeyMap::default();
+        assert_eq!(hk.prev_track, "Ctrl+Alt+Left");
+        assert_eq!(hk.next_track, "Ctrl+Alt+Right");
+    }
+
+    #[test]
+    fn hotkeys_object_without_track_fields_still_loads() {
+        // A settings.json written before prev/next track hotkeys has a `hotkeys`
+        // object with six fields. It must deserialize, the new fields get their
+        // defaults, and the user's customized combos survive.
+        let json = r#"{ "hotkeys": {
+            "toggleRecording": "Ctrl+Shift+R",
+            "togglePlayback": "Ctrl+Shift+P",
+            "volumeUp": "Ctrl+Shift+Up",
+            "volumeDown": "Ctrl+Shift+Down",
+            "toggleWindow": "Ctrl+Alt+J",
+            "stopAll": "Ctrl+Shift+S"
+        } }"#;
+        let settings: GlobalSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(settings.hotkeys.prev_track, "Ctrl+Alt+Left");
+        assert_eq!(settings.hotkeys.next_track, "Ctrl+Alt+Right");
         assert_eq!(settings.hotkeys.toggle_window, "Ctrl+Alt+J");
     }
 
