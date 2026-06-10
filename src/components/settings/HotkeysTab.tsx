@@ -16,6 +16,8 @@ const HOTKEY_FIELDS: { key: keyof HotkeyMap; label: () => string }[] = [
   { key: "volumeDown", label: () => m.settings_hotkey_volume_down() },
   { key: "toggleWindow", label: () => m.settings_hotkey_toggle_window() },
   { key: "stopAll", label: () => m.settings_hotkey_stop_all() },
+  { key: "prevTrack", label: () => m.settings_hotkey_prev_track() },
+  { key: "nextTrack", label: () => m.settings_hotkey_next_track() },
 ];
 
 export function HotkeysTab() {

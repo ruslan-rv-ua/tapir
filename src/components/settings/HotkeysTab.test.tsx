@@ -111,6 +111,33 @@ describe("HotkeysTab — reset to defaults (KB-10)", () => {
   });
 });
 
+describe("HotkeysTab — prev/next track hotkeys", () => {
+  it("renders recorder rows for both track hotkeys", () => {
+    const { getByRole } = render(<HotkeysTab />);
+    for (const label of [m.settings_hotkey_prev_track(), m.settings_hotkey_next_track()]) {
+      expect(
+        getByRole("button", { name: (name: string) => name.startsWith(label) }),
+      ).toBeInTheDocument();
+    }
+  });
+
+  it("rejects a combo already taken by next_track as a duplicate", () => {
+    $settings.set({
+      ...baseSettings,
+      hotkeys: { ...baseSettings.hotkeys, nextTrack: "Ctrl+Alt+Right" },
+    });
+    const { getByRole } = render(<HotkeysTab />);
+    const button = recordButton(getByRole);
+    fireEvent.click(button); // arm the recorder
+    fireEvent.keyDown(button, { code: "ArrowRight", key: "ArrowRight", ctrlKey: true, altKey: true });
+
+    expect(getByRole("alert")).toHaveTextContent(
+      m.settings_hotkey_duplicate({ action: m.settings_hotkey_next_track() }),
+    );
+    expect($settings.get()?.hotkeys.toggleRecording).toBe("");
+  });
+});
+
 describe("HotkeysTab — global stop_all (KB-12)", () => {
   it("renders a recorder row for the stop-all hotkey", () => {
     const { getByRole } = render(<HotkeysTab />);
