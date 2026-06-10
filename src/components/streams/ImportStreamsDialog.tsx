@@ -1,5 +1,5 @@
 import { Dialog, Modal, ModalOverlay, Heading } from "react-aria-components";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useStore } from "@nanostores/react";
 import * as tauri from "../../lib/tauri";
 import type { ImportCandidate, ImportProgressPayload } from "../../lib/tauri";
@@ -40,8 +40,17 @@ function statusText(r: Row): string {
   const details = [r.bitrate ? `${r.bitrate} kbps` : null, r.format ? r.format.toUpperCase() : null]
     .filter(Boolean)
     .join(" · ");
-  return m.streams_import_status_ok({ details });
+  // A live stream may expose no ICY metadata at all — show a bare check mark
+  // instead of "✓ " with an empty tail.
+  return details ? m.streams_import_status_ok({ details }) : "✓";
 }
+
+const STATUS_CLASSES: Record<RowStatus, string> = {
+  checking: "animate-pulse text-slate-400",
+  ok: "text-emerald-400",
+  error: "text-red-400",
+  duplicate: "text-amber-400",
+};
 
 export function ImportStreamsDialog() {
   const candidates = useStore($importCandidates);
@@ -92,6 +101,14 @@ export function ImportStreamsDialog() {
   const allSelected = selectable.length > 0 && selectable.every((r) => r.checked);
   const selectedCount = selectable.filter((r) => r.checked).length;
 
+  // Tri-state "select all": indeterminate when only some rows are checked.
+  const selectAllRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = selectedCount > 0 && !allSelected;
+    }
+  }, [selectedCount, allSelected]);
+
   const toggle = (url: string) =>
     setRows((prev) => prev.map((r) => (r.url === url ? { ...r, checked: !r.checked } : r)));
   const toggleAll = () => {
@@ -141,15 +158,19 @@ export function ImportStreamsDialog() {
             {m.streams_import_title()}
           </Heading>
 
-          <div aria-live="polite" className="sr-only">{liveMessage}</div>
+          {/* Visible to sighted users AND announced via aria-live */}
+          <div aria-live="polite" className="mb-2 text-xs text-slate-400">{liveMessage}</div>
 
-          <button
-            type="button"
-            onClick={toggleAll}
-            className="mb-2 self-start rounded px-2 py-1 text-xs text-slate-300 hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
-          >
-            {allSelected ? m.streams_import_deselect_all() : m.streams_import_select_all()}
-          </button>
+          <label className="mb-2 flex cursor-pointer items-center gap-2 self-start text-xs text-slate-300">
+            <input
+              ref={selectAllRef}
+              type="checkbox"
+              checked={allSelected}
+              onChange={toggleAll}
+              className="accent-blue-600"
+            />
+            {m.streams_import_select_all()}
+          </label>
 
           <ul className="min-h-0 flex-1 overflow-y-auto">
             {rows.map((r) => (
@@ -160,13 +181,16 @@ export function ImportStreamsDialog() {
                   disabled={r.status === "duplicate"}
                   onChange={() => toggle(r.url)}
                   aria-label={m.streams_import_select_row({ name: r.name })}
-                  className="shrink-0"
+                  className="shrink-0 accent-blue-600"
                 />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm text-slate-100">{r.name}</span>
                   <span className="block truncate text-xs text-slate-500">{r.url}</span>
                 </span>
-                <span className="shrink-0 text-xs text-slate-400">{statusText(r)}</span>
+                {/* Color is decorative on top of the ✓/✗/text the AT already gets */}
+                <span className={`shrink-0 text-xs forced-colors:text-[CanvasText] ${STATUS_CLASSES[r.status]}`}>
+                  {statusText(r)}
+                </span>
               </li>
             ))}
           </ul>

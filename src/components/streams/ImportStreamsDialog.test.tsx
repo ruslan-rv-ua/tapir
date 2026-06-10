@@ -22,7 +22,6 @@ vi.mock("../../lib/tauri", () => ({
 vi.mock("../../i18n/paraglide/messages", () => ({
   streams_import_title: () => "Import streams",
   streams_import_select_all: () => "Select all",
-  streams_import_deselect_all: () => "Deselect all",
   streams_import_select_row: ({ name }: { name: string }) => `Select stream: ${name}`,
   streams_import_status_checking: () => "checking…",
   streams_import_status_ok: ({ details }: { details: string }) => `✓ ${details}`,
@@ -72,6 +71,34 @@ describe("ImportStreamsDialog", () => {
     });
     await screen.findByText("Real Name");
     expect(screen.getByText("✓ 128 kbps · MP3")).toBeInTheDocument();
+  });
+
+  it("shows checking progress visibly, then the summary", async () => {
+    $importCandidates.set(CANDIDATES);
+    render(<ImportStreamsDialog />);
+    await screen.findByText("Alpha");
+    // 2 non-duplicates are being checked — progress line is visible text
+    expect(screen.getByText("Checked 0 of 2")).toBeVisible();
+    act(() => {
+      progressHandler?.({ url: "https://a/1", status: "ok", icyName: null, bitrate: null, format: null, error: null });
+      progressHandler?.({ url: "https://b/2", status: "error", icyName: null, bitrate: null, format: null, error: "boom" });
+    });
+    expect(await screen.findByText("1 working, 1 failed, 1 already in profile")).toBeVisible();
+  });
+
+  it("select-all checkbox unchecks and rechecks every selectable row", async () => {
+    const user = userEvent.setup();
+    $importCandidates.set(CANDIDATES);
+    render(<ImportStreamsDialog />);
+    await screen.findByText("Alpha");
+    const selectAll = screen.getByLabelText("Select all");
+    expect(selectAll).toBeChecked(); // all non-duplicates start checked
+    await user.click(selectAll);
+    expect(screen.getByLabelText("Select stream: Alpha")).not.toBeChecked();
+    expect(screen.getByLabelText("Select stream: Beta")).not.toBeChecked();
+    expect(screen.getByRole("button", { name: "Import selected (0)" })).toBeDisabled();
+    await user.click(selectAll);
+    expect(screen.getByLabelText("Select stream: Alpha")).toBeChecked();
   });
 
   it("commits selected streams and refreshes $streams", async () => {
