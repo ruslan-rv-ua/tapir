@@ -1,6 +1,6 @@
 use crate::app_state::AppState;
 use crate::profile::RecordingSettings;
-use crate::settings::GlobalSettings;
+use crate::settings::{GlobalSettings, HotkeyMap};
 use crate::shortcuts;
 
 #[tauri::command]
@@ -58,6 +58,13 @@ pub async fn register_hotkeys(
     drop(settings);
     let failed = shortcuts::register_global_shortcuts(&app, &hotkeys);
     Ok(failed)
+}
+
+/// Default Tier-1 hotkey combos. Pure lookup for the Settings → Hotkeys
+/// reset button (KB-10): writes nothing, registers nothing.
+#[tauri::command]
+pub fn default_hotkeys() -> HotkeyMap {
+    HotkeyMap::default()
 }
 
 /// Free bytes available to the caller on the volume hosting `dir`.
