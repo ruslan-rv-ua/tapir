@@ -199,6 +199,10 @@ pub fn run() {
             commands::profile_commands::begin_import,
             commands::profile_commands::commit_import,
             commands::profile_commands::switch_profile,
+            commands::stream_io_commands::begin_stream_import,
+            commands::stream_io_commands::validate_import_candidates,
+            commands::stream_io_commands::commit_stream_import,
+            commands::stream_io_commands::export_streams,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
