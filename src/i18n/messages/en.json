@@ -267,7 +267,6 @@
   "zone_activity_bar": "Sidebar",
   "zone_streams_actions": "Stream actions",
   "zone_streams_list": "Streams list",
-  "zone_streams_empty": "No streams",
   "zone_browser_search": "Search and filters",
   "zone_browser_results": "Search results",
   "zone_wishlist_controls": "List and actions",
@@ -302,7 +301,7 @@
   "item_role_song": "recording",
   "empty_conditions": "no conditions",
   "command_palette_label": "Command palette",
-  "streams_empty_description": "No streams yet. Press Enter to add the first stream.",
+  "streams_empty_hint": "Stream list is empty. Use the \"Add stream\" or \"Import…\" buttons in the toolbar above.",
   "wishlist_empty_description": "Empty list. Press Enter to add the first pattern.",
   "streams_count_zero": "No streams",
   "streams_count_one": "{count} stream",
@@ -399,7 +398,6 @@
   "streams_export_title": "Export streams",
   "streams_import_none": "No streams found in the file",
   "streams_import_select_all": "Select all",
-  "streams_import_deselect_all": "Deselect all",
   "streams_import_select_row": "Select stream: {name}",
   "streams_import_status_checking": "checking…",
   "streams_import_status_ok": "✓ {details}",
@@ -410,6 +408,8 @@
   "streams_import_summary": "{ok} working, {errors} failed, {duplicates} already in profile",
   "streams_import_done": "Imported: {added}, skipped: {skipped}",
   "streams_export_format_label": "Export format",
+  "streams_export_m3u8_desc": "Universal format, UTF-8 names. Supported by most players.",
+  "streams_export_pls_desc": "Classic Winamp/SHOUTcast format.",
   "streams_export_confirm": "Export",
   "streams_export_done": "Stream list exported"
 }

@@ -188,6 +188,29 @@ describe("StreamsPanel — record all", () => {
   });
 });
 
+describe("StreamsPanel — empty profile keeps the toolbar", () => {
+  it("renders Add/Import in the toolbar and Export as aria-disabled", () => {
+    $streams.set([]);
+    renderPanel();
+    expect(screen.getByRole("button", { name: /додати потік|add stream/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /імпорт|import/i })).toBeTruthy();
+    const exportBtn = screen.getByRole("button", { name: /експорт|export/i });
+    expect(exportBtn.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("shows the empty hint instead of the list", () => {
+    $streams.set([]);
+    renderPanel();
+    expect(screen.getByText(/список потоків порожній|stream list is empty/i)).toBeTruthy();
+  });
+
+  it("enables Export when streams exist", () => {
+    renderPanel();
+    const exportBtn = screen.getByRole("button", { name: /експорт|export/i });
+    expect(exportBtn.getAttribute("aria-disabled")).toBeNull();
+  });
+});
+
 describe("StreamsPanel — stop button label", () => {
   it("labels the stop button as stopping recording", () => {
     $streams.set([mkStream("a", "Alpha")]);
