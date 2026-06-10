@@ -105,21 +105,39 @@ impl LogLevel {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HotkeyMap {
+    // Per-field defaults: an old settings.json whose `hotkeys` object predates
+    // a field must still deserialize (missing field → default combo), without
+    // discarding the user's other customized combos.
+    #[serde(default = "default_hk_toggle_recording")]
     pub toggle_recording: String,
+    #[serde(default = "default_hk_toggle_playback")]
     pub toggle_playback: String,
+    #[serde(default = "default_hk_volume_up")]
     pub volume_up: String,
+    #[serde(default = "default_hk_volume_down")]
     pub volume_down: String,
+    #[serde(default = "default_hk_toggle_window")]
     pub toggle_window: String,
+    #[serde(default = "default_hk_stop_all")]
+    pub stop_all: String,
 }
+
+fn default_hk_toggle_recording() -> String { "Ctrl+Shift+R".to_string() }
+fn default_hk_toggle_playback() -> String { "Ctrl+Shift+P".to_string() }
+fn default_hk_volume_up() -> String { "Ctrl+Shift+Up".to_string() }
+fn default_hk_volume_down() -> String { "Ctrl+Shift+Down".to_string() }
+fn default_hk_toggle_window() -> String { "Ctrl+Shift+H".to_string() }
+fn default_hk_stop_all() -> String { "Ctrl+Shift+S".to_string() }
 
 impl Default for HotkeyMap {
     fn default() -> Self {
         Self {
-            toggle_recording: "Ctrl+Shift+R".to_string(),
-            toggle_playback: "Ctrl+Shift+P".to_string(),
-            volume_up: "Ctrl+Shift+Up".to_string(),
-            volume_down: "Ctrl+Shift+Down".to_string(),
-            toggle_window: "Ctrl+Shift+H".to_string(),
+            toggle_recording: default_hk_toggle_recording(),
+            toggle_playback: default_hk_toggle_playback(),
+            volume_up: default_hk_volume_up(),
+            volume_down: default_hk_volume_down(),
+            toggle_window: default_hk_toggle_window(),
+            stop_all: default_hk_stop_all(),
         }
     }
 }
@@ -241,5 +259,27 @@ mod tests {
         let s: GlobalSettings = serde_json::from_str(json).unwrap();
         assert!(s.auto_advance);
         assert_eq!(s.prev_restart_threshold_ms, 0);
+    }
+
+    #[test]
+    fn default_stop_all_combo() {
+        assert_eq!(HotkeyMap::default().stop_all, "Ctrl+Shift+S");
+    }
+
+    #[test]
+    fn hotkeys_object_without_stop_all_still_loads() {
+        // A settings.json written before KB-12 has a `hotkeys` object with five
+        // fields. It must deserialize, the new field gets its default, and the
+        // user's customized combos survive.
+        let json = r#"{ "hotkeys": {
+            "toggleRecording": "Ctrl+Shift+R",
+            "togglePlayback": "Ctrl+Shift+P",
+            "volumeUp": "Ctrl+Shift+Up",
+            "volumeDown": "Ctrl+Shift+Down",
+            "toggleWindow": "Ctrl+Alt+J"
+        } }"#;
+        let settings: GlobalSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(settings.hotkeys.stop_all, "Ctrl+Shift+S");
+        assert_eq!(settings.hotkeys.toggle_window, "Ctrl+Alt+J");
     }
 }
