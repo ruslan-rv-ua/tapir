@@ -12,6 +12,7 @@ mod songs;
 mod stream;
 mod tags;
 mod tray;
+mod wake_lock;
 mod wishlist;
 mod browser;
 
