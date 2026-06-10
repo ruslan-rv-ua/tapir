@@ -294,6 +294,10 @@ export async function registerHotkeys(): Promise<string[]> {
   return invoke("register_hotkeys");
 }
 
+export async function defaultHotkeys(): Promise<HotkeyMap> {
+  return invoke("default_hotkeys");
+}
+
 export async function openDirectoryPicker(defaultPath?: string): Promise<string | null> {
   return invoke("open_directory_picker", { defaultPath: defaultPath ?? null });
 }
