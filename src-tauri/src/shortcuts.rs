@@ -1,7 +1,7 @@
 use crate::app_state::AppState;
 use crate::player::engine::PlaybackState;
 use crate::settings::HotkeyMap;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use log::{info, warn, debug};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -24,6 +24,8 @@ pub fn register_global_shortcuts(app: &AppHandle, hotkeys: &HotkeyMap) -> Vec<St
         (&hotkeys.volume_down, "volume_down"),
         (&hotkeys.toggle_window, "toggle_window"),
         (&hotkeys.stop_all, "stop_all"),
+        (&hotkeys.prev_track, "prev_track"),
+        (&hotkeys.next_track, "next_track"),
     ];
 
     for (combo, action) in &combos {
@@ -156,6 +158,11 @@ fn handle_shortcut_action(app: &AppHandle, action: &str) {
                     }
                 }
             }
+            // Transport decisions (what "next" means) live in the webview:
+            // neighbors derive from stream order and the filtered songs list.
+            // Rust only bridges the OS hotkey to a webview event.
+            "prev_track" => { let _ = app.emit("transport-skip", "prev"); }
+            "next_track" => { let _ = app.emit("transport-skip", "next"); }
             _ => warn!("Unknown shortcut action: {}", action),
         }
     });
