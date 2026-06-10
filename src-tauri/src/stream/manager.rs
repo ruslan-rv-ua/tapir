@@ -15,6 +15,7 @@ use crate::profile::{AudioFormat, RecordingSettings, ReconnectConfig, StreamInfo
 use crate::stream::{connection, format, recorder, splitter};
 use log::{info, warn, error, debug};
 use crate::wishlist::matcher;
+use crate::wake_lock::WakeLock;
 
 // ---------------------------------------------------------------------------
 // Public data types
@@ -133,13 +134,15 @@ struct StreamEntry {
 pub struct StreamManager {
     app_handle: AppHandle,
     entries: HashMap<String, StreamEntry>,
+    wake_lock: Arc<WakeLock>,
 }
 
 impl StreamManager {
-    pub fn new(app_handle: AppHandle) -> Self {
+    pub fn new(app_handle: AppHandle, wake_lock: Arc<WakeLock>) -> Self {
         Self {
             app_handle,
             entries: HashMap::new(),
+            wake_lock,
         }
     }
 
@@ -223,10 +226,13 @@ impl StreamManager {
         for entry in self.entries.values() {
             entry.cancel_token.cancel();
         }
-        self.entries
+        let handles = self.entries
             .drain()
             .map(|(_, entry)| entry.join_handle)
-            .collect()
+            .collect();
+        // All entries drained — no active recordings remain.
+        self.wake_lock.set_recording(false);
+        handles
     }
 
     /// Start recording every stream not already active. Returns the number of
@@ -370,12 +376,21 @@ fn emit_track_ignored(app: &AppHandle, stream_id: &str, artist: &str, title: &st
 // Status update helpers (never hold the lock across await)
 // ---------------------------------------------------------------------------
 
+fn is_active_state(s: &StreamState) -> bool {
+    matches!(
+        s,
+        StreamState::Recording | StreamState::Connecting | StreamState::Reconnecting
+    )
+}
+
 async fn update_state(manager: &Arc<RwLock<StreamManager>>, stream_id: &str, state: StreamState) {
     let mut guard = manager.write().await;
     if let Some(entry) = guard.entries.get_mut(stream_id) {
         entry.status.state = state;
         entry.status.error = None;
     }
+    let any_active = guard.entries.values().any(|e| is_active_state(&e.status.state));
+    guard.wake_lock.set_recording(any_active);
 }
 
 async fn update_state_reconnecting(
@@ -388,6 +403,8 @@ async fn update_state_reconnecting(
         entry.status.state = StreamState::Reconnecting;
         entry.status.reconnect_attempt = Some(attempt);
     }
+    let any_active = guard.entries.values().any(|e| is_active_state(&e.status.state));
+    guard.wake_lock.set_recording(any_active);
 }
 
 async fn update_state_recording(
@@ -400,6 +417,8 @@ async fn update_state_recording(
         entry.status.state = StreamState::Recording;
         entry.status.recording_started_at = Some(started_at.to_string());
     }
+    let any_active = guard.entries.values().any(|e| is_active_state(&e.status.state));
+    guard.wake_lock.set_recording(any_active);
 }
 
 async fn update_state_error(
@@ -412,6 +431,8 @@ async fn update_state_error(
         entry.status.state = StreamState::Error;
         entry.status.error = Some(error.to_string());
     }
+    let any_active = guard.entries.values().any(|e| is_active_state(&e.status.state));
+    guard.wake_lock.set_recording(any_active);
 }
 
 async fn update_bytes_recorded(

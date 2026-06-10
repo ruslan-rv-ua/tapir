@@ -6,6 +6,7 @@ use crate::profile::Profile;
 use crate::stream::manager::{StreamManager, StreamState};
 use crate::player::engine::PlayerEngine;
 use crate::browser::api::RadioBrowserClient;
+use crate::wake_lock::WakeLock;
 
 pub struct AppState {
     pub stream_manager: Arc<RwLock<StreamManager>>,
@@ -22,13 +23,15 @@ impl AppState {
         profile: Profile,
         app_handle: tauri::AppHandle,
     ) -> anyhow::Result<Self> {
+        let wake_lock = Arc::new(WakeLock::new());
         let player = PlayerEngine::new(
             profile.player_session.volume,
             settings.output_device.clone(),
+            wake_lock.clone(),
         )?;
         let browser_client = Arc::new(tokio::sync::OnceCell::new());
         Ok(Self {
-            stream_manager: Arc::new(RwLock::new(StreamManager::new(app_handle))),
+            stream_manager: Arc::new(RwLock::new(StreamManager::new(app_handle, wake_lock))),
             settings: Arc::new(RwLock::new(settings)),
             active_profile: Arc::new(RwLock::new(profile)),
             player: Arc::new(player),
