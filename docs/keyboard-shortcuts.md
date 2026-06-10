@@ -38,13 +38,19 @@ OS-хоткей на `Ctrl+K`/`Alt+digit`/`F6`/… — гард і реєстр 
 | `Ctrl+Shift+Down` | volume_down (−5%) | OS | ✅ |
 | `Ctrl+Shift+H` | toggle_window (показати/сховати) | OS | ✅ |
 | `Ctrl+Shift+S` | stop_all (зупинити весь запис, тост для NVDA) | OS | ✅ |
+| `Ctrl+Alt+Left` | prev_track (попередній трек/потік; через webview-міст) | OS | ✅ |
+| `Ctrl+Alt+Right` | next_track (наступний трек/потік; через webview-міст) | OS | ✅ |
 | `Ctrl+Shift+M` | toggle_mute (вимкнути/увімкнути звук) | OS | ⬜ |
 
 > ⬜-кандидат `Ctrl+Shift+M` — з [KB-12](keyboard-shortcuts-backlog.md#L195):
-> відкладено (2026-06-10) — mute-логіка живе у фронтенді (`$muteState`),
-> глобальний хоткей потребує моста Rust→webview. Там само вирішено: глобальний
-> stop-playback не додаємо (`Ctrl+Shift+P` достатньо), next/prev трек
-> (`Ctrl+Shift+←/→`) відхилено до появи моделі черги плеєра.
+> відкладено (2026-06-10) — mute-логіка живе у фронтенді (`$muteState`). Міст
+> Rust→webview для таких дій уже існує (подія `transport-skip` для
+> prev/next_track — [shortcuts.rs](../src-tauri/src/shortcuts.rs) →
+> [transportControl.ts](../src/lib/transportControl.ts)); mute лишається
+> окремою задачею. Глобальний stop-playback не додаємо (`Ctrl+Shift+P`
+> достатньо). Дефолт prev/next — `Ctrl+Alt+←/→`, а не `Ctrl+Shift+←/→`:
+> OS-глобальне захоплення зламало б системне «виділити слово» в усіх
+> застосунках (критично для NVDA).
 
 ## Tier 2 — глобальні у webview
 

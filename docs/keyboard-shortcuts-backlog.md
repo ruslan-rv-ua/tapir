@@ -205,6 +205,14 @@ Tier 1 (OS) конфігуровний, Tier 2 (`Ctrl+K`/`Alt+digit`) — хар
   кандидатів: mute — відкладено (міст Rust→webview), stop-playback — не
   додаємо, next/prev — відхилено до моделі черги. Спека/план:
   `docs/superpowers/{specs,plans}/2026-06-10-kb12-global-stop-all*`.
+  **Доповнення (2026-06-10):** модель черги плеєра з'явилась
+  (`playbackNeighbors` + `playbackTransport`), тож відхилений раніше next/prev
+  реалізовано: Tier-1 `prev_track`/`next_track` (дефолт `Ctrl+Alt+Left/Right`;
+  не `Ctrl+Shift+←/→` — то системне «виділити слово», критичне для NVDA).
+  Rust лише емітить подію `transport-skip` → webview виконує спільний
+  executor ([transportControl.ts](../src/lib/transportControl.ts)) — той
+  самий міст, якого бракувало mute. Спека:
+  `docs/superpowers/specs/2026-06-10-global-prev-next-track-design.md`.
 
 ### [x] KB-14 · ✨ Уніфікувати подавлення глобальних хоткеїв (модаль-онлі + DRY)
 Три глобальні клавіатурні шари мали різну політику: Tier-2 слухач
