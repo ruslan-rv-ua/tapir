@@ -12,6 +12,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 pub fn register_global_shortcuts(app: &AppHandle, hotkeys: &HotkeyMap) -> Vec<String> {
     let manager = app.global_shortcut();
     let _ = manager.unregister_all();
+    VOLUME_UP_HELD.store(false, Ordering::Relaxed);
+    VOLUME_DOWN_HELD.store(false, Ordering::Relaxed);
 
     let mut failed: Vec<String> = Vec::new();
 
