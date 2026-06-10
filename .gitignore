@@ -8,3 +8,4 @@ src/i18n/paraglide/
 !.env.example
 *.pem
 *.key
+*.pdb
