@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { createPortal } from "react-dom";
-import { $streams, $statuses, $showAddStreamDialog, $streamFilter, type StreamFilter } from "../../stores/streams";
+import { $streams, $statuses, $showAddStreamDialog, $streamFilter, $importCandidates, $showExportStreamsDialog, type StreamFilter } from "../../stores/streams";
 import { $settings } from "../../stores/settings";
 import { $freeSpace } from "../../stores/system";
 import { FreeSpaceMetric } from "./FreeSpaceMetric";
 import { StreamList } from "./StreamList";
 import { AddStreamDialog } from "./AddStreamDialog";
+import { ImportStreamsDialog } from "./ImportStreamsDialog";
+import { ExportFormatDialog } from "./ExportFormatDialog";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { ListCard } from "../common/ListCard";
 import { ScreenZone } from "../layout/ScreenZone";
@@ -140,9 +142,11 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     announce(filterAnnouncement(chipId, count), "polite");
   };
 
-  // ── Toolbar zone refs (6 items) ──────────────────────────
+  // ── Toolbar zone refs (8 items) ──────────────────────────
   const toolbarZoneRef = useRef<HTMLDivElement | null>(null);
   const addBtn       = useRef<HTMLButtonElement | null>(null);
+  const importBtn    = useRef<HTMLButtonElement | null>(null);
+  const exportBtn    = useRef<HTMLButtonElement | null>(null);
   const recordAllBtn = useRef<HTMLButtonElement | null>(null);
   const stopAllBtn   = useRef<HTMLButtonElement | null>(null);
   const chip0Ref   = useRef<HTMLButtonElement | null>(null);
@@ -150,7 +154,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const chip2Ref   = useRef<HTMLButtonElement | null>(null);
   const chipRefs = useMemo(() => [chip0Ref, chip1Ref, chip2Ref], []);
   const toolbarRefs = useMemo(
-    () => [addBtn, recordAllBtn, stopAllBtn, chip0Ref, chip1Ref, chip2Ref],
+    () => [addBtn, importBtn, exportBtn, recordAllBtn, stopAllBtn, chip0Ref, chip1Ref, chip2Ref],
     [],
   );
 
@@ -172,7 +176,8 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   // ── Empty-state zone ─────────────────────────────────────
   const emptyZoneRef      = useRef<HTMLDivElement | null>(null);
   const emptyCtaRef       = useRef<HTMLButtonElement | null>(null);
-  const emptyBtns = useMemo(() => [emptyCtaRef], []);
+  const emptyImportRef    = useRef<HTMLButtonElement | null>(null);
+  const emptyBtns = useMemo(() => [emptyCtaRef, emptyImportRef], []);
   const { onKeyDown: emptyKeyDown, getTabIndex: emptyTabIndex } =
     useRovingFocus(emptyBtns, "horizontal", {
       mode: "composite-exit",
@@ -251,6 +256,16 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     }
   };
 
+  const handleImport = async () => {
+    try {
+      const candidates = await tauri.beginStreamImport();
+      if (!candidates) { addToast(m.streams_import_none(), "info"); return; }
+      $importCandidates.set(candidates);
+    } catch (e) {
+      addToast(String(e), "error");
+    }
+  };
+
   const emptyDescId = "streams-empty-desc";
 
   return (
@@ -264,15 +279,25 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
           onKeyDown={emptyKeyDown}
         >
           <span id={emptyDescId} className="sr-only">{m.streams_empty_description()}</span>
-          <button
-            ref={emptyCtaRef}
-            tabIndex={emptyTabIndex(0)}
-            aria-describedby={emptyDescId}
-            onClick={() => $showAddStreamDialog.set(true)}
-            className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
-          >
-            {m.add_stream()}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              ref={emptyCtaRef}
+              tabIndex={emptyTabIndex(0)}
+              aria-describedby={emptyDescId}
+              onClick={() => $showAddStreamDialog.set(true)}
+              className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
+            >
+              {m.add_stream()}
+            </button>
+            <button
+              ref={emptyImportRef}
+              tabIndex={emptyTabIndex(1)}
+              onClick={handleImport}
+              className="rounded px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
+            >
+              {m.streams_import_button()}
+            </button>
+          </div>
         </div>
       ) : (
         <>
@@ -321,7 +346,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
             label={m.zone_streams_actions()}
             onKeyDown={toolbarKeyDown}
           >
-            {/* Row 1: Title + Додати (Index 0) */}
+            {/* Row 1: Title + Додати (0) + Імпорт (1) + Експорт (2) */}
             <ScreenHeader title={m.streams_section()}>
               <button
                 ref={addBtn}
@@ -331,14 +356,30 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
               >
                 {m.add_stream()}
               </button>
+              <button
+                ref={importBtn}
+                tabIndex={toolbarTabIndex(1)}
+                onClick={handleImport}
+                className="rounded px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
+              >
+                {m.streams_import_button()}
+              </button>
+              <button
+                ref={exportBtn}
+                tabIndex={toolbarTabIndex(2)}
+                onClick={() => $showExportStreamsDialog.set(true)}
+                className="rounded px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
+              >
+                {m.streams_export_button()}
+              </button>
             </ScreenHeader>
 
             {/* Row 2: Записати все + Зупинити запис + Chips */}
             <div className="flex items-center gap-2 px-4 py-2">
-              {/* Index 1: Записати все (primary) */}
+              {/* Index 3: Записати все (primary) */}
               <button
                 ref={recordAllBtn}
-                tabIndex={toolbarTabIndex(1)}
+                tabIndex={toolbarTabIndex(3)}
                 onClick={handleRecordAll}
                 disabled={startableCount === 0}
                 className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-600 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
@@ -346,10 +387,10 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
                 {m.record_all()}
               </button>
 
-              {/* Index 2: Зупинити запис */}
+              {/* Index 4: Зупинити запис */}
               <button
                 ref={stopAllBtn}
-                tabIndex={toolbarTabIndex(2)}
+                tabIndex={toolbarTabIndex(4)}
                 onClick={handleStopAll}
                 disabled={activeCount === 0}
                 className="rounded px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
@@ -359,7 +400,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
               <div className="mx-1 h-4 w-px bg-slate-700 forced-colors:bg-[ButtonText]" aria-hidden="true" />
 
-              {/* Indices 3–5: Filter chips — semantic group, toggle chips kept */}
+              {/* Indices 5–7: Filter chips — semantic group, toggle chips kept */}
               <div role="group" aria-label={m.streams_filter_group()} className="flex items-center gap-2">
                 {FILTER_CHIPS.map((chip, i) => {
                   const count = chip.id === "recording" ? activeCount
@@ -369,7 +410,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
                     <button
                       key={chip.id}
                       ref={chipRefs[i]}
-                      tabIndex={toolbarTabIndex(3 + i)}
+                      tabIndex={toolbarTabIndex(5 + i)}
                       aria-pressed={activeChip === chip.id}
                       aria-label={m.streams_filter_chip_count({ label: chip.labelFn(), count })}
                       onClick={() => handleChipClick(chip.id)}
@@ -440,6 +481,8 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
       )}
 
       <AddStreamDialog />
+      <ImportStreamsDialog />
+      <ExportFormatDialog />
       {confirmStopAll && createPortal(
         <ConfirmDialog
           title={m.confirm_stop_all_title()}
