@@ -1,4 +1,5 @@
 use crate::errors::RadioError;
+use crate::profile::StreamInfo;
 use std::collections::{BTreeMap, HashSet};
 
 /// One entry parsed from a playlist: a stream URL and its optional display title.
@@ -87,6 +88,34 @@ pub fn parse_m3u_all(content: &str) -> Vec<ParsedEntry> {
 pub fn parse_playlist_all(content: &str) -> Vec<ParsedEntry> {
     let is_pls = content.lines().any(|l| l.trim().eq_ignore_ascii_case("[playlist]"));
     if is_pls { parse_pls_all(content) } else { parse_m3u_all(content) }
+}
+
+/// Replace CR/LF in a name so it cannot break the line-oriented playlist format.
+fn sanitize_name(name: &str) -> String {
+    name.replace(['\r', '\n'], " ")
+}
+
+/// Serialize streams to an extended M3U8 playlist (UTF-8).
+pub fn to_m3u8(streams: &[StreamInfo]) -> String {
+    let mut out = String::from("#EXTM3U\n");
+    for s in streams {
+        out.push_str(&format!("#EXTINF:-1,{}\n{}\n", sanitize_name(&s.name), s.url));
+    }
+    out
+}
+
+/// Serialize streams to a PLS playlist.
+pub fn to_pls(streams: &[StreamInfo]) -> String {
+    let mut out = String::from("[playlist]\n");
+    for (i, s) in streams.iter().enumerate() {
+        let n = i + 1;
+        out.push_str(&format!("File{n}={}\n", s.url));
+        out.push_str(&format!("Title{n}={}\n", sanitize_name(&s.name)));
+        out.push_str(&format!("Length{n}=-1\n"));
+    }
+    out.push_str(&format!("NumberOfEntries={}\n", streams.len()));
+    out.push_str("Version=2\n");
+    out
 }
 
 /// Parse PLS playlist, return first stream URL.
@@ -273,5 +302,44 @@ mod tests {
         let content = "#EXTM3U\nhttps://a.example/1\n";
         let got = parse_playlist_all(content);
         assert_eq!(got.len(), 1);
+    }
+
+    fn sample_streams() -> Vec<crate::profile::StreamInfo> {
+        let mk = |url: &str, name: &str| crate::profile::StreamInfo {
+            id: "x".into(), url: url.into(), name: name.into(),
+            format: None, bitrate: None, icy_name: None, icy_genre: None,
+            icy_url: None, ignorelist: vec![], username: None, password: None,
+            added_at: "2026-01-01".into(),
+        };
+        vec![mk("https://a.example/1", "Alpha"), mk("https://b.example/2", "Beta")]
+    }
+
+    #[test]
+    fn to_m3u8_writes_extinf_and_url() {
+        let out = to_m3u8(&sample_streams());
+        assert_eq!(
+            out,
+            "#EXTM3U\n#EXTINF:-1,Alpha\nhttps://a.example/1\n#EXTINF:-1,Beta\nhttps://b.example/2\n"
+        );
+    }
+
+    #[test]
+    fn to_pls_writes_indexed_entries_with_count() {
+        let out = to_pls(&sample_streams());
+        assert!(out.starts_with("[playlist]\n"));
+        assert!(out.contains("File1=https://a.example/1\n"));
+        assert!(out.contains("Title1=Alpha\n"));
+        assert!(out.contains("Length1=-1\n"));
+        assert!(out.contains("File2=https://b.example/2\n"));
+        assert!(out.contains("NumberOfEntries=2\n"));
+        assert!(out.contains("Version=2\n"));
+    }
+
+    #[test]
+    fn to_m3u8_strips_newlines_from_names() {
+        let mut s = sample_streams();
+        s[0].name = "Bad\nName".into();
+        let out = to_m3u8(&s);
+        assert!(out.contains("#EXTINF:-1,Bad Name\n"));
     }
 }
