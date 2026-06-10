@@ -60,6 +60,8 @@ thiserror = "2"
 
 # Unicode
 unicode-normalization = "0.1"
+# cp1251 fallback for legacy Winamp/SHOUTcast playlists on import
+encoding_rs = "0.8"
 
 # Misc
 nanoid = "0.4"

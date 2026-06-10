@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { createPortal } from "react-dom";
-import { $streams, $statuses, $showAddStreamDialog, $streamFilter, type StreamFilter } from "../../stores/streams";
+import { $streams, $statuses, $showAddStreamDialog, $streamFilter, $importCandidates, $showExportStreamsDialog, type StreamFilter } from "../../stores/streams";
 import { $settings } from "../../stores/settings";
 import { $freeSpace } from "../../stores/system";
 import { FreeSpaceMetric } from "./FreeSpaceMetric";
 import { StreamList } from "./StreamList";
 import { AddStreamDialog } from "./AddStreamDialog";
+import { ImportStreamsDialog } from "./ImportStreamsDialog";
+import { ExportFormatDialog } from "./ExportFormatDialog";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { ListCard } from "../common/ListCard";
 import { ScreenZone } from "../layout/ScreenZone";
@@ -140,9 +142,11 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     announce(filterAnnouncement(chipId, count), "polite");
   };
 
-  // ── Toolbar zone refs (6 items) ──────────────────────────
+  // ── Toolbar zone refs (8 items) ──────────────────────────
   const toolbarZoneRef = useRef<HTMLDivElement | null>(null);
   const addBtn       = useRef<HTMLButtonElement | null>(null);
+  const importBtn    = useRef<HTMLButtonElement | null>(null);
+  const exportBtn    = useRef<HTMLButtonElement | null>(null);
   const recordAllBtn = useRef<HTMLButtonElement | null>(null);
   const stopAllBtn   = useRef<HTMLButtonElement | null>(null);
   const chip0Ref   = useRef<HTMLButtonElement | null>(null);
@@ -150,7 +154,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const chip2Ref   = useRef<HTMLButtonElement | null>(null);
   const chipRefs = useMemo(() => [chip0Ref, chip1Ref, chip2Ref], []);
   const toolbarRefs = useMemo(
-    () => [addBtn, recordAllBtn, stopAllBtn, chip0Ref, chip1Ref, chip2Ref],
+    () => [addBtn, importBtn, exportBtn, recordAllBtn, stopAllBtn, chip0Ref, chip1Ref, chip2Ref],
     [],
   );
 
@@ -169,16 +173,6 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     streamListRef.current = zone;
   }, []);
 
-  // ── Empty-state zone ─────────────────────────────────────
-  const emptyZoneRef      = useRef<HTMLDivElement | null>(null);
-  const emptyCtaRef       = useRef<HTMLButtonElement | null>(null);
-  const emptyBtns = useMemo(() => [emptyCtaRef], []);
-  const { onKeyDown: emptyKeyDown, getTabIndex: emptyTabIndex } =
-    useRovingFocus(emptyBtns, "horizontal", {
-      mode: "composite-exit",
-      onTabOut: (forward) => exitZone("streams-empty", forward),
-    });
-
   // ── Filter-empty zone (streams exist but filter hides them) ─────
   const filterEmptyZoneRef = useRef<HTMLDivElement | null>(null);
   const resetFilterBtnRef  = useRef<HTMLButtonElement | null>(null);
@@ -189,21 +183,17 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   };
 
   // ── Zone registration ────────────────────────────────────
+  // The toolbar zone exists in every state (incl. empty profile) so Додати/
+  // Імпорт/Експорт are always discoverable in the same place; the list zone is
+  // registered only when there are streams to show.
   useEffect(() => {
-    if (isEmpty) {
-      const emptyZone: ZoneEntry = {
-        id: "streams-empty",
-        get el() { return emptyZoneRef.current!; },
-        focus: () => emptyCtaRef.current?.focus(),
-      };
-      onZonesChange([emptyZone]);
-    } else {
-      const toolbarZone: ZoneEntry = {
-        id: "streams-toolbar",
-        get el() { return toolbarZoneRef.current!; },
-        focus: toolbarRestore,
-      };
-      const zones: ZoneEntry[] = [toolbarZone];
+    const toolbarZone: ZoneEntry = {
+      id: "streams-toolbar",
+      get el() { return toolbarZoneRef.current!; },
+      focus: toolbarRestore,
+    };
+    const zones: ZoneEntry[] = [toolbarZone];
+    if (!isEmpty) {
       if (filterHidesAll) {
         zones.push({
           id: "streams-filter-empty",
@@ -213,8 +203,8 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
       } else if (streamListRef.current) {
         zones.push(streamListRef.current);
       }
-      onZonesChange(zones);
     }
+    onZonesChange(zones);
   // onZonesChange intentionally omitted — callers must pass a stable reference.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEmpty, filterHidesAll, toolbarRestore]);
@@ -251,195 +241,212 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     }
   };
 
-  const emptyDescId = "streams-empty-desc";
+  const handleImport = async () => {
+    try {
+      const candidates = await tauri.beginStreamImport();
+      if (candidates === null) return; // file picker cancelled — stay silent
+      if (candidates.length === 0) { addToast(m.streams_import_none(), "info"); return; }
+      $importCandidates.set(candidates);
+    } catch (e) {
+      addToast(String(e), "error");
+    }
+  };
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden" role="region" aria-label={m.streams_section()}>
-      {isEmpty ? (
-        /* ── Empty state ── */
+      {/* ── Metrics bar ── */}
+      <div className="grid grid-cols-4 gap-3 border-b border-slate-700 px-4 py-4 forced-colors:border-[ButtonText]">
         <div
-          ref={emptyZoneRef}
-          data-zone-id="streams-empty"
-          className="flex flex-1 flex-col items-center justify-center gap-4 text-slate-400"
-          onKeyDown={emptyKeyDown}
+          role="status"
+          aria-atomic="true"
+          aria-label={`${m.metric_streams_in_profile()}: ${streamCountText}`}
+          className="flex flex-col gap-1.5 rounded-2xl border border-white/[.06] bg-white/[.04] p-4 forced-colors:border-[ButtonText] forced-colors:bg-[Canvas]"
         >
-          <span id={emptyDescId} className="sr-only">{m.streams_empty_description()}</span>
+          <strong className="text-sm text-slate-100">{streamCountText}</strong>
+          <span className="text-xs text-slate-400">{m.metric_streams_in_profile()}</span>
+        </div>
+        <div
+          role="status"
+          aria-atomic="true"
+          aria-label={`${m.metric_active_recordings()}: ${activeRecText}`}
+          className="flex flex-col gap-1.5 rounded-2xl border border-white/[.06] bg-white/[.04] p-4 forced-colors:border-[ButtonText] forced-colors:bg-[Canvas]"
+        >
+          <strong className="text-sm text-slate-100">{activeRecText}</strong>
+          <span className="text-xs text-slate-400">{m.metric_active_recordings()}</span>
+        </div>
+        <div
+          role="status"
+          aria-atomic="true"
+          aria-label={`${m.metric_errors()}: ${errorText}`}
+          className="flex flex-col gap-1.5 rounded-2xl border border-white/[.06] bg-white/[.04] p-4 forced-colors:border-[ButtonText] forced-colors:bg-[Canvas]"
+        >
+          <strong className="text-sm text-slate-100">{errorText}</strong>
+          <span className="text-xs text-slate-400">{m.metric_errors()}</span>
+        </div>
+        <FreeSpaceMetric
+          freeBytes={freeSpace}
+          thresholdGb={settings?.diskSpaceThresholdGb ?? 0}
+        />
+      </div>
+
+      {/* ── Workspace titlebar + Toolbar = streams-toolbar zone ── */}
+      {/* IMPORTANT: Both rows must live inside ScreenZone so mixed-boundary-handoff
+          sees all 8 interactive items (indices 0–7). The heading is structural, not focusable. */}
+      <ScreenZone
+        ref={toolbarZoneRef}
+        id="streams-toolbar"
+        role="application"
+        label={m.zone_streams_actions()}
+        onKeyDown={toolbarKeyDown}
+      >
+        {/* Row 1: Title + Додати (0) + Імпорт (1) + Експорт (2) */}
+        <ScreenHeader title={m.streams_section()}>
           <button
-            ref={emptyCtaRef}
-            tabIndex={emptyTabIndex(0)}
-            aria-describedby={emptyDescId}
+            ref={addBtn}
+            tabIndex={toolbarTabIndex(0)}
             onClick={() => $showAddStreamDialog.set(true)}
-            className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
+            className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
           >
             {m.add_stream()}
           </button>
-        </div>
-      ) : (
-        <>
-          {/* ── Metrics bar ── */}
-          <div className="grid grid-cols-4 gap-3 border-b border-slate-700 px-4 py-4 forced-colors:border-[ButtonText]">
-            <div
-              role="status"
-              aria-atomic="true"
-              aria-label={`${m.metric_streams_in_profile()}: ${streamCountText}`}
-              className="flex flex-col gap-1.5 rounded-2xl border border-white/[.06] bg-white/[.04] p-4 forced-colors:border-[ButtonText] forced-colors:bg-[Canvas]"
-            >
-              <strong className="text-sm text-slate-100">{streamCountText}</strong>
-              <span className="text-xs text-slate-400">{m.metric_streams_in_profile()}</span>
-            </div>
-            <div
-              role="status"
-              aria-atomic="true"
-              aria-label={`${m.metric_active_recordings()}: ${activeRecText}`}
-              className="flex flex-col gap-1.5 rounded-2xl border border-white/[.06] bg-white/[.04] p-4 forced-colors:border-[ButtonText] forced-colors:bg-[Canvas]"
-            >
-              <strong className="text-sm text-slate-100">{activeRecText}</strong>
-              <span className="text-xs text-slate-400">{m.metric_active_recordings()}</span>
-            </div>
-            <div
-              role="status"
-              aria-atomic="true"
-              aria-label={`${m.metric_errors()}: ${errorText}`}
-              className="flex flex-col gap-1.5 rounded-2xl border border-white/[.06] bg-white/[.04] p-4 forced-colors:border-[ButtonText] forced-colors:bg-[Canvas]"
-            >
-              <strong className="text-sm text-slate-100">{errorText}</strong>
-              <span className="text-xs text-slate-400">{m.metric_errors()}</span>
-            </div>
-            <FreeSpaceMetric
-              freeBytes={freeSpace}
-              thresholdGb={settings?.diskSpaceThresholdGb ?? 0}
-            />
-          </div>
-
-          {/* ── Workspace titlebar + Toolbar = streams-toolbar zone ── */}
-          {/* IMPORTANT: Both rows must live inside ScreenZone so mixed-boundary-handoff
-              sees all 6 interactive items (indices 0–5). The heading is structural, not focusable. */}
-          <ScreenZone
-            ref={toolbarZoneRef}
-            id="streams-toolbar"
-            role="application"
-            label={m.zone_streams_actions()}
-            onKeyDown={toolbarKeyDown}
+          <button
+            ref={importBtn}
+            tabIndex={toolbarTabIndex(1)}
+            onClick={handleImport}
+            className="rounded px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
           >
-            {/* Row 1: Title + Додати (Index 0) */}
-            <ScreenHeader title={m.streams_section()}>
-              <button
-                ref={addBtn}
-                tabIndex={toolbarTabIndex(0)}
-                onClick={() => $showAddStreamDialog.set(true)}
-                className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
-              >
-                {m.add_stream()}
-              </button>
-            </ScreenHeader>
+            {m.streams_import_button()}
+          </button>
+          {/* aria-disabled (not native disabled) so the button stays
+              focusable/discoverable when the profile has no streams */}
+          <button
+            ref={exportBtn}
+            tabIndex={toolbarTabIndex(2)}
+            aria-disabled={isEmpty || undefined}
+            onClick={() => { if (!isEmpty) $showExportStreamsDialog.set(true); }}
+            className={`rounded px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
+              isEmpty
+                ? "cursor-not-allowed text-slate-600"
+                : "text-slate-400 hover:bg-slate-800"
+            }`}
+          >
+            {m.streams_export_button()}
+          </button>
+        </ScreenHeader>
 
-            {/* Row 2: Записати все + Зупинити запис + Chips */}
-            <div className="flex items-center gap-2 px-4 py-2">
-              {/* Index 1: Записати все (primary) */}
-              <button
-                ref={recordAllBtn}
-                tabIndex={toolbarTabIndex(1)}
-                onClick={handleRecordAll}
-                disabled={startableCount === 0}
-                className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-600 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
-              >
-                {m.record_all()}
-              </button>
+        {/* Row 2: Записати все + Зупинити запис + Chips */}
+        <div className="flex items-center gap-2 px-4 py-2">
+          {/* Index 3: Записати все (primary) */}
+          <button
+            ref={recordAllBtn}
+            tabIndex={toolbarTabIndex(3)}
+            onClick={handleRecordAll}
+            disabled={startableCount === 0}
+            className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-600 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
+          >
+            {m.record_all()}
+          </button>
 
-              {/* Index 2: Зупинити запис */}
-              <button
-                ref={stopAllBtn}
-                tabIndex={toolbarTabIndex(2)}
-                onClick={handleStopAll}
-                disabled={activeCount === 0}
-                className="rounded px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
-              >
-                {m.stop_all()}
-              </button>
+          {/* Index 4: Зупинити запис */}
+          <button
+            ref={stopAllBtn}
+            tabIndex={toolbarTabIndex(4)}
+            onClick={handleStopAll}
+            disabled={activeCount === 0}
+            className="rounded px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+          >
+            {m.stop_all()}
+          </button>
 
-              <div className="mx-1 h-4 w-px bg-slate-700 forced-colors:bg-[ButtonText]" aria-hidden="true" />
+          <div className="mx-1 h-4 w-px bg-slate-700 forced-colors:bg-[ButtonText]" aria-hidden="true" />
 
-              {/* Indices 3–5: Filter chips — semantic group, toggle chips kept */}
-              <div role="group" aria-label={m.streams_filter_group()} className="flex items-center gap-2">
-                {FILTER_CHIPS.map((chip, i) => {
-                  const count = chip.id === "recording" ? activeCount
-                              : chip.id === "errors"    ? errorCount
-                              : streams.length;
-                  return (
-                    <button
-                      key={chip.id}
-                      ref={chipRefs[i]}
-                      tabIndex={toolbarTabIndex(3 + i)}
-                      aria-pressed={activeChip === chip.id}
-                      aria-label={m.streams_filter_chip_count({ label: chip.labelFn(), count })}
-                      onClick={() => handleChipClick(chip.id)}
-                      className={`inline-flex items-center rounded-full px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
-                        activeChip === chip.id
-                          ? "border border-sky-300/[.22] bg-sky-400/[.14] text-slate-100 forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]"
-                          : "border border-slate-700/50 text-slate-400 hover:bg-slate-800 forced-colors:text-[ButtonText] forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText]"
-                      }`}
-                    >
-                      <span>{chip.labelFn()}</span>
-                      <span
-                        aria-hidden="true"
-                        className="ml-1.5 inline-flex min-w-[1.25rem] justify-center rounded-full bg-slate-700/80 px-1 text-[10px] leading-4 text-slate-300 forced-colors:border forced-colors:border-[ButtonText] forced-colors:bg-[Canvas] forced-colors:text-[ButtonText]"
-                      >
-                        {count}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </ScreenZone>
-
-          {/* Framed list container (shared ListCard) */}
-          <ListCard>
-              {/* ── Column headers (visual only) ── */}
-              <div
-                aria-hidden="true"
-                className="grid border-b border-slate-700 bg-white/[.04] px-3 py-2.5 text-xs font-medium uppercase tracking-wide text-slate-500 forced-colors:border-[ButtonText] forced-colors:bg-[Canvas]"
-                style={{ gridTemplateColumns: "100px 1fr 1.5fr 90px 90px 240px" }}
-              >
-                <span style={{ gridColumn: 1 }}>{m.column_status()}</span>
-                <span style={{ gridColumn: 2 }}>{m.column_station()}</span>
-                <span style={{ gridColumn: 3 }}>{m.column_now_playing()}</span>
-                <span style={{ gridColumn: 4 }}>{m.column_bitrate()}</span>
-                <span style={{ gridColumn: 5 }}>{m.column_duration()}</span>
-                <span style={{ gridColumn: 6 }}>{m.column_actions()}</span>
-              </div>
-
-              {/* ── Stream list zone OR filter-empty zone ── */}
-              {filterHidesAll ? (
-                <div
-                  ref={filterEmptyZoneRef}
-                  data-zone-id="streams-filter-empty"
-                  role="region"
-                  aria-label={m.streams_filter_empty()}
-                  className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-10 text-slate-400"
+          {/* Indices 5–7: Filter chips — semantic group, toggle chips kept */}
+          <div role="group" aria-label={m.streams_filter_group()} className="flex items-center gap-2">
+            {FILTER_CHIPS.map((chip, i) => {
+              const count = chip.id === "recording" ? activeCount
+                          : chip.id === "errors"    ? errorCount
+                          : streams.length;
+              return (
+                <button
+                  key={chip.id}
+                  ref={chipRefs[i]}
+                  tabIndex={toolbarTabIndex(5 + i)}
+                  aria-pressed={activeChip === chip.id}
+                  aria-label={m.streams_filter_chip_count({ label: chip.labelFn(), count })}
+                  onClick={() => handleChipClick(chip.id)}
+                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
+                    activeChip === chip.id
+                      ? "border border-sky-300/[.22] bg-sky-400/[.14] text-slate-100 forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]"
+                      : "border border-slate-700/50 text-slate-400 hover:bg-slate-800 forced-colors:text-[ButtonText] forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText]"
+                  }`}
                 >
-                  <p className="text-sm">{m.streams_filter_empty()}</p>
-                  <button
-                    ref={resetFilterBtnRef}
-                    onClick={handleResetFilter}
-                    className="rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
+                  <span>{chip.labelFn()}</span>
+                  <span
+                    aria-hidden="true"
+                    className="ml-1.5 inline-flex min-w-[1.25rem] justify-center rounded-full bg-slate-700/80 px-1 text-[10px] leading-4 text-slate-300 forced-colors:border forced-colors:border-[ButtonText] forced-colors:bg-[Canvas] forced-colors:text-[ButtonText]"
                   >
-                    {m.streams_filter_reset()}
-                  </button>
-                </div>
-              ) : (
-                <StreamList
-                  ref={streamListCallbackRef}
-                  streams={filteredStreams}
-                  exitZone={(forward) => exitZone("streams-list", forward)}
-                  onEmpty={() => {/* handled by isEmpty effect */}}
-                />
-              )}
-          </ListCard>
-        </>
-      )}
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </ScreenZone>
+
+      {/* Framed list container (shared ListCard) */}
+      <ListCard>
+          {!isEmpty && (
+            /* ── Column headers (visual only) ── */
+            <div
+              aria-hidden="true"
+              className="grid border-b border-slate-700 bg-white/[.04] px-3 py-2.5 text-xs font-medium uppercase tracking-wide text-slate-500 forced-colors:border-[ButtonText] forced-colors:bg-[Canvas]"
+              style={{ gridTemplateColumns: "100px 1fr 1.5fr 90px 90px 240px" }}
+            >
+              <span style={{ gridColumn: 1 }}>{m.column_status()}</span>
+              <span style={{ gridColumn: 2 }}>{m.column_station()}</span>
+              <span style={{ gridColumn: 3 }}>{m.column_now_playing()}</span>
+              <span style={{ gridColumn: 4 }}>{m.column_bitrate()}</span>
+              <span style={{ gridColumn: 5 }}>{m.column_duration()}</span>
+              <span style={{ gridColumn: 6 }}>{m.column_actions()}</span>
+            </div>
+          )}
+
+          {/* ── Empty hint OR stream list zone OR filter-empty zone ── */}
+          {isEmpty ? (
+            <p className="flex flex-1 items-center justify-center px-6 py-10 text-center text-sm text-slate-400">
+              {m.streams_empty_hint()}
+            </p>
+          ) : filterHidesAll ? (
+            <div
+              ref={filterEmptyZoneRef}
+              data-zone-id="streams-filter-empty"
+              role="region"
+              aria-label={m.streams_filter_empty()}
+              className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-10 text-slate-400"
+            >
+              <p className="text-sm">{m.streams_filter_empty()}</p>
+              <button
+                ref={resetFilterBtnRef}
+                onClick={handleResetFilter}
+                className="rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
+              >
+                {m.streams_filter_reset()}
+              </button>
+            </div>
+          ) : (
+            <StreamList
+              ref={streamListCallbackRef}
+              streams={filteredStreams}
+              exitZone={(forward) => exitZone("streams-list", forward)}
+              onEmpty={() => {/* handled by isEmpty effect */}}
+            />
+          )}
+      </ListCard>
 
       <AddStreamDialog />
+      <ImportStreamsDialog />
+      <ExportFormatDialog />
       {confirmStopAll && createPortal(
         <ConfirmDialog
           title={m.confirm_stop_all_title()}

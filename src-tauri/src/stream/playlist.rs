@@ -1,4 +1,122 @@
 use crate::errors::RadioError;
+use crate::profile::StreamInfo;
+use std::collections::{BTreeMap, HashSet};
+
+/// One entry parsed from a playlist: a stream URL and its optional display title.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParsedEntry {
+    pub url: String,
+    pub title: Option<String>,
+}
+
+/// Split a string like `1=value` into (1, "value"). Returns None if there is no
+/// `=` or the index part is not a number.
+fn split_indexed(s: &str) -> Option<(u32, &str)> {
+    let eq = s.find('=')?;
+    let num: u32 = s[..eq].trim().parse().ok()?;
+    Some((num, &s[eq + 1..]))
+}
+
+/// Parse every `FileN=`/`TitleN=` pair from a PLS playlist. Non-HTTP(S) URLs are
+/// dropped; duplicate URLs are removed (first wins). Titles are matched by index.
+pub fn parse_pls_all(content: &str) -> Vec<ParsedEntry> {
+    let mut files: BTreeMap<u32, String> = BTreeMap::new();
+    let mut titles: BTreeMap<u32, String> = BTreeMap::new();
+    for line in content.lines() {
+        let line = line.trim();
+        if let Some(rest) = line.strip_prefix("File") {
+            if let Some((n, v)) = split_indexed(rest) {
+                files.insert(n, v.trim().to_string());
+            }
+        } else if let Some(rest) = line.strip_prefix("Title") {
+            if let Some((n, v)) = split_indexed(rest) {
+                titles.insert(n, v.trim().to_string());
+            }
+        }
+    }
+    let mut seen = HashSet::new();
+    let mut out = Vec::new();
+    for (n, url) in files {
+        if validate_stream_url(&url).is_err() || !seen.insert(url.clone()) {
+            continue;
+        }
+        let title = titles.get(&n).filter(|t| !t.is_empty()).cloned();
+        out.push(ParsedEntry { url, title });
+    }
+    out
+}
+
+/// Parse every entry from an M3U/M3U8 playlist. `#EXTINF:-1,Title` is paired with
+/// the next URL line. Non-HTTP(S) URLs are dropped; duplicate URLs are removed.
+/// An HLS *media* playlist (contains `#EXT-X-` tags) is a list of segments, not
+/// stations, so it parses to an empty list.
+pub fn parse_m3u_all(content: &str) -> Vec<ParsedEntry> {
+    if content.lines().any(|l| l.trim_start().starts_with("#EXT-X-")) {
+        return Vec::new();
+    }
+    let mut out = Vec::new();
+    let mut seen = HashSet::new();
+    let mut pending_title: Option<String> = None;
+    for line in content.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        if let Some(rest) = line.strip_prefix("#EXTINF:") {
+            pending_title = rest
+                .splitn(2, ',')
+                .nth(1)
+                .map(|t| t.trim().to_string())
+                .filter(|t| !t.is_empty());
+            continue;
+        }
+        if line.starts_with('#') {
+            continue;
+        }
+        let url = line.to_string();
+        if validate_stream_url(&url).is_err() || !seen.insert(url.clone()) {
+            pending_title = None;
+            continue;
+        }
+        out.push(ParsedEntry { url, title: pending_title.take() });
+    }
+    out
+}
+
+/// Parse a playlist whose format is detected by content (a `[playlist]` line
+/// means PLS; otherwise M3U) rather than by file extension.
+pub fn parse_playlist_all(content: &str) -> Vec<ParsedEntry> {
+    let is_pls = content.lines().any(|l| l.trim().eq_ignore_ascii_case("[playlist]"));
+    if is_pls { parse_pls_all(content) } else { parse_m3u_all(content) }
+}
+
+/// Replace CR/LF in a name so it cannot break the line-oriented playlist format.
+fn sanitize_name(name: &str) -> String {
+    name.replace(['\r', '\n'], " ")
+}
+
+/// Serialize streams to an extended M3U8 playlist (UTF-8).
+pub fn to_m3u8(streams: &[StreamInfo]) -> String {
+    let mut out = String::from("#EXTM3U\n");
+    for s in streams {
+        out.push_str(&format!("#EXTINF:-1,{}\n{}\n", sanitize_name(&s.name), s.url));
+    }
+    out
+}
+
+/// Serialize streams to a PLS playlist.
+pub fn to_pls(streams: &[StreamInfo]) -> String {
+    let mut out = String::from("[playlist]\n");
+    for (i, s) in streams.iter().enumerate() {
+        let n = i + 1;
+        out.push_str(&format!("File{n}={}\n", s.url));
+        out.push_str(&format!("Title{n}={}\n", sanitize_name(&s.name)));
+        out.push_str(&format!("Length{n}=-1\n"));
+    }
+    out.push_str(&format!("NumberOfEntries={}\n", streams.len()));
+    out.push_str("Version=2\n");
+    out
+}
 
 /// Parse PLS playlist, return first stream URL.
 /// PLS format example:
@@ -9,31 +127,21 @@ use crate::errors::RadioError;
 ///   NumberOfEntries=1
 ///   Version=2
 pub fn parse_pls(content: &str) -> Result<String, RadioError> {
-    for line in content.lines() {
-        let line = line.trim();
-        if let Some(url) = line.strip_prefix("File1=") {
-            let url = url.trim();
-            if !url.is_empty() {
-                validate_stream_url(url)?;
-                return Ok(url.to_string());
-            }
-        }
-    }
-    Err(RadioError::Format("No File1= entry found in PLS".to_string()))
+    parse_pls_all(content)
+        .into_iter()
+        .next()
+        .map(|e| e.url)
+        .ok_or_else(|| RadioError::Format("No File1= entry found in PLS".to_string()))
 }
 
 /// Parse M3U/M3U8 playlist, return first stream URL.
 /// M3U format: lines starting with # are comments/directives, first non-empty non-# line is the URL.
 pub fn parse_m3u(content: &str) -> Result<String, RadioError> {
-    for line in content.lines() {
-        let line = line.trim();
-        if line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-        validate_stream_url(line)?;
-        return Ok(line.to_string());
-    }
-    Err(RadioError::Format("No stream URL found in M3U".to_string()))
+    parse_m3u_all(content)
+        .into_iter()
+        .next()
+        .map(|e| e.url)
+        .ok_or_else(|| RadioError::Format("No stream URL found in M3U".to_string()))
 }
 
 /// Reject non-HTTP(S) URLs extracted from playlists (e.g. file:// injection).
@@ -138,5 +246,100 @@ mod tests {
         // A .pls URL triggers a fetch; an unreachable host returns a network error
         let result = resolve_playlist_url("https://invalid.example.invalid/stream.pls").await;
         assert!(result.is_err(), "Should fail to fetch an unreachable .pls URL");
+    }
+
+    #[test]
+    fn parse_pls_all_returns_all_entries_with_titles() {
+        let content = "[playlist]\nFile1=https://a.example/1\nTitle1=Alpha\nFile2=https://b.example/2\nTitle2=Beta\nNumberOfEntries=2\n";
+        let got = parse_pls_all(content);
+        assert_eq!(got, vec![
+            ParsedEntry { url: "https://a.example/1".into(), title: Some("Alpha".into()) },
+            ParsedEntry { url: "https://b.example/2".into(), title: Some("Beta".into()) },
+        ]);
+    }
+
+    #[test]
+    fn parse_pls_all_skips_non_http_and_dedups() {
+        let content = "[playlist]\nFile1=https://a.example/1\nFile2=file:///etc/passwd\nFile3=https://a.example/1\n";
+        let got = parse_pls_all(content);
+        assert_eq!(got.len(), 1);
+        assert_eq!(got[0].url, "https://a.example/1");
+    }
+
+    #[test]
+    fn parse_m3u_all_pairs_extinf_titles() {
+        let content = "#EXTM3U\n#EXTINF:-1,Alpha\nhttps://a.example/1\n#EXTINF:-1,Beta\nhttps://b.example/2\n";
+        let got = parse_m3u_all(content);
+        assert_eq!(got, vec![
+            ParsedEntry { url: "https://a.example/1".into(), title: Some("Alpha".into()) },
+            ParsedEntry { url: "https://b.example/2".into(), title: Some("Beta".into()) },
+        ]);
+    }
+
+    #[test]
+    fn parse_m3u_all_url_without_extinf_has_no_title() {
+        let content = "https://a.example/1\n";
+        let got = parse_m3u_all(content);
+        assert_eq!(got, vec![ParsedEntry { url: "https://a.example/1".into(), title: None }]);
+    }
+
+    #[test]
+    fn parse_m3u_all_hls_segment_playlist_is_empty() {
+        let content = "#EXTM3U\n#EXT-X-VERSION:3\n#EXTINF:9.0,\nsegment0.ts\nsegment1.ts\n";
+        assert!(parse_m3u_all(content).is_empty());
+    }
+
+    #[test]
+    fn parse_playlist_all_detects_pls_by_content() {
+        let content = "[PLAYLIST]\nFile1=https://a.example/1\n";
+        let got = parse_playlist_all(content);
+        assert_eq!(got.len(), 1);
+        assert_eq!(got[0].url, "https://a.example/1");
+    }
+
+    #[test]
+    fn parse_playlist_all_defaults_to_m3u() {
+        let content = "#EXTM3U\nhttps://a.example/1\n";
+        let got = parse_playlist_all(content);
+        assert_eq!(got.len(), 1);
+    }
+
+    fn sample_streams() -> Vec<crate::profile::StreamInfo> {
+        let mk = |url: &str, name: &str| crate::profile::StreamInfo {
+            id: "x".into(), url: url.into(), name: name.into(),
+            format: None, bitrate: None, icy_name: None, icy_genre: None,
+            icy_url: None, ignorelist: vec![], username: None, password: None,
+            added_at: "2026-01-01".into(),
+        };
+        vec![mk("https://a.example/1", "Alpha"), mk("https://b.example/2", "Beta")]
+    }
+
+    #[test]
+    fn to_m3u8_writes_extinf_and_url() {
+        let out = to_m3u8(&sample_streams());
+        assert_eq!(
+            out,
+            "#EXTM3U\n#EXTINF:-1,Alpha\nhttps://a.example/1\n#EXTINF:-1,Beta\nhttps://b.example/2\n"
+        );
+    }
+
+    #[test]
+    fn to_pls_writes_indexed_entries_with_count() {
+        let out = to_pls(&sample_streams());
+        assert!(out.starts_with("[playlist]\n"));
+        assert!(out.contains("File1=https://a.example/1\n"));
+        assert!(out.contains("Title1=Alpha\n"));
+        assert!(out.contains("Length1=-1\n"));
+        assert!(out.contains("File2=https://b.example/2\n"));
+        assert!(out.contains("NumberOfEntries=2\n"));
+        assert!(out.contains("Version=2\n"));
+    }
+
+    #[test]
+    fn to_m3u8_strips_newlines_from_names() {
+        let mut s = sample_streams();
+        s[0].name = "Bad\nName".into();
+        let out = to_m3u8(&s);
+        assert!(out.contains("#EXTINF:-1,Bad Name\n"));
     }
 }

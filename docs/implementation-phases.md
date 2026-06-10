@@ -2,7 +2,7 @@
 
 > **Версія:** 0.1 (draft) | **Версія продукту:** 0.1.0  
 > **Підхід:** MVP-first, Walking Skeleton, Vertical Slices  
-> **Кількість фаз:** 2 основні + 9 підфаз (3A–3I)  
+> **Кількість фаз:** 2 основні + 10 підфаз (3A–3J)  
 > **Ризики:** якщо фаза займає більше часу, наступні фази зсуваються; функціонал не обрізається.
 
 > **Примітка (2026-04-23):** назви на кшталт `StreamTable`, `WishlistTable` або grid/table acceptance criteria в цьому документі фіксують попередні етапи реалізації. Для майбутнього refactor навігації й списків пріоритет мали вимоги з `docs/FRD-navigation.md` (видалено).
@@ -26,6 +26,7 @@
 | 3G | CLI Arguments | Аргументи командного рядка | ⬜ |
 | 3H | Post-processing | Зовнішні програми після запису | ⬜ |
 | 3I | Polish Bundle | High Contrast, Autostart, Log rotation, Bandwidth limiting | ⬜ |
+| 3J | Stream Import/Export | Імпорт/експорт потоків профілю (M3U8/PLS) з перевіркою | ✅ Complete |
 
 ---
 
@@ -263,6 +264,7 @@
 | 3G | CLI Arguments | Phase 1 + 2, 3E | 🟡 Середня |
 | 3H | Post-processing | Phase 1 | 🟢 Низька |
 | 3I | Polish Bundle (HC, Autostart, Logs, BW) | — (незалежні) | 🟢 Низька |
+| 3J | Stream Import/Export (M3U8/PLS) | Phase 1 (stream::playlist) | 🟡 Середня |
 
 ---
 
@@ -529,6 +531,42 @@
 
 ---
 
+### Фаза 3J — Stream Import/Export (M3U8/PLS)
+
+**Ціль:** імпорт і експорт списку потоків активного профілю у форматах M3U8/PLS,
+з перевіркою працездатності та діалогом вибору при імпорті.
+
+**Залежності:** Phase 1 (`stream::playlist`, `stream::connection`)
+
+**Backend:**
+
+| Модуль | Опис |
+|--------|------|
+| `stream::playlist` (розшир.) | `parse_pls_all`/`parse_m3u_all`/`parse_playlist_all`, `to_m3u8`/`to_pls` |
+| `stream::probe` | Перевірка працездатності + ICY-метадані (поверх `connection::connect`) |
+| `commands::stream_io_commands` | IPC: `begin_stream_import`, `validate_import_candidates`, `commit_stream_import`, `export_streams` |
+
+**Frontend:**
+
+| Компонент | Опис |
+|-----------|------|
+| `ImportStreamsDialog.tsx` | Список кандидатів, живі статуси перевірки, вибір, коміт |
+| `ExportFormatDialog.tsx` | Вибір формату M3U8/PLS |
+| `StreamsPanel.tsx` (розшир.) | Кнопки «Імпорт…»/«Експорт…» у тулбарі + «Імпорт…» в empty-state |
+
+**Критерії "Done":**
+- [x] Імпорт `.m3u/.m3u8/.pls` (формат за вмістом, не лише за розширенням)
+- [x] Перевірка кожного потоку на працездатність (concurrency), живі статуси через `stream-import-progress`
+- [x] Діалог вибору потоків; дублікати позначені й вимкнені; помилкові — доступні
+- [x] Імпорт зберігає лише назву (ICY→Title→URL); інші метадані заповнюються при першому записі
+- [x] Експорт усіх потоків профілю у M3U8/PLS (без credentials)
+- [x] NVDA: aria-live прогрес/підсумок, доступні чекбокси й radio-group
+
+**Відкладено (майбутнє в межах 3J):**
+- [ ] Оновлення назви/метаданих існуючого потоку з результату перевірки при імпорті дубліката (поки що дублікати просто пропускаються)
+
+---
+
 ## Залежності між фазами
 
 ```
@@ -554,9 +592,10 @@ Phase 3F: Profile Manager ← Phase 1 (profile.rs)
 Phase 3G: CLI ← Phase 1 + Phase 2A + Phase 3E
 Phase 3H: Post-processing ← Phase 1 (recordings)
 Phase 3I: Polish Bundle ← незалежна (кожен елемент)
+Phase 3J: Stream Import/Export ← Phase 1 (stream::playlist, stream::connection)
 ```
 
-Підфази 2B і 2C незалежні одна від одної. Підфази 3B, 3E, 3I повністю незалежні. Підфази 3C, 3D, 3F, 3H залежать лише від Phase 1 (завершена) → можна починати негайно. Тільки 3A та 3G мають залежність від Phase 2A.
+Підфази 2B і 2C незалежні одна від одної. Підфази 3B, 3E, 3I повністю незалежні. Підфази 3C, 3D, 3F, 3H, 3J залежать лише від Phase 1 (завершена) → можна починати негайно. Тільки 3A та 3G мають залежність від Phase 2A.
 
 ---
 

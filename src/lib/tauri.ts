@@ -463,3 +463,42 @@ export async function copyStreamToProfile(streamId: string, targetProfile: strin
 export async function moveStreamToProfile(streamId: string, targetProfile: string): Promise<void> {
   return invoke("transfer_stream_to_profile", { streamId, targetProfile, mode: "move" });
 }
+
+// ── Stream import/export (Phase 3J) ───────────────────────────────────────
+
+export interface ImportCandidate {
+  url: string;
+  name: string;
+  alreadyInProfile: boolean;
+}
+
+export interface ImportProgressPayload {
+  url: string;
+  status: "checking" | "ok" | "error";
+  icyName: string | null;
+  bitrate: number | null;
+  format: "mp3" | "aac" | null;
+  error: string | null;
+}
+
+export interface StreamImportResult {
+  added: number;
+  skipped: number;
+}
+
+/** `null` = the user cancelled the file picker; `[]` = the file held no streams. */
+export async function beginStreamImport(): Promise<ImportCandidate[] | null> {
+  return invoke("begin_stream_import");
+}
+export async function validateImportCandidates(urls: string[]): Promise<void> {
+  return invoke("validate_import_candidates", { urls });
+}
+export async function commitStreamImport(
+  selected: { url: string; name: string }[],
+): Promise<StreamImportResult> {
+  return invoke("commit_stream_import", { selected });
+}
+/** Resolves to `true` when a file was written, `false` when the save dialog was cancelled. */
+export async function exportStreams(format: "m3u8" | "pls"): Promise<boolean> {
+  return invoke("export_streams", { format });
+}

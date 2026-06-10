@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, act, screen, fireEvent } from "@testing-library/react";
 import * as tauri from "../../lib/tauri";
 import { $streams, $statuses, $streamFilter } from "../../stores/streams";
+import { $toasts } from "../../stores/toasts";
 import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import { StreamsPanel } from "./StreamsPanel";
 
@@ -16,7 +17,12 @@ vi.mock("../../lib/tauri", () => ({
   removeStream: vi.fn().mockResolvedValue(undefined),
   addToWishlist: vi.fn().mockResolvedValue(undefined),
   addToIgnorelist: vi.fn().mockResolvedValue(undefined),
+  beginStreamImport: vi.fn().mockResolvedValue(null),
 }));
+
+// ImportStreamsDialog uses useTauriEvent; stub it so jsdom doesn't try to call
+// the Tauri event bridge (which doesn't exist in the test environment).
+vi.mock("../../hooks/useTauriEvent", () => ({ useTauriEvent: vi.fn() }));
 
 const mkStream = (id: string, name: string): StreamInfo => ({
   id,
@@ -66,6 +72,7 @@ beforeEach(() => {
   $statuses.set({});
   $streamFilter.set("all");
   $streams.set([mkStream("a", "Alpha")]);
+  $toasts.set([]);
 });
 
 describe("StreamsPanel — filter state persistence", () => {
@@ -180,6 +187,52 @@ describe("StreamsPanel — record all", () => {
       name: /записати все|record all/i,
     }) as HTMLButtonElement;
     expect(btn.disabled).toBe(false);
+  });
+});
+
+describe("StreamsPanel — empty profile keeps the toolbar", () => {
+  it("renders Add/Import in the toolbar and Export as aria-disabled", () => {
+    $streams.set([]);
+    renderPanel();
+    expect(screen.getByRole("button", { name: /додати потік|add stream/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /імпорт|import/i })).toBeTruthy();
+    const exportBtn = screen.getByRole("button", { name: /експорт|export/i });
+    expect(exportBtn.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("shows the empty hint instead of the list", () => {
+    $streams.set([]);
+    renderPanel();
+    expect(screen.getByText(/список потоків порожній|stream list is empty/i)).toBeTruthy();
+  });
+
+  it("enables Export when streams exist", () => {
+    renderPanel();
+    const exportBtn = screen.getByRole("button", { name: /експорт|export/i });
+    expect(exportBtn.getAttribute("aria-disabled")).toBeNull();
+  });
+});
+
+describe("StreamsPanel — import button outcomes", () => {
+  const importBtn = () => screen.getByRole("button", { name: /імпорт|import/i });
+
+  it("stays silent when the file picker is cancelled (null)", async () => {
+    vi.mocked(tauri.beginStreamImport).mockResolvedValueOnce(null);
+    renderPanel();
+    await act(async () => {
+      fireEvent.click(importBtn());
+    });
+    expect($toasts.get()).toHaveLength(0);
+  });
+
+  it("toasts when the chosen playlist holds no streams ([])", async () => {
+    vi.mocked(tauri.beginStreamImport).mockResolvedValueOnce([]);
+    renderPanel();
+    await act(async () => {
+      fireEvent.click(importBtn());
+    });
+    const messages = $toasts.get().map((t) => t.message);
+    expect(messages.some((msg) => /не знайдено потоків|no streams found/i.test(msg))).toBe(true);
   });
 });
 

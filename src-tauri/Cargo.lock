@@ -4995,6 +4995,7 @@ dependencies = [
  "bytes",
  "chrono",
  "cpal 0.15.3",
+ "encoding_rs",
  "futures",
  "futures-util",
  "icy-metadata",
