@@ -25,8 +25,7 @@ import { LiveBadge } from "./LiveBadge";
 import { RecordingBadge } from "./RecordingBadge";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
-
-type SkipTrigger = "prev" | "next";
+import { executeTransportSkip, type SkipTrigger } from "../../lib/transportControl";
 
 /**
  * Will the just-pressed skip button resolve to "none" after `action` applies?
@@ -114,7 +113,6 @@ export const PlayerPanel = forwardRef<
   const canNext = isActive && resolveTransportAction("next", transportCtx).kind !== "none";
 
   const mutePendingRef = useRef(false);
-  const navPendingRef = useRef(false);
   const playerRootRef = useRef<HTMLDivElement>(null);
   const prevRef = useRef<HTMLButtonElement>(null);
   const playPauseRef = useRef<HTMLButtonElement>(null);
@@ -198,37 +196,14 @@ export const PlayerPanel = forwardRef<
   };
 
   const handleSkip = useCallback(
-    async (trigger: SkipTrigger) => {
-      if (navPendingRef.current) return;
-      const status = $playerStatus.get();
-      const ctx: TransportContext = {
-        source: status.source,
-        positionMs: status.positionMs,
-        neighbors: $playbackNeighbors.get(),
-        prevRestartThresholdMs: $settings.get()?.prevRestartThresholdMs ?? 0,
-      };
-      const action = resolveTransportAction(trigger, ctx);
-      if (action.kind === "none") return;
-      navPendingRef.current = true;
-      try {
-        if (pressedBecomesDisabled(trigger, action, ctx)) playPauseRef.current?.focus();
-        switch (action.kind) {
-          case "play-stream": await tauri.playStream(action.id); break;
-          case "play-file":   await tauri.playSavedSong(action.path); break;
-          case "seek-start":
-            await tauri.seekPlayback(0);
-            announce(m.player_restarted(), "assertive");
-            break;
-          // "stop" cannot occur for prev/next (only auto-advance) — no-op.
-        }
-        // play-* announce "Playing: {name}" via App.tsx player-status.
-      } catch (e) {
-        console.error(e);
-        announce(m.playback_error(), "assertive");
-      } finally {
-        navPendingRef.current = false;
-      }
-    },
+    (trigger: SkipTrigger) =>
+      executeTransportSkip(trigger, {
+        beforeExecute: (action, ctx) => {
+          if (pressedBecomesDisabled(trigger, action, ctx)) playPauseRef.current?.focus();
+        },
+        onSeekStart: () => announce(m.player_restarted(), "assertive"),
+        onError: () => announce(m.playback_error(), "assertive"),
+      }),
     [announce],
   );
 

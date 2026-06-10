@@ -158,7 +158,10 @@ describe("PlayerPanel — prev/next dispatch", () => {
 describe("PlayerPanel — prev/next race guard", () => {
   it("ignores a second press while a transition is in flight, then releases", async () => {
     let release: () => void = () => {};
-    vi.mocked(tauri.playStream).mockImplementation(
+    // Once: later presses fall back to the resolved default. The pending guard
+    // is module-level now — a press left in flight here would leak a locked
+    // guard into every later test in this file.
+    vi.mocked(tauri.playStream).mockImplementationOnce(
       () => new Promise<void>((resolve) => { release = resolve; }),
     );
     playingStream("s2");
@@ -169,11 +172,12 @@ describe("PlayerPanel — prev/next race guard", () => {
     expect(tauri.playStream).toHaveBeenCalledTimes(1); // second press blocked
 
     release();                 // settle the in-flight call
-    await Promise.resolve();   // let handleSkip's finally run (add more flushes if needed)
+    await Promise.resolve();   // let the executor's finally run (add more flushes if needed)
     await Promise.resolve();
     fireEvent.click(next);
     expect(tauri.playStream).toHaveBeenCalledTimes(2); // guard released
-    release();                 // settle the last call
+    await Promise.resolve();   // settle the second call before the next test
+    await Promise.resolve();
   });
 });
 
