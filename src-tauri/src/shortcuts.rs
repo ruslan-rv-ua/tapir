@@ -4,8 +4,8 @@ use crate::settings::HotkeyMap;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use log::{info, warn, debug};
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Register all global shortcuts from the given HotkeyMap.
 /// Returns a list of shortcut combos that failed to register.
@@ -29,8 +29,30 @@ pub fn register_global_shortcuts(app: &AppHandle, hotkeys: &HotkeyMap) -> Vec<St
             continue;
         }
         let action_name = action.to_string();
+        let is_volume = action_name == "volume_up" || action_name == "volume_down";
         let result = manager.on_shortcut(combo.as_str(), move |app, _shortcut, event| {
-            if event.state == ShortcutState::Pressed {
+            if is_volume {
+                let dir: i8 = if action_name == "volume_up" { 1 } else { -1 };
+                let held = volume_held_flag(&action_name);
+                match event.state {
+                    ShortcutState::Pressed => {
+                        if !held.swap(true, Ordering::Relaxed) {
+                            let app = app.clone();
+                            tauri::async_runtime::spawn(async move {
+                                apply_volume_change(&app, dir).await;
+                                tokio::time::sleep(Duration::from_millis(VOLUME_REPEAT_INITIAL_DELAY_MS)).await;
+                                while held.load(Ordering::Relaxed) {
+                                    apply_volume_change(&app, dir).await;
+                                    tokio::time::sleep(Duration::from_millis(VOLUME_REPEAT_INTERVAL_MS)).await;
+                                }
+                            });
+                        }
+                    }
+                    ShortcutState::Released => {
+                        held.store(false, Ordering::Relaxed);
+                    }
+                }
+            } else if event.state == ShortcutState::Pressed {
                 handle_shortcut_action(app, &action_name);
             }
         });
@@ -49,6 +71,28 @@ pub fn register_global_shortcuts(app: &AppHandle, hotkeys: &HotkeyMap) -> Vec<St
 static LAST_TOGGLE_RECORDING_MS: AtomicU64 = AtomicU64::new(0);
 static LAST_STOP_ALL_MS: AtomicU64 = AtomicU64::new(0);
 const SHORTCUT_DEBOUNCE_MS: u64 = 500;
+
+static VOLUME_UP_HELD: AtomicBool = AtomicBool::new(false);
+static VOLUME_DOWN_HELD: AtomicBool = AtomicBool::new(false);
+
+const VOLUME_REPEAT_INITIAL_DELAY_MS: u64 = 350;
+const VOLUME_REPEAT_INTERVAL_MS: u64 = 80;
+
+fn volume_held_flag(action: &str) -> &'static AtomicBool {
+    if action == "volume_up" { &VOLUME_UP_HELD } else { &VOLUME_DOWN_HELD }
+}
+
+async fn apply_volume_change(app: &AppHandle, direction: i8) {
+    let state = app.state::<AppState>();
+    let step = state.settings.read().await.volume_step_percent as f32 / 100.0;
+    let status = state.player.get_status().await;
+    let new_vol = if direction > 0 {
+        (status.volume + step).min(1.0)
+    } else {
+        (status.volume - step).max(0.0)
+    };
+    let _ = state.player.set_volume(new_vol, app).await;
+}
 
 /// True if the action behind `last` already fired within the debounce window.
 /// Swallows OS key auto-repeat so a held combo can't flap the action. Each
@@ -100,16 +144,6 @@ fn handle_shortcut_action(app: &AppHandle, action: &str) {
                     _ => { info!("Global shortcut: toggle_playback — nothing playing"); }
                 }
             }
-            "volume_up" => {
-                let status = state.player.get_status().await;
-                let new_vol = (status.volume + 0.05).min(1.0);
-                let _ = state.player.set_volume(new_vol, &app).await;
-            }
-            "volume_down" => {
-                let status = state.player.get_status().await;
-                let new_vol = (status.volume - 0.05).max(0.0);
-                let _ = state.player.set_volume(new_vol, &app).await;
-            }
             "toggle_window" => {
                 if let Some(window) = app.get_webview_window("main") {
                     if window.is_visible().unwrap_or(false) {
@@ -134,5 +168,24 @@ mod tests {
         static CELL: AtomicU64 = AtomicU64::new(0);
         assert!(!recently_fired(&CELL), "first call must pass");
         assert!(recently_fired(&CELL), "immediate repeat must be debounced");
+    }
+
+    #[test]
+    fn volume_held_flags_are_distinct() {
+        assert!(!std::ptr::eq(
+            volume_held_flag("volume_up"),
+            volume_held_flag("volume_down"),
+        ));
+    }
+
+    #[test]
+    fn volume_held_swap_prevents_double_spawn() {
+        let flag = volume_held_flag("volume_up");
+        flag.store(false, Ordering::Relaxed);
+        // First Pressed: flag was false → swap returns false → spawn proceeds
+        assert!(!flag.swap(true, Ordering::Relaxed));
+        // Spurious second Pressed: flag still true → swap returns true → spawn skipped
+        assert!(flag.swap(true, Ordering::Relaxed));
+        flag.store(false, Ordering::Relaxed); // restore module-level static
     }
 }
