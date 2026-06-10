@@ -38,7 +38,7 @@ export function VolumeSlider({ inputRef, onNavigate }: VolumeSliderProps) {
       minValue={0}
       maxValue={100}
       value={percent}
-      step={step}
+      step={1}
       onChange={(v) => {
         setDragPercent(v);
         if (!isDraggingRef.current) {
@@ -78,8 +78,15 @@ export function VolumeSlider({ inputRef, onNavigate }: VolumeSliderProps) {
             } else if (e.key === 'PageUp' || e.key === 'PageDown') {
               // No-op: block browser/RAC default (spec §4 — PageUp/Down are no-ops on sliders).
               e.preventDefault(); e.stopPropagation();
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault(); e.stopPropagation();
+              const newVol = Math.min(1, (volume * 100 + step) / 100);
+              tauri.setVolume(newVol).catch(console.error);
+            } else if (e.key === 'ArrowDown') {
+              e.preventDefault(); e.stopPropagation();
+              const newVol = Math.max(0, (volume * 100 - step) / 100);
+              tauri.setVolume(newVol).catch(console.error);
             }
-            // ArrowUp / ArrowDown: pass through to RAC for value adjustment.
           }}
           className="w-3.5 h-3.5 rounded-full bg-white top-1/2 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1 forced-colors:bg-[ButtonText]"
         />
