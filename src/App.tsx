@@ -30,6 +30,7 @@ import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, R
 import { $filteredSongs } from "./stores/songs";
 import { computePlaybackNeighbors } from "./stores/playbackNeighbors";
 import { resolveEndedAction } from "./lib/playbackTransport";
+import { executeTransportSkip, parseSkipTrigger } from "./lib/transportControl";
 import { useGlobalShortcuts } from "./hooks/useGlobalShortcuts";
 import * as m from "./i18n/paraglide/messages";
 
@@ -307,6 +308,13 @@ function AppContent() {
   useTauriEvent<WishlistMatchPayload>("wishlist-match", handleWishlistMatch);
   useTauriEvent<TrackIgnoredPayload>("track-ignored", handleTrackIgnored);
   useTauriEvent("streams-changed", handleStreamsChanged);
+  // OS-global prev/next hotkeys: Rust only bridges the keypress; the queue
+  // decision and IPC call happen here, sharing the buttons' pending guard.
+  const handleTransportSkip = useCallback((payload: string) => {
+    const trigger = parseSkipTrigger(payload);
+    if (trigger) void executeTransportSkip(trigger);
+  }, []);
+  useTauriEvent<string>("transport-skip", handleTransportSkip);
   useDiskSpacePolling();
   useProfileSync();
 
