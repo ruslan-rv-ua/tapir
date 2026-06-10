@@ -144,6 +144,24 @@ export function AudioTab() {
             <Input className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400" />
           </Group>
         </NumberField>
+
+        {/* Volume step */}
+        <NumberField
+          value={settings.volumeStepPercent}
+          onChange={(val) => {
+            if (!Number.isNaN(val)) update({ volumeStepPercent: Math.min(10, Math.max(1, val)) });
+          }}
+          minValue={1}
+          maxValue={10}
+          step={1}
+        >
+          <Label className="block text-sm font-medium text-slate-300">
+            {m.settings_volume_step()}
+          </Label>
+          <Group className="mt-1 flex w-24">
+            <Input className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400" />
+          </Group>
+        </NumberField>
       </div>
     </div>
   );
