@@ -60,13 +60,15 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 use log::info;
+use crate::wake_lock::WakeLock;
 
 // ── Internal runtime types (not serialized) ────────────────────────────────
 
 /// Emit `player-status` to the frontend and notify the tray. All callers
 /// inside this module should use this helper instead of calling
 /// `app.emit("player-status", ...)` directly.
-fn emit_player_status(app: &AppHandle, status: PlayerStatus) {
+fn emit_player_status(app: &AppHandle, status: PlayerStatus, wake_lock: &WakeLock) {
+    wake_lock.set_player(matches!(&status.state, PlaybackState::Playing));
     if let Err(e) = app.emit("player-status", status) {
         log::warn!("Player: failed to emit player-status: {e}");
     }
@@ -95,12 +97,13 @@ pub struct PlayerEngine {
     session: Arc<Mutex<Option<PlaybackSession>>>,
     volume: Arc<Mutex<f32>>,
     output_device_name: Arc<Mutex<Option<String>>>,
+    wake_lock: Arc<WakeLock>,
 }
 
 impl PlayerEngine {
     /// Create a new PlayerEngine with the given initial volume and output device.
     /// Verifies that the default audio output can be opened at startup (fail fast).
-    pub fn new(initial_volume: f32, initial_device: Option<String>) -> Result<Self> {
+    pub fn new(initial_volume: f32, initial_device: Option<String>, wake_lock: Arc<WakeLock>) -> Result<Self> {
         // Verify we can open the default device at startup (fail fast).
         // We don't keep the sink here; each session opens its own.
         DeviceSinkBuilder::open_default_sink()
@@ -109,6 +112,7 @@ impl PlayerEngine {
             session: Arc::new(Mutex::new(None)),
             volume: Arc::new(Mutex::new(initial_volume.clamp(0.0, 1.0))),
             output_device_name: Arc::new(Mutex::new(initial_device)),
+            wake_lock,
         })
     }
 
@@ -209,6 +213,7 @@ impl PlayerEngine {
         let app_clone = app.clone();
         let dur = duration_ms.unwrap_or(0);
         let path_for_end = path.clone();
+        let wake_lock_for_task = self.wake_lock.clone();
 
         let progress_task = tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(1));
@@ -230,6 +235,9 @@ impl PlayerEngine {
                 }
             }
             if ended_naturally {
+                // Release the wake lock before the frontend sees the event,
+                // so system-sleep is re-allowed without depending on the frontend.
+                wake_lock_for_task.set_player(false);
                 // Surface natural completion as a distinct event; the frontend
                 // decides whether to auto-advance or stop. We intentionally do NOT
                 // emit Stopped here, so App.tsx doesn't announce "playback stopped"
@@ -252,7 +260,7 @@ impl PlayerEngine {
         });
 
         let status = self.get_status().await;
-        emit_player_status(app, status);
+        emit_player_status(app, status, &self.wake_lock);
         info!("Player: playing file {path}");
         Ok(())
     }
@@ -268,7 +276,7 @@ impl PlayerEngine {
             volume,
             position_ms: None,
             duration_ms: None,
-        });
+        }, &self.wake_lock);
         info!("Player: stopped");
         Ok(())
     }
@@ -281,7 +289,7 @@ impl PlayerEngine {
         s.player.pause();
         drop(session);
         let status = self.get_status().await;
-        emit_player_status(app, status);
+        emit_player_status(app, status, &self.wake_lock);
         Ok(())
     }
 }
@@ -293,7 +301,7 @@ impl PlayerEngine {
         s.player.play();
         drop(session);
         let status = self.get_status().await;
-        emit_player_status(app, status);
+        emit_player_status(app, status, &self.wake_lock);
         Ok(())
     }
 }
@@ -312,7 +320,7 @@ impl PlayerEngine {
             // both locks dropped here
         }
         let status = self.get_status().await;
-        emit_player_status(app, status);
+        emit_player_status(app, status, &self.wake_lock);
         Ok(())
     }
 
@@ -362,7 +370,7 @@ impl PlayerEngine {
             volume,
             position_ms: None,
             duration_ms: None,
-        });
+        }, &self.wake_lock);
         Ok(())
     }
 }
@@ -819,6 +827,7 @@ impl PlayerEngine {
         let cancel_live = cancel.clone();
         let app_live = app.clone();
         let volume_arc = Arc::clone(&self.volume);
+        let wake_lock_for_task = self.wake_lock.clone();
         let progress_task = tokio::spawn(async move {
             tokio::select! {
                 _ = cancel_live.cancelled() => {
@@ -834,7 +843,7 @@ impl PlayerEngine {
                         volume: current_volume,
                         position_ms: None,
                         duration_ms: None,
-                    });
+                    }, &wake_lock_for_task);
                 }
             }
         });
@@ -849,7 +858,7 @@ impl PlayerEngine {
         });
 
         let status = self.get_status().await;
-        emit_player_status(app, status);
+        emit_player_status(app, status, &self.wake_lock);
         info!("Player: playing live stream {stream_id}");
         Ok(())
     }
