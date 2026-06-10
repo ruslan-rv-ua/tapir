@@ -3,7 +3,8 @@
 //! Used by the global `toggle_recording` shortcut. The pure helpers
 //! (`is_active`, `count_active`, `decide`) are unit-tested; `toggle_all` is
 //! thin orchestration over `StreamManager::{start_all, stop_all}` and is
-//! exercised via manual/integration runs.
+//! exercised via manual/integration runs. `stop_all_now` (global stop-all
+//! shortcut, KB-12) is likewise thin orchestration.
 
 use crate::app_state::AppState;
 use crate::stream::manager::{StreamState, StreamStatus};

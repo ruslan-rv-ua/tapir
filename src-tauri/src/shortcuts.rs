@@ -21,6 +21,7 @@ pub fn register_global_shortcuts(app: &AppHandle, hotkeys: &HotkeyMap) -> Vec<St
         (&hotkeys.volume_up, "volume_up"),
         (&hotkeys.volume_down, "volume_down"),
         (&hotkeys.toggle_window, "toggle_window"),
+        (&hotkeys.stop_all, "stop_all"),
     ];
 
     for (combo, action) in &combos {
@@ -46,23 +47,24 @@ pub fn register_global_shortcuts(app: &AppHandle, hotkeys: &HotkeyMap) -> Vec<St
 }
 
 static LAST_TOGGLE_RECORDING_MS: AtomicU64 = AtomicU64::new(0);
-const TOGGLE_RECORDING_DEBOUNCE_MS: u64 = 500;
+static LAST_STOP_ALL_MS: AtomicU64 = AtomicU64::new(0);
+const SHORTCUT_DEBOUNCE_MS: u64 = 500;
 
-/// True if `toggle_recording` already fired within the debounce window.
-/// Swallows OS key auto-repeat so a held Ctrl+Shift+R can't flap start/stop.
-fn recently_toggled_recording() -> bool {
+/// True if the action behind `last` already fired within the debounce window.
+/// Swallows OS key auto-repeat so a held combo can't flap the action. Each
+/// action gets its own cell: debouncing one must not swallow another.
+fn recently_fired(last: &AtomicU64) -> bool {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
         .unwrap_or(0);
-    let last = LAST_TOGGLE_RECORDING_MS.load(Ordering::Relaxed);
-    if now.saturating_sub(last) < TOGGLE_RECORDING_DEBOUNCE_MS {
+    let prev = last.load(Ordering::Relaxed);
+    if now.saturating_sub(prev) < SHORTCUT_DEBOUNCE_MS {
         return true;
     }
     // CAS so two near-simultaneous fires can't both pass: only one caller wins
     // the swap; the loser is treated as a repeat (returns true → debounced).
-    LAST_TOGGLE_RECORDING_MS
-        .compare_exchange(last, now, Ordering::Relaxed, Ordering::Relaxed)
+    last.compare_exchange(prev, now, Ordering::Relaxed, Ordering::Relaxed)
         .is_err()
 }
 
@@ -73,12 +75,21 @@ fn handle_shortcut_action(app: &AppHandle, action: &str) {
         let state = app.state::<AppState>();
         match action.as_str() {
             "toggle_recording" => {
-                if recently_toggled_recording() {
+                if recently_fired(&LAST_TOGGLE_RECORDING_MS) {
                     debug!("Global shortcut: toggle_recording ignored (debounce)");
                 } else {
                     let outcome = crate::recording_control::toggle_all(state.inner()).await;
                     info!("Global shortcut: toggle_recording → {outcome:?}");
                     crate::tray::notify::notify_recording_toggle(&app, outcome);
+                }
+            }
+            "stop_all" => {
+                if recently_fired(&LAST_STOP_ALL_MS) {
+                    debug!("Global shortcut: stop_all ignored (debounce)");
+                } else {
+                    let stopped = crate::recording_control::stop_all_now(state.inner()).await;
+                    info!("Global shortcut: stop_all → stopped {stopped}");
+                    crate::tray::notify::notify_stop_all(&app, stopped);
                 }
             }
             "toggle_playback" => {
@@ -112,4 +123,16 @@ fn handle_shortcut_action(app: &AppHandle, action: &str) {
             _ => warn!("Unknown shortcut action: {}", action),
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn recently_fired_debounces_second_call() {
+        static CELL: AtomicU64 = AtomicU64::new(0);
+        assert!(!recently_fired(&CELL), "first call must pass");
+        assert!(recently_fired(&CELL), "immediate repeat must be debounced");
+    }
 }
