@@ -1,5 +1,5 @@
 import { atom, map } from "nanostores";
-import type { StreamInfo, StreamStatus } from "../lib/tauri";
+import type { StreamInfo, StreamStatus, ImportCandidate } from "../lib/tauri";
 
 export const $streams = atom<StreamInfo[]>([]);
 export const $statuses = map<Record<string, StreamStatus>>({});
@@ -8,6 +8,11 @@ export const $editStream = atom<StreamInfo | null>(null);
 
 export type StreamFilter = "all" | "recording" | "errors";
 export const $streamFilter = atom<StreamFilter>("all");
+
+// Import flow: non-null = the ImportStreamsDialog is open with these candidates.
+export const $importCandidates = atom<ImportCandidate[] | null>(null);
+// Export flow: true = the ExportFormatDialog is open.
+export const $showExportStreamsDialog = atom<boolean>(false);
 
 export function updateStreamStatus(streamId: string, status: Partial<StreamStatus>) {
   const current = $statuses.get()[streamId] ?? {
