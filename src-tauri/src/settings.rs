@@ -367,8 +367,8 @@ mod tests {
 
     #[test]
     fn legacy_config_without_smtc_field_defaults_to_true() {
-        // settings.json, записаний до появи SMTC, мусить завантажитися,
-        // а нове поле отримати default (патерн KB-12 / prev_track).
+        // A settings.json written before SMTC existed must still load,
+        // with the new field taking its default (KB-12 / prev_track pattern).
         let json = r#"{"language":"en-US","theme":"auto","activeProfile":"Default"}"#;
         let s: GlobalSettings = serde_json::from_str(json).unwrap();
         assert!(s.smtc_enabled);
