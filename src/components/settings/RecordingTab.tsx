@@ -7,18 +7,24 @@ import {
   NumberField,
   Group,
 } from "react-aria-components";
-import { $recordingSettings } from "../../stores/settings";
+import { $settings, $recordingSettings } from "../../stores/settings";
 import { useAutoSave } from "../../hooks/useAutoSave";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
-import type { RecordingSettings } from "../../lib/tauri";
+import type { RecordingSettings, GlobalSettings, ReconnectConfig } from "../../lib/tauri";
 
 export function RecordingTab() {
   const recording = useStore($recordingSettings);
+  const settings = useStore($settings);
 
   const save = useAutoSave(async () => {
     const current = $recordingSettings.get();
     if (current) await tauri.saveRecordingSettings(current);
+  });
+
+  const saveGlobal = useAutoSave(async () => {
+    const current = $settings.get();
+    if (current) await tauri.saveSettings(current);
   });
 
   if (!recording)
@@ -28,6 +34,23 @@ export function RecordingTab() {
     const current = $recordingSettings.get();
     if (!current) return;
     $recordingSettings.set({ ...current, ...patch });
+    save();
+  }
+
+  function updateGlobal(patch: Partial<GlobalSettings>) {
+    const current = $settings.get();
+    if (!current) return;
+    $settings.set({ ...current, ...patch });
+    saveGlobal();
+  }
+
+  function updateReconnect(patch: Partial<ReconnectConfig>) {
+    const current = $recordingSettings.get();
+    if (!current) return;
+    $recordingSettings.set({
+      ...current,
+      reconnect: { ...current.reconnect, ...patch },
+    });
     save();
   }
 
@@ -42,6 +65,11 @@ export function RecordingTab() {
 
   return (
     <div className="space-y-6">
+
+      {/* Section: Output & templates */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold text-slate-200">{m.settings_section_output()}</h3>
+
       {/* Output directory */}
       <div className="flex gap-2 items-end">
         <TextField
@@ -63,6 +91,8 @@ export function RecordingTab() {
         </button>
       </div>
 
+      <p className="text-xs text-slate-500">{m.settings_template_help()}</p>
+
       {/* File templates */}
       <TextField
         value={recording.fileNameTemplate}
@@ -72,9 +102,6 @@ export function RecordingTab() {
           {m.settings_file_template()}
         </Label>
         <Input className="mt-1 w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText]" />
-        <p className="mt-1 text-xs text-slate-500">
-          {m.settings_template_help()}
-        </p>
       </TextField>
 
       <TextField
@@ -96,8 +123,12 @@ export function RecordingTab() {
         </Label>
         <Input className="mt-1 w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText]" />
       </TextField>
+      </div>
 
-      {/* Checkboxes */}
+      {/* Section: Stream file */}
+      <div className="space-y-3 border-t border-slate-700 pt-4">
+        <h3 className="text-sm font-semibold text-slate-200">{m.settings_section_stream_file()}</h3>
+
       <Checkbox
         isSelected={recording.saveStreamFile}
         onChange={(val) => update({ saveStreamFile: val })}
@@ -119,6 +150,11 @@ export function RecordingTab() {
         </div>
         <Label>{m.settings_delete_stream_on_stop()}</Label>
       </Checkbox>
+      </div>
+
+      {/* Section: Track filters */}
+      <div className="space-y-3 border-t border-slate-700 pt-4">
+        <h3 className="text-sm font-semibold text-slate-200">{m.settings_section_track_filters()}</h3>
 
       <Checkbox
         isSelected={recording.skipFirstIncompleteTrack}
@@ -156,6 +192,83 @@ export function RecordingTab() {
         </div>
         <Label>{m.settings_auto_correct_case()}</Label>
       </Checkbox>
+
+      {/* Disk threshold */}
+      {settings && (
+        <NumberField
+          value={settings.diskSpaceThresholdGb}
+          onChange={(val) => { if (!Number.isNaN(val)) updateGlobal({ diskSpaceThresholdGb: val }); }}
+          minValue={0}
+          maxValue={100}
+          step={1}
+        >
+          <Label className="block text-sm font-medium text-slate-300">
+            {m.settings_disk_threshold()}
+          </Label>
+          <Group className="mt-1 flex w-32">
+            <Input className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText]" />
+          </Group>
+          <p className="mt-1 text-xs text-slate-500">{m.settings_disk_threshold_desc()}</p>
+        </NumberField>
+      )}
+      </div>
+
+      {/* Section: Reconnection (collapsed) */}
+      <details className="rounded border border-slate-700">
+        <summary className="cursor-pointer px-3 py-2 text-sm text-slate-300 outline-none focus-visible:ring-2 focus-visible:ring-blue-400">
+          {m.settings_tab_reconnection()}
+        </summary>
+        <div className="space-y-4 px-3 pb-3 pt-1">
+          <NumberField
+            value={recording.reconnect.maxRetries}
+            onChange={(val) => { if (!Number.isNaN(val)) updateReconnect({ maxRetries: val }); }}
+            minValue={0}
+          >
+            <Label className="block text-sm font-medium text-slate-300">{m.settings_max_retries()}</Label>
+            <Group className="mt-1 flex w-32">
+              <Input className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText]" />
+            </Group>
+            <p className="mt-1 text-xs text-slate-500">{m.settings_max_retries_desc()}</p>
+          </NumberField>
+
+          <NumberField
+            value={recording.reconnect.retryIntervalSecs}
+            onChange={(val) => { if (!Number.isNaN(val)) updateReconnect({ retryIntervalSecs: val }); }}
+            minValue={1}
+          >
+            <Label className="block text-sm font-medium text-slate-300">{m.settings_retry_interval()}</Label>
+            <Group className="mt-1 flex w-32">
+              <Input className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText]" />
+            </Group>
+            <p className="mt-1 text-xs text-slate-500">{m.settings_retry_interval_desc()}</p>
+          </NumberField>
+
+          <NumberField
+            value={recording.reconnect.backoffMultiplier}
+            onChange={(val) => { if (!Number.isNaN(val)) updateReconnect({ backoffMultiplier: val }); }}
+            minValue={1}
+            step={0.1}
+          >
+            <Label className="block text-sm font-medium text-slate-300">{m.settings_backoff_multiplier()}</Label>
+            <Group className="mt-1 flex w-32">
+              <Input className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText]" />
+            </Group>
+            <p className="mt-1 text-xs text-slate-500">{m.settings_backoff_multiplier_desc()}</p>
+          </NumberField>
+
+          <NumberField
+            value={recording.reconnect.maxIntervalSecs}
+            onChange={(val) => { if (!Number.isNaN(val)) updateReconnect({ maxIntervalSecs: val }); }}
+            minValue={1}
+          >
+            <Label className="block text-sm font-medium text-slate-300">{m.settings_max_interval()}</Label>
+            <Group className="mt-1 flex w-32">
+              <Input className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText]" />
+            </Group>
+            <p className="mt-1 text-xs text-slate-500">{m.settings_max_interval_desc()}</p>
+          </NumberField>
+        </div>
+      </details>
     </div>
   );
 }

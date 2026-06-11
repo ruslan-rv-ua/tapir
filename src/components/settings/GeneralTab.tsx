@@ -48,6 +48,10 @@ export function GeneralTab() {
 
   return (
     <div className="space-y-6">
+      {/* Section: Interface */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold text-slate-200">{m.settings_section_interface()}</h3>
+
       {/* Language */}
       <Select
         selectedKey={settings.language}
@@ -115,6 +119,11 @@ export function GeneralTab() {
           </ListBox>
         </Popover>
       </Select>
+      </div>
+
+      {/* Section: Tray */}
+      <div className="space-y-3 border-t border-slate-700 pt-4">
+        <h3 className="text-sm font-semibold text-slate-200">{m.settings_section_tray()}</h3>
 
       {/* Minimize to tray */}
       <Checkbox
@@ -139,6 +148,11 @@ export function GeneralTab() {
         </div>
         <Label>{m.settings_show_tray_notifications()}</Label>
       </Checkbox>
+      </div>
+
+      {/* Section: Behavior */}
+      <div className="space-y-3 border-t border-slate-700 pt-4">
+        <h3 className="text-sm font-semibold text-slate-200">{m.settings_section_behavior()}</h3>
 
       {/* Show track in title */}
       <Checkbox
@@ -183,25 +197,7 @@ export function GeneralTab() {
           </ListBox>
         </Popover>
       </Select>
-
-      {/* Disk threshold */}
-      <NumberField
-        value={settings.diskSpaceThresholdGb}
-        onChange={(val) => { if (!Number.isNaN(val)) update({ diskSpaceThresholdGb: val }); }}
-        minValue={0}
-        maxValue={100}
-        step={1}
-      >
-        <Label className="block text-sm font-medium text-slate-300">
-          {m.settings_disk_threshold()}
-        </Label>
-        <Group className="mt-1 flex w-32">
-          <Input className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400" />
-        </Group>
-        <p className="mt-1 text-xs text-slate-500">
-          {m.settings_disk_threshold_desc()}
-        </p>
-      </NumberField>
+      </div>
 
       {/* Logging */}
       <div className="space-y-3 border-t border-slate-700 pt-4">

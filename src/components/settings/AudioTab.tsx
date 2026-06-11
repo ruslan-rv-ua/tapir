@@ -70,45 +70,64 @@ export function AudioTab() {
 
   return (
     <div className="space-y-6">
-      <Select
-        selectedKey={selectedKey}
-        onSelectionChange={(key) => handleDeviceChange(key as string)}
-      >
-        <Label className="block text-sm font-medium text-slate-300">
-          {m.settings_output_device()}
-        </Label>
-        <Button className="mt-1 flex w-80 items-center justify-between rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText]">
-          <SelectValue />
-          <span aria-hidden="true">▼</span>
-        </Button>
-        <Popover className="w-80 rounded border border-slate-600 bg-slate-700 shadow-lg">
-          <ListBox className="max-h-60 overflow-y-auto outline-none">
-            <ListBoxItem
-              id="__default__"
-              className="cursor-pointer px-3 py-2 text-sm text-slate-100 outline-none hover:bg-slate-600 focus:bg-slate-600"
-            >
-              {m.settings_output_device_default()}
-            </ListBoxItem>
-            {devices.map((dev) => (
+      {/* Device selector + Refresh inline */}
+      <div className="flex gap-2 items-end">
+        <Select
+          selectedKey={selectedKey}
+          onSelectionChange={(key) => handleDeviceChange(key as string)}
+          className="flex-1"
+        >
+          <Label className="block text-sm font-medium text-slate-300">
+            {m.settings_output_device()}
+          </Label>
+          <Button className="mt-1 flex w-full items-center justify-between rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText]">
+            <SelectValue />
+            <span aria-hidden="true">▼</span>
+          </Button>
+          <Popover className="w-80 rounded border border-slate-600 bg-slate-700 shadow-lg">
+            <ListBox className="max-h-60 overflow-y-auto outline-none">
               <ListBoxItem
-                key={dev.name}
-                id={dev.name}
+                id="__default__"
                 className="cursor-pointer px-3 py-2 text-sm text-slate-100 outline-none hover:bg-slate-600 focus:bg-slate-600"
               >
-                {dev.name}
+                {m.settings_output_device_default()}
               </ListBoxItem>
-            ))}
-          </ListBox>
-        </Popover>
-      </Select>
+              {devices.map((dev) => (
+                <ListBoxItem
+                  key={dev.name}
+                  id={dev.name}
+                  className="cursor-pointer px-3 py-2 text-sm text-slate-100 outline-none hover:bg-slate-600 focus:bg-slate-600"
+                >
+                  {dev.name}
+                </ListBoxItem>
+              ))}
+            </ListBox>
+          </Popover>
+        </Select>
+        <Button
+          onPress={loadDevices}
+          className="rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-600 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText]"
+          aria-label={m.settings_output_device_refresh()}
+        >
+          {m.settings_output_device_refresh()}
+        </Button>
+      </div>
 
-      <Button
-        onPress={loadDevices}
-        className="rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-600 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText]"
-        aria-label={m.settings_output_device_refresh()}
-      >
-        {m.settings_output_device_refresh()}
-      </Button>
+      {/* Section: Media integration */}
+      <div className="space-y-3 border-t border-slate-700 pt-4">
+        <h3 className="text-sm font-semibold text-slate-200">{m.settings_section_media()}</h3>
+
+        <Checkbox
+          isSelected={settings.smtcEnabled}
+          onChange={(val) => update({ smtcEnabled: val })}
+          className="flex items-center gap-2 text-sm text-slate-300"
+        >
+          <div className="flex h-5 w-5 items-center justify-center rounded border border-slate-600 bg-slate-700">
+            {settings.smtcEnabled && <span>✓</span>}
+          </div>
+          <Label>{m.settings_smtc_enabled()}</Label>
+        </Checkbox>
+      </div>
 
       <div className="space-y-4 border-t border-slate-700 pt-4">
         <h3 className="text-sm font-semibold text-slate-200">
