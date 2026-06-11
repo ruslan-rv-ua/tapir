@@ -107,7 +107,9 @@ pub fn run() {
             if !failed.is_empty() {
                 log::warn!("Failed to register shortcuts: {:?}", failed);
             }
+            let smtc_enabled = settings.smtc_enabled;
             drop(settings);
+            smtc::init(app.handle(), smtc_enabled);
             Ok(())
         })
         .on_window_event(|window, event| {
