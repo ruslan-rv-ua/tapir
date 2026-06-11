@@ -19,7 +19,7 @@ import { useTauriEvent } from "./hooks/useTauriEvent";
 import { useDiskSpacePolling } from "./hooks/useDiskSpacePolling";
 import { useProfileSync } from "./hooks/useProfileSync";
 import { useAnnounce } from "./hooks/useAnnounce";
-import { $streams, updateStreamStatus } from "./stores/streams";
+import { $streams, $statuses, updateStreamStatus } from "./stores/streams";
 import { $settings } from "./stores/settings";
 import { $playerStatus, $muteState } from "./stores/player";
 import { $activeSection } from "./stores/navigation";
@@ -32,6 +32,7 @@ import { computePlaybackNeighbors } from "./stores/playbackNeighbors";
 import { resolveEndedAction } from "./lib/playbackTransport";
 import { executeTransportSkip, parseSkipTrigger } from "./lib/transportControl";
 import { useGlobalShortcuts } from "./hooks/useGlobalShortcuts";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import * as m from "./i18n/paraglide/messages";
 
 const PERMANENT_ZONE_IDS = new Set(["activity-bar", "player", "status-bar"]);
@@ -41,6 +42,9 @@ function AppContent() {
   const announceRef = useRef(announce);
   useEffect(() => { announceRef.current = announce; });
   const activeSection = useStore($activeSection);
+  const settings = useStore($settings);
+  const playerStatus = useStore($playerStatus);
+  const statuses = useStore($statuses);
 
   // ── Zone navigation ──────────────────────────────────────
   // Permanent zones: ActivityBar, Player, StatusBar — never unmount
@@ -137,6 +141,21 @@ function AppContent() {
       activityBarZoneRef.current?.focus("forward");
     });
   }, []);
+
+  // Window title: show current track when showTrackInTitle is enabled
+  useEffect(() => {
+    const win = getCurrentWindow();
+    const appTitle = "Tapir";
+    if (settings?.showTrackInTitle && playerStatus.source?.type === "stream") {
+      const track = statuses[playerStatus.source.streamId]?.currentTrack;
+      if (track?.artist || track?.title) {
+        const parts = [track.artist, track.title].filter(Boolean).join(" \u2014 ");
+        win.setTitle(`${parts} \u00b7 ${appTitle}`);
+        return;
+      }
+    }
+    win.setTitle(appTitle);
+  }, [settings?.showTrackInTitle, playerStatus.source, statuses]);
 
   // Global Tier-2 webview shortcuts (Alt+digit, Ctrl+K, Ctrl+,, Ctrl+N, F1).
   // Capture-phase window listener extracted to a hook — see useGlobalShortcuts.
