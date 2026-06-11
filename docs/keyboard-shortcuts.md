@@ -42,7 +42,7 @@ OS-хоткей на `Ctrl+K`/`Alt+digit`/`F6`/… — гард і реєстр 
 | `Ctrl+Alt+Right` | next_track (наступний трек/потік; через webview-міст) | OS | ✅ |
 | `Ctrl+Shift+U` | toggle_mute (вимкнути/увімкнути звук) | OS | ⬜ |
 
-> ⬜-кандидат toggle_mute — з [KB-12](keyboard-shortcuts-backlog.md#L195):
+> ⬜-кандидат toggle_mute — з KB-12 (беклог шорткатів вилучено як виконаний):
 > відкладено (2026-06-10) — mute-логіка живе у фронтенді (`$muteState`). Міст
 > Rust→webview для таких дій уже існує (подія `transport-skip` для
 > prev/next_track — [shortcuts.rs](../src-tauri/src/shortcuts.rs) →
