@@ -669,7 +669,7 @@ pub async fn recording_task(
         let station_name = icy_name_val.unwrap_or_else(|| station_name.clone());
 
         // --- Set up recorder ---
-        let output_dir = portable::recordings_dir();
+        let output_dir = portable::resolve_output_dir(&recording_settings.output_dir);
 
         let mut rec = recorder::Recorder::new(
             output_dir,
