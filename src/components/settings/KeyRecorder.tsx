@@ -89,7 +89,7 @@ export function KeyRecorder({ label, value, onChange, onValidate }: Props) {
         aria-label={
           isRecording
             ? m.settings_hotkey_press_keys()
-            : `${label}: ${value || m.settings_hotkey_clear()}. ${m.settings_hotkey_press_to_change()}`
+            : `${label}: ${value || m.settings_hotkey_not_set()}. ${m.settings_hotkey_press_to_change()}`
         }
         onPress={() => {
           setIsRecording(true);
@@ -101,7 +101,7 @@ export function KeyRecorder({ label, value, onChange, onValidate }: Props) {
         {isRecording ? m.settings_hotkey_press_keys() : value || "—"}
       </Button>
       <Button
-        aria-label={m.settings_hotkey_clear()}
+        aria-label={m.settings_hotkey_clear({ action: label })}
         onPress={handleClear}
         className="rounded border border-slate-600 bg-slate-700 px-2 py-2 text-sm text-slate-400 hover:text-slate-200 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border-[ButtonText] forced-colors:text-[ButtonText] forced-colors:focus:ring-[Highlight]"
       >

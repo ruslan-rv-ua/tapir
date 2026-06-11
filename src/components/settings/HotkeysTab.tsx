@@ -45,6 +45,9 @@ export function HotkeysTab() {
     save();
     if (combo) {
       announce(m.settings_hotkey_changed({ combo }), "polite");
+    } else {
+      // Empty combo only comes from the clear (✕) button.
+      announce(m.settings_hotkey_cleared(), "polite");
     }
   }
 

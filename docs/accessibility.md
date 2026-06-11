@@ -57,9 +57,13 @@ Tailwind `forced-colors:` для всіх кастомних компонент�
 
 ```tsx
 // Два контейнери: polite + assertive
-<div aria-live="polite" aria-atomic="true" className="sr-only" />
-<div aria-live="assertive" aria-atomic="true" className="sr-only" />
+<div data-live-announcer="true" aria-live="polite" aria-atomic="true" className="sr-only" />
+<div data-live-announcer="true" aria-live="assertive" aria-atomic="true" className="sr-only" />
 ```
+
+**Важливо:** `data-live-announcer="true"` обов'язковий. React Aria `Modal` через
+`ariaHideOutside` ставить `aria-hidden` на все поза модалом, окрім елементів з цим
+атрибутом — без нього всі `announce()` німі, поки відкритий будь-який діалог.
 
 **Правила пріоритету:**
 

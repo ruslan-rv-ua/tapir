@@ -11,9 +11,9 @@ function arm(value = "") {
   const { getByRole } = render(
     <KeyRecorder label={LABEL} value={value} onChange={onChange} />,
   );
-  // The record button's accessible name embeds the label; the clear button
-  // (✕) is named by settings_hotkey_clear, so the label regex disambiguates.
-  const button = getByRole("button", { name: new RegExp(LABEL) });
+  // Both buttons embed the label in their accessible name; only the record
+  // button's name starts with it (the clear button's is "Clear hotkey: …").
+  const button = getByRole("button", { name: (name: string) => name.startsWith(LABEL) });
   fireEvent.click(button);
   return { button, onChange };
 }
@@ -69,5 +69,30 @@ describe("KeyRecorder — physical-position (e.code) recording", () => {
     expect(onChange).not.toHaveBeenCalled();
     // Recording exited → button shows the existing value again.
     expect(button).toHaveTextContent("Ctrl+Shift+P");
+  });
+});
+
+describe("KeyRecorder — accessible names", () => {
+  it("names the clear button after its action so SR users can tell rows apart", () => {
+    const onChange = vi.fn();
+    const { getByRole } = render(
+      <KeyRecorder label={LABEL} value="Ctrl+Shift+R" onChange={onChange} />,
+    );
+    const clear = getByRole("button", {
+      name: m.settings_hotkey_clear({ action: LABEL }),
+    });
+    fireEvent.click(clear);
+    expect(onChange).toHaveBeenCalledWith("");
+  });
+
+  it("announces an unassigned combo as 'not set', not as the clear action", () => {
+    const { getByRole } = render(
+      <KeyRecorder label={LABEL} value="" onChange={vi.fn()} />,
+    );
+    expect(
+      getByRole("button", {
+        name: `${LABEL}: ${m.settings_hotkey_not_set()}. ${m.settings_hotkey_press_to_change()}`,
+      }),
+    ).toBeInTheDocument();
   });
 });

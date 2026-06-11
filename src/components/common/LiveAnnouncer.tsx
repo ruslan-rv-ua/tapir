@@ -20,8 +20,23 @@ export function LiveAnnouncer() {
 
   return (
     <>
-      <div ref={politeRef} aria-live="polite" aria-atomic="true" className="sr-only" />
-      <div ref={assertiveRef} aria-live="assertive" aria-atomic="true" className="sr-only" />
+      {/* data-live-announcer keeps these regions out of react-aria's
+          ariaHideOutside: without it, any open Modal aria-hides them and
+          every announce() goes silent while a dialog is open. */}
+      <div
+        ref={politeRef}
+        data-live-announcer="true"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      />
+      <div
+        ref={assertiveRef}
+        data-live-announcer="true"
+        aria-live="assertive"
+        aria-atomic="true"
+        className="sr-only"
+      />
     </>
   );
 }

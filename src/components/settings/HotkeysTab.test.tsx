@@ -111,6 +111,24 @@ describe("HotkeysTab — reset to defaults (KB-10)", () => {
   });
 });
 
+describe("HotkeysTab — clear hotkey", () => {
+  it("clears the combo and announces it", () => {
+    $settings.set({
+      ...baseSettings,
+      hotkeys: { ...baseSettings.hotkeys, toggleRecording: "Ctrl+Shift+R" },
+    });
+    const { getByRole } = render(<HotkeysTab />);
+    fireEvent.click(
+      getByRole("button", {
+        name: m.settings_hotkey_clear({ action: m.settings_hotkey_toggle_recording() }),
+      }),
+    );
+
+    expect($settings.get()?.hotkeys.toggleRecording).toBe("");
+    expect($announcer.get()?.message).toBe(m.settings_hotkey_cleared());
+  });
+});
+
 describe("HotkeysTab — prev/next track hotkeys", () => {
   it("renders recorder rows for both track hotkeys", () => {
     const { getByRole } = render(<HotkeysTab />);
