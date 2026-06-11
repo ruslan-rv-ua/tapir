@@ -1,8 +1,10 @@
 use crate::app_state::AppState;
 use crate::errors::RadioError;
+use crate::portable;
 use crate::profile::{Profile, StreamInfo};
 use crate::stream::manager::{StreamState, StreamStatus};
 use crate::stream::playlist;
+use log::warn;
 
 /// Whether a stream transfer leaves the source in place (`Copy`) or removes it
 /// from the active profile (`Move`). Deserialized from the JS string "copy"/"move".
@@ -34,6 +36,40 @@ fn move_blocked_by_state(state: &StreamState) -> bool {
         state,
         StreamState::Recording | StreamState::Connecting | StreamState::Reconnecting
     )
+}
+
+fn below_threshold(free_bytes: u64, threshold_gb: u32) -> bool {
+    // cast to u64 first — u32::MAX × 1 GiB < u64::MAX, no overflow
+    threshold_gb > 0 && free_bytes < (threshold_gb as u64) * 1_073_741_824
+}
+
+async fn check_disk_space(state: &AppState) -> Result<(), RadioError> {
+    let threshold_gb = state.settings.read().await.disk_space_threshold_gb;
+    if threshold_gb == 0 {
+        return Ok(()); // disabled — skip the profile lock entirely
+    }
+
+    let output_dir = {
+        let profile = state.active_profile.read().await;
+        portable::resolve_output_dir(&profile.recording.output_dir)
+    };
+
+    let free_bytes = match tokio::task::spawn_blocking(
+        move || portable::free_bytes_on_volume(&output_dir)
+    ).await {
+        Ok(Ok(n))  => n,
+        Ok(Err(e)) => { warn!("Disk space check failed: {e}"); return Ok(()); }
+        Err(e)     => { warn!("Disk space check failed: {e}"); return Ok(()); }
+    };
+
+    if below_threshold(free_bytes, threshold_gb) {
+        return Err(RadioError::Other(format!(
+            "Not enough disk space: free {:.1} GB, required {} GB",
+            free_bytes as f64 / 1_073_741_824.0,
+            threshold_gb,
+        )));
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -138,6 +174,8 @@ pub async fn start_recording(
     state: tauri::State<'_, AppState>,
     _app: tauri::AppHandle,
 ) -> Result<(), String> {
+    check_disk_space(&state).await.map_err(|e| e.to_string())?;
+
     let stream = {
         let profile = state.active_profile.read().await;
         profile
@@ -178,6 +216,8 @@ pub async fn stop_all_recordings(state: tauri::State<'_, AppState>) -> Result<()
 
 #[tauri::command]
 pub async fn start_all_recordings(state: tauri::State<'_, AppState>) -> Result<usize, String> {
+    check_disk_space(&state).await.map_err(|e| e.to_string())?;
+
     let (streams, settings) = {
         let profile = state.active_profile.read().await;
         (profile.streams.clone(), profile.recording.clone())
@@ -330,5 +370,21 @@ mod tests {
         assert!(!move_blocked_by_state(&StreamState::Idle));
         // An Error-state entry can linger during retries; it must NOT block a move.
         assert!(!move_blocked_by_state(&StreamState::Error));
+    }
+
+    #[test]
+    fn threshold_zero_is_disabled() {
+        assert!(!below_threshold(0, 0));
+        assert!(!below_threshold(100, 0));
+    }
+
+    #[test]
+    fn exact_threshold_is_allowed() {
+        assert!(!below_threshold(1_073_741_824, 1)); // free == threshold → allowed
+    }
+
+    #[test]
+    fn one_byte_under_threshold_blocks() {
+        assert!(below_threshold(1_073_741_823, 1)); // one byte short → blocked
     }
 }
