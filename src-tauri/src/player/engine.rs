@@ -69,6 +69,7 @@ use crate::wake_lock::WakeLock;
 /// `app.emit("player-status", ...)` directly.
 fn emit_player_status(app: &AppHandle, status: PlayerStatus, wake_lock: &WakeLock) {
     wake_lock.set_player(matches!(&status.state, PlaybackState::Playing));
+    crate::smtc::sync_status(&status);
     if let Err(e) = app.emit("player-status", status) {
         log::warn!("Player: failed to emit player-status: {e}");
     }
@@ -736,6 +737,7 @@ impl PlayerEngine {
                         match event {
                             None | Some(IcyEvent::Eof) | Some(IcyEvent::Error) => break,
                             Some(IcyEvent::Metadata(artist, title)) => {
+                                crate::smtc::sync_track(&stream_id_writer, &artist, &title);
                                 // Previews carry an empty stream_id (no profile stream); skip
                                 // per-track events/notifications for them.
                                 if !stream_id_writer.is_empty() {

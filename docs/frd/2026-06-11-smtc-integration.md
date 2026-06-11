@@ -1,6 +1,8 @@
 # FRD: Інтеграція з SMTC (System Media Transport Controls)
 
-- **Статус:** запропоновано (2026-06-11), у беклозі. Пріоритет — після Phase 3.
+- **Статус:** реалізовано (2026-06-11), гілка `feature/smtc-integration`.
+  Дизайн: [спека](../superpowers/specs/2026-06-11-smtc-integration-design.md),
+  [ADR](../decisions/2026-06-11-smtc-via-windows-crate.md).
 - **Тип:** Feature Requirements Document — *що* і *навіщо*; технічні рішення
   фіксуватимуться окремим ADR на момент реалізації.
 - **Походження:** аналіз дефолтів глобальних хоткеїв
@@ -74,7 +76,8 @@ Tapir керується OS-глобальними хоткеями (`Ctrl+Shift
 
 - Кандидати: crate `souvlaki` (обгортка SMTC, потребує HWND — беремо з
   `tauri::Window::hwnd()`) або прямий `windows`-crate
-  (`ISystemMediaTransportControlsInterop::GetForWindow`). Вибір — за ADR.
+  (`ISystemMediaTransportControlsInterop::GetForWindow`). Вибір — за ADR
+  (обрано прямий `windows`-crate, див. посилання в шапці).
 - Точки інтеграції: player engine (`PlaybackState` переходи → оновлення
   сесії), ICY-метадані (→ FR-4), `handle_shortcut_action` (спільні обробники
   для FR-2/FR-3/FR-5).
@@ -94,20 +97,22 @@ Tapir керується OS-глобальними хоткеями (`Ctrl+Shift
 6. NVDA: фокус у будь-якому застосунку, кнопка гарнітури — пауза без зміни
    фокуса і без озвучення зайвого.
 
-## 7. Відкриті питання
+## 7. Відкриті питання (закрито при реалізації)
 
-- Чи паузити інші медіа-сесії при старті відтворення Tapir (auto-ducking
-  робить ОС; явний «exclusive mode» не потрібен?) — перевірити на практиці.
-- Поведінка при кількох одночасних прев'ю (Browser): одна сесія на «головний»
-  плеєр чи на останній активний потік?
-- FR-6: ліцензійність/кешування favicon'ів станцій для обкладинки.
+- ~~Чи паузити інші медіа-сесії при старті відтворення Tapir~~ — явний
+  exclusive mode не потрібен, auto-ducking робить ОС; підтвердження — за
+  критерієм приймання 1 (ручне тестування).
+- ~~Поведінка при кількох одночасних прев'ю (Browser)~~ — знято: двигун
+  плеєра має одну сесію нараз, прев'ю витісняє попереднє відтворення;
+  SMTC дзеркалить усе, що грає (станції, файли, прев'ю).
+- FR-6 (обкладинка): відкладено — ліцензійність/кешування favicon'ів
+  лишаються відкритими; Cargo-фічу `Storage_Streams` додамо разом з FR-6.
 
 ## 8. Зв'язки
 
 - [keyboard-shortcuts.md](../keyboard-shortcuts.md) — Tier 1; SMTC доповнює,
   дефолти хоткеїв не змінює.
-- [keyboard-shortcuts-backlog.md](../keyboard-shortcuts-backlog.md) — KB-12
-  (транспортні дії).
+- KB-12 (транспортні дії) — закрито; беклог шорткатів вилучено як виконаний.
 - [architecture.md](../architecture.md) — player engine, події webview.
 - Спека prev/next: [2026-06-10-global-prev-next-track-design.md](../superpowers/specs/2026-06-10-global-prev-next-track-design.md)
   — `transport-skip` міст, який перевикористовує FR-3.

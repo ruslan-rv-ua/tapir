@@ -36,6 +36,7 @@ const baseSettings: GlobalSettings = {
   autostart: false,
   autoAdvance: true,
   prevRestartThresholdMs: 0,
+  smtcEnabled: true,
   hotkeys: {
     toggleRecording: "",
     togglePlayback: "",
@@ -179,5 +180,17 @@ describe("HotkeysTab — global stop_all (KB-12)", () => {
       m.settings_hotkey_duplicate({ action: m.settings_hotkey_stop_all() }),
     );
     expect($settings.get()?.hotkeys.toggleRecording).toBe("");
+  });
+});
+
+describe("HotkeysTab — SMTC toggle (FR-7)", () => {
+  it("toggles smtcEnabled into the settings store", () => {
+    const { getByRole } = render(<HotkeysTab />);
+    // react-aria Checkbox: the accessible name includes the ✓-wrapper prefix,
+    // so match with a regex (same trick as AudioTab.test.tsx).
+    fireEvent.click(
+      getByRole("checkbox", { name: new RegExp(m.settings_smtc_enabled()) }),
+    );
+    expect($settings.get()?.smtcEnabled).toBe(false);
   });
 });

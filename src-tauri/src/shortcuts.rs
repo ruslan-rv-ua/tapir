@@ -74,6 +74,9 @@ pub fn register_global_shortcuts(app: &AppHandle, hotkeys: &HotkeyMap) -> Vec<St
 
 static LAST_TOGGLE_RECORDING_MS: AtomicU64 = AtomicU64::new(0);
 static LAST_STOP_ALL_MS: AtomicU64 = AtomicU64::new(0);
+// Shared with the SMTC Play/Pause handlers (smtc.rs): a hotkey and a media
+// key pressed near-simultaneously must yield one action, not a double toggle.
+pub(crate) static LAST_TOGGLE_PLAYBACK_MS: AtomicU64 = AtomicU64::new(0);
 const SHORTCUT_DEBOUNCE_MS: u64 = 500;
 
 static VOLUME_UP_HELD: AtomicBool = AtomicBool::new(false);
@@ -101,7 +104,7 @@ async fn apply_volume_change(app: &AppHandle, direction: i8) {
 /// True if the action behind `last` already fired within the debounce window.
 /// Swallows OS key auto-repeat so a held combo can't flap the action. Each
 /// action gets its own cell: debouncing one must not swallow another.
-fn recently_fired(last: &AtomicU64) -> bool {
+pub(crate) fn recently_fired(last: &AtomicU64) -> bool {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
@@ -141,11 +144,15 @@ fn handle_shortcut_action(app: &AppHandle, action: &str) {
                 }
             }
             "toggle_playback" => {
-                let status = state.player.get_status().await;
-                match status.state {
-                    PlaybackState::Playing => { let _ = state.player.pause_playback(&app).await; }
-                    PlaybackState::Paused => { let _ = state.player.resume_playback(&app).await; }
-                    _ => { info!("Global shortcut: toggle_playback — nothing playing"); }
+                if recently_fired(&LAST_TOGGLE_PLAYBACK_MS) {
+                    debug!("Global shortcut: toggle_playback ignored (debounce)");
+                } else {
+                    let status = state.player.get_status().await;
+                    match status.state {
+                        PlaybackState::Playing => { let _ = state.player.pause_playback(&app).await; }
+                        PlaybackState::Paused => { let _ = state.player.resume_playback(&app).await; }
+                        _ => { info!("Global shortcut: toggle_playback — nothing playing"); }
+                    }
                 }
             }
             "toggle_window" => {
@@ -196,5 +203,12 @@ mod tests {
         // Spurious second Pressed: flag still true → swap returns true → spawn skipped
         assert!(flag.swap(true, Ordering::Relaxed));
         flag.store(false, Ordering::Relaxed); // restore module-level static
+    }
+
+    #[test]
+    fn toggle_playback_debounce_cell_swallows_repeat() {
+        LAST_TOGGLE_PLAYBACK_MS.store(0, Ordering::Relaxed);
+        assert!(!recently_fired(&LAST_TOGGLE_PLAYBACK_MS), "first call must pass");
+        assert!(recently_fired(&LAST_TOGGLE_PLAYBACK_MS), "repeat must be debounced");
     }
 }

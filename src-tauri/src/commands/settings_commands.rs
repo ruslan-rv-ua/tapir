@@ -20,7 +20,15 @@ pub async fn save_settings(
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())?;
     let mut current = state.settings.write().await;
+    let smtc_changed = current.smtc_enabled != settings.smtc_enabled;
+    let smtc_enabled = settings.smtc_enabled;
     *current = settings;
+    drop(current);
+    // No separate command needed (unlike register_hotkeys): there is no
+    // error list for the UI here, the toggle applies silently.
+    if smtc_changed {
+        crate::smtc::set_enabled(smtc_enabled);
+    }
     Ok(())
 }
 
