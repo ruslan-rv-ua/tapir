@@ -44,16 +44,7 @@ Move `free_bytes_on_volume(dir: &Path) -> Result<u64, String>` from `settings_co
 into `portable.rs` as `pub(crate)`. The function calls `GetDiskFreeSpaceExW` (via
 `nearest_existing_dir` to support not-yet-created output dirs); both helpers belong together.
 
-Add a unit test:
-
-```rust
-#[test]
-fn free_bytes_on_volume_returns_nonzero() {
-    let tmp = std::env::temp_dir();
-    let bytes = free_bytes_on_volume(&tmp).expect("should succeed");
-    assert!(bytes > 0);
-}
-```
+See §Testing for the test to add inside the **existing** `mod tests` block.
 
 ### 2. `src-tauri/src/commands/settings_commands.rs`
 
@@ -101,6 +92,7 @@ Add a pure helper for the threshold comparison (testable in isolation):
 
 ```rust
 fn below_threshold(free_bytes: u64, threshold_gb: u32) -> bool {
+    // cast to u64 first — u32::MAX × 1 GiB < u64::MAX, no overflow
     threshold_gb > 0 && free_bytes < (threshold_gb as u64) * 1_073_741_824
 }
 ```
@@ -189,7 +181,7 @@ common-but-technically-imprecise convention.
 
 ### Automated
 
-**`portable.rs`:**
+**`portable.rs`:** add to the **existing** `mod tests` block (do not create a new one):
 ```rust
 #[test]
 fn free_bytes_on_volume_returns_nonzero() {
@@ -198,27 +190,24 @@ fn free_bytes_on_volume_returns_nonzero() {
 }
 ```
 
-**`stream_commands.rs` — threshold comparison boundaries:**
+**`stream_commands.rs` — threshold comparison boundaries:** add to the **existing** `mod tests` block:
 ```rust
-#[cfg(test)]
-mod tests {
-    use super::below_threshold;
+use super::below_threshold;
 
-    #[test]
-    fn threshold_zero_is_disabled() {
-        assert!(!below_threshold(0, 0));
-        assert!(!below_threshold(100, 0));
-    }
+#[test]
+fn threshold_zero_is_disabled() {
+    assert!(!below_threshold(0, 0));
+    assert!(!below_threshold(100, 0));
+}
 
-    #[test]
-    fn exact_threshold_is_allowed() {
-        assert!(!below_threshold(1_073_741_824, 1)); // free == threshold → allowed
-    }
+#[test]
+fn exact_threshold_is_allowed() {
+    assert!(!below_threshold(1_073_741_824, 1)); // free == threshold → allowed
+}
 
-    #[test]
-    fn one_byte_under_threshold_blocks() {
-        assert!(below_threshold(1_073_741_823, 1)); // one byte short → blocked
-    }
+#[test]
+fn one_byte_under_threshold_blocks() {
+    assert!(below_threshold(1_073_741_823, 1)); // one byte short → blocked
 }
 ```
 
