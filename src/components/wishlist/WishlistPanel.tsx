@@ -37,8 +37,8 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
 
   // Load data on mount
   useEffect(() => {
-    tauri.getWishlist().then((w) => $wishlist.set(w)).catch(console.error);
-    tauri.getIgnorelist().then((i) => $ignorelist.set(i)).catch(console.error);
+    tauri.getWishlist().then((w) => $wishlist.set(w)).catch((e) => { console.error(e); addToast(m.wishlist_load_error(), "error"); });
+    tauri.getIgnorelist().then((i) => $ignorelist.set(i)).catch((e) => { console.error(e); addToast(m.wishlist_load_error(), "error"); });
   }, []);
 
   // --- Wishlist handlers ---

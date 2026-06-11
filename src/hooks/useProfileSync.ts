@@ -7,6 +7,8 @@ import { $streams, $statuses } from "../stores/streams";
 import { $settings, $recordingSettings } from "../stores/settings";
 import { $wishlist, $ignorelist } from "../stores/wishlist";
 import { loadSongs } from "../stores/songs";
+import { addToast } from "../stores/toasts";
+import * as m from "../i18n/paraglide/messages";
 
 export function useProfileSync(): void {
   useEffect(() => {
@@ -48,6 +50,7 @@ export function useProfileSync(): void {
           $ignorelist.set(il);
         } catch (e) {
           console.error("useProfileSync: failed to refresh wishlist/ignorelist", e);
+          addToast(m.profile_sync_error(), "error");
         }
 
         // Songs — re-fetch for new profile's outputDir
@@ -60,6 +63,7 @@ export function useProfileSync(): void {
           $recordingSettings.set(rec);
         } catch (e) {
           console.error("useProfileSync: failed to refresh recording settings", e);
+          addToast(m.profile_sync_error(), "error");
         }
       }
     );

@@ -291,6 +291,7 @@ function AppContent() {
       else await tauri.stopPlayback(); // end of list or autoAdvance off
     } catch (e) {
       console.error(e);
+      addToast(m.playback_error(), "error");
       // Skip-on-error guard: never loop through broken files — just stop.
       await tauri.stopPlayback().catch(() => {});
     }

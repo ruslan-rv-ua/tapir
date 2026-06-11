@@ -6,6 +6,7 @@ import { $playerStatus } from "../../stores/player";
 import { $settings } from "../../stores/settings";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
+import { useAnnounce } from "../../hooks/useAnnounce";
 
 interface VolumeSliderProps {
   inputRef?: RefObject<HTMLInputElement | null>;
@@ -15,6 +16,7 @@ interface VolumeSliderProps {
 export function VolumeSlider({ inputRef, onNavigate }: VolumeSliderProps) {
   const { volume } = useStore($playerStatus);
   const step = useStore($settings)?.volumeStepPercent ?? 5;
+  const announce = useAnnounce();
   const storePercent = Math.round(volume * 100);
   const [dragPercent, setDragPercent] = useState<number | null>(null);
   const percent = dragPercent ?? storePercent;
@@ -42,13 +44,13 @@ export function VolumeSlider({ inputRef, onNavigate }: VolumeSliderProps) {
       onChange={(v) => {
         setDragPercent(v);
         if (!isDraggingRef.current) {
-          tauri.setVolume(v / 100).catch(console.error);
+          tauri.setVolume(v / 100).catch((e) => { console.error(e); announce(m.playback_error(), "assertive"); });
         }
       }}
       onChangeEnd={(v) => {
         isDraggingRef.current = false;
         setDragPercent(null);
-        tauri.setVolume(v / 100).catch(console.error);
+        tauri.setVolume(v / 100).catch((e) => { console.error(e); announce(m.playback_error(), "assertive"); });
       }}
       className="flex items-center gap-2 w-full"
     >
@@ -81,11 +83,11 @@ export function VolumeSlider({ inputRef, onNavigate }: VolumeSliderProps) {
             } else if (e.key === 'ArrowUp') {
               e.preventDefault(); e.stopPropagation();
               const newVol = Math.min(1, (volume * 100 + step) / 100);
-              tauri.setVolume(newVol).catch(console.error);
+              tauri.setVolume(newVol).catch((e) => { console.error(e); announce(m.playback_error(), "assertive"); });
             } else if (e.key === 'ArrowDown') {
               e.preventDefault(); e.stopPropagation();
               const newVol = Math.max(0, (volume * 100 - step) / 100);
-              tauri.setVolume(newVol).catch(console.error);
+              tauri.setVolume(newVol).catch((e) => { console.error(e); announce(m.playback_error(), "assertive"); });
             }
           }}
           className="w-3.5 h-3.5 rounded-full bg-white top-1/2 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1 forced-colors:bg-[ButtonText]"

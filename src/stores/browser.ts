@@ -1,6 +1,8 @@
 import { atom, computed } from "nanostores";
 import type { StationResult, SearchParams, BrowserFilters } from "../lib/tauri";
 import { searchStationsIpc, getBrowserFilters, addStationFromBrowser } from "../lib/tauri";
+import { addToast } from "./toasts";
+import * as m from "../i18n/paraglide/messages";
 
 // --- State ---
 
@@ -57,6 +59,7 @@ export async function loadFilters(): Promise<void> {
     $browserFilters.set(filters);
   } catch (e) {
     console.error("Failed to load browser filters:", e);
+    addToast(m.browser_filters_load_error(), "error");
   }
 }
 

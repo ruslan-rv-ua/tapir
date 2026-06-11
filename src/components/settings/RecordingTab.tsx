@@ -11,6 +11,7 @@ import { $settings, $recordingSettings } from "../../stores/settings";
 import { useAutoSave } from "../../hooks/useAutoSave";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
+import { addToast } from "../../stores/toasts";
 import type { RecordingSettings, GlobalSettings, ReconnectConfig } from "../../lib/tauri";
 
 export function RecordingTab() {
@@ -60,6 +61,7 @@ export function RecordingTab() {
       if (dir) update({ outputDir: dir });
     } catch (err) {
       console.error("Failed to open directory picker:", err);
+      addToast(m.settings_recording_dir_error(), "error");
     }
   }
 

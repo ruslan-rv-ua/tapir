@@ -5,6 +5,7 @@ import { useStore } from "@nanostores/react";
 import { $settings, $settingsDialogOpen, $recordingSettings } from "../../stores/settings";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
+import { addToast } from "../../stores/toasts";
 import { GeneralTab } from "./GeneralTab";
 import { RecordingTab } from "./RecordingTab";
 import { HotkeysTab } from "./HotkeysTab";
@@ -21,7 +22,7 @@ export function SettingsDialog() {
     if (isOpen) {
       tauri.getRecordingSettings().then((rec) => {
         $recordingSettings.set(rec);
-      }).catch(console.error);
+      }).catch((e) => { console.error(e); addToast(m.settings_load_error(), "error"); });
     }
   }, [isOpen]);
 

@@ -5,6 +5,7 @@ import { useStore } from "@nanostores/react";
 import { $playerStatus } from "../../stores/player";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
+import { useAnnounce } from "../../hooks/useAnnounce";
 
 interface PlaybackPositionProps {
   inputRef?: RefObject<HTMLInputElement | null>;
@@ -21,6 +22,7 @@ function formatTime(ms: number): string {
 export function PlaybackPosition({ inputRef, onNavigate }: PlaybackPositionProps) {
   const { state, source, positionMs, durationMs } = useStore($playerStatus);
   const [dragPos, setDragPos] = useState<number | null>(null);
+  const announce = useAnnounce();
   // Ref mirrors dragPos for synchronous access in event handlers (React state is stale in closures).
   const dragPosRef = useRef<number | null>(null);
 
@@ -54,7 +56,7 @@ export function PlaybackPosition({ inputRef, onNavigate }: PlaybackPositionProps
           if (dragPosRef.current !== null) {
             dragPosRef.current = null;
             setDragPos(null);
-            tauri.seekPlayback(v).catch(console.error);
+            tauri.seekPlayback(v).catch((e) => { console.error(e); announce(m.playback_error(), "assertive"); });
           }
         }}
         className="flex items-center gap-2 flex-1"
@@ -92,7 +94,7 @@ export function PlaybackPosition({ inputRef, onNavigate }: PlaybackPositionProps
               if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && dragPosRef.current !== null) {
                 const target = dragPosRef.current;
                 dragPosRef.current = null;
-                tauri.seekPlayback(target).catch(console.error);
+                tauri.seekPlayback(target).catch((e) => { console.error(e); announce(m.playback_error(), "assertive"); });
                 // Pre-update store so slider doesn't snap to stale position while backend responds.
                 $playerStatus.set({ ...$playerStatus.get(), positionMs: target });
                 setDragPos(null);
