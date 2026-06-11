@@ -67,42 +67,13 @@ pub fn default_hotkeys() -> HotkeyMap {
     HotkeyMap::default()
 }
 
-/// Free bytes available to the caller on the volume hosting `dir`.
-/// Climbs to the nearest existing ancestor so a not-yet-created output dir
-/// still reports its volume.
-fn free_bytes_on_volume(dir: &std::path::Path) -> Result<u64, String> {
-    use std::os::windows::ffi::OsStrExt;
-    use windows::Win32::Storage::FileSystem::GetDiskFreeSpaceExW;
-    use windows::core::PCWSTR;
-
-    let base = crate::portable::nearest_existing_dir(dir)
-        .ok_or_else(|| "no existing ancestor directory".to_string())?;
-    let wide: Vec<u16> = base
-        .as_os_str()
-        .encode_wide()
-        .chain(std::iter::once(0))
-        .collect();
-
-    let mut free_to_caller: u64 = 0;
-    unsafe {
-        GetDiskFreeSpaceExW(
-            PCWSTR(wide.as_ptr()),
-            Some(&mut free_to_caller as *mut u64),
-            None,
-            None,
-        )
-        .map_err(|e| e.to_string())?;
-    }
-    Ok(free_to_caller)
-}
-
 #[tauri::command]
 pub async fn get_free_space(state: tauri::State<'_, AppState>) -> Result<u64, String> {
     let dir = {
         let profile = state.active_profile.read().await;
         crate::portable::resolve_output_dir(&profile.recording.output_dir)
     };
-    tokio::task::spawn_blocking(move || free_bytes_on_volume(&dir))
+    tokio::task::spawn_blocking(move || crate::portable::free_bytes_on_volume(&dir))
         .await
         .map_err(|e| e.to_string())?
 }

@@ -68,6 +68,35 @@ pub fn ensure_data_dirs() -> Result<(), std::io::Error> {
     Ok(())
 }
 
+/// Free bytes available to the caller on the volume hosting `dir`.
+/// Climbs to the nearest existing ancestor so a not-yet-created output dir
+/// still reports its volume.
+pub(crate) fn free_bytes_on_volume(dir: &Path) -> Result<u64, String> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows::Win32::Storage::FileSystem::GetDiskFreeSpaceExW;
+    use windows::core::PCWSTR;
+
+    let base = nearest_existing_dir(dir)
+        .ok_or_else(|| "no existing ancestor directory".to_string())?;
+    let wide: Vec<u16> = base
+        .as_os_str()
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+
+    let mut free_to_caller: u64 = 0;
+    unsafe {
+        GetDiskFreeSpaceExW(
+            PCWSTR(wide.as_ptr()),
+            Some(&mut free_to_caller as *mut u64),
+            None,
+            None,
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(free_to_caller)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -100,5 +129,11 @@ mod tests {
             nearest_existing_dir(&missing),
             Some(tmp.path().to_path_buf())
         );
+    }
+
+    #[test]
+    fn free_bytes_on_volume_returns_nonzero() {
+        let bytes = free_bytes_on_volume(&std::env::temp_dir()).expect("should succeed");
+        assert!(bytes > 0);
     }
 }
