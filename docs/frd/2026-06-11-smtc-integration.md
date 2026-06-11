@@ -1,6 +1,8 @@
 # FRD: Інтеграція з SMTC (System Media Transport Controls)
 
-- **Статус:** запропоновано (2026-06-11), у беклозі. Пріоритет — після Phase 3.
+- **Статус:** у розробці (2026-06-11), гілка `feature/smtc-integration`.
+  Дизайн: [спека](../superpowers/specs/2026-06-11-smtc-integration-design.md),
+  [ADR](../decisions/2026-06-11-smtc-via-windows-crate.md).
 - **Тип:** Feature Requirements Document — *що* і *навіщо*; технічні рішення
   фіксуватимуться окремим ADR на момент реалізації.
 - **Походження:** аналіз дефолтів глобальних хоткеїв
