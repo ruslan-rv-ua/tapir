@@ -21,6 +21,7 @@ const baseSettings: GlobalSettings = {
   showTrackInTitle: true,
   diskSpaceThresholdGb: 1,
   doubleClickAction: "play",
+  smtcEnabled: true,
   bandwidthLimitKbps: 0,
   autostart: false,
   autoAdvance: true,
@@ -69,5 +70,15 @@ describe("AudioTab — playback settings", () => {
     // react-aria NumberField commits on Enter in jsdom.
     fireEvent.keyDown(input, { key: "Enter" });
     expect($settings.get()?.prevRestartThresholdMs).toBe(3000);
+  });
+});
+
+describe("AudioTab — SMTC toggle (FR-7)", () => {
+  it("toggles smtcEnabled into the settings store", () => {
+    const { getByRole } = render(<AudioTab />);
+    fireEvent.click(
+      getByRole("checkbox", { name: new RegExp(m.settings_smtc_enabled()) }),
+    );
+    expect($settings.get()?.smtcEnabled).toBe(false);
   });
 });
