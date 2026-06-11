@@ -49,6 +49,12 @@ describe("KeyRecorder — physical-position (e.code) recording", () => {
     expect(onChange).toHaveBeenCalledWith("Ctrl+Shift+Up");
   });
 
+  it("records bare Pause (modifier-free is valid for this key)", () => {
+    const { button, onChange } = arm();
+    fireEvent.keyDown(button, { code: "Pause", key: "Pause" });
+    expect(onChange).toHaveBeenCalledWith("Pause");
+  });
+
   it("ignores unsupported keys and stays armed", () => {
     const { button, onChange } = arm();
     fireEvent.keyDown(button, { code: "Minus", key: "-", ctrlKey: true });

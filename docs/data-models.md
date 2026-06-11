@@ -47,9 +47,12 @@
   "hotkeys": {
     "toggleRecording": "Ctrl+Shift+R",
     "togglePlayback": "Ctrl+Shift+P",
-    "volumeUp": "Ctrl+Shift+Up",
-    "volumeDown": "Ctrl+Shift+Down",
-    "toggleWindow": "Ctrl+Shift+H"
+    "volumeUp": "Ctrl+Alt+Up",
+    "volumeDown": "Ctrl+Alt+Down",
+    "toggleWindow": "Ctrl+Shift+H",
+    "stopAll": "Ctrl+Shift+S",
+    "prevTrack": "Ctrl+Alt+Left",
+    "nextTrack": "Ctrl+Alt+Right"
   },
 
   // Logging
@@ -896,9 +899,12 @@ interface PostprocessErrorPayload {
   "hotkeys": {
     "toggleRecording": "Ctrl+Shift+R",
     "togglePlayback": "Ctrl+Shift+P",
-    "volumeUp": "Ctrl+Shift+Up",
-    "volumeDown": "Ctrl+Shift+Down",
-    "toggleWindow": "Ctrl+Shift+H"
+    "volumeUp": "Ctrl+Alt+Up",
+    "volumeDown": "Ctrl+Alt+Down",
+    "toggleWindow": "Ctrl+Shift+H",
+    "stopAll": "Ctrl+Shift+S",
+    "prevTrack": "Ctrl+Alt+Left",
+    "nextTrack": "Ctrl+Alt+Right"
   },
   "logRotation": true,
   "logLevel": "info",

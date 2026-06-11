@@ -897,11 +897,16 @@ document.addEventListener("keydown", (e) => {
 |---|---|---|
 | Toggle recording | Ctrl+Shift+R | Global (працює у фоні) |
 | Toggle playback | Ctrl+Shift+P | Global |
-| Volume up (+5%) | Ctrl+Shift+Up | Global |
-| Volume down (-5%) | Ctrl+Shift+Down | Global |
+| Volume up (+5%) | Ctrl+Alt+Up | Global |
+| Volume down (-5%) | Ctrl+Alt+Down | Global |
 | Show/hide window | Ctrl+Shift+H | Global |
+| Stop all (зупинити весь запис) | Ctrl+Shift+S | Global |
+| Previous track | Ctrl+Alt+Left | Global |
+| Next track | Ctrl+Alt+Right | Global |
 
 Реалізація через `tauri-plugin-global-shortcut`. Усі клавіші налаштовуються.
+Принцип вибору дефолтів (літери на `Ctrl+Shift`, стрілки на `Ctrl+Alt`) —
+[keyboard-shortcuts.md](keyboard-shortcuts.md), розділ «Принципи вибору Tier-1 дефолтів».
 
 ### Локальні клавіші (у вікні)
 

@@ -1189,11 +1189,13 @@ Within Stream Table:
   Context Menu key — контекстне меню
 
 Global hotkeys (configurable):
-  Ctrl+Shift+R — Start/stop recording selected stream
+  Ctrl+Shift+R — Start/stop recording (active profile)
   Ctrl+Shift+P — Play/pause
-  Ctrl+Shift+Up — Volume up
-  Ctrl+Shift+Down — Volume down
+  Ctrl+Alt+Up — Volume up
+  Ctrl+Alt+Down — Volume down
   Ctrl+Shift+H — Show/hide window
+  Ctrl+Shift+S — Stop all recordings
+  Ctrl+Alt+Left/Right — Previous/next track
 ```
 
 ---
