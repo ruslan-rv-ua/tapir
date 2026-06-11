@@ -8,6 +8,7 @@ mod recording_control;
 mod sanitize;
 mod shortcuts;
 mod settings;
+mod smtc;
 mod songs;
 mod stream;
 mod tags;

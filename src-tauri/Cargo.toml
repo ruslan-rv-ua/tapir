@@ -69,14 +69,18 @@ chrono = { version = "0.4", features = ["serde"] }
 walkdir = "2"
 sys-locale = "0.3"
 
-# Win32 APIs for quit-confirm MessageBox and Shell file operations
-# (Recycle Bin delete via SHFileOperationW).
+# Win32 APIs for quit-confirm MessageBox, Shell file operations
+# (Recycle Bin delete via SHFileOperationW) and the SMTC media session
+# (WinRT Media + interop, see src/smtc.rs).
 windows = { version = "0.62", features = [
     "Win32_UI_WindowsAndMessaging",
     "Win32_UI_Shell",
     "Win32_Foundation",
     "Win32_Storage_FileSystem",
     "Win32_System_Power",
+    "Win32_System_WinRT",
+    "Media",
+    "Foundation",
 ] }
 
 # Registry access for one-shot AppUserModelID registration at startup,
