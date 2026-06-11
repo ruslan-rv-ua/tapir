@@ -4,6 +4,7 @@ import { $streams, $statuses } from "../../stores/streams";
 import { $recordingSettings, $settings } from "../../stores/settings";
 import { $playerStatus } from "../../stores/player";
 import { CompositeList } from "../common/composite-list";
+import type { ActionModifiers } from "../../hooks/useCompositeList";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import type { StreamInfo, ProfileMeta } from "../../lib/tauri";
 import { StreamItem, getStreamSegments } from "./StreamItem";
@@ -110,10 +111,16 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
 
   // The row's primary action, shared by keyboard activation (Enter/Space on the
   // summary) and a mouse double-click. Per `doubleClickAction` it toggles either
-  // playback or recording (the default).
+  // playback or recording (the default). The fixed combos override the setting:
+  // Shift = listen, Ctrl = record (app-wide convention, see keyboard-shortcuts.md).
   const activateStream = useCallback(
-    (itemId: string) => {
-      if (settings?.doubleClickAction === "play") {
+    (itemId: string, mods?: ActionModifiers) => {
+      const action = mods?.shift
+        ? "play"
+        : mods?.ctrl
+          ? "record"
+          : (settings?.doubleClickAction ?? "record");
+      if (action === "play") {
         const isPlaying =
           playerStatus.state !== "stopped" &&
           playerStatus.source?.type === "stream" &&
@@ -154,7 +161,7 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
         className="flex-1 overflow-y-auto overflow-x-hidden"
         onTabOut={exitZone}
         onEmpty={onEmpty}
-        onAction={(type, itemId, segment) => {
+        onAction={(type, itemId, segment, mods) => {
           if (type === "delete") {
             setPendingDeleteId(itemId);
             return;
@@ -162,7 +169,7 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
           // Action buttons self-activate; only Enter/Space on the whole-row
           // summary triggers the row's primary action.
           if ((type === "primary" || type === "toggle") && segment === "summary") {
-            activateStream(itemId);
+            activateStream(itemId, mods);
           }
         }}
         renderRow={({ id, isActive, isFocused }) => {
@@ -178,7 +185,7 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
               onDelete={() => setPendingDeleteId(id)}
               onCopyToProfile={() => openTransfer("copy", id)}
               onMoveToProfile={() => openTransfer("move", id)}
-              onActivate={() => activateStream(id)}
+              onActivate={(mods) => activateStream(id, mods)}
             />
           );
         }}

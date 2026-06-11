@@ -86,8 +86,21 @@ export const StationList = forwardRef<ZoneEntry, Props>(
           ) : undefined
         }
         // Enter on the whole-row summary adds the station (primary action).
-        onAction={(type, itemId, segment) => {
+        // Shift+Enter toggles the preview (app-wide "Shift = listen" convention) by
+        // delegating to the row's own preview button — the single owner of preview
+        // state, labels and failure handling. Ctrl+Enter is reserved for recording,
+        // which doesn't exist here, so it deliberately does nothing.
+        onAction={(type, itemId, segment, mods) => {
           if (type !== "primary" || segment !== "summary") return;
+          if (mods.shift) {
+            document
+              .querySelector<HTMLElement>(
+                `[data-zone-id="browser-results"] [data-item-id="${CSS.escape(itemId)}"][data-segment="action-play"]`,
+              )
+              ?.click();
+            return;
+          }
+          if (mods.ctrl) return;
           const station = stations.find((s) => s.stationuuid === itemId);
           if (station) void handleAdd(station);
         }}

@@ -6,6 +6,7 @@ import {
   type CompositeListItem,
   type SegmentKind,
   type ActionType,
+  type ActionModifiers,
 } from "./useCompositeList";
 
 /* ------------------------------------------------------------------ */
@@ -17,7 +18,12 @@ import {
 interface HarnessProps {
   items: CompositeListItem[];
   onTabOut?: (forward: boolean) => void;
-  onAction?: (type: ActionType, itemId: string, segment: SegmentKind) => void;
+  onAction?: (
+    type: ActionType,
+    itemId: string,
+    segment: SegmentKind,
+    modifiers: ActionModifiers,
+  ) => void;
   onEmpty?: () => void;
   onButtonClick?: (itemId: string, segment: string) => void;
   onParentKeyDown?: (e: ReactKeyboardEvent) => void;
@@ -118,6 +124,8 @@ function expectActive(id: string | null, seg: string | null) {
   expect(ae?.getAttribute("data-item-id") ?? null).toBe(id);
   expect(ae?.getAttribute("data-segment") ?? null).toBe(seg);
 }
+
+const noMods: ActionModifiers = { shift: false, ctrl: false };
 
 const makeItems = (): CompositeListItem[] => [
   { id: "a", segments: ["track", "tech", "action-play", "action-record", "action-menu"] },
@@ -233,10 +241,34 @@ describe("activation keys", () => {
     focusStart("a");
 
     press("Enter");
-    expect(onAction).toHaveBeenCalledWith("primary", "a", "summary");
+    expect(onAction).toHaveBeenCalledWith("primary", "a", "summary", noMods);
 
     press(" ");
-    expect(onAction).toHaveBeenCalledWith("toggle", "a", "summary");
+    expect(onAction).toHaveBeenCalledWith("toggle", "a", "summary", noMods);
+  });
+
+  it("passes Shift/Ctrl modifiers to onAction for Enter and Space", () => {
+    const onAction = vi.fn();
+    render(<Harness items={makeItems()} onAction={onAction} />);
+    focusStart("a");
+
+    press("Enter", { shiftKey: true });
+    expect(onAction).toHaveBeenLastCalledWith("primary", "a", "summary", {
+      shift: true,
+      ctrl: false,
+    });
+
+    press("Enter", { ctrlKey: true });
+    expect(onAction).toHaveBeenLastCalledWith("primary", "a", "summary", {
+      shift: false,
+      ctrl: true,
+    });
+
+    press(" ", { shiftKey: true });
+    expect(onAction).toHaveBeenLastCalledWith("toggle", "a", "summary", {
+      shift: true,
+      ctrl: false,
+    });
   });
 
   it("Enter on an info segment fires primary for that segment", () => {
@@ -245,7 +277,7 @@ describe("activation keys", () => {
     focusStart("a");
     press("ArrowRight"); // a/track
     press("Enter");
-    expect(onAction).toHaveBeenCalledWith("primary", "a", "track");
+    expect(onAction).toHaveBeenCalledWith("primary", "a", "track", noMods);
   });
 
   it("Delete fires delete; bare F10 does not fire contextMenu", () => {
@@ -254,7 +286,7 @@ describe("activation keys", () => {
     focusStart("a");
 
     press("Delete");
-    expect(onAction).toHaveBeenCalledWith("delete", "a", "summary");
+    expect(onAction).toHaveBeenCalledWith("delete", "a", "summary", noMods);
 
     onAction.mockClear();
     press("F10"); // no shift

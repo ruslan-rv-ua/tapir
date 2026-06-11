@@ -2,6 +2,7 @@ import { forwardRef, useCallback, useImperativeHandle, type ReactElement, type R
 import {
   useCompositeList,
   type ActionType,
+  type ActionModifiers,
   type CompositeListItem,
   type SegmentKind,
 } from "../../../hooks/useCompositeList";
@@ -20,7 +21,12 @@ export interface CompositeListProps {
   ariaLabel: string;
   items: CompositeListItem[];
   onTabOut: (forward: boolean) => void;
-  onAction: (type: ActionType, itemId: string, segment: SegmentKind) => void;
+  onAction: (
+    type: ActionType,
+    itemId: string,
+    segment: SegmentKind,
+    modifiers: ActionModifiers,
+  ) => void;
   onEmpty?: () => void;
   renderRow: (row: CompositeRowRenderArgs) => ReactNode;
   className?: string;

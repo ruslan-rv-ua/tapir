@@ -32,11 +32,26 @@ export type SegmentKind =
 export type ActionType = 'primary' | 'toggle' | 'delete';
 
 /**
+ * Modifier keys held during an activation key (Enter/Space) or Delete.
+ * Lists map these to fixed alternate actions — by app-wide convention
+ * Shift+Enter = listen (play/preview), Ctrl+Enter = record (where recording
+ * exists) — regardless of what the plain-Enter primary action is configured to.
+ */
+export interface ActionModifiers {
+  shift: boolean;
+  ctrl: boolean;
+}
+
+/**
  * True when `el` is a native interactive control that handles its own
  * Enter/Space/click. When such a control is the active focus stop, the hook
  * stays out of the way: it does not preventDefault Enter/Space and does not
  * synthesize an onAction call, letting the browser activate the control.
  */
+function modifiers(e: React.KeyboardEvent): ActionModifiers {
+  return { shift: e.shiftKey, ctrl: e.ctrlKey };
+}
+
 function isNativeControl(el: Element | null): boolean {
   if (!(el instanceof HTMLElement)) return false;
   const tag = el.tagName;
@@ -73,7 +88,12 @@ interface UseCompositeListOptions<T extends CompositeListItem> {
   zoneId: string;
   items: T[];
   onTabOut: (forward: boolean) => void;
-  onAction: (type: ActionType, itemId: string, segment: SegmentKind) => void;
+  onAction: (
+    type: ActionType,
+    itemId: string,
+    segment: SegmentKind,
+    modifiers: ActionModifiers,
+  ) => void;
   /**
    * Called when items becomes empty while list had focus.
    * Parent should switch to empty-state zone.
@@ -314,19 +334,19 @@ export function useCompositeList<T extends CompositeListItem>({
           // On an action button let the native click fire — don't consume.
           if (isNativeControl(document.activeElement)) break;
           consume();
-          onActionRef.current('primary', activeItemId, activeSegment);
+          onActionRef.current('primary', activeItemId, activeSegment, modifiers(e));
           break;
 
         case ' ':
           // Space activates a focused button natively; otherwise it toggles.
           if (isNativeControl(document.activeElement)) break;
           consume();
-          onActionRef.current('toggle', activeItemId, activeSegment);
+          onActionRef.current('toggle', activeItemId, activeSegment, modifiers(e));
           break;
 
         case 'Delete':
           consume();
-          onActionRef.current('delete', activeItemId, activeSegment);
+          onActionRef.current('delete', activeItemId, activeSegment, modifiers(e));
           break;
 
         case 'Tab':

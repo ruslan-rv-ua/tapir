@@ -9,6 +9,7 @@ describe("RESERVED_WEBVIEW_COMBOS", () => {
       "Alt+0", "Alt+1", "Alt+2", "Alt+3", "Alt+4", "Alt+5",
       "Ctrl+N",
       "F6", "Shift+F6", "Shift+F10",
+      "Shift+Enter", "Ctrl+Enter",
     ]);
   });
 });

@@ -118,6 +118,7 @@ export function StationItem({
       isActiveRow={isActiveRow}
       label={summaryLabel}
       roleDescription={m.item_role_station()}
+      keyshortcuts="Shift+Enter"
       className="border-b border-slate-800 px-3 py-2 forced-colors:border-[ButtonText]"
       activeClassName="bg-slate-800/60"
     >

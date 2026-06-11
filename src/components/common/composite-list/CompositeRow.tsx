@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import type { SegmentKind } from "../../../hooks/useCompositeList";
+import type { ActionModifiers, SegmentKind } from "../../../hooks/useCompositeList";
 
 interface CompositeRowProps {
   itemId: string;
@@ -18,9 +18,12 @@ interface CompositeRowProps {
   /**
    * Primary action for a mouse double-click anywhere on the row except its own
    * interactive controls (buttons/links/inputs), which keep their native click
-   * behaviour. Mirrors the keyboard "primary" action (Enter on the summary).
+   * behaviour. Mirrors the keyboard "primary" action (Enter on the summary),
+   * including the held Shift/Ctrl modifiers.
    */
-  onActivate?: () => void;
+  onActivate?: (modifiers: ActionModifiers) => void;
+  /** aria-keyshortcuts advertised on the summary stop (e.g. "Shift+Enter Control+Enter"). */
+  keyshortcuts?: string;
   children: ReactNode;
 }
 
@@ -40,6 +43,7 @@ export function CompositeRow({
   activeClassName,
   style,
   onActivate,
+  keyshortcuts,
   children,
 }: CompositeRowProps) {
   return (
@@ -50,6 +54,7 @@ export function CompositeRow({
       tabIndex={isFocused("summary") ? 0 : -1}
       aria-label={label}
       aria-roledescription={roleDescription}
+      aria-keyshortcuts={keyshortcuts}
       className={[className, isActiveRow ? activeClassName : ""].filter(Boolean).join(" ")}
       style={style}
       onDoubleClick={
@@ -57,7 +62,7 @@ export function CompositeRow({
         ((e) => {
           // Let the row's own controls handle their own activation.
           if ((e.target as HTMLElement).closest("button, a, input, select, textarea")) return;
-          onActivate();
+          onActivate({ shift: e.shiftKey, ctrl: e.ctrlKey });
         })
       }
     >

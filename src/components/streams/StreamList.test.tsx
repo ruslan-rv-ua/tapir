@@ -158,6 +158,54 @@ describe("StreamList — row activation honors doubleClickAction", () => {
     expect(tauri.playStream).not.toHaveBeenCalled();
   });
 
+  it("Shift+Enter toggles playback even when doubleClickAction is 'record'", () => {
+    $settings.set({ ...baseSettings, doubleClickAction: "record" });
+    focusFirstRow();
+    fireEvent.keyDown(document.activeElement!, { key: "Enter", shiftKey: true });
+    expect(tauri.playStream).toHaveBeenCalledWith("a");
+    expect(tauri.startRecording).not.toHaveBeenCalled();
+  });
+
+  it("Ctrl+Enter toggles recording even when doubleClickAction is 'play'", () => {
+    $settings.set({ ...baseSettings, doubleClickAction: "play" });
+    focusFirstRow();
+    fireEvent.keyDown(document.activeElement!, { key: "Enter", ctrlKey: true });
+    expect(tauri.startRecording).toHaveBeenCalledWith("a");
+    expect(tauri.playStream).not.toHaveBeenCalled();
+  });
+
+  it("Shift+Enter stops playback when this stream is already playing", () => {
+    $settings.set({ ...baseSettings, doubleClickAction: "record" });
+    $playerStatus.set({
+      state: "playing", source: { type: "stream", streamId: "a" },
+      volume: 0.75, positionMs: null, durationMs: null,
+    });
+    focusFirstRow();
+    fireEvent.keyDown(document.activeElement!, { key: "Enter", shiftKey: true });
+    expect(tauri.stopPlayback).toHaveBeenCalled();
+    expect(tauri.startRecording).not.toHaveBeenCalled();
+  });
+
+  it("Ctrl+Enter stops recording when this stream is already recording", () => {
+    $settings.set({ ...baseSettings, doubleClickAction: "play" });
+    $statuses.set({
+      a: {
+        streamId: "a", state: "recording", currentTrack: null, recordingStartedAt: null,
+        bytesRecorded: 0, tracksRecorded: 0, error: null, reconnectAttempt: null,
+      },
+    });
+    focusFirstRow();
+    fireEvent.keyDown(document.activeElement!, { key: "Enter", ctrlKey: true });
+    expect(tauri.stopRecording).toHaveBeenCalledWith("a");
+    expect(tauri.playStream).not.toHaveBeenCalled();
+  });
+
+  it("advertises the fixed combos on the row via aria-keyshortcuts", () => {
+    const { container } = renderList();
+    const li = container.querySelector('li[data-segment="summary"]')!;
+    expect(li.getAttribute("aria-keyshortcuts")).toBe("Shift+Enter Control+Enter");
+  });
+
   it("defaults to recording when settings are not loaded yet", () => {
     $settings.set(null);
     focusFirstRow();
@@ -185,6 +233,22 @@ describe("StreamList — mouse double-click honors doubleClickAction", () => {
     fireEvent.doubleClick(row(container, "b"));
     expect(tauri.playStream).toHaveBeenCalledWith("b");
     expect(tauri.startRecording).not.toHaveBeenCalled();
+  });
+
+  it("Shift+double-click toggles playback even when doubleClickAction is 'record'", () => {
+    $settings.set({ ...baseSettings, doubleClickAction: "record" });
+    const { container } = renderList();
+    fireEvent.doubleClick(row(container, "b"), { shiftKey: true });
+    expect(tauri.playStream).toHaveBeenCalledWith("b");
+    expect(tauri.startRecording).not.toHaveBeenCalled();
+  });
+
+  it("Ctrl+double-click toggles recording even when doubleClickAction is 'play'", () => {
+    $settings.set({ ...baseSettings, doubleClickAction: "play" });
+    const { container } = renderList();
+    fireEvent.doubleClick(row(container, "b"), { ctrlKey: true });
+    expect(tauri.startRecording).toHaveBeenCalledWith("b");
+    expect(tauri.playStream).not.toHaveBeenCalled();
   });
 
   it("double-click on an action button does not also trigger row activation", () => {
