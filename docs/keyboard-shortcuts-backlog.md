@@ -213,6 +213,13 @@ Tier 1 (OS) конфігуровний, Tier 2 (`Ctrl+K`/`Alt+digit`) — хар
   executor ([transportControl.ts](../src/lib/transportControl.ts)) — той
   самий міст, якого бракувало mute. Спека:
   `docs/superpowers/specs/2026-06-10-global-prev-next-track-design.md`.
+  **Доповнення (2026-06-11):** дефолт майбутнього mute — `Ctrl+Shift+U`,
+  не `Ctrl+Shift+M` (то глобальний mute мікрофона в Teams/Discord); дефолт
+  volume переїхав на `Ctrl+Alt+Up/Down` (Ctrl+Shift+стрілки — системне
+  виділення абзацу). Принципи вибору дефолтів —
+  [keyboard-shortcuts.md](keyboard-shortcuts.md), «Принципи вибору Tier-1
+  дефолтів»; SMTC як стратегічна альтернатива транспортним хоткеям —
+  [FRD](frd/2026-06-11-smtc-integration.md).
 
 ### [x] KB-14 · ✨ Уніфікувати подавлення глобальних хоткеїв (модаль-онлі + DRY)
 Три глобальні клавіатурні шари мали різну політику: Tier-2 слухач

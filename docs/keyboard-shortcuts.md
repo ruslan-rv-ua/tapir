@@ -34,23 +34,59 @@ OS-хоткей на `Ctrl+K`/`Alt+digit`/`F6`/… — гард і реєстр 
 |---|---|---|---|
 | `Ctrl+Shift+R` | toggle_recording (запис/зупинка всього активного профілю + toast) | OS | ✅ |
 | `Ctrl+Shift+P` | toggle_playback | OS | ✅ |
-| `Ctrl+Shift+Up` | volume_up (+5%) | OS | ✅ |
-| `Ctrl+Shift+Down` | volume_down (−5%) | OS | ✅ |
+| `Ctrl+Alt+Up` | volume_up (+5%) | OS | ✅ |
+| `Ctrl+Alt+Down` | volume_down (−5%) | OS | ✅ |
 | `Ctrl+Shift+H` | toggle_window (показати/сховати) | OS | ✅ |
 | `Ctrl+Shift+S` | stop_all (зупинити весь запис, тост для NVDA) | OS | ✅ |
 | `Ctrl+Alt+Left` | prev_track (попередній трек/потік; через webview-міст) | OS | ✅ |
 | `Ctrl+Alt+Right` | next_track (наступний трек/потік; через webview-міст) | OS | ✅ |
-| `Ctrl+Shift+M` | toggle_mute (вимкнути/увімкнути звук) | OS | ⬜ |
+| `Ctrl+Shift+U` | toggle_mute (вимкнути/увімкнути звук) | OS | ⬜ |
 
-> ⬜-кандидат `Ctrl+Shift+M` — з [KB-12](keyboard-shortcuts-backlog.md#L195):
+> ⬜-кандидат toggle_mute — з [KB-12](keyboard-shortcuts-backlog.md#L195):
 > відкладено (2026-06-10) — mute-логіка живе у фронтенді (`$muteState`). Міст
 > Rust→webview для таких дій уже існує (подія `transport-skip` для
 > prev/next_track — [shortcuts.rs](../src-tauri/src/shortcuts.rs) →
 > [transportControl.ts](../src/lib/transportControl.ts)); mute лишається
 > окремою задачею. Глобальний stop-playback не додаємо (`Ctrl+Shift+P`
-> достатньо). Дефолт prev/next — `Ctrl+Alt+←/→`, а не `Ctrl+Shift+←/→`:
-> OS-глобальне захоплення зламало б системне «виділити слово» в усіх
-> застосунках (критично для NVDA).
+> достатньо). Дефолт — `Ctrl+Shift+U`, **не** `Ctrl+Shift+M` (початковий
+> кандидат, відхилено 2026-06-11): `Ctrl+Shift+M` — глобальний mute мікрофона
+> в MS Teams і Discord; красти його під час дзвінка заради audio-mute плеєра —
+> найгірший із можливих конфліктів.
+
+### Принципи вибору Tier-1 дефолтів (2026-06-11)
+
+OS-глобальний хоткей забирає комбінацію в **усіх** застосунків, поки Tapir
+запущений, тож критерій вибору — не єдиний стиль, а мінімум шкоди:
+
+1. **Літери — `Ctrl+Shift`, стрілки — `Ctrl+Alt`.** Не `Ctrl+Alt+літера`:
+   на європейських розкладках `Ctrl+Alt` = AltGr, глобальний хоткей ламав би
+   ввід символів (`AltGr+S` = «ś» польською; `ґ` на українській розширеній).
+   Не `Ctrl+Shift+стрілки/Home/End` — це системне виділення тексту
+   (слово/абзац/до краю документа), критичне для NVDA-користувачів; саме
+   тому volume переїхав з `Ctrl+Shift+Up/Down` на `Ctrl+Alt+Up/Down`
+   (2026-06-11), а prev/next від початку на `Ctrl+Alt+←/→`.
+2. **Не красти високочастотні комбо месенджерів/офісу** (приклад: відхилений
+   `Ctrl+Shift+M` ↑). Низькочастотні крадіжки (hard reload браузера на
+   `Ctrl+Shift+R`, Save As на `Ctrl+Shift+S`) — свідомий компроміс на користь
+   мнемоніки: частій дії — зручна комбінація, конфлікт лікується KeyRecorder'ом.
+3. **`Ctrl+Alt+стрілки` vs NVDA:** у browse mode це навігація по таблицях.
+   Конфлікт м'який: NVDA перехоплює клавіатуру раніше за `RegisterHotKey`,
+   тож у таблиці виграє NVDA (наш хоткей просто не спрацьовує саме там),
+   поза таблицями — ми. Користувачу нічого не ламаємо — зрідка не
+   спрацьовуємо самі. Свідомий компроміс.
+4. **Дефолт мусить бути в межах токенів KeyRecorder** (літери, цифри,
+   стрілки, `Space`, `F1–F24`, `Pause` — [KeyRecorder.tsx](../src/components/settings/KeyRecorder.tsx)
+   `codeToToken`), інакше користувач не зможе його перезаписати.
+5. **Зміна дефолту не мігрує збережені налаштування:** старе значення в
+   `settings.json` (хоч кастомне, хоч колишній дефолт) лишається —
+   per-field `#[serde(default)]` підставляє новий дефолт лише відсутнім полям
+   (тест `stored_volume_combos_are_not_migrated`,
+   [settings.rs](../src-tauri/src/settings.rs)).
+
+**Користувачу, що вперся в конфлікт:** кишені `Ctrl+Shift+F1–F12` практично
+вільні системно (точкові винятки в Office/IDE), `F13–F24` — вільні гарантовано
+(фізично відсутні; для програмованих клавіатур), `Pause` — семантично ідеальна
+для playback, якщо вона є на клавіатурі. KeyRecorder приймає всі три родини.
 
 ## Tier 2 — глобальні у webview
 

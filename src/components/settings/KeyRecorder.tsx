@@ -33,6 +33,10 @@ function codeToToken(code: string): string | null {
       return "Right";
     case "Space":
       return "Space";
+    // Semantically ideal for playback and conflict-free system-wide (absent on
+    // compact keyboards, hence never a default). global-hotkey parses "PAUSE".
+    case "Pause":
+      return "Pause";
   }
   if (/^F([1-9]|1[0-9]|2[0-4])$/.test(code)) return code;
   return null;

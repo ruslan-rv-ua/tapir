@@ -13,8 +13,8 @@ vi.mock("../../lib/tauri", () => ({
   defaultHotkeys: vi.fn().mockResolvedValue({
     toggleRecording: "Ctrl+Shift+R",
     togglePlayback: "Ctrl+Shift+P",
-    volumeUp: "Ctrl+Shift+Up",
-    volumeDown: "Ctrl+Shift+Down",
+    volumeUp: "Ctrl+Alt+Up",
+    volumeDown: "Ctrl+Alt+Down",
     toggleWindow: "Ctrl+Shift+H",
     stopAll: "Ctrl+Shift+S",
     prevTrack: "Ctrl+Alt+Left",

@@ -130,8 +130,11 @@ pub struct HotkeyMap {
 
 fn default_hk_toggle_recording() -> String { "Ctrl+Shift+R".to_string() }
 fn default_hk_toggle_playback() -> String { "Ctrl+Shift+P".to_string() }
-fn default_hk_volume_up() -> String { "Ctrl+Shift+Up".to_string() }
-fn default_hk_volume_down() -> String { "Ctrl+Shift+Down".to_string() }
+// Arrows live on Ctrl+Alt (like prev/next_track), never Ctrl+Shift: an
+// OS-global grab of Ctrl+Shift+Up/Down would steal paragraph selection in
+// every editor system-wide (docs/keyboard-shortcuts.md, Tier 1 notes).
+fn default_hk_volume_up() -> String { "Ctrl+Alt+Up".to_string() }
+fn default_hk_volume_down() -> String { "Ctrl+Alt+Down".to_string() }
 fn default_hk_toggle_window() -> String { "Ctrl+Shift+H".to_string() }
 fn default_hk_stop_all() -> String { "Ctrl+Shift+S".to_string() }
 fn default_hk_prev_track() -> String { "Ctrl+Alt+Left".to_string() }
@@ -300,6 +303,27 @@ mod tests {
         let hk = HotkeyMap::default();
         assert_eq!(hk.prev_track, "Ctrl+Alt+Left");
         assert_eq!(hk.next_track, "Ctrl+Alt+Right");
+    }
+
+    #[test]
+    fn default_volume_combos_use_ctrl_alt() {
+        let hk = HotkeyMap::default();
+        assert_eq!(hk.volume_up, "Ctrl+Alt+Up");
+        assert_eq!(hk.volume_down, "Ctrl+Alt+Down");
+    }
+
+    #[test]
+    fn stored_volume_combos_are_not_migrated() {
+        // Pre-2026-06-11 installs persisted the old Ctrl+Shift+Up/Down defaults
+        // into settings.json. The new defaults apply to fresh installs only;
+        // whatever is stored — old default or customization — must survive.
+        let json = r#"{ "hotkeys": {
+            "volumeUp": "Ctrl+Shift+Up",
+            "volumeDown": "Ctrl+Shift+Down"
+        } }"#;
+        let settings: GlobalSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(settings.hotkeys.volume_up, "Ctrl+Shift+Up");
+        assert_eq!(settings.hotkeys.volume_down, "Ctrl+Shift+Down");
     }
 
     #[test]
