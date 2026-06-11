@@ -47,6 +47,8 @@ pub struct GlobalSettings {
     pub prev_restart_threshold_ms: u32,
     #[serde(default = "default_volume_step_percent")]
     pub volume_step_percent: u8,
+    #[serde(default = "default_true")]
+    pub smtc_enabled: bool,
 }
 
 /// Deserialize `log_level` tolerantly: an unknown or legacy value (e.g. the
@@ -189,6 +191,7 @@ impl Default for GlobalSettings {
             auto_advance: true,
             prev_restart_threshold_ms: 0,
             volume_step_percent: 5,
+            smtc_enabled: true,
         }
     }
 }
@@ -355,5 +358,28 @@ mod tests {
         let json = r#"{"language":"en-US","theme":"auto","activeProfile":"Default"}"#;
         let s: GlobalSettings = serde_json::from_str(json).unwrap();
         assert_eq!(s.volume_step_percent, 5);
+    }
+
+    #[test]
+    fn smtc_enabled_defaults_to_true() {
+        assert!(GlobalSettings::default().smtc_enabled);
+    }
+
+    #[test]
+    fn legacy_config_without_smtc_field_defaults_to_true() {
+        // settings.json, записаний до появи SMTC, мусить завантажитися,
+        // а нове поле отримати default (патерн KB-12 / prev_track).
+        let json = r#"{"language":"en-US","theme":"auto","activeProfile":"Default"}"#;
+        let s: GlobalSettings = serde_json::from_str(json).unwrap();
+        assert!(s.smtc_enabled);
+    }
+
+    #[test]
+    fn smtc_enabled_false_round_trips() {
+        let mut s = GlobalSettings::default();
+        s.smtc_enabled = false;
+        let json = serde_json::to_string(&s).unwrap();
+        let back: GlobalSettings = serde_json::from_str(&json).unwrap();
+        assert!(!back.smtc_enabled);
     }
 }
