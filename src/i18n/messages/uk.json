@@ -260,6 +260,7 @@
   "settings_hotkey_registration_failed": "Не вдалося зареєструвати хоткей {combo}",
   "settings_hotkeys_reset": "Скинути до стандартних",
   "settings_hotkeys_reset_done": "Гарячі клавіші скинуто до стандартних",
+  "settings_smtc_enabled": "Інтеграція з системними медіа-кнопками",
   "settings_auto_advance": "Автоматично відтворювати наступний трек",
   "settings_prev_restart_threshold": "«Попередній» рестартує трек, якщо грав довше ніж (секунд, 0 = вимк)",
   "settings_volume_step": "Крок гучності (клавіші, %)",

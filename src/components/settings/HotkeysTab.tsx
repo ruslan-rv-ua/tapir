@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useStore } from "@nanostores/react";
+import { Checkbox, Label } from "react-aria-components";
 import { $settings } from "../../stores/settings";
 import { useAutoSave } from "../../hooks/useAutoSave";
 import { useAnnounce } from "../../hooks/useAnnounce";
@@ -34,6 +35,15 @@ export function HotkeysTab() {
   });
 
   if (!settings) return null;
+
+  function updateSmtcEnabled(val: boolean) {
+    const current = $settings.get();
+    if (!current) return;
+    $settings.set({ ...current, smtcEnabled: val });
+    // save() also re-registers hotkeys — unnecessary for the checkbox but
+    // harmless (idempotent re-registration); a separate save isn't worth it.
+    save();
+  }
 
   function updateHotkey(key: keyof HotkeyMap, combo: string) {
     const current = $settings.get();
@@ -80,6 +90,17 @@ export function HotkeysTab() {
 
   return (
     <div className="space-y-4">
+      <Checkbox
+        isSelected={settings.smtcEnabled}
+        onChange={updateSmtcEnabled}
+        className="flex items-center gap-2 text-sm text-slate-300"
+      >
+        <div className="flex h-5 w-5 items-center justify-center rounded border border-slate-600 bg-slate-700">
+          {settings.smtcEnabled && <span>✓</span>}
+        </div>
+        <Label>{m.settings_smtc_enabled()}</Label>
+      </Checkbox>
+
       {HOTKEY_FIELDS.map(({ key, label }) => (
         <KeyRecorder
           key={key}

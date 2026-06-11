@@ -85,6 +85,7 @@ export interface GlobalSettings {
   autoAdvance: boolean;
   prevRestartThresholdMs: number;
   volumeStepPercent: number;
+  smtcEnabled: boolean;
   hotkeys: HotkeyMap;
   logRotation: boolean;
   logMaxSizeMb: number;
