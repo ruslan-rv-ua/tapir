@@ -205,7 +205,7 @@
   "settings_double_click_record": "Record",
   "settings_double_click_play": "Play",
   "settings_disk_threshold": "Disk threshold (GB)",
-  "settings_disk_threshold_desc": "Warn when free disk space drops below this threshold. 0 = disabled",
+  "settings_disk_threshold_desc": "Block recording when free disk space drops below this threshold. 0 = disabled",
   "settings_logging": "Logging",
   "settings_log_verbose": "Detailed logging for diagnostics",
   "settings_log_verbose_desc": "Helps the developer find the cause of a problem. Takes effect after restart.",

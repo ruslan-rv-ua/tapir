@@ -205,7 +205,7 @@
   "settings_double_click_record": "Запис",
   "settings_double_click_play": "Відтворення",
   "settings_disk_threshold": "Поріг диску (ГБ)",
-  "settings_disk_threshold_desc": "Попереджати, коли вільного місця менше за поріг. 0 = вимкнено",
+  "settings_disk_threshold_desc": "Заблокувати запис, якщо вільного місця менше за поріг. 0 = вимкнено",
   "settings_logging": "Логування",
   "settings_log_verbose": "Детальне логування для діагностики",
   "settings_log_verbose_desc": "Допомагає розробнику знайти причину збою. Діє після перезапуску.",
