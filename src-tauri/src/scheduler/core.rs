@@ -109,8 +109,51 @@ impl SchedulerCore {
         self.ledger.insert(key, LedgerEntry { cleanup_after: now_local + Duration::hours(48) });
     }
 
-    /// Прохід A (§3.2): активні входження. Task 4.
-    fn pass_a(&mut self, _ctx: &TickCtx, _actions: &mut Vec<TickAction>) {}
+    /// Прохід A (§3.2): активні входження. Зниклий або перезапущений
+    /// користувачем запис (інший session_id) прибирається БЕЗ фіксації:
+    /// входження не в ledger, тож прохід B перезапустить його в межах вікна.
+    /// Кінець вікна — за збереженим інстантом window_end_utc.
+    fn pass_a(&mut self, ctx: &TickCtx, actions: &mut Vec<TickAction>) {
+        let mut still_active = Vec::new();
+        for occ in std::mem::take(&mut self.active) {
+            match ctx.statuses.get(&occ.stream_id) {
+                None => {}                                // зник сам — без фіксації
+                Some(&sid) if sid != occ.session_id => {} // перезапущений — чужий
+                Some(_) if ctx.now_utc >= occ.window_end_utc => {
+                    let schedule = ctx.schedules.iter().find(|s| s.id == occ.key.0);
+                    actions.push(TickAction::StopRecording { stream_id: occ.stream_id.clone() });
+                    let status = if occ.started_late {
+                        ScheduleResultStatus::StartedLate
+                    } else {
+                        ScheduleResultStatus::Completed
+                    };
+                    actions.push(TickAction::Fix(Fixation {
+                        schedule_id: occ.key.0.clone(),
+                        stream_id: occ.stream_id.clone(),
+                        schedule_name: schedule.map(|s| s.name.clone()).unwrap_or_default(),
+                        result: ScheduleResult {
+                            occurrence: occ.key.1.clone(),
+                            status,
+                            reason: None,
+                            recorded_minutes: minutes_between(occ.started_at_utc, ctx.now_utc),
+                            finished_at: finished_at(ctx.now_local),
+                        },
+                        disable_schedule: schedule
+                            .is_some_and(|s| s.schedule_type == ScheduleType::Oneshot),
+                    }));
+                    self.remember(occ.key.clone(), ctx.now_local);
+                }
+                Some(_) => still_active.push(occ),
+            }
+        }
+        self.active = still_active;
+    }
+
+    /// (stream_id, session_id) своїх активних записів — для фільтра
+    /// active_recording_urls у graceful_shutdown (§3.5).
+    pub fn owned_sessions(&self) -> Vec<(String, u64)> {
+        self.active.iter().map(|a| (a.stream_id.clone(), a.session_id)).collect()
+    }
 
     /// Прохід B (§3.2): старти й Missed.
     fn pass_b(
@@ -462,6 +505,173 @@ mod tests {
         // і лише один раз
         let actions = core.tick(&ctx("2026-06-12T12:01", &schedules, &statuses), &no_dst);
         assert!(actions.is_empty());
+    }
+
+    // --- Прохід A ---
+
+    /// Хелпер: стартувати і підтвердити запис розкладу `a` на st1 із session_id 1.
+    fn started_core(
+        schedules: &[ScheduledRecording],
+        start_tick: &str,
+    ) -> (SchedulerCore, OccKey) {
+        let mut core = SchedulerCore::default();
+        let free = busy(&[]);
+        let actions = core.tick(&ctx(start_tick, schedules, &free), &no_dst);
+        let TickAction::StartRecording { key, stream_id, window_end_utc, late } = actions[0].clone()
+        else {
+            panic!("expected StartRecording, got {actions:?}");
+        };
+        core.confirm_start(key.clone(), stream_id, 1, window_end_utc, late, utc_of(start_tick));
+        (core, key)
+    }
+
+    #[test]
+    fn completes_at_window_end() {
+        let schedules = [recurring("a", "st1", &[4], "20:00", 60)];
+        let (mut core, _) = started_core(&schedules, "2026-06-12T20:00");
+        let statuses = busy(&[("st1", 1)]);
+        let actions = core.tick(&ctx("2026-06-12T21:00", &schedules, &statuses), &no_dst);
+        assert_eq!(actions[0], TickAction::StopRecording { stream_id: "st1".into() });
+        let fixes = fixations(&actions);
+        assert_eq!(fixes[0].result.status, ScheduleResultStatus::Completed);
+        assert_eq!(fixes[0].result.recorded_minutes, 60, "wall-clock від старту до зупинки");
+        assert_eq!(fixes[0].result.occurrence, "2026-06-12T20:00");
+        // Завершене входження в ledger: B не рестартує його в цьому ж вікні
+        assert!(core.owned_sessions().is_empty());
+    }
+
+    #[test]
+    fn late_start_completes_as_started_late() {
+        let schedules = [recurring("a", "st1", &[4], "20:00", 60)];
+        let (mut core, _) = started_core(&schedules, "2026-06-12T20:30");
+        let statuses = busy(&[("st1", 1)]);
+        let actions = core.tick(&ctx("2026-06-12T21:00", &schedules, &statuses), &no_dst);
+        let fixes = fixations(&actions);
+        assert_eq!(fixes[0].result.status, ScheduleResultStatus::StartedLate);
+        assert_eq!(fixes[0].result.recorded_minutes, 30);
+    }
+
+    #[test]
+    fn oneshot_disabled_after_completion() {
+        let schedules = [oneshot("a", "st1", "2026-06-12", "20:00", 60)];
+        let (mut core, _) = started_core(&schedules, "2026-06-12T20:00");
+        let statuses = busy(&[("st1", 1)]);
+        let actions = core.tick(&ctx("2026-06-12T21:00", &schedules, &statuses), &no_dst);
+        assert!(fixations(&actions)[0].disable_schedule);
+    }
+
+    #[test]
+    fn foreign_session_is_not_stopped() {
+        // Запис обірвався, користувач перезапустив потік вручну (інший session_id):
+        // чужий запис не чіпаємо (§3.3); вікно активне, потік зайнятий → Skip
+        let schedules = [recurring("a", "st1", &[4], "20:00", 60)];
+        let (mut core, _) = started_core(&schedules, "2026-06-12T20:00");
+        let statuses = busy(&[("st1", 99)]);
+        let actions = core.tick(&ctx("2026-06-12T20:45", &schedules, &statuses), &no_dst);
+        assert!(
+            !actions.iter().any(|a| matches!(a, TickAction::StopRecording { .. })),
+            "чужий запис не зупиняється, got {actions:?}"
+        );
+        let fixes = fixations(&actions);
+        assert_eq!(fixes[0].result.status, ScheduleResultStatus::SkippedAlreadyRecording);
+    }
+
+    #[test]
+    fn vanished_recording_restarts_within_window() {
+        // Фатальний обрив (reconnect вичерпано): запис зник без stop-команди →
+        // НЕ в ledger → той самий тік перезапускає (обрив ≠ скасування, §3.3)
+        let schedules = [recurring("a", "st1", &[4], "20:00", 60)];
+        let (mut core, _) = started_core(&schedules, "2026-06-12T20:00");
+        let free = busy(&[]);
+        let actions = core.tick(&ctx("2026-06-12T20:10", &schedules, &free), &no_dst);
+        assert_eq!(start_actions(&actions).len(), 1, "got {actions:?}");
+        assert!(fixations(&actions).is_empty(), "без фіксації");
+    }
+
+    #[test]
+    fn session_survives_reconnect_and_stops_at_end() {
+        // session_id стабільний через reconnect (його не змінює reconnect-цикл
+        // manager-а) → у кінці вікна запис зупиняється як свій
+        let schedules = [recurring("a", "st1", &[4], "20:00", 60)];
+        let (mut core, _) = started_core(&schedules, "2026-06-12T20:00");
+        let statuses = busy(&[("st1", 1)]); // той самий sid після реконектів
+        let actions = core.tick(&ctx("2026-06-12T21:05", &schedules, &statuses), &no_dst);
+        assert!(actions.iter().any(|a| matches!(a, TickAction::StopRecording { .. })));
+    }
+
+    #[test]
+    fn dst_backward_does_not_extend_recording() {
+        // window_end — інстант: переведення годинника назад під час запису
+        // не подовжує його (§3.2). now_local «повернувся» в вікно, now_utc — ні.
+        let schedules = [recurring("a", "st1", &[4], "20:00", 60)];
+        let (mut core, _) = started_core(&schedules, "2026-06-12T20:00");
+        let statuses = busy(&[("st1", 1)]);
+        let tick_ctx = TickCtx {
+            now_local: at("2026-06-12T20:30"),       // годинник перевели назад
+            now_utc: utc_of("2026-06-12T21:05"),     // реально вікно скінчилось
+            schedules: &schedules,
+            statuses: &statuses,
+            pad_before_min: 0,
+            pad_after_min: 0,
+        };
+        let actions = core.tick(&tick_ctx, &no_dst);
+        assert!(actions.iter().any(|a| matches!(a, TickAction::StopRecording { .. })));
+    }
+
+    #[test]
+    fn dst_backward_no_second_start_after_completion() {
+        // Після завершення вікно наївно «збігається вдруге» — ledger гасить (§3.1)
+        let schedules = [recurring("a", "st1", &[4], "20:00", 60)];
+        let (mut core, _) = started_core(&schedules, "2026-06-12T20:00");
+        let statuses = busy(&[("st1", 1)]);
+        core.tick(&ctx("2026-06-12T21:00", &schedules, &statuses), &no_dst); // завершення
+        let free = busy(&[]);
+        let tick_ctx = TickCtx {
+            now_local: at("2026-06-12T20:30"), // повторна година
+            now_utc: utc_of("2026-06-12T21:06"),
+            schedules: &schedules,
+            statuses: &free,
+            pad_before_min: 0,
+            pad_after_min: 0,
+        };
+        let actions = core.tick(&tick_ctx, &no_dst);
+        assert!(actions.is_empty(), "got {actions:?}");
+    }
+
+    #[test]
+    fn over_24h_window_second_occurrence_skipped_and_first_stopped_by_pass_a() {
+        // duration + padAfter > 1440 хв (§2): вікна сусідніх днів перетинаються.
+        // Перше входження завершує прохід A за збереженим window_end, друге → Skip.
+        let schedules = [recurring("a", "st1", &[0, 1, 2, 3, 4, 5, 6], "20:00", 1430)];
+        let mut core = SchedulerCore::default();
+        let free = busy(&[]);
+        let mut tick_ctx = ctx("2026-06-12T20:00", &schedules, &free);
+        tick_ctx.pad_after_min = 60; // вікно: 20:00 → наступного дня 20:50 (1430+60 хв)
+        let actions = core.tick(&tick_ctx, &no_dst);
+        let TickAction::StartRecording { key, stream_id, window_end_utc, late } = actions[0].clone()
+        else { panic!("got {actions:?}") };
+        assert_eq!(window_end_utc, utc_of("2026-06-13T20:50"));
+        core.confirm_start(key, stream_id, 1, window_end_utc, late, utc_of("2026-06-12T20:00"));
+
+        // Наступного дня о 20:00 потік усе ще пише перше входження → друге Skipped
+        let statuses = busy(&[("st1", 1)]);
+        let mut tick_ctx = ctx("2026-06-13T20:00", &schedules, &statuses);
+        tick_ctx.pad_after_min = 60;
+        let actions = core.tick(&tick_ctx, &no_dst);
+        let fixes = fixations(&actions);
+        assert_eq!(fixes.len(), 1);
+        assert_eq!(fixes[0].result.status, ScheduleResultStatus::SkippedAlreadyRecording);
+        assert_eq!(fixes[0].result.occurrence, "2026-06-13T20:00");
+        assert!(!actions.iter().any(|a| matches!(a, TickAction::StopRecording { .. })));
+
+        // Кінець першого вікна обробляє прохід A, а не «найближче вікно» (§3.2)
+        let mut tick_ctx = ctx("2026-06-13T20:50", &schedules, &statuses);
+        tick_ctx.pad_after_min = 60;
+        let actions = core.tick(&tick_ctx, &no_dst);
+        assert!(actions.iter().any(|a| matches!(a, TickAction::StopRecording { .. })));
+        let fixes = fixations(&actions);
+        assert_eq!(fixes[0].result.occurrence, "2026-06-12T20:00");
+        assert_eq!(fixes[0].result.recorded_minutes, 1490);
     }
 
     #[test]
