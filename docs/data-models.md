@@ -201,11 +201,13 @@ pub struct HotkeyMap {
       "streamId": "abc123",
       "name": "Evening Jazz",
       "type": "recurring",
-      "dayOfWeek": 5,
+      "days": [4],
+      "date": null,
       "time": "20:00",
       "durationMinutes": 120,
       "enabled": true,
-      "createdAt": "2026-01-25T09:00:00"
+      "createdAt": "2026-01-25T09:00:00",
+      "lastResult": null
     }
   ],
 
@@ -220,6 +222,8 @@ pub struct HotkeyMap {
     "skipFirstIncompleteTrack": true,
     "skipShortTracksMs": 30000,
     "autoCorrectCase": true,
+    "schedulePadBeforeMin": 0,
+    "schedulePadAfterMin": 0,
     "reconnect": {
       "maxRetries": 0,
       "retryIntervalSecs": 5,
@@ -386,19 +390,41 @@ pub struct WishlistEntry {
 ```typescript
 interface ScheduledRecording {
   id: string;
-  streamId: string;             // references StreamInfo.id
-  name: string;                 // user label
+  streamId: string;             // references StreamInfo.id активного профілю
+  name: string;                 // мітка користувача, напр. "Evening Jazz"
   type: "oneshot" | "recurring";
-  dayOfWeek: number | null;     // 0=Mon ... 6=Sun. null for oneshot with date; інші значення невалідні
-  date: string | null;          // ISO 8601 date for oneshot: "2026-02-14"
-  time: string;                 // "HH:MM" (24h, local time)
-  durationMinutes: number;
+  days: number[];               // recurring: 0=Пн..6=Нд, непорожній, без дублікатів; oneshot: []
+  date: string | null;          // oneshot: ISO-дата "2026-06-14"; recurring: null
+  time: string;                 // початок "HH:MM" (24h, локальний час)
+  durationMinutes: number;      // 1..=1439
   enabled: boolean;
   createdAt: string;
+  lastResult: ScheduleResult | null;  // пише лише backend
 }
+
+interface ScheduleResult {
+  occurrence: string;           // "2026-06-12T20:00" — номінальний локальний час входження
+  status: "completed" | "startedLate" | "missed" | "stoppedByUser" | "skippedAlreadyRecording";
+  reason: ScheduleResultReason | null;  // лише для missed / stoppedByUser
+  recordedMinutes: number;      // wall-clock; 0 — не стартував
+  finishedAt: string;           // ISO datetime фіксації статусу
+}
+
+type ScheduleResultReason =
+  // missed:
+  | "appNotRunning" | "startFailed" | "clockChange"
+  // stoppedByUser:
+  | "manualStop" | "profileSwitch" | "appClosing" | "scheduleEdited";
 ```
 
 ```rust
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ScheduleType {
+    Oneshot,
+    Recurring,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScheduledRecording {
@@ -407,21 +433,53 @@ pub struct ScheduledRecording {
     pub name: String,
     #[serde(rename = "type")]
     pub schedule_type: ScheduleType,
-    pub day_of_week: Option<u8>, // validated on load/save: only 0..=6 allowed
+    #[serde(default)]
+    pub days: Vec<u8>,                // recurring: 0=Пн..6=Нд; oneshot: порожній
+    #[serde(default)]
     pub date: Option<String>,
     pub time: String,
-    pub duration_minutes: u32,
+    pub duration_minutes: u32,        // 1..=1439
     pub enabled: bool,
     pub created_at: String,
+    #[serde(default)]
+    pub last_result: Option<ScheduleResult>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum ScheduleType {
-    Oneshot,
-    Recurring,
+#[serde(rename_all = "camelCase")]
+pub struct ScheduleResult {
+    pub occurrence: String,
+    pub status: ScheduleResultStatus,
+    #[serde(default)]
+    pub reason: Option<ScheduleResultReason>,
+    pub recorded_minutes: u32,
+    pub finished_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ScheduleResultStatus {
+    Completed,
+    StartedLate,
+    Missed,
+    StoppedByUser,
+    SkippedAlreadyRecording,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ScheduleResultReason {
+    AppNotRunning,
+    StartFailed,
+    ClockChange,
+    ManualStop,
+    ProfileSwitch,
+    AppClosing,
+    ScheduleEdited,
 }
 ```
+
+Правила валідації та семантика — [спека Phase 3D](superpowers/specs/2026-06-12-scheduler-design.md) §2.
 
 ### 3.4. RecordingSettings
 
@@ -436,6 +494,8 @@ interface RecordingSettings {
   skipFirstIncompleteTrack: boolean;
   skipShortTracksMs: number;             // 0 = не пропускати
   autoCorrectCase: boolean;              // "artist - title" → "Artist - Title" (Phase 1: включено, реалізовано у sanitize.rs)
+  schedulePadBeforeMin: number;          // 0–30 хв, запас перед стартом планового запису
+  schedulePadAfterMin: number;           // 0–60 хв, запас після кінця
   reconnect: ReconnectConfig;
 }
 
@@ -460,6 +520,10 @@ pub struct RecordingSettings {
     pub skip_first_incomplete_track: bool,
     pub skip_short_tracks_ms: u32,
     pub auto_correct_case: bool,
+    #[serde(default)]
+    pub schedule_pad_before_min: u32,
+    #[serde(default)]
+    pub schedule_pad_after_min: u32,
     pub reconnect: ReconnectConfig,
 }
 
@@ -932,6 +996,8 @@ interface PostprocessErrorPayload {
     "skipFirstIncompleteTrack": true,
     "skipShortTracksMs": 30000,
     "autoCorrectCase": true,
+    "schedulePadBeforeMin": 0,
+    "schedulePadAfterMin": 0,
     "reconnect": {
       "maxRetries": 0,
       "retryIntervalSecs": 5,
