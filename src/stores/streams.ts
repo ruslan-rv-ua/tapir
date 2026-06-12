@@ -24,6 +24,7 @@ export function updateStreamStatus(streamId: string, status: Partial<StreamStatu
     tracksRecorded: 0,
     error: null,
     reconnectAttempt: null,
+    sessionId: 0,
   };
   $statuses.setKey(streamId, { ...current, ...status });
 }

@@ -192,6 +192,7 @@ describe("StreamList — row activation honors doubleClickAction", () => {
       a: {
         streamId: "a", state: "recording", currentTrack: null, recordingStartedAt: null,
         bytesRecorded: 0, tracksRecorded: 0, error: null, reconnectAttempt: null,
+        sessionId: 0,
       },
     });
     focusFirstRow();

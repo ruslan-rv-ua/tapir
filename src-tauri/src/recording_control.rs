@@ -127,6 +127,7 @@ mod tests {
             tracks_recorded: 0,
             error: None,
             reconnect_attempt: None,
+            session_id: 0,
         }
     }
 

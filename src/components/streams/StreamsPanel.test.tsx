@@ -48,6 +48,7 @@ const mkStatus = (id: string, state: StreamStatus["state"]): StreamStatus => ({
   tracksRecorded: 0,
   error: null,
   reconnectAttempt: null,
+  sessionId: 0,
 });
 
 function renderPanel() {

@@ -195,6 +195,7 @@ pub async fn start_recording(
     let mut manager = manager_arc.write().await;
     manager
         .start_recording(stream, settings, manager_arc.clone())
+        .map(|_| ())
         .map_err(|e| e.to_string())
 }
 

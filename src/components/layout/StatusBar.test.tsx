@@ -19,6 +19,7 @@ const recordingStatus = (startedMsAgo: number): StreamStatus => ({
   tracksRecorded: 0,
   error: null,
   reconnectAttempt: null,
+  sessionId: 0,
 });
 
 const tabIndices = (footer: HTMLElement) =>

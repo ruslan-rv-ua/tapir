@@ -32,6 +32,11 @@ pub struct StreamStatus {
     pub tracks_recorded: u32,
     pub error: Option<String>,
     pub reconnect_attempt: Option<u32>,
+    /// Стабільний id сесії запису (§3.3): присвоюється на старті, reconnect
+    /// його НЕ змінює. Scheduler трекає власність записів саме по ньому —
+    /// recording_started_at для цього непридатний (None у Connecting,
+    /// перезаписується кожним реконектом).
+    pub session_id: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -135,6 +140,8 @@ pub struct StreamManager {
     app_handle: AppHandle,
     entries: HashMap<String, StreamEntry>,
     wake_lock: Arc<WakeLock>,
+    /// Монотонний лічильник session_id (§3.3). Інстансний — Manager один на додаток.
+    next_session_id: u64,
 }
 
 impl StreamManager {
@@ -143,6 +150,7 @@ impl StreamManager {
             app_handle,
             entries: HashMap::new(),
             wake_lock,
+            next_session_id: 0,
         }
     }
 
@@ -152,7 +160,7 @@ impl StreamManager {
         stream_info: StreamInfo,
         recording_settings: RecordingSettings,
         manager_ref: Arc<RwLock<Self>>,
-    ) -> Result<(), RadioError> {
+    ) -> Result<u64, RadioError> {
         let stream_id = stream_info.id.clone();
 
         if self.entries.contains_key(&stream_id) {
@@ -161,6 +169,9 @@ impl StreamManager {
                 stream_id
             )));
         }
+
+        self.next_session_id += 1;
+        let session_id = self.next_session_id;
 
         let cancel_token = CancellationToken::new();
 
@@ -173,6 +184,7 @@ impl StreamManager {
             tracks_recorded: 0,
             error: None,
             reconnect_attempt: None,
+            session_id,
         };
 
         info!("[{}] Starting recording task: {}", stream_id, stream_info.url);
@@ -195,7 +207,7 @@ impl StreamManager {
             },
         );
 
-        Ok(())
+        Ok(session_id)
     }
 
     /// Cancel the recording for the given stream_id (best-effort).
@@ -251,7 +263,7 @@ impl StreamManager {
                 continue;
             }
             match self.start_recording(stream, settings.clone(), manager_ref.clone()) {
-                Ok(()) => started += 1,
+                Ok(_) => started += 1,
                 Err(e) => warn!("start_all: failed to start stream: {}", e),
             }
         }
@@ -1018,5 +1030,34 @@ mod tests {
             RecordingSettings,
             Arc<RwLock<StreamManager>>,
         ) -> usize = StreamManager::start_all;
+    }
+
+    #[test]
+    fn stream_status_serializes_session_id_camel_case() {
+        let status = StreamStatus {
+            stream_id: "x".to_string(),
+            state: StreamState::Recording,
+            current_track: None,
+            recording_started_at: None,
+            bytes_recorded: 0,
+            tracks_recorded: 0,
+            error: None,
+            reconnect_attempt: None,
+            session_id: 7,
+        };
+        let json = serde_json::to_string(&status).unwrap();
+        assert!(json.contains("\"sessionId\":7"), "got: {json}");
+    }
+
+    #[test]
+    fn start_recording_returns_session_id() {
+        // Поведінковий тест потребує Tauri AppHandle — пінимо сигнатуру,
+        // як у сусідніх тестах stop_all_async / start_all.
+        let _: fn(
+            &mut StreamManager,
+            StreamInfo,
+            RecordingSettings,
+            Arc<RwLock<StreamManager>>,
+        ) -> Result<u64, RadioError> = StreamManager::start_recording;
     }
 }

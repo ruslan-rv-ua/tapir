@@ -37,6 +37,7 @@ export interface StreamStatus {
   tracksRecorded: number;
   error: string | null;
   reconnectAttempt: number | null;
+  sessionId: number; // стабільний id сесії запису; reconnect його не змінює
 }
 
 export interface ReconnectConfig {

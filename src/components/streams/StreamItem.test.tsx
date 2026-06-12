@@ -99,6 +99,7 @@ describe("StreamItem — last-played track presentation", () => {
     tracksRecorded: 0,
     error: null,
     reconnectAttempt: null,
+    sessionId: 0,
     ...over,
   });
 
@@ -144,6 +145,7 @@ describe("StreamItem — reconnecting counter display", () => {
     tracksRecorded: 0,
     error: null,
     reconnectAttempt,
+    sessionId: 0,
   });
 
   it("shows 'Attempt N of max' in status cell and icon tooltip when maxRetries > 0", () => {
@@ -177,6 +179,7 @@ describe("StreamItem — error state accessibility (D9)", () => {
       tracksRecorded: 0,
       error: "Connection refused",
       reconnectAttempt: null,
+      sessionId: 0,
     };
     const { container } = renderItem(mkStream(), status);
     const li = container.querySelector<HTMLElement>('li[data-segment="summary"]')!;
@@ -195,6 +198,7 @@ describe("StreamItem — inline icon slots (D1–D2)", () => {
     tracksRecorded: 0,
     error: null,
     reconnectAttempt: null,
+    sessionId: 0,
     ...over,
   });
 
