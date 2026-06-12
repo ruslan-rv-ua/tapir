@@ -18,6 +18,7 @@ import { useZoneNavigation, type ZoneEntry } from "./hooks/useZoneNavigation";
 import { useTauriEvent } from "./hooks/useTauriEvent";
 import { useDiskSpacePolling } from "./hooks/useDiskSpacePolling";
 import { useProfileSync } from "./hooks/useProfileSync";
+import { useScheduleEvents } from "./hooks/useScheduleEvents";
 import { useAnnounce } from "./hooks/useAnnounce";
 import { $streams, $statuses, updateStreamStatus } from "./stores/streams";
 import { $settings } from "./stores/settings";
@@ -340,6 +341,7 @@ function AppContent() {
   useTauriEvent<string>("transport-skip", handleTransportSkip);
   useDiskSpacePolling();
   useProfileSync();
+  useScheduleEvents();
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-200">
