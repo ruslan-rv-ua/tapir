@@ -555,5 +555,5 @@ ScheduleForm, група «Планувальник» у Settings, confirm-ді�
 ### Плани
 
 - Фаза 1: [2026-06-12-scheduler-phase-1-model-crud.md](../plans/2026-06-12-scheduler-phase-1-model-crud.md)
-- Фаза 2: _план ще не написано_
+- Фаза 2: [2026-06-12-scheduler-phase-2-core.md](../plans/2026-06-12-scheduler-phase-2-core.md)
 - Фаза 3: _план ще не написано_

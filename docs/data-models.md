@@ -661,6 +661,7 @@ interface StreamStatus {
   tracksRecorded: number;
   error: string | null;
   reconnectAttempt: number | null;
+  sessionId: number;            // стабільний id сесії запису; reconnect не змінює (Phase 3D §3.3)
 }
 
 interface TrackInfo {
@@ -683,6 +684,7 @@ pub struct StreamStatus {
     pub tracks_recorded: u32,
     pub error: Option<String>,
     pub reconnect_attempt: Option<u32>,
+    pub session_id: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -891,16 +893,28 @@ interface PlayerProgressPayload {
   durationMs: number;
 }
 
-// scheduled-started / scheduled-completed
+// scheduled-started / scheduled-skipped (Phase 3D §4)
 interface ScheduledEventPayload {
+  recordingId: string;          // ScheduledRecording.id
+  streamId: string;
+  name: string;                 // мітка розкладу — live region озвучує без рефетчу
+}
+
+// scheduled-completed: і в кінці вікна, і при StoppedByUser
+interface ScheduledCompletedPayload {
   recordingId: string;
   streamId: string;
+  name: string;
+  status: "completed" | "startedLate" | "stoppedByUser";
+  recordedMinutes: number;
 }
 
 // scheduled-missed
 interface ScheduledMissedPayload {
   recordingId: string;
-  reason: string;
+  streamId: string;
+  name: string;
+  reason: ScheduleResultReason | null;  // код — локалізує frontend (§5.6 спеки)
 }
 
 // wishlist-match
