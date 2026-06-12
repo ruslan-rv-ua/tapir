@@ -7,6 +7,7 @@ import { $streams, $statuses } from "../stores/streams";
 import { $settings, $recordingSettings } from "../stores/settings";
 import { $wishlist, $ignorelist } from "../stores/wishlist";
 import { loadSongs } from "../stores/songs";
+import { loadSchedules } from "../stores/schedule";
 import { addToast } from "../stores/toasts";
 import * as m from "../i18n/paraglide/messages";
 
@@ -55,6 +56,9 @@ export function useProfileSync(): void {
 
         // Songs — re-fetch for new profile's outputDir
         if (!cancelled) loadSongs();
+
+        // Schedules — розклади нового активного профілю (Phase 3D)
+        if (!cancelled) loadSchedules();
 
         // RecordingSettings — re-fetch for new profile's recording config
         try {
