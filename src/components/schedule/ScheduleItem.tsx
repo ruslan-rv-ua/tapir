@@ -71,12 +71,15 @@ export function ScheduleItem({
         </CompositeSegment>
 
         <div className="ml-auto flex flex-none gap-1">
+          {/* A11y-ім'я — дієслово дії (як play/stop у SongItem): із aria-pressed
+              NVDA озвучує «Вимкнути, натиснуто» — дія + стан без дублю.
+              Видимий текст лишається колонкою «Стан» (§5.2). */}
           <CompositeAction
             itemId={schedule.id}
             segment="action-toggle"
             isFocused={isFocused}
             onClick={onToggle}
-            label={state}
+            label={schedule.enabled ? m.schedule_action_disable() : m.schedule_action_enable()}
             ariaPressed={schedule.enabled}
             className="rounded px-2 py-1 text-xs text-slate-300 hover:bg-slate-700 forced-colors:text-[ButtonText]"
           >
