@@ -202,16 +202,28 @@ pub async fn start_recording(
 #[tauri::command]
 pub async fn stop_recording(
     stream_id: String,
+    app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
-    let mut manager = state.stream_manager.write().await;
-    manager.stop_recording(&stream_id).map_err(|e| e.to_string())
+    // §3.3: session_id читається ДО cancel — після нього запис зникає
+    // з manager асинхронно, звіряти було б ні з чим
+    let session_id = {
+        let manager = state.stream_manager.read().await;
+        manager.get_status(&stream_id).map(|s| s.session_id)
+    };
+    {
+        let mut manager = state.stream_manager.write().await;
+        manager.stop_recording(&stream_id).map_err(|e| e.to_string())?;
+    }
+    if let Some(session_id) = session_id {
+        crate::scheduler::timer::notify_manual_stop(&app, &stream_id, session_id).await;
+    }
+    Ok(())
 }
 
 #[tauri::command]
-pub async fn stop_all_recordings(state: tauri::State<'_, AppState>) -> Result<(), String> {
-    let mut manager = state.stream_manager.write().await;
-    manager.stop_all();
+pub async fn stop_all_recordings(app: tauri::AppHandle) -> Result<(), String> {
+    crate::recording_control::stop_all_now(&app).await;
     Ok(())
 }
 

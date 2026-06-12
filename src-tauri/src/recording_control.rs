@@ -6,6 +6,8 @@
 //! exercised via manual/integration runs. `stop_all_now` (global stop-all
 //! shortcut, KB-12) is likewise thin orchestration.
 
+use tauri::{AppHandle, Manager};
+
 use crate::app_state::AppState;
 use crate::stream::manager::{StreamState, StreamStatus};
 
@@ -54,25 +56,39 @@ pub fn decide(active_count: usize) -> ToggleAction {
 }
 
 /// Stop all active recordings unconditionally; returns how many were active.
-/// Used by the global `stop_all` shortcut (KB-12): unlike `toggle_all` it can
-/// never start anything, so it is safe to mash.
-pub async fn stop_all_now(state: &AppState) -> usize {
-    let mut mgr = state.stream_manager.write().await;
-    let stopped = count_active(&mgr.get_all_statuses());
-    mgr.stop_all();
-    stopped
+/// Єдиний шлях для всіх stop-all поверхонь (IPC-команда, tray, глобальні
+/// хоткеї): session_id читаються ДО cancel (§3.3 — після нього записи
+/// зникають із manager асинхронно), потім спільний хук notify_manual_stop.
+pub async fn stop_all_now(app: &AppHandle) -> usize {
+    let state = app.state::<AppState>();
+    let active: Vec<(String, u64)> = {
+        let mut mgr = state.stream_manager.write().await;
+        let active: Vec<(String, u64)> = mgr
+            .get_all_statuses()
+            .iter()
+            .filter(|s| is_active(&s.state))
+            .map(|s| (s.stream_id.clone(), s.session_id))
+            .collect();
+        mgr.stop_all();
+        active
+    };
+    for (stream_id, session_id) in &active {
+        crate::scheduler::timer::notify_manual_stop(app, stream_id, *session_id).await;
+    }
+    active.len()
 }
 
 /// Toggle recording for the whole active profile. Reads the manager to decide,
-/// then reuses `stop_all` / `start_all`. Returns the outcome for the toast.
-pub async fn toggle_all(state: &AppState) -> ToggleOutcome {
+/// then reuses `stop_all_now` / `start_all`. Returns the outcome for the toast.
+pub async fn toggle_all(app: &AppHandle) -> ToggleOutcome {
+    let state = app.state::<AppState>();
     let active = {
         let mgr = state.stream_manager.read().await;
         count_active(&mgr.get_all_statuses())
     };
 
     match decide(active) {
-        ToggleAction::Stop => ToggleOutcome::Stopped(stop_all_now(state).await),
+        ToggleAction::Stop => ToggleOutcome::Stopped(stop_all_now(app).await),
         ToggleAction::Start => {
             let (streams, settings) = {
                 let profile = state.active_profile.read().await;
@@ -81,9 +97,6 @@ pub async fn toggle_all(state: &AppState) -> ToggleOutcome {
             let mgr_arc = state.stream_manager.clone();
             let mut mgr = mgr_arc.write().await;
             let started = mgr.start_all(streams, settings, mgr_arc.clone());
-            // We only reach Start when active == 0, so `entries` holds no
-            // startable streams (Error streams are already dropped from it);
-            // started == 0 therefore means the profile has nothing to record.
             if started == 0 {
                 ToggleOutcome::NothingToStart
             } else {

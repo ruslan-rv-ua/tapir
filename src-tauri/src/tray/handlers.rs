@@ -54,10 +54,8 @@ fn spawn_stop_playback(app: &AppHandle) {
 fn spawn_stop_all(app: &AppHandle) {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
-        let state = app.state::<crate::app_state::AppState>();
-        let mut mgr = state.stream_manager.write().await;
-        mgr.stop_all();
-        drop(mgr);
+        // П'ятий шлях ручної зупинки (§3.3): та сама точка, що й хоткей stop-all
+        let _ = crate::recording_control::stop_all_now(&app).await;
         crate::tray::notify_state_changed(&app);
     });
 }

@@ -129,7 +129,7 @@ fn handle_shortcut_action(app: &AppHandle, action: &str) {
                 if recently_fired(&LAST_TOGGLE_RECORDING_MS) {
                     debug!("Global shortcut: toggle_recording ignored (debounce)");
                 } else {
-                    let outcome = crate::recording_control::toggle_all(state.inner()).await;
+                    let outcome = crate::recording_control::toggle_all(&app).await;
                     info!("Global shortcut: toggle_recording → {outcome:?}");
                     crate::tray::notify::notify_recording_toggle(&app, outcome);
                 }
@@ -138,7 +138,7 @@ fn handle_shortcut_action(app: &AppHandle, action: &str) {
                 if recently_fired(&LAST_STOP_ALL_MS) {
                     debug!("Global shortcut: stop_all ignored (debounce)");
                 } else {
-                    let stopped = crate::recording_control::stop_all_now(state.inner()).await;
+                    let stopped = crate::recording_control::stop_all_now(&app).await;
                     info!("Global shortcut: stop_all → stopped {stopped}");
                     crate::tray::notify::notify_stop_all(&app, stopped);
                 }
