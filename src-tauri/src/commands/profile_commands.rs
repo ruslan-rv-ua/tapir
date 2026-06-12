@@ -118,6 +118,11 @@ pub async fn switch_profile(
         }
     }
 
+    // Phase 3D §3.5: зафіксувати StoppedByUser(ProfileSwitch) у СТАРИЙ профіль
+    // і скинути ledger/активні входження ДО зупинки записів (статуси ще живі).
+    // Confirm-діалог — Фаза 3; поки що переключення зупиняє без підтвердження.
+    crate::scheduler::timer::on_profile_switch(&app).await;
+
     // Steps 3-5: stop recordings + playback, join tasks (timeout 2s)
     let handles = {
         let mut manager = state.stream_manager.write().await;
