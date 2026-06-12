@@ -44,15 +44,36 @@ pub fn register_aumid(aumid: &str, display_name: &str) {
     }
 }
 
+/// (назва розкладу, локальний кінець вікна "HH:MM") активного планового запису.
+type ScheduledLine = (String, String);
+
+/// Тіло quit-confirm. Планові записи перелічуються окремим рядком (§3.5):
+/// користувач має знати, що зупиняє не просто запис, а запланований.
+fn quit_confirm_body(active_count: usize, scheduled: &[ScheduledLine]) -> String {
+    let mut body = format!("Активних записів: {active_count}.");
+    if !scheduled.is_empty() {
+        let list = scheduled
+            .iter()
+            .map(|(name, end)| format!("«{name}» до {end}"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        if scheduled.len() == 1 {
+            body.push_str(&format!("\nТриває плановий запис {list}."));
+        } else {
+            body.push_str(&format!("\nТривають планові записи: {list}."));
+        }
+    }
+    body.push_str("\nВийти з програми і зупинити їх?");
+    body
+}
+
 /// Show a native Yes/No MessageBox asking whether to quit the app while
 /// recordings are active. Returns true if the user confirmed (clicked Yes).
 ///
 /// Uses `MB_DEFBUTTON2` so "No" is the default — pressing Enter dismisses safely.
-pub fn show_quit_confirm(active_count: usize) -> bool {
+pub fn show_quit_confirm(body: &str) -> bool {
     let title = HSTRING::from("Tapir — підтвердження");
-    let body = HSTRING::from(format!(
-        "Активних записів: {active_count}.\nВийти з програми і зупинити їх?"
-    ));
+    let body = HSTRING::from(body);
     let result = unsafe {
         MessageBoxW(
             None,
@@ -79,9 +100,32 @@ pub async fn confirm_quit_if_recording(app: &tauri::AppHandle) -> bool {
 
     if active == 0 { return true; }
 
+    // §3.5: активні планові записи — назва + локальний кінець вікна.
+    let scheduled: Vec<ScheduledLine> = {
+        let schedules = state.active_profile.read().await.scheduled_recordings.clone();
+        let overview = state.scheduler.core.lock().await.active_overview();
+        overview
+            .iter()
+            .map(|occ| {
+                (
+                    schedules
+                        .iter()
+                        .find(|s| s.id == occ.key.0)
+                        .map(|s| s.name.clone())
+                        .unwrap_or_default(),
+                    occ.window_end_utc
+                        .with_timezone(&chrono::Local)
+                        .format("%H:%M")
+                        .to_string(),
+                )
+            })
+            .collect()
+    };
+    let body = quit_confirm_body(active, &scheduled);
+
     // MessageBoxW blocks; run on a blocking thread so we don't stall the
     // tokio worker (or the UI thread, if called via block_on).
-    tokio::task::spawn_blocking(move || show_quit_confirm(active))
+    tokio::task::spawn_blocking(move || show_quit_confirm(&body))
         .await
         .unwrap_or(false)
 }
@@ -242,5 +286,34 @@ mod tests {
     #[test]
     fn stop_all_toast_body_when_idle() {
         assert_eq!(stop_all_toast_body(0), "Запис не йшов");
+    }
+
+    #[test]
+    fn quit_confirm_body_without_scheduled() {
+        assert_eq!(
+            quit_confirm_body(2, &[]),
+            "Активних записів: 2.\nВийти з програми і зупинити їх?"
+        );
+    }
+
+    #[test]
+    fn quit_confirm_body_with_one_scheduled() {
+        let lines = vec![("Evening Jazz".to_string(), "22:05".to_string())];
+        assert_eq!(
+            quit_confirm_body(1, &lines),
+            "Активних записів: 1.\nТриває плановий запис «Evening Jazz» до 22:05.\nВийти з програми і зупинити їх?"
+        );
+    }
+
+    #[test]
+    fn quit_confirm_body_with_many_scheduled() {
+        let lines = vec![
+            ("A".to_string(), "22:05".to_string()),
+            ("B".to_string(), "23:10".to_string()),
+        ];
+        assert_eq!(
+            quit_confirm_body(3, &lines),
+            "Активних записів: 3.\nТривають планові записи: «A» до 22:05, «B» до 23:10.\nВийти з програми і зупинити їх?"
+        );
     }
 }
