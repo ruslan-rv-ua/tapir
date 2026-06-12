@@ -499,6 +499,15 @@ export interface ScheduledRecordingInput {
   enabled: boolean;
 }
 
+/** Активний плановий запис (для confirm-діалогів §3.5). */
+export interface ActiveScheduled {
+  recordingId: string;
+  name: string;
+  streamId: string;
+  /** Локальний кінець вікна "YYYY-MM-DDTHH:MM". */
+  windowEnd: string;
+}
+
 export interface Profile {
   name: string;
   version: number;
