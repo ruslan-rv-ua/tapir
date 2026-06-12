@@ -27,7 +27,9 @@ export type SegmentKind =
   | 'action-switch'
   | 'action-duplicate'
   | 'action-rename'
-  | 'action-export';
+  | 'action-export'
+  // Schedule rows
+  | 'action-toggle';
 
 export type ActionType = 'primary' | 'toggle' | 'delete';
 
