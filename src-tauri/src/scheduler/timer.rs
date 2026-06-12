@@ -131,11 +131,13 @@ pub async fn run_tick(app: &AppHandle) {
                             .map(|s| s.name.clone())
                             .unwrap_or_default();
                         log::info!("Scheduler: started '{stream_id}' for schedule '{}' (late: {late})", key.0);
+                        let started_body = crate::tray::notify::scheduled_started_body(&name);
                         app.emit("scheduled-started", ScheduledStartedPayload {
                             recording_id: key.0.clone(),
                             stream_id,
                             name,
                         }).ok();
+                        crate::tray::notify::notify_scheduled(app, started_body);
                     }
                     Err(e) => {
                         // §3.2: нічого не фіксуємо — наступний тік повторить
@@ -237,9 +239,25 @@ struct ScheduledSkippedPayload {
 /// не оновить результат; frontend для StoppedByUser не озвучує (Фаза 3).
 fn emit_result(app: &AppHandle, f: &Fixation) {
     match f.result.status {
-        ScheduleResultStatus::Completed
-        | ScheduleResultStatus::StartedLate
-        | ScheduleResultStatus::StoppedByUser => {
+        ScheduleResultStatus::Completed | ScheduleResultStatus::StartedLate => {
+            app.emit("scheduled-completed", ScheduledCompletedPayload {
+                recording_id: f.schedule_id.clone(),
+                stream_id: f.stream_id.clone(),
+                name: f.schedule_name.clone(),
+                status: f.result.status.clone(),
+                recorded_minutes: f.result.recorded_minutes,
+            }).ok();
+            crate::tray::notify::notify_scheduled(
+                app,
+                crate::tray::notify::scheduled_completed_body(
+                    &f.schedule_name,
+                    f.result.recorded_minutes,
+                ),
+            );
+        }
+        ScheduleResultStatus::StoppedByUser => {
+            // §4: подія потрібна для оновлення панелі; без balloon і announce —
+            // ручну зупинку вже озвучує recording-флоу.
             app.emit("scheduled-completed", ScheduledCompletedPayload {
                 recording_id: f.schedule_id.clone(),
                 stream_id: f.stream_id.clone(),
@@ -257,6 +275,13 @@ fn emit_result(app: &AppHandle, f: &Fixation) {
                 name: f.schedule_name.clone(),
                 reason: f.result.reason.clone(),
             }).ok();
+            crate::tray::notify::notify_scheduled(
+                app,
+                crate::tray::notify::scheduled_missed_body(
+                    &f.schedule_name,
+                    f.result.reason.as_ref(),
+                ),
+            );
         }
         ScheduleResultStatus::SkippedAlreadyRecording => {
             app.emit("scheduled-skipped", ScheduledSkippedPayload {
@@ -264,6 +289,10 @@ fn emit_result(app: &AppHandle, f: &Fixation) {
                 stream_id: f.stream_id.clone(),
                 name: f.schedule_name.clone(),
             }).ok();
+            crate::tray::notify::notify_scheduled(
+                app,
+                crate::tray::notify::scheduled_skipped_body(&f.schedule_name),
+            );
         }
     }
 }

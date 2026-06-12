@@ -19,6 +19,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use tauri_plugin_notification::NotificationExt;
 
+use crate::profile::ScheduleResultReason;
 use crate::recording_control::ToggleOutcome;
 
 /// Register our AppUserModelID under HKCU so Windows treats our toast
@@ -246,6 +247,50 @@ pub fn notify_stop_all(app: &tauri::AppHandle, stopped: usize) {
     }
 }
 
+// --- Balloon-дублікати подій scheduled-* (Phase 3D §5.5) ---
+// Тексти дзеркалять live region (uk-only — native surface, як решта рядків
+// цього модуля). StoppedByUser не дублюється: ручну зупинку вже озвучує
+// існуючий recording-флоу.
+
+pub fn scheduled_started_body(name: &str) -> String {
+    format!("Плановий запис «{name}» розпочато")
+}
+
+pub fn scheduled_completed_body(name: &str, minutes: u32) -> String {
+    format!("Плановий запис «{name}» завершено, записано {minutes} хв")
+}
+
+fn missed_reason_uk(reason: Option<&ScheduleResultReason>) -> &'static str {
+    match reason {
+        Some(ScheduleResultReason::AppNotRunning) => "Tapir не працював",
+        Some(ScheduleResultReason::StartFailed) => "не вдалося стартувати запис",
+        Some(ScheduleResultReason::ClockChange) => "переведення годинника",
+        _ => "—",
+    }
+}
+
+pub fn scheduled_missed_body(name: &str, reason: Option<&ScheduleResultReason>) -> String {
+    format!("Плановий запис «{name}» пропущено: {}", missed_reason_uk(reason))
+}
+
+pub fn scheduled_skipped_body(name: &str) -> String {
+    format!("Плановий запис «{name}» не стартував: потік уже записується")
+}
+
+/// Fire-and-forget balloon для подій планувальника. Гейт showTrayNotifications
+/// («механізм Фази 3A», §5.5); без тротлінгу — події рідкісні.
+pub fn notify_scheduled(app: &tauri::AppHandle, body: String) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let state = tauri::Manager::state::<crate::app_state::AppState>(&app);
+        if !state.settings.read().await.show_tray_notifications { return; }
+        log::info!("notify_scheduled: {body:?}");
+        if let Err(e) = app.notification().builder().title("Tapir").body(&body).show() {
+            log::warn!("notify_scheduled: failed to show toast: {e}");
+        }
+    });
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -314,6 +359,33 @@ mod tests {
         assert_eq!(
             quit_confirm_body(3, &lines),
             "Активних записів: 3.\nТривають планові записи: «A» до 22:05, «B» до 23:10.\nВийти з програми і зупинити їх?"
+        );
+    }
+
+    #[test]
+    fn scheduled_bodies_match_live_region_texts() {
+        use crate::profile::ScheduleResultReason;
+        assert_eq!(scheduled_started_body("X"), "Плановий запис «X» розпочато");
+        assert_eq!(
+            scheduled_completed_body("X", 119),
+            "Плановий запис «X» завершено, записано 119 хв"
+        );
+        assert_eq!(
+            scheduled_missed_body("X", Some(&ScheduleResultReason::AppNotRunning)),
+            "Плановий запис «X» пропущено: Tapir не працював"
+        );
+        assert_eq!(
+            scheduled_missed_body("X", Some(&ScheduleResultReason::StartFailed)),
+            "Плановий запис «X» пропущено: не вдалося стартувати запис"
+        );
+        assert_eq!(
+            scheduled_missed_body("X", Some(&ScheduleResultReason::ClockChange)),
+            "Плановий запис «X» пропущено: переведення годинника"
+        );
+        assert_eq!(scheduled_missed_body("X", None), "Плановий запис «X» пропущено: —");
+        assert_eq!(
+            scheduled_skipped_body("X"),
+            "Плановий запис «X» не стартував: потік уже записується"
         );
     }
 }
