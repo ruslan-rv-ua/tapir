@@ -5,4 +5,5 @@ pub mod wishlist_commands;
 pub mod browser_commands;
 pub mod songs_commands;
 pub mod profile_commands;
+pub mod schedule_commands;
 pub mod stream_io_commands;

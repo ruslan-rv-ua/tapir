@@ -207,6 +207,11 @@ pub fn run() {
             commands::stream_io_commands::validate_import_candidates,
             commands::stream_io_commands::commit_stream_import,
             commands::stream_io_commands::export_streams,
+            commands::schedule_commands::get_schedules,
+            commands::schedule_commands::add_schedule,
+            commands::schedule_commands::update_schedule,
+            commands::schedule_commands::delete_schedule,
+            commands::schedule_commands::toggle_schedule,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
