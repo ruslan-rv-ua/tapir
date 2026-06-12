@@ -376,7 +376,8 @@ impl Profile {
         }
         let content = std::fs::read_to_string(&path)?;
         let content = strip_bom(&content);
-        let profile: Self = serde_json::from_str(content)?;
+        let mut profile: Self = serde_json::from_str(content)?;
+        crate::scheduler::validation::sanitize_on_load(&mut profile);
         Ok(profile)
     }
 
@@ -817,6 +818,25 @@ mod tests {
         r.clamp_schedule_padding();
         assert_eq!(r.schedule_pad_before_min, 30);
         assert_eq!(r.schedule_pad_after_min, 60);
+    }
+
+    #[test]
+    fn load_contract_invalid_schedule_is_disabled_not_fatal() {
+        // Те, що робить Profile::load після parse: sanitize_on_load.
+        // recurring із порожніми days — жорстко невалідний.
+        let json = r#"{
+            "name": "T",
+            "scheduledRecordings": [{
+                "id": "bad", "streamId": "s", "name": "Bad", "type": "recurring",
+                "days": [], "time": "20:00", "durationMinutes": 60,
+                "enabled": true, "createdAt": "2026-06-12T10:00:00+03:00"
+            }]
+        }"#;
+        let mut p: Profile = serde_json::from_str(json).unwrap();
+        crate::scheduler::validation::sanitize_on_load(&mut p);
+        assert_eq!(p.scheduled_recordings.len(), 1, "рядок видно в таблиці");
+        assert!(!p.scheduled_recordings[0].enabled, "невалідний розклад вимкнено");
+        assert_eq!(p.scheduled_recordings[0].name, "Bad", "решта полів неушкоджена");
     }
 
     // --- Scheduler model (Phase 3D, Фаза 1) ---
