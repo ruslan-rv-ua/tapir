@@ -273,6 +273,127 @@ impl SchedulerCore {
     pub fn start_failed(&mut self, key: &OccKey) {
         self.start_attempted.insert(key.clone());
     }
+
+    /// §3.3: спільний хук чотирьох шляхів ручної зупинки. Фіксує
+    /// StoppedByUser(ManualStop), ЛИШЕ якщо session_id збігається з активним
+    /// входженням; інакше ігнор — зупинили ручний запис, що зайняв потік
+    /// (catch-up у вікні має лишитися можливим).
+    pub fn on_manual_stop(
+        &mut self,
+        stream_id: &str,
+        session_id: u64,
+        schedules: &[ScheduledRecording],
+        now_local: NaiveDateTime,
+        now_utc: DateTime<Utc>,
+    ) -> Option<Fixation> {
+        let idx = self
+            .active
+            .iter()
+            .position(|a| a.stream_id == stream_id && a.session_id == session_id)?;
+        let occ = self.active.remove(idx);
+        self.remember(occ.key.clone(), now_local);
+        Some(stopped_by_user_fixation(occ, ScheduleResultReason::ManualStop, schedules, now_local, now_utc))
+    }
+
+    /// §3.5: редагування суттєвих полів або toggle-off розкладу, що зараз
+    /// пише: зупинка + StoppedByUser(ScheduleEdited) + ledger під СТАРИМ
+    /// ключем. Якщо запис уже чужий — лише прибрати з active (None).
+    pub fn on_schedule_changed(
+        &mut self,
+        schedule: &ScheduledRecording,
+        statuses: &HashMap<String, u64>,
+        now_local: NaiveDateTime,
+        now_utc: DateTime<Utc>,
+    ) -> Option<(String, Fixation)> {
+        let idx = self.active.iter().position(|a| a.key.0 == schedule.id)?;
+        let occ = self.active.remove(idx);
+        if statuses.get(&occ.stream_id) != Some(&occ.session_id) {
+            return None; // запис чужий (перезапущений) — не чіпаємо
+        }
+        self.remember(occ.key.clone(), now_local);
+        let stream_id = occ.stream_id.clone();
+        let fix = stopped_by_user_fixation(
+            occ,
+            ScheduleResultReason::ScheduleEdited,
+            std::slice::from_ref(schedule),
+            now_local,
+            now_utc,
+        );
+        Some((stream_id, fix))
+    }
+
+    /// §3.5: видалення розкладу під час запису — просто зупинка (фіксувати
+    /// нікуди, рядок зник). Повертає stream_id, якщо запис ще наш.
+    pub fn on_schedule_deleted(
+        &mut self,
+        schedule_id: &str,
+        statuses: &HashMap<String, u64>,
+    ) -> Option<String> {
+        let idx = self.active.iter().position(|a| a.key.0 == schedule_id)?;
+        let occ = self.active.remove(idx);
+        (statuses.get(&occ.stream_id) == Some(&occ.session_id)).then_some(occ.stream_id)
+    }
+
+    /// §3.5: ProfileSwitch / AppClosing — зафіксувати StoppedByUser(reason)
+    /// для всіх своїх живих записів. Викликати ДО stop_all: статуси ще живі.
+    /// Самі записи зупиняє викликач (stop_all / stop_all_async).
+    pub fn drain_all(
+        &mut self,
+        reason: ScheduleResultReason,
+        schedules: &[ScheduledRecording],
+        statuses: &HashMap<String, u64>,
+        now_local: NaiveDateTime,
+        now_utc: DateTime<Utc>,
+    ) -> Vec<Fixation> {
+        std::mem::take(&mut self.active)
+            .into_iter()
+            .filter(|occ| statuses.get(&occ.stream_id) == Some(&occ.session_id))
+            .map(|occ| stopped_by_user_fixation(occ, reason.clone(), schedules, now_local, now_utc))
+            .collect()
+    }
+
+    /// Переключення профілю: ledger і спроби стартів — стан старого профілю.
+    pub fn reset(&mut self) {
+        self.active.clear();
+        self.ledger.clear();
+        self.start_attempted.clear();
+    }
+}
+
+/// Спільна фіксація для ManualStop / ScheduleEdited / ProfileSwitch / AppClosing.
+fn stopped_by_user_fixation(
+    occ: ActiveOccurrence,
+    reason: ScheduleResultReason,
+    schedules: &[ScheduledRecording],
+    now_local: NaiveDateTime,
+    now_utc: DateTime<Utc>,
+) -> Fixation {
+    let schedule = schedules.iter().find(|s| s.id == occ.key.0);
+    Fixation {
+        schedule_id: occ.key.0.clone(),
+        stream_id: occ.stream_id,
+        schedule_name: schedule.map(|s| s.name.clone()).unwrap_or_default(),
+        result: ScheduleResult {
+            occurrence: occ.key.1,
+            status: ScheduleResultStatus::StoppedByUser,
+            reason: Some(reason),
+            recorded_minutes: minutes_between(occ.started_at_utc, now_utc),
+            finished_at: finished_at(now_local),
+        },
+        // Oneshot НЕ вимикаємо (рішення №2 плану): catch-up після
+        // рестарту/повернення має лишитися можливим; відпрацьований
+        // oneshot гасить дедуп-гілка проходу B.
+        disable_schedule: false,
+    }
+}
+
+/// §3.5: зміна назви запис не перериває; суттєві поля — фіксований перелік.
+pub fn essential_fields_changed(old: &ScheduledRecording, new: &ScheduledRecording) -> bool {
+    old.stream_id != new.stream_id
+        || old.time != new.time
+        || old.days != new.days
+        || old.date != new.date
+        || old.duration_minutes != new.duration_minutes
 }
 
 #[cfg(test)]
@@ -672,6 +793,159 @@ mod tests {
         let fixes = fixations(&actions);
         assert_eq!(fixes[0].result.occurrence, "2026-06-12T20:00");
         assert_eq!(fixes[0].result.recorded_minutes, 1490);
+    }
+
+    // --- Ручна зупинка (§3.3) ---
+
+    #[test]
+    fn manual_stop_fixes_and_blocks_restart() {
+        let schedules = [recurring("a", "st1", &[4], "20:00", 60)];
+        let (mut core, _) = started_core(&schedules, "2026-06-12T20:05");
+        let fix = core
+            .on_manual_stop("st1", 1, &schedules, at("2026-06-12T20:47"), utc_of("2026-06-12T20:47"))
+            .expect("свій запис має зафіксуватись");
+        assert_eq!(fix.result.status, ScheduleResultStatus::StoppedByUser);
+        assert_eq!(fix.result.reason, Some(ScheduleResultReason::ManualStop));
+        assert_eq!(fix.result.recorded_minutes, 42, "wall-clock 20:05 → 20:47");
+        // У цьому вікні більше не перезапускати (ledger)
+        let free = busy(&[]);
+        let actions = core.tick(&ctx("2026-06-12T20:48", &schedules, &free), &no_dst);
+        assert!(actions.is_empty(), "got {actions:?}");
+    }
+
+    #[test]
+    fn manual_stop_with_foreign_session_is_ignored() {
+        // Зупинили ручний запис, що зайняв потік після обриву планового (§3.3):
+        // StoppedByUser НЕ фіксується, catch-up у вікні лишається можливим
+        let schedules = [recurring("a", "st1", &[4], "20:00", 60)];
+        let (mut core, _) = started_core(&schedules, "2026-06-12T20:00");
+        assert!(core.on_manual_stop("st1", 99, &schedules, at("2026-06-12T20:30"), utc_of("2026-06-12T20:30")).is_none());
+        // Планове входження досі активне у core; якщо запис справді зник —
+        // наступний тік перезапустить (vanished_recording_restarts_within_window)
+        assert_eq!(core.owned_sessions(), vec![("st1".to_string(), 1)]);
+    }
+
+    #[test]
+    fn manual_stop_oneshot_stays_enabled_for_catch_up() {
+        // Рішення №2 плану: oneshot не вимикається при StoppedByUser
+        let schedules = [oneshot("a", "st1", "2026-06-12", "20:00", 60)];
+        let (mut core, _) = started_core(&schedules, "2026-06-12T20:00");
+        let fix = core.on_manual_stop("st1", 1, &schedules, at("2026-06-12T20:30"), utc_of("2026-06-12T20:30")).unwrap();
+        assert!(!fix.disable_schedule);
+    }
+
+    // --- Редагування / вимкнення / видалення під час запису (§3.5) ---
+
+    #[test]
+    fn schedule_change_stops_and_ledgers_old_key() {
+        let schedules = [recurring("a", "st1", &[4], "20:00", 60)];
+        let (mut core, _) = started_core(&schedules, "2026-06-12T20:00");
+        let statuses = busy(&[("st1", 1)]);
+        let (stop_stream, fix) = core
+            .on_schedule_changed(&schedules[0], &statuses, at("2026-06-12T20:30"), utc_of("2026-06-12T20:30"))
+            .expect("активний запис має зупинитись");
+        assert_eq!(stop_stream, "st1");
+        assert_eq!(fix.result.status, ScheduleResultStatus::StoppedByUser);
+        assert_eq!(fix.result.reason, Some(ScheduleResultReason::ScheduleEdited));
+        assert!(!fix.disable_schedule, "далі — за новим станом (§3.5)");
+        // Повторне увімкнення в тому ж вікні не рестартує (ledger під старим ключем)
+        let free = busy(&[]);
+        let actions = core.tick(&ctx("2026-06-12T20:31", &schedules, &free), &no_dst);
+        assert!(actions.is_empty(), "got {actions:?}");
+    }
+
+    #[test]
+    fn schedule_change_with_foreign_session_only_forgets() {
+        let schedules = [recurring("a", "st1", &[4], "20:00", 60)];
+        let (mut core, _) = started_core(&schedules, "2026-06-12T20:00");
+        let statuses = busy(&[("st1", 99)]);
+        assert!(core.on_schedule_changed(&schedules[0], &statuses, at("2026-06-12T20:30"), utc_of("2026-06-12T20:30")).is_none());
+        assert!(core.owned_sessions().is_empty(), "входження прибране з active");
+    }
+
+    #[test]
+    fn schedule_delete_returns_stream_to_stop_without_fixation() {
+        // «Видалення — просто зупинка (фіксувати нікуди)» (§3.5)
+        let schedules = [recurring("a", "st1", &[4], "20:00", 60)];
+        let (mut core, _) = started_core(&schedules, "2026-06-12T20:00");
+        let statuses = busy(&[("st1", 1)]);
+        assert_eq!(core.on_schedule_deleted("a", &statuses), Some("st1".to_string()));
+        assert!(core.owned_sessions().is_empty());
+        // Нема активного запису → None
+        assert_eq!(core.on_schedule_deleted("a", &statuses), None);
+    }
+
+    // --- ProfileSwitch / AppClosing (§3.5) ---
+
+    #[test]
+    fn drain_all_fixes_every_owned_recording() {
+        let schedules = [
+            recurring("a", "st1", &[4], "20:00", 60),
+            recurring("b", "st2", &[4], "20:00", 60),
+        ];
+        let mut core = SchedulerCore::default();
+        let free = busy(&[]);
+        let actions = core.tick(&ctx("2026-06-12T20:00", &schedules, &free), &no_dst);
+        for action in actions {
+            let TickAction::StartRecording { key, stream_id, window_end_utc, late } = action else { panic!() };
+            let sid = if stream_id == "st1" { 1 } else { 2 };
+            core.confirm_start(key, stream_id, sid, window_end_utc, late, utc_of("2026-06-12T20:00"));
+        }
+        let statuses = busy(&[("st1", 1), ("st2", 2)]);
+        let fixes = core.drain_all(
+            ScheduleResultReason::ProfileSwitch,
+            &schedules,
+            &statuses,
+            at("2026-06-12T20:30"),
+            utc_of("2026-06-12T20:30"),
+        );
+        assert_eq!(fixes.len(), 2);
+        for f in &fixes {
+            assert_eq!(f.result.status, ScheduleResultStatus::StoppedByUser);
+            assert_eq!(f.result.reason, Some(ScheduleResultReason::ProfileSwitch));
+            assert_eq!(f.result.recorded_minutes, 30);
+        }
+        assert!(core.owned_sessions().is_empty());
+    }
+
+    #[test]
+    fn reset_clears_ledger_for_new_profile() {
+        // Після reset стара історія не блокує розклади нового профілю
+        let schedules = [recurring("a", "st1", &[4], "20:00", 60)];
+        let statuses = busy(&[]);
+        let mut core = SchedulerCore::default();
+        core.tick(&ctx("2026-06-12T21:30", &schedules, &statuses), &no_dst); // Missed → ledger
+        core.reset();
+        let actions = core.tick(&ctx("2026-06-12T21:31", &schedules, &statuses), &no_dst);
+        // Без last_result дедуплікація не спрацює — Missed фіксується знову,
+        // що доводить: ledger порожній
+        assert_eq!(fixations(&actions).len(), 1);
+    }
+
+    // --- essential_fields_changed (§3.5) ---
+
+    #[test]
+    fn name_change_is_not_essential() {
+        let old = recurring("a", "st1", &[4], "20:00", 60);
+        let mut new = old.clone();
+        new.name = "Renamed".into();
+        new.enabled = false; // enabled теж не суттєве — ним займається toggle
+        assert!(!essential_fields_changed(&old, &new));
+    }
+
+    #[test]
+    fn each_essential_field_triggers() {
+        let old = recurring("a", "st1", &[4], "20:00", 60);
+        let mut s = old.clone(); s.stream_id = "st2".into();
+        assert!(essential_fields_changed(&old, &s));
+        let mut s = old.clone(); s.time = "20:01".into();
+        assert!(essential_fields_changed(&old, &s));
+        let mut s = old.clone(); s.days = vec![0, 4];
+        assert!(essential_fields_changed(&old, &s));
+        let mut s = old.clone(); s.date = Some("2026-06-14".into());
+        assert!(essential_fields_changed(&old, &s));
+        let mut s = old.clone(); s.duration_minutes = 61;
+        assert!(essential_fields_changed(&old, &s));
     }
 
     #[test]
