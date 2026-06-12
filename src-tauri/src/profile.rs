@@ -162,6 +162,10 @@ pub struct RecordingSettings {
     #[serde(default = "default_true")]
     pub auto_correct_case: bool,
     #[serde(default)]
+    pub schedule_pad_before_min: u32,   // 0–30, клампиться у clamp_schedule_padding
+    #[serde(default)]
+    pub schedule_pad_after_min: u32,    // 0–60
+    #[serde(default)]
     pub reconnect: ReconnectConfig,
 }
 
@@ -184,8 +188,19 @@ impl Default for RecordingSettings {
             skip_first_incomplete_track: true,
             skip_short_tracks_ms: 30000,
             auto_correct_case: true,
+            schedule_pad_before_min: 0,
+            schedule_pad_after_min: 0,
             reconnect: ReconnectConfig::default(),
         }
+    }
+}
+
+impl RecordingSettings {
+    /// Спека Phase 3D §2: межі padding 0–30 / 0–60 хв клампляться на backend
+    /// при збереженні налаштувань, а не лише в UI.
+    pub fn clamp_schedule_padding(&mut self) {
+        self.schedule_pad_before_min = self.schedule_pad_before_min.min(30);
+        self.schedule_pad_after_min = self.schedule_pad_after_min.min(60);
     }
 }
 
@@ -766,6 +781,42 @@ mod tests {
         let err = p.add_stream_checked(mk("2")).unwrap_err();
         assert!(matches!(err, RadioError::Conflict(_)));
         assert_eq!(p.streams.len(), 1, "duplicate must not be appended");
+    }
+
+    #[test]
+    fn recording_settings_padding_defaults_to_zero() {
+        let r = RecordingSettings::default();
+        assert_eq!(r.schedule_pad_before_min, 0);
+        assert_eq!(r.schedule_pad_after_min, 0);
+    }
+
+    #[test]
+    fn recording_settings_deserializes_without_padding_fields() {
+        // Профіль, збережений до Фази 1, не має нових полів
+        let json = r#"{"outputDir":"recordings"}"#;
+        let r: RecordingSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(r.schedule_pad_before_min, 0);
+        assert_eq!(r.schedule_pad_after_min, 0);
+    }
+
+    #[test]
+    fn clamp_schedule_padding_clamps_to_limits() {
+        let mut r = RecordingSettings::default();
+        r.schedule_pad_before_min = 31;
+        r.schedule_pad_after_min = 61;
+        r.clamp_schedule_padding();
+        assert_eq!(r.schedule_pad_before_min, 30);
+        assert_eq!(r.schedule_pad_after_min, 60);
+    }
+
+    #[test]
+    fn clamp_schedule_padding_keeps_valid_values() {
+        let mut r = RecordingSettings::default();
+        r.schedule_pad_before_min = 30;
+        r.schedule_pad_after_min = 60;
+        r.clamp_schedule_padding();
+        assert_eq!(r.schedule_pad_before_min, 30);
+        assert_eq!(r.schedule_pad_after_min, 60);
     }
 
     // --- Scheduler model (Phase 3D, Фаза 1) ---
