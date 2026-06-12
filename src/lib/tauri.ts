@@ -327,6 +327,11 @@ export async function toggleSchedule(
   return invoke("toggle_schedule", { id, enabled });
 }
 
+/** Активні планові записи — для confirm-діалогів (§3.5). */
+export async function getActiveScheduled(): Promise<ActiveScheduled[]> {
+  return invoke("get_active_scheduled");
+}
+
 /** Ready-сигнал: backend стартує scheduler лише після підписки webview на події. */
 export async function frontendReady(): Promise<void> {
   return invoke("frontend_ready");
@@ -506,6 +511,22 @@ export interface ActiveScheduled {
   streamId: string;
   /** Локальний кінець вікна "YYYY-MM-DDTHH:MM". */
   windowEnd: string;
+}
+
+/** Спільні поля payload-ів scheduled-* (§4). */
+export interface ScheduledEventPayload {
+  recordingId: string;
+  streamId: string;
+  name: string;
+}
+
+export interface ScheduledCompletedPayload extends ScheduledEventPayload {
+  status: "completed" | "startedLate" | "stoppedByUser";
+  recordedMinutes: number;
+}
+
+export interface ScheduledMissedPayload extends ScheduledEventPayload {
+  reason: ScheduleResultReason | null;
 }
 
 export interface Profile {

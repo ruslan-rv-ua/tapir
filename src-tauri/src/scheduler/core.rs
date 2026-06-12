@@ -155,6 +155,11 @@ impl SchedulerCore {
         self.active.iter().map(|a| (a.stream_id.clone(), a.session_id)).collect()
     }
 
+    /// Знімок активних входжень для UI (confirm-діалоги §3.5).
+    pub fn active_overview(&self) -> Vec<ActiveOccurrence> {
+        self.active.clone()
+    }
+
     /// Прохід B (§3.2): старти й Missed.
     fn pass_b(
         &mut self,
@@ -946,6 +951,19 @@ mod tests {
         assert!(essential_fields_changed(&old, &s));
         let mut s = old.clone(); s.duration_minutes = 61;
         assert!(essential_fields_changed(&old, &s));
+    }
+
+    #[test]
+    fn active_overview_returns_confirmed_starts() {
+        let mut core = SchedulerCore::default();
+        let key: OccKey = ("sch1".into(), "2026-06-12T20:00".into());
+        let end = Utc::now() + Duration::hours(2);
+        core.confirm_start(key.clone(), "st1".into(), 7, end, false, Utc::now());
+        let overview = core.active_overview();
+        assert_eq!(overview.len(), 1);
+        assert_eq!(overview[0].key, key);
+        assert_eq!(overview[0].stream_id, "st1");
+        assert_eq!(overview[0].window_end_utc, end);
     }
 
     #[test]

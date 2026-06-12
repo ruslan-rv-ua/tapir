@@ -335,6 +335,7 @@ DST: неіснуючий локальний час (стрибок уперед
 | `update_schedule` | `(ScheduledRecording) → ScheduledRecording` |
 | `delete_schedule` | `(id: String) → ()` |
 | `toggle_schedule` | `(id: String, enabled: bool) → ScheduledRecording` |
+| `get_active_scheduled` | `() → Vec<ActiveScheduledDto>` — активні планові записи (`recordingId`, `name`, `streamId`, `windowEnd` — локальний `"YYYY-MM-DDTHH:MM"`); дані для confirm-діалогів §3.5 (додано у Фазі 3) |
 
 Усі команди працюють з активним профілем і одразу персистять його. Помилки — через
 `RadioError`.

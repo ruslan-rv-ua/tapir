@@ -213,6 +213,7 @@ pub fn run() {
             commands::schedule_commands::update_schedule,
             commands::schedule_commands::delete_schedule,
             commands::schedule_commands::toggle_schedule,
+            commands::schedule_commands::get_active_scheduled,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

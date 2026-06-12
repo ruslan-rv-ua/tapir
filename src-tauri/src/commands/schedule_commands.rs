@@ -15,6 +15,17 @@ pub struct ScheduleDto {
     pub next_run: Option<String>,
 }
 
+/// Активний плановий запис — дані для confirm-діалогів §3.5.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActiveScheduledDto {
+    pub recording_id: String,
+    pub name: String,
+    pub stream_id: String,
+    /// Локальний кінець вікна "YYYY-MM-DDTHH:MM" — frontend форматує «до HH:MM».
+    pub window_end: String,
+}
+
 /// Вхід add_schedule: id, createdAt, lastResult генерує/володіє backend.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -110,6 +121,29 @@ fn toggle_schedule_impl(
 fn delete_schedule_impl(profile: &mut Profile, id: &str) {
     // Ідемпотентно, як remove_from_wishlist: відсутній id — не помилка
     profile.scheduled_recordings.retain(|s| s.id != id);
+}
+
+fn active_scheduled_impl(
+    active: &[crate::scheduler::core::ActiveOccurrence],
+    schedules: &[ScheduledRecording],
+) -> Vec<ActiveScheduledDto> {
+    active
+        .iter()
+        .map(|occ| ActiveScheduledDto {
+            recording_id: occ.key.0.clone(),
+            name: schedules
+                .iter()
+                .find(|s| s.id == occ.key.0)
+                .map(|s| s.name.clone())
+                .unwrap_or_default(),
+            stream_id: occ.stream_id.clone(),
+            window_end: occ
+                .window_end_utc
+                .with_timezone(&chrono::Local)
+                .format("%Y-%m-%dT%H:%M")
+                .to_string(),
+        })
+        .collect()
 }
 
 /// §4: nextRun — ISO локальний datetime "YYYY-MM-DDTHH:MM" наступного
@@ -227,6 +261,15 @@ pub async fn toggle_schedule(
         crate::scheduler::timer::notify_schedule_changed(&app, &entry).await;
     }
     Ok(entry)
+}
+
+#[tauri::command]
+pub async fn get_active_scheduled(
+    state: tauri::State<'_, AppState>,
+) -> Result<Vec<ActiveScheduledDto>, String> {
+    let schedules = state.active_profile.read().await.scheduled_recordings.clone();
+    let active = state.scheduler.core.lock().await.active_overview();
+    Ok(active_scheduled_impl(&active, &schedules))
 }
 
 #[cfg(test)]
@@ -382,6 +425,43 @@ mod tests {
         schedule.enabled = false;
         let dto = dto_for(schedule, at("2026-06-12T10:00"));
         assert!(dto.next_run.is_none());
+    }
+
+    #[test]
+    fn active_scheduled_impl_maps_names_and_local_end() {
+        use crate::scheduler::core::ActiveOccurrence;
+        let mut p = profile_with_stream();
+        let added = add_schedule_impl(&mut p, valid_input()).unwrap();
+        let end_utc = chrono::Utc::now() + chrono::Duration::hours(2);
+        let occ = ActiveOccurrence {
+            key: (added.id.clone(), "2026-06-12T20:00".into()),
+            stream_id: "st1".into(),
+            session_id: 1,
+            window_end_utc: end_utc,
+            started_late: false,
+            started_at_utc: chrono::Utc::now(),
+        };
+        let dtos = active_scheduled_impl(&[occ], &p.scheduled_recordings);
+        assert_eq!(dtos.len(), 1);
+        assert_eq!(dtos[0].recording_id, added.id);
+        assert_eq!(dtos[0].name, "Evening Jazz");
+        assert_eq!(dtos[0].stream_id, "st1");
+        // Формат §4: локальний "YYYY-MM-DDTHH:MM"
+        assert!(
+            NaiveDateTime::parse_from_str(&dtos[0].window_end, "%Y-%m-%dT%H:%M").is_ok(),
+            "got: {}", dtos[0].window_end
+        );
+    }
+
+    #[test]
+    fn active_scheduled_dto_serializes_camel_case() {
+        let dto = ActiveScheduledDto {
+            recording_id: "r".into(), name: "N".into(),
+            stream_id: "s".into(), window_end: "2026-06-12T22:05".into(),
+        };
+        let json = serde_json::to_string(&dto).unwrap();
+        assert!(json.contains("\"recordingId\""), "got: {json}");
+        assert!(json.contains("\"windowEnd\""), "got: {json}");
     }
 
     #[test]
