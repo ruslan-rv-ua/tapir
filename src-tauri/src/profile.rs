@@ -79,7 +79,7 @@ pub struct ScheduledRecording {
     pub last_result: Option<ScheduleResult>, // пише лише backend
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScheduleResult {
     pub occurrence: String,           // "2026-06-12T20:00" — номінальний локальний
