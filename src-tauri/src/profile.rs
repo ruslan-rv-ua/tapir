@@ -51,8 +51,8 @@ pub struct WishlistEntry {
     pub added_at: String,
 }
 
-// --- ScheduleType + ScheduledRecording ---
-#[derive(Debug, Clone, Serialize, Deserialize)]
+// --- ScheduleType + ScheduledRecording (Phase 3D, спека §2) ---
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ScheduleType {
     Oneshot,
@@ -63,18 +63,59 @@ pub enum ScheduleType {
 #[serde(rename_all = "camelCase")]
 pub struct ScheduledRecording {
     pub id: String,
-    pub stream_id: String,
-    pub name: String,
+    pub stream_id: String,            // посилання на StreamInfo.id активного профілю
+    pub name: String,                 // мітка користувача, напр. "Evening Jazz"
     #[serde(rename = "type")]
     pub schedule_type: ScheduleType,
     #[serde(default)]
-    pub day_of_week: Option<u8>,
+    pub days: Vec<u8>,                // recurring: 0=Пн..6=Нд, непорожній; oneshot: порожній
     #[serde(default)]
-    pub date: Option<String>,
-    pub time: String,
-    pub duration_minutes: u32,
+    pub date: Option<String>,         // oneshot: ISO-дата "2026-06-14"; recurring: None
+    pub time: String,                 // початок "HH:MM", 24h, локальний час
+    pub duration_minutes: u32,        // 1..=1439
     pub enabled: bool,
     pub created_at: String,
+    #[serde(default)]
+    pub last_result: Option<ScheduleResult>, // пише лише backend
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScheduleResult {
+    pub occurrence: String,           // "2026-06-12T20:00" — номінальний локальний
+                                      // час початку входження (без padding)
+    pub status: ScheduleResultStatus,
+    #[serde(default)]
+    pub reason: Option<ScheduleResultReason>, // лише для Missed / StoppedByUser
+    pub recorded_minutes: u32,        // wall-clock від фактичного старту до зупинки;
+                                      // 0 — не стартував
+    pub finished_at: String,          // ISO datetime, коли статус зафіксовано
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ScheduleResultStatus {
+    Completed,                // записано все вікно
+    StartedLate,              // catch-up: стартували посеред вікна, дописали решту
+    Missed,                   // вікно минуло без старту
+    StoppedByUser,            // користувач зупинив плановий запис вручну
+    SkippedAlreadyRecording,  // на старті вікна потік уже записувався
+}
+
+/// Код причини для Missed і StoppedByUser. Локалізує frontend (Paraglide);
+/// backend ніколи не віддає готові рядки.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ScheduleResultReason {
+    // Missed:
+    AppNotRunning,   // вікно минуло без жодної спроби старту в цій сесії
+    StartFailed,     // спроби старту були, всі невдалі
+    ClockChange,     // неіснуючий локальний час (DST-стрибок уперед)
+    // StoppedByUser:
+    ManualStop,      // зупинка з UI або глобального хоткея
+    ProfileSwitch,   // переключення профілю
+    AppClosing,      // закриття додатка
+    ScheduleEdited,  // редагування/вимкнення розкладу під час запису
 }
 
 // --- ReconnectConfig ---
@@ -725,5 +766,79 @@ mod tests {
         let err = p.add_stream_checked(mk("2")).unwrap_err();
         assert!(matches!(err, RadioError::Conflict(_)));
         assert_eq!(p.streams.len(), 1, "duplicate must not be appended");
+    }
+
+    // --- Scheduler model (Phase 3D, Фаза 1) ---
+
+    fn sample_recurring_schedule() -> ScheduledRecording {
+        ScheduledRecording {
+            id: "sch1".into(),
+            stream_id: "st1".into(),
+            name: "Evening Jazz".into(),
+            schedule_type: ScheduleType::Recurring,
+            days: vec![0, 1, 2, 3, 4],
+            date: None,
+            time: "20:00".into(),
+            duration_minutes: 120,
+            enabled: true,
+            created_at: "2026-06-12T10:00:00+03:00".into(),
+            last_result: None,
+        }
+    }
+
+    #[test]
+    fn scheduled_recording_serializes_camel_case() {
+        let json = serde_json::to_string(&sample_recurring_schedule()).unwrap();
+        assert!(json.contains("\"streamId\":\"st1\""), "got: {json}");
+        assert!(json.contains("\"type\":\"recurring\""), "got: {json}");
+        assert!(json.contains("\"days\":[0,1,2,3,4]"), "got: {json}");
+        assert!(json.contains("\"durationMinutes\":120"), "got: {json}");
+        assert!(json.contains("\"lastResult\":null"), "got: {json}");
+    }
+
+    #[test]
+    fn scheduled_recording_deserializes_with_defaults() {
+        // Мінімальний oneshot без days і lastResult — serde(default) заповнює їх
+        let json = r#"{"id":"x","streamId":"s1","name":"N","type":"oneshot",
+            "date":"2026-06-14","time":"08:30","durationMinutes":60,
+            "enabled":true,"createdAt":"2026-06-12T10:00:00+03:00"}"#;
+        let s: ScheduledRecording = serde_json::from_str(json).unwrap();
+        assert_eq!(s.schedule_type, ScheduleType::Oneshot);
+        assert!(s.days.is_empty());
+        assert_eq!(s.date.as_deref(), Some("2026-06-14"));
+        assert!(s.last_result.is_none());
+    }
+
+    #[test]
+    fn schedule_result_serializes_status_and_reason_camel_case() {
+        let r = ScheduleResult {
+            occurrence: "2026-06-12T20:00".into(),
+            status: ScheduleResultStatus::StartedLate,
+            reason: Some(ScheduleResultReason::AppNotRunning),
+            recorded_minutes: 80,
+            finished_at: "2026-06-12T22:05:00+03:00".into(),
+        };
+        let json = serde_json::to_string(&r).unwrap();
+        assert!(json.contains("\"status\":\"startedLate\""), "got: {json}");
+        assert!(json.contains("\"reason\":\"appNotRunning\""), "got: {json}");
+        assert!(json.contains("\"recordedMinutes\":80"), "got: {json}");
+        assert!(json.contains("\"finishedAt\""), "got: {json}");
+    }
+
+    #[test]
+    fn schedule_result_roundtrip() {
+        let r = ScheduleResult {
+            occurrence: "2026-06-12T20:00".into(),
+            status: ScheduleResultStatus::StoppedByUser,
+            reason: Some(ScheduleResultReason::ProfileSwitch),
+            recorded_minutes: 45,
+            finished_at: "2026-06-12T21:00:00+03:00".into(),
+        };
+        let back: ScheduleResult =
+            serde_json::from_str(&serde_json::to_string(&r).unwrap()).unwrap();
+        assert_eq!(back.status, ScheduleResultStatus::StoppedByUser);
+        assert_eq!(back.reason, Some(ScheduleResultReason::ProfileSwitch));
+        assert_eq!(back.recorded_minutes, 45);
+        assert_eq!(back.occurrence, "2026-06-12T20:00");
     }
 }
