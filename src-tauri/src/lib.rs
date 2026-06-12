@@ -6,6 +6,7 @@ mod portable;
 mod profile;
 mod recording_control;
 mod sanitize;
+mod scheduler;
 mod shortcuts;
 mod settings;
 mod smtc;
