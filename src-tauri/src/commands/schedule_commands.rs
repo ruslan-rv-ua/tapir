@@ -5,9 +5,8 @@ use crate::errors::RadioError;
 use crate::profile::{Profile, ScheduleType, ScheduledRecording};
 use crate::scheduler::validation;
 
-/// Відповідь get_schedules: розклад + обчислюване nextRun.
-/// Фаза 1: nextRun завжди None — обчислення вікон з'явиться у Фазі 2.
-/// Формат nextRun (Фаза 2): ISO локальний datetime "YYYY-MM-DDTHH:MM".
+/// Відповідь get_schedules: розклад + обчислюване nextRun
+/// ("YYYY-MM-DDTHH:MM", §4; None — вимкнено або oneshot у минулому).
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScheduleDto {
@@ -113,18 +112,32 @@ fn delete_schedule_impl(profile: &mut Profile, id: &str) {
     profile.scheduled_recordings.retain(|s| s.id != id);
 }
 
+/// §4: nextRun — ISO локальний datetime "YYYY-MM-DDTHH:MM" наступного
+/// номінального старту; None для вимкнених і відпрацьованих oneshot
+/// (frontend рендерить «—»). Обчислення — тільки в Rust.
+fn dto_for(schedule: ScheduledRecording, now: chrono::NaiveDateTime) -> ScheduleDto {
+    let next_run = if schedule.enabled {
+        crate::scheduler::windows::next_run(&schedule, now)
+            .map(crate::scheduler::windows::occurrence_key)
+    } else {
+        None
+    };
+    ScheduleDto { schedule, next_run }
+}
+
 // --- Tauri-команди (спека §4): працюють з активним профілем і одразу персистять ---
 
 #[tauri::command]
 pub async fn get_schedules(
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<ScheduleDto>, String> {
+    let now = chrono::Local::now().naive_local();
     let profile = state.active_profile.read().await;
     Ok(profile
         .scheduled_recordings
         .iter()
         .cloned()
-        .map(|schedule| ScheduleDto { schedule, next_run: None })
+        .map(|schedule| dto_for(schedule, now))
         .collect())
 }
 
@@ -148,23 +161,33 @@ pub async fn add_schedule(
 #[tauri::command]
 pub async fn update_schedule(
     schedule: ScheduledRecording,
+    app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) -> Result<ScheduledRecording, String> {
-    let (entry, snapshot) = {
+    let (entry, old, snapshot) = {
         let mut profile = state.active_profile.write().await;
+        let old = profile.scheduled_recordings.iter().find(|s| s.id == schedule.id).cloned();
         let entry = update_schedule_impl(&mut profile, schedule).map_err(|e| e.to_string())?;
-        (entry, profile.clone())
+        (entry, old, profile.clone())
     };
     tokio::task::spawn_blocking(move || snapshot.save())
         .await
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())?;
+    // §3.5: зміна назви запис не перериває; суттєві поля — зупинка
+    // з фіксацією StoppedByUser(ScheduleEdited)
+    if let Some(old) = old {
+        if crate::scheduler::core::essential_fields_changed(&old, &entry) {
+            crate::scheduler::timer::notify_schedule_changed(&app, &entry).await;
+        }
+    }
     Ok(entry)
 }
 
 #[tauri::command]
 pub async fn delete_schedule(
     id: String,
+    app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
     let snapshot = {
@@ -175,13 +198,17 @@ pub async fn delete_schedule(
     tokio::task::spawn_blocking(move || snapshot.save())
         .await
         .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    // §3.5: видалення під час запису — просто зупинка (фіксувати нікуди)
+    crate::scheduler::timer::notify_schedule_deleted(&app, &id).await;
+    Ok(())
 }
 
 #[tauri::command]
 pub async fn toggle_schedule(
     id: String,
     enabled: bool,
+    app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) -> Result<ScheduledRecording, String> {
     let (entry, snapshot) = {
@@ -194,6 +221,11 @@ pub async fn toggle_schedule(
         .await
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())?;
+    // §3.5: вимкнення під час запису — та сама фіксація (ScheduleEdited) +
+    // ledger: повторне увімкнення в тому ж вікні не рестартує
+    if !enabled {
+        crate::scheduler::timer::notify_schedule_changed(&app, &entry).await;
+    }
     Ok(entry)
 }
 
@@ -201,6 +233,7 @@ pub async fn toggle_schedule(
 mod tests {
     use super::*;
     use crate::profile::{ScheduleResult, ScheduleResultStatus, StreamInfo};
+    use chrono::NaiveDateTime;
 
     fn profile_with_stream() -> Profile {
         let mut p = Profile::create_default();
@@ -327,6 +360,51 @@ mod tests {
         delete_schedule_impl(&mut p, &added.id);
         assert!(p.scheduled_recordings.is_empty());
         delete_schedule_impl(&mut p, &added.id); // повторне видалення — no-op
+    }
+
+    fn at(s: &str) -> NaiveDateTime {
+        NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M").unwrap()
+    }
+
+    #[test]
+    fn dto_computes_next_run_for_enabled() {
+        // 2026-06-12 — п'ятниця; valid_input має days [0,2,4] (пн/ср/пт) 20:00
+        let mut p = profile_with_stream();
+        let schedule = add_schedule_impl(&mut p, valid_input()).unwrap();
+        let dto = dto_for(schedule, at("2026-06-12T10:00"));
+        assert_eq!(dto.next_run.as_deref(), Some("2026-06-12T20:00"));
+    }
+
+    #[test]
+    fn dto_next_run_none_when_disabled() {
+        let mut p = profile_with_stream();
+        let mut schedule = add_schedule_impl(&mut p, valid_input()).unwrap();
+        schedule.enabled = false;
+        let dto = dto_for(schedule, at("2026-06-12T10:00"));
+        assert!(dto.next_run.is_none());
+    }
+
+    #[test]
+    fn dto_next_run_none_for_past_oneshot() {
+        // Будуємо напряму, НЕ через add_schedule_impl: той валідує проти
+        // реального Local::now(), і фіксована дата з часом стала б минулою
+        let schedule = ScheduledRecording {
+            id: "o1".into(),
+            stream_id: "st1".into(),
+            name: "Once".into(),
+            schedule_type: ScheduleType::Oneshot,
+            days: vec![],
+            date: Some("2026-06-14".into()),
+            time: "20:00".into(),
+            duration_minutes: 60,
+            enabled: true,
+            created_at: "2026-06-12T10:00:00+03:00".into(),
+            last_result: None,
+        };
+        let dto = dto_for(schedule.clone(), at("2026-06-15T10:00"));
+        assert!(dto.next_run.is_none(), "початок у минулому → None, frontend покаже «—»");
+        let dto = dto_for(schedule, at("2026-06-12T10:00"));
+        assert_eq!(dto.next_run.as_deref(), Some("2026-06-14T20:00"));
     }
 
     #[test]
