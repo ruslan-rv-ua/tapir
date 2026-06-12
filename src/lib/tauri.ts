@@ -56,6 +56,8 @@ export interface RecordingSettings {
   skipFirstIncompleteTrack: boolean;
   skipShortTracksMs: number;
   autoCorrectCase: boolean;
+  schedulePadBeforeMin: number; // 0–30, запас перед стартом планового запису
+  schedulePadAfterMin: number;  // 0–60, запас після кінця
   reconnect: ReconnectConfig;
 }
 
@@ -295,6 +297,35 @@ export async function saveRecordingSettings(recording: RecordingSettings): Promi
   return invoke("save_recording_settings", { recording });
 }
 
+// --- Scheduler (Phase 3D) ---
+
+export async function getSchedules(): Promise<ScheduleDto[]> {
+  return invoke("get_schedules");
+}
+
+export async function addSchedule(
+  input: ScheduledRecordingInput,
+): Promise<ScheduledRecording> {
+  return invoke("add_schedule", { input });
+}
+
+export async function updateSchedule(
+  schedule: ScheduledRecording,
+): Promise<ScheduledRecording> {
+  return invoke("update_schedule", { schedule });
+}
+
+export async function deleteSchedule(id: string): Promise<void> {
+  return invoke("delete_schedule", { id });
+}
+
+export async function toggleSchedule(
+  id: string,
+  enabled: boolean,
+): Promise<ScheduledRecording> {
+  return invoke("toggle_schedule", { id, enabled });
+}
+
 export async function registerHotkeys(): Promise<string[]> {
   return invoke("register_hotkeys");
 }
@@ -403,13 +434,72 @@ export interface ImportPreview {
   hasConflict: boolean;
 }
 
+// --- Scheduler (Phase 3D) ---
+
+export type ScheduleType = "oneshot" | "recurring";
+
+export type ScheduleResultStatus =
+  | "completed"
+  | "startedLate"
+  | "missed"
+  | "stoppedByUser"
+  | "skippedAlreadyRecording";
+
+export type ScheduleResultReason =
+  // missed:
+  | "appNotRunning"
+  | "startFailed"
+  | "clockChange"
+  // stoppedByUser:
+  | "manualStop"
+  | "profileSwitch"
+  | "appClosing"
+  | "scheduleEdited";
+
+export interface ScheduleResult {
+  occurrence: string;       // "2026-06-12T20:00" — номінальний локальний час входження
+  status: ScheduleResultStatus;
+  reason: ScheduleResultReason | null;
+  recordedMinutes: number;  // 0 — не стартував
+  finishedAt: string;
+}
+
+export interface ScheduledRecording {
+  id: string;
+  streamId: string;
+  name: string;
+  type: ScheduleType;
+  days: number[];           // recurring: 0=Пн..6=Нд; oneshot: []
+  date: string | null;      // oneshot: "YYYY-MM-DD"; recurring: null
+  time: string;             // "HH:MM", 24h, локальний час
+  durationMinutes: number;  // 1..=1439
+  enabled: boolean;
+  createdAt: string;
+  lastResult: ScheduleResult | null; // пише лише backend
+}
+
+export interface ScheduleDto extends ScheduledRecording {
+  nextRun: string | null;   // "YYYY-MM-DDTHH:MM"; Фаза 1: завжди null
+}
+
+export interface ScheduledRecordingInput {
+  streamId: string;
+  name: string;
+  type: ScheduleType;
+  days: number[];
+  date: string | null;
+  time: string;
+  durationMinutes: number;
+  enabled: boolean;
+}
+
 export interface Profile {
   name: string;
   version: number;
   streams: StreamInfo[];
   wishlist: WishlistEntry[];
   ignorelist: string[];
-  scheduledRecordings: unknown[];
+  scheduledRecordings: ScheduledRecording[];
   recording: RecordingSettings;
   postprocess: {
     enabled: boolean;
