@@ -139,6 +139,9 @@ function AppContent() {
       // which is what lets NVDA attach to the document. Now that initial data has
       // loaded, move focus to the first nav item; NVDA announces it reliably.
       activityBarZoneRef.current?.focus("forward");
+      // Scheduler (Phase 3D §3.5): тік-цикл стартує лише після ready-сигналу,
+      // щоб catch-up першого тіка не емітив події до підписки webview.
+      tauri.frontendReady().catch(console.error);
     });
   }, []);
 

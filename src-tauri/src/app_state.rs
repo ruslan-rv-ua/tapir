@@ -15,6 +15,7 @@ pub struct AppState {
     // PlayerEngine is internally synchronized via Arc<Mutex<>> fields — no outer RwLock needed.
     pub player: Arc<PlayerEngine>,
     pub browser_client: Arc<tokio::sync::OnceCell<RadioBrowserClient>>,
+    pub scheduler: Arc<crate::scheduler::timer::SchedulerShared>,
 }
 
 impl AppState {
@@ -36,6 +37,7 @@ impl AppState {
             active_profile: Arc::new(RwLock::new(profile)),
             player: Arc::new(player),
             browser_client,
+            scheduler: crate::scheduler::timer::SchedulerShared::new(),
         })
     }
 }

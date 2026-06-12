@@ -147,6 +147,7 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            commands::app_commands::frontend_ready,
             commands::stream_commands::get_streams,
             commands::stream_commands::add_stream,
             commands::stream_commands::remove_stream,

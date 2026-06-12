@@ -43,7 +43,7 @@ fn below_threshold(free_bytes: u64, threshold_gb: u32) -> bool {
     threshold_gb > 0 && free_bytes < (threshold_gb as u64) * 1_073_741_824
 }
 
-async fn check_disk_space(state: &AppState) -> Result<(), RadioError> {
+pub(crate) async fn check_disk_space(state: &AppState) -> Result<(), RadioError> {
     let threshold_gb = state.settings.read().await.disk_space_threshold_gb;
     if threshold_gb == 0 {
         return Ok(()); // disabled — skip the profile lock entirely

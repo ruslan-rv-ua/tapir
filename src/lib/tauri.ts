@@ -327,6 +327,11 @@ export async function toggleSchedule(
   return invoke("toggle_schedule", { id, enabled });
 }
 
+/** Ready-сигнал: backend стартує scheduler лише після підписки webview на події. */
+export async function frontendReady(): Promise<void> {
+  return invoke("frontend_ready");
+}
+
 export async function registerHotkeys(): Promise<string[]> {
   return invoke("register_hotkeys");
 }
