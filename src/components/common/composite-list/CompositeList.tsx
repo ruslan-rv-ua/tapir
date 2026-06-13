@@ -116,7 +116,7 @@ function CompositeListInner<H extends ZoneEntry = ZoneEntry>(
       data-zone-id={zoneId}
       role="application"
       aria-label={ariaLabel}
-      className={`py-1 ${className}`}
+      className={`py-1 scroll-py-1 ${className}`}
       onKeyDownCapture={onKeyDownCapture}
       onContextMenu={onContextMenu}
     >
