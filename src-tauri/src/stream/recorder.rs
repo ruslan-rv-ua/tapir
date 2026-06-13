@@ -220,7 +220,7 @@ impl Recorder {
         Ok(())
     }
 
-    /// Close all open files, optionally deleting the stream file.
+    /// Close all open files, flushing and keeping the stream file.
     ///
     /// A track that is still being recorded when the stream stops (user stop,
     /// EOF, or read error) is *kept* on disk under its `_incomplete` name rather
@@ -248,20 +248,11 @@ impl Recorder {
         }
         self.track_final_path = None;
 
-        if self.settings.delete_stream_file_on_stop {
-            // Drop the file handle first before deleting (required on Windows)
-            self.stream_file = None;
-            if let Some(path) = self.stream_file_path.take() {
-                if path.exists() {
-                    tokio::fs::remove_file(&path).await?;
-                }
-            }
-        } else {
-            if let Some(mut f) = self.stream_file.take() {
-                f.flush().await?;
-            }
-            self.stream_file_path = None;
+        // Flush and close the continuous stream file, keeping it on disk.
+        if let Some(mut f) = self.stream_file.take() {
+            f.flush().await?;
         }
+        self.stream_file_path = None;
 
         Ok(kept_incomplete)
     }

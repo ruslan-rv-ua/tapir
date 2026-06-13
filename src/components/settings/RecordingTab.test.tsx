@@ -17,7 +17,6 @@ const baseRecording: RecordingSettings = {
   incompleteFileNameTemplate: "incomplete/%artist% - %title%",
   streamFileNameTemplate: "%station%/stream",
   saveStreamFile: false,
-  deleteStreamFileOnStop: false,
   skipFirstIncompleteTrack: true,
   skipShortTracksMs: 30000,
   autoCorrectCase: true,

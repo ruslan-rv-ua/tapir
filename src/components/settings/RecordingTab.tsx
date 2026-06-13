@@ -141,17 +141,6 @@ export function RecordingTab() {
         </div>
         <Label>{m.settings_save_stream_file()}</Label>
       </Checkbox>
-
-      <Checkbox
-        isSelected={recording.deleteStreamFileOnStop}
-        onChange={(val) => update({ deleteStreamFileOnStop: val })}
-        className="flex items-center gap-2 text-sm text-slate-300"
-      >
-        <div className="flex h-5 w-5 items-center justify-center rounded border border-slate-600 bg-slate-700">
-          {recording.deleteStreamFileOnStop && <span>✓</span>}
-        </div>
-        <Label>{m.settings_delete_stream_on_stop()}</Label>
-      </Checkbox>
       </div>
 
       {/* Section: Track filters */}

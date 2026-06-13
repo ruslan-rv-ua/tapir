@@ -53,7 +53,6 @@ export interface RecordingSettings {
   incompleteFileNameTemplate: string;
   streamFileNameTemplate: string;
   saveStreamFile: boolean;
-  deleteStreamFileOnStop: boolean;
   skipFirstIncompleteTrack: boolean;
   skipShortTracksMs: number;
   autoCorrectCase: boolean;

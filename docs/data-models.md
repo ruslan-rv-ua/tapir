@@ -218,7 +218,6 @@ pub struct HotkeyMap {
     "incompleteFileNameTemplate": "%s\\%a - %t_incomplete",
     "streamFileNameTemplate": "%s\\stream_%d_%time",
     "saveStreamFile": true,
-    "deleteStreamFileOnStop": false,
     "skipFirstIncompleteTrack": true,
     "skipShortTracksMs": 30000,
     "autoCorrectCase": true,
@@ -490,7 +489,6 @@ interface RecordingSettings {
   incompleteFileNameTemplate: string;
   streamFileNameTemplate: string;
   saveStreamFile: boolean;
-  deleteStreamFileOnStop: boolean;
   skipFirstIncompleteTrack: boolean;
   skipShortTracksMs: number;             // 0 = не пропускати
   autoCorrectCase: boolean;              // "artist - title" → "Artist - Title" (Phase 1: включено, реалізовано у sanitize.rs)
@@ -516,7 +514,6 @@ pub struct RecordingSettings {
     pub incomplete_file_name_template: String,
     pub stream_file_name_template: String,
     pub save_stream_file: bool,
-    pub delete_stream_file_on_stop: bool,
     pub skip_first_incomplete_track: bool,
     pub skip_short_tracks_ms: u32,
     pub auto_correct_case: bool,
@@ -1006,7 +1003,6 @@ interface PostprocessErrorPayload {
     "incompleteFileNameTemplate": "%s\\%a - %t_incomplete",
     "streamFileNameTemplate": "%s\\stream_%d_%time",
     "saveStreamFile": true,
-    "deleteStreamFileOnStop": false,
     "skipFirstIncompleteTrack": true,
     "skipShortTracksMs": 30000,
     "autoCorrectCase": true,

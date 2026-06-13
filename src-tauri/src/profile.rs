@@ -153,8 +153,6 @@ pub struct RecordingSettings {
     pub stream_file_name_template: String,
     #[serde(default = "default_true")]
     pub save_stream_file: bool,
-    #[serde(default)]
-    pub delete_stream_file_on_stop: bool,
     #[serde(default = "default_true")]
     pub skip_first_incomplete_track: bool,
     #[serde(default = "default_skip_short_tracks_ms")]
@@ -184,7 +182,6 @@ impl Default for RecordingSettings {
             incomplete_file_name_template: default_incomplete_template(),
             stream_file_name_template: default_stream_template(),
             save_stream_file: true,
-            delete_stream_file_on_stop: false,
             skip_first_incomplete_track: true,
             skip_short_tracks_ms: 30000,
             auto_correct_case: true,

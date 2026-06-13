@@ -234,7 +234,6 @@
   "settings_stream_template": "Шаблон файлу потоку",
   "settings_template_help": "Плейсхолдери: %s = станція, %a = виконавець, %t = трек, %d = дата, %time = час",
   "settings_save_stream_file": "Зберігати файл потоку",
-  "settings_delete_stream_on_stop": "Видаляти файл потоку після зупинки",
   "settings_skip_first_incomplete": "Пропускати перший неповний трек",
   "settings_min_track_duration": "Мінімальна тривалість треку (сек)",
   "settings_auto_correct_case": "Автокорекція регістру",
