@@ -16,11 +16,13 @@ See [docs/implementation-phases.md](docs/implementation-phases.md) for the full 
 | Phase 3B — Stream Browser | ✅ Complete | `feature/phase-3b` |
 | Phase 3C — Saved Songs Manager | ✅ Complete | merged to `develop` |
 | Phase 3D — Scheduler | ✅ Complete | `feature/phase-3d-scheduler` |
-| Phase 3E — Single Instance | ⬜ Not started | — |
+| Phase 3E — Single Instance | ✅ Complete | `feature/phase-3e-single-instance` |
 | Phase 3F — Profile Manager | ✅ Complete | `feature/pahse-3F-profiles` |
 | Phase 3G — CLI Arguments | ⬜ Not started | — |
 | Phase 3H — Post-processing | ⬜ Not started | — |
 | Phase 3I — Polish Bundle | ⬜ Not started | — |
+| Phase 3J — Stream Import/Export | ✅ Complete | merged to `develop` |
+| Phase 3K — Crash Recovery | ⬜ Not started | — |
 
 ## Developer Context
 
