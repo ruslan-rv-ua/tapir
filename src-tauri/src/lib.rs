@@ -46,13 +46,42 @@ pub fn run() {
     // second instance before any later code runs).
     single_instance::allow_foreground_handoff();
 
+    // Phase 3G: parse our own argv early (so --profile can pick the profile
+    // before AppState::new). args_os, not args: args() panics on invalid UTF-16,
+    // and Cyrillic in names/paths is real. We do NOT exit here — this code also
+    // runs in a second instance (the plugin kills it later, inside its own setup
+    // hook). An early exit(2) here would eat the forwarding. The exit decision is
+    // in .setup below, which only the first instance reaches.
+    let argv: Vec<String> = std::env::args_os()
+        .map(|s| s.to_string_lossy().into_owned())
+        .collect();
+    let parsed: Result<cli::Cli, clap::Error> = cli::parse(&argv);
+
     // Create data dirs before anything reads/writes them: the log plugin targets
     // logs_dir() and GlobalSettings::load() may write default settings.json.
     portable::ensure_data_dirs().expect("Failed to create data directories");
 
     // Load settings once, before the builder, so the log plugin (which is built
     // at startup and cannot change afterwards) reflects the user's choices.
-    let initial_settings = GlobalSettings::load().expect("Failed to load settings");
+    let mut initial_settings = GlobalSettings::load().expect("Failed to load settings");
+
+    // --profile: pick the profile BEFORE AppState::new so we load the right one
+    // directly (not Default -> switch). Session-only override (decision §7): we do
+    // NOT save settings.json here. Only for an Ok parse; on Err we exit(2) in
+    // .setup anyway. Existence is checked via Profile::list (Profile::load("Default")
+    // would create a file as a side effect). Unknown name -> log warn + keep default.
+    if let Ok(cli) = &parsed {
+        if let Some(name) = &cli.profile {
+            let known = Profile::list(&initial_settings.active_profile)
+                .map(|metas| metas.iter().any(|m| &m.name == name))
+                .unwrap_or(false);
+            if known {
+                initial_settings.active_profile = name.clone();
+            } else {
+                log::warn!("--profile: profile '{name}' does not exist, ignoring");
+            }
+        }
+    }
 
     // Apply the user's level only to our own crate (`tapir_lib::*`). Dependencies
     // are capped at Info: their debug/trace is noise and may leak request headers
@@ -85,6 +114,23 @@ pub fn run() {
         .plugin(tauri_plugin_window_state::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
         .setup(move |app| {
+            // Phase 3G: exit decision HERE, not before the builder. .setup is
+            // reachable only by the first instance (the plugin terminated the
+            // second earlier, in its own setup hook). try_parse_from does NOT
+            // exit on help/version — it returns Err and WE exit. No console text
+            // (release has windows_subsystem = "windows") — exit code only.
+            let cli = match parsed {
+                Ok(c) => c,
+                Err(e) => {
+                    use clap::error::ErrorKind::*;
+                    match e.kind() {
+                        DisplayHelp | DisplayHelpOnMissingArgumentOrSubcommand
+                        | DisplayVersion => std::process::exit(0),
+                        _ => std::process::exit(2), // parse-error, before showing the window
+                    }
+                }
+            };
+
             // Show and focus the main window as early as possible — while the
             // OS foreground-activation grant from the user's launch is still
             // valid. The window is configured `visible: false` so its restored
@@ -94,12 +140,14 @@ pub fn run() {
             // which NVDA requires to attach to the document and announce focus.
             if let Some(main_window) = app.get_webview_window("main") {
                 let _ = main_window.show();
-                let _ = main_window.set_focus();
+                let _ = main_window.set_focus(); // webview inits in foreground (NVDA)
+                if cli.minimize {
+                    // --minimize = start in the tray. hide(), NOT minimize() (that
+                    // is the taskbar). NVDA already attached above before we hide.
+                    let _ = main_window.hide();
+                    crate::tray::notify_state_changed(app.handle());
+                }
             }
-
-            // Phase 3E: feed our own argv through the shared CLI seam.
-            // No-op beyond logging until Phase 3G fills in parsing.
-            crate::cli::handle_args(app.handle(), std::env::args().collect(), None);
 
             let settings = initial_settings;
             let profile = Profile::load(&settings.active_profile).expect("Failed to load profile");
@@ -128,6 +176,17 @@ pub fn run() {
             let smtc_enabled = settings.smtc_enabled;
             drop(settings);
             smtc::init(app.handle(), smtc_enabled);
+
+            // Phase 3G: do NOT run the actionable flags here — the webview is not
+            // yet subscribed to events (it subscribes after its initial data load,
+            // then calls frontend_ready). Running now would emit recording-status /
+            // cli-feedback before subscription -> lost announcements (the same gate
+            // the scheduler uses). Stash the plan; frontend_ready drains it.
+            // profile is already applied above, so plan(cli, Startup)'s
+            // SwitchProfile action is a no-op in execute.
+            let startup_plan = cli::plan(cli, cli::CliContext::Startup);
+            app.manage(cli::StartupPlan::new(startup_plan));
+
             Ok(())
         })
         .on_window_event(|window, event| {
