@@ -79,6 +79,20 @@ pub struct Plan {
     pub ignored: Vec<IgnoredFlag>,
 }
 
+/// Startup plan deferred until the webview is ready. Stored as managed state in
+/// `setup`, drained (`take`) from `frontend_ready` so action announcements are
+/// not lost before the webview subscribes to events. `take()` makes it one-shot.
+pub struct StartupPlan(pub std::sync::Mutex<Option<Plan>>);
+
+impl StartupPlan {
+    pub fn new(plan: Plan) -> Self {
+        Self(std::sync::Mutex::new(Some(plan)))
+    }
+    pub fn take(&self) -> Option<Plan> {
+        self.0.lock().unwrap().take()
+    }
+}
+
 /// Pure: Cli + context -> ordered plan. Order is fixed and deterministic:
 /// SwitchProfile -> stop_* -> wish_* -> record/play (profile first, because it
 /// changes where a stream is resolved). Startup-only flags on Forwarded land in
@@ -321,5 +335,18 @@ mod tests {
         assert!(validate_needle("ftp://x").is_err());
         assert!(validate_needle("file://x").is_err());
         assert!(validate_needle("javascript://x").is_err());
+    }
+
+    #[test]
+    fn startup_plan_take_is_one_shot() {
+        let sp = StartupPlan::new(Plan {
+            actions: vec![Action::StopRecording],
+            ignored: vec![],
+        });
+        assert_eq!(
+            sp.take(),
+            Some(Plan { actions: vec![Action::StopRecording], ignored: vec![] })
+        );
+        assert_eq!(sp.take(), None, "second take must be empty (reload-safe)");
     }
 }
