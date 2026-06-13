@@ -12,6 +12,7 @@
 //!     `parse` -> `plan(_, Forwarded)` -> `execute`.
 
 use clap::Parser;
+use crate::profile::StreamInfo;
 
 /// Raw argv parse. Every field is optional, so an empty argv (an ordinary
 /// double-click) parses to "no actions". `try_parse_from` works for our own
@@ -120,6 +121,27 @@ pub fn plan(cli: Cli, ctx: CliContext) -> Plan {
     }
 
     Plan { actions, ignored }
+}
+
+/// Pure: resolve a needle to a stream by exact `name`, else exact `url`.
+/// Name takes priority over url.
+pub fn find_stream<'a>(streams: &'a [StreamInfo], needle: &str) -> Option<&'a StreamInfo> {
+    streams
+        .iter()
+        .find(|s| s.name == needle)
+        .or_else(|| streams.iter().find(|s| s.url == needle))
+}
+
+/// Pure: reject a needle that looks like a URL (contains "://") but is not
+/// http/https. A needle without "://" is treated as a name and always passes.
+pub fn validate_needle(needle: &str) -> Result<(), ()> {
+    if needle.contains("://") {
+        let lower = needle.to_ascii_lowercase();
+        if !(lower.starts_with("http://") || lower.starts_with("https://")) {
+            return Err(());
+        }
+    }
+    Ok(())
 }
 
 use tauri::AppHandle;
@@ -247,5 +269,57 @@ mod tests {
             p.actions,
             vec![Action::StopPlayback, Action::Record("X".into())]
         );
+    }
+
+    fn stream(id: &str, name: &str, url: &str) -> StreamInfo {
+        StreamInfo {
+            id: id.into(), url: url.into(), name: name.into(),
+            format: None, bitrate: None, icy_name: None, icy_genre: None,
+            icy_url: None, ignorelist: vec![], username: None, password: None,
+            added_at: "2026-01-01".into(),
+        }
+    }
+
+    #[test]
+    fn find_stream_matches_by_name() {
+        let streams = [stream("1", "Jazz", "http://a"), stream("2", "Rock", "http://b")];
+        assert_eq!(find_stream(&streams, "Rock").unwrap().id, "2");
+    }
+
+    #[test]
+    fn find_stream_matches_by_url_when_no_name() {
+        let streams = [stream("1", "Jazz", "http://a"), stream("2", "Rock", "http://b")];
+        assert_eq!(find_stream(&streams, "http://b").unwrap().id, "2");
+    }
+
+    #[test]
+    fn find_stream_prefers_name_over_url() {
+        // A needle equal to one stream's name and another's url resolves by name.
+        let streams = [
+            stream("1", "http://b", "http://a"), // name happens to equal stream 2's url
+            stream("2", "Rock", "http://b"),
+        ];
+        assert_eq!(find_stream(&streams, "http://b").unwrap().id, "1");
+    }
+
+    #[test]
+    fn find_stream_returns_none_when_no_match() {
+        let streams = [stream("1", "Jazz", "http://a")];
+        assert!(find_stream(&streams, "Nope").is_none());
+    }
+
+    #[test]
+    fn validate_needle_accepts_http_and_https_and_names() {
+        assert!(validate_needle("http://x").is_ok());
+        assert!(validate_needle("https://x").is_ok());
+        assert!(validate_needle("HTTPS://X").is_ok()); // scheme is case-insensitive
+        assert!(validate_needle("Jazz FM").is_ok()); // no "://" -> name
+    }
+
+    #[test]
+    fn validate_needle_rejects_non_http_schemes() {
+        assert!(validate_needle("ftp://x").is_err());
+        assert!(validate_needle("file://x").is_err());
+        assert!(validate_needle("javascript://x").is_err());
     }
 }
