@@ -18,6 +18,7 @@ mod wake_lock;
 mod wishlist;
 mod browser;
 mod cli;
+mod single_instance;
 
 use app_state::AppState;
 use settings::GlobalSettings;
@@ -38,6 +39,13 @@ fn rotation_strategy_for(keep_recycling: bool) -> RotationStrategy {
 }
 
 pub fn run() {
+    // Phase 3E: relax the foreground lock as early as possible. In a second
+    // instance this hands the foreground grant to the first instance before the
+    // single-instance plugin terminates this process; in the first instance it
+    // is harmless. Must run before tauri::Builder (the plugin would exit a
+    // second instance before any later code runs).
+    single_instance::allow_foreground_handoff();
+
     // Create data dirs before anything reads/writes them: the log plugin targets
     // logs_dir() and GlobalSettings::load() may write default settings.json.
     portable::ensure_data_dirs().expect("Failed to create data directories");
@@ -53,6 +61,10 @@ pub fn run() {
     let dep_filter = app_filter.min(log::LevelFilter::Info);
 
     tauri::Builder::default()
+        // MUST be first — before the log plugin. A dying second instance exits
+        // inside this plugin's setup hook, so no later plugin (incl. log)
+        // initializes in it, keeping tapir.log untouched. See single_instance.rs.
+        .plugin(single_instance::plugin())
         .plugin(
             tauri_plugin_log::Builder::new()
                 .level(dep_filter)
