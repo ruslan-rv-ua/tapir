@@ -20,6 +20,7 @@ vi.mock("../../lib/tauri", () => ({
   exportProfile: vi.fn(async () => {}),
   renameProfile: vi.fn(async (_old: string, name: string) => ({ name, streamCount: 0, isActive: false })),
   duplicateProfile: vi.fn(async (_src: string, name: string) => ({ name, streamCount: 0, isActive: false })),
+  getActiveScheduled: vi.fn(async () => []),
 }));
 
 vi.mock("../../i18n/paraglide/runtime", () => ({ getLocale: () => "uk" }));
@@ -59,6 +60,15 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   profile_rename_named: ({ name }: { name: string }) => `Rename ${name}`,
   profile_delete_named: ({ name }: { name: string }) => `Delete ${name}`,
   profile_export_named: ({ name }: { name: string }) => `Export ${name}`,
+  profile_switch_scheduled_one: ({ name, end }: { name: string; end: string }) =>
+    `Триває плановий запис «${name}» до ${end}. Переключити профіль і зупинити його?`,
+  profile_switch_scheduled_item: ({ name, end }: { name: string; end: string }) => `«${name}» до ${end}`,
+  profile_switch_scheduled_many: ({ list }: { list: string }) => `Тривають планові записи: ${list}. Переключити?`,
+  schedule_result_none: () => "—",
+  // scheduleFormat.ts читає ці ключі на рівні модуля (DAY_LABELS).
+  day_short_0: () => "Пн", day_short_1: () => "Вт", day_short_2: () => "Ср",
+  day_short_3: () => "Чт", day_short_4: () => "Пт", day_short_5: () => "Сб",
+  day_short_6: () => "Нд",
 }));
 
 function renderPanel() {
@@ -105,6 +115,22 @@ describe("ProfilesPanel", () => {
     await screen.findByText("Jazz");
     await user.click(screen.getByRole("button", { name: "Switch to Jazz" }));
     await waitFor(() => expect(tauri.switchProfile).toHaveBeenCalledWith("Jazz"));
+  });
+
+  it("переключення з активним плановим записом — confirm з назвою і часом кінця", async () => {
+    const user = userEvent.setup();
+    vi.mocked(tauri.getActiveScheduled).mockResolvedValueOnce([
+      { recordingId: "r1", name: "Evening Jazz", streamId: "st1", windowEnd: "2026-06-12T22:05" },
+    ]);
+    renderPanel();
+    await screen.findByText("Jazz");
+    await user.click(screen.getByRole("button", { name: "Switch to Jazz" }));
+    expect(
+      await screen.findByText(
+        "Триває плановий запис «Evening Jazz» до 22:05. Переключити профіль і зупинити його?",
+      ),
+    ).toBeTruthy();
+    expect(tauri.switchProfile).not.toHaveBeenCalled();
   });
 
   it("announces 'already active' for Enter on the active row (no switch)", async () => {

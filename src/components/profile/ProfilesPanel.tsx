@@ -13,7 +13,8 @@ import { useRovingFocus } from "../../hooks/useRovingFocus";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as tauri from "../../lib/tauri";
-import type { ImportPreview } from "../../lib/tauri";
+import type { ActiveScheduled, ImportPreview } from "../../lib/tauri";
+import { activeScheduledMessage } from "../../lib/scheduleFormat";
 import { addToast } from "../../stores/toasts";
 import * as m from "../../i18n/paraglide/messages";
 
@@ -24,6 +25,7 @@ type SubDialog =
   | { type: "duplicate" }
   | { type: "delete" }
   | { type: "switch-confirm" }
+  | { type: "switch-confirm-scheduled"; active: ActiveScheduled[] }
   | { type: "import"; preview: ImportPreview };
 
 interface Props {
@@ -78,6 +80,12 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
     if (name === activeProfile) { announce(m.profile_already_active()); return; }
     setTarget(name);
     try {
+      // §3.5: плановий запис — спеціальний confirm з назвою і часом кінця.
+      const scheduled = await tauri.getActiveScheduled();
+      if (scheduled.length > 0) {
+        setSubDialog({ type: "switch-confirm-scheduled", active: scheduled });
+        return;
+      }
       const statuses = await tauri.getAllStatuses?.() ?? [];
       const hasRecordings = statuses.some((s) => s.state === "recording");
       if (hasRecordings) { setSubDialog({ type: "switch-confirm" }); return; }
@@ -287,6 +295,17 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
         <ConfirmDialog
           title={m.profile_switch()}
           message={m.profile_switch_confirm({ name: target })}
+          confirmLabel={m.profile_switch()}
+          onConfirm={() => doSwitch(target)}
+          onCancel={() => setSubDialog(null)}
+        />,
+        document.body,
+      )}
+
+      {subDialog?.type === "switch-confirm-scheduled" && createPortal(
+        <ConfirmDialog
+          title={m.profile_switch()}
+          message={activeScheduledMessage(subDialog.active)}
           confirmLabel={m.profile_switch()}
           onConfirm={() => doSwitch(target)}
           onCancel={() => setSubDialog(null)}
