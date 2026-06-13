@@ -318,11 +318,6 @@ async fn execute_action(app: &AppHandle, action: Action) {
     }
 }
 
-/// Phase 3E seam — removed in Phase 3G Task 10 once both callers are migrated.
-pub fn handle_args(_app: &AppHandle, argv: Vec<String>, cwd: Option<String>) {
-    log::info!("CLI args (not yet interpreted, see Phase 3G): argv={argv:?}, cwd={cwd:?}");
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

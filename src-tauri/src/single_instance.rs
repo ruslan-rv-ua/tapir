@@ -43,14 +43,44 @@ pub fn plugin() -> TauriPlugin<Wry> {
 
 /// Runs in the FIRST instance when a second is launched. (The second instance
 /// never runs this — it exits inside the plugin's setup hook.)
-fn on_second_instance(app: &AppHandle, argv: Vec<String>, cwd: String) {
+fn on_second_instance(app: &AppHandle, argv: Vec<String>, _cwd: String) {
     if let Some(window) = app.get_webview_window("main") {
         // Same proven order as the tray "Show" action (tray/handlers.rs):
-        // show -> unminimize -> set_focus; set_focus MUST be last.
+        // show -> unminimize -> set_focus; set_focus MUST be last. Done
+        // synchronously, before the spawn, while the foreground grant is valid.
         let _ = window.show();
         let _ = window.unminimize();
         let _ = window.set_focus();
     }
     crate::tray::notify_state_changed(app); // tray menu: visibility changed
-    crate::cli::handle_args(app, argv, Some(cwd)); // proxy argv -> Phase 3G seam
+
+    // Phase 3G: do NOT block the callback. It runs on the UI thread under the
+    // second instance's synchronous SendMessageW(WM_COPYDATA) (spec 3E §5) — the
+    // second instance is blocked until we return. Action execution (async, holds
+    // manager/player locks) goes to the runtime so the callback returns instantly.
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        match crate::cli::parse(&argv) {
+            Ok(cli) => {
+                crate::cli::execute(
+                    &app,
+                    crate::cli::plan(cli, crate::cli::CliContext::Forwarded),
+                )
+                .await
+            }
+            Err(e) => {
+                use clap::error::ErrorKind::*;
+                match e.kind() {
+                    // help/version have nowhere to print (no console) — stay
+                    // silent (NVDA already announced the window activation).
+                    DisplayHelp | DisplayHelpOnMissingArgumentOrSubcommand
+                    | DisplayVersion => {}
+                    // A real parse-error: announce "invalid arguments". This is
+                    // where the first instance voices it — the second forwarded
+                    // raw argv and never exited on its own parse.
+                    _ => crate::cli::feedback(&app, crate::cli::CliFeedback::InvalidArgs),
+                }
+            }
+        }
+    });
 }
