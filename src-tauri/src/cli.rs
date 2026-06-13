@@ -45,6 +45,83 @@ pub fn parse(argv: &[String]) -> Result<Cli, clap::Error> {
     Cli::try_parse_from(argv)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CliContext {
+    Startup,
+    Forwarded,
+}
+
+/// One executable action. The order within `Plan.actions` is the execution
+/// order.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Action {
+    Record(String),
+    Play(String),
+    StopRecording,
+    StopPlayback,
+    WishAdd(String),
+    WishRemove(String),
+    SwitchProfile(String), // Startup only; a no-op in execute (applied before AppState::new)
+    // Minimize is handled directly in setup, never as a runtime Action.
+}
+
+/// A flag dropped because of context (drives a warn + announcement).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IgnoredFlag {
+    Profile,
+    Minimize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Plan {
+    pub actions: Vec<Action>,
+    pub ignored: Vec<IgnoredFlag>,
+}
+
+/// Pure: Cli + context -> ordered plan. Order is fixed and deterministic:
+/// SwitchProfile -> stop_* -> wish_* -> record/play (profile first, because it
+/// changes where a stream is resolved). Startup-only flags on Forwarded land in
+/// `ignored`, not `actions`.
+pub fn plan(cli: Cli, ctx: CliContext) -> Plan {
+    let mut actions = Vec::new();
+    let mut ignored = Vec::new();
+
+    // 1. profile (startup-only)
+    if let Some(name) = cli.profile {
+        match ctx {
+            CliContext::Startup => actions.push(Action::SwitchProfile(name)),
+            CliContext::Forwarded => ignored.push(IgnoredFlag::Profile),
+        }
+    }
+    // minimize (startup-only): handled in setup on Startup; ignored on Forwarded.
+    if cli.minimize && ctx == CliContext::Forwarded {
+        ignored.push(IgnoredFlag::Minimize);
+    }
+    // 2. stop_*
+    if cli.stop_recording {
+        actions.push(Action::StopRecording);
+    }
+    if cli.stop_playback {
+        actions.push(Action::StopPlayback);
+    }
+    // 3. wish_*
+    if let Some(p) = cli.wish_add {
+        actions.push(Action::WishAdd(p));
+    }
+    if let Some(p) = cli.wish_remove {
+        actions.push(Action::WishRemove(p));
+    }
+    // 4. record/play
+    if let Some(x) = cli.record {
+        actions.push(Action::Record(x));
+    }
+    if let Some(x) = cli.play {
+        actions.push(Action::Play(x));
+    }
+
+    Plan { actions, ignored }
+}
+
 use tauri::AppHandle;
 
 /// Phase 3E seam — removed in Phase 3G Task 10 once both callers are migrated.
@@ -115,5 +192,60 @@ mod tests {
         // `--version` would be UnknownArgument, not DisplayVersion.
         let err = parse(&argv(&["--version"])).unwrap_err();
         assert_eq!(err.kind(), ErrorKind::DisplayVersion);
+    }
+
+    #[test]
+    fn startup_profile_becomes_switch_action() {
+        let cli = parse(&argv(&["--profile", "Work"])).unwrap();
+        let p = plan(cli, CliContext::Startup);
+        assert_eq!(p.actions, vec![Action::SwitchProfile("Work".into())]);
+        assert!(p.ignored.is_empty());
+    }
+
+    #[test]
+    fn forwarded_profile_and_minimize_are_ignored() {
+        let cli = parse(&argv(&["--profile", "Work", "--minimize"])).unwrap();
+        let p = plan(cli, CliContext::Forwarded);
+        assert!(p.actions.is_empty());
+        assert_eq!(p.ignored, vec![IgnoredFlag::Profile, IgnoredFlag::Minimize]);
+    }
+
+    #[test]
+    fn startup_minimize_is_not_an_action_and_not_ignored() {
+        // Minimize on Startup is handled in setup (window visibility), so it
+        // appears in neither actions nor ignored.
+        let cli = parse(&argv(&["--minimize"])).unwrap();
+        let p = plan(cli, CliContext::Startup);
+        assert!(p.actions.is_empty());
+        assert!(p.ignored.is_empty());
+    }
+
+    #[test]
+    fn action_order_is_deterministic() {
+        let cli = parse(&argv(&[
+            "--record", "R", "--wish-add", "W", "--stop-recording", "--profile", "P",
+        ]))
+        .unwrap();
+        let p = plan(cli, CliContext::Startup);
+        assert_eq!(
+            p.actions,
+            vec![
+                Action::SwitchProfile("P".into()),
+                Action::StopRecording,
+                Action::WishAdd("W".into()),
+                Action::Record("R".into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn combinations_are_allowed_not_rejected() {
+        // --stop-playback --record X is a legal combination (last wins by state).
+        let cli = parse(&argv(&["--stop-playback", "--record", "X"])).unwrap();
+        let p = plan(cli, CliContext::Forwarded);
+        assert_eq!(
+            p.actions,
+            vec![Action::StopPlayback, Action::Record("X".into())]
+        );
     }
 }
