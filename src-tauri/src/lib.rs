@@ -17,6 +17,7 @@ mod tray;
 mod wake_lock;
 mod wishlist;
 mod browser;
+mod cli;
 
 use app_state::AppState;
 use settings::GlobalSettings;
@@ -83,6 +84,10 @@ pub fn run() {
                 let _ = main_window.show();
                 let _ = main_window.set_focus();
             }
+
+            // Phase 3E: feed our own argv through the shared CLI seam.
+            // No-op beyond logging until Phase 3G fills in parsing.
+            crate::cli::handle_args(app.handle(), std::env::args().collect(), None);
 
             let settings = initial_settings;
             let profile = Profile::load(&settings.active_profile).expect("Failed to load profile");
