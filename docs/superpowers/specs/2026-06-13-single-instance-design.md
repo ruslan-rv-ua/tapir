@@ -63,8 +63,10 @@ pub fn allow_foreground_handoff() {
 
 /// Готовий плагін для реєстрації ПЕРШИМ у ланцюжку (перед log).
 /// init приймає голу замикання: `F: FnMut(&AppHandle<R>, Vec<String>, String)
-/// + Send + Sync + 'static` (Box не потрібен).
-pub fn plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
+/// + Send + Sync + 'static` (Box не потрібен). Тип конкретний `Wry` (не generic),
+/// бо колбек кличе конкретний `tray::notify_state_changed(&AppHandle<Wry>)` — як
+/// і весь застосунок, що не параметризований Runtime.
+pub fn plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
     tauri_plugin_single_instance::init(on_second_instance)
 }
 
