@@ -23,6 +23,7 @@ tauri-plugin-dialog = "2"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-window-state = "2"
 tauri-plugin-notification = "2"
+tauri-plugin-single-instance = "2"
 
 # HTTP Streaming
 reqwest = { version = "0.13", default-features = false, features = ["stream", "rustls", "json"] }

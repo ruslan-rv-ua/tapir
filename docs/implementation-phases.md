@@ -21,12 +21,13 @@
 | 3B | Stream Browser | Radio Browser API — пошук станцій | ✅ Complete |
 | 3C | Saved Songs Manager | Менеджер записаних файлів, редагування тегів | ✅ Complete |
 | 3D | Scheduler | Заплановані записи (одноразові + повторювані) | ✅ Complete |
-| 3E | Single Instance | Named Mutex, передача CLI args | ⬜ |
+| 3E | Single Instance | Named Mutex (глобальний), фокус 1-ї інстанції, передача argv | ✅ Complete |
 | 3F | Profile Manager | Повний CRUD профілів, import/export | ✅ Complete |
 | 3G | CLI Arguments | Аргументи командного рядка | ⬜ |
 | 3H | Post-processing | Зовнішні програми після запису | ⬜ |
 | 3I | Polish Bundle | High Contrast, Autostart, Log rotation, Bandwidth limiting | ⬜ |
 | 3J | Stream Import/Export | Імпорт/експорт потоків профілю (M3U8/PLS) з перевіркою | ✅ Complete |
+| 3K | Crash Recovery | clean_shutdown flag + resume записів на старті | ⬜ |
 
 ---
 
@@ -265,6 +266,7 @@
 | 3H | Post-processing | Phase 1 | 🟢 Низька |
 | 3I | Polish Bundle (HC, Autostart, Logs, BW) | — (незалежні) | 🟢 Низька |
 | 3J | Stream Import/Export (M3U8/PLS) | Phase 1 (stream::playlist) | 🟡 Середня |
+| 3K | Crash Recovery (clean_shutdown + resume) | Phase 1 (graceful_shutdown, active_recording_urls) | 🟠 Висока |
 
 ---
 
@@ -401,20 +403,31 @@
 
 ### Фаза 3E — Single Instance
 
-**Ціль:** запобігання одночасному запуску двох копій програми.
+**Ціль:** запобігання одночасному запуску двох копій програми; фокус наявного вікна і передача аргументів першій інстанції.
 
-**Залежності:** немає (незалежна)
+**Залежності:** немає (незалежна). Від цієї фази залежить 3G (CLI).
+
+**Рішення дизайну:**
+- **Ключ mutex — глобальний** (bundle identifier `ua.ruslanrv.tapir`): одна копія на користувача незалежно від `--datadir`. Наслідок: `--datadir` діє лише на ПЕРШІЙ інстанції; повторний запуск з іншим `--datadir` передасть argv першій і вийде (задокументувати в 3G).
+- **Плагін реєструється ПЕРШИМ** — перед усіма іншими, зокрема перед log-плагіном: друга (вмираюча) інстанція не повинна торкатися спільного `tapir.log` (стратегія `KeepOne` проротувала б/затерла файл).
 
 **Backend:**
 
 | Елемент | Опис |
 |---------|------|
-| `tauri-plugin-single-instance` | Named Mutex + Named Pipe для передачі аргументів |
+| `tauri-plugin-single-instance` | Named Mutex (глобальний ключ) + локальний IPC для передачі argv |
+| Колбек активації | `unminimize → show → set_focus`; працює навіть коли вікно сховане в трей |
+| Foreground-handoff | Друга інстанція викликає `AllowSetForegroundWindow` перед exit, інакше `SetForegroundWindow` блокується ОС і NVDA промовчить (див. nvda-startup-foreground) |
+| argv-проксі | Сирий argv передається у спільний CLI-обробник першої інстанції — контракт для 3G: парсинг має бути викликуваним і на старті, і з колбека (друга інстанція не доходить до `.setup()`) |
 
 **Критерії "Done":**
-- [ ] Другий запуск → фокус на першому вікні
-- [ ] `clean_shutdown` прапор у `data/state.json`
-- [ ] Named Pipe готовий для передачі CLI args (3G залежить від цього)
+- [x] single-instance зареєстрований першим плагіном (перед log)
+- [x] Другий запуск → перша інстанція `unminimize+show+set_focus`, працює і з трею
+- [x] NVDA озвучує активацію вікна при другому запуску (foreground-handoff)
+- [x] argv другого запуску проксюється у спільний CLI-обробник (готовність до 3G)
+- [x] Задокументовано: `--datadir` діє лише на першій інстанції (глобальний ключ)
+
+**Винесено з цієї фази:** `clean_shutdown` / resume записів після збою → **Фаза 3K (Crash Recovery)**.
 
 ---
 
@@ -567,6 +580,34 @@
 
 ---
 
+### Фаза 3K — Crash Recovery
+
+**Ціль:** виявлення аварійного завершення і безпечне відновлення активних записів після рестарту.
+
+**Залежності:** Phase 1 (`graceful_shutdown`, `active_recording_urls`).
+
+**Контекст:** `active_recording_urls` уже зберігається у `app_state::graceful_shutdown`, але **споживача немає** — resume на старті ще не реалізовано (поле є лише в типах). Список оновлюється тільки при чистому виході, тож після збою він застарілий; сліпе відновлення з нього хибне — звідси потрібен guard (`clean_shutdown`) і живий снапшот.
+
+**Backend:**
+
+| Елемент | Опис |
+|---------|------|
+| `clean_shutdown` прапор у `data/state.json` | `false` записується при старті, `true` — у `graceful_shutdown` |
+| Періодичний снапшот | URL живих записів пишуться під час роботи, а не лише на виході — інакше після збою resume бере застарілий список |
+| Resume-споживач | На старті відновити записи з `active_recording_urls` (споживача зараз немає); поведінка при збої — за відкритим питанням нижче |
+| Live-анонс | aria-live: «Відновлено N записів» / «Попередня сесія завершилась аварійно» |
+
+**Відкрите питання дизайну (вирішити на старті фази):** поведінка при виявленому збої — тихий авто-resume + анонс, діалог «відновити?», чи лише запис у лог. Дружній до NVDA дефолт: тихий авто-resume + live-анонс (анонс поза модалом потребує `data-live-announcer`, див. live-region-inside-modals).
+
+**Критерії "Done":**
+- [ ] `clean_shutdown` пишеться `false` на старті / `true` при чистому виході
+- [ ] Періодичний снапшот живих записів (resume не залежить лише від чистого виходу)
+- [ ] Resume `active_recording_urls` на старті (споживач, якого зараз немає)
+- [ ] Визначена й реалізована поведінка при виявленому збої + live-анонс
+- [ ] NVDA: підсумок відновлення озвучується
+
+---
+
 ## Залежності між фазами
 
 ```
@@ -593,9 +634,10 @@ Phase 3G: CLI ← Phase 1 + Phase 2A + Phase 3E
 Phase 3H: Post-processing ← Phase 1 (recordings)
 Phase 3I: Polish Bundle ← незалежна (кожен елемент)
 Phase 3J: Stream Import/Export ← Phase 1 (stream::playlist, stream::connection)
+Phase 3K: Crash Recovery ← Phase 1 (graceful_shutdown, active_recording_urls)
 ```
 
-Підфази 2B і 2C незалежні одна від одної. Підфази 3B, 3E, 3I повністю незалежні. Підфази 3C, 3D, 3F, 3H, 3J залежать лише від Phase 1 (завершена) → можна починати негайно. Тільки 3A та 3G мають залежність від Phase 2A.
+Підфази 2B і 2C незалежні одна від одної. Підфази 3B, 3E, 3I повністю незалежні. Підфази 3C, 3D, 3F, 3H, 3J, 3K залежать лише від Phase 1 (завершена) → можна починати негайно. Тільки 3A та 3G мають залежність від Phase 2A.
 
 ---
 
