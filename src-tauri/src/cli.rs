@@ -12,6 +12,7 @@
 //!     `parse` -> `plan(_, Forwarded)` -> `execute`.
 
 use clap::Parser;
+use crate::app_state::AppState;
 use crate::profile::StreamInfo;
 
 /// Raw argv parse. Every field is optional, so an empty argv (an ordinary
@@ -180,6 +181,140 @@ pub enum CliFeedback {
 pub fn feedback(app: &AppHandle, fb: CliFeedback) {
     if let Err(e) = app.emit("cli-feedback", fb) {
         log::warn!("Failed to emit cli-feedback: {e}");
+    }
+}
+
+/// Impure: run the plan on a live instance. Called from the async runtime.
+/// Ignored flags are announced first, then actions run in plan order.
+pub async fn execute(app: &AppHandle, plan: Plan) {
+    for flag in &plan.ignored {
+        let name = match flag {
+            IgnoredFlag::Profile => "profile",
+            IgnoredFlag::Minimize => "minimize",
+        };
+        log::warn!("CLI flag --{name} ignored on forwarded launch");
+        feedback(app, CliFeedback::FlagIgnoredForwarded { flag: name.to_string() });
+    }
+    for action in plan.actions {
+        execute_action(app, action).await;
+    }
+}
+
+/// Outcome of resolving a `--record`/`--play` needle.
+enum Resolved {
+    Found(String), // stream_id
+    NotFound,
+    InvalidUrl,
+}
+
+async fn resolve_stream_id(app: &AppHandle, needle: &str) -> Resolved {
+    if validate_needle(needle).is_err() {
+        return Resolved::InvalidUrl;
+    }
+    let state = app.state::<AppState>();
+    let profile = state.active_profile.read().await;
+    match find_stream(&profile.streams, needle) {
+        Some(s) => Resolved::Found(s.id.clone()),
+        None => Resolved::NotFound,
+    }
+}
+
+async fn execute_action(app: &AppHandle, action: Action) {
+    match action {
+        // SwitchProfile is an UNCONDITIONAL no-op here: it only ever lands in a
+        // Startup plan (Forwarded routes --profile to IgnoredFlag::Profile), and
+        // on startup the profile is already loaded before AppState::new (lib.rs).
+        // Kept as a no-op (rather than excluded from the plan) so `plan` stays
+        // simple and symmetric. This is why `execute` needs no CliContext.
+        Action::SwitchProfile(_) => {}
+
+        Action::StopRecording => {
+            // Reuses the global stop-all path; it emits the same recording-status
+            // events the frontend already announces (and notify_manual_stop).
+            crate::recording_control::stop_all_now(app).await;
+        }
+
+        Action::StopPlayback => {
+            let state = app.state::<AppState>();
+            if let Err(e) = state.player.stop_playback(app).await {
+                log::warn!("CLI --stop-playback failed: {e}");
+                feedback(app, CliFeedback::ActionFailed { action: "stop-playback".into() });
+            }
+            // Success path: player-status "stopped" is announced by the frontend.
+        }
+
+        Action::Record(needle) => match resolve_stream_id(app, &needle).await {
+            Resolved::Found(id) => {
+                if let Err(e) = crate::commands::stream_commands::start_recording(
+                    id,
+                    app.state::<AppState>(),
+                    app.clone(),
+                )
+                .await
+                {
+                    // e.g. check_disk_space Err -> no recording-status would fire,
+                    // so without this the failure would be silent.
+                    log::warn!("CLI --record failed: {e}");
+                    feedback(app, CliFeedback::ActionFailed { action: "record".into() });
+                }
+            }
+            Resolved::NotFound => feedback(app, CliFeedback::StreamNotFound { needle }),
+            Resolved::InvalidUrl => feedback(app, CliFeedback::InvalidUrl { needle }),
+        },
+
+        Action::Play(needle) => match resolve_stream_id(app, &needle).await {
+            Resolved::Found(id) => {
+                if let Err(e) = crate::commands::player_commands::play_stream(
+                    id,
+                    app.state::<AppState>(),
+                    app.clone(),
+                )
+                .await
+                {
+                    log::warn!("CLI --play failed: {e}");
+                    feedback(app, CliFeedback::ActionFailed { action: "play".into() });
+                }
+            }
+            Resolved::NotFound => feedback(app, CliFeedback::StreamNotFound { needle }),
+            Resolved::InvalidUrl => feedback(app, CliFeedback::InvalidUrl { needle }),
+        },
+
+        Action::WishAdd(pattern) => {
+            match crate::commands::wishlist_commands::add_to_wishlist(
+                pattern.clone(),
+                app.state::<AppState>(),
+            )
+            .await
+            {
+                Ok(_) => {
+                    feedback(app, CliFeedback::WishlistAdded { pattern });
+                    // Refresh the wishlist panel (no existing event for CLI changes).
+                    let _ = app.emit("wishlist-changed", ());
+                }
+                Err(e) => {
+                    log::warn!("CLI --wish-add failed: {e}");
+                    feedback(app, CliFeedback::ActionFailed { action: "wish-add".into() });
+                }
+            }
+        }
+
+        Action::WishRemove(pattern) => {
+            match crate::commands::wishlist_commands::remove_from_wishlist(
+                pattern.clone(),
+                app.state::<AppState>(),
+            )
+            .await
+            {
+                Ok(_) => {
+                    feedback(app, CliFeedback::WishlistRemoved { pattern });
+                    let _ = app.emit("wishlist-changed", ());
+                }
+                Err(e) => {
+                    log::warn!("CLI --wish-remove failed: {e}");
+                    feedback(app, CliFeedback::ActionFailed { action: "wish-remove".into() });
+                }
+            }
+        }
     }
 }
 
