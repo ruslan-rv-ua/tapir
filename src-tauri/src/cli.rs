@@ -158,7 +158,30 @@ pub fn validate_needle(needle: &str) -> Result<(), ()> {
     Ok(())
 }
 
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter, Manager};
+
+/// Structural feedback for the frontend. Localized there (Paraglide); the
+/// backend never sends finished strings. `tag = "kind"`, kebab-case variant
+/// names — the TS discriminated union in lib.rs/tauri.ts mirrors this.
+#[derive(Clone, serde::Serialize)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+pub enum CliFeedback {
+    WishlistAdded { pattern: String },
+    WishlistRemoved { pattern: String },
+    StreamNotFound { needle: String },
+    InvalidUrl { needle: String },
+    FlagIgnoredForwarded { flag: String },
+    ActionFailed { action: String }, // "record" | "play" | "stop-playback" | ... ; error detail -> log
+    InvalidArgs,
+}
+
+/// Emit a `cli-feedback` event to the webview. Best-effort: a failure to emit
+/// is logged, never propagated.
+pub fn feedback(app: &AppHandle, fb: CliFeedback) {
+    if let Err(e) = app.emit("cli-feedback", fb) {
+        log::warn!("Failed to emit cli-feedback: {e}");
+    }
+}
 
 /// Phase 3E seam — removed in Phase 3G Task 10 once both callers are migrated.
 pub fn handle_args(_app: &AppHandle, argv: Vec<String>, cwd: Option<String>) {
@@ -348,5 +371,18 @@ mod tests {
             Some(Plan { actions: vec![Action::StopRecording], ignored: vec![] })
         );
         assert_eq!(sp.take(), None, "second take must be empty (reload-safe)");
+    }
+
+    #[test]
+    fn cli_feedback_serializes_with_kebab_kind_tag() {
+        let json = serde_json::to_string(&CliFeedback::WishlistAdded { pattern: "*x*".into() }).unwrap();
+        assert!(json.contains("\"kind\":\"wishlist-added\""), "got: {json}");
+        assert!(json.contains("\"pattern\":\"*x*\""), "got: {json}");
+
+        let json = serde_json::to_string(&CliFeedback::FlagIgnoredForwarded { flag: "profile".into() }).unwrap();
+        assert!(json.contains("\"kind\":\"flag-ignored-forwarded\""), "got: {json}");
+
+        let json = serde_json::to_string(&CliFeedback::InvalidArgs).unwrap();
+        assert!(json.contains("\"kind\":\"invalid-args\""), "got: {json}");
     }
 }
