@@ -506,5 +506,12 @@
   "profile_switch_scheduled_many": "Scheduled recordings are running: {list}. Switch profile and stop them?",
   "settings_section_scheduler": "Scheduler",
   "settings_schedule_pad_before": "Start earlier, min",
-  "settings_schedule_pad_after": "Stop later, min"
+  "settings_schedule_pad_after": "Stop later, min",
+  "cli_wishlist_added": "Added to wishlist: {pattern}",
+  "cli_wishlist_removed": "Removed from wishlist: {pattern}",
+  "cli_stream_not_found": "Stream not found: {needle}",
+  "cli_invalid_url": "Invalid URL: {needle}",
+  "cli_flag_ignored": "Flag \"{flag}\" ignored on repeated launch",
+  "cli_action_failed": "Action failed: {action}",
+  "cli_invalid_args": "Invalid command-line arguments"
 }
