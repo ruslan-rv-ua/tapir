@@ -215,6 +215,41 @@ export function RecordingTab() {
       )}
       </div>
 
+      {/* Section: Scheduler padding (Phase 3D §5.4); межі клампить і backend */}
+      <div className="space-y-3 border-t border-slate-700 pt-4">
+        <h3 className="text-sm font-semibold text-slate-200">{m.settings_section_scheduler()}</h3>
+
+        <NumberField
+          value={recording.schedulePadBeforeMin}
+          onChange={(val) => { if (!Number.isNaN(val)) update({ schedulePadBeforeMin: val }); }}
+          minValue={0}
+          maxValue={30}
+          step={1}
+        >
+          <Label className="block text-sm font-medium text-slate-300">
+            {m.settings_schedule_pad_before()}
+          </Label>
+          <Group className="mt-1 flex w-32">
+            <Input className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText]" />
+          </Group>
+        </NumberField>
+
+        <NumberField
+          value={recording.schedulePadAfterMin}
+          onChange={(val) => { if (!Number.isNaN(val)) update({ schedulePadAfterMin: val }); }}
+          minValue={0}
+          maxValue={60}
+          step={1}
+        >
+          <Label className="block text-sm font-medium text-slate-300">
+            {m.settings_schedule_pad_after()}
+          </Label>
+          <Group className="mt-1 flex w-32">
+            <Input className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText]" />
+          </Group>
+        </NumberField>
+      </div>
+
       {/* Section: Reconnection (collapsed) */}
       <details className="rounded border border-slate-700">
         <summary className="cursor-pointer px-3 py-2 text-sm text-slate-300 outline-none focus-visible:ring-2 focus-visible:ring-blue-400">
