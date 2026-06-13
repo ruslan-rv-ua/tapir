@@ -20,7 +20,7 @@
 | 3A | System Tray | Tray icon, minimize to tray, balloon tips, dynamic menu | ✅ Complete |
 | 3B | Stream Browser | Radio Browser API — пошук станцій | ✅ Complete |
 | 3C | Saved Songs Manager | Менеджер записаних файлів, редагування тегів | ✅ Complete |
-| 3D | Scheduler | Заплановані записи (одноразові + повторювані) | ⬜ |
+| 3D | Scheduler | Заплановані записи (одноразові + повторювані) | ✅ Complete |
 | 3E | Single Instance | Named Mutex, передача CLI args | ⬜ |
 | 3F | Profile Manager | Повний CRUD профілів, import/export | ✅ Complete |
 | 3G | CLI Arguments | Аргументи командного рядка | ⬜ |
@@ -389,13 +389,13 @@
 **Store:** `schedule.ts` — список scheduled recordings, enabled/disabled status
 
 **Критерії "Done":**
-- [ ] Одноразовий запис: дата + час + тривалість
-- [ ] Повторюваний запис: день тижня + час + тривалість
-- [ ] Toggle enabled/disabled без видалення
-- [ ] Конфлікт: потік вже записується → не дублювати
-- [ ] Пропущені записи логуються
-- [ ] Live regions: "Плановий запис розпочато/завершено"
-- [ ] NVDA: таблиця accessible, форма accessible
+- [x] Одноразовий запис: дата + час + тривалість
+- [x] Повторюваний запис: день тижня + час + тривалість
+- [x] Toggle enabled/disabled без видалення
+- [x] Конфлікт: потік вже записується → не дублювати
+- [x] Пропущені записи логуються
+- [x] Live regions: "Плановий запис розпочато/завершено"
+- [x] NVDA: таблиця accessible, форма accessible
 
 ---
 
