@@ -19,11 +19,13 @@ import { useZoneNavigation, type ZoneEntry } from "./hooks/useZoneNavigation";
 import { useTauriEvent } from "./hooks/useTauriEvent";
 import { useDiskSpacePolling } from "./hooks/useDiskSpacePolling";
 import { useProfileSync } from "./hooks/useProfileSync";
+import { useCliFeedback } from "./hooks/useCliFeedback";
 import { useScheduleEvents } from "./hooks/useScheduleEvents";
 import { useAnnounce } from "./hooks/useAnnounce";
 import { $streams, $statuses, updateStreamStatus } from "./stores/streams";
 import { $settings } from "./stores/settings";
 import { $playerStatus, $muteState } from "./stores/player";
+import { $wishlist } from "./stores/wishlist";
 import { $activeSection } from "./stores/navigation";
 import { SECTIONS } from "./lib/sections";
 import { addToast } from "./stores/toasts";
@@ -320,6 +322,10 @@ function AppContent() {
     tauri.getStreams().then((streams) => $streams.set(streams));
   }, []);
 
+  const handleWishlistChanged = useCallback(() => {
+    tauri.getWishlist().then((wl) => $wishlist.set(wl)).catch(console.error);
+  }, []);
+
   useTauriEvent<RecordingStatusPayload>("recording-status", handleRecordingStatus);
   useTauriEvent<TrackChangedPayload>("track-changed", handleTrackChanged);
   useTauriEvent<StreamErrorPayload>("stream-error", handleStreamError);
@@ -333,6 +339,7 @@ function AppContent() {
   useTauriEvent<WishlistMatchPayload>("wishlist-match", handleWishlistMatch);
   useTauriEvent<TrackIgnoredPayload>("track-ignored", handleTrackIgnored);
   useTauriEvent("streams-changed", handleStreamsChanged);
+  useTauriEvent("wishlist-changed", handleWishlistChanged);
   // OS-global prev/next hotkeys: Rust only bridges the keypress; the queue
   // decision and IPC call happen here, sharing the buttons' pending guard.
   const handleTransportSkip = useCallback((payload: string) => {
@@ -343,6 +350,7 @@ function AppContent() {
   useDiskSpacePolling();
   useProfileSync();
   useScheduleEvents();
+  useCliFeedback();
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-200">

@@ -260,6 +260,19 @@ export interface TrackIgnoredPayload {
   pattern: string;
 }
 
+/**
+ * Backend `cli-feedback` event (Phase 3G). Mirrors the Rust `CliFeedback` enum
+ * (#[serde(tag = "kind", rename_all = "kebab-case")]). Localized on the frontend.
+ */
+export type CliFeedbackPayload =
+  | { kind: "wishlist-added"; pattern: string }
+  | { kind: "wishlist-removed"; pattern: string }
+  | { kind: "stream-not-found"; needle: string }
+  | { kind: "invalid-url"; needle: string }
+  | { kind: "flag-ignored-forwarded"; flag: string }
+  | { kind: "action-failed"; action: string }
+  | { kind: "invalid-args" };
+
 // ── Wishlist/Ignorelist IPC wrappers ──────────────────────────────────────
 
 export async function getWishlist(): Promise<WishlistEntry[]> {
