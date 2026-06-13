@@ -506,5 +506,12 @@
   "profile_switch_scheduled_many": "Тривають планові записи: {list}. Переключити профіль і зупинити їх?",
   "settings_section_scheduler": "Планувальник",
   "settings_schedule_pad_before": "Починати раніше, хв",
-  "settings_schedule_pad_after": "Закінчувати пізніше, хв"
+  "settings_schedule_pad_after": "Закінчувати пізніше, хв",
+  "cli_wishlist_added": "Додано до списку бажань: {pattern}",
+  "cli_wishlist_removed": "Видалено зі списку бажань: {pattern}",
+  "cli_stream_not_found": "Потік не знайдено: {needle}",
+  "cli_invalid_url": "Невалідна URL-адреса: {needle}",
+  "cli_flag_ignored": "Прапор «{flag}» проігноровано при повторному запуску",
+  "cli_action_failed": "Не вдалося виконати дію: {action}",
+  "cli_invalid_args": "Невалідні аргументи командного рядка"
 }
