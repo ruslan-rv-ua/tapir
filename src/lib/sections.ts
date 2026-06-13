@@ -8,7 +8,7 @@ export interface SectionMeta {
   label: () => string;
   /** Alt+<digit> shortcut. Array index equals digit by construction. */
   digit: number;
-  /** True while the section is not yet shippable (Schedule until Phase 3D). */
+  /** True while the section is not yet shippable. */
   disabled?: boolean;
 }
 
@@ -24,6 +24,6 @@ export const SECTIONS: readonly SectionMeta[] = [
   { id: "streams", label: m.streams_section, digit: 1 },
   { id: "browser", label: m.browser_section, digit: 2 },
   { id: "wishlist", label: m.wishlist_section, digit: 3 },
-  { id: "schedule", label: m.schedule_section, digit: 4, disabled: true },
+  { id: "schedule", label: m.schedule_section, digit: 4 },
   { id: "songs", label: m.songs_section, digit: 5 },
 ];

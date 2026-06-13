@@ -20,8 +20,8 @@ const ICONS: Record<Section, ComponentType<{ size?: number; "aria-hidden"?: bool
   songs: Music,
 };
 
-// Phase shown in the disabled-section hint; only Schedule has one today.
-const PHASES: Partial<Record<Section, string>> = { schedule: "3" };
+// Phase shown in the disabled-section hint; no section is disabled today.
+const PHASES: Partial<Record<Section, string>> = {};
 
 // The ActivityBar's section group is every section except Profiles (which is the
 // separate header at the top). Order/disabled come from the shared registry.

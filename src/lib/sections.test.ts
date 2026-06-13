@@ -10,8 +10,8 @@ describe("SECTIONS", () => {
     SECTIONS.forEach((s, i) => expect(s.digit).toBe(i));
   });
 
-  it("marks only Schedule as disabled", () => {
-    expect(SECTIONS.filter((s) => s.disabled).map((s) => s.id)).toEqual(["schedule"]);
+  it("marks no section disabled (Schedule shipped in Phase 3D)", () => {
+    expect(SECTIONS.filter((s) => s.disabled).map((s) => s.id)).toEqual([]);
   });
 
   it("orders profiles first, then streams..songs", () => {

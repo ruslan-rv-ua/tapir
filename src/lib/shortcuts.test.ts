@@ -42,8 +42,8 @@ describe("matchShortcut — matching", () => {
     expect(matchShortcut(ev("Digit5", { altKey: true }), ctx("streams"))?.id).toBe("section:songs");
   });
 
-  it("ignores Alt+4 because Schedule is disabled", () => {
-    expect(matchShortcut(ev("Digit4", { altKey: true }), ctx("streams"))).toBeNull();
+  it("maps Alt+4 → schedule (shipped in Phase 3D)", () => {
+    expect(matchShortcut(ev("Digit4", { altKey: true }), ctx("streams"))?.id).toBe("section:schedule");
   });
 
   it("matches Ctrl+N only on the streams section", () => {

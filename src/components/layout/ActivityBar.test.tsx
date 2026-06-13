@@ -47,12 +47,12 @@ describe("ActivityBar — structure", () => {
     expect(container.querySelector('[role="separator"]')).toBeTruthy();
   });
 
-  it("marks the Schedule button disabled (from shared SECTIONS)", () => {
+  it("marks no section button disabled (Schedule shipped in Phase 3D)", () => {
     const { container } = renderBar();
-    const schedule = Array.from(container.querySelectorAll("button")).find((b) =>
+    const disabled = Array.from(container.querySelectorAll("button")).find((b) =>
       b.getAttribute("aria-disabled") === "true",
     );
-    expect(schedule).toBeTruthy();
+    expect(disabled).toBeUndefined();
   });
 });
 
