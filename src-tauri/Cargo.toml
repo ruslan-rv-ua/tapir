@@ -25,6 +25,11 @@ tauri-plugin-window-state = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-single-instance = "2"
 
+# CLI argument parsing (Phase 3G). Pure-Rust, no C deps; derive adds the
+# clap_derive proc-macro (build-time only). try_parse_from is used so clap
+# never auto-prints to the (absent) release console — see cli.rs.
+clap = { version = "4", features = ["derive"] }
+
 # HTTP Streaming
 reqwest = { version = "0.13", default-features = false, features = ["stream", "rustls", "json"] }
 icy-metadata = { version = "0.6", features = ["reqwest"] }
