@@ -303,6 +303,20 @@ describe("StreamsPanel — example-streams click flow", () => {
     expect(after.getAttribute("aria-disabled")).toBeNull();
     expect(document.activeElement).toBe(after);
   });
+
+  it("announces the loading message before awaiting addExampleStreams", async () => {
+    // Intercept the resolved promise to check the announcement that fires before await.
+    let resolveAdd!: (v: StreamInfo[]) => void;
+    vi.mocked(tauri.addExampleStreams).mockReturnValueOnce(
+      new Promise<StreamInfo[]>((res) => { resolveAdd = res; }),
+    );
+    renderPanel();
+    fireEvent.click(addBtn());
+    // Loading announcement fires synchronously before the await resolves.
+    expect($announcer.get().message).toMatch(/додаю приклади|adding examples/i);
+    // Resolve to clean up the pending promise.
+    await act(async () => { resolveAdd([]); });
+  });
 });
 
 describe("StreamsPanel — import button outcomes", () => {

@@ -188,6 +188,20 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     announce(filterAnnouncement("all", streams.length), "polite");
   };
 
+  // Pluralized "Added N examples: <names>. List updated." — threads {names} in addition
+  // to {count}, so it needs its own wrapper beyond what pluralize can handle alone.
+  const addedAnnouncement = useCallback(
+    (count: number, names: string) =>
+      pluralize(
+        count,
+        () => m.streams_examples_added_zero(),
+        ({ count }) => m.streams_examples_added_one({ count, names }),
+        ({ count }) => m.streams_examples_added_few({ count, names }),
+        ({ count }) => m.streams_examples_added_many({ count, names }),
+      ),
+    [pluralize],
+  );
+
   const handleAddExamples = async () => {
     if (loadingExamples) return; // guard double-activation (button stays clickable via aria-disabled)
     setLoadingExamples(true);
@@ -269,20 +283,6 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
         m.record_all_announce_one,
         m.record_all_announce_few,
         m.record_all_announce_many,
-      ),
-    [pluralize],
-  );
-
-  // Pluralized "Added N examples: <names>. List updated." — threads {names} in addition
-  // to {count}, so it needs its own wrapper beyond what pluralize can handle alone.
-  const addedAnnouncement = useCallback(
-    (count: number, names: string) =>
-      pluralize(
-        count,
-        () => m.streams_examples_added_zero(),
-        ({ count }) => m.streams_examples_added_one({ count, names }),
-        ({ count }) => m.streams_examples_added_few({ count, names }),
-        ({ count }) => m.streams_examples_added_many({ count, names }),
       ),
     [pluralize],
   );
