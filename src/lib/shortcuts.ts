@@ -59,7 +59,7 @@ const sectionShortcuts: Shortcut[] = SECTIONS.map((s) => ({
  * Every named webview shortcut. Entries with `match` are dispatched centrally
  * (App.tsx); entries without (F6/Shift+F6/Shift+F10) are handled by their own
  * hooks but listed here so they appear in the F1 help and stay reserved against
- * the KeyRecorder. reservedShortcuts.ts and KeyboardShortcutsDialog derive from
+ * the KeyRecorder. reservedShortcuts.ts and ShortcutsHelp derive from
  * this array, so keep it the single source of truth.
  */
 export const SHORTCUTS: readonly Shortcut[] = [

@@ -136,7 +136,7 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 > над реєстром `SHORTCUTS`, що його поділяють слухач
 > [useGlobalShortcuts.ts](../src/hooks/useGlobalShortcuts.ts), гард
 > [reservedShortcuts.ts](../src/lib/reservedShortcuts.ts) і F1-довідник
-> ([KeyboardShortcutsDialog.tsx](../src/components/common/KeyboardShortcutsDialog.tsx)).
+> ([ShortcutsHelp.tsx](../src/components/common/ShortcutsHelp.tsx)).
 > Порядок/digit секцій — спільний [sections.ts](../src/lib/sections.ts) (його ж
 > читає ActivityBar) → застереження section-navigation ADR про дрейф нумерації
 > знято: число й секція більше не дублюються.
