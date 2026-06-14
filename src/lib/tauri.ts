@@ -419,6 +419,10 @@ export async function addStationFromBrowser(station: StationResult): Promise<voi
   return invoke("add_station_from_browser", { station });
 }
 
+export async function addExampleStreams(): Promise<StreamInfo[]> {
+  return invoke<StreamInfo[]>("add_example_streams");
+}
+
 // ── Songs (Phase 3C) ──────────────────────────────────────────────────────
 
 export async function listSavedSongs(): Promise<Song[]> {
