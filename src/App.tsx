@@ -7,7 +7,7 @@ import { ToastContainer } from "./components/common/ToastContainer";
 import { CommandPalette } from "./components/common/CommandPalette";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import { SettingsDialog } from "./components/settings/SettingsDialog";
-import { KeyboardShortcutsDialog } from "./components/common/KeyboardShortcutsDialog";
+import { HelpDialog } from "./components/common/HelpDialog";
 import { ProfilesPanel } from "./components/profile/ProfilesPanel";
 import { StreamsPanel } from "./components/streams/StreamsPanel";
 import { WishlistPanel } from "./components/wishlist/WishlistPanel";
@@ -375,7 +375,7 @@ function App() {
       <AppContent />
       <CommandPalette />
       <SettingsDialog />
-      <KeyboardShortcutsDialog />
+      <HelpDialog />
       <LiveAnnouncer />
       <ToastContainer />
     </ErrorBoundary>
