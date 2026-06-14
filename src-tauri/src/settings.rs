@@ -49,6 +49,8 @@ pub struct GlobalSettings {
     pub volume_step_percent: u8,
     #[serde(default = "default_true")]
     pub smtc_enabled: bool,
+    #[serde(default = "default_sort_by")]
+    pub sort_by: String,
 }
 
 /// Deserialize `log_level` tolerantly: an unknown or legacy value (e.g. the
@@ -169,6 +171,7 @@ fn default_true() -> bool { true }
 fn default_disk_space_threshold_gb() -> u32 { 1 }
 fn default_log_max_size_mb() -> u32 { 10 }
 fn default_volume_step_percent() -> u8 { 5 }
+fn default_sort_by() -> String { "name".to_string() }
 
 impl Default for GlobalSettings {
     fn default() -> Self {
@@ -192,6 +195,7 @@ impl Default for GlobalSettings {
             prev_restart_threshold_ms: 0,
             volume_step_percent: 5,
             smtc_enabled: true,
+            sort_by: "name".to_string(),
         }
     }
 }
@@ -381,5 +385,27 @@ mod tests {
         let json = serde_json::to_string(&s).unwrap();
         let back: GlobalSettings = serde_json::from_str(&json).unwrap();
         assert!(!back.smtc_enabled);
+    }
+
+    #[test]
+    fn sort_by_defaults_to_name() {
+        assert_eq!(GlobalSettings::default().sort_by, "name");
+    }
+
+    #[test]
+    fn legacy_config_without_sort_by_defaults_to_name() {
+        // A settings.json written before this field existed must still load.
+        let json = r#"{"language":"en-US","theme":"auto","activeProfile":"Default"}"#;
+        let s: GlobalSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(s.sort_by, "name");
+    }
+
+    #[test]
+    fn sort_by_round_trips() {
+        let mut s = GlobalSettings::default();
+        s.sort_by = "added".to_string();
+        let json = serde_json::to_string(&s).unwrap();
+        let back: GlobalSettings = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.sort_by, "added");
     }
 }
