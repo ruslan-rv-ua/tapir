@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as m from "../i18n/paraglide/messages";
 import { RESERVED_WEBVIEW_COMBOS, findReservedConflict } from "./reservedShortcuts";
+import { matchShortcut } from "./shortcuts";
 
 describe("RESERVED_WEBVIEW_COMBOS", () => {
   it("reserves exactly the registry's reserved combos, in registry order", () => {
@@ -10,6 +11,7 @@ describe("RESERVED_WEBVIEW_COMBOS", () => {
       "Ctrl+N",
       "F6", "Shift+F6", "Shift+F10",
       "Shift+Enter", "Ctrl+Enter",
+      "Ctrl+C",
     ]);
   });
 });
@@ -42,5 +44,19 @@ describe("findReservedConflict", () => {
   it("matches exactly — wrong case or a Tier-1 default does not collide", () => {
     expect(findReservedConflict("ctrl+k")).toBeNull();
     expect(findReservedConflict("Ctrl+Shift+R")).toBeNull();
+  });
+});
+
+describe("Ctrl+C copy-url registration", () => {
+  it("is reserved against the KeyRecorder", () => {
+    expect(findReservedConflict("Ctrl+C")).not.toBeNull();
+  });
+
+  it("is NOT centrally dispatched (no match) — left to useCompositeList", () => {
+    const e = {
+      ctrlKey: true, metaKey: false, altKey: false, shiftKey: false,
+      code: "KeyC", key: "c",
+    } as unknown as KeyboardEvent;
+    expect(matchShortcut(e, { activeSection: "streams" })).toBeNull();
   });
 });

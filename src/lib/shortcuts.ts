@@ -139,6 +139,13 @@ export const SHORTCUTS: readonly Shortcut[] = [
     group: "list",
     reserved: true,
   },
+  {
+    id: "copy-url",
+    combo: "Ctrl+C",
+    label: m.copy_url,
+    group: "list",
+    reserved: true,
+  },
 ];
 
 /**
