@@ -42,6 +42,7 @@ interface Props {
   onDelete: () => void;
   onCopyToProfile: () => void;
   onMoveToProfile: () => void;
+  onCopyUrl: () => void;
   /** Primary action on a mouse double-click of the row (record/play per setting; Shift/Ctrl force play/record). */
   onActivate?: (modifiers: ActionModifiers) => void;
 }
@@ -55,6 +56,7 @@ export function StreamItem({
   onDelete,
   onCopyToProfile,
   onMoveToProfile,
+  onCopyUrl,
   onActivate,
 }: Props) {
   const state = status?.state ?? "idle";
@@ -300,6 +302,7 @@ export function StreamItem({
           onAddToIgnorelist={(track) => setPatternDialog({ listType: "ignorelist", initialPattern: track })}
           onCopyToProfile={onCopyToProfile}
           onMoveToProfile={onMoveToProfile}
+          onCopyUrl={onCopyUrl}
           onDelete={onDelete}
         />
       </div>

@@ -151,6 +151,16 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
     setPendingDeleteId(null);
   };
 
+  const copyStreamUrl = async (stream: StreamInfo) => {
+    try {
+      await navigator.clipboard.writeText(stream.url);
+      addToast(m.stream_url_copied({ name: stream.name }), "info");
+      announce(m.stream_url_copied({ name: stream.name }), "polite");
+    } catch (err) {
+      addToast(String(err), "error");
+    }
+  };
+
   return (
     <>
       <CompositeList
@@ -162,6 +172,11 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
         onTabOut={exitZone}
         onEmpty={onEmpty}
         onAction={(type, itemId, segment, mods) => {
+          if (type === "copy") {
+            const stream = streams.find((s) => s.id === itemId);
+            if (stream) copyStreamUrl(stream);
+            return;
+          }
           if (type === "delete") {
             setPendingDeleteId(itemId);
             return;
@@ -185,6 +200,7 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
               onDelete={() => setPendingDeleteId(id)}
               onCopyToProfile={() => openTransfer("copy", id)}
               onMoveToProfile={() => openTransfer("move", id)}
+              onCopyUrl={() => copyStreamUrl(streams.find((s) => s.id === id)!)}
               onActivate={(mods) => activateStream(id, mods)}
             />
           );

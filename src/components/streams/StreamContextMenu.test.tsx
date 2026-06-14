@@ -18,6 +18,7 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   copy_to_profile: () => "Копіювати в профіль…",
   move_to_profile: () => "Перемістити в профіль…",
   move_disabled_reason: () => "Не можна перемістити активний потік",
+  copy_url: () => "Копіювати URL",
 }));
 
 const mkStream = (over: Partial<StreamInfo> = {}): StreamInfo => ({
@@ -35,7 +36,7 @@ const mkStatus = (state: StreamStatus["state"]): StreamStatus => ({
 function renderMenu(status?: StreamStatus) {
   const h = {
     onAddToWishlist: vi.fn(), onAddToIgnorelist: vi.fn(), onDelete: vi.fn(),
-    onCopyToProfile: vi.fn(), onMoveToProfile: vi.fn(),
+    onCopyToProfile: vi.fn(), onMoveToProfile: vi.fn(), onCopyUrl: vi.fn(),
   };
   const utils = render(
     <StreamContextMenu stream={mkStream()} status={status} menuFocused {...h} />,
@@ -84,5 +85,12 @@ describe("StreamContextMenu — copy/move to profile", () => {
     open(container);
     const copy = await screen.findByRole("menuitem", { name: "Копіювати в профіль…" });
     expect(copy.getAttribute("aria-disabled")).not.toBe("true");
+  });
+
+  it("calls onCopyUrl when Copy URL is clicked", async () => {
+    const { container, onCopyUrl } = renderMenu(mkStatus("idle"));
+    open(container);
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Копіювати URL" }));
+    expect(onCopyUrl).toHaveBeenCalled();
   });
 });

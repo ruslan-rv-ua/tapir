@@ -11,6 +11,8 @@ import type { StreamInfo, GlobalSettings } from "../../lib/tauri";
 import * as tauri from "../../lib/tauri";
 import { StreamList } from "./StreamList";
 
+const writeText = vi.fn().mockResolvedValue(undefined);
+
 vi.mock("../../lib/tauri", () => ({
   playStream: vi.fn().mockResolvedValue(undefined),
   stopPlayback: vi.fn().mockResolvedValue(undefined),
@@ -59,6 +61,8 @@ beforeEach(() => {
   $playerStatus.set({ state: "stopped", source: null, volume: 0.75, positionMs: null, durationMs: null });
   $streams.set([mkStream("a", "Alpha"), mkStream("b", "Bravo"), mkStream("c", "Charlie")]);
   $toasts.set([]);
+  Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+  writeText.mockClear();
 });
 
 function renderList() {
@@ -324,5 +328,26 @@ describe("StreamList — copy/move stream to profile", () => {
       ).toBe(true),
     );
     expect(screen.getByRole("button", { name: "Jazz" })).toBeTruthy();
+  });
+});
+
+describe("StreamList — copy stream URL", () => {
+  it("Ctrl+C on the focused row copies its URL and toasts", async () => {
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: "c", code: "KeyC", ctrlKey: true });
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("http://x/a"));
+    await waitFor(() =>
+      expect($toasts.get().some((t) => t.message === m.stream_url_copied({ name: "Alpha" }))).toBe(true),
+    );
+  });
+
+  it("context-menu Copy URL copies the row's URL", async () => {
+    const { container } = renderList();
+    fireEvent.click(
+      container.querySelector<HTMLElement>('li[data-item-id="b"] button[data-segment="action-menu"]')!,
+    );
+    fireEvent.click(await screen.findByRole("menuitem", { name: m.copy_url() }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("http://x/b"));
   });
 });

@@ -1,5 +1,5 @@
 import { Menu, MenuItem, MenuTrigger, Popover, Button, Separator } from "react-aria-components";
-import { Copy, FolderInput } from "lucide-react";
+import { Copy, FolderInput, Link } from "lucide-react";
 import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import * as tauri from "../../lib/tauri";
 import { $editStream } from "../../stores/streams";
@@ -17,10 +17,11 @@ interface Props {
   onAddToIgnorelist: (currentTrack: string) => void;
   onCopyToProfile: () => void;
   onMoveToProfile: () => void;
+  onCopyUrl: () => void;
   onDelete: () => void;
 }
 
-export function StreamContextMenu({ stream, status, menuFocused, onAddToWishlist, onAddToIgnorelist, onCopyToProfile, onMoveToProfile, onDelete }: Props) {
+export function StreamContextMenu({ stream, status, menuFocused, onAddToWishlist, onAddToIgnorelist, onCopyToProfile, onMoveToProfile, onCopyUrl, onDelete }: Props) {
   const playerStatus = useStore($playerStatus);
   const state = status?.state ?? "idle";
   const isRecording = state === "recording";
@@ -55,6 +56,9 @@ export function StreamContextMenu({ stream, status, menuFocused, onAddToWishlist
           break;
         case "add-ignorelist":
           if (currentTrack) onAddToIgnorelist(currentTrack);
+          break;
+        case "copy-url":
+          onCopyUrl();
           break;
         case "copy-to-profile":
           onCopyToProfile();
@@ -129,6 +133,12 @@ export function StreamContextMenu({ stream, status, menuFocused, onAddToWishlist
               </MenuItem>
             </>
           )}
+          <MenuItem
+            id="copy-url"
+            className="cursor-pointer px-3 py-1.5 text-sm text-slate-200 outline-none hover:bg-slate-700 focus:bg-slate-700"
+          >
+            <span aria-hidden="true" className="mr-2 inline-flex"><Link size={14} /></span>{m.copy_url()}
+          </MenuItem>
           <MenuItem
             id="copy-to-profile"
             className="cursor-pointer px-3 py-1.5 text-sm text-slate-200 outline-none hover:bg-slate-700 focus:bg-slate-700"
