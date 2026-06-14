@@ -18,6 +18,7 @@ vi.mock("../../lib/tauri", () => ({
   addToWishlist: vi.fn().mockResolvedValue(undefined),
   addToIgnorelist: vi.fn().mockResolvedValue(undefined),
   beginStreamImport: vi.fn().mockResolvedValue(null),
+  addExampleStreams: vi.fn().mockResolvedValue([]),
 }));
 
 // ImportStreamsDialog uses useTauriEvent; stub it so jsdom doesn't try to call
@@ -211,6 +212,41 @@ describe("StreamsPanel — empty profile keeps the toolbar", () => {
     renderPanel();
     const exportBtn = screen.getByRole("button", { name: /експорт|export/i });
     expect(exportBtn.getAttribute("aria-disabled")).toBeNull();
+  });
+});
+
+describe("StreamsPanel — empty profile example-streams CTA", () => {
+  it("renders the focusable 'Add example streams' button in the empty state", () => {
+    $streams.set([]);
+    renderPanel();
+    expect(
+      screen.getByRole("button", { name: /додати приклади потоків|add example streams/i }),
+    ).toBeTruthy();
+  });
+
+  it("registers a streams-empty zone carrying data-zone-id", () => {
+    $streams.set([]);
+    const onZonesChange = vi.fn();
+    render(<StreamsPanel onZonesChange={onZonesChange} exitZone={vi.fn()} />);
+    const zones = onZonesChange.mock.calls.at(-1)![0] as { id: string }[];
+    expect(zones.some((z) => z.id === "streams-empty")).toBe(true);
+    expect(document.querySelector('[data-zone-id="streams-empty"]')).toBeTruthy();
+  });
+
+  it("the streams-empty zone focuses the add-examples button", () => {
+    $streams.set([]);
+    const onZonesChange = vi.fn();
+    render(<StreamsPanel onZonesChange={onZonesChange} exitZone={vi.fn()} />);
+    const zones = onZonesChange.mock.calls.at(-1)![0] as {
+      id: string;
+      focus: (d: "forward" | "backward") => void;
+    }[];
+    const emptyZone = zones.find((z) => z.id === "streams-empty")!;
+    emptyZone.focus("forward");
+    const btn = screen.getByRole("button", {
+      name: /додати приклади потоків|add example streams/i,
+    });
+    expect(document.activeElement).toBe(btn);
   });
 });
 

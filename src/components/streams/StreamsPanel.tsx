@@ -177,9 +177,27 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const filterEmptyZoneRef = useRef<HTMLDivElement | null>(null);
   const resetFilterBtnRef  = useRef<HTMLButtonElement | null>(null);
 
+  // ── Empty-profile zone (no streams at all) ──────────────────────
+  const emptyZoneRef = useRef<HTMLDivElement | null>(null);
+  const addExamplesBtnRef = useRef<HTMLButtonElement | null>(null);
+  const [loadingExamples, setLoadingExamples] = useState(false);
+  const pendingFocusFirstRow = useRef(false);
+
   const handleResetFilter = () => {
     $streamFilter.set("all");
     announce(filterAnnouncement("all", streams.length), "polite");
+  };
+
+  const handleAddExamples = async () => {
+    if (loadingExamples) return;
+    setLoadingExamples(true);
+    try {
+      await tauri.addExampleStreams();
+      pendingFocusFirstRow.current = true;
+    } catch (err) {
+      addToast(String(err), "error");
+      setLoadingExamples(false);
+    }
   };
 
   // ── Zone registration ────────────────────────────────────
@@ -193,16 +211,20 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
       focus: toolbarRestore,
     };
     const zones: ZoneEntry[] = [toolbarZone];
-    if (!isEmpty) {
-      if (filterHidesAll) {
-        zones.push({
-          id: "streams-filter-empty",
-          get el() { return filterEmptyZoneRef.current!; },
-          focus: () => resetFilterBtnRef.current?.focus(),
-        });
-      } else if (streamListRef.current) {
-        zones.push(streamListRef.current);
-      }
+    if (isEmpty) {
+      zones.push({
+        id: "streams-empty",
+        get el() { return emptyZoneRef.current!; },
+        focus: () => addExamplesBtnRef.current?.focus(),
+      });
+    } else if (filterHidesAll) {
+      zones.push({
+        id: "streams-filter-empty",
+        get el() { return filterEmptyZoneRef.current!; },
+        focus: () => resetFilterBtnRef.current?.focus(),
+      });
+    } else if (streamListRef.current) {
+      zones.push(streamListRef.current);
     }
     onZonesChange(zones);
   // onZonesChange intentionally omitted — callers must pass a stable reference.
@@ -414,9 +436,24 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
           {/* ── Empty hint OR stream list zone OR filter-empty zone ── */}
           {isEmpty ? (
-            <p className="flex flex-1 items-center justify-center px-6 py-10 text-center text-sm text-slate-400">
-              {m.streams_empty_hint()}
-            </p>
+            <div
+              ref={emptyZoneRef}
+              data-zone-id="streams-empty"
+              role="region"
+              aria-label={m.streams_empty_hint()}
+              className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-10 text-center text-slate-400"
+            >
+              <p className="text-sm">{m.streams_empty_hint()}</p>
+              <button
+                ref={addExamplesBtnRef}
+                aria-disabled={loadingExamples || undefined}
+                aria-busy={loadingExamples || undefined}
+                onClick={handleAddExamples}
+                className="rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
+              >
+                {loadingExamples ? m.streams_examples_loading() : m.streams_empty_add_examples()}
+              </button>
+            </div>
           ) : filterHidesAll ? (
             <div
               ref={filterEmptyZoneRef}
