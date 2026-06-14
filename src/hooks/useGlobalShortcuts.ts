@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { matchShortcut, type ShortcutActions } from "../lib/shortcuts";
 import { isInModal } from "../lib/shortcutGuard";
-import { $activeSection, $commandPaletteOpen, $shortcutsHelpOpen } from "../stores/navigation";
+import { $activeSection, $commandPaletteOpen, $helpOpen } from "../stores/navigation";
 import { $settingsDialogOpen } from "../stores/settings";
 import { $showAddStreamDialog } from "../stores/streams";
 
@@ -27,7 +27,7 @@ export function useGlobalShortcuts(): void {
       toggleCommandPalette: () => $commandPaletteOpen.set(!$commandPaletteOpen.get()),
       toggleSettings: () => $settingsDialogOpen.set(!$settingsDialogOpen.get()),
       openAddStream: () => $showAddStreamDialog.set(true),
-      openHelp: () => $shortcutsHelpOpen.set(true),
+      openHelp: () => $helpOpen.set(true),
     };
     const handler = (e: KeyboardEvent) => {
       if (e.repeat) return;

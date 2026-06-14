@@ -90,14 +90,8 @@ export function SettingsDialog() {
               </TabPanel>
             </div>
           </Tabs>
-          <div className="flex items-center justify-between border-t border-slate-700 px-6 py-3">
+          <div className="flex items-center border-t border-slate-700 px-6 py-3">
             <p className="text-xs text-slate-500">{m.settings_autosave_notice()}</p>
-            <button
-              onClick={() => $settingsDialogOpen.set(false)}
-              className="rounded border border-slate-600 bg-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
-            >
-              {m.settings_close()}
-            </button>
           </div>
         </Dialog>
       </Modal>

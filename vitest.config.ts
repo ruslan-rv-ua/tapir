@@ -1,12 +1,14 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import { markdownHelpPlugin } from "./build/markdownHelpPlugin";
 
 // Standalone test config — intentionally does NOT include the paraglide/tailwind
-// plugins from vite.config.ts. The composite-list hook has no i18n/CSS imports,
-// so tests stay fast and isolated. Add those plugins here if a future test
-// renders a component that imports paraglide messages.
+// plugins from vite.config.ts (paraglide messages are generated to disk, so they
+// resolve without their plugin). The markdown-help plugin IS required here: the
+// `?help` transform is not generated to disk, so HelpDialog/helpContent tests
+// would fail to resolve `*.md?help` imports without it.
 export default defineConfig({
-  plugins: [react()],
+  plugins: [markdownHelpPlugin(), react()],
   test: {
     environment: "jsdom",
     globals: true,
