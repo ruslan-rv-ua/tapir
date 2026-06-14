@@ -205,10 +205,10 @@ describe("StreamList — row activation honors doubleClickAction", () => {
     expect(tauri.playStream).not.toHaveBeenCalled();
   });
 
-  it("advertises the fixed combos on the row via aria-keyshortcuts", () => {
+  it("does not advertise keyshortcuts on the row", () => {
     const { container } = renderList();
     const li = container.querySelector('li[data-segment="summary"]')!;
-    expect(li.getAttribute("aria-keyshortcuts")).toBe("Shift+Enter Control+Enter");
+    expect(li.getAttribute("aria-keyshortcuts")).toBeNull();
   });
 
   it("defaults to recording when settings are not loaded yet", () => {

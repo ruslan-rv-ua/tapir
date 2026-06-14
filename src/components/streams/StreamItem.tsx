@@ -189,7 +189,6 @@ export function StreamItem({
       className={`grid border-b border-slate-800 forced-colors:border-[ButtonText] ${rowBg}`}
       style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1.5fr) 90px 90px auto" }}
       onActivate={onActivate}
-      keyshortcuts="Shift+Enter Control+Enter"
     >
       {/* Stream name with inline status slots — visual only; the row's accessible name is on the <li>. */}
       <div style={{ gridRow: 1, gridColumn: 1 }} className="flex items-center gap-1 min-w-0 px-3 py-2">
