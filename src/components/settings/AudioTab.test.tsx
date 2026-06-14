@@ -21,6 +21,7 @@ const baseSettings: GlobalSettings = {
   showTrackInTitle: true,
   diskSpaceThresholdGb: 1,
   doubleClickAction: "play",
+  sortBy: "name",
   smtcEnabled: true,
   bandwidthLimitKbps: 0,
   autostart: false,

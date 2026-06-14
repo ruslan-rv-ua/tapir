@@ -82,6 +82,7 @@ export interface GlobalSettings {
   showTrackInTitle: boolean;
   diskSpaceThresholdGb: number;
   doubleClickAction: "record" | "play";
+  sortBy: "name" | "added";
   bandwidthLimitKbps: number;
   autostart: boolean;
   autoAdvance: boolean;

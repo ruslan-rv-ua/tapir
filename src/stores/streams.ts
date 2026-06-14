@@ -9,6 +9,8 @@ export const $editStream = atom<StreamInfo | null>(null);
 export type StreamFilter = "all" | "recording" | "errors";
 export const $streamFilter = atom<StreamFilter>("all");
 
+export type StreamSort = "name" | "added";
+
 // Import flow: non-null = the ImportStreamsDialog is open with these candidates.
 export const $importCandidates = atom<ImportCandidate[] | null>(null);
 // Export flow: true = the ExportFormatDialog is open.
