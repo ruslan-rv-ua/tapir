@@ -265,6 +265,7 @@ pub fn run() {
             commands::browser_commands::search_stations,
             commands::browser_commands::get_browser_filters,
             commands::browser_commands::add_station_from_browser,
+            commands::browser_commands::add_example_streams,
             commands::songs_commands::list_saved_songs,
             commands::songs_commands::play_saved_song,
             commands::songs_commands::open_song_in_explorer,

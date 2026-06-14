@@ -167,48 +167,22 @@ pub async fn get_browser_filters(
     client.get_filters().await.map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub async fn add_station_from_browser(
-    station: StationResult,
-    state: tauri::State<'_, AppState>,
-    app: tauri::AppHandle,
-) -> Result<StreamInfo, String> {
-    let url = if station.url_resolved.is_empty() {
-        station.url.clone()
-    } else {
-        station.url_resolved.clone()
-    };
-
+/// Append new streams to the active profile in one atomic save+emit.
+/// Skips urls already present (dedup_new_streams). Returns only the streams
+/// actually added. If nothing is added, skips the save/emit and returns empty.
+async fn append_streams_to_active_profile(
+    state: &AppState,
+    app: &tauri::AppHandle,
+    streams: Vec<StreamInfo>,
+) -> Result<Vec<StreamInfo>, String> {
     let mut profile = state.active_profile.write().await;
-
-    // Duplicate check by URL
-    if profile.streams.iter().any(|s| s.url == url) {
-        return Err(RadioError::DuplicateStream.to_string());
+    let added = dedup_new_streams(&profile.streams, streams);
+    if added.is_empty() {
+        return Ok(added);
     }
-
-    let format = match station.codec.to_uppercase().as_str() {
-        "MP3" => Some(AudioFormat::Mp3),
-        "AAC" | "AAC+" => Some(AudioFormat::Aac),
-        _ => None,
-    };
-
-    let stream_info = StreamInfo {
-        id: nanoid::nanoid!(),
-        url,
-        name: station.name.trim().to_string(),
-        format,
-        bitrate: if station.bitrate > 0 { Some(station.bitrate) } else { None },
-        icy_name: None,
-        icy_genre: if station.tags.is_empty() { None } else { Some(station.tags.clone()) },
-        icy_url: if station.homepage.is_empty() { None } else { Some(station.homepage.clone()) },
-        ignorelist: vec![],
-        username: None,
-        password: None,
-        added_at: chrono::Local::now().to_rfc3339(),
-    };
-
-    profile.streams.push(stream_info.clone());
-
+    for s in &added {
+        profile.streams.push(s.clone());
+    }
     let profile_clone = profile.clone();
     drop(profile);
 
@@ -218,8 +192,53 @@ pub async fn add_station_from_browser(
         .map_err(|e| e.to_string())?;
 
     app.emit("streams-changed", ()).ok();
+    Ok(added)
+}
 
-    Ok(stream_info)
+#[tauri::command]
+pub async fn add_station_from_browser(
+    station: StationResult,
+    state: tauri::State<'_, AppState>,
+    app: tauri::AppHandle,
+) -> Result<StreamInfo, String> {
+    let stream_info = station_to_stream_info(&station);
+    let added = append_streams_to_active_profile(&state, &app, vec![stream_info]).await?;
+    // Preserve the original contract: a duplicate url => DuplicateStream error,
+    // not a silent Ok. The shared helper drops duplicates, so empty => duplicate.
+    added
+        .into_iter()
+        .next()
+        .map(Ok)
+        .unwrap_or_else(|| Err(RadioError::DuplicateStream.to_string()))
+}
+
+/// Curate up to 3 example stations into the active (empty) profile. Resolves
+/// fresh urls via the Radio Browser client per anchor; on any search failure or
+/// empty result the anchor's offline fallback is used (so offline still adds the
+/// fallback trio). The only error path is a profile save failure.
+#[tauri::command]
+pub async fn add_example_streams(
+    state: tauri::State<'_, AppState>,
+    app: tauri::AppHandle,
+) -> Result<Vec<StreamInfo>, String> {
+    let client = get_client(&state).await;
+
+    let mut results_per_anchor: Vec<Vec<StationResult>> =
+        Vec::with_capacity(EXAMPLE_ANCHORS.len());
+    for anchor in EXAMPLE_ANCHORS {
+        let params = SearchParams {
+            query: Some(anchor.name_query.to_string()),
+            country: anchor.country.map(str::to_string),
+            limit: Some(5),
+            ..Default::default()
+        };
+        // A search error is not fatal: empty results -> the anchor's fallback.
+        let results = client.search_stations(&params).await.unwrap_or_default();
+        results_per_anchor.push(results);
+    }
+
+    let streams = select_example_stations(EXAMPLE_ANCHORS, &results_per_anchor);
+    append_streams_to_active_profile(state.inner(), &app, streams).await
 }
 
 #[cfg(test)]
