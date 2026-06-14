@@ -293,6 +293,21 @@ describe("activation keys", () => {
     expect(onAction).not.toHaveBeenCalled();
   });
 
+  it("Ctrl+C fires copy for the active row", () => {
+    const onAction = vi.fn();
+    render(<Harness items={makeItems()} onAction={onAction} />);
+    focusStart("a");
+    press("c", { code: "KeyC", ctrlKey: true });
+    expect(onAction).toHaveBeenCalledWith("copy", "a", "summary", { shift: false, ctrl: true });
+  });
+
+  it("Ctrl+C with no active item does nothing", () => {
+    const onAction = vi.fn();
+    render(<Harness items={[]} onAction={onAction} />);
+    press("c", { code: "KeyC", ctrlKey: true });
+    expect(onAction).not.toHaveBeenCalled();
+  });
+
   it("contextmenu on a row suppresses the native menu and clicks the row's trigger", () => {
     const onButtonClick = vi.fn();
     render(<Harness items={makeItems()} onButtonClick={onButtonClick} />);

@@ -31,7 +31,7 @@ export type SegmentKind =
   // Schedule rows
   | 'action-toggle';
 
-export type ActionType = 'primary' | 'toggle' | 'delete';
+export type ActionType = 'primary' | 'toggle' | 'delete' | 'copy';
 
 /**
  * Modifier keys held during an activation key (Enter/Space) or Delete.
@@ -262,6 +262,18 @@ export function useCompositeList<T extends CompositeListItem>({
           consume();
           onTabOutRef.current(!e.shiftKey);
         }
+        return;
+      }
+
+      // Ctrl/Cmd+C → generic "copy" for the active row; the consumer (e.g. StreamList)
+      // decides what to copy. e.code, not e.key — Cyrillic layouts (accessibility.md §12).
+      // List-scoped on purpose: a registry "match" would hijack Ctrl+C in text fields
+      // across the whole section.
+      // REFACTOR TRIGGER: 2 hardcoded list key→action mappings now (Delete, Ctrl+C).
+      // On a 3rd/4th, replace this if/switch scatter with a key→actionType table.
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === "KeyC") {
+        consume();
+        onActionRef.current("copy", activeItemId, activeSegment, modifiers(e));
         return;
       }
 
