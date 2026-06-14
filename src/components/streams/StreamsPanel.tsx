@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { createPortal } from "react-dom";
-import { $streams, $statuses, $showAddStreamDialog, $streamFilter, $importCandidates, $showExportStreamsDialog, type StreamFilter } from "../../stores/streams";
+import { $streams, $statuses, $showAddStreamDialog, $streamFilter, $importCandidates, $showExportStreamsDialog, type StreamFilter, type StreamSort } from "../../stores/streams";
 import { $settings } from "../../stores/settings";
 import { $freeSpace } from "../../stores/system";
 import { FreeSpaceMetric } from "./FreeSpaceMetric";
@@ -30,6 +30,11 @@ const FILTER_CHIPS = [
   { id: "recording", labelFn: () => m.filter_recording() },
   { id: "errors",    labelFn: () => m.filter_errors() },
 ] as const satisfies ReadonlyArray<{ id: StreamFilter; labelFn: () => string }>;
+
+const SORT_OPTIONS = [
+  { id: "name",  labelFn: () => m.streams_sort_by_name() },
+  { id: "added", labelFn: () => m.streams_sort_by_added() },
+] as const satisfies ReadonlyArray<{ id: StreamSort; labelFn: () => string }>;
 
 export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const streams = useStore($streams);
@@ -129,6 +134,37 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     return streams.filter(s => statuses[s.id]?.state === "error");
   }, [streams, statuses, activeChip]);
 
+  const sortBy: StreamSort = settings?.sortBy ?? "name";
+
+  const sortedStreams = useMemo(() => {
+    if (sortBy === "added") {
+      return [...filteredStreams].sort((a, b) => b.addedAt.localeCompare(a.addedAt));
+    }
+    const collator = new Intl.Collator(
+      settings?.language || document.documentElement.lang || "uk",
+      { numeric: true, sensitivity: "base" },
+    );
+    return [...filteredStreams].sort((a, b) => collator.compare(a.name, b.name));
+  }, [filteredStreams, sortBy, settings?.language]);
+
+  const sortAnnouncement = useCallback(
+    (id: StreamSort) => {
+      const opt = SORT_OPTIONS.find((o) => o.id === id);
+      return m.streams_sort_changed({ label: opt ? opt.labelFn() : "" });
+    },
+    [],
+  );
+
+  const handleSortChange = (id: StreamSort) => {
+    if (id === sortBy) return;
+    const current = $settings.get();
+    if (!current) return;
+    const updated = { ...current, sortBy: id };
+    $settings.set(updated);
+    tauri.saveSettings(updated).catch((e) => addToast(String(e), "error"));
+    announce(sortAnnouncement(id), "polite");
+  };
+
   const filterHidesAll = !isEmpty && filteredStreams.length === 0;
 
   const handleChipClick = (chipId: StreamFilter) => {
@@ -142,7 +178,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     announce(filterAnnouncement(chipId, count), "polite");
   };
 
-  // ── Toolbar zone refs (8 items) ──────────────────────────
+  // ── Toolbar zone refs (10 items) ──────────────────────────
   const toolbarZoneRef = useRef<HTMLDivElement | null>(null);
   const addBtn       = useRef<HTMLButtonElement | null>(null);
   const importBtn    = useRef<HTMLButtonElement | null>(null);
@@ -153,8 +189,11 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const chip1Ref   = useRef<HTMLButtonElement | null>(null);
   const chip2Ref   = useRef<HTMLButtonElement | null>(null);
   const chipRefs = useMemo(() => [chip0Ref, chip1Ref, chip2Ref], []);
+  const sort0Ref   = useRef<HTMLButtonElement | null>(null);
+  const sort1Ref   = useRef<HTMLButtonElement | null>(null);
+  const sortRefs = useMemo(() => [sort0Ref, sort1Ref], []);
   const toolbarRefs = useMemo(
-    () => [addBtn, importBtn, exportBtn, recordAllBtn, stopAllBtn, chip0Ref, chip1Ref, chip2Ref],
+    () => [addBtn, importBtn, exportBtn, recordAllBtn, stopAllBtn, chip0Ref, chip1Ref, chip2Ref, sort0Ref, sort1Ref],
     [],
   );
 
@@ -447,6 +486,28 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
               );
             })}
           </div>
+
+          <div className="mx-1 h-4 w-px bg-slate-700 forced-colors:bg-[ButtonText]" aria-hidden="true" />
+
+          {/* Indices 8–9: Sort toggle — segmented group mirroring the filter chips */}
+          <div role="group" aria-label={m.streams_sort_group()} className="flex items-center gap-2">
+            {SORT_OPTIONS.map((opt, i) => (
+              <button
+                key={opt.id}
+                ref={sortRefs[i]}
+                tabIndex={toolbarTabIndex(8 + i)}
+                aria-pressed={sortBy === opt.id}
+                onClick={() => handleSortChange(opt.id)}
+                className={`inline-flex items-center rounded-full px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
+                  sortBy === opt.id
+                    ? "border border-sky-300/[.22] bg-sky-400/[.14] text-slate-100 forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]"
+                    : "border border-slate-700/50 text-slate-400 hover:bg-slate-800 forced-colors:text-[ButtonText] forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText]"
+                }`}
+              >
+                {opt.labelFn()}
+              </button>
+            ))}
+          </div>
         </div>
       </ScreenZone>
 
@@ -508,7 +569,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
           ) : (
             <StreamList
               ref={streamListCallbackRef}
-              streams={filteredStreams}
+              streams={sortedStreams}
               exitZone={(forward) => exitZone("streams-list", forward)}
               onEmpty={() => {/* handled by isEmpty effect */}}
             />

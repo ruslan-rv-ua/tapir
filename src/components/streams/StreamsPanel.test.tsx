@@ -6,6 +6,8 @@ import { $toasts } from "../../stores/toasts";
 import { $announcer } from "../../stores/announcer";
 import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import { StreamsPanel } from "./StreamsPanel";
+import { $settings } from "../../stores/settings";
+import type { GlobalSettings } from "../../lib/tauri";
 
 // No backend in jsdom — stub the Tauri IPC layer.
 vi.mock("../../lib/tauri", () => ({
@@ -20,6 +22,7 @@ vi.mock("../../lib/tauri", () => ({
   addToIgnorelist: vi.fn().mockResolvedValue(undefined),
   beginStreamImport: vi.fn().mockResolvedValue(null),
   addExampleStreams: vi.fn().mockResolvedValue([]),
+  saveSettings: vi.fn().mockResolvedValue(undefined),
 }));
 
 // ImportStreamsDialog uses useTauriEvent; stub it so jsdom doesn't try to call
@@ -70,12 +73,29 @@ function chipButtons(container: HTMLElement) {
   };
 }
 
+function rowOrder(container: HTMLElement) {
+  return Array.from(
+    container.querySelectorAll<HTMLElement>('li[data-segment="summary"]'),
+  ).map((li) => li.getAttribute("data-item-id"));
+}
+
+// The sort group is the role="group" whose aria-label matches "Сортування"/"Sort".
+function sortButtons(container: HTMLElement) {
+  const group = Array.from(container.querySelectorAll('[role="group"]')).find((g) =>
+    /сортуван|sort/i.test(g.getAttribute("aria-label") ?? ""),
+  );
+  return group
+    ? Array.from(group.querySelectorAll<HTMLButtonElement>("button[aria-pressed]"))
+    : [];
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   $statuses.set({});
   $streamFilter.set("all");
   $streams.set([mkStream("a", "Alpha")]);
   $toasts.set([]);
+  $settings.set(null);
 });
 
 describe("StreamsPanel — filter state persistence", () => {
@@ -350,5 +370,70 @@ describe("StreamsPanel — stop button label", () => {
     expect(
       screen.getByRole("button", { name: /^зупинити запис$|^stop recording$/i }),
     ).toBeTruthy();
+  });
+});
+
+describe("StreamsPanel — stream sorting", () => {
+  it("sorts rows alphabetically by name by default (settings null → name)", () => {
+    $streams.set([mkStream("c", "Charlie"), mkStream("a", "Alpha"), mkStream("b", "Bravo")]);
+    const { container } = renderPanel();
+    expect(rowOrder(container)).toEqual(["a", "b", "c"]);
+  });
+
+  it("orders names numerically (Радіо 2 before Радіо 10)", () => {
+    $streams.set([mkStream("x", "Радіо 10"), mkStream("y", "Радіо 2")]);
+    const { container } = renderPanel();
+    expect(rowOrder(container)).toEqual(["y", "x"]);
+  });
+
+  it("sorts case-insensitively", () => {
+    $streams.set([mkStream("b", "beta"), mkStream("a", "Alpha")]);
+    const { container } = renderPanel();
+    expect(rowOrder(container)).toEqual(["a", "b"]);
+  });
+
+  it("sorts by added date (newest first) when sortBy is 'added'", () => {
+    $settings.set({ sortBy: "added", language: "uk" } as GlobalSettings);
+    $streams.set([
+      { ...mkStream("old", "Old"), addedAt: "2026-01-01T00:00:00Z" },
+      { ...mkStream("new", "New"), addedAt: "2026-03-01T00:00:00Z" },
+      { ...mkStream("mid", "Mid"), addedAt: "2026-02-01T00:00:00Z" },
+    ]);
+    const { container } = renderPanel();
+    expect(rowOrder(container)).toEqual(["new", "mid", "old"]);
+  });
+
+  it("applies sort within the active filter", () => {
+    $streamFilter.set("recording");
+    $streams.set([mkStream("c", "Charlie"), mkStream("a", "Alpha"), mkStream("b", "Bravo")]);
+    $statuses.set({ a: mkStatus("a", "recording"), c: mkStatus("c", "recording") });
+    const { container } = renderPanel();
+    expect(rowOrder(container)).toEqual(["a", "c"]); // b filtered out, a before c
+  });
+
+  it("renders a sort group with two toggle buttons, active one pressed", () => {
+    $settings.set({ sortBy: "added", language: "uk" } as GlobalSettings);
+    const { container } = renderPanel();
+    const btns = sortButtons(container);
+    expect(btns).toHaveLength(2);
+    const pressed = btns.filter((b) => b.getAttribute("aria-pressed") === "true");
+    expect(pressed).toHaveLength(1);
+    expect(pressed[0].textContent).toMatch(/час|added|date/i);
+  });
+
+  it("persists the new sort when a different mode is chosen", () => {
+    $settings.set({ sortBy: "name", language: "uk" } as GlobalSettings);
+    const { container } = renderPanel();
+    const added = sortButtons(container).find((b) => /час|added|date/i.test(b.textContent ?? ""))!;
+    fireEvent.click(added);
+    expect(tauri.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ sortBy: "added" }));
+  });
+
+  it("clicking the active sort is a no-op", () => {
+    $settings.set({ sortBy: "name", language: "uk" } as GlobalSettings);
+    const { container } = renderPanel();
+    const name = sortButtons(container).find((b) => /назв|name/i.test(b.textContent ?? ""))!;
+    fireEvent.click(name);
+    expect(tauri.saveSettings).not.toHaveBeenCalled();
   });
 });
