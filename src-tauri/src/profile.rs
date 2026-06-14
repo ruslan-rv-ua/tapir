@@ -4,7 +4,7 @@ use crate::settings::strip_bom;
 use serde::{Deserialize, Serialize};
 
 // --- AudioFormat ---
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AudioFormat {
     Mp3,

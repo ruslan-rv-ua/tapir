@@ -19,6 +19,136 @@ async fn get_client(state: &AppState) -> &RadioBrowserClient {
         .await
 }
 
+/// One curated, non-commercial "anchor" station. The pool order guarantees the
+/// soft requirement "one Ukrainian first" when it resolves. The live API path
+/// takes a fresh `url_resolved`; `fallback_*` is the offline last resort.
+struct ExampleAnchor {
+    name_query: &'static str,
+    country: Option<&'static str>,
+    fallback_url: &'static str,
+    fallback_name: &'static str,
+    fallback_codec: &'static str, // "MP3" | "AAC"
+    fallback_bitrate: u32,
+}
+
+/// Fixed pool of 3 anchors. #1 is Ukrainian (Suspilne UR-2 "Промінь");
+/// #2 SomaFM (listener-supported); #3 FIP (Radio France, public).
+/// Fallback URLs verified against docs/testing/test-streams.md and ukr.radio/maps.
+const EXAMPLE_ANCHORS: &[ExampleAnchor] = &[
+    ExampleAnchor {
+        name_query: "Промінь",
+        country: Some("Ukraine"),
+        fallback_url: "https://radio.ukr.radio/ur2-mp3",
+        fallback_name: "Радіо Промінь (UR-2)",
+        fallback_codec: "MP3",
+        fallback_bitrate: 192,
+    },
+    ExampleAnchor {
+        name_query: "Groove Salad",
+        country: None,
+        fallback_url: "https://ice5.somafm.com/groovesalad-128-mp3",
+        fallback_name: "SomaFM Groove Salad",
+        fallback_codec: "MP3",
+        fallback_bitrate: 128,
+    },
+    ExampleAnchor {
+        name_query: "FIP",
+        country: Some("France"),
+        fallback_url: "http://icecast.radiofrance.fr/fip-hifi.aac",
+        fallback_name: "FIP",
+        fallback_codec: "AAC",
+        fallback_bitrate: 192,
+    },
+];
+
+/// Codec string -> AudioFormat. Single source of truth shared by the browser-add
+/// path and the example fallback path (keeps add_station_from_browser behavior).
+fn codec_to_format(codec: &str) -> Option<AudioFormat> {
+    match codec.to_uppercase().as_str() {
+        "MP3" => Some(AudioFormat::Mp3),
+        "AAC" | "AAC+" => Some(AudioFormat::Aac),
+        _ => None,
+    }
+}
+
+/// Build a StreamInfo from a Radio Browser station. Extracted verbatim from the
+/// original add_station_from_browser body so both commands share it.
+fn station_to_stream_info(station: &StationResult) -> StreamInfo {
+    let url = if station.url_resolved.is_empty() {
+        station.url.clone()
+    } else {
+        station.url_resolved.clone()
+    };
+    StreamInfo {
+        id: nanoid::nanoid!(),
+        url,
+        name: station.name.trim().to_string(),
+        format: codec_to_format(&station.codec),
+        bitrate: if station.bitrate > 0 { Some(station.bitrate) } else { None },
+        icy_name: None,
+        icy_genre: if station.tags.is_empty() { None } else { Some(station.tags.clone()) },
+        icy_url: if station.homepage.is_empty() { None } else { Some(station.homepage.clone()) },
+        ignorelist: vec![],
+        username: None,
+        password: None,
+        added_at: chrono::Local::now().to_rfc3339(),
+    }
+}
+
+/// Build a StreamInfo straight from an anchor's offline fallback fields.
+/// StationResult has no Default, so we synthesize the StreamInfo directly.
+fn fallback_to_stream_info(anchor: &ExampleAnchor) -> StreamInfo {
+    StreamInfo {
+        id: nanoid::nanoid!(),
+        url: anchor.fallback_url.to_string(),
+        name: anchor.fallback_name.to_string(),
+        format: codec_to_format(anchor.fallback_codec),
+        bitrate: if anchor.fallback_bitrate > 0 { Some(anchor.fallback_bitrate) } else { None },
+        icy_name: None,
+        icy_genre: None,
+        icy_url: None,
+        ignorelist: vec![],
+        username: None,
+        password: None,
+        added_at: chrono::Local::now().to_rfc3339(),
+    }
+}
+
+/// Pure selection: for each anchor (in order) take the first result with a
+/// non-empty url_resolved, else build its fallback; dedup by url within the batch.
+fn select_example_stations(
+    anchors: &[ExampleAnchor],
+    results_per_anchor: &[Vec<StationResult>],
+) -> Vec<StreamInfo> {
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut out: Vec<StreamInfo> = Vec::new();
+    for (anchor, results) in anchors.iter().zip(results_per_anchor.iter()) {
+        let info = match results.iter().find(|s| !s.url_resolved.is_empty()) {
+            Some(s) => station_to_stream_info(s),
+            None => fallback_to_stream_info(anchor),
+        };
+        if seen.insert(info.url.clone()) {
+            out.push(info);
+        }
+    }
+    out
+}
+
+/// Pure: keep only streams whose url is neither already in `existing` nor a
+/// duplicate within `incoming`. Used by append_streams_to_active_profile and the
+/// add_station_from_browser duplicate contract.
+fn dedup_new_streams(existing: &[StreamInfo], incoming: Vec<StreamInfo>) -> Vec<StreamInfo> {
+    let mut seen: std::collections::HashSet<String> =
+        existing.iter().map(|s| s.url.clone()).collect();
+    let mut out = Vec::new();
+    for stream in incoming {
+        if seen.insert(stream.url.clone()) {
+            out.push(stream);
+        }
+    }
+    out
+}
+
 #[tauri::command]
 pub async fn search_stations(
     params: SearchParams,
@@ -89,4 +219,143 @@ pub async fn add_station_from_browser(
     app.emit("streams-changed", ()).ok();
 
     Ok(stream_info)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn mk_station(name: &str, url_resolved: &str, codec: &str, bitrate: u32) -> StationResult {
+        StationResult {
+            stationuuid: "uuid".into(),
+            name: name.into(),
+            url: format!("{url_resolved}/raw"),
+            url_resolved: url_resolved.into(),
+            codec: codec.into(),
+            bitrate,
+            country: String::new(),
+            countrycode: String::new(),
+            tags: String::new(),
+            language: String::new(),
+            votes: 0,
+            clickcount: 0,
+            has_extended_info: None,
+            homepage: String::new(),
+            lastcheckok: 1,
+        }
+    }
+
+    fn stream(url: &str) -> StreamInfo {
+        StreamInfo {
+            id: "id".into(),
+            url: url.into(),
+            name: "n".into(),
+            format: None,
+            bitrate: None,
+            icy_name: None,
+            icy_genre: None,
+            icy_url: None,
+            ignorelist: vec![],
+            username: None,
+            password: None,
+            added_at: "2026-01-01".into(),
+        }
+    }
+
+    #[test]
+    fn station_to_stream_info_maps_mp3_and_metadata() {
+        let mut s = mk_station("  Groove Salad  ", "https://soma/gs", "MP3", 128);
+        s.tags = "ambient".into();
+        s.homepage = "https://somafm.com".into();
+        let info = station_to_stream_info(&s);
+        assert_eq!(info.url, "https://soma/gs");
+        assert_eq!(info.name, "Groove Salad"); // trimmed
+        assert_eq!(info.format, Some(AudioFormat::Mp3));
+        assert_eq!(info.bitrate, Some(128));
+        assert_eq!(info.icy_genre.as_deref(), Some("ambient"));
+        assert_eq!(info.icy_url.as_deref(), Some("https://somafm.com"));
+    }
+
+    #[test]
+    fn station_to_stream_info_maps_aac_zero_bitrate_and_empty_meta() {
+        let s = mk_station("FIP", "https://fip", "AAC+", 0);
+        let info = station_to_stream_info(&s);
+        assert_eq!(info.format, Some(AudioFormat::Aac));
+        assert_eq!(info.bitrate, None); // 0 -> None
+        assert_eq!(info.icy_genre, None); // empty tags
+        assert_eq!(info.icy_url, None); // empty homepage
+    }
+
+    #[test]
+    fn station_to_stream_info_unknown_codec_and_url_fallback() {
+        let mut s = mk_station("X", "", "OGG", 96);
+        s.url = "https://raw-only".into();
+        let info = station_to_stream_info(&s);
+        assert_eq!(info.format, None); // unknown codec
+        assert_eq!(info.url, "https://raw-only"); // url_resolved empty -> url
+    }
+
+    #[test]
+    fn select_picks_first_resolved_keeping_anchor_order_ua_first() {
+        let results = vec![
+            vec![mk_station("Промінь", "https://ua", "MP3", 192)],
+            vec![mk_station("Groove Salad", "https://soma", "MP3", 128)],
+            vec![mk_station("FIP", "https://fip", "AAC", 192)],
+        ];
+        let out = select_example_stations(EXAMPLE_ANCHORS, &results);
+        assert_eq!(out.len(), 3);
+        assert_eq!(out[0].url, "https://ua"); // UA anchor first
+        assert_eq!(out[1].url, "https://soma");
+        assert_eq!(out[2].url, "https://fip");
+    }
+
+    #[test]
+    fn select_uses_fallback_for_empty_anchor_result() {
+        let results = vec![
+            vec![], // anchor 0 (UA) found nothing -> fallback
+            vec![mk_station("Groove Salad", "https://soma", "MP3", 128)],
+            vec![mk_station("FIP", "https://fip", "AAC", 192)],
+        ];
+        let out = select_example_stations(EXAMPLE_ANCHORS, &results);
+        assert_eq!(out.len(), 3);
+        assert_eq!(out[0].url, EXAMPLE_ANCHORS[0].fallback_url);
+        assert_eq!(out[1].url, "https://soma");
+    }
+
+    #[test]
+    fn select_all_offline_yields_three_fallbacks() {
+        let results = vec![vec![], vec![], vec![]];
+        let out = select_example_stations(EXAMPLE_ANCHORS, &results);
+        assert_eq!(out.len(), 3);
+        assert_eq!(out[0].url, EXAMPLE_ANCHORS[0].fallback_url);
+        assert_eq!(out[1].url, EXAMPLE_ANCHORS[1].fallback_url);
+        assert_eq!(out[2].url, EXAMPLE_ANCHORS[2].fallback_url);
+    }
+
+    #[test]
+    fn select_dedups_by_url_within_batch() {
+        let results = vec![
+            vec![mk_station("a", "https://same", "MP3", 128)],
+            vec![mk_station("b", "https://same", "MP3", 128)], // duplicate url
+            vec![mk_station("c", "https://other", "AAC", 192)],
+        ];
+        let out = select_example_stations(EXAMPLE_ANCHORS, &results);
+        assert_eq!(out.len(), 2);
+        assert_eq!(out[0].url, "https://same");
+        assert_eq!(out[1].url, "https://other");
+    }
+
+    #[test]
+    fn dedup_filters_urls_already_in_profile() {
+        let existing = [stream("https://dup")];
+        let added = dedup_new_streams(&existing, vec![stream("https://dup"), stream("https://new")]);
+        assert_eq!(added.len(), 1);
+        assert_eq!(added[0].url, "https://new");
+    }
+
+    #[test]
+    fn dedup_collapses_internal_duplicates() {
+        let added = dedup_new_streams(&[], vec![stream("https://x"), stream("https://x")]);
+        assert_eq!(added.len(), 1);
+    }
 }
