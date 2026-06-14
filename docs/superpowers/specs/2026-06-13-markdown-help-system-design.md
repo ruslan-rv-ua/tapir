@@ -62,11 +62,21 @@ async load(id) {
 }
 ```
 
-- `enforce: "pre"`, registered first in `vite.config.ts`.
+- `enforce: "pre"`, registered first in `vite.config.ts`. Type the export as a
+  Vite `Plugin` so `this.addWatchFile` is typed.
 - Sanitization runs at build time (defense-in-depth, zero runtime cost).
 - New **devDependencies** (build-time only — runtime bundle unchanged):
   `unified`, `remark-parse`, `remark-gfm`, `remark-rehype`, `rehype-sanitize`,
-  `rehype-stringify`.
+  `rehype-stringify`, **and `@types/node`**.
+- **Node types / file location:** the plugin imports `node:fs/promises`, but
+  `tsconfig.json` is `include: ["src"]` with no `node` types and a DOM-only
+  `lib`, and `@types/node` is not currently installed. Because the plugin lives
+  under `src/`, `tsc` type-checks it — so either (a) add `@types/node` (above),
+  or (b) move the plugin out of `src/` (e.g. a root `build/` dir) so it is not in
+  the frontend `include`. Putting Node-only build code under `src/` (the webview
+  bundle root) is a smell; (b) is the cleaner option, but either works. Whichever
+  is chosen, `vite.config.ts` imports it (it is outside `include` itself), and
+  nothing in the app bundle imports it, so the runtime bundle stays unchanged.
 
 ### B. Content loading + locale
 
@@ -81,9 +91,17 @@ paraglide `getLocale()` (returns `"uk"` / `"en"`), not from settings.
 
 ### C. Heading structure (a11y)
 
-- Dialog title = `h1` ("Довідка Tapir" / "Tapir Help").
+- Dialog title = `h1` ("Довідка Tapir" / "Tapir Help"). **Must pass
+  `<Heading slot="title" level={1}>`** — react-aria's `Heading` defaults to
+  `level={3}` (what `SettingsDialog`/the old dialog render today), so without the
+  explicit level the title would be an `h3` and the `##` content below it would
+  be a backward `h3 → h2` jump — the opposite of the goal.
 - Markdown files are authored starting at `##` — no own `h1` — so NVDA heading
-  navigation has no level jumps.
+  navigation has no level jumps (`h1` title → `h2` sections).
+- **Shortcuts tab:** `ShortcutsHelp` currently renders its group labels as `h3`
+  (carried over from `KeyboardShortcutsDialog`). Demote them to `h2` so the
+  shortcuts tab matches the markdown tabs' single-level-under-`h1` structure
+  (otherwise that tab alone has an `h1 → h3` jump).
 - One section per tab; no intra-document anchors.
 
 ### D. Components
@@ -97,8 +115,13 @@ paraglide `getLocale()` (returns `"uk"` / `"en"`), not from settings.
   → `<dl>`). Reused as the "shortcuts" tab content.
 - `src/components/common/HelpDialog.tsx` — react-aria `Modal` / `Dialog` +
   react-aria `Tabs orientation="vertical"`: left `TabList` = sections,
-  `TabPanel` = content. Focus restore via the `openerRef` /
-  `document.activeElement` pattern already used in `CommandPalette`.
+  `TabPanel` = content. **Model it on `SettingsDialog.tsx`** (the existing
+  react-aria `Modal` + `Tabs` dialog), not `CommandPalette`. Focus restore is
+  **automatic** — react-aria's `Modal` wraps content in a `FocusScope` with
+  `restoreFocus`, so focus returns to the opener (the element focused when F1
+  fired) on close. Do **not** add the manual `openerRef`/`document.activeElement`
+  pattern: `CommandPalette` only hand-rolls it because it is a plain `role=
+  "dialog"` div, not a react-aria `Modal`.
   **No manual `announce()`** — rely on react-aria Dialog's native announcement
   (focus enters the dialog; NVDA reads the dialog label + active tab). This
   sidesteps the aria-hidden-inside-modal live-region pitfall.
@@ -143,16 +166,35 @@ plus a `forced-colors` rule, consistent with the file's existing conventions.
 - `src/App.tsx`: replace `KeyboardShortcutsDialog` import + render with
   `HelpDialog`.
 - **Delete** `src/components/common/KeyboardShortcutsDialog.tsx`.
+- `src/lib/shortcuts.ts`: the doc comment above `SHORTCUTS` (≈ line 62) names
+  `KeyboardShortcutsDialog` as a derived consumer — update it to `ShortcutsHelp`
+  so it doesn't dangle after the deletion.
 - TS ambient: `src/markdown.d.ts` →
   `declare module "*.md?help" { const html: string; export default html; }`.
+  (`import.meta.glob` typing already comes from the `vite/client` reference in
+  `src/vite-env.d.ts`.)
 - No Command Palette change.
 
 ### I. Tests
 
 - `KeyboardShortcutsDialog.test.tsx` → `HelpDialog.test.tsx`: open/close via
-  `$helpOpen`; a representative combo from each group renders in the shortcuts
-  tab; tab switching works (overview ↔ shortcuts). vitest runs through
-  `vite.config.ts`, so `?help` imports resolve in tests.
+  `$helpOpen`; tab switching works (overview ↔ shortcuts); after switching to
+  the shortcuts tab, a representative combo from each group renders. Note the
+  default active tab is **overview**, and react-aria mounts only the selected
+  `TabPanel`, so the combo assertions must come **after** activating the
+  shortcuts tab (the old test asserted them immediately — update it).
+- **Test config (must-fix):** vitest does **not** run through `vite.config.ts`.
+  There is a standalone `vitest.config.ts` whose comment explicitly states it
+  omits the `vite.config.ts` plugins. So `*.md?help` and
+  `import.meta.glob(..., { query: "?help" })` will **not** resolve under vitest
+  as written. Add `markdownHelpPlugin()` (with `enforce: "pre"`) to the
+  `plugins` array in `vitest.config.ts`. (Paraglide messages still resolve
+  without their plugin because they are generated to disk; only the `?help`
+  transform needs wiring up.)
+- The test should `vi.mock("../../i18n/paraglide/runtime", () => ({ getLocale:
+  () => "uk" }))` for a deterministic locale — the same pattern the schedule /
+  profile tests already use. (Default `getLocale()` returns base locale `uk`,
+  but pin it explicitly.)
 - Gates: `pnpm test` + `pnpm vite:build`. Paraglide regenerates via its Vite
   plugin on build/dev.
 
@@ -168,5 +210,14 @@ Palette Help entry.
   params); guard on `.md` extension.
 - react-aria Tabs inside Dialog provides roving tabindex + arrow-key navigation
   for free — strictly better for NVDA than hand-rolled nav buttons.
-- Verify `import.meta.glob` with `query: "?help"` resolves through the plugin in
-  the vitest environment during test setup.
+- **External links in a Tauri webview:** the default `rehype-sanitize` schema
+  permits `<a href>`. In the webview, a plain `<a href="https://…">` click
+  navigates the whole SPA away (white-screens the app). v1 `overview.md` should
+  therefore avoid links; if any are needed later, `HelpContent` must intercept
+  link clicks and route external URLs through the Tauri opener (open in the
+  system browser) rather than letting the webview follow them. Keep this in mind
+  when authoring the "coming soon" stubs too.
+- `import.meta.glob` with `query: "?help"` only resolves in vitest once
+  `markdownHelpPlugin()` is added to `vitest.config.ts` (see Tests) — the
+  standalone test config does not inherit `vite.config.ts` plugins. Verify the
+  glob resolves through the plugin in the vitest environment.
