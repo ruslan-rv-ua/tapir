@@ -54,6 +54,7 @@ const EXAMPLE_ANCHORS: &[ExampleAnchor] = &[
     ExampleAnchor {
         name_query: "FIP",
         country: Some("France"),
+        // Radio France's icecast endpoint is HTTP-only (no HTTPS on port 80 for AAC)
         fallback_url: "http://icecast.radiofrance.fr/fip-hifi.aac",
         fallback_name: "FIP",
         fallback_codec: "AAC",
@@ -343,6 +344,16 @@ mod tests {
         assert_eq!(out.len(), 2);
         assert_eq!(out[0].url, "https://same");
         assert_eq!(out[1].url, "https://other");
+    }
+
+    #[test]
+    fn select_uses_fallback_when_all_results_have_empty_url_resolved() {
+        // API returned stations but none has a valid url_resolved (malformed response)
+        // -> must still use the anchor's offline fallback
+        let bad = mk_station("Промінь", "", "MP3", 192); // url_resolved is empty
+        let results = vec![vec![bad], vec![], vec![]];
+        let out = select_example_stations(EXAMPLE_ANCHORS, &results);
+        assert_eq!(out[0].url, EXAMPLE_ANCHORS[0].fallback_url);
     }
 
     #[test]
