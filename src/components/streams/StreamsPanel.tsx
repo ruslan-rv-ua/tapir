@@ -189,14 +189,20 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   };
 
   const handleAddExamples = async () => {
-    if (loadingExamples) return;
+    if (loadingExamples) return; // guard double-activation (button stays clickable via aria-disabled)
     setLoadingExamples(true);
+    announce(m.streams_examples_loading(), "polite");
     try {
-      await tauri.addExampleStreams();
+      const added = await tauri.addExampleStreams();
+      // Backend already emitted streams-changed → App.tsx reloads $streams →
+      // isEmpty flips false and the list mounts. Keep loadingExamples=true: this
+      // empty-state node unmounts with it. Focus the first row once mounted.
       pendingFocusFirstRow.current = true;
+      announce(addedAnnouncement(added.length, added.map((s) => s.name).join(", ")), "polite");
     } catch (err) {
       addToast(String(err), "error");
-      setLoadingExamples(false);
+      announce(m.streams_examples_failed(), "polite");
+      setLoadingExamples(false); // aria-disabled never moved focus, so it stays on the button
     }
   };
 
@@ -231,6 +237,20 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEmpty, filterHidesAll, toolbarRestore]);
 
+  // Move focus to the first stream row after examples are added. The await in
+  // handleAddExamples resolves before streams-changed + getStreams() repopulate
+  // $streams, so the list isn't mounted yet at await-time; a single rAF wouldn't
+  // cover that. Instead key off the isEmpty transition: streamListRef is set by
+  // StreamList's callback ref during commit, so it's available here.
+  useEffect(() => {
+    if (!isEmpty && pendingFocusFirstRow.current) {
+      pendingFocusFirstRow.current = false;
+      // ZoneEntry.focus === CompositeList.restoreFocus: on a fresh list the memory
+      // is empty, so focus lands on the first row (summary).
+      streamListRef.current?.focus("forward");
+    }
+  }, [isEmpty]);
+
   const doStopAll = async () => {
     try { await tauri.stopAllRecordings(); }
     catch (err) { addToast(String(err), "error"); }
@@ -249,6 +269,20 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
         m.record_all_announce_one,
         m.record_all_announce_few,
         m.record_all_announce_many,
+      ),
+    [pluralize],
+  );
+
+  // Pluralized "Added N examples: <names>. List updated." — threads {names} in addition
+  // to {count}, so it needs its own wrapper beyond what pluralize can handle alone.
+  const addedAnnouncement = useCallback(
+    (count: number, names: string) =>
+      pluralize(
+        count,
+        () => m.streams_examples_added_zero(),
+        ({ count }) => m.streams_examples_added_one({ count, names }),
+        ({ count }) => m.streams_examples_added_few({ count, names }),
+        ({ count }) => m.streams_examples_added_many({ count, names }),
       ),
     [pluralize],
   );

@@ -3,6 +3,7 @@ import { render, act, screen, fireEvent } from "@testing-library/react";
 import * as tauri from "../../lib/tauri";
 import { $streams, $statuses, $streamFilter } from "../../stores/streams";
 import { $toasts } from "../../stores/toasts";
+import { $announcer } from "../../stores/announcer";
 import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import { StreamsPanel } from "./StreamsPanel";
 
@@ -247,6 +248,60 @@ describe("StreamsPanel — empty profile example-streams CTA", () => {
       name: /додати приклади потоків|add example streams/i,
     });
     expect(document.activeElement).toBe(btn);
+  });
+});
+
+describe("StreamsPanel — example-streams click flow", () => {
+  const addBtn = () =>
+    screen.getByRole("button", { name: /додати приклади потоків|add example streams|додаю приклади|adding examples/i });
+
+  beforeEach(() => {
+    $streams.set([]);
+    $announcer.set({ message: "", priority: "polite" });
+  });
+
+  it("calls addExampleStreams and shows aria-busy/aria-disabled while loading", async () => {
+    vi.mocked(tauri.addExampleStreams).mockResolvedValueOnce([mkStream("ex1", "Example One")]);
+    renderPanel();
+    await act(async () => {
+      fireEvent.click(addBtn());
+    });
+    expect(tauri.addExampleStreams).toHaveBeenCalledOnce();
+    const btn = addBtn();
+    expect(btn.getAttribute("aria-disabled")).toBe("true");
+    expect(btn.getAttribute("aria-busy")).toBe("true");
+  });
+
+  it("announces the pluralized result and focuses the first row on success", async () => {
+    const added = [mkStream("ex1", "Example One"), mkStream("ex2", "Example Two")];
+    vi.mocked(tauri.addExampleStreams).mockResolvedValueOnce(added);
+    renderPanel();
+    await act(async () => {
+      fireEvent.click(addBtn());
+    });
+    // The success announcement names the added streams.
+    expect($announcer.get().message).toMatch(/example one/i);
+    // Simulate the streams-changed round-trip the mocked event bridge can't deliver.
+    await act(async () => {
+      $streams.set(added);
+    });
+    // restoreFocus("forward") on the fresh list lands on the first row's summary.
+    expect(document.activeElement?.getAttribute("data-item-id")).toBe("ex1");
+  });
+
+  it("on failure toasts + announces and re-enables the button without losing focus", async () => {
+    vi.mocked(tauri.addExampleStreams).mockRejectedValueOnce(new Error("offline"));
+    renderPanel();
+    const btn = addBtn();
+    btn.focus();
+    await act(async () => {
+      fireEvent.click(btn);
+    });
+    expect($toasts.get().some((t) => /offline/i.test(t.message))).toBe(true);
+    expect($announcer.get().message).toMatch(/не вдалося завантажити приклади|could not load examples/i);
+    const after = addBtn();
+    expect(after.getAttribute("aria-disabled")).toBeNull();
+    expect(document.activeElement).toBe(after);
   });
 });
 
