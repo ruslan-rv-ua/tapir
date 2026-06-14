@@ -37,6 +37,9 @@
   // Дія при активації потоку (Enter / подвійний клік): "record" | "play"
   "doubleClickAction": "record",
 
+  // Порядок списку потоків
+  "sortBy": "name",
+
   // Ліміт пропускної здатності (кБ/с). 0 = без ліміту
   "bandwidthLimitKbps": 0,
 
@@ -75,6 +78,7 @@ interface GlobalSettings {
   showTrackInTitle: boolean;
   diskSpaceThresholdGb: number;
   doubleClickAction: "record" | "play";
+  sortBy: "name" | "added";        // порядок списку потоків
   bandwidthLimitKbps: number;
   autostart: boolean;
   hotkeys: HotkeyMap;
@@ -107,6 +111,8 @@ pub struct GlobalSettings {
     pub show_track_in_title: bool,
     pub disk_space_threshold_gb: u32,
     pub double_click_action: DoubleClickAction,
+    #[serde(default = "default_sort_by")]
+    pub sort_by: String, // "name" | "added"
     pub bandwidth_limit_kbps: u32,
     pub autostart: bool,
     pub hotkeys: HotkeyMap,
