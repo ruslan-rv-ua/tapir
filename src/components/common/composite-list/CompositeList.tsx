@@ -5,6 +5,8 @@ import {
   type ActionModifiers,
   type CompositeListItem,
   type SegmentKind,
+  type CompositeSelection,
+  type SelectionChange,
 } from "../../../hooks/useCompositeList";
 import type { ZoneEntry } from "../../../hooks/useZoneNavigation";
 
@@ -42,6 +44,9 @@ export interface CompositeListProps {
   imperativeExtra?: (api: {
     focusItem: (itemId: string, segment?: SegmentKind) => void;
   }) => object;
+  /** Opt-in selection adapter (atom bridge). Omit → no selection layer. */
+  selection?: CompositeSelection;
+  onSelectionChange?: (change: SelectionChange) => void;
 }
 
 function CompositeListInner<H extends ZoneEntry = ZoneEntry>(
@@ -62,10 +67,12 @@ function CompositeListInner<H extends ZoneEntry = ZoneEntry>(
     empty,
     footer,
     imperativeExtra,
+    selection,
+    onSelectionChange,
   } = props;
 
-  const { listRef, onKeyDownCapture, onContextMenu, isFocused, restoreFocus, focusItem, activeItemId } =
-    useCompositeList({ zoneId, items, onTabOut, onAction, onEmpty });
+  const { listRef, onKeyDownCapture, onContextMenu, onClick, isFocused, restoreFocus, focusItem, activeItemId } =
+    useCompositeList({ zoneId, items, onTabOut, onAction, onEmpty, selection, onSelectionChange });
 
   /**
    * Wraps focusItem so that the DOM element is focused immediately, even when
@@ -119,6 +126,7 @@ function CompositeListInner<H extends ZoneEntry = ZoneEntry>(
       className={`py-1 scroll-py-1 ${className}`}
       onKeyDownCapture={onKeyDownCapture}
       onContextMenu={onContextMenu}
+      onClick={onClick}
     >
       {items.map((it) =>
         renderRow({
