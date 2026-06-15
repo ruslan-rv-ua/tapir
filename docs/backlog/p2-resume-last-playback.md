@@ -1,0 +1,119 @@
+# Відновлення останнього відтворення при запуску
+
+- **Слаг:** `resume-last-playback`
+- **Тип:** ідея
+- **Стан:** draft
+- **Зусилля:** S
+- **Оновлено:** 2026-06-15
+- **Залежності:** Phase 2A (PlayerEngine ✅), Phase 2C (SettingsDialog ✅); узгодити з Phase 3K (Crash Recovery ⬜) щодо `data/state.json`
+
+## Опис
+
+При наступному запуску програма автоматично починає відтворювати те, що грало під час попереднього сеансу — чи то живий радіо-потік, чи записаний файл.
+
+**UX-цінність:**
+- Типовий радіо-слухач очікує «продовжити з того ж місця» без зайвих дій.
+- Для незрячого користувача (NVDA) — критично менша кількість кроків навігації: замість пошуку потоку у списку, вибору, запуску — одразу звук.
+- Особливо цінно у поєднанні з autostart (3I-2): програма запускається у фоні і одразу починає грати — користувач просто вмикає комп'ютер.
+
+## Критерії готовності
+
+- [ ] При зупинці відтворення або завершенні програми (graceful shutdown) зберігається файл `data/last_playback.json` з типом джерела (`stream` або `file`), ідентифікатором (URL потоку або абсолютний шлях до файлу) та позицією у секундах (лише для файлів).
+- [ ] При запуску, якщо налаштування `resumePlaybackOnStartup: true` і файл `data/last_playback.json` існує — `PlayerEngine` автоматично починає відтворення без участі користувача; при помилці (файл видалено, потік недоступний) — startup не блокується, `last_playback.json` очищується або залишається залежно від типу помилки.
+- [ ] У `SettingsDialog` (вкладка General або нова вкладка Playback) додано перемикач «Відтворювати останнє при запуску» (`resumePlaybackOnStartup`), значення зберігається у `data/settings.json`; при авто-відтворенні на старті frontend надсилає `aria-live="polite"` анонс «Відтворення: [назва потоку або ім'я файлу]».
+
+## Технічні деталі
+
+### Що зберігати
+
+Файл `data/last_playback.json` (новий, окремий від `settings.json` і від майбутнього `state.json`):
+
+```json
+{
+  "source_type": "stream",
+  "identifier": "https://radio.example.com/stream",
+  "display_name": "Радіо Промінь",
+  "position_secs": null
+}
+```
+
+або для файлу:
+
+```json
+{
+  "source_type": "file",
+  "identifier": "/absolute/path/to/data/recordings/2026-06-15_Recording.mp3",
+  "display_name": "2026-06-15_Recording.mp3",
+  "position_secs": 142.5
+}
+```
+
+### Коли зберігати
+
+- При зміні джерела відтворення (новий потік / новий файл).
+- При зупинці (`stop` IPC команда) — оновити `position_secs` для файлів.
+- При graceful shutdown (`on_window_close` / `Exit` з tray) — фінальна позиція.
+- **Не** зберігати кожну секунду — лише на дискретних подіях.
+
+### Взаємодія з Crash Recovery (Phase 3K ⬜)
+
+Phase 3K планує `data/state.json` для відновлення після краш-завершення (незбережений запис тощо). Стан відтворення і стан запису — **різні речі**, їх треба тримати в окремих файлах:
+
+| Файл | Призначення |
+|------|-------------|
+| `data/last_playback.json` | Остання відтворювана позиція (ця фіча) |
+| `data/state.json` | Crash recovery: незавершені записи, тимчасові мітки (Phase 3K) |
+
+При реалізації Phase 3K треба узгодити структури, щоб уникнути дублювання.
+
+### Взаємодія з Autostart (Phase 3I-2 ⬜)
+
+- `autostart + resumePlaybackOnStartup = true` → програма запускається, вікно може бути приховане (tray), але відтворення починається у фоні.
+- Tray-іконка: показати назву потоку у tooltip або контекстному меню.
+- Якщо вікно відкрите — `aria-live` анонс; якщо вікно ще не відкрите — анонс при першому відкритті.
+
+### Обробка помилок
+
+| Ситуація | Поведінка |
+|----------|-----------|
+| Записаний файл не знайдено на диску | Тихо скипати (без діалогу помилки), очистити `last_playback.json`, продовжити завантаження |
+| Потік не відповідає | Стандартна помилка `PlayerEngine` (існуючий механізм retry/error), не блокувати startup |
+| `last_playback.json` пошкоджений / невалідний JSON | Видалити файл, продовжити без відновлення |
+| `resumePlaybackOnStartup = false` | Файл `last_playback.json` все одно зберігається (на майбутнє), але auto-play не запускається |
+
+### Rust-модулі (орієнтовно)
+
+- `src-tauri/src/last_playback.rs` — структура `LastPlayback`, `save()`, `load()`, `clear()`.
+- `src-tauri/src/player_engine.rs` — виклик `last_playback::save()` при відповідних IPC-подіях.
+- `src-tauri/src/settings.rs` — нове поле `resume_playback_on_startup: bool` (default: `false`).
+- `src-tauri/src/lib.rs` (startup hook) — читання `last_playback.json`, перевірка налаштування, старт відтворення.
+
+### Frontend (орієнтовно)
+
+- `src/components/settings/GeneralSettings.tsx` (або новий `PlaybackSettings.tsx`) — чекбокс `resumePlaybackOnStartup`.
+- `src/stores/playerStatus.ts` (`$playerStatus`) — вже існує, отримає подію auto-play через Tauri event.
+- `aria-live="polite"` анонс у `PlayerPanel` або через `useAnnounce` hook — «Відтворення: [назва]»; `polite`, а не `assertive`, щоб не переривати можливий голос читача при завантаженні.
+
+## Відкриті питання
+
+- **Де зберігати стан:** окремий `data/last_playback.json` vs додати поле до майбутнього `data/state.json` (Phase 3K). Ризик: якщо реалізувати у `state.json` зараз, до Phase 3K з'явиться технічний борг; якщо окремо — може бути дублювання при 3K. **Пропозиція:** окремий файл зараз, рефакторинг при 3K.
+- **Пауза чи відтворення при запуску:** якщо попередній стан — «зупинено» (не «грає»), то відновлювати у паузі чи одразу запускати? Варіанти: (a) завжди запускати; (b) відновлювати стан «грало» → грати, «зупинено» → не чіпати. Варіант (a) простіший і більш очікуваний для радіо.
+- **Тайм-аут потоку:** якщо живий потік не відповів за N секунд — зупинитись тихо чи показати помилку? Поточний `PlayerEngine` вже має логіку retry; треба визначити, чи потрібна окрема поведінка для startup-resume.
+- **Позиція для файлів:** чи відновлювати з збереженої секунди (потребує `seek` у `rodio/symphonia`) чи починати з початку? `seek` у symphonia реалізовано, але варто перевірити для всіх форматів. Для живих потоків позиція не має сенсу (завжди `null`).
+- **Де в SettingsDialog:** у вкладці General (разом з мовою, темою) чи у новій вкладці Playback? Поточний SettingsDialog має вкладки — треба оцінити, чи варто додавати нову вкладку чи достатньо одного чекбоксу в General.
+
+## Документи
+
+- [docs/implementation-phases.md](../implementation-phases.md) — Phase 2A (PlayerEngine), Phase 2C (Settings), Phase 3K (Crash Recovery)
+- [docs/architecture.md](../architecture.md) — backend-first, IPC, PlayerEngine
+- [docs/data-models.md](../data-models.md) — структури даних, `settings.json`
+- [docs/accessibility.md](../accessibility.md) — NVDA, `aria-live`, `useAnnounce`
+- Код PlayerEngine: `src-tauri/src/player_engine.rs`
+- Код налаштувань: `src-tauri/src/settings.rs`, `src/components/settings/`
+- Portable storage: `src-tauri/src/portable.rs`
+- Announce hook: `src/hooks/useAnnounce.ts`
+
+## Промпт для агента
+
+Каталог промптів за типом: [README — Каталог промптів](README.md#каталог-промптів-за-типом).
+Тип `ідея`.
