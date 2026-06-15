@@ -47,8 +47,12 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
 
   const handleSelectionChange = useCallback(
     (c: SelectionChange) => {
+      // A pointer single already moved DOM focus → NVDA reads the row (with its
+      // ", виділено" suffix) natively; re-announcing would double-speak.
       if (c.via === "pointer" && c.kind === "single") return;
       if (c.kind === "single") {
+        // c.lastId is always a visible row (focus stays on rendered items), so the
+        // filtered `streams` list is the right place to resolve its name.
         const name = streams.find((s) => s.id === c.lastId)?.name ?? "";
         announce(c.selected ? m.stream_selected({ name }) : m.stream_deselected({ name }), "polite");
       } else {
