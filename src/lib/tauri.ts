@@ -138,6 +138,9 @@ export async function addStream(url: string, name?: string): Promise<StreamInfo>
 export async function removeStream(streamId: string): Promise<void> {
   return invoke("remove_stream", { streamId });
 }
+export async function removeStreams(streamIds: string[]): Promise<number> {
+  return invoke("remove_streams", { streamIds });
+}
 export async function updateStream(streamId: string, name: string): Promise<StreamInfo> {
   return invoke("update_stream", { streamId, name });
 }

@@ -118,6 +118,15 @@ pub async fn add_stream(
     Ok(new_stream)
 }
 
+/// Remove every stream whose id is in `ids`. Returns how many were actually
+/// removed (ignores ids not present). Pure over the vector — unit-testable
+/// without any Tauri state, mirroring `prepare_transfer_stream`.
+pub fn retain_streams(streams: &mut Vec<StreamInfo>, ids: &std::collections::HashSet<String>) -> usize {
+    let before = streams.len();
+    streams.retain(|s| !ids.contains(&s.id));
+    before - streams.len()
+}
+
 #[tauri::command]
 pub async fn remove_stream(
     stream_id: String,
@@ -141,6 +150,41 @@ pub async fn remove_stream(
         .await
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
+}
+
+/// Bulk variant of `remove_stream`: one stop-recordings pass, one `retain`, one
+/// save. Returns the count actually removed (honest, vs an N-save frontend loop).
+/// Deleting a stream that is currently recording is allowed (same as the single
+/// `remove_stream`), so there is no "skipped" category for delete.
+#[tauri::command]
+pub async fn remove_streams(
+    stream_ids: Vec<String>,
+    state: tauri::State<'_, AppState>,
+) -> Result<usize, String> {
+    let ids: std::collections::HashSet<String> = stream_ids.into_iter().collect();
+
+    // 1. Stop recordings first (best-effort; NotFound is a harmless no-op).
+    {
+        let mut manager = state.stream_manager.write().await;
+        for id in &ids {
+            let _ = manager.stop_recording(id);
+        }
+    }
+
+    // 2. Retain survivors + count removed, snapshot while the write lock is held.
+    let (removed, snapshot) = {
+        let mut profile = state.active_profile.write().await;
+        let removed = retain_streams(&mut profile.streams, &ids);
+        (removed, profile.clone())
+    };
+
+    // 3. One save on a blocking thread (don't starve the async worker).
+    tokio::task::spawn_blocking(move || snapshot.save())
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?;
+
+    Ok(removed)
 }
 
 #[tauri::command]
@@ -399,5 +443,28 @@ mod tests {
     #[test]
     fn one_byte_under_threshold_blocks() {
         assert!(below_threshold(1_073_741_823, 1)); // one byte short → blocked
+    }
+
+    fn with_id(id: &str) -> StreamInfo {
+        StreamInfo { id: id.into(), ..sample() }
+    }
+
+    #[test]
+    fn retain_streams_removes_only_targeted_ids_and_counts() {
+        let mut v = vec![with_id("a"), with_id("b"), with_id("c")];
+        let ids: std::collections::HashSet<String> =
+            ["a".to_string(), "c".to_string()].into_iter().collect();
+        let removed = retain_streams(&mut v, &ids);
+        assert_eq!(removed, 2);
+        assert_eq!(v.iter().map(|s| s.id.clone()).collect::<Vec<_>>(), vec!["b"]);
+    }
+
+    #[test]
+    fn retain_streams_ignores_unknown_ids() {
+        let mut v = vec![with_id("a")];
+        let ids: std::collections::HashSet<String> =
+            ["does-not-exist".to_string()].into_iter().collect();
+        assert_eq!(retain_streams(&mut v, &ids), 0);
+        assert_eq!(v.len(), 1);
     }
 }

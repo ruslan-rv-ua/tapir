@@ -227,6 +227,7 @@ pub fn run() {
             commands::stream_commands::get_streams,
             commands::stream_commands::add_stream,
             commands::stream_commands::remove_stream,
+            commands::stream_commands::remove_streams,
             commands::stream_commands::transfer_stream_to_profile,
             commands::stream_commands::update_stream,
             commands::stream_commands::start_recording,
