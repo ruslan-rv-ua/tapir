@@ -456,7 +456,9 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
             tabIndex={toolbarTabIndex(3)}
             aria-disabled={visibleIds.length === 0 || undefined}
             onClick={handleSelectAll}
-            className="rounded px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
+            className={`rounded px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
+              visibleIds.length === 0 ? "cursor-not-allowed text-slate-600" : "text-slate-400 hover:bg-slate-800"
+            }`}
           >
             {allVisibleSelected ? m.clear_selection() : m.select_all()}
           </button>
@@ -474,7 +476,8 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
             {m.delete_selected({ count: selCount })}
           </button>
 
-          {/* Plain (NOT live) count — read by NVDA on focus, but never double-announced */}
+          {/* Plain (NOT live) count — read in browse mode, never double-announced
+              (the central announce() on each gesture is the only spoken update). */}
           {selCount > 0 && (
             <span className="text-xs text-slate-400">{m.selected_count_label({ count: selCount })}</span>
           )}

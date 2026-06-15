@@ -467,4 +467,12 @@ describe("StreamsPanel — selection toolbar cluster", () => {
     const del = screen.getByRole("button", { name: m.delete_selected({ count: 2 }) });
     expect(del.getAttribute("aria-disabled")).toBeNull();
   });
+
+  it("clicking 'Виділити все' selects all visible and announces the count on the toolbar's own channel", () => {
+    renderPanel();
+    $announcer.set({ message: "", priority: "polite" });
+    fireEvent.click(screen.getByRole("button", { name: m.select_all() }));
+    expect([...$streamSelection.get()].sort()).toEqual(["a", "b", "c"]);
+    expect($announcer.get().message).toBe(m.selection_count({ count: 3 }));
+  });
 });
