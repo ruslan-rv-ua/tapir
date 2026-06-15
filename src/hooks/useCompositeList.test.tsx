@@ -669,3 +669,46 @@ describe("selection — Ctrl+A toggles all visible", () => {
     expect(selectionRef.current.size).toBe(0);
   });
 });
+
+function clickRow(id: string, init: MouseEventInit = {}) {
+  fireEvent.click(stop(id, "summary"), { bubbles: true, ...init });
+}
+
+describe("selection — mouse gestures on the <ul>", () => {
+  it("simple click collapses the selection to that row (single, pointer)", () => {
+    const selectionRef = { current: new Set<string>(["a", "b"]) };
+    const onSelectionChange = vi.fn();
+    render(<Harness items={makeItems()} selectionRef={selectionRef} onSelectionChange={onSelectionChange} />);
+    clickRow("c");
+    expect([...selectionRef.current]).toEqual(["c"]);
+    expect(onSelectionChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "single", via: "pointer", count: 1, lastId: "c", selected: true }),
+    );
+  });
+
+  it("Ctrl+Click toggles that row (single, pointer)", () => {
+    const selectionRef = { current: new Set<string>(["a"]) };
+    render(<Harness items={makeItems()} selectionRef={selectionRef} />);
+    clickRow("b", { ctrlKey: true });
+    expect([...selectionRef.current].sort()).toEqual(["a", "b"]);
+  });
+
+  it("Shift+Click spans anchor→click (group, pointer)", () => {
+    const selectionRef = { current: new Set<string>() };
+    const onSelectionChange = vi.fn();
+    render(<Harness items={makeItems()} selectionRef={selectionRef} onSelectionChange={onSelectionChange} />);
+    clickRow("a"); // anchor = a
+    clickRow("c", { shiftKey: true }); // span a..c
+    expect([...selectionRef.current].sort()).toEqual(["a", "b", "c"]);
+    expect(onSelectionChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "group", via: "pointer", count: 3 }),
+    );
+  });
+
+  it("clicks on the row's own controls do not touch the selection", () => {
+    const selectionRef = { current: new Set<string>(["a"]) };
+    render(<Harness items={makeItems()} selectionRef={selectionRef} />);
+    fireEvent.click(stop("a", "action-play"), { bubbles: true });
+    expect([...selectionRef.current]).toEqual(["a"]); // unchanged
+  });
+});

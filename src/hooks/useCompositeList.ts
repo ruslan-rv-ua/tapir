@@ -565,9 +565,51 @@ export function useCompositeList<T extends CompositeListItem>({
     [activeItemId, activeSegment, items, moveFocus, toggleSelection, setAnchor, rangeIds],
   );
 
-  const onClick = useCallback((_e: React.MouseEvent) => {
-    // Mouse selection gestures are added in Task 10.
-  }, []);
+  // Delegated mouse selection on the <ul> (only active when `selection` is set),
+  // mirroring onContextMenu. All gestures move DOM focus to the clicked row, so
+  // NVDA reads it (with the ", виділено" suffix) — that's why single-row pointer
+  // changes are emitted via:"pointer" (the consumer must NOT re-announce them).
+  const onClick = useCallback(
+    (e: React.MouseEvent) => {
+      const sel = selectionRef.current;
+      if (!sel) return;
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      // The row's own controls handle their own clicks.
+      if (target.closest("button, a, input, select, textarea")) return;
+      const row = target.closest<HTMLElement>("[data-item-id]");
+      const id = row?.dataset.itemId;
+      if (!id || !items.some((it) => it.id === id)) return;
+
+      // Move active + DOM focus to the clicked row.
+      setActiveItemId(id);
+      setActiveSegment("summary");
+      pendingFocusRef.current = { itemId: id, segment: "summary" };
+
+      if (e.ctrlKey && !e.shiftKey) {
+        toggleSelection(id, "pointer");
+        return;
+      }
+      if (e.shiftKey) {
+        if (sel.current().size === 0) {
+          anchorRef.current = id;
+          anchorBaseRef.current = new Set();
+        }
+        if (anchorRef.current == null) anchorRef.current = id;
+        const span = rangeIds(anchorRef.current, id);
+        const next = new Set(anchorBaseRef.current);
+        for (const x of span) next.add(x);
+        sel.replace(next);
+        onSelectionChangeRef.current?.({ kind: "group", via: "pointer", count: next.size });
+        return;
+      }
+      // Simple click → collapse to {id}, anchor here.
+      sel.replace(new Set([id]));
+      setAnchor(id);
+      onSelectionChangeRef.current?.({ kind: "single", via: "pointer", count: 1, lastId: id, selected: true });
+    },
+    [items, rangeIds, setAnchor, toggleSelection],
+  );
 
   // Single source of truth for the per-row context menu: WebView2 emits a
   // `contextmenu` event for right-click, the Menu key, AND Shift+F10. Handling
