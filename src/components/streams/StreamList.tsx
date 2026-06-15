@@ -152,12 +152,15 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
     [streams, statuses],
   );
 
-  // Programmatic focus after a bulk delete — bound to the post-deletion items
-  // change so it is the LAST word after the ConfirmDialog (react-aria Modal)
-  // restores focus to its now-removed trigger. Survivors > 0 only; the empty
-  // case already called onEmpty() in the handler.
-  // `bulkDeleteSeq` is also in deps so the effect fires even when `items` does
-  // not change (e.g. when the parent supplies a pre-filtered `streams` prop).
+  // Programmatic focus after a bulk delete. useLayoutEffect (not useEffect) so it
+  // runs in the layout phase of the post-deletion commit, AFTER the unmounting
+  // ConfirmDialog (react-aria Modal) restores focus to its now-removed trigger in
+  // the mutation phase — making this the last word. NOTE: react-aria can defer
+  // restoration to a rAF in the "trigger was removed" branch, which jsdom doesn't
+  // exercise; this ordering is verified by the manual NVDA pass (focus must land
+  // on a surviving row, never <body>). Survivors > 0 only; the empty case already
+  // called onEmpty() in the handler. `bulkDeleteSeq` is also in deps so the effect
+  // fires even when `items` does not change (parent supplied a pre-filtered prop).
   useLayoutEffect(() => {
     const targetId = pendingBulkFocusRef.current;
     if (!targetId) return;
