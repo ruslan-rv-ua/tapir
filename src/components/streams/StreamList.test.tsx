@@ -391,6 +391,47 @@ describe("StreamList — selection rendering & announcements", () => {
   });
 });
 
+describe("StreamList — focus after bulk delete", () => {
+  const idOf = () => document.activeElement?.getAttribute("data-item-id") ?? null;
+
+  it("lands on the nearest survivor at/after the top removed index (never <body>)", async () => {
+    replaceSelection(new Set(["a"])); // remove first; survivor at idx0 → b
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: "Delete" });
+    fireEvent.click(await screen.findByRole("button", { name: m["delete"]() }));
+    await waitFor(() => expect(idOf()).toBe("b"));
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
+  it("deleting the tail focuses the new last row", async () => {
+    replaceSelection(new Set(["c"]));
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: "Delete" });
+    fireEvent.click(await screen.findByRole("button", { name: m["delete"]() }));
+    await waitFor(() => expect(idOf()).toBe("b"));
+  });
+
+  it("computes the index over the FILTERED/SORTED visible order, not the full $streams", async () => {
+    // Visible = only [b, c] (a hidden by the parent's filter); remove b → focus c.
+    replaceSelection(new Set(["b"]));
+    const ref = createRef<ZoneEntry>();
+    render(
+      <StreamList
+        ref={ref}
+        exitZone={vi.fn()}
+        onEmpty={vi.fn()}
+        streams={[mkStream("b", "Bravo"), mkStream("c", "Charlie")]}
+      />,
+    );
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: "Delete" });
+    fireEvent.click(await screen.findByRole("button", { name: m["delete"]() }));
+    await waitFor(() => expect(idOf()).toBe("c"));
+  });
+});
+
 describe("StreamList — bulk delete", () => {
   it("Delete with a non-empty selection opens one confirm with the exact count", async () => {
     replaceSelection(new Set(["a", "b"]));

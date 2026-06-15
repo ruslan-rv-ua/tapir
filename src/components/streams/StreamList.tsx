@@ -1,10 +1,10 @@
-import { forwardRef, useCallback, useMemo, useRef, useState } from "react";
+import { forwardRef, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { $streams, $statuses, $streamSelection, replaceSelection } from "../../stores/streams";
 import { $recordingSettings, $settings } from "../../stores/settings";
 import { $playerStatus } from "../../stores/player";
 import { CompositeList } from "../common/composite-list";
-import type { ActionModifiers, CompositeSelection, SelectionChange } from "../../hooks/useCompositeList";
+import type { ActionModifiers, CompositeSelection, SelectionChange, SegmentKind } from "../../hooks/useCompositeList";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import type { StreamInfo, ProfileMeta } from "../../lib/tauri";
 import { StreamItem, getStreamSegments } from "./StreamItem";
@@ -36,6 +36,21 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
   const pendingBulkFocusRef = useRef<string | null>(null);
+  // Incremented each time a bulk delete succeeds, so the focus effect fires
+  // even when `items` does not change (e.g. when the parent supplies a static
+  // `streams` prop that it filters before passing in).
+  const [bulkDeleteSeq, setBulkDeleteSeq] = useState(0);
+  const focusItemRef = useRef<((id: string, segment?: SegmentKind) => void) | null>(null);
+
+  const imperativeExtra = useCallback(
+    (api: { focusItem: (itemId: string, segment?: SegmentKind) => void }) => {
+      // Stash the latest focusItem; the handle is rebuilt on items change, so this
+      // ref always points at a focusItem that knows the post-delete item set.
+      focusItemRef.current = api.focusItem;
+      return { requestBulkDelete: () => setBulkConfirmOpen(true) };
+    },
+    [],
+  );
 
   const announce = useAnnounce();
 
@@ -137,6 +152,19 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
     [streams, statuses],
   );
 
+  // Programmatic focus after a bulk delete — bound to the post-deletion items
+  // change so it is the LAST word after the ConfirmDialog (react-aria Modal)
+  // restores focus to its now-removed trigger. Survivors > 0 only; the empty
+  // case already called onEmpty() in the handler.
+  // `bulkDeleteSeq` is also in deps so the effect fires even when `items` does
+  // not change (e.g. when the parent supplies a pre-filtered `streams` prop).
+  useLayoutEffect(() => {
+    const targetId = pendingBulkFocusRef.current;
+    if (!targetId) return;
+    pendingBulkFocusRef.current = null;
+    focusItemRef.current?.(targetId, "summary");
+  }, [items, bulkDeleteSeq]);
+
   // The row's primary action, shared by keyboard activation (Enter/Space on the
   // summary) and a mouse double-click. Per `doubleClickAction` it toggles either
   // playback or recording (the default). The fixed combos override the setting:
@@ -202,6 +230,7 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
       pendingBulkFocusRef.current =
         survivors.length === 0 ? null : survivors[Math.min(topRemovedIdx, survivors.length - 1)].id;
       if (survivors.length === 0) onEmpty();
+      setBulkDeleteSeq((n) => n + 1);
     } catch (err) {
       addToast(String(err), "error");
     }
@@ -222,6 +251,7 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
     <>
       <CompositeList
         ref={ref}
+        imperativeExtra={imperativeExtra}
         zoneId="streams-list"
         ariaLabel={m.zone_streams_list()}
         items={items}
