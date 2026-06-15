@@ -634,6 +634,20 @@ describe("selection — Escape clears non-empty, otherwise passes through", () =
   });
 });
 
+describe("selection — plain navigation re-sets the anchor", () => {
+  it("after moving the cursor, Shift+Up contracts toward the NEW anchor, not the old one", () => {
+    const selectionRef = { current: new Set<string>() };
+    render(<Harness items={makeItems()} selectionRef={selectionRef} />);
+    focusStart("a");
+    press(" ", { code: "Space", ctrlKey: true }); // anchor=a
+    press("End"); // plain move to c → anchor=c, base={a}
+    press("ArrowUp", { shiftKey: true }); // span c..b → base{a} ∪ range(c,b)={b,c}
+    expect([...selectionRef.current].sort()).toEqual(["a", "b", "c"]);
+    press("ArrowDown", { shiftKey: true }); // back to c → base{a} ∪ {c} = {a,c}
+    expect([...selectionRef.current].sort()).toEqual(["a", "c"]);
+  });
+});
+
 describe("selection — Ctrl+A toggles all visible", () => {
   it("from partial selection → all visible selected; group change", () => {
     const selectionRef = { current: new Set<string>(["a"]) };

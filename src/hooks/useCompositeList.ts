@@ -400,15 +400,25 @@ export function useCompositeList<T extends CompositeListItem>({
       const segIdx = allSegments.indexOf(activeSegment);
 
       switch (action) {
-        case "up":
+        case "up": {
           consume();
-          if (currentIdx > 0) moveFocus(items[currentIdx - 1].id, "summary");
+          if (currentIdx > 0) {
+            const id = items[currentIdx - 1].id;
+            moveFocus(id, "summary");
+            if (selectionRef.current) setAnchor(id);
+          }
           break;
+        }
 
-        case "down":
+        case "down": {
           consume();
-          if (currentIdx < items.length - 1) moveFocus(items[currentIdx + 1].id, "summary");
+          if (currentIdx < items.length - 1) {
+            const id = items[currentIdx + 1].id;
+            moveFocus(id, "summary");
+            if (selectionRef.current) setAnchor(id);
+          }
           break;
+        }
 
         case "left":
           consume();
@@ -420,15 +430,25 @@ export function useCompositeList<T extends CompositeListItem>({
           if (segIdx < allSegments.length - 1) moveFocus(activeItemId, allSegments[segIdx + 1]);
           break;
 
-        case "home":
+        case "home": {
           consume();
-          if (items.length > 0) moveFocus(items[0].id, "summary");
+          if (items.length > 0) {
+            const id = items[0].id;
+            moveFocus(id, "summary");
+            if (selectionRef.current) setAnchor(id);
+          }
           break;
+        }
 
-        case "end":
+        case "end": {
           consume();
-          if (items.length > 0) moveFocus(items[items.length - 1].id, "summary");
+          if (items.length > 0) {
+            const id = items[items.length - 1].id;
+            moveFocus(id, "summary");
+            if (selectionRef.current) setAnchor(id);
+          }
           break;
+        }
 
         case "pageup": {
           consume();
@@ -438,7 +458,9 @@ export function useCompositeList<T extends CompositeListItem>({
           const itemH = firstItemEl?.offsetHeight || 40;
           const page = Math.max(1, Math.floor(container.clientHeight / itemH));
           const targetIdx = Math.max(0, currentIdx - page);
-          moveFocus(items[targetIdx].id, "summary");
+          const id = items[targetIdx].id;
+          moveFocus(id, "summary");
+          if (selectionRef.current) setAnchor(id);
           break;
         }
 
@@ -450,7 +472,9 @@ export function useCompositeList<T extends CompositeListItem>({
           const itemH = firstItemEl?.offsetHeight || 40;
           const page = Math.max(1, Math.floor(container.clientHeight / itemH));
           const targetIdx = Math.min(items.length - 1, currentIdx + page);
-          moveFocus(items[targetIdx].id, "summary");
+          const id = items[targetIdx].id;
+          moveFocus(id, "summary");
+          if (selectionRef.current) setAnchor(id);
           break;
         }
 
