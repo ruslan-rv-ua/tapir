@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { createPortal } from "react-dom";
-import { $streams, $statuses, $showAddStreamDialog, $streamFilter, $importCandidates, $showExportStreamsDialog, type StreamFilter, type StreamSort } from "../../stores/streams";
+import { $streams, $statuses, $showAddStreamDialog, $streamFilter, $importCandidates, $showExportStreamsDialog, $streamSelection, replaceSelection, type StreamFilter, type StreamSort } from "../../stores/streams";
 import { $settings } from "../../stores/settings";
 import { $freeSpace } from "../../stores/system";
 import { FreeSpaceMetric } from "./FreeSpaceMetric";
@@ -147,6 +147,23 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     return [...filteredStreams].sort((a, b) => collator.compare(a.name, b.name));
   }, [filteredStreams, sortBy, settings?.language]);
 
+  const selection = useStore($streamSelection);
+  const selCount = selection.size;
+
+  const visibleIds = useMemo(() => sortedStreams.map((s) => s.id), [sortedStreams]);
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selection.has(id));
+
+  const handleSelectAll = () => {
+    if (visibleIds.length === 0) return;
+    const next = new Set(selection);
+    if (allVisibleSelected) visibleIds.forEach((id) => next.delete(id));
+    else visibleIds.forEach((id) => next.add(id));
+    replaceSelection(next);
+    // Toolbar acts beside the hook, so it announces itself on the same central
+    // channel (A7) — otherwise Ctrl+A would announce but its mirror button wouldn't.
+    announce(next.size === 0 ? m.selection_cleared() : m.selection_count({ count: next.size }), "polite");
+  };
+
   const sortAnnouncement = useCallback(
     (id: StreamSort) => {
       const opt = SORT_OPTIONS.find((o) => o.id === id);
@@ -178,13 +195,15 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     announce(filterAnnouncement(chipId, count), "polite");
   };
 
-  // ── Toolbar zone refs (10 items) ──────────────────────────
+  // ── Toolbar zone refs (12 items) ──────────────────────────
   const toolbarZoneRef = useRef<HTMLDivElement | null>(null);
-  const addBtn       = useRef<HTMLButtonElement | null>(null);
-  const importBtn    = useRef<HTMLButtonElement | null>(null);
-  const exportBtn    = useRef<HTMLButtonElement | null>(null);
-  const recordAllBtn = useRef<HTMLButtonElement | null>(null);
-  const stopAllBtn   = useRef<HTMLButtonElement | null>(null);
+  const addBtn            = useRef<HTMLButtonElement | null>(null);
+  const importBtn         = useRef<HTMLButtonElement | null>(null);
+  const exportBtn         = useRef<HTMLButtonElement | null>(null);
+  const selectAllBtn      = useRef<HTMLButtonElement | null>(null);
+  const deleteSelectedBtn = useRef<HTMLButtonElement | null>(null);
+  const recordAllBtn      = useRef<HTMLButtonElement | null>(null);
+  const stopAllBtn        = useRef<HTMLButtonElement | null>(null);
   const chip0Ref   = useRef<HTMLButtonElement | null>(null);
   const chip1Ref   = useRef<HTMLButtonElement | null>(null);
   const chip2Ref   = useRef<HTMLButtonElement | null>(null);
@@ -193,7 +212,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const sort1Ref   = useRef<HTMLButtonElement | null>(null);
   const sortRefs = useMemo(() => [sort0Ref, sort1Ref], []);
   const toolbarRefs = useMemo(
-    () => [addBtn, importBtn, exportBtn, recordAllBtn, stopAllBtn, chip0Ref, chip1Ref, chip2Ref, sort0Ref, sort1Ref],
+    () => [addBtn, importBtn, exportBtn, selectAllBtn, deleteSelectedBtn, recordAllBtn, stopAllBtn, chip0Ref, chip1Ref, chip2Ref, sort0Ref, sort1Ref],
     [],
   );
 
@@ -386,7 +405,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
       {/* ── Workspace titlebar + Toolbar = streams-toolbar zone ── */}
       {/* IMPORTANT: Both rows must live inside ScreenZone so mixed-boundary-handoff
-          sees all 8 interactive items (indices 0–7). The heading is structural, not focusable. */}
+          sees all 12 interactive items (indices 0–11). The heading is structural, not focusable. */}
       <ScreenZone
         ref={toolbarZoneRef}
         id="streams-toolbar"
@@ -429,12 +448,43 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
           </button>
         </ScreenHeader>
 
-        {/* Row 2: Записати все + Зупинити запис + Chips */}
+        {/* Row 2: Виділити все + Видалити виділені + Записати все + Зупинити запис + Chips */}
         <div className="flex items-center gap-2 px-4 py-2">
-          {/* Index 3: Записати все (primary) */}
+          {/* Index 3: Виділити все / Зняти */}
+          <button
+            ref={selectAllBtn}
+            tabIndex={toolbarTabIndex(3)}
+            aria-disabled={visibleIds.length === 0 || undefined}
+            onClick={handleSelectAll}
+            className="rounded px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
+          >
+            {allVisibleSelected ? m.clear_selection() : m.select_all()}
+          </button>
+
+          {/* Index 4: Видалити виділені (N) — count in visible text == accessible name */}
+          <button
+            ref={deleteSelectedBtn}
+            tabIndex={toolbarTabIndex(4)}
+            aria-disabled={selCount === 0 || undefined}
+            onClick={() => { if (selCount > 0) streamListRef.current?.requestBulkDelete?.(); }}
+            className={`rounded px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
+              selCount === 0 ? "cursor-not-allowed text-slate-600" : "text-red-400 hover:bg-slate-800"
+            }`}
+          >
+            {m.delete_selected({ count: selCount })}
+          </button>
+
+          {/* Plain (NOT live) count — read by NVDA on focus, but never double-announced */}
+          {selCount > 0 && (
+            <span className="text-xs text-slate-400">{m.selected_count_label({ count: selCount })}</span>
+          )}
+
+          <div className="mx-1 h-4 w-px bg-slate-700 forced-colors:bg-[ButtonText]" aria-hidden="true" />
+
+          {/* Index 5: Записати все (primary) */}
           <button
             ref={recordAllBtn}
-            tabIndex={toolbarTabIndex(3)}
+            tabIndex={toolbarTabIndex(5)}
             onClick={handleRecordAll}
             disabled={startableCount === 0}
             className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-600 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
@@ -442,10 +492,10 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
             {m.record_all()}
           </button>
 
-          {/* Index 4: Зупинити запис */}
+          {/* Index 6: Зупинити запис */}
           <button
             ref={stopAllBtn}
-            tabIndex={toolbarTabIndex(4)}
+            tabIndex={toolbarTabIndex(6)}
             onClick={handleStopAll}
             disabled={activeCount === 0}
             className="rounded px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
@@ -455,7 +505,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
           <div className="mx-1 h-4 w-px bg-slate-700 forced-colors:bg-[ButtonText]" aria-hidden="true" />
 
-          {/* Indices 5–7: Filter chips — semantic group, toggle chips kept */}
+          {/* Indices 7–9: Filter chips — semantic group, toggle chips kept */}
           <div role="group" aria-label={m.streams_filter_group()} className="flex items-center gap-2">
             {FILTER_CHIPS.map((chip, i) => {
               const count = chip.id === "recording" ? activeCount
@@ -465,7 +515,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
                 <button
                   key={chip.id}
                   ref={chipRefs[i]}
-                  tabIndex={toolbarTabIndex(5 + i)}
+                  tabIndex={toolbarTabIndex(7 + i)}
                   aria-pressed={activeChip === chip.id}
                   aria-label={m.streams_filter_chip_count({ label: chip.labelFn(), count })}
                   onClick={() => handleChipClick(chip.id)}
@@ -489,13 +539,13 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
           <div className="mx-1 h-4 w-px bg-slate-700 forced-colors:bg-[ButtonText]" aria-hidden="true" />
 
-          {/* Indices 8–9: Sort toggle — segmented group mirroring the filter chips */}
+          {/* Indices 10–11: Sort toggle — segmented group mirroring the filter chips */}
           <div role="group" aria-label={m.streams_sort_group()} className="flex items-center gap-2">
             {SORT_OPTIONS.map((opt, i) => (
               <button
                 key={opt.id}
                 ref={sortRefs[i]}
-                tabIndex={toolbarTabIndex(8 + i)}
+                tabIndex={toolbarTabIndex(10 + i)}
                 aria-pressed={sortBy === opt.id}
                 onClick={() => handleSortChange(opt.id)}
                 className={`inline-flex items-center rounded-full px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${

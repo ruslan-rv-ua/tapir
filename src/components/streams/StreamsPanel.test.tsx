@@ -1,13 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, act, screen, fireEvent } from "@testing-library/react";
 import * as tauri from "../../lib/tauri";
-import { $streams, $statuses, $streamFilter } from "../../stores/streams";
+import { $streams, $statuses, $streamFilter, $streamSelection, replaceSelection } from "../../stores/streams";
 import { $toasts } from "../../stores/toasts";
 import { $announcer } from "../../stores/announcer";
 import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import { StreamsPanel } from "./StreamsPanel";
 import { $settings } from "../../stores/settings";
 import type { GlobalSettings } from "../../lib/tauri";
+import * as m from "../../i18n/paraglide/messages";
 
 // No backend in jsdom — stub the Tauri IPC layer.
 vi.mock("../../lib/tauri", () => ({
@@ -18,6 +19,7 @@ vi.mock("../../lib/tauri", () => ({
   stopAllRecordings: vi.fn().mockResolvedValue(undefined),
   startAllRecordings: vi.fn().mockResolvedValue(0),
   removeStream: vi.fn().mockResolvedValue(undefined),
+  removeStreams: vi.fn().mockResolvedValue(0),
   addToWishlist: vi.fn().mockResolvedValue(undefined),
   addToIgnorelist: vi.fn().mockResolvedValue(undefined),
   beginStreamImport: vi.fn().mockResolvedValue(null),
@@ -96,6 +98,7 @@ beforeEach(() => {
   $streams.set([mkStream("a", "Alpha")]);
   $toasts.set([]);
   $settings.set(null);
+  replaceSelection(new Set());
 });
 
 describe("StreamsPanel — filter state persistence", () => {
@@ -435,5 +438,33 @@ describe("StreamsPanel — stream sorting", () => {
     const name = sortButtons(container).find((b) => /назв|name/i.test(b.textContent ?? ""))!;
     fireEvent.click(name);
     expect(tauri.saveSettings).not.toHaveBeenCalled();
+  });
+});
+
+describe("StreamsPanel — selection toolbar cluster", () => {
+  beforeEach(() => {
+    $streams.set([mkStream("a", "Alpha"), mkStream("b", "Bravo"), mkStream("c", "Charlie")]);
+    $statuses.set({});
+  });
+
+  it("shows 'Виділити все' and a disabled 'Видалити виділені (0)' with no selection", () => {
+    renderPanel();
+    expect(screen.getByRole("button", { name: m.select_all() })).toBeTruthy();
+    const del = screen.getByRole("button", { name: m.delete_selected({ count: 0 }) });
+    expect(del.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("flips to 'Зняти виділення' when all visible are selected", () => {
+    replaceSelection(new Set(["a", "b", "c"]));
+    renderPanel();
+    expect(screen.getByRole("button", { name: m.clear_selection() })).toBeTruthy();
+  });
+
+  it("shows the [N вибрано] label and an enabled delete button when something is selected", () => {
+    replaceSelection(new Set(["a", "b"]));
+    renderPanel();
+    expect(screen.getByText(m.selected_count_label({ count: 2 }))).toBeTruthy();
+    const del = screen.getByRole("button", { name: m.delete_selected({ count: 2 }) });
+    expect(del.getAttribute("aria-disabled")).toBeNull();
   });
 });
