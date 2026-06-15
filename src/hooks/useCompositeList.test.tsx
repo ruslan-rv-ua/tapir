@@ -608,3 +608,25 @@ describe("selection — Shift+Arrow range from the anchor", () => {
     expectActive("b", "summary");
   });
 });
+
+describe("selection — Ctrl+A toggles all visible", () => {
+  it("from partial selection → all visible selected; group change", () => {
+    const selectionRef = { current: new Set<string>(["a"]) };
+    const onSelectionChange = vi.fn();
+    render(<Harness items={makeItems()} selectionRef={selectionRef} onSelectionChange={onSelectionChange} />);
+    focusStart("a");
+    press("a", { code: "KeyA", ctrlKey: true });
+    expect([...selectionRef.current].sort()).toEqual(["a", "b", "c"]);
+    expect(onSelectionChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "group", count: 3 }),
+    );
+  });
+
+  it("from all-visible-selected → cleared (those rows removed)", () => {
+    const selectionRef = { current: new Set<string>(["a", "b", "c"]) };
+    render(<Harness items={makeItems()} selectionRef={selectionRef} />);
+    focusStart("a");
+    press("a", { code: "KeyA", ctrlKey: true });
+    expect(selectionRef.current.size).toBe(0);
+  });
+});

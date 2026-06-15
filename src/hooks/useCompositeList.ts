@@ -138,7 +138,7 @@ type ActionId =
   | "up" | "down" | "left" | "right"
   | "home" | "end" | "pageup" | "pagedown"
   | "enter" | "space" | "delete" | "tab" | "copy" | "selectToggle"
-  | "selectRangeUp" | "selectRangeDown";
+  | "selectRangeUp" | "selectRangeDown" | "selectAll";
 
 /**
  * Map a keyboard event to a single list intent, or null to let it bubble.
@@ -152,6 +152,7 @@ function resolveKeyAction(e: React.KeyboardEvent): ActionId | null {
     (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey
   ) return "selectToggle";
   if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === "KeyC") return "copy";
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === "KeyA") return "selectAll";
   if (e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
     if (e.key === "ArrowDown") return "selectRangeDown";
     if (e.key === "ArrowUp") return "selectRangeUp";
@@ -481,6 +482,20 @@ export function useCompositeList<T extends CompositeListItem>({
           const span = rangeIds(anchorRef.current, cursorId);
           const next = new Set(anchorBaseRef.current);
           for (const id of span) next.add(id);
+          sel.replace(next);
+          onSelectionChangeRef.current?.({ kind: "group", via: "key", count: next.size });
+          break;
+        }
+
+        case "selectAll": {
+          const sel = selectionRef.current;
+          if (!sel) break;
+          consume();
+          const next = new Set(sel.current());
+          const visibleIds = items.map((it) => it.id);
+          const allSelected = visibleIds.length > 0 && visibleIds.every((id) => next.has(id));
+          if (allSelected) visibleIds.forEach((id) => next.delete(id));
+          else visibleIds.forEach((id) => next.add(id));
           sel.replace(next);
           onSelectionChangeRef.current?.({ kind: "group", via: "key", count: next.size });
           break;
