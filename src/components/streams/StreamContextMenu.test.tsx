@@ -109,4 +109,11 @@ describe("StreamContextMenu — selection-aware delete label", () => {
     open(container);
     expect(await screen.findByRole("menuitem", { name: "Видалити виділені (2)" })).toBeTruthy();
   });
+
+  it("delete item shows the single-stream label when the row is NOT selected", async () => {
+    replaceSelection(new Set(["other"])); // selection exists, but not the row under test (s1)
+    const { container } = renderMenu(mkStatus("idle"));
+    open(container);
+    expect(await screen.findByRole("menuitem", { name: "Видалити потік" })).toBeTruthy();
+  });
 });

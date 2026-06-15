@@ -280,6 +280,9 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
             return;
           }
           if (type === "delete") {
+            // Keyboard Delete acts on the WHOLE selection if any (size > 0) — the
+            // focused row need not itself be selected. This differs from the per-row
+            // ⋯ menu onDelete below, which routes by .has(id) (Explorer model).
             if ($streamSelection.get().size > 0) setBulkConfirmOpen(true);
             else setPendingDeleteId(itemId);
             return;
@@ -302,6 +305,10 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
               isSelected={selectedSet.has(id)}
               maxRetries={maxRetries}
               onDelete={() => {
+                // Explorer model: ⋯-delete on a row INSIDE the selection deletes the
+                // whole selection; on a row OUTSIDE it, first collapse the selection
+                // to that row (so the counter doesn't linger at N afterwards), then
+                // single-delete. Routes by .has(id), not size > 0 (cf. keyboard above).
                 if ($streamSelection.get().has(id)) {
                   setBulkConfirmOpen(true);
                 } else {
