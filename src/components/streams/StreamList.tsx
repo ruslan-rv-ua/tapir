@@ -7,8 +7,6 @@ import { CompositeList } from "../common/composite-list";
 import type { ActionModifiers, CompositeSelection, SelectionChange, SegmentKind } from "../../hooks/useCompositeList";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import type { StreamInfo, ProfileMeta } from "../../lib/tauri";
-
-export type StreamListHandle = ZoneEntry & { requestBulkDelete(): void };
 import { StreamItem, getStreamSegments } from "./StreamItem";
 import { StreamTransferDialog } from "./StreamTransferDialog";
 import { ProfileNameDialog } from "../profile/ProfileNameDialog";
@@ -18,6 +16,9 @@ import { useAnnounce } from "../../hooks/useAnnounce";
 import { createPortal } from "react-dom";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import * as m from "../../i18n/paraglide/messages";
+
+/** Imperative handle: zone navigation + the toolbar's bulk-delete entry point. */
+export type StreamListHandle = ZoneEntry & { requestBulkDelete(): void };
 
 interface Props {
   exitZone: (forward: boolean) => void;
