@@ -542,7 +542,7 @@ describe("selection — Ctrl+Space toggles the active row", () => {
     press(" ", { code: "Space", ctrlKey: true });
     expect(selectionRef.current.has("a")).toBe(false);
     expect(onSelectionChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ kind: "single", count: 0, lastId: "a", selected: false }),
+      expect.objectContaining({ kind: "single", via: "key", count: 0, lastId: "a", selected: false }),
     );
   });
 

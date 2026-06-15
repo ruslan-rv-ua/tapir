@@ -89,7 +89,12 @@ interface FocusMemory {
 export interface CompositeSelection {
   /** Event-time snapshot (atom.get). */
   current: () => ReadonlySet<string>;
-  /** Delegates to the store's replaceSelection (new Set identity). */
+  /**
+   * Delegates to the store's replaceSelection (new Set identity). MUST update the
+   * store synchronously: the hook calls `current()` immediately after `replace()`
+   * (e.g. to snapshot the range-anchor base), so a deferred/batched update would
+   * read stale state. A nanostores `atom.set` satisfies this.
+   */
   replace: (next: ReadonlySet<string>) => void;
 }
 
