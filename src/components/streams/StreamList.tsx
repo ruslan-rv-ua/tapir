@@ -301,7 +301,14 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
               isFocused={isFocused}
               isSelected={selectedSet.has(id)}
               maxRetries={maxRetries}
-              onDelete={() => setPendingDeleteId(id)}
+              onDelete={() => {
+                if ($streamSelection.get().has(id)) {
+                  setBulkConfirmOpen(true);
+                } else {
+                  replaceSelection(new Set([id]));
+                  setPendingDeleteId(id);
+                }
+              }}
               onCopyToProfile={() => openTransfer("copy", id)}
               onMoveToProfile={() => openTransfer("move", id)}
               onCopyUrl={() => copyStreamUrl(streams.find((s) => s.id === id)!)}

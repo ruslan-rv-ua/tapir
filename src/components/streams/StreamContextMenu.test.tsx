@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, fireEvent, screen } from "@testing-library/react";
 import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import { StreamContextMenu } from "./StreamContextMenu";
 import { $playerStatus } from "../../stores/player";
+import { replaceSelection } from "../../stores/streams";
 
 vi.mock("../../i18n/paraglide/messages", () => ({
   stream_actions: ({ name }: { name: string }) => `Дії для ${name}`,
@@ -15,6 +16,7 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   add_to_wishlist: () => "Додати до бажаних",
   add_to_ignorelist: () => "Додати до ігнор-листа",
   remove_stream: () => "Видалити потік",
+  delete_selected: ({ count }: { count: number }) => `Видалити виділені (${count})`,
   copy_to_profile: () => "Копіювати в профіль…",
   move_to_profile: () => "Перемістити в профіль…",
   move_disabled_reason: () => "Не можна перемістити активний потік",
@@ -43,6 +45,8 @@ function renderMenu(status?: StreamStatus) {
   );
   return { ...utils, ...h };
 }
+
+beforeEach(() => replaceSelection(new Set()));
 
 afterEach(() => {
   $playerStatus.set({ state: "stopped", source: null, volume: 0.75, positionMs: null, durationMs: null });
@@ -92,5 +96,17 @@ describe("StreamContextMenu — copy/move to profile", () => {
     open(container);
     fireEvent.click(await screen.findByRole("menuitem", { name: "Копіювати URL" }));
     expect(onCopyUrl).toHaveBeenCalled();
+  });
+});
+
+describe("StreamContextMenu — selection-aware delete label", () => {
+  const open = (container: HTMLElement) =>
+    fireEvent.click(container.querySelector('button[data-segment="action-menu"]')!);
+
+  it("delete item shows the bulk count when the row is selected", async () => {
+    replaceSelection(new Set(["s1", "s2"])); // stream under test is s1
+    const { container } = renderMenu(mkStatus("idle"));
+    open(container);
+    expect(await screen.findByRole("menuitem", { name: "Видалити виділені (2)" })).toBeTruthy();
   });
 });

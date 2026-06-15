@@ -2,7 +2,7 @@ import { Menu, MenuItem, MenuTrigger, Popover, Button, Separator } from "react-a
 import { Copy, FolderInput, Link } from "lucide-react";
 import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import * as tauri from "../../lib/tauri";
-import { $editStream } from "../../stores/streams";
+import { $editStream, $streamSelection } from "../../stores/streams";
 import { $playerStatus } from "../../stores/player";
 import { addToast } from "../../stores/toasts";
 import { useStore } from "@nanostores/react";
@@ -23,6 +23,8 @@ interface Props {
 
 export function StreamContextMenu({ stream, status, menuFocused, onAddToWishlist, onAddToIgnorelist, onCopyToProfile, onMoveToProfile, onCopyUrl, onDelete }: Props) {
   const playerStatus = useStore($playerStatus);
+  const selection = useStore($streamSelection);
+  const isSelected = selection.has(stream.id);
   const state = status?.state ?? "idle";
   const isRecording = state === "recording";
   const isThisStreamPlaying =
@@ -158,7 +160,8 @@ export function StreamContextMenu({ stream, status, menuFocused, onAddToWishlist
             id="delete"
             className="cursor-pointer px-3 py-1.5 text-sm text-red-400 outline-none hover:bg-slate-700 focus:bg-slate-700 forced-colors:text-[CanvasText]"
           >
-            <span aria-hidden="true">✕ </span>{m.remove_stream()}
+            <span aria-hidden="true">✕ </span>
+            {isSelected ? m.delete_selected({ count: selection.size }) : m.remove_stream()}
           </MenuItem>
         </Menu>
       </Popover>

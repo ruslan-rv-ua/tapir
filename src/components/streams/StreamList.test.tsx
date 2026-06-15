@@ -442,6 +442,28 @@ describe("StreamList — imperative requestBulkDelete", () => {
   });
 });
 
+describe("StreamList — ⋯ delete routing by selection (Explorer model)", () => {
+  const openMenu = (container: HTMLElement, id: string) =>
+    fireEvent.click(container.querySelector<HTMLElement>(`li[data-item-id="${id}"] button[data-segment="action-menu"]`)!);
+
+  it("⋯ delete on a selected row opens the bulk confirm", async () => {
+    replaceSelection(new Set(["a", "b"]));
+    const { container } = renderList();
+    openMenu(container, "a");
+    fireEvent.click(await screen.findByRole("menuitem", { name: m.delete_selected({ count: 2 }) }));
+    expect(await screen.findByText(m.confirm_delete_selected({ count: 2 }))).toBeTruthy();
+  });
+
+  it("⋯ delete on a NON-selected row collapses to it, then does single delete", async () => {
+    replaceSelection(new Set(["a", "b"]));
+    const { container } = renderList();
+    openMenu(container, "c"); // c not selected
+    fireEvent.click(await screen.findByRole("menuitem", { name: m.remove_stream() }));
+    expect(await screen.findByText(m.confirm_delete_stream({ name: "Charlie" }))).toBeTruthy();
+    expect([...$streamSelection.get()]).toEqual(["c"]); // collapsed
+  });
+});
+
 describe("StreamList — prune vanished ids", () => {
   it("drops selected ids that no longer exist in $streams (keeps the counter honest)", async () => {
     replaceSelection(new Set(["a", "b"]));
