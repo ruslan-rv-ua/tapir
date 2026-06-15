@@ -7,6 +7,8 @@ import { CompositeList } from "../common/composite-list";
 import type { ActionModifiers, CompositeSelection, SelectionChange, SegmentKind } from "../../hooks/useCompositeList";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import type { StreamInfo, ProfileMeta } from "../../lib/tauri";
+
+export type StreamListHandle = ZoneEntry & { requestBulkDelete(): void };
 import { StreamItem, getStreamSegments } from "./StreamItem";
 import { StreamTransferDialog } from "./StreamTransferDialog";
 import { ProfileNameDialog } from "../profile/ProfileNameDialog";
@@ -24,7 +26,7 @@ interface Props {
   streams?: StreamInfo[];
 }
 
-export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, streams: streamsProp }, ref) => {
+export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmpty, streams: streamsProp }, ref) => {
   const allStreams = useStore($streams);
   const statuses = useStore($statuses);
   const selectedSet = useStore($streamSelection);
@@ -252,7 +254,7 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
 
   return (
     <>
-      <CompositeList
+      <CompositeList<StreamListHandle>
         ref={ref}
         imperativeExtra={imperativeExtra}
         zoneId="streams-list"

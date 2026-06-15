@@ -432,6 +432,16 @@ describe("StreamList — focus after bulk delete", () => {
   });
 });
 
+describe("StreamList — imperative requestBulkDelete", () => {
+  it("opens the bulk confirm from the handle (toolbar entry point)", async () => {
+    replaceSelection(new Set(["a", "b"]));
+    const ref = createRef<ZoneEntry & { requestBulkDelete(): void }>();
+    render(<StreamList ref={ref} exitZone={vi.fn()} onEmpty={vi.fn()} />);
+    act(() => ref.current!.requestBulkDelete());
+    expect(await screen.findByText(m.confirm_delete_selected({ count: 2 }))).toBeTruthy();
+  });
+});
+
 describe("StreamList — bulk delete", () => {
   it("Delete with a non-empty selection opens one confirm with the exact count", async () => {
     replaceSelection(new Set(["a", "b"]));
