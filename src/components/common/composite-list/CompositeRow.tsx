@@ -24,6 +24,8 @@ interface CompositeRowProps {
   onActivate?: (modifiers: ActionModifiers) => void;
   /** aria-keyshortcuts advertised on the summary stop (e.g. "Shift+Enter Control+Enter"). */
   keyshortcuts?: string;
+  /** Marks the row as selected — sets data-selected for CSS + assistive parity. */
+  selected?: boolean;
   children: ReactNode;
 }
 
@@ -44,6 +46,7 @@ export function CompositeRow({
   style,
   onActivate,
   keyshortcuts,
+  selected,
   children,
 }: CompositeRowProps) {
   return (
@@ -55,6 +58,7 @@ export function CompositeRow({
       aria-label={label}
       aria-roledescription={roleDescription}
       aria-keyshortcuts={keyshortcuts}
+      data-selected={selected ? "true" : undefined}
       className={[className, isActiveRow ? activeClassName : ""].filter(Boolean).join(" ")}
       style={style}
       onDoubleClick={

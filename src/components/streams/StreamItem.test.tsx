@@ -4,6 +4,7 @@ import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import * as tauri from "../../lib/tauri";
 import { StreamItem } from "./StreamItem";
 import { $playerStatus } from "../../stores/player";
+import * as m from "../../i18n/paraglide/messages";
 
 // Stub the Tauri IPC layer — there is no backend in jsdom.
 vi.mock("../../lib/tauri", () => ({
@@ -295,5 +296,39 @@ describe("StreamItem — inline icon slots (D1–D2)", () => {
     const { container } = renderItem(mkStream(), mkSt("recording"));
     expect(container.querySelector('[data-slot="record"]')?.getAttribute("aria-hidden")).toBe("true");
     expect(container.querySelector('[data-slot="play"]')?.getAttribute("aria-hidden")).toBe("true");
+  });
+});
+
+describe("StreamItem — selection presentation", () => {
+  const renderSelected = (isSelected: boolean) =>
+    render(
+      <ul>
+        <StreamItem
+          stream={mkStream({ name: "Radio Paradise" })}
+          status={undefined}
+          isActiveRow={false}
+          isSelected={isSelected}
+          isFocused={(seg) => seg === "summary"}
+          maxRetries={0}
+          onDelete={() => {}}
+          onCopyToProfile={() => {}}
+          onMoveToProfile={() => {}}
+          onCopyUrl={() => {}}
+        />
+      </ul>,
+    );
+
+  it("appends the ', виділено' suffix to the row's accessible name when selected", () => {
+    const { container } = renderSelected(true);
+    const li = container.querySelector<HTMLElement>('li[data-segment="summary"]')!;
+    expect(li.getAttribute("aria-label")).toBe(`Radio Paradise, ${m.selection_suffix()}`);
+    expect(li.getAttribute("data-selected")).toBe("true");
+  });
+
+  it("no suffix and no data-selected when not selected", () => {
+    const { container } = renderSelected(false);
+    const li = container.querySelector<HTMLElement>('li[data-segment="summary"]')!;
+    expect(li.getAttribute("aria-label")).toBe("Radio Paradise");
+    expect(li.getAttribute("data-selected")).toBeNull();
   });
 });

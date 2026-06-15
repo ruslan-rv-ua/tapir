@@ -45,6 +45,8 @@ interface Props {
   onCopyUrl: () => void;
   /** Primary action on a mouse double-click of the row (record/play per setting; Shift/Ctrl force play/record). */
   onActivate?: (modifiers: ActionModifiers) => void;
+  /** This row is part of the multi-selection (name suffix + highlight). */
+  isSelected?: boolean;
 }
 
 export function StreamItem({
@@ -58,6 +60,7 @@ export function StreamItem({
   onMoveToProfile,
   onCopyUrl,
   onActivate,
+  isSelected,
 }: Props) {
   const state = status?.state ?? "idle";
   const isRecording = state === "recording";
@@ -114,7 +117,8 @@ export function StreamItem({
           : state === "error"
             ? m.status_error()
             : null;
-  const summaryLabel = stateLabel ? `${stateLabel}, ${stream.name}` : stream.name;
+  const baseLabel = stateLabel ? `${stateLabel}, ${stream.name}` : stream.name;
+  const summaryLabel = isSelected ? `${baseLabel}, ${m.selection_suffix()}` : baseLabel;
 
   const slot1Icon =
     state === "recording" ? (
@@ -186,7 +190,8 @@ export function StreamItem({
       isFocused={isFocused}
       label={summaryLabel}
       roleDescription={m.item_role_stream()}
-      className={`grid border-b border-slate-800 forced-colors:border-[ButtonText] ${rowBg}`}
+      selected={isSelected}
+      className={`grid border-b border-slate-800 forced-colors:border-[ButtonText] ${rowBg} data-[selected=true]:bg-sky-900/40 data-[selected=true]:ring-1 data-[selected=true]:ring-inset data-[selected=true]:ring-sky-400/40 forced-colors:data-[selected=true]:bg-[Highlight] forced-colors:data-[selected=true]:text-[HighlightText]`}
       style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1.5fr) 90px 90px auto" }}
       onActivate={onActivate}
     >
