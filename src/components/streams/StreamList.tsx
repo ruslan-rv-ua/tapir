@@ -182,12 +182,16 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
   const handleConfirmBulkDelete = async () => {
     const ids = [...$streamSelection.get()];
     if (ids.length === 0) {
+      // Defensive: the selection was cleared (e.g. profile-change prune) while the
+      // dialog was open. Nothing to delete.
       setBulkConfirmOpen(false);
       return;
     }
     const idSet = new Set(ids);
     // Focus target computed from the CURRENT visible order, BEFORE deletion (A8):
     // first survivor at/after the top removed index; tail → new last; none → onEmpty.
+    // Math.max(0, ...) is a not-found fallback (findIndex === -1 when no selected
+    // row is visible, e.g. under a filter) → land on the first row.
     const topRemovedIdx = Math.max(0, streams.findIndex((s) => idSet.has(s.id)));
     const survivors = streams.filter((s) => !idSet.has(s.id));
     try {
