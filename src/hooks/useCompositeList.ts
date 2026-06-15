@@ -137,7 +137,8 @@ interface UseCompositeListOptions<T extends CompositeListItem> {
 type ActionId =
   | "up" | "down" | "left" | "right"
   | "home" | "end" | "pageup" | "pagedown"
-  | "enter" | "space" | "delete" | "tab" | "copy" | "selectToggle";
+  | "enter" | "space" | "delete" | "tab" | "copy" | "selectToggle"
+  | "selectRangeUp" | "selectRangeDown";
 
 /**
  * Map a keyboard event to a single list intent, or null to let it bubble.
@@ -151,6 +152,10 @@ function resolveKeyAction(e: React.KeyboardEvent): ActionId | null {
     (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey
   ) return "selectToggle";
   if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === "KeyC") return "copy";
+  if (e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+    if (e.key === "ArrowDown") return "selectRangeDown";
+    if (e.key === "ArrowUp") return "selectRangeUp";
+  }
   switch (e.key) {
     case "ArrowUp": return "up";
     case "ArrowDown": return "down";
@@ -296,6 +301,15 @@ export function useCompositeList<T extends CompositeListItem>({
   function resolveSegments(item: T): SegmentKind[] {
     return ['summary', ...item.segments] as SegmentKind[];
   }
+
+  /** Contiguous ids from `fromId` to `toId` over the current visible items. */
+  const rangeIds = useCallback((fromId: string, toId: string): string[] => {
+    const i = items.findIndex((it) => it.id === fromId);
+    const j = items.findIndex((it) => it.id === toId);
+    if (i < 0 || j < 0) return [toId];
+    const [lo, hi] = i <= j ? [i, j] : [j, i];
+    return items.slice(lo, hi + 1).map((it) => it.id);
+  }, [items]);
 
   /** (Re)set the anchor and snapshot the *current* selection as its base. */
   const setAnchor = useCallback((id: string) => {
@@ -447,6 +461,31 @@ export function useCompositeList<T extends CompositeListItem>({
           toggleSelection(activeItemId, "key");
           break;
 
+        case "selectRangeDown":
+        case "selectRangeUp": {
+          consume();
+          const dir = action === "selectRangeDown" ? 1 : -1;
+          const nextIdx = Math.max(0, Math.min(items.length - 1, currentIdx + dir));
+          const cursorId = items[nextIdx].id;
+          moveFocus(cursorId, "summary");
+          const sel = selectionRef.current;
+          if (!sel) break; // no adapter → behaves like a plain arrow move
+          // Guard: an external clear leaves a stale anchorBase that base ∪ range
+          // would resurrect. On an empty selection, re-anchor to the landed row
+          // with an empty base so the span is just {cursor}.
+          if (sel.current().size === 0) {
+            anchorRef.current = cursorId;
+            anchorBaseRef.current = new Set();
+          }
+          if (anchorRef.current == null) anchorRef.current = cursorId;
+          const span = rangeIds(anchorRef.current, cursorId);
+          const next = new Set(anchorBaseRef.current);
+          for (const id of span) next.add(id);
+          sel.replace(next);
+          onSelectionChangeRef.current?.({ kind: "group", via: "key", count: next.size });
+          break;
+        }
+
         case "enter":
           if (isNativeControl(document.activeElement)) break;
           consume();
@@ -466,7 +505,7 @@ export function useCompositeList<T extends CompositeListItem>({
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeItemId, activeSegment, items, moveFocus, toggleSelection, setAnchor],
+    [activeItemId, activeSegment, items, moveFocus, toggleSelection, setAnchor, rangeIds],
   );
 
   const onClick = useCallback((_e: React.MouseEvent) => {

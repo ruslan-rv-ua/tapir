@@ -566,3 +566,45 @@ describe("selection — Ctrl+Space toggles the active row", () => {
     expect([...selectionRef.current]).toEqual(["a"]);
   });
 });
+
+describe("selection — Shift+Arrow range from the anchor", () => {
+  it("Shift+Down expands, then Shift+Up contracts (anchored, base-snapshot model)", () => {
+    const selectionRef = { current: new Set<string>() };
+    const onSelectionChange = vi.fn();
+    render(<Harness items={makeItems()} selectionRef={selectionRef} onSelectionChange={onSelectionChange} />);
+    focusStart("a");
+
+    press(" ", { code: "Space", ctrlKey: true }); // anchor = a, select a
+    press("ArrowDown", { shiftKey: true }); // span a..b
+    expect([...selectionRef.current].sort()).toEqual(["a", "b"]);
+    expectActive("b", "summary");
+
+    press("ArrowDown", { shiftKey: true }); // span a..c
+    expect([...selectionRef.current].sort()).toEqual(["a", "b", "c"]);
+
+    press("ArrowUp", { shiftKey: true }); // span a..b — c drops
+    expect([...selectionRef.current].sort()).toEqual(["a", "b"]);
+    expect(onSelectionChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "group", via: "key", count: 2 }),
+    );
+  });
+
+  it("anchorBase guard: after external clear, the first Shift+Down yields exactly the landed row", () => {
+    const selectionRef = { current: new Set<string>() };
+    render(<Harness items={makeItems()} selectionRef={selectionRef} />);
+    focusStart("a");
+    press(" ", { code: "Space", ctrlKey: true }); // anchor=a, base={a}
+    // External clear (toolbar/lifecycle) WITHOUT touching the hook's anchor:
+    selectionRef.current = new Set();
+    press("ArrowDown", { shiftKey: true });
+    // Stale base {a} must NOT resurrect; result is just the landed row.
+    expect([...selectionRef.current]).toEqual(["b"]);
+  });
+
+  it("without a selection adapter, Shift+Down is a plain move (1:1 legacy)", () => {
+    render(<Harness items={makeItems()} />);
+    focusStart("a");
+    press("ArrowDown", { shiftKey: true });
+    expectActive("b", "summary");
+  });
+});
