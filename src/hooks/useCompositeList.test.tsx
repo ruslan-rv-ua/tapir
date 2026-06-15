@@ -609,6 +609,31 @@ describe("selection — Shift+Arrow range from the anchor", () => {
   });
 });
 
+describe("selection — Escape clears non-empty, otherwise passes through", () => {
+  it("non-empty: clears, emits group count 0, and consumes (no bubble)", () => {
+    const selectionRef = { current: new Set<string>(["a", "b"]) };
+    const onSelectionChange = vi.fn();
+    const onParentKeyDown = vi.fn();
+    render(
+      <Harness items={makeItems()} selectionRef={selectionRef} onSelectionChange={onSelectionChange} onParentKeyDown={onParentKeyDown} />,
+    );
+    focusStart("a");
+    press("Escape");
+    expect(selectionRef.current.size).toBe(0);
+    expect(onSelectionChange).toHaveBeenLastCalledWith(expect.objectContaining({ kind: "group", count: 0 }));
+    expect(onParentKeyDown).not.toHaveBeenCalled(); // consumed
+  });
+
+  it("empty: does NOT consume — Escape stays free in the list", () => {
+    const selectionRef = { current: new Set<string>() };
+    const onParentKeyDown = vi.fn();
+    render(<Harness items={makeItems()} selectionRef={selectionRef} onParentKeyDown={onParentKeyDown} />);
+    focusStart("a");
+    press("Escape");
+    expect(onParentKeyDown).toHaveBeenCalledTimes(1); // bubbled
+  });
+});
+
 describe("selection — Ctrl+A toggles all visible", () => {
   it("from partial selection → all visible selected; group change", () => {
     const selectionRef = { current: new Set<string>(["a"]) };

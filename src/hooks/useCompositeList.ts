@@ -138,7 +138,7 @@ type ActionId =
   | "up" | "down" | "left" | "right"
   | "home" | "end" | "pageup" | "pagedown"
   | "enter" | "space" | "delete" | "tab" | "copy" | "selectToggle"
-  | "selectRangeUp" | "selectRangeDown" | "selectAll";
+  | "selectRangeUp" | "selectRangeDown" | "selectAll" | "clearSelection";
 
 /**
  * Map a keyboard event to a single list intent, or null to let it bubble.
@@ -166,6 +166,7 @@ function resolveKeyAction(e: React.KeyboardEvent): ActionId | null {
     case "End": return "end";
     case "PageUp": return "pageup";
     case "PageDown": return "pagedown";
+    case "Escape": return "clearSelection";
     case "Enter": return "enter";
     case "Delete": return "delete";
     case "Tab": return "tab";
@@ -498,6 +499,19 @@ export function useCompositeList<T extends CompositeListItem>({
           else visibleIds.forEach((id) => next.add(id));
           sel.replace(next);
           onSelectionChangeRef.current?.({ kind: "group", via: "key", count: next.size });
+          break;
+        }
+
+        case "clearSelection": {
+          const sel = selectionRef.current;
+          if (sel && sel.current().size > 0) {
+            consume();
+            sel.replace(new Set());
+            anchorRef.current = null;
+            anchorBaseRef.current = new Set();
+            onSelectionChangeRef.current?.({ kind: "group", via: "key", count: 0 });
+          }
+          // empty (or no adapter): do NOT consume — Escape is free in the list.
           break;
         }
 
