@@ -32,6 +32,7 @@ export function pruneSelection(existingIds: ReadonlySet<string>): void {
   }
   if (changed) $streamSelection.set(next);
 }
+
 export const $showAddStreamDialog = atom<boolean>(false);
 export const $editStream = atom<StreamInfo | null>(null);
 
