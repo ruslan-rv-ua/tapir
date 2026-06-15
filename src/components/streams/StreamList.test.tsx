@@ -20,6 +20,7 @@ vi.mock("../../lib/tauri", () => ({
   startRecording: vi.fn().mockResolvedValue(undefined),
   stopRecording: vi.fn().mockResolvedValue(undefined),
   removeStream: vi.fn().mockResolvedValue(undefined),
+  removeStreams: vi.fn().mockResolvedValue(2),
   addToWishlist: vi.fn().mockResolvedValue(undefined),
   addToIgnorelist: vi.fn().mockResolvedValue(undefined),
   listProfiles: vi.fn().mockResolvedValue([
@@ -387,5 +388,36 @@ describe("StreamList — selection rendering & announcements", () => {
     );
     expect($streamSelection.get().size).toBe(1);
     expect($announcer.get()).toBeNull();
+  });
+});
+
+describe("StreamList — bulk delete", () => {
+  it("Delete with a non-empty selection opens one confirm with the exact count", async () => {
+    replaceSelection(new Set(["a", "b"]));
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: "Delete" });
+    expect(await screen.findByText(m.confirm_delete_selected({ count: 2 }))).toBeTruthy();
+  });
+
+  it("confirming calls removeStreams with the selected ids, updates $streams once, announces", async () => {
+    replaceSelection(new Set(["a", "c"]));
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: "Delete" });
+    fireEvent.click(await screen.findByRole("button", { name: m["delete"]() }));
+
+    await waitFor(() => expect(tauri.removeStreams).toHaveBeenCalledTimes(1));
+    expect(new Set(vi.mocked(tauri.removeStreams).mock.calls[0][0])).toEqual(new Set(["a", "c"]));
+    await waitFor(() => expect($streams.get().map((s) => s.id)).toEqual(["b"]));
+    expect($streamSelection.get().size).toBe(0);
+    await waitFor(() => expect($announcer.get()?.message).toBe(m.streams_removed_bulk({ count: 2 })));
+  });
+
+  it("Delete with an empty selection still does single-row delete (unchanged)", async () => {
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: "Delete" });
+    expect(await screen.findByText(m.confirm_delete_stream({ name: "Alpha" }))).toBeTruthy();
   });
 });

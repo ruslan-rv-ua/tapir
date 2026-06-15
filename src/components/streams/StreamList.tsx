@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useMemo, useState } from "react";
+import { forwardRef, useCallback, useMemo, useRef, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { $streams, $statuses, $streamSelection, replaceSelection } from "../../stores/streams";
 import { $recordingSettings, $settings } from "../../stores/settings";
@@ -34,6 +34,8 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
   const maxRetries = recordingSettings?.reconnect.maxRetries ?? 0;
   const streams = streamsProp ?? allStreams;
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+  const pendingBulkFocusRef = useRef<string | null>(null);
 
   const announce = useAnnounce();
 
@@ -177,6 +179,31 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
     setPendingDeleteId(null);
   };
 
+  const handleConfirmBulkDelete = async () => {
+    const ids = [...$streamSelection.get()];
+    if (ids.length === 0) {
+      setBulkConfirmOpen(false);
+      return;
+    }
+    const idSet = new Set(ids);
+    // Focus target computed from the CURRENT visible order, BEFORE deletion (A8):
+    // first survivor at/after the top removed index; tail → new last; none → onEmpty.
+    const topRemovedIdx = Math.max(0, streams.findIndex((s) => idSet.has(s.id)));
+    const survivors = streams.filter((s) => !idSet.has(s.id));
+    try {
+      const removed = await tauri.removeStreams(ids);
+      $streams.set($streams.get().filter((s) => !idSet.has(s.id)));
+      replaceSelection(new Set());
+      announce(m.streams_removed_bulk({ count: removed }), "polite");
+      pendingBulkFocusRef.current =
+        survivors.length === 0 ? null : survivors[Math.min(topRemovedIdx, survivors.length - 1)].id;
+      if (survivors.length === 0) onEmpty();
+    } catch (err) {
+      addToast(String(err), "error");
+    }
+    setBulkConfirmOpen(false);
+  };
+
   const copyStreamUrl = async (stream: StreamInfo) => {
     try {
       await navigator.clipboard.writeText(stream.url);
@@ -206,7 +233,8 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
             return;
           }
           if (type === "delete") {
-            setPendingDeleteId(itemId);
+            if ($streamSelection.get().size > 0) setBulkConfirmOpen(true);
+            else setPendingDeleteId(itemId);
             return;
           }
           // Action buttons self-activate; only Enter/Space on the whole-row
@@ -242,6 +270,17 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
             message={m.confirm_delete_stream({ name: streams.find((s) => s.id === pendingDeleteId)?.name ?? "" })}
             onConfirm={handleConfirmDelete}
             onCancel={() => setPendingDeleteId(null)}
+          />,
+          document.body,
+        )}
+
+      {bulkConfirmOpen &&
+        createPortal(
+          <ConfirmDialog
+            title={m.remove_stream()}
+            message={m.confirm_delete_selected({ count: selectedSet.size })}
+            onConfirm={handleConfirmBulkDelete}
+            onCancel={() => setBulkConfirmOpen(false)}
           />,
           document.body,
         )}
