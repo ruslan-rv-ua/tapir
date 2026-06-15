@@ -1,6 +1,6 @@
-import { forwardRef, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@nanostores/react";
-import { $streams, $statuses, $streamSelection, replaceSelection } from "../../stores/streams";
+import { $streams, $statuses, $streamSelection, replaceSelection, pruneSelection } from "../../stores/streams";
 import { $recordingSettings, $settings } from "../../stores/settings";
 import { $playerStatus } from "../../stores/player";
 import { CompositeList } from "../common/composite-list";
@@ -170,6 +170,13 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
     pendingBulkFocusRef.current = null;
     focusItemRef.current?.(targetId, "summary");
   }, [items, bulkDeleteSeq]);
+
+  // Prune ids that vanished from $streams (after bulk ops, edits, sync). Uses the
+  // FULL store, not the visible list — a row hidden by a status change under a
+  // chip must NOT drop out of the selection (only an explicit filter change clears).
+  useEffect(() => {
+    pruneSelection(new Set(allStreams.map((s) => s.id)));
+  }, [allStreams]);
 
   // The row's primary action, shared by keyboard activation (Enter/Space on the
   // summary) and a mouse double-click. Per `doubleClickAction` it toggles either

@@ -442,6 +442,16 @@ describe("StreamList — imperative requestBulkDelete", () => {
   });
 });
 
+describe("StreamList — prune vanished ids", () => {
+  it("drops selected ids that no longer exist in $streams (keeps the counter honest)", async () => {
+    replaceSelection(new Set(["a", "b"]));
+    renderList(); // streams a,b,c exist → nothing pruned yet
+    expect($streamSelection.get().size).toBe(2);
+    act(() => $streams.set([mkStream("a", "Alpha")])); // b and c gone
+    await waitFor(() => expect([...$streamSelection.get()]).toEqual(["a"]));
+  });
+});
+
 describe("StreamList — bulk delete", () => {
   it("Delete with a non-empty selection opens one confirm with the exact count", async () => {
     replaceSelection(new Set(["a", "b"]));
