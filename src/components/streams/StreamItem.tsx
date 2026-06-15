@@ -145,7 +145,11 @@ export function StreamItem({
   const trackValue = status?.currentTrack
     ? `${status.currentTrack.artist} — ${status.currentTrack.title}`
     : "—";
-  const trackLabel = showAsLastTrack ? m.segment_track_last({ track: trackValue }) : trackValue;
+  const trackLabel = showAsLastTrack
+    ? m.segment_track_last({ track: trackValue })
+    : hasTrack
+      ? trackValue
+      : m.segment_track_none();
   const trackTextClass = showAsLastTrack ? "text-slate-500 italic" : "text-slate-400";
 
   const techValue = formatBitrate(stream.bitrate);
