@@ -65,8 +65,11 @@
 ### A1. Сховище — `$streamSelection` + read через `useStore` (рішення №10)
 
 `stores/streams.ts`: `export const $streamSelection = atom<Set<string>>(new Set())`
-плюс дрібні **чисті** хелпери `replaceSelection(next)` і
-`pruneSelection(existingIds)`. Atom — єдине джерело правди; тулбар (StreamsPanel),
+плюс дрібні **store-екшени** `replaceSelection(next)` (нормалізує в новий `Set`
+і робить `$streamSelection.set`) та `pruneSelection(existingIds)` (прибирає id,
+яких уже нема; **no-op, якщо нічого не змінилось** — без зайвих ререндерів). Це
+**імперативні** дії над atom (не чисті функції): їх викликають адаптер `replace`
+(A2) і lifecycle-ефект (A10). Atom — єдине джерело правди; тулбар (StreamsPanel),
 список (StreamList) і рядок (StreamItem) читають його через `useStore` — **без**
 prop-drilling крізь `CompositeList` (тулбар — сусідня зона). Узагальнення на 6
 списків — пізніше (D); зараз atom streams-специфічний.
@@ -79,10 +82,11 @@ select-all, clear, count, якір) живе **в хуку**:
 ```ts
 interface CompositeSelection {
   current: () => ReadonlySet<string>;          // event-time знімок (atom.get)
-  replace: (next: ReadonlySet<string>) => void; // store робить $streamSelection.set
+  replace: (next: ReadonlySet<string>) => void; // делегує в replaceSelection (A1): $streamSelection.set
 }
 interface SelectionChange {
-  kind: "single" | "group";  // single = Ctrl+Space/Ctrl+Click; group = діапазон/all/clear
+  kind: "single" | "group";  // single = Ctrl+Space/Ctrl+Click/простий клік; group = діапазон/all/clear
+  via: "key" | "pointer";    // pointer-жести вже рухають DOM-фокус (NVDA читає рядок) → single повторно НЕ оголошуємо
   count: number;             // новий розмір виділення
   lastId?: string;           // перемкнутий рядок (лише single)
   selected?: boolean;        // його новий стан (лише single)
@@ -96,8 +100,16 @@ onSelectionChange?: (c: SelectionChange) => void;
 встановлення якоря). **Shift-діапазон і розширюється, і звужується** коректно
 (Explorer-модель, №11): `next = anchorBase ∪ range(anchor → cursor)`. Якір
 (пере)встановлюється на Ctrl+Space/Ctrl+Click і на **звичайних** навігаційних
-переміщеннях; Shift-жести якір **не** рухають. Без `selection` — хук поводиться
-як зараз (інші списки нічого не передають).
+переміщеннях; **кожне (пере)встановлення наново знімає `anchorBase` з
+`selection.current()`**. Shift-жести якір **не** рухають. Без `selection` — хук
+поводиться як зараз (інші списки нічого не передають).
+
+> **Захист від зовнішнього очищення (геп):** хук **не** спостерігає `replaceSelection`,
+> викликані ззовні — тулбаром (A7) чи lifecycle (A10). Якщо виділення очистили
+> зовні, а наступний жест — одразу Shift+↑↓ (без проміжної звичайної навігації, що
+> переписала б `anchorBase`), стара непорожня база воскресила б щойно очищене через
+> `anchorBase ∪ range`. Тож **на старті кожного Shift-жесту**: якщо `selection.current()`
+> порожнє — примусово `anchorBase = ∅`, а якорем узяти поточний курсор.
 
 ### A3. Рефактор key→actionType ПЕРЕД новими клавішами (передумова)
 
@@ -123,8 +135,15 @@ PageX, Enter, Space, Delete, Tab, Ctrl+C) зберігають поведінк�
 | `Space` (без Ctrl) | без змін → record/play `toggle` (split `case ' '` за `e.ctrlKey`) |
 | стрілки/Home/End/PageX/Enter/Tab/Ctrl+C | без змін |
 
-`case ' '` розгалужується за `e.ctrlKey`: з Ctrl → select-toggle; без — наявна
-record/play-гілка.
+> «Без змін» в останньому рядку — про **рух фокуса**: коли `selection` активне,
+> звичайні стрілки/Home/End/PageX додатково **(пере)встановлюють якір** (A2;
+> базовий знімок = поточне виділення), а Shift-жести якір **не** рухають. Сам рух
+> фокуса лишається 1:1 з поточним.
+
+`case ' '` розгалужується за `e.ctrlKey`: з Ctrl → select-toggle **активного
+рядка** (гілка **не** гейтиться `isNativeControl` — toggle діє з будь-якого
+сегмента, зокрема з кнопки-дії, і `consume()` глушить нативний клік); без Ctrl —
+наявна record/play-гілка зі своїм `isNativeControl`-гардом 1:1.
 
 ### A5. Мишача модель (рішення №11, №15) — на `<ul>`, як `onContextMenu`
 
@@ -136,6 +155,14 @@ record/play-гілка.
 - **Shift+Click** → спан якір→клік.
 - **Подвійний клік** → без змін (primary-дія через наявний `onActivate` у Row).
 
+Усі мишачі жести рухають **DOM-фокус** на клікнутий рядок (на відміну від
+Ctrl+Space) — тож NVDA сам прочитає рядок із суфіксом «, виділено». Тому
+`onSelectionChange` для них іде з `via:"pointer"`, і StreamList **не** дублює
+явним `announce` одиничний стан (простий клік / Ctrl+Click → `{single}`); лише
+Shift+Click (спан, зміна багатьох рядків) шле одне зведене `{group}` «Виділено N».
+Простий клік-«згортання» — це `{single, selected:true, count:1}` (де-виділення
+решти рядків окремо не оголошується, як у Провіднику).
+
 ### A6. ARIA/NVDA (рішення №9)
 
 - **Суфікс в accessible name:** до `aria-label` виділеного рядка додається
@@ -143,17 +170,24 @@ record/play-гілка.
 - **Зрячим:** CSS-підсвітка виділених рядків (`data-selected` + клас; `forced-colors:`
   через `Highlight`/`HighlightText`), візуально відмінна від active-row/recording/
   playing-фону.
-- **Оголошення — лише через центральний LiveAnnouncer** (`announce`), один канал;
+- **Оголошення — лише через центральний LiveAnnouncer** (`announce`), один канал
+  (кілька викликачів: хук-жести через `onSelectionChange`→StreamList; тулбар-кнопки
+  «Виділити все/Зняти» оголошують **самі**, A7 — бо діють в обхід хука);
   тулбар-лічильник — **візуальний, НЕ live** (інакше NVDA озвучить двічі):
-  - **одиничний** toggle → негайний `announce` («{name}, виділено» / «{name}, знято
-    з виділення») — фокус не рухається, тож NVDA сам мовчить;
+  - **одиничний** toggle **з клавіатури** (Ctrl+Space) → негайний `announce`
+    («{name}, виділено» / «{name}, знято з виділення») — фокус не рухається, тож
+    NVDA сам мовчить; **pointer-варіанти** (простий клік / Ctrl+Click, `via:"pointer"`)
+    фокус **рухають** → рядок читається сам, явно їх **не** оголошуємо (A5);
   - **груповий** жест → рівно **одне** зведене `announce` («Виділено N»); Shift-стрілки
     додатково рухають фокус, тож NVDA озвучить новий рядок із суфіксом поверх одного
     зведеного; clear → `announce` («Виділення знято»).
 
-> Узгодження з accessibility.md §3.1: ескіз із per-toolbar `aria-live` лічильником —
-> з історичного table/grid-чернетки (примітка doc 2026-04-23). Стан виділення
-> їде центральним announcer'ом. Додати в §3 короткий абзац-уточнення.
+> Узгодження з accessibility.md §3.1 (**застосовано** на етапі цієї спеки): ескіз із
+> per-toolbar `aria-live` лічильником («{n} вибрано», ~рядок 190) — з історичного
+> table/grid-чернетки (примітка doc 2026-04-23) і **прямо суперечив** цій спеці (дав би
+> подвійне озвучення поверх центрального announcer'а). У §3.1 `aria-live` з лічильника
+> **прибрано** (звичайний span, як `[N вибрано]` в A7), а під §3 додано абзац про єдиний
+> канал оголошень виділення + звірку з реальним `role="application"`-списком.
 
 `onSelectionChange` віддає **дані** (kind/count/lastId/selected); локалізований
 рядок добирає `StreamList` (має `streams` для пошуку назви + `useAnnounce`).
@@ -167,7 +201,11 @@ RecordAll 5, StopAll 6, chips 7–9, sorts 10–11 (оновити `toolbarRefs`
 колоковані коментарі про індекси).
 
 - **Виділити все/Зняти:** label перемикається за «всі видимі виділені» (дзеркало
-  Ctrl+A); `aria-disabled` коли немає видимих рядків; діє на `sortedStreams`.
+  Ctrl+A); `aria-disabled` коли немає видимих рядків; діє на `sortedStreams`
+  (`replaceSelection`). Тулбар — сусідня зона, **не** проходить через
+  `onSelectionChange` хука, тож клік **сам** кличе `announce` (StreamsPanel має
+  `useAnnounce`): «Виділено N» / «Виділення знято» — той самий центральний канал
+  (A6), просто другий викликач. Інакше Ctrl+A озвучувався б, а кнопка-дзеркало — ні.
 - **Видалити виділені (N):** кількість у видимому тексті **і** в accessible name
   (WCAG 2.5.3); `aria-disabled` коли count = 0; клік → `streamListRef.current
   .requestBulkDelete()`.
@@ -181,17 +219,54 @@ RecordAll 5, StopAll 6, chips 7–9, sorts 10–11 (оновити `toolbarRefs`
 кількістю. ⋯ на **невиділеному** рядку спершу згортає виділення до нього, потім
 діє одинично (№15). StreamList віддає `requestBulkDelete()` на своєму хендлі для
 тулбар-кнопки (через `useImperativeHandle`, що композитить хендл `CompositeList` +
-`focusItem` з `imperativeExtra`).
+`focusItem` з `imperativeExtra`). Тип хендла відповідно розширюється до
+`ZoneEntry & { requestBulkDelete(): void }` (і `streamListRef` у StreamsPanel).
+**Застереження (stale-closure):** хендл будується `useImperativeHandle` з deps
+`[zoneId, restoreFocus, focusItemAndDom]` — він **не** перебудовується, коли
+змінюється лише *ідентичність* пропа `imperativeExtra`, тож замикання
+`requestBulkDelete` фіксується **один раз**. Тому воно читає стан **на момент
+виклику**, а не з захопленого пропа/стейту:
+- **множину** — з `$streamSelection.get()`;
+- **видимий порядок** (для індексу фокуса нижче) — з `streamsRef.current`, який
+  оновлюється на кожен ререндер поточним пропом `streams` (= `sortedStreams`). **`$streams.get()`
+  тут хибний:** це повний **нефільтрований/несортований** список, а індекс фокуса
+  рахується над **видимим**. `$streams.get()` потрібен лише для мутації даних нижче.
 
-Виконання: `tauri.removeStreams([...selection])` → успіх → `$streams.set(filter
-без видалених)`, очистити виділення, `announce(«Видалено N»)`.
+Виконання: `tauri.removeStreams([...$streamSelection.get()])` → успіх →
+`$streams.set($streams.get().filter(без видалених))`, очистити виділення (+ скинути
+якір, A2/A10), `announce(«Видалено N»)`.
 
 **Фокус (окремо від живої реконсиляції):** верхній видалений індекс рахується з
-**множини виділення** над видимим списком; цільовий рядок — перший уцілілий
-на/після цього індексу (новий останній, якщо видалено хвіст; зона порожнього
-стану через `onEmpty`, якщо видалено все), фокусується **програмно**
-(`focusItem`/`pendingFocusRef`) — **ніколи `<body>`**. Кнопка-тригер на цей момент
-`aria-disabled` (count→0), тож конкуренції за фокус немає.
+**множини виділення** над **видимим списком до видалення** (`streamsRef.current`,
+**не** `$streams`); цільовий рядок — перший уцілілий на/після цього індексу (новий
+останній, якщо видалено хвіст), фокусується **програмно**
+(`focusItem`/`pendingFocusRef`) — **ніколи `<body>`**. Програмний фокус після
+видалення **також скидає якір** на цільовий рядок із порожньою базою — інакше перший
+Shift+↑↓ розширювався б від видаленого якоря.
+
+**Перегони фокуса з ConfirmDialog:** `ConfirmDialog` — react-aria `Modal`, що при
+закритті **відновлює фокус на тригер**. Коли тригер сам видалено (Delete з рядка /
+⋯-меню на виділеному), відновлення сяде на зниклий вузол → `<body>`. Тож програмний
+`focusItem` має спрацювати **після** розмонтування діалогу — прив'язати його до
+пост-видалянної зміни стану (`$streams.set` → зміна `items` → `useLayoutEffect`), щоб
+він був **останнім словом** (так само одинична гілка вже покладається на живу
+реконсиляцію після закриття діалогу). Тулбар-тригер (`aria-disabled`, count→0)
+лишається досяжним, але фокус однаково належить уцілілому рядку.
+
+**Порожній видимий список після видалення (геп, закрити в A):** якщо видалено всі
+**видимі** рядки — чи то останні потоки профілю (empty-profile), чи всі під
+поточним фільтром, тоді як інші лишились (filter-empty) — у видимому списку
+**нема** уцілілого, тож StreamList кличе `onEmpty()`. Наразі проп `onEmpty` зі
+StreamsPanel — **no-op** («handled by isEmpty effect»), а той ефект фокусує перший
+рядок лише після add-examples, **не** після видалення → фокус упав би на `<body>`
+(порушення критерію 5). У межах A: StreamsPanel в `onEmpty` фокусує кнопку
+відповідної порожньої зони (add-examples або reset-filter) — **але не синхронно в
+колбеку**: у момент `onEmpty()` (одразу після `$streams.set`) цільова кнопка ще **не
+змонтована** (StreamsPanel ще не перерендерив порожню зону — та сама причина, чому
+наявний `handleAddExamples` відкладає фокус через `pendingFocusFirstRow` + ефект на
+перехід `isEmpty`, а не фокусує одразу). Тож `onEmpty` виставляє прапорець і фокусує
+кнопку в **ефекті на перехід** `isEmpty`/`filterHidesAll` → `true` (перевикористати
+наявний патерн відкладеного фокуса).
 
 ### A9. Бекенд — `remove_streams(stream_ids) -> usize`
 
@@ -205,10 +280,20 @@ Backend-first, атомарно, чесний count (краще за фронт-
 ### A10. Lifecycle — section-scoped (рішення №13)
 
 - `pruneSelection(existingIds)` в ефекті StreamList на зміну `$streams` — прибирає
-  зниклі id (після самих bulk-операцій), щоб лічильник лишався чесним.
-- **Очищення** виділення: зміна фільтра (в `handleChipClick`/`handleResetFilter`),
-  перемикання профілю (`profile-changed` у `useProfileSync`), вихід із секції
-  (`$activeSection !== "streams"`).
+  зниклі id (після самих bulk-операцій), щоб лічильник лишався чесним. `existingIds`
+  = `$streams.get()` (усі наявні), **не** видимий список — тож рядок, тимчасово
+  схований **зміною статусу** під активним чипом (напр. recording→idle при чипі
+  «Запис»), з виділення **не** випадає (лише явна зміна фільтра очищає, нижче).
+- **Шов «виділення ↔ видимість»:** виділення тримається на `$streams` (усі наявні);
+  visible-scoped операції (предикат Ctrl+A «всі видимі виділені», індекс фокуса A8)
+  читають **видимий** список, а лічильник `[N вибрано]` й bulk-видалення діють на
+  **повну** множину. Наслідок: `[N вибрано]` може врахувати рядок, схований фільтром
+  після зміни статусу — **прийнятно** (лічильник чесний щодо реального виділення).
+- **Очищення** виділення (+ **скидання якоря**, A2): зміна фільтра (в
+  `handleChipClick`/`handleResetFilter`), перемикання профілю (`profile-changed` у
+  `useProfileSync` — формально зайве щодо prune, бо `$streams` повністю заміняється,
+  але робимо явно, щоб лічильник упав одразу, без чекання на ефект), вихід із секції
+  (`$activeSection !== "streams"`), Escape (A4).
 - **Збереження:** сортування, Tab/F6 між тулбаром і списком, відкриття власних
   діалогів (confirm).
 
@@ -227,16 +312,22 @@ Backend-first, атомарно, чесний count (краще за фронт-
 - **`src/components/streams/StreamItem.tsx`** — проп `isSelected`; суфікс у
   `summaryLabel`; `data-selected` + клас підсвітки.
 - **`src/components/streams/StreamList.tsx`** — будує `selection`-адаптер над
-  `$streamSelection`; читає виділення `useStore` для рендера рядків; bulk
-  `ConfirmDialog` + виконання + фокус; `onSelectionChange` → `announce`; expose
-  `requestBulkDelete()`; маршрутизація `delete`/⋯ за виділенням (№15).
+  `$streamSelection`; читає виділення `useStore` для рендера рядків; `streamsRef`
+  (видимий порядок на момент виклику, A8); bulk `ConfirmDialog` + виконання + фокус
+  (індекс над `streamsRef`, після закриття діалогу); `onSelectionChange` → `announce`;
+  expose `requestBulkDelete()` (хендл → `ZoneEntry & { requestBulkDelete() }`);
+  маршрутизація `delete`/⋯ за виділенням (№15).
 - **`src/components/streams/StreamContextMenu.tsx` / `StreamItem` пропси** —
   `Delete`-пункт несе кількість в accessible name, коли рядок виділений
   («Видалити виділені (N)»); на невиділеному — одиничний (№15/№16). *Тільки delete*
   (move/copy масові — віха B).
 - **`src/components/streams/StreamsPanel.tsx`** — 2 кнопки + `[N вибрано]`; оновити
-  `toolbarRefs` (12) і індексні коментарі; lifecycle-очищення (фільтр/профіль/секція);
-  читає `$streamSelection` через `useStore`.
+  `toolbarRefs` (12) і **всі** індексні коментарі — зокрема колокований у `ScreenZone`
+  («all 8 interactive items (indices 0–7)») вже **застарів** (фактично 10/0–9), стане
+  12/0–11; lifecycle-очищення (фільтр/профіль/секція); кнопки «Виділити все/Зняти»
+  кличуть `announce` самі (A7); проп `onEmpty` тепер **відкладено фокусує** порожню
+  зону (A8: прапорець + ефект на перехід, а не синхронно), а не no-op; читає
+  `$streamSelection` через `useStore`.
 - **`src-tauri/src/commands/stream_commands.rs`** + **`lib.rs`** — `remove_streams`.
 - **`src/lib/tauri.ts`** — `removeStreams(ids)`.
 - **i18n (paraglide):** `selection_suffix` («виділено»), `stream_selected`/
@@ -245,10 +336,20 @@ Backend-first, атомарно, чесний count (краще за фронт-
   `selected_count_label` ({count} — «{count} вибрано»), `delete_selected` ({count}),
   `confirm_delete_selected` ({count}), `streams_removed_bulk` ({count}). Регенерувати
   через vite-plugin.
-- **Документація:** `keyboard-shortcuts.md` Tier 2′ — додати Ctrl+Space, Ctrl+A,
-  Escape (clear), Shift+↑↓ (list-scoped); `accessibility.md` §3 — абзац про
-  центральний канал оголошень виділення; F1-довідка (`ShortcutsHelp`) — нові комбо
-  в групі «list» (reserved-guard, як `row-menu`).
+- **Документація — вже застосовано на етапі цієї спеки** (наявні doc-розбіжності, не
+  forward-фічі): `keyboard-shortcuts.md` Tier 2′ — дописано наявний `Ctrl+C`,
+  виправлено стан рядка `Delete` (одинична гілка вже в коді → ✅; bulk → ⬜), додано
+  **carve-out** для list-scoped Ctrl-комбо всередині `role="application"` (NVDA у focus
+  mode), що знімає суперечність інваріанта «лише функційні/спец-клавіші» з наявним
+  `Ctrl+C` і майбутніми Ctrl+Space/Ctrl+A; додано ⬜-рядки `Ctrl+Space`/`Ctrl+A`/`Shift+↑↓`
+  і clear-гілку `Escape`. `accessibility.md` — §3.1: прибрано `aria-live` з лічильника
+  «{n} вибрано»; під §3: нота про єдиний канал оголошень виділення + звірка з реальним
+  `role="application"`-списком (ескізи §3.1–§3.6 — історичний grid).
+- **Документація — лишається на цикл реалізації віхи A** (бо описує ще не зібрану
+  поведінку): перемкнути ⬜→✅ у Tier 2′ для Ctrl+Space/Ctrl+A/Shift+↑↓/Escape-clear,
+  коли код зайде; F1-довідка (`ShortcutsHelp`) — додати нові комбо в групу «list»
+  (reserved-guard, як `row-menu`) **лише після** реалізації (F1 показує робочі шорткати,
+  не ⬜).
 
 ## Поза обсягом (YAGNI)
 
@@ -275,7 +376,8 @@ Backend-first, атомарно, чесний count (краще за фронт-
    кількістю; після видалення `$streams` оновлюється один раз, оголошення «Видалено N».
 5. **Фокус після видалення:** найближчий уцілілий рядок на/після верхнього
    видаленого індексу (рахується з множини виділення); хвіст → новий останній;
-   усе → зона порожнього стану; **ніколи `<body>`**; незалежно від тригера.
+   усе видиме → порожня зона (empty-profile або filter-empty), сфокусована
+   програмно через `onEmpty`; **ніколи `<body>`**; незалежно від тригера.
 6. **Lifecycle:** фільтр/профіль/вихід із секції очищають; сорт і Tab/F6 зберігають;
    зниклі id авто-prune; `[N вибрано]` чесний.
 7. **Тулбар:** «Виділити все/Зняти» (toggle, лише видимі) і «Видалити виділені (N)»
@@ -294,16 +396,26 @@ Backend-first, атомарно, чесний count (краще за фронт-
   - Ctrl+A: з частковим виділенням → всі видимі; з повним → порожньо;
   - Escape: непорожнє → clear + consume; порожнє → не consume;
   - миша: простий клік → `replace({id})`; Ctrl+Click toggle; Shift+Click спан;
-    клік по кнопці рядка не чіпає виділення;
-  - `onSelectionChange` payload (kind/count/lastId/selected) для кожного жесту.
+    клік по кнопці рядка не чіпає виділення; усі мишачі жести шлють `via:"pointer"`;
+  - Ctrl+Space на кнопці-дії (action-play/menu) теж toggle **рядка** (не гейтиться
+    `isNativeControl`); плоский Space на кнопці лишається нативним;
+  - **anchorBase-guard:** після зовнішнього `replaceSelection(∅)` перший Shift+↓ дає
+    рівно `{cursor}` (стара база НЕ воскресає);
+  - `onSelectionChange` payload (kind/via/count/lastId/selected) для кожного жесту.
 - **`stores/streams` тест:** `replaceSelection`, `pruneSelection`.
 - **`StreamList`/`StreamItem` тест:** суфікс у `aria-label` виділеного рядка;
   bulk-`ConfirmDialog` показує точний count; `removeStreams` викликано з множиною;
-  `$streams` оновлено один раз; фокус → найближчий уцілілий (НЕ `<body>`); хвіст →
-  останній; усе → `onEmpty`; одиничний vs груповий `announce`; ⋯ delete на
-  невиділеному згортає до рядка.
+  `$streams` оновлено один раз; фокус → найближчий уцілілий (НЕ `<body>`); фокус
+  рахується над **відфільтрованим/сортованим** видимим порядком, не повним
+  `$streams`; хвіст → останній; видалено весь видимий профіль → `onEmpty` фокусує
+  add-examples (НЕ
+  `<body>`); видалено весь видимий **під фільтром** (інші лишились) → `onEmpty`
+  фокусує reset-filter; одиничний (клавіатура) vs груповий `announce`, а
+  pointer-одиничний `announce` **не** дублюється; ⋯ delete на невиділеному згортає
+  до рядка.
 - **`StreamsPanel` тест:** кнопки/лейбли/`aria-disabled` за станом виділення;
-  тулбар-`requestBulkDelete` тригерить діалог; lifecycle-очищення (фільтр/секція);
+  тулбар-`requestBulkDelete` тригерить діалог; тулбар «Виділити все/Зняти» кличе
+  `announce` («Виділено N» / «Виділення знято»); lifecycle-очищення (фільтр/секція);
   roving 12 елементів коректний.
 - **Rust:** `remove_streams` — `retain` лишає невидалені, одне збереження, count
   чесний; ідемпотентно щодо неіснуючих id.

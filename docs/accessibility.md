@@ -172,6 +172,27 @@ Shift+F6: зворотній напрямок
 
 ## 3. Секція: Потоки (Streams)
 
+> **Реалізація (звірено 2026-06-14):** фактичний список потоків — **не** `role="grid"`
+> `TableView` з чекбоксами (ескізи §3.1–§3.6 — історичний table/grid-підхід, див. ноту
+> 2026-04-23 вгорі документа), а `role="application"` з роумінг-фокусом
+> ([`useCompositeList`](../src/hooks/useCompositeList.ts) / `CompositeList`). Тож
+> комірки `P`/`R`/`Space=toggle selection`/`Ctrl+F`-пошук із §3.2 — застарілі.
+>
+> **Модель виділення (multi-select)** проєктується окремо — джерело правди:
+> [беклог `p1-bulk-stream-operations`](backlog/p1-bulk-stream-operations.md) +
+> [spec віхи A](superpowers/specs/2026-06-14-bulk-stream-operations-A-design.md).
+> Коротко з її §A6:
+> - **Єдиний канал оголошень виділення** — усі повідомлення (одиничний toggle,
+>   зведене «Виділено N», «Виділення знято», «Видалено N») йдуть **лише** через
+>   центральний `LiveAnnouncer` (§1.4, `announce`). Тулбар-лічильник «{n} вибрано» —
+>   **візуальний span БЕЗ `aria-live`**: окремий live-регіон на ньому дав би подвійне
+>   озвучення поверх центрального announcer'а.
+> - **Pointer-жести** (клік / Ctrl+Click) рухають DOM-фокус, тож рядок читається сам —
+>   їх явним `announce` **не** дублюємо; клавіатурний одиничний toggle (`Ctrl+Space`)
+>   фокус не рухає → оголошується явно.
+> - Стан виділеного рядка кодується **суфіксом «, виділено»** в accessible name
+>   (список `role="application"`/`listitem` не підтримує `aria-selected`) + CSS-підсвітка.
+
 ### 3.1. Структура
 
 ```
@@ -187,7 +208,7 @@ StreamsPanel
 │   └── Data Rows (role="row")
 │       └── Cells (role="gridcell")
 ├── Toolbar (role="toolbar", aria-label="Дії з потоками")
-│   ├── Text: "{n} вибрано" (aria-live="polite", aria-atomic, показується при selectionCount > 0)
+│   ├── Text: "{n} вибрано" (звичайний span, БЕЗ aria-live — оголошення йде єдиним каналом, див. ноту під §3; показується при selectionCount > 0)
 │   ├── Button: Додати потік
 │   ├── Button: Видалити вибрані (isDisabled={selectionCount === 0})
 │   └── Button: Зупинити всі записи
