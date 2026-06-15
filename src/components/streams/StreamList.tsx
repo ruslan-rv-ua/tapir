@@ -1,10 +1,10 @@
 import { forwardRef, useCallback, useMemo, useState } from "react";
 import { useStore } from "@nanostores/react";
-import { $streams, $statuses } from "../../stores/streams";
+import { $streams, $statuses, $streamSelection, replaceSelection } from "../../stores/streams";
 import { $recordingSettings, $settings } from "../../stores/settings";
 import { $playerStatus } from "../../stores/player";
 import { CompositeList } from "../common/composite-list";
-import type { ActionModifiers } from "../../hooks/useCompositeList";
+import type { ActionModifiers, CompositeSelection, SelectionChange } from "../../hooks/useCompositeList";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import type { StreamInfo, ProfileMeta } from "../../lib/tauri";
 import { StreamItem, getStreamSegments } from "./StreamItem";
@@ -27,6 +27,7 @@ interface Props {
 export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, streams: streamsProp }, ref) => {
   const allStreams = useStore($streams);
   const statuses = useStore($statuses);
+  const selectedSet = useStore($streamSelection);
   const recordingSettings = useStore($recordingSettings);
   const settings = useStore($settings);
   const playerStatus = useStore($playerStatus);
@@ -35,6 +36,27 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const announce = useAnnounce();
+
+  const selectionAdapter = useMemo<CompositeSelection>(
+    () => ({
+      current: () => $streamSelection.get(),
+      replace: (next) => replaceSelection(next),
+    }),
+    [],
+  );
+
+  const handleSelectionChange = useCallback(
+    (c: SelectionChange) => {
+      if (c.via === "pointer" && c.kind === "single") return;
+      if (c.kind === "single") {
+        const name = streams.find((s) => s.id === c.lastId)?.name ?? "";
+        announce(c.selected ? m.stream_selected({ name }) : m.stream_deselected({ name }), "polite");
+      } else {
+        announce(c.count === 0 ? m.selection_cleared() : m.selection_count({ count: c.count }), "polite");
+      }
+    },
+    [streams, announce],
+  );
 
   type Transfer =
     | null
@@ -171,6 +193,8 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
         className="flex-1 overflow-y-auto overflow-x-hidden"
         onTabOut={exitZone}
         onEmpty={onEmpty}
+        selection={selectionAdapter}
+        onSelectionChange={handleSelectionChange}
         onAction={(type, itemId, segment, mods) => {
           if (type === "copy") {
             const stream = streams.find((s) => s.id === itemId);
@@ -196,6 +220,7 @@ export const StreamList = forwardRef<ZoneEntry, Props>(({ exitZone, onEmpty, str
               status={statuses[id]}
               isActiveRow={isActive}
               isFocused={isFocused}
+              isSelected={selectedSet.has(id)}
               maxRetries={maxRetries}
               onDelete={() => setPendingDeleteId(id)}
               onCopyToProfile={() => openTransfer("copy", id)}

@@ -2,7 +2,8 @@ import { createRef } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent, act, waitFor, screen } from "@testing-library/react";
 import * as m from "../../i18n/paraglide/messages";
-import { $streams, $statuses } from "../../stores/streams";
+import { $streams, $statuses, $streamSelection, replaceSelection } from "../../stores/streams";
+import { $announcer } from "../../stores/announcer";
 import { $settings } from "../../stores/settings";
 import { $playerStatus } from "../../stores/player";
 import { $toasts } from "../../stores/toasts";
@@ -61,6 +62,7 @@ beforeEach(() => {
   $playerStatus.set({ state: "stopped", source: null, volume: 0.75, positionMs: null, durationMs: null });
   $streams.set([mkStream("a", "Alpha"), mkStream("b", "Bravo"), mkStream("c", "Charlie")]);
   $toasts.set([]);
+  replaceSelection(new Set());
   Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
   writeText.mockClear();
 });
@@ -349,5 +351,41 @@ describe("StreamList — copy stream URL", () => {
     );
     fireEvent.click(await screen.findByRole("menuitem", { name: m.copy_url() }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("http://x/b"));
+  });
+});
+
+describe("StreamList — selection rendering & announcements", () => {
+  it("renders the ', виділено' suffix for selected rows from $streamSelection", () => {
+    replaceSelection(new Set(["b"]));
+    const { container } = renderList();
+    const li = container.querySelector<HTMLElement>('li[data-item-id="b"][data-segment="summary"]')!;
+    expect(li.getAttribute("aria-label")).toContain(m.selection_suffix());
+    expect(li.getAttribute("data-selected")).toBe("true");
+  });
+
+  it("Ctrl+Space announces the single toggle with the stream name + state", () => {
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward")); // row a
+    $announcer.set(null);
+    fireEvent.keyDown(document.activeElement!, { key: " ", code: "Space", ctrlKey: true });
+    expect($streamSelection.get().has("a")).toBe(true);
+    expect($announcer.get()?.message).toBe(m.stream_selected({ name: "Alpha" }));
+  });
+
+  it("a group gesture announces one summary; a pointer single is NOT announced", () => {
+    const { ref, container } = renderList();
+    act(() => ref.current!.focus("forward"));
+    // Group: Ctrl+A selects all visible → one summary announce.
+    $announcer.set(null);
+    fireEvent.keyDown(document.activeElement!, { key: "a", code: "KeyA", ctrlKey: true });
+    expect($announcer.get()?.message).toBe(m.selection_count({ count: 3 }));
+    // Pointer single (simple click) collapses selection but is NOT re-announced.
+    $announcer.set(null);
+    fireEvent.click(
+      container.querySelector<HTMLElement>('li[data-item-id="b"][data-segment="summary"]')!,
+      { bubbles: true },
+    );
+    expect($streamSelection.get().size).toBe(1);
+    expect($announcer.get()).toBeNull();
   });
 });
