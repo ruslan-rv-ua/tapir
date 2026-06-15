@@ -103,6 +103,37 @@ interface UseCompositeListOptions<T extends CompositeListItem> {
   onEmpty?: () => void;
 }
 
+/** Semantic key intents resolved from a KeyboardEvent (pure; no list state). */
+type ActionId =
+  | "up" | "down" | "left" | "right"
+  | "home" | "end" | "pageup" | "pagedown"
+  | "enter" | "space" | "delete" | "tab" | "copy";
+
+/**
+ * Map a keyboard event to a single list intent, or null to let it bubble.
+ * Letters/Space use e.code (Cyrillic-layout safe); navigation/activation keys
+ * use e.key. Modifiers for Enter/Space (Shift=listen, Ctrl=record) are NOT
+ * encoded here — they ride along via `modifiers(e)` at dispatch time.
+ */
+function resolveKeyAction(e: React.KeyboardEvent): ActionId | null {
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === "KeyC") return "copy";
+  switch (e.key) {
+    case "ArrowUp": return "up";
+    case "ArrowDown": return "down";
+    case "ArrowLeft": return "left";
+    case "ArrowRight": return "right";
+    case "Home": return "home";
+    case "End": return "end";
+    case "PageUp": return "pageup";
+    case "PageDown": return "pagedown";
+    case "Enter": return "enter";
+    case "Delete": return "delete";
+    case "Tab": return "tab";
+  }
+  if (e.code === "Space" || e.key === " ") return "space";
+  return null;
+}
+
 /**
  * 2D roving focus for segment-based composite lists.
  *
@@ -257,21 +288,27 @@ export function useCompositeList<T extends CompositeListItem>({
       // literal it used to be, which had drifted and missed aria-modal.
       if (isInModal()) return;
 
+      const action = resolveKeyAction(e);
+      if (!action) return;
+
       if (!activeItemId) {
-        if (e.key === 'Tab') {
+        if (action === "tab") {
           consume();
           onTabOutRef.current(!e.shiftKey);
         }
         return;
       }
 
-      // Ctrl/Cmd+C → generic "copy" for the active row; the consumer (e.g. StreamList)
-      // decides what to copy. e.code, not e.key — Cyrillic layouts (accessibility.md §12).
-      // List-scoped on purpose: a registry "match" would hijack Ctrl+C in text fields
-      // across the whole section.
-      // REFACTOR TRIGGER: 2 hardcoded list key→action mappings now (Delete, Ctrl+C).
-      // On a 3rd/4th, replace this if/switch scatter with a key→actionType table.
-      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === "KeyC") {
+      if (action === "tab") {
+        consume();
+        onTabOutRef.current(!e.shiftKey);
+        return;
+      }
+
+      // Ctrl/Cmd+C → generic "copy" for the active row; the consumer decides what
+      // to copy. List-scoped on purpose (a registry match would hijack Ctrl+C in
+      // text fields across the whole section).
+      if (action === "copy") {
         consume();
         onActionRef.current("copy", activeItemId, activeSegment, modifiers(e));
         return;
@@ -283,89 +320,76 @@ export function useCompositeList<T extends CompositeListItem>({
       const allSegments = resolveSegments(currentItem);
       const segIdx = allSegments.indexOf(activeSegment);
 
-      switch (e.key) {
-        case 'ArrowUp':
+      switch (action) {
+        case "up":
           consume();
-          // Vertical move always returns to the whole-row summary of the target.
-          if (currentIdx > 0) moveFocus(items[currentIdx - 1].id, 'summary');
+          if (currentIdx > 0) moveFocus(items[currentIdx - 1].id, "summary");
           break;
 
-        case 'ArrowDown':
+        case "down":
           consume();
-          if (currentIdx < items.length - 1) moveFocus(items[currentIdx + 1].id, 'summary');
+          if (currentIdx < items.length - 1) moveFocus(items[currentIdx + 1].id, "summary");
           break;
 
-        case 'ArrowLeft':
+        case "left":
           consume();
-          if (segIdx > 0) {
-            moveFocus(activeItemId, allSegments[segIdx - 1]);
-          }
-          // At 'summary' → stay
+          if (segIdx > 0) moveFocus(activeItemId, allSegments[segIdx - 1]);
           break;
 
-        case 'ArrowRight':
+        case "right":
           consume();
-          if (segIdx < allSegments.length - 1) {
-            moveFocus(activeItemId, allSegments[segIdx + 1]);
-          }
+          if (segIdx < allSegments.length - 1) moveFocus(activeItemId, allSegments[segIdx + 1]);
           break;
 
-        case 'Home':
+        case "home":
           consume();
-          if (items.length > 0) moveFocus(items[0].id, 'summary');
+          if (items.length > 0) moveFocus(items[0].id, "summary");
           break;
 
-        case 'End':
+        case "end":
           consume();
-          if (items.length > 0) moveFocus(items[items.length - 1].id, 'summary');
+          if (items.length > 0) moveFocus(items[items.length - 1].id, "summary");
           break;
 
-        case 'PageUp': {
+        case "pageup": {
           consume();
           const container = listRef.current;
           if (!container || items.length === 0) break;
-          const firstItemEl = container.querySelector<HTMLElement>('[data-item-id]');
+          const firstItemEl = container.querySelector<HTMLElement>("[data-item-id]");
           const itemH = firstItemEl?.offsetHeight || 40;
           const page = Math.max(1, Math.floor(container.clientHeight / itemH));
           const targetIdx = Math.max(0, currentIdx - page);
-          moveFocus(items[targetIdx].id, 'summary');
+          moveFocus(items[targetIdx].id, "summary");
           break;
         }
 
-        case 'PageDown': {
+        case "pagedown": {
           consume();
           const container = listRef.current;
           if (!container || items.length === 0) break;
-          const firstItemEl = container.querySelector<HTMLElement>('[data-item-id]');
+          const firstItemEl = container.querySelector<HTMLElement>("[data-item-id]");
           const itemH = firstItemEl?.offsetHeight || 40;
           const page = Math.max(1, Math.floor(container.clientHeight / itemH));
           const targetIdx = Math.min(items.length - 1, currentIdx + page);
-          moveFocus(items[targetIdx].id, 'summary');
+          moveFocus(items[targetIdx].id, "summary");
           break;
         }
 
-        case 'Enter':
-          // On an action button let the native click fire — don't consume.
+        case "enter":
           if (isNativeControl(document.activeElement)) break;
           consume();
-          onActionRef.current('primary', activeItemId, activeSegment, modifiers(e));
+          onActionRef.current("primary", activeItemId, activeSegment, modifiers(e));
           break;
 
-        case ' ':
-          // Space activates a focused button natively; otherwise it toggles.
+        case "space":
           if (isNativeControl(document.activeElement)) break;
           consume();
-          onActionRef.current('toggle', activeItemId, activeSegment, modifiers(e));
+          onActionRef.current("toggle", activeItemId, activeSegment, modifiers(e));
           break;
 
-        case 'Delete':
+        case "delete":
           consume();
-          onActionRef.current('delete', activeItemId, activeSegment, modifiers(e));
-          break;
-
-        case 'Tab':
-          consume();
-          onTabOutRef.current(!e.shiftKey);
+          onActionRef.current("delete", activeItemId, activeSegment, modifiers(e));
           break;
       }
     },
