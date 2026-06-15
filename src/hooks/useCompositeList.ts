@@ -399,6 +399,10 @@ export function useCompositeList<T extends CompositeListItem>({
       const allSegments = resolveSegments(currentItem);
       const segIdx = allSegments.indexOf(activeSegment);
 
+      // Plain row navigation (up/down/home/end/page) re-anchors the selection to
+      // the landed row so a following Shift-extend spans from the new cursor, not
+      // the old anchor. left/right are within-row moves and deliberately do not
+      // re-anchor; Shift-range gestures keep the existing anchor (see Task 6).
       switch (action) {
         case "up": {
           consume();
