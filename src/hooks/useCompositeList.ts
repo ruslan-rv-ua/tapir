@@ -85,6 +85,28 @@ interface FocusMemory {
   scrollTop: number;
 }
 
+/** Two-method bridge to the consumer's selection store (atom). */
+export interface CompositeSelection {
+  /** Event-time snapshot (atom.get). */
+  current: () => ReadonlySet<string>;
+  /** Delegates to the store's replaceSelection (new Set identity). */
+  replace: (next: ReadonlySet<string>) => void;
+}
+
+/** Emitted after every selection gesture so the consumer can localize an announce. */
+export interface SelectionChange {
+  /** single = Ctrl+Space/Ctrl+Click/simple click; group = range/all/clear. */
+  kind: "single" | "group";
+  /** pointer gestures already moved DOM focus (NVDA reads the row) → caller skips single. */
+  via: "key" | "pointer";
+  /** New selection size. */
+  count: number;
+  /** Toggled row (single only). */
+  lastId?: string;
+  /** Its new state (single only). */
+  selected?: boolean;
+}
+
 interface UseCompositeListOptions<T extends CompositeListItem> {
   /** Zone identifier — reserved for zone-system registration (Task 4 wires this up). */
   zoneId: string;
@@ -101,13 +123,16 @@ interface UseCompositeListOptions<T extends CompositeListItem> {
    * Parent should switch to empty-state zone.
    */
   onEmpty?: () => void;
+  /** Opt-in: enables the selection layer. Omit → list behaves exactly as before. */
+  selection?: CompositeSelection;
+  onSelectionChange?: (change: SelectionChange) => void;
 }
 
 /** Semantic key intents resolved from a KeyboardEvent (pure; no list state). */
 type ActionId =
   | "up" | "down" | "left" | "right"
   | "home" | "end" | "pageup" | "pagedown"
-  | "enter" | "space" | "delete" | "tab" | "copy";
+  | "enter" | "space" | "delete" | "tab" | "copy" | "selectToggle";
 
 /**
  * Map a keyboard event to a single list intent, or null to let it bubble.
@@ -116,6 +141,10 @@ type ActionId =
  * encoded here — they ride along via `modifiers(e)` at dispatch time.
  */
 function resolveKeyAction(e: React.KeyboardEvent): ActionId | null {
+  if (
+    (e.code === "Space" || e.key === " ") &&
+    (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey
+  ) return "selectToggle";
   if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === "KeyC") return "copy";
   switch (e.key) {
     case "ArrowUp": return "up";
@@ -157,6 +186,8 @@ export function useCompositeList<T extends CompositeListItem>({
   onTabOut,
   onAction,
   onEmpty,
+  selection,
+  onSelectionChange,
 }: UseCompositeListOptions<T>) {
   const [activeItemId, setActiveItemId] = useState<string | null>(
     items.length > 0 ? items[0].id : null,
@@ -183,6 +214,14 @@ export function useCompositeList<T extends CompositeListItem>({
   onActionRef.current = onAction;
   const onEmptyRef = useRef(onEmpty);
   onEmptyRef.current = onEmpty;
+  const selectionRef = useRef(selection);
+  selectionRef.current = selection;
+  const onSelectionChangeRef = useRef(onSelectionChange);
+  onSelectionChangeRef.current = onSelectionChange;
+
+  // Range anchor (id) + snapshot of the selection when the anchor was (re)set.
+  const anchorRef = useRef<string | null>(null);
+  const anchorBaseRef = useRef<ReadonlySet<string>>(new Set());
 
   // Fire pending focus after DOM updates (tabIndex changes happen during render)
   useLayoutEffect(() => {
@@ -252,6 +291,25 @@ export function useCompositeList<T extends CompositeListItem>({
   function resolveSegments(item: T): SegmentKind[] {
     return ['summary', ...item.segments] as SegmentKind[];
   }
+
+  /** (Re)set the anchor and snapshot the *current* selection as its base. */
+  const setAnchor = useCallback((id: string) => {
+    anchorRef.current = id;
+    anchorBaseRef.current = new Set(selectionRef.current?.current() ?? []);
+  }, []);
+
+  /** Toggle one row's membership; (re)sets the anchor; emits a single change. */
+  const toggleSelection = useCallback((id: string, via: "key" | "pointer") => {
+    const sel = selectionRef.current;
+    if (!sel) return;
+    const next = new Set(sel.current());
+    const willSelect = !next.has(id);
+    if (willSelect) next.add(id);
+    else next.delete(id);
+    sel.replace(next);
+    setAnchor(id); // base snapshot now includes the just-toggled row
+    onSelectionChangeRef.current?.({ kind: "single", via, count: next.size, lastId: id, selected: willSelect });
+  }, [setAnchor]);
 
   const moveFocus = useCallback(
     (itemId: string, segment: SegmentKind) => {
@@ -375,6 +433,15 @@ export function useCompositeList<T extends CompositeListItem>({
           break;
         }
 
+        case "selectToggle":
+          // Selection toggle for the active row. NOT gated by isNativeControl:
+          // it works from any segment incl. an action button, and consume() mutes
+          // the native click. No-op (and no consume) when selection is disabled.
+          if (!selectionRef.current) break;
+          consume();
+          toggleSelection(activeItemId, "key");
+          break;
+
         case "enter":
           if (isNativeControl(document.activeElement)) break;
           consume();
@@ -394,8 +461,12 @@ export function useCompositeList<T extends CompositeListItem>({
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeItemId, activeSegment, items, moveFocus],
+    [activeItemId, activeSegment, items, moveFocus, toggleSelection, setAnchor],
   );
+
+  const onClick = useCallback((_e: React.MouseEvent) => {
+    // Mouse selection gestures are added in Task 10.
+  }, []);
 
   // Single source of truth for the per-row context menu: WebView2 emits a
   // `contextmenu` event for right-click, the Menu key, AND Shift+F10. Handling
@@ -467,5 +538,5 @@ export function useCompositeList<T extends CompositeListItem>({
     [items],
   );
 
-  return { listRef, onKeyDownCapture, onContextMenu, isFocused, restoreFocus, focusItem, activeItemId, activeSegment };
+  return { listRef, onKeyDownCapture, onContextMenu, onClick, isFocused, restoreFocus, focusItem, activeItemId, activeSegment };
 }

@@ -7,6 +7,7 @@ import {
   type SegmentKind,
   type ActionType,
   type ActionModifiers,
+  type SelectionChange,
 } from "./useCompositeList";
 
 /* ------------------------------------------------------------------ */
@@ -27,6 +28,8 @@ interface HarnessProps {
   onEmpty?: () => void;
   onButtonClick?: (itemId: string, segment: string) => void;
   onParentKeyDown?: (e: ReactKeyboardEvent) => void;
+  selectionRef?: { current: Set<string> };
+  onSelectionChange?: (c: SelectionChange) => void;
 }
 
 function Harness({
@@ -36,13 +39,26 @@ function Harness({
   onEmpty,
   onButtonClick,
   onParentKeyDown,
+  selectionRef,
+  onSelectionChange,
 }: HarnessProps) {
-  const { listRef, onKeyDownCapture, onContextMenu, isFocused, restoreFocus } = useCompositeList({
+  const selection = selectionRef
+    ? {
+        current: () => selectionRef.current as ReadonlySet<string>,
+        replace: (next: ReadonlySet<string>) => {
+          selectionRef.current = new Set(next);
+        },
+      }
+    : undefined;
+
+  const { listRef, onKeyDownCapture, onContextMenu, onClick, isFocused, restoreFocus } = useCompositeList({
     zoneId: "test",
     items,
     onTabOut,
     onAction,
     onEmpty,
+    selection,
+    onSelectionChange,
   });
 
   return (
@@ -53,7 +69,7 @@ function Harness({
       <button data-testid="restore" onClick={() => restoreFocus("forward")}>
         restore
       </button>
-      <ul ref={listRef} role="list" data-testid="list" onKeyDownCapture={onKeyDownCapture} onContextMenu={onContextMenu}>
+      <ul ref={listRef} role="list" data-testid="list" onKeyDownCapture={onKeyDownCapture} onContextMenu={onContextMenu} onClick={onClick}>
         {items.map((item) => (
           <li
             key={item.id}
@@ -495,5 +511,58 @@ describe("live reconciliation when items change under the active row", () => {
 
     // Focus must remain where the user put it; the hook must not yank it back.
     expect(document.activeElement).toBe(screen.getByTestId("outside"));
+  });
+});
+
+describe("selection — Ctrl+Space toggles the active row", () => {
+  it("adds the active row to the selection and emits a single change (not toggle/record)", () => {
+    const selectionRef = { current: new Set<string>() };
+    const onAction = vi.fn();
+    const onSelectionChange = vi.fn();
+    render(
+      <Harness items={makeItems()} onAction={onAction} selectionRef={selectionRef} onSelectionChange={onSelectionChange} />,
+    );
+    focusStart("a");
+
+    press(" ", { code: "Space", ctrlKey: true });
+
+    expect([...selectionRef.current]).toEqual(["a"]);
+    expect(onSelectionChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "single", via: "key", count: 1, lastId: "a", selected: true }),
+    );
+    // Must NOT fall into the record/play toggle branch.
+    expect(onAction).not.toHaveBeenCalledWith("toggle", "a", "summary", expect.anything());
+  });
+
+  it("Ctrl+Space again removes the row (selected:false)", () => {
+    const selectionRef = { current: new Set<string>(["a"]) };
+    const onSelectionChange = vi.fn();
+    render(<Harness items={makeItems()} selectionRef={selectionRef} onSelectionChange={onSelectionChange} />);
+    focusStart("a");
+    press(" ", { code: "Space", ctrlKey: true });
+    expect(selectionRef.current.has("a")).toBe(false);
+    expect(onSelectionChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "single", count: 0, lastId: "a", selected: false }),
+    );
+  });
+
+  it("plain Space still fires record/play toggle (no selection change)", () => {
+    const selectionRef = { current: new Set<string>() };
+    const onAction = vi.fn();
+    render(<Harness items={makeItems()} onAction={onAction} selectionRef={selectionRef} />);
+    focusStart("a");
+    press(" ");
+    expect(onAction).toHaveBeenCalledWith("toggle", "a", "summary", noMods);
+    expect(selectionRef.current.size).toBe(0);
+  });
+
+  it("Ctrl+Space on an action button still toggles the ROW (not gated by isNativeControl)", () => {
+    const selectionRef = { current: new Set<string>() };
+    render(<Harness items={makeItems()} selectionRef={selectionRef} />);
+    focusStart("a");
+    press("ArrowRight"); press("ArrowRight"); press("ArrowRight"); // a/action-play (a button)
+    expectActive("a", "action-play");
+    press(" ", { code: "Space", ctrlKey: true });
+    expect([...selectionRef.current]).toEqual(["a"]);
   });
 });
