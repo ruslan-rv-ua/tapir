@@ -23,7 +23,7 @@
 | 3D | Scheduler | Заплановані записи (одноразові + повторювані) | ✅ Complete |
 | 3E | Single Instance | Named Mutex (глобальний), фокус 1-ї інстанції, передача argv | ✅ Complete |
 | 3F | Profile Manager | Повний CRUD профілів, import/export | ✅ Complete |
-| 3G | CLI Arguments | Аргументи командного рядка | ⬜ |
+| 3G | CLI Arguments | Аргументи командного рядка | ✅ Complete |
 | 3H | Post-processing | Зовнішні програми після запису | ⬜ |
 | 3I | Polish Bundle | High Contrast, Autostart, Log rotation | ⬜ |
 | 3J | Stream Import/Export | Імпорт/експорт потоків профілю (M3U8/PLS) з перевіркою | ✅ Complete |
@@ -462,7 +462,7 @@
 
 ---
 
-### Фаза 3G — CLI Arguments
+### Фаза 3G — CLI Arguments (✅ Complete)
 
 **Ціль:** підтримка аргументів командного рядка для автоматизації та скриптів.
 
@@ -473,17 +473,19 @@
 | Елемент | Опис |
 |---------|------|
 | `tauri-plugin-cli` | clap-based парсинг аргументів |
-| CLI handler | Обробка `--record`, `--play`, `--stop-*`, `--wish-*`, `--profile`, `--minimize`, `--datadir` |
+| CLI handler | Обробка `--record`, `--play`, `--stop-*`, `--wish-*`, `--profile`, `--minimize` |
 
 **Критерії "Done":**
-- [ ] `--record URL` запускає запис
-- [ ] `--play URL` запускає відтворення
-- [ ] `--stop-recording` / `--stop-playback` зупиняють
-- [ ] `--wish-add` / `--wish-remove` керують wishlist
-- [ ] `--profile NAME` вибирає профіль при запуску
-- [ ] `--minimize` запуск згорнутим до tray
-- [ ] При повторному запуску args передаються першій інстанції
-- [ ] Exit codes: 0 (success), 1 (error), 2 (invalid args)
+- [x] `--record URL` запускає запис
+- [x] `--play URL` запускає відтворення
+- [x] `--stop-recording` / `--stop-playback` зупиняють
+- [x] `--wish-add` / `--wish-remove` керують wishlist
+- [x] `--profile NAME` вибирає профіль при запуску
+- [x] `--minimize` запуск згорнутим до tray
+- [x] При повторному запуску args передаються першій інстанції
+- [x] Exit codes: 0 (success), 1 (error), 2 (invalid args)
+
+> **Рішення (2026-06-15):** `--datadir` вилучено зі scope — занадто складно (потребує зміни `portable.rs`, глобальний mutex обмежує цінність), реальна потреба не виявлена.
 
 ---
 
