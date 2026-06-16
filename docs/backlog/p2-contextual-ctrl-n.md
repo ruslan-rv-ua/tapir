@@ -1,11 +1,11 @@
-# Ctrl+N — контекстна дія на екранах Browser і Profiles
+# Ctrl+N — контекстна дія на всіх екранах
 
 - **Слаг:** `contextual-ctrl-n`
 - **Тип:** ідея
 - **Стан:** ready
-- **Зусилля:** S
+- **Зусилля:** M
 - **Оновлено:** 2026-06-15
-- **Залежності:** Phase 3F (Profiles ✅), Phase 3B (Browser ✅)
+- **Залежності:** Phase 3F (Profiles ✅), Phase 3B (Browser ✅), Phase 2B (Wishlist ✅), Phase 3D (Scheduler ✅)
 
 ## Опис
 
@@ -14,11 +14,13 @@ ADR `2026-06-02-context-aware-keyboard-shortcuts.md` передбачає роз
 
 Потрібно додати два нових контекстних випадки:
 
-| Екран | Ctrl+N → дія |
+| екран | Ctrl+N → дія |
 |-------|-------------|
 | `streams` | ✅ "Add Stream" (вже є) |
 | `browser` | "Додати обрану станцію до Wishlist" |
 | `profiles` | "Створити профіль" |
+| `wishlist` | "Додати паттерн" |
+| `schedule` | "Нове планування" |
 
 **Чому один шорткат, а не різні:** VS Code використовує ту саму конвенцію (`Ctrl+N` → новий файл / нова вкладка / нова скетч-сторінка залежно від контексту). Користувач вчить одне правило: _"Ctrl+N — створити нове у поточному екрані"_. Для незрячого це критично: менше шорткатів = менше навантаження на пам'ять.
 
@@ -29,10 +31,11 @@ ADR `2026-06-02-context-aware-keyboard-shortcuts.md` передбачає роз
 Вся логіка вже є в `src/hooks/useGlobalShortcuts.ts` та `src/lib/shortcuts.ts`.
 Потрібно:
 
-1. **`shortcuts.ts`** — додати два записи до `SHORTCUTS` з `when: (ctx) => ctx.activeSection === "browser"/"profiles"` та відповідними `run`.
-2. **`ShortcutActions`** — додати `openAddToWishlist` та `openCreateProfile`.
+1. **`shortcuts.ts`** — додати чотири записи до `SHORTCUTS` з `when: (ctx) => ctx.activeSection === "browser"/"profiles"/"wishlist"/"schedule"` та відповідними `run`.
+2. **`ShortcutActions`** — додати `openAddToWishlist`, `openCreateProfile`, `openAddWishlistPattern`, `openCreateSchedule`.
 3. **`useGlobalShortcuts.ts`** — прив'язати нові дії до store/механізму відкриття.
-4. **Browser**: при натисканні `Ctrl+N` викликати `action-add` для рядка, що зараз у фокусі (активна `CompositeRow`). Якщо жоден рядок не активний — ігнорувати (або NVDA-оголошення "Оберіть станцію").
+5. **Wishlist**: `Ctrl+N` → відкрити діалог "Additional Pattern" (або схожий inline-form для додавання паттерну wishlist/ignorelist).
+6. **Schedule**: `Ctrl+N` → відкрити `ScheduleForm` діалог (аналогічно до `$showAddStreamDialog`).
 5. **Profiles**: `subDialog` — наразі локальний `useState` у `ProfilesPanel.tsx`. Потрібно або винести у Nanostore (`$showCreateProfileDialog: atom<boolean>`), або кинути кастомний DOM-подія `"tapir:create-profile"`, яку `ProfilesPanel` слухає через `useEffect`.
 
 > Рекомендований варіант для Profiles: **Nanostore-атом** `$showCreateProfileDialog` (аналог `$showAddStreamDialog` в `stores/streams.ts`) — узгоджено з архітектурою проєкту.
@@ -47,9 +50,11 @@ ADR `2026-06-02-context-aware-keyboard-shortcuts.md` передбачає роз
 
 - [ ] `Ctrl+N` на екрані Browser активує "Add to wishlist" для рядка, що у фокусі; якщо фокус не на рядку — NVDA озвучує підказку "Оберіть станцію".
 - [ ] `Ctrl+N` на екрані Profiles відкриває діалог "Створити профіль" (`ProfileNameDialog` з `type: "create"`).
-- [ ] NVDA озвучує назву дії після відкриття діалогу (не потребує додаткової роботи — `aria-label` у діалогах вже є).
-- [ ] F1-довідка містить записи для обох нових дій із правильними i18n-мітками.
-- [ ] Існуючий тест `useGlobalShortcuts.test.tsx` розширено: `Ctrl+N` на `browser`/`profiles` виконує правильну дію і **не** відкриває Add Stream.
+- [ ] `Ctrl+N` на екрані Wishlist відкриває діалог/форму додавання паттерну.
+- [ ] `Ctrl+N` на екрані Schedule відкриває `ScheduleForm` діалог.
+- [ ] NVDA озвучує назву дії після відкриття діалогу (aria-label у діалогах вже є).
+- [ ] F1-довідника містить записи для всіх 4 нових дій із правильними i18n-мітками.
+- [ ] Існуючий тест `useGlobalShortcuts.test.tsx` розширено: `Ctrl+N` на всіх 4 екранах виконує правильну дію і **не** відкриває Add Stream.
 
 ## Відкриті питання
 
