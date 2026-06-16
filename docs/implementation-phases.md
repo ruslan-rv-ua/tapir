@@ -25,7 +25,7 @@
 | 3F | Profile Manager | Повний CRUD профілів, import/export | ✅ Complete |
 | 3G | CLI Arguments | Аргументи командного рядка | ⬜ |
 | 3H | Post-processing | Зовнішні програми після запису | ⬜ |
-| 3I | Polish Bundle | High Contrast, Autostart, Log rotation, Bandwidth limiting | ⬜ |
+| 3I | Polish Bundle | High Contrast, Autostart, Log rotation | ⬜ |
 | 3J | Stream Import/Export | Імпорт/експорт потоків профілю (M3U8/PLS) з перевіркою | ✅ Complete |
 | 3K | Crash Recovery | clean_shutdown flag + resume записів на старті | ⬜ |
 
@@ -537,10 +537,13 @@
 - `tauri-plugin-log` з ротацією (розмір, кількість файлів)
 - [ ] Логи ротуються при досягненні макс. розміру
 
-#### 3I-4. Bandwidth Limiting
+#### 3I-4. Bandwidth Limiting — ❌ Відхилено
 
-- Throttling у `stream::connection` (кБ/с per-stream)
-- [ ] Обмеження швидкості завантаження на потік
+> **Рішення (2026-06-15):** Фіча виключена зі scope. Обґрунтування: радіо-потоки мають
+> фіксований бітрейт (128–320 kbps), який вже малий. Реального кейсу насичення каналу
+> при типовому використанні не виявлено. Вартість реалізації (throttle в `stream::connection`,
+> UI, per-stream налаштування, взаємодія з PlayerEngine, ICY-metadata timing) не виправдана.
+> Повертатись лише якщо реальне використання покаже насичення каналу при >5 одночасних записах.
 
 ---
 
