@@ -429,7 +429,17 @@ pub async fn transfer_stream_to_profile(
 /// `remove_streams` (one stop-pass, one retain, one save) and the single
 /// `transfer_stream_to_profile` move branch — incl. its accepted TOCTOU window
 /// (finding 3): a stream idle at eligibility may be stopped at removal if it
-/// became active during the I/O window, same as single-move.
+/// became active during the I/O window, same as single-move. One consequence of
+/// that window: a stream that races from idle into recording during the I/O is
+/// still counted as `transferred` (and stopped at removal), not
+/// `skipped_recording`, so the summary may under-report recording-skips by one
+/// in that rare race.
+///
+/// Failure ordering (move): the target is saved BEFORE the active profile is
+/// mutated, so if the active save fails after the target save succeeded the
+/// moved streams are DUPLICATED (present in both profiles), never lost. Keep
+/// this order — reversing it to save the active profile first would turn a
+/// partial failure into data loss.
 #[tauri::command]
 pub async fn transfer_streams_to_profile(
     stream_ids: Vec<String>,
