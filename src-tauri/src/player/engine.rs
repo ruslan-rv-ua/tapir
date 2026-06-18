@@ -461,7 +461,7 @@ use symphonia::core::probe::Hint;
 /// Implementations produce interleaved f32 PCM samples one chunk at a time.
 /// Task 2 ships symphonia-only; future tasks add Media Foundation behind this
 /// same interface without touching `LiveSource`.
-trait LiveDecoder: Send {
+pub(crate) trait LiveDecoder: Send {
     /// Decode the next chunk of interleaved f32 samples, or None at end/fatal error.
     fn next_pcm(&mut self) -> Option<Vec<f32>>;
     fn spec(&self) -> SignalSpec;

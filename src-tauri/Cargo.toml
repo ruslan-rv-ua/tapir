@@ -85,9 +85,23 @@ windows = { version = "0.62", features = [
     "Win32_Storage_FileSystem",
     "Win32_System_Power",
     "Win32_System_WinRT",
+    # Media Foundation HE-AAC live decode (src/player/mf_aac.rs): IMFSourceReader
+    # over a custom IMFByteStream that wraps the rtrb consumer. Com is required
+    # for CoInitializeEx(MTA) on the decode thread. The byte stream also
+    # implements IMFAttributes (so the source resolver can read a content-type
+    # hint), which needs PROPVARIANT — StructuredStorage + Variant.
+    "Win32_Media_MediaFoundation",
+    "Win32_System_Com",
+    "Win32_System_Com_StructuredStorage",
+    "Win32_System_Variant",
     "Media",
     "Foundation",
 ] }
+
+# windows-core, kept in lockstep with `windows` above. Needed as a *direct*
+# dependency because the `#[implement(IMFByteStream)]` macro (src/player/mf_aac.rs)
+# emits absolute `::windows_core::` paths that must resolve to the 0.62 version.
+windows-core = "0.62"
 
 # Registry access for one-shot AppUserModelID registration at startup,
 # so toast notifications carry our AUMID and actually appear on Windows 10/11.
