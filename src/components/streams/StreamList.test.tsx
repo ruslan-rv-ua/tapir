@@ -29,6 +29,8 @@ vi.mock("../../lib/tauri", () => ({
   ]),
   copyStreamToProfile: vi.fn().mockResolvedValue(undefined),
   moveStreamToProfile: vi.fn().mockResolvedValue(undefined),
+  copyStreamsToProfile: vi.fn().mockResolvedValue({ transferred: [], skippedRecording: 0, skippedConflict: 0 }),
+  moveStreamsToProfile: vi.fn().mockResolvedValue({ transferred: [], skippedRecording: 0, skippedConflict: 0 }),
   createProfile: vi.fn().mockResolvedValue({ name: "Fresh", streamCount: 0, isActive: false }),
 }));
 
@@ -471,6 +473,79 @@ describe("StreamList — prune vanished ids", () => {
     expect($streamSelection.get().size).toBe(2);
     act(() => $streams.set([mkStream("a", "Alpha")])); // b and c gone
     await waitFor(() => expect([...$streamSelection.get()]).toEqual(["a"]));
+  });
+});
+
+describe("StreamList — bulk transfer to profile", () => {
+  const openMenu = (container: HTMLElement, id: string) =>
+    fireEvent.click(container.querySelector<HTMLElement>(`li[data-item-id="${id}"] button[data-segment="action-menu"]`)!);
+  const idOf = () => document.activeElement?.getAttribute("data-item-id") ?? null;
+
+  it("toolbar requestBulkTransfer('move') opens the picker with the BULK title", async () => {
+    replaceSelection(new Set(["a", "b"]));
+    const ref = createRef<ZoneEntry & { requestBulkTransfer(m: "copy" | "move"): void }>();
+    render(<StreamList ref={ref} exitZone={vi.fn()} onEmpty={vi.fn()} />);
+    await act(async () => { ref.current!.requestBulkTransfer("move"); });
+    expect(await screen.findByText(m.move_selected_to_profile_title({ count: 2 }))).toBeTruthy();
+  });
+
+  it("bulk move calls moveStreamsToProfile, removes only transferred rows, focuses a survivor", async () => {
+    vi.mocked(tauri.moveStreamsToProfile).mockResolvedValueOnce({ transferred: ["a"], skippedRecording: 0, skippedConflict: 0 });
+    replaceSelection(new Set(["a", "b"])); // b will be reported as skipped (not in transferred)
+    const ref = createRef<ZoneEntry & { requestBulkTransfer(m: "copy" | "move"): void }>();
+    const { container } = render(<StreamList ref={ref} exitZone={vi.fn()} onEmpty={vi.fn()} />);
+    act(() => (ref.current as unknown as ZoneEntry).focus("forward"));
+    await act(async () => { ref.current!.requestBulkTransfer("move"); });
+    fireEvent.click(await screen.findByRole("button", { name: "Jazz" }));
+
+    await waitFor(() => expect(tauri.moveStreamsToProfile).toHaveBeenCalledTimes(1));
+    expect(new Set(vi.mocked(tauri.moveStreamsToProfile).mock.calls[0][0])).toEqual(new Set(["a", "b"]));
+    await waitFor(() => expect($streams.get().map((s) => s.id)).toEqual(["b", "c"])); // only 'a' removed
+    await waitFor(() => expect(idOf()).toBe("b")); // nearest survivor, never <body>
+    expect(document.activeElement).not.toBe(document.body);
+    expect([...$streamSelection.get()]).toEqual(["b"]); // moved 'a' pruned; skipped 'b' stays selected
+  });
+
+  it("bulk copy calls copyStreamsToProfile, keeps rows AND selection", async () => {
+    vi.mocked(tauri.copyStreamsToProfile).mockResolvedValueOnce({ transferred: ["a", "b"], skippedRecording: 0, skippedConflict: 0 });
+    replaceSelection(new Set(["a", "b"]));
+    const ref = createRef<ZoneEntry & { requestBulkTransfer(m: "copy" | "move"): void }>();
+    render(<StreamList ref={ref} exitZone={vi.fn()} onEmpty={vi.fn()} />);
+    await act(async () => { ref.current!.requestBulkTransfer("copy"); });
+    fireEvent.click(await screen.findByRole("button", { name: "Jazz" }));
+
+    await waitFor(() => expect(tauri.copyStreamsToProfile).toHaveBeenCalledTimes(1));
+    expect($streams.get().map((s) => s.id)).toEqual(["a", "b", "c"]); // nothing removed
+    expect([...$streamSelection.get()].sort()).toEqual(["a", "b"]); // selection kept
+  });
+
+  it("announces a reason-broken-down summary", async () => {
+    vi.mocked(tauri.moveStreamsToProfile).mockResolvedValueOnce({ transferred: ["a"], skippedRecording: 1, skippedConflict: 1 });
+    replaceSelection(new Set(["a", "b", "c"]));
+    const ref = createRef<ZoneEntry & { requestBulkTransfer(m: "copy" | "move"): void }>();
+    render(<StreamList ref={ref} exitZone={vi.fn()} onEmpty={vi.fn()} />);
+    $announcer.set(null);
+    await act(async () => { ref.current!.requestBulkTransfer("move"); });
+    fireEvent.click(await screen.findByRole("button", { name: "Jazz" }));
+    await waitFor(() =>
+      expect($announcer.get()?.message).toBe(
+        `${m.transfer_done_moved({ count: 1 })}, ${m.transfer_skipped_recording({ count: 1 })}, ${m.transfer_skipped_conflict({ count: 1 })}`,
+      ),
+    );
+  });
+
+  it("⋯ move on a SELECTED row opens bulk; on a NON-selected row collapses + single", async () => {
+    replaceSelection(new Set(["a", "b"]));
+    const { container } = renderList();
+    openMenu(container, "a"); // selected
+    fireEvent.click(await screen.findByRole("menuitem", { name: m.move_selected({ count: 2 }) }));
+    expect(await screen.findByText(m.move_selected_to_profile_title({ count: 2 }))).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: m.cancel() }));
+
+    openMenu(container, "c"); // not selected
+    fireEvent.click(await screen.findByRole("menuitem", { name: m.move_to_profile() }));
+    expect(await screen.findByText(m.move_stream_to_profile_title({ name: "Charlie" }))).toBeTruthy();
+    expect([...$streamSelection.get()]).toEqual(["c"]); // collapsed to the row
   });
 });
 

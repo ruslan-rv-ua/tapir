@@ -17,8 +17,11 @@ import { createPortal } from "react-dom";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import * as m from "../../i18n/paraglide/messages";
 
-/** Imperative handle: zone navigation + the toolbar's bulk-delete entry point. */
-export type StreamListHandle = ZoneEntry & { requestBulkDelete(): void };
+/** Imperative handle: zone navigation + the toolbar's bulk-op entry points. */
+export type StreamListHandle = ZoneEntry & {
+  requestBulkDelete(): void;
+  requestBulkTransfer(mode: "copy" | "move"): void;
+};
 
 interface Props {
   exitZone: (forward: boolean) => void;
@@ -44,16 +47,6 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
   // `streams` prop that it filters before passing in).
   const [bulkDeleteSeq, setBulkDeleteSeq] = useState(0);
   const focusItemRef = useRef<((id: string, segment?: SegmentKind) => void) | null>(null);
-
-  const imperativeExtra = useCallback(
-    (api: { focusItem: (itemId: string, segment?: SegmentKind) => void }) => {
-      // Stash the latest focusItem; the handle is rebuilt on items change, so this
-      // ref always points at a focusItem that knows the post-delete item set.
-      focusItemRef.current = api.focusItem;
-      return { requestBulkDelete: () => setBulkConfirmOpen(true) };
-    },
-    [],
-  );
 
   const announce = useAnnounce();
 
@@ -82,23 +75,76 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
     [streams, announce],
   );
 
+  type TransferTarget = { kind: "single"; streamId: string } | { kind: "bulk" };
   type Transfer =
     | null
-    | { phase: "pick"; mode: "copy" | "move"; streamId: string; profiles: ProfileMeta[] }
-    | { phase: "create"; mode: "copy" | "move"; streamId: string };
+    | { phase: "pick"; mode: "copy" | "move"; target: TransferTarget; profiles: ProfileMeta[] }
+    | { phase: "create"; mode: "copy" | "move"; target: TransferTarget };
   const [transfer, setTransfer] = useState<Transfer>(null);
   const [nameInput, setNameInput] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const openTransfer = async (mode: "copy" | "move", streamId: string) => {
+  const openTransfer = useCallback(async (mode: "copy" | "move", target: TransferTarget) => {
     try {
       const all = await tauri.listProfiles();
-      setTransfer({ phase: "pick", mode, streamId, profiles: all.filter((p) => !p.isActive) });
+      setTransfer({ phase: "pick", mode, target, profiles: all.filter((p) => !p.isActive) });
     } catch (e) {
       addToast(String(e), "error");
     }
+  }, []);
+
+  const composeSummary = (mode: "copy" | "move", res: tauri.BulkTransferResult): string => {
+    const lead =
+      mode === "move"
+        ? m.transfer_done_moved({ count: res.transferred.length })
+        : m.transfer_done_copied({ count: res.transferred.length });
+    const parts = [lead];
+    if (res.skippedRecording > 0) parts.push(m.transfer_skipped_recording({ count: res.skippedRecording }));
+    if (res.skippedConflict > 0) parts.push(m.transfer_skipped_conflict({ count: res.skippedConflict }));
+    return parts.join(", ");
   };
+
+  const doBulkTransfer = async (mode: "copy" | "move", targetProfile: string) => {
+    const ids = [...$streamSelection.get()];
+    if (ids.length === 0) { setTransfer(null); return; }
+    const visible = streams; // snapshot before await — for the focus index (A8)
+    try {
+      const res = mode === "move"
+        ? await tauri.moveStreamsToProfile(ids, targetProfile)
+        : await tauri.copyStreamsToProfile(ids, targetProfile);
+      if (mode === "move" && res.transferred.length > 0) {
+        const moved = new Set(res.transferred);
+        const topRemovedIdx = Math.max(0, visible.findIndex((s) => moved.has(s.id)));
+        const survivors = visible.filter((s) => !moved.has(s.id));
+        // Remove only the transferred rows; pruneSelection drops them from the
+        // selection, leaving the skipped rows selected (R3). copy: untouched.
+        $streams.set($streams.get().filter((s) => !moved.has(s.id)));
+        pendingBulkFocusRef.current =
+          survivors.length === 0 ? null : survivors[Math.min(topRemovedIdx, survivors.length - 1)].id;
+        if (survivors.length === 0) onEmpty();
+        setBulkDeleteSeq((n) => n + 1);
+      }
+      announce(composeSummary(mode, res), "polite");
+      setTransfer(null);
+    } catch (err) {
+      addToast(String(err), "error");
+      setTransfer(null);
+    }
+  };
+
+  const imperativeExtra = useCallback(
+    (api: { focusItem: (itemId: string, segment?: SegmentKind) => void }) => {
+      // Stash the latest focusItem; the handle is rebuilt on items change, so this
+      // ref always points at a focusItem that knows the post-delete item set.
+      focusItemRef.current = api.focusItem;
+      return {
+        requestBulkDelete: () => setBulkConfirmOpen(true),
+        requestBulkTransfer: (mode: "copy" | "move") => openTransfer(mode, { kind: "bulk" }),
+      };
+    },
+    [openTransfer],
+  );
 
   const doTransfer = async (mode: "copy" | "move", streamId: string, targetProfile: string) => {
     const name = $streams.get().find((s) => s.id === streamId)?.name ?? "";
@@ -133,9 +179,10 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
     setBusy(true);
     try {
       const meta = await tauri.createProfile(nameInput.trim());
-      const { mode, streamId } = transfer;
+      const { mode, target } = transfer;
       setNameInput("");
-      await doTransfer(mode, streamId, meta.name);
+      if (target.kind === "bulk") await doBulkTransfer(mode, meta.name);
+      else await doTransfer(mode, target.streamId, meta.name);
     } catch (e) {
       const msg = String(e);
       if (msg.startsWith("Conflict:") || msg.startsWith("InvalidName:")) {
@@ -316,8 +363,14 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
                   setPendingDeleteId(id);
                 }
               }}
-              onCopyToProfile={() => openTransfer("copy", id)}
-              onMoveToProfile={() => openTransfer("move", id)}
+              onCopyToProfile={() => {
+                if ($streamSelection.get().has(id)) openTransfer("copy", { kind: "bulk" });
+                else { replaceSelection(new Set([id])); openTransfer("copy", { kind: "single", streamId: id }); }
+              }}
+              onMoveToProfile={() => {
+                if ($streamSelection.get().has(id)) openTransfer("move", { kind: "bulk" });
+                else { replaceSelection(new Set([id])); openTransfer("move", { kind: "single", streamId: id }); }
+              }}
               onCopyUrl={() => copyStreamUrl(streams.find((s) => s.id === id)!)}
               onActivate={(mods) => activateStream(id, mods)}
             />
@@ -350,13 +403,21 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
         createPortal(
           <StreamTransferDialog
             mode={transfer.mode}
-            streamName={streams.find((s) => s.id === transfer.streamId)?.name ?? ""}
+            subject={
+              transfer.target.kind === "bulk"
+                ? { kind: "bulk", count: selectedSet.size }
+                : { kind: "single", name: streams.find((s) => s.id === transfer.target.streamId)?.name ?? "" }
+            }
             profiles={transfer.profiles}
-            onSelect={(profileName) => doTransfer(transfer.mode, transfer.streamId, profileName)}
+            onSelect={(profileName) =>
+              transfer.target.kind === "bulk"
+                ? doBulkTransfer(transfer.mode, profileName)
+                : doTransfer(transfer.mode, transfer.target.streamId, profileName)
+            }
             onCreateNew={() => {
               setNameInput("");
               setNameError(null);
-              setTransfer({ phase: "create", mode: transfer.mode, streamId: transfer.streamId });
+              setTransfer({ phase: "create", mode: transfer.mode, target: transfer.target });
             }}
             onCancel={() => setTransfer(null)}
           />,
