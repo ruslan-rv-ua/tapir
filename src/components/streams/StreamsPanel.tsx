@@ -187,6 +187,9 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const handleChipClick = (chipId: StreamFilter) => {
     if (chipId === activeChip) return;
     $streamFilter.set(chipId);
+    // The visible set changes under the new filter — selection is scoped to what's
+    // visible, so clear it rather than leaving stale (now-hidden) ids selected.
+    replaceSelection(new Set());
     const count = chipId === "all"
       ? streams.length
       : chipId === "recording"
@@ -242,9 +245,13 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const addExamplesBtnRef = useRef<HTMLButtonElement | null>(null);
   const [loadingExamples, setLoadingExamples] = useState(false);
   const pendingFocusFirstRow = useRef(false);
+  // Set by StreamList.onEmpty when a bulk delete clears the visible list — the
+  // target button isn't mounted yet, so a deferred effect focuses it (see below).
+  const pendingFocusEmptyZone = useRef(false);
 
   const handleResetFilter = () => {
     $streamFilter.set("all");
+    replaceSelection(new Set());
     announce(filterAnnouncement("all", streams.length), "polite");
   };
 
@@ -324,6 +331,23 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
       streamListRef.current?.focus("forward");
     }
   }, [isEmpty]);
+
+  // After a bulk delete empties the visible list, StreamList.onEmpty set a flag;
+  // the target button isn't mounted until isEmpty / filterHidesAll flips true, so
+  // focus it here (never let focus fall to <body>).
+  useEffect(() => {
+    if (!pendingFocusEmptyZone.current) return;
+    if (isEmpty) {
+      pendingFocusEmptyZone.current = false;
+      addExamplesBtnRef.current?.focus();
+    } else if (filterHidesAll) {
+      pendingFocusEmptyZone.current = false;
+      resetFilterBtnRef.current?.focus();
+    }
+  }, [isEmpty, filterHidesAll]);
+
+  // Selection is section-scoped: clear it when the streams screen unmounts.
+  useEffect(() => () => { replaceSelection(new Set()); }, []);
 
   const doStopAll = async () => {
     try { await tauri.stopAllRecordings(); }
@@ -626,7 +650,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
               ref={streamListCallbackRef}
               streams={sortedStreams}
               exitZone={(forward) => exitZone("streams-list", forward)}
-              onEmpty={() => {/* handled by isEmpty effect */}}
+              onEmpty={() => { pendingFocusEmptyZone.current = true; }}
             />
           )}
       </ListCard>

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, act, screen, fireEvent } from "@testing-library/react";
+import { render, act, screen, fireEvent, waitFor } from "@testing-library/react";
 import * as tauri from "../../lib/tauri";
 import { $streams, $statuses, $streamFilter, $streamSelection, replaceSelection } from "../../stores/streams";
 import { $toasts } from "../../stores/toasts";
@@ -495,5 +495,53 @@ describe("StreamsPanel — selection toolbar cluster", () => {
     const tabbable = stops.filter((b) => b.getAttribute("tabindex") === "0");
     expect(tabbable).toHaveLength(1);
     expect(stops.length).toBeGreaterThanOrEqual(12);
+  });
+});
+
+describe("StreamsPanel — selection lifecycle", () => {
+  beforeEach(() => {
+    $streams.set([mkStream("a", "Alpha"), mkStream("b", "Bravo")]);
+    $statuses.set({});
+  });
+
+  it("changing the filter clears the selection", () => {
+    replaceSelection(new Set(["a"]));
+    const { container } = renderPanel();
+    const { chips } = chipButtons(container);
+    fireEvent.click(chips[1]); // "recording" chip
+    expect($streamSelection.get().size).toBe(0);
+  });
+
+  it("resetting the filter clears the selection", () => {
+    $statuses.set({}); // no recording rows → filter "recording" hides all
+    $streamFilter.set("recording");
+    replaceSelection(new Set(["a"]));
+    renderPanel();
+    fireEvent.click(screen.getByRole("button", { name: m.streams_filter_reset() }));
+    expect($streamSelection.get().size).toBe(0);
+  });
+
+  it("clears the selection when the panel unmounts (leaving the section)", () => {
+    replaceSelection(new Set(["a"]));
+    const { unmount } = renderPanel();
+    unmount();
+    expect($streamSelection.get().size).toBe(0);
+  });
+
+  it("deletes all visible under a filter → onEmpty focuses reset-filter (never <body>)", async () => {
+    // a recording, b idle; filter=recording → visible=[a]; select+delete a → filter-empty.
+    $statuses.set({ a: mkStatus("a", "recording") });
+    $streamFilter.set("recording");
+    replaceSelection(new Set(["a"]));
+    renderPanel();
+    fireEvent.click(screen.getByRole("button", { name: m.delete_selected({ count: 1 }) }));
+    const confirmBtn = await screen.findByRole("button", { name: m["delete"]() });
+    // removeStreams is mocked to resolve; handleConfirmBulkDelete then sets $streams
+    // itself (full store → [b]), so no manual $streams.set is needed — this is the
+    // real path. b is idle under the recording filter → filter-empty zone mounts.
+    await act(async () => { fireEvent.click(confirmBtn); });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: m.streams_filter_reset() })),
+    );
   });
 });

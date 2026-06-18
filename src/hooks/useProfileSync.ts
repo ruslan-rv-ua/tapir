@@ -3,7 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import type { ProfileChangedPayload } from "../lib/tauri";
 import * as tauri from "../lib/tauri";
 import { $profile } from "../stores/profile";
-import { $streams, $statuses } from "../stores/streams";
+import { $streams, $statuses, replaceSelection } from "../stores/streams";
 import { $settings, $recordingSettings } from "../stores/settings";
 import { $wishlist, $ignorelist } from "../stores/wishlist";
 import { loadSongs } from "../stores/songs";
@@ -30,6 +30,9 @@ export function useProfileSync(): void {
           ignorelist: profile.ignorelist,
         });
         $streams.set(profile.streams);
+        // Selection is profile-scoped — clear immediately (explicit, so the toolbar
+        // counter drops at once rather than waiting on the prune effect).
+        replaceSelection(new Set());
 
         // Partial update settings activeProfile
         const currentSettings = $settings.get();
