@@ -72,7 +72,7 @@ use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
 
 use anyhow::{Context, Result, anyhow};
 use symphonia::core::audio::{Channels, SignalSpec};
-use windows::Win32::Foundation::RPC_E_CHANGED_MODE;
+use windows::Win32::Foundation::{E_FAIL, RPC_E_CHANGED_MODE};
 use windows::Win32::Media::MediaFoundation::{
     IMFAsyncCallback, IMFAsyncResult, IMFAttributes, IMFAttributes_Impl, IMFByteStream,
     IMFByteStream_Impl, IMFSourceReader, MF_ATTRIBUTE_TYPE, MF_ATTRIBUTES_MATCH_TYPE,
@@ -101,11 +101,24 @@ use super::engine::LiveDecoder;
 /// few hundred ms of audio.
 const PCM_CHANNEL_CAP: usize = 16;
 
-/// Once the format-probe seek phase has settled, history below this offset can be
-/// dropped: every backward seek the ADTS source issues lands in the first few KB
-/// (header sniffing). 64 KB is a generous safety margin over the observed seeks,
-/// so trimming below it never strands a replay target. See [`RtrbByteStreamInner`].
-const HISTORY_RETAIN_FLOOR: u64 = 64 * 1024;
+/// Offset below which the ADTS source's format-probe backward seeks all land.
+/// During open MF sniffs ADTS headers by seeking backward into the first few KB;
+/// every observed probe seek targets an offset well under this. It is *not* an
+/// absolute retention floor (that was the leak — see [`RtrbByteStreamInner`]); it
+/// is only the upper bound on how far back the source ever seeks, used to size
+/// [`HISTORY_RETAIN_WINDOW`] so a probe seek is always still resolvable.
+const HISTORY_PROBE_REGION: u64 = 64 * 1024;
+
+/// Trailing replay window kept *behind* the live read position. `trim_history`
+/// drops everything below `position - HISTORY_RETAIN_WINDOW`, so `history` is
+/// O(1)-bounded by this constant regardless of stream duration (it does **not**
+/// grow with how long the stream has played). It is deliberately ≥
+/// [`HISTORY_PROBE_REGION`]: while the source is still in the probe phase its read
+/// position is itself within the first few KB, so `position - HISTORY_RETAIN_WINDOW`
+/// saturates to 0 and the whole probe region stays retained; only once the source
+/// has read strictly forward well past the window does the prefix get dropped, by
+/// which point the source never seeks back into it. See [`RtrbByteStreamInner`].
+const HISTORY_RETAIN_WINDOW: u64 = 256 * 1024;
 
 // ── MF lifecycle guard ──────────────────────────────────────────────────────
 
@@ -187,12 +200,15 @@ struct RtrbByteStreamInner {
     /// offsets) while detecting the format; a raw forward-only ring cannot satisfy
     /// that, so we replay from here.
     ///
-    /// **Bounded:** `history` is *not* the whole stream. `history_base` is the
-    /// absolute stream offset of `history[0]`; once the format-probe seeks have
-    /// settled past [`HISTORY_RETAIN_FLOOR`], bytes below that floor are dropped
-    /// (every observed backward seek lands inside the floor, so trimming below it
-    /// never strands a replay target). `total_pulled` (below) — not `history.len()`
-    /// — is the GetLength high-water mark.
+    /// **O(1)-bounded:** `history` is *not* the whole stream and does **not** grow
+    /// with stream duration. `history_base` is the absolute stream offset of
+    /// `history[0]`. `trim_history` keeps only the trailing window
+    /// `[position - HISTORY_RETAIN_WINDOW, …)` (see [`HISTORY_RETAIN_WINDOW`]),
+    /// dropping the prefix below it. Because the window is ≥ [`HISTORY_PROBE_REGION`]
+    /// and the source's backward seeks only happen during the probe phase — when its
+    /// position is still in the first few KB, so the window floor is still 0 — no
+    /// offset the source ever seeks to is trimmed away. `total_pulled` (below) — not
+    /// `history.len()` — is the GetLength high-water mark.
     history: Vec<u8>,
     /// Absolute stream offset of `history[0]`. `history` covers
     /// `[history_base, history_base + history.len())`.
@@ -203,6 +219,12 @@ struct RtrbByteStreamInner {
     total_pulled: u64,
     /// Current logical read position (`GetCurrentPosition`).
     position: u64,
+    /// Set once a read/seek has targeted an offset already trimmed out of `history`
+    /// (below `history_base`). This must never happen with a correct bound, so it is
+    /// a hard, fatal error rather than a silent short read: once set, reads fail with
+    /// a real error HRESULT so `ReadSample` surfaces it and the stream ends with an
+    /// error instead of MF mistaking a 0-length read for benign mid-stream EOF.
+    fatal: bool,
 }
 
 impl RtrbByteStream {
@@ -227,6 +249,7 @@ impl RtrbByteStream {
                 history_base: 0,
                 total_pulled: 0,
                 position: 0,
+                fatal: false,
             }),
             stop,
             last_async_read: Mutex::new(0),
@@ -269,15 +292,29 @@ impl RtrbByteStream {
         }
     }
 
-    /// Drop replay bytes the source can no longer seek back to. Every backward
-    /// seek the ADTS source issues lands within [`HISTORY_RETAIN_FLOOR`] of the
-    /// stream start, so once we've pulled past that floor we keep only the tail
-    /// from `HISTORY_RETAIN_FLOOR` onward (anything the source still reads
-    /// forward). This caps `history` instead of letting it grow with the stream.
+    /// Drop replay bytes the source can no longer seek back to, keeping only a
+    /// **trailing window** of [`HISTORY_RETAIN_WINDOW`] bytes behind the current
+    /// read position. This caps `history` at a constant size (the window plus any
+    /// read-ahead the source has pulled past `position`, itself clamped by
+    /// `GetLength`) **independent of stream duration** — closing the unbounded leak
+    /// where an absolute floor pinned the kept range to `[floor, total_pulled)`.
+    ///
+    /// Correctness — no offset the source actually seeks to is ever trimmed:
+    /// * The ADTS source only seeks **backward** during the initial format probe,
+    ///   and those seeks land below [`HISTORY_PROBE_REGION`].
+    /// * While probing, the source's own read position is still within the first
+    ///   few KB (≤ the probe region), so `position - HISTORY_RETAIN_WINDOW`
+    ///   saturates to 0 (the window is ≥ the probe region) and nothing is dropped.
+    /// * The prefix only starts being dropped once `position` has advanced strictly
+    ///   forward past `HISTORY_RETAIN_WINDOW` — i.e. far beyond the probe region —
+    ///   after which the source reads only forward and never seeks back into the
+    ///   dropped range. (`GetLength` reports bytes-so-far, so read-ahead never
+    ///   overshoots into territory that would need a backward seek.)
     fn trim_history(inner: &mut RtrbByteStreamInner) {
-        // The lowest offset we must still be able to serve: never below the retain
-        // floor (probe seeks) and never above the current read position.
-        let keep_from = HISTORY_RETAIN_FLOOR.min(inner.position);
+        // Lowest offset we must still be able to serve: a fixed window behind the
+        // live read position. Saturating to 0 keeps the whole probe-region prefix
+        // until the position has moved a full window past it.
+        let keep_from = inner.position.saturating_sub(HISTORY_RETAIN_WINDOW);
         if keep_from <= inner.history_base {
             return;
         }
@@ -290,50 +327,85 @@ impl RtrbByteStream {
     }
 
     /// Blocking read of up to `buf.len()` bytes starting at the current logical
-    /// position; returns bytes read (0 == EOF at the live tail / stop). Serves
-    /// replayed bytes from `history` and pulls fresh bytes from the ring as needed.
-    fn blocking_read(&self, buf: &mut [u8]) -> usize {
+    /// position. Serves replayed bytes from `history` and pulls fresh bytes from
+    /// the ring as needed.
+    ///
+    /// Returns `Ok(n)` with `n` bytes read (`Ok(0)` == benign EOF at the live tail
+    /// / stop), or a fatal `Err` if the read targets an offset already trimmed out
+    /// of `history`. The error is propagated (not swallowed as a 0-length read) so
+    /// `ReadSample` surfaces it and the stream ends with an error: a 0-length read
+    /// would be (mis)read by MF as mid-stream EOF, silently truncating playback.
+    fn blocking_read(&self, buf: &mut [u8]) -> windows::core::Result<usize> {
         if buf.is_empty() {
-            return 0;
+            return Ok(0);
         }
         let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
-        let pos = inner.position;
-
-        // A seek below what we retain would be unservable; the floor guarantees
-        // the source never does this, but guard against it loudly rather than
-        // reading garbage.
-        if pos < inner.history_base {
-            log::error!(
-                "[RtrbByteStream] read at {pos} below retained base {}; history trimmed too far",
-                inner.history_base
-            );
-            return 0;
-        }
 
         // `rel` is the offset into `history` we want to read from. If we're at or
         // past the live tail, pull more bytes until we have data beyond `pos`
         // (a forward seek may sit past the current tail) or hit EOF. Each
         // fill_history blocks for at least one chunk, so this does not spin.
+        let pos = inner.position;
         loop {
+            // The fatal guard (pos < history_base) is checked inside the loop body's
+            // exit too, but a trimmed position never reaches the live tail, so check
+            // it up front before any blocking fill: see `serve_from_history`.
+            if inner.fatal || pos < inner.history_base {
+                break;
+            }
             let history_end = inner.history_base + inner.history.len() as u64;
             if pos < history_end {
                 break;
             }
             let need = (pos - history_end) as usize + buf.len();
             if Self::fill_history(&mut inner, need, &self.stop) == 0 {
-                return 0; // genuine EOF (producer dropped / stop) or trim race
+                return Ok(0); // genuine EOF (producer dropped / stop) or trim race
             }
+        }
+
+        Self::serve_from_history(&mut inner, buf)
+    }
+
+    /// Copy bytes for the current `position` out of the already-filled `history`,
+    /// advancing `position`. Pure logic over [`RtrbByteStreamInner`] (no ring/COM)
+    /// so it is unit-testable directly.
+    ///
+    /// Returns `Ok(n)` (`Ok(0)` == nothing available at/after the live tail), or a
+    /// fatal `Err` if `position` is below `history_base` — i.e. the source asked for
+    /// an offset we already trimmed. That must never happen with the trailing-window
+    /// bound (its only backward seeks are probe seeks issued while `position` is
+    /// still inside the probe region, where the window floor is 0 and nothing has
+    /// been trimmed). If the assumption is ever violated we fail HARD and LOUD via
+    /// the `fatal` flag + an error HRESULT — never serve garbage or a benign-looking
+    /// short read that MF would treat as EOF and silently truncate playback.
+    fn serve_from_history(
+        inner: &mut RtrbByteStreamInner,
+        buf: &mut [u8],
+    ) -> windows::core::Result<usize> {
+        // A prior trimmed-offset read already poisoned the stream — keep failing.
+        if inner.fatal {
+            return Err(E_FAIL.into());
+        }
+        let pos = inner.position;
+        if pos < inner.history_base {
+            inner.fatal = true;
+            log::error!(
+                "[RtrbByteStream] FATAL: read at {pos} below retained base {} \
+                 (history trimmed past a sought offset); failing the stream",
+                inner.history_base
+            );
+            return Err(E_FAIL.into());
         }
 
         let rel = (pos - inner.history_base) as usize;
         let avail = inner.history.len().saturating_sub(rel);
         if avail == 0 {
-            return 0;
+            return Ok(0);
         }
         let n = avail.min(buf.len());
         buf[..n].copy_from_slice(&inner.history[rel..rel + n]);
         inner.position += n as u64;
-        n
+        Ok(n)
     }
 }
 
@@ -395,7 +467,9 @@ impl IMFByteStream_Impl for RtrbByteStream_Impl {
         // SAFETY: MF guarantees `pb` points to at least `cb` writable bytes; we
         // build a slice of exactly that length and never read past it.
         let buf = unsafe { std::slice::from_raw_parts_mut(pb, cb as usize) };
-        let n = self.blocking_read(buf);
+        // A fatal (trimmed-offset) read propagates as an error HRESULT so the
+        // source surfaces it instead of treating a 0-length read as mid-stream EOF.
+        let n = self.blocking_read(buf)?;
         if !pcbread.is_null() {
             // SAFETY: out-pointer supplied by MF.
             unsafe { *pcbread = n as u32 };
@@ -418,7 +492,9 @@ impl IMFByteStream_Impl for RtrbByteStream_Impl {
         // byte count is passed to EndRead via `last_async_read` instead.
         // SAFETY: MF guarantees `pb` points to >= `cb` writable bytes.
         let buf = unsafe { std::slice::from_raw_parts_mut(pb, cb as usize) };
-        let n = self.blocking_read(buf);
+        // A fatal (trimmed-offset) read fails the BeginRead so the source surfaces
+        // an error instead of completing a 0-length read it would treat as EOF.
+        let n = self.blocking_read(buf)?;
         *self.last_async_read.lock().unwrap_or_else(|e| e.into_inner()) = n as u32;
 
         if let Some(callback) = pcallback.as_ref() {
@@ -967,5 +1043,166 @@ fn channels_from_count(count: u32) -> Channels {
         1 => Channels::FRONT_LEFT,
         2 => Channels::FRONT_LEFT | Channels::FRONT_RIGHT,
         n => Channels::from_bits_truncate((1u32 << n) - 1),
+    }
+}
+
+// ── tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    //! Pure-Rust unit tests for the byte stream's history-bounding logic. These do
+    //! **not** touch Media Foundation / COM — they drive [`RtrbByteStreamInner`]
+    //! and the static `fill_history` / `trim_history` / `serve_from_history` helpers
+    //! directly over a real `rtrb` ring, so they run in plain `cargo test` on any
+    //! platform and don't violate the "no MF test in the suite" rule.
+
+    use super::*;
+
+    /// Build a fresh inner over an rtrb ring big enough to hold one feed chunk, and
+    /// keep the producer alive so `fill_history` never blocks (we always top it up
+    /// before draining). Returns (inner, producer, stop).
+    fn make_inner(ring_cap: usize) -> (RtrbByteStreamInner, rtrb::Producer<u8>, Arc<AtomicBool>) {
+        let (producer, consumer) = rtrb::RingBuffer::<u8>::new(ring_cap);
+        let inner = RtrbByteStreamInner {
+            consumer,
+            history: Vec::new(),
+            history_base: 0,
+            total_pulled: 0,
+            position: 0,
+            fatal: false,
+        };
+        (inner, producer, Arc::new(AtomicBool::new(false)))
+    }
+
+    /// Synthetic stream byte: deterministic function of absolute offset so a read at
+    /// any offset can be checked against what was produced there.
+    fn byte_at(offset: u64) -> u8 {
+        (offset.wrapping_mul(31).wrapping_add(7) & 0xFF) as u8
+    }
+
+    /// Feed `n` bytes (continuing the synthetic pattern from `total_pulled`) into the
+    /// ring, then drain them into `history` via the real `fill_history`. Loops so
+    /// `n` larger than the ring capacity still works.
+    fn feed(
+        inner: &mut RtrbByteStreamInner,
+        producer: &mut rtrb::Producer<u8>,
+        stop: &Arc<AtomicBool>,
+        mut n: usize,
+    ) {
+        while n > 0 {
+            let chunk = n.min(producer.slots());
+            assert!(chunk > 0, "ring has no free slots — test ring too small");
+            let start = inner.total_pulled;
+            for i in 0..chunk {
+                producer
+                    .push(byte_at(start + i as u64))
+                    .expect("ring has free slots");
+            }
+            let got = RtrbByteStream::fill_history(inner, chunk, stop);
+            assert_eq!(got, chunk, "fill_history should drain exactly what we fed");
+            n -= chunk;
+        }
+    }
+
+    /// Read `len` bytes at absolute `offset` through the pure serve path (mirrors a
+    /// `Seek` + `Read` with the data already present in `history`). Returns the
+    /// served bytes; panics on the fatal guard so callers asserting success see it.
+    fn read_at(inner: &mut RtrbByteStreamInner, offset: u64, len: usize) -> Vec<u8> {
+        inner.position = offset;
+        let mut out = vec![0u8; len];
+        let n = RtrbByteStream::serve_from_history(inner, &mut out)
+            .expect("serve_from_history unexpectedly fatal");
+        out.truncate(n);
+        out
+    }
+
+    #[test]
+    fn history_stays_bounded_and_probe_seeks_resolve() {
+        // Ring sized for one feed chunk; we top it up before every drain.
+        let chunk = 16 * 1024usize;
+        let (mut inner, mut producer, stop) = make_inner(chunk + 1);
+
+        // --- Probe phase: pull the first few KB, then issue an early BACKWARD seek
+        // into the probe region (header sniffing) and assert it resolves correctly.
+        feed(&mut inner, &mut producer, &stop, chunk); // pulled [0, 16K)
+        inner.position = chunk as u64; // forward read position so far
+
+        // Backward probe seek to offset 13 (well inside HISTORY_PROBE_REGION).
+        let probe = read_at(&mut inner, 13, 32);
+        let expected: Vec<u8> = (13u64..13 + 32).map(byte_at).collect();
+        assert_eq!(probe, expected, "early backward probe seek must replay correctly");
+        assert_eq!(inner.history_base, 0, "nothing trimmed during probe");
+
+        // --- Long forward read phase: pull FAR more than RETAIN_WINDOW + probe
+        // region (several MB) advancing the read position forward, exactly as the
+        // ADTS source does after probe settles. Track the max history size.
+        let total_mb = 4 * 1024 * 1024u64; // 4 MiB — dwarfs the 256 KiB window
+        let mut max_history = inner.history.len();
+        let mut pos = chunk as u64;
+        while inner.total_pulled < total_mb {
+            feed(&mut inner, &mut producer, &stop, chunk);
+            // Advance the forward read position to the live tail and serve a read,
+            // which is what drives trimming via fill_history -> trim_history.
+            pos = inner.total_pulled - chunk as u64;
+            let got = read_at(&mut inner, pos, chunk);
+            assert_eq!(got.len(), chunk, "forward read should serve a full chunk");
+            // Spot-check a byte so we know we served the right offset, not garbage.
+            assert_eq!(got[0], byte_at(pos));
+            max_history = max_history.max(inner.history.len());
+        }
+
+        // INVARIANT: history is O(1)-bounded — independent of the 4 MiB pulled. The
+        // theoretical cap is HISTORY_RETAIN_WINDOW + one read-ahead chunk; assert it
+        // never exceeds window + chunk, and report the observed max.
+        let cap = HISTORY_RETAIN_WINDOW as usize + chunk;
+        assert!(
+            max_history <= cap,
+            "history grew to {max_history} bytes, exceeding bound {cap} \
+             (window {HISTORY_RETAIN_WINDOW} + chunk {chunk})"
+        );
+        // And it really did trim (otherwise the bound would be vacuous).
+        assert!(
+            inner.history_base > HISTORY_PROBE_REGION,
+            "history_base ({}) should have advanced past the probe region",
+            inner.history_base
+        );
+        eprintln!(
+            "history_stays_bounded: pulled {} bytes, max history = {max_history} bytes \
+             (bound {cap}), final history_base = {}",
+            inner.total_pulled, inner.history_base
+        );
+
+        // A normal forward read near the live tail still works post-trim.
+        let tail = read_at(&mut inner, pos, 64);
+        assert_eq!(tail.len(), 64);
+        assert_eq!(tail[0], byte_at(pos));
+    }
+
+    #[test]
+    fn read_below_retained_base_fails_loudly() {
+        let chunk = 16 * 1024usize;
+        let (mut inner, mut producer, stop) = make_inner(chunk + 1);
+
+        // Pull well past the trailing window, advancing the read position forward
+        // (chunk by chunk) so trim_history actually fires and drops the prefix.
+        let chunks = (HISTORY_RETAIN_WINDOW as usize / chunk) + 4;
+        for _ in 0..chunks {
+            feed(&mut inner, &mut producer, &stop, chunk);
+            // Advance position toward the tail before the next fill so trim runs.
+            inner.position = inner.total_pulled.saturating_sub(chunk as u64);
+        }
+        assert!(inner.history_base > 0, "precondition: some prefix was trimmed");
+
+        // Now a read targeting an offset BELOW the retained base must fail loudly
+        // (hard error), NOT return a benign 0-length read.
+        inner.position = inner.history_base - 1;
+        let res = RtrbByteStream::serve_from_history(&mut inner, &mut [0u8; 32]);
+        assert!(res.is_err(), "trimmed-offset read must be a hard error, not Ok(0)");
+        assert!(inner.fatal, "fatal flag must latch");
+
+        // And the stream stays poisoned: a subsequent in-range read also fails.
+        inner.position = inner.history_base; // would otherwise be servable
+        let res2 = RtrbByteStream::serve_from_history(&mut inner, &mut [0u8; 32]);
+        assert!(res2.is_err(), "stream must remain fatally failed once poisoned");
     }
 }
