@@ -5,7 +5,7 @@ import { $streams, $statuses, $showAddStreamDialog, $streamFilter, $importCandid
 import { $settings } from "../../stores/settings";
 import { $freeSpace } from "../../stores/system";
 import { FreeSpaceMetric } from "./FreeSpaceMetric";
-import { StreamList } from "./StreamList";
+import { StreamList, type StreamListHandle } from "./StreamList";
 import { AddStreamDialog } from "./AddStreamDialog";
 import { ImportStreamsDialog } from "./ImportStreamsDialog";
 import { ExportFormatDialog } from "./ExportFormatDialog";
@@ -226,8 +226,10 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   });
 
   // ── List zone ────────────────────────────────────────────
-  const streamListRef = useRef<ZoneEntry | null>(null);
-  const streamListCallbackRef = useCallback((zone: ZoneEntry | null) => {
+  // Typed as the full StreamListHandle (ZoneEntry + requestBulkDelete) so the
+  // toolbar's Видалити виділені button can drive the list's bulk-confirm dialog.
+  const streamListRef = useRef<StreamListHandle | null>(null);
+  const streamListCallbackRef = useCallback((zone: StreamListHandle | null) => {
     streamListRef.current = zone;
   }, []);
 
@@ -468,7 +470,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
             ref={deleteSelectedBtn}
             tabIndex={toolbarTabIndex(4)}
             aria-disabled={selCount === 0 || undefined}
-            onClick={() => { if (selCount > 0) streamListRef.current?.requestBulkDelete?.(); }}
+            onClick={() => { if (selCount > 0) streamListRef.current?.requestBulkDelete(); }}
             className={`rounded px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
               selCount === 0 ? "cursor-not-allowed text-slate-600" : "text-red-400 hover:bg-slate-800"
             }`}

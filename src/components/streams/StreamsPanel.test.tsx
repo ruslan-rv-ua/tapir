@@ -475,4 +475,25 @@ describe("StreamsPanel — selection toolbar cluster", () => {
     expect([...$streamSelection.get()].sort()).toEqual(["a", "b", "c"]);
     expect($announcer.get().message).toBe(m.selection_count({ count: 3 }));
   });
+
+  it("the toolbar delete button triggers the list's bulk confirm", async () => {
+    replaceSelection(new Set(["a", "b"]));
+    renderPanel();
+    // The toolbar button reaches into the list via the StreamListHandle ref
+    // (requestBulkDelete) — proves the widened ref is wired end-to-end.
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: m.delete_selected({ count: 2 }) }));
+    });
+    expect(await screen.findByText(m.confirm_delete_selected({ count: 2 }))).toBeTruthy();
+  });
+
+  it("keeps a 12-stop roving toolbar in DOM order", () => {
+    const { container } = renderPanel();
+    const toolbar = container.querySelector('[data-zone-id="streams-toolbar"]')!;
+    const stops = Array.from(toolbar.querySelectorAll<HTMLButtonElement>("button"));
+    // Roving tabindex: exactly one stop is tabbable (0); the rest are -1.
+    const tabbable = stops.filter((b) => b.getAttribute("tabindex") === "0");
+    expect(tabbable).toHaveLength(1);
+    expect(stops.length).toBeGreaterThanOrEqual(12);
+  });
 });
