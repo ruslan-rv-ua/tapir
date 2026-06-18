@@ -88,6 +88,31 @@ This plan builds on `fix/player-decode-failure` (the #2 work): `play_live` now k
 
 ---
 
+## Spike Outcome (2026-06-18)
+
+**Gate: PASSED.** Media Foundation decoded `groovesalad-16-aac` (16 kbps HE-AACv2) to correct **stereo, SBR-doubled-rate** PCM. ffprobe on the decoded WAV (controller-verified, not just self-reported): `codec_name=pcm_s16le, sample_rate=32000, channels=2` — the 16000 Hz mono ADTS core was doubled to 32000 Hz by SBR and made stereo by PS, confirming the full HE-AACv2 chain ran (not just the LC core). 21.25 s in → 21.25 s out, non-silent. **Proceed with Media Foundation (Tasks 2–5).**
+
+**Decision: use `IMFSourceReader`, not the raw AAC Decoder MFT.** SourceReader worked on the first attempt with **zero** hand-built input media type — MF's built-in ADTS byte-stream handler parses the ADTS headers, instantiates the AAC decoder internally, and applies SBR+PS. We never touched `CLSID_CMSAACDecMFT`, `MF_MT_AAC_PAYLOAD_TYPE`, `MF_MT_USER_DATA`, or the `HEAACWAVEINFO`/AudioSpecificConfig tail. This eliminates the plan's biggest risk (raw-ADTS input-type construction, risk #2) entirely.
+
+**Exact setup that worked (reproducible for Task 3):**
+1. `CoInitializeEx(None, COINIT_MULTITHREADED)` then `MFStartup(MF_VERSION, MFSTARTUP_FULL)` on the decode thread. Tolerate `S_FALSE` / `RPC_E_CHANGED_MODE` from `CoInitializeEx` (do not `?`-propagate it).
+2. `MFCreateAttributes` → set `MF_SOURCE_READER_ENABLE_ADVANCED_VIDEO_PROCESSING = 0` (audio-only) → create the reader.
+3. Set the **output** media type to PCM with `MF_MT_AUDIO_BITS_PER_SAMPLE = 16` and **leave rate/channels UNSET** (the key move — do not pin them), then `SetCurrentMediaType`.
+4. **Read back** the negotiated output type (`GetCurrentMediaType`) to learn the real post-SBR/PS `MF_MT_AUDIO_SAMPLES_PER_SECOND` (32000) and `MF_MT_AUDIO_NUM_CHANNELS` (2).
+5. `ReadSample` loop → `ConvertToContiguousBuffer` → `Lock`/`Unlock` to copy interleaved **S16LE**; break on `MF_SOURCE_READERF_ENDOFSTREAM`; handle `MF_SOURCE_READERF_CURRENTMEDIATYPECHANGED` by re-reading the type.
+
+**Output spec stability:** **constant from the first frame.** The negotiated type was already 32000/2 *before* the first `ReadSample`, and no `CURRENTMEDIATYPECHANGED` fired across the whole stream. So `LiveSource`/`MfAacDecoder` can read the spec once up front — but Task 3 should still keep a defensive `CURRENTMEDIATYPECHANGED` handler for mid-stream codec/bitrate switches. (Resolves risk #3.)
+
+**COM/threading:** MTA, one `spawn_blocking` thread owns COM + MF + the SourceReader + its samples end-to-end. `MFShutdown` + `CoUninitialize` on teardown, guarded so we don't shut MF down out from under another decoder.
+
+**Latency:** negligible (~4 ms to first PCM, file-backed; well under the < ~1 s bar).
+
+**Production caveat for Task 3 (the one new piece the spike did NOT cover):** the spike used `MFCreateSourceReaderFromURL` over a file. The live path's bytes arrive via the `rtrb` ring, not a URL/file, so Task 3 must wrap the `rtrb` consumer in a custom `IMFByteStream` and use `MFCreateSourceReaderFromByteStream`. Output is S16LE → convert to f32 via `i16 as f32 / 32768.0`. The decode loop itself ports directly.
+
+Spike artifacts (throwaway) were discarded; only these notes were committed. Captured samples remain under `target/spike/` (gitignored): `gs16.aac` (HE-AACv2 target), `lc.aac` (AAC-LC regression, from `groovesalad-128-aac`; the planned fip-hifi URL 404'd).
+
+---
+
 ## Task 2: Extract the `LiveDecoder` trait (no behavior change)
 
 **Files:**
