@@ -55,6 +55,16 @@ Explorer-модель №15) і копіює форму bulk-операції A 
   лишаються **тільки пропущені** (можна одразу розібратися). Після **copy** рядки й виділення
   лишаються (copy того самого набору в ще один профіль). Це розходиться з delete-A (повне
   очищення), але є природним наслідком A-інфраструктури та найменшим обсягом коду.
+- **R4 — playing-потік у bulk-move: дозволяємо рух (узгоджено в рев'ю аудиту, finding 1).**
+  Одиничний ⋯-move disabled, коли потік відтворюється (`moveDisabled` включає
+  `isThisStreamPlaying`), але бекенд move блокує лише recording-like. Bulk-move **свідомо** дозволяє
+  переносити відтворюваний (не-recording) потік — розбіжність зі single's soft-guard, прийнятна, бо
+  плеєр/tray/SMTC уже fallback-яться на raw `stream_id`
+  ([PlayerPanel.tsx](../../../src/components/player/PlayerPanel.tsx#L65),
+  [tray/menu.rs](../../../src-tauri/src/tray/menu.rs#L130),
+  [smtc.rs](../../../src-tauri/src/smtc.rs#L394)), тож стан лишається функціональним. **Без**
+  окремого `skippedPlaying` — `BulkTransferResult` лишається `{transferred, skippedRecording,
+  skippedConflict}`.
 
 ## Контекст (поточний стан коду, звірено 2026-06-18)
 
@@ -123,11 +133,13 @@ pub async fn transfer_streams_to_profile(
 
 ```rust
 /// Вставляє кожен source у `target` з URL-dedup. Повертає (id, що потрапили; кількість
-/// конфліктів). `sources` — уже відфільтровані до придатних (для move записувані прибрані
-/// викликачем). Порядок `transferred` — порядок `sources`.
+/// конфліктів) або помилку. `sources` — уже відфільтровані до придатних (для move записувані
+/// прибрані викликачем). Порядок `transferred` — порядок `sources`. `Conflict` — **єдина**
+/// skip-гілка; будь-яка інша помилка `add_stream_checked` бульбашиться як помилка команди
+/// (не маскується під skip), щоб майбутня валідація не «брехала» про причину пропуску.
 fn insert_transfers(
     target: &mut Profile, sources: &[StreamInfo], mode: &TransferMode, now: &str,
-) -> (Vec<String>, usize) {
+) -> Result<(Vec<String>, usize), RadioError> {
     let mut transferred = Vec::new();
     let mut skipped_conflict = 0;
     for src in sources {
@@ -135,10 +147,10 @@ fn insert_transfers(
         match target.add_stream_checked(entry) {
             Ok(()) => transferred.push(src.id.clone()),  // copy: id source-а (фронт зіставляє за ним)
             Err(RadioError::Conflict(_)) => skipped_conflict += 1,
-            Err(_) => skipped_conflict += 1, // add_stream_checked повертає лише Conflict
+            Err(e) => return Err(e),  // не-Conflict → реальна помилка, не тихий skip
         }
     }
-    (transferred, skipped_conflict)
+    Ok((transferred, skipped_conflict))
 }
 ```
 
@@ -152,11 +164,22 @@ fn insert_transfers(
    (`move_blocked_by_state`) → `skipped_recording = записувані.len()`. **copy:** усі `sources`
    придатні, `skipped_recording = 0`.
 4. `Profile::load(target)` на `spawn_blocking`.
-5. `(transferred, skipped_conflict) = insert_transfers(&mut target, &eligible, &mode, now)`.
+5. `let (transferred, skipped_conflict) = insert_transfers(&mut target, &eligible, &mode, now).map_err(|e| e.to_string())?;`
+   (Conflict — skip; будь-яка інша помилка перериває команду, finding 5).
 6. **Один** `target.save()` на `spawn_blocking`.
-7. **move:** для `transferred` — `manager.stop_recording` (no-op, вони idle), `retain` active
-   без `transferred`, **один** `active.save()` на `spawn_blocking`. **copy:** active не чіпаємо.
+7. **move:** для `transferred` — `manager.stop_recording`, `retain` active без `transferred`,
+   **один** `active.save()` на `spawn_blocking`. **copy:** active не чіпаємо.
 8. `Ok(BulkTransferResult { transferred, skipped_recording, skipped_conflict })`.
+
+> **TOCTOU (дзеркало single-move, finding 3):** `manager.stop_recording` у step 7 зазвичай no-op —
+> потоки в `transferred` були idle на момент eligibility (step 3). Але між step 3 і step 7 є
+> I/O-вікно (load/insert/save target); якщо потік став active (scheduler) у цьому вікні, stop його
+> зупинить — це **успадкована** поведінка наявного single-move
+> ([stream_commands.rs](../../../src-tauri/src/commands/stream_commands.rs#L369): той самий raw
+> `stop_recording` без `notify_manual_stop`), а **не** новий дефект; bulk лише ширше I/O-вікно.
+> **Late-skip після insert НЕ застосовуємо:** потік уже в цілі (step 5/6), тож не-видалення з source
+> лишило б його в обох профілях (дублікат move→copy). Глибше усунення гонки потребувало б зміни й
+> single-move — **поза обсягом B** (консистентність зі single важливіша).
 
 Реєстрація в `lib.rs` (після `transfer_stream_to_profile`). Обгортки в `lib/tauri.ts`:
 
@@ -172,14 +195,23 @@ export async function copyStreamsToProfile(ids: string[], target: string): Promi
 
 ### B2. Діалог — `StreamTransferDialog` під множину
 
-Проп `streamName: string` → `count: number` (+ `streamName?: string` для single). Title:
-- `count > 1` → нові `copy_selected_to_profile_title`/`move_selected_to_profile_title` ({count})
-  — «Перемістити виділені потоки (N) у профіль».
-- інакше → наявні `copy/move_stream_to_profile_title({ name: streamName ?? "" })`.
+Title гілкується за **route (`subject.kind`), а НЕ за count** (finding 2) — інакше виділення з
+1 рядка дало б bulk-route + single-title (порожнє ім'я, суперечність). Проп `streamName: string`
+→ дискримінований `subject`:
+
+```ts
+type TransferSubject = { kind: "single"; name: string } | { kind: "bulk"; count: number };
+```
+
+Title: `subject.kind === "single"` → наявні `copy/move_stream_to_profile_title({ name })`;
+`subject.kind === "bulk"` → нові `copy_selected_to_profile_title`/`move_selected_to_profile_title`
+({count}) — «Перемістити виділені потоки (N) у профіль» — **включно з `count === 1`** (bulk
+лишається bulk).
 
 Решта розмітки (список профілів зі `streamCount`, «+ Новий профіль…», Cancel, фокус) — без змін.
-Оновити `StreamTransferDialog.test.tsx`: передавати `count` (single-кейси — `count={1}`,
-bulk-кейс — `count={N}` перевіряє bulk-title).
+Оновити `StreamTransferDialog.test.tsx`: `subject={{kind:"single",name:"…"}}` → single-title;
+`subject={{kind:"bulk",count:1}}` → **bulk**-title (дискримінуючий тест саме на count=1);
+`{kind:"bulk",count:3}` → bulk-title.
 
 ### B3. StreamList — конвергенція переносу (форма bulk-delete)
 
@@ -229,14 +261,22 @@ bulk-кейс — `count={N}` перевіряє bulk-title).
 - **`create`-шлях** (новий профіль) працює і для bulk: `doCreateAndTransfer` після
   `createProfile` гілкується за `target.kind` → `doTransfer` (single) або `doBulkTransfer` (bulk).
   Свіжий профіль порожній → конфліктів нема.
+- **Інваріант route↔семантика (finding 2):** `{kind:"bulk"}` → **завжди** bulk-семантика
+  (bulk-title через `subject={kind:"bulk", count:$streamSelection.get().size}`, `doBulkTransfer`,
+  Conflict→skip), **навіть коли виділено 1**. `{kind:"single"}` → single-семантика
+  (`subject={kind:"single", name}`, `doTransfer`, Conflict тримає пікер). `subject` для діалогу
+  похідний **лише** від `target.kind`, не від count.
 
 ### B4. ⋯-меню (№16) — `StreamContextMenu` / `StreamItem`
 
 Читає `isSelected`/`selection.size` (уже є). Для пунктів `move-to-profile`/`copy-to-profile`:
 - **виділений рядок:** видимий текст і accessible name → `move_selected`/`copy_selected` ({count});
-  діють на множину (через незмінні колбеки `onMoveToProfile`/`onCopyToProfile`, які в StreamList
-  тепер відкривають bulk, бо рядок ∈ виділення). `move-to-profile` **не** гейтиться `moveDisabled`,
-  коли `isSelected` (записувані скіпляться бекендом, не блокують решту); `copy` ніколи не disabled.
+  діють на **множину завжди** (навіть коли виділено 1 — bulk лишається bulk, finding 2), через
+  незмінні колбеки `onMoveToProfile`/`onCopyToProfile`, що в StreamList відкривають bulk-route
+  (рядок ∈ виділення). **`move-to-profile` не гейтиться `moveDisabled`, коли `isSelected`**
+  (finding 1): `moveDisabled` (single) = recording-like **АБО** playing; у bulk recording-like
+  скіпає бекенд (`skippedRecording`), а **playing (не-recording) потік буде переміщено** свідомо
+  (R4). `copy` ніколи не disabled.
 - **невиділений рядок:** наявні single-підписи `copy_to_profile`/`move_to_profile`; `move`
   зберігає `moveDisabled`-гард; дія на відкритий рядок (collapse-to-row у StreamList).
 
@@ -289,8 +329,8 @@ announce (A6) — без тостів-дублів на кожен потік; C
   (чистий), `transfer_streams_to_profile` (команда); тести в наявному `mod tests`.
 - **`src-tauri/src/lib.rs`** — реєстрація `transfer_streams_to_profile`.
 - **`src/lib/tauri.ts`** — `BulkTransferResult`, `moveStreamsToProfile`, `copyStreamsToProfile`.
-- **`src/components/streams/StreamTransferDialog.tsx`** — `count` проп + bulk-title.
-- **`src/components/streams/StreamTransferDialog.test.tsx`** — `count` у кейсах + bulk-title тест.
+- **`src/components/streams/StreamTransferDialog.tsx`** — `subject: TransferSubject` (single|bulk) замість `streamName`; title за `subject.kind`.
+- **`src/components/streams/StreamTransferDialog.test.tsx`** — `subject` у кейсах + bulk-title-при-count-1 тест.
 - **`src/components/streams/StreamList.tsx`** — `TransferTarget`; `openTransfer` → useCallback;
   `requestBulkTransfer` на хендлі (тип + imperativeExtra); `doBulkTransfer` + `composeSummary`;
   bulk-фокус move (reuse pendingBulkFocusRef/seq/useLayoutEffect); маршрутизація
@@ -310,20 +350,30 @@ announce (A6) — без тостів-дублів на кожен потік; C
 - Узагальнення на songs/profiles/browser/schedule/PatternList — **віха D**.
 - Undo для bulk-переносу (одинична дія undo теж не має).
 - Жодних змін у решті списків; одиничний `transfer_stream_to_profile` лишається як є.
+- **Осиротілі розклади (accepted debt, finding 4).** bulk-move (як наявні single `remove_stream` /
+  move-гілка `transfer_stream_to_profile`) **не** мігрує й **не** видаляє `scheduled_recordings`,
+  що посилаються на перенесені `stream_id`; вони лишаються осиротілими в source-профілі. Scheduler
+  свідомо дозволяє orphan → пізніше `Missed`
+  ([validation.rs](../../../src-tauri/src/scheduler/validation.rs#L112)). Міграція/блокування
+  розкладів — поза обсягом B (консистентно зі single move/remove). «Лише streams» в меті стосується
+  **UI-обсягу**; profile-owned посилання на `stream_id` свідомо лишаються як є.
 
 ## Критерії приймання
 
 1. **Перенос із тулбара:** «Перемістити виділені (N)»/«Копіювати виділені (N)» (`aria-disabled`
-   без виділення, count у видимому тексті = accessible name) відкривають діалог із bulk-title;
-   ціль обирається **один раз** для всієї множини.
+   без виділення, count у видимому тексті = accessible name) відкривають діалог із **bulk-title
+   (навіть коли виділено 1)**; ціль обирається **один раз** для всієї множини.
 2. **Перенос із ⋯ (№16):** на виділеному рядку «Перемістити/Копіювати виділені (N)…» діють на
-   множину; на невиділеному — згортають виділення до рядка й діють одинично (single-title,
-   Conflict тримає пікер). Суто-одиничні пункти — без змін.
+   множину **завжди bulk** (bulk-title навіть при 1, Conflict→skip); на невиділеному — згортають
+   виділення до рядка й діють одинично (single-title, Conflict тримає пікер). Суто-одиничні пункти
+   — без змін.
 3. **Backend (один запис на ціль, один на active для move):** `transfer_streams_to_profile`
    повертає `{transferred, skippedRecording, skippedConflict}`; copy дає fresh id у цілі й лишає
-   source; move прибирає лише `transferred` з active.
+   source; move прибирає лише `transferred` з active. Не-Conflict помилка `add_stream_checked` →
+   error команди (не маскується під skip, finding 5).
 4. **Частковий успіх:** move записуваного потоку → `skippedRecording` (не блокує решту);
-   дублікат URL у цілі → `skippedConflict` (copy і move). Зведене оголошення «Зроблено N»
+   дублікат URL у цілі → `skippedConflict` (copy і move). Потік, що лише **відтворюється** (не
+   записується) — **переноситься**, не скіпається (R4). Зведене оголошення «Зроблено N»
    + клаузи причин лише для ненульових.
 5. **Фокус/виділення після:** move → найближчий уцілілий рядок на/після верхнього перенесеного
    індексу (рахується з `transferred`), хвіст → новий останній, усе видиме → `onEmpty`, **ніколи
@@ -340,8 +390,9 @@ announce (A6) — без тостів-дублів на кожен потік; C
   - `insert_transfers` — copy дає fresh id, source-id у `transferred`; дублікат URL у цілі →
     `skipped_conflict`, не вставлено; порядок `transferred` стабільний; move зберігає id.
   - (інтеграційний за наявним стилем, якщо доцільно) move-skip записуваних рахується окремо.
-- **`StreamTransferDialog.test.tsx`:** `count={1}` → single-title (наявні кейси); `count={3}`
-  → bulk-title; список профілів/create/cancel працюють незмінно.
+- **`StreamTransferDialog.test.tsx`:** `subject={{kind:"single",name:"…"}}` → single-title;
+  `subject={{kind:"bulk",count:1}}` → **bulk**-title (дискримінуючий тест на count=1);
+  `{kind:"bulk",count:3}` → bulk-title; список профілів/create/cancel працюють незмінно.
 - **`StreamList` тест:**
   - bulk **move** кличе `moveStreamsToProfile(ids, target)`; `$streams` прибирає лише
     `transferred`; фокус → найближчий уцілілий (НЕ `<body>`); хвіст → останній; усе видиме →
