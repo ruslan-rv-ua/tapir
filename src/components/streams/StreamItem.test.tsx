@@ -44,6 +44,7 @@ function renderItem(stream = mkStream(), status?: StreamStatus, focusedSeg = "su
         onDelete={() => {}}
         onCopyToProfile={() => {}}
         onMoveToProfile={() => {}}
+        onCopyUrl={() => {}}
       />
     </ul>,
   );

@@ -544,4 +544,19 @@ describe("StreamsPanel — selection lifecycle", () => {
       expect(document.activeElement).toBe(screen.getByRole("button", { name: m.streams_filter_reset() })),
     );
   });
+
+  it("deletes every stream → onEmpty focuses the add-examples button (never <body>)", async () => {
+    // No filter: select both and bulk-delete all → the profile goes empty, so the
+    // isEmpty branch of the deferred onEmpty-focus effect must land on add-examples.
+    replaceSelection(new Set(["a", "b"]));
+    renderPanel();
+    fireEvent.click(screen.getByRole("button", { name: m.delete_selected({ count: 2 }) }));
+    const confirmBtn = await screen.findByRole("button", { name: m["delete"]() });
+    await act(async () => { fireEvent.click(confirmBtn); });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: /додати приклади потоків|add example streams/i }),
+      ),
+    );
+  });
 });
