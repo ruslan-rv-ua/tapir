@@ -448,7 +448,7 @@ impl Read for RtrbReader {
     }
 }
 
-// ── LiveSource ─────────────────────────────────────────────────────────────
+// ── LiveDecoder trait ──────────────────────────────────────────────────────
 
 use symphonia::core::audio::{SampleBuffer, SignalSpec};
 use symphonia::core::codecs::DecoderOptions;
@@ -457,18 +457,29 @@ use symphonia::core::io::{MediaSourceStream, ReadOnlySource};
 use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
 
-/// Symphonia-backed audio source for live HTTP streams.
-/// Receives raw audio bytes from the writer task via rtrb, decodes via
-/// symphonia, and yields f32 samples to rodio's mixer.
-struct LiveSource {
+/// Decoder abstraction for live audio streams.
+/// Implementations produce interleaved f32 PCM samples one chunk at a time.
+/// Task 2 ships symphonia-only; future tasks add Media Foundation behind this
+/// same interface without touching `LiveSource`.
+trait LiveDecoder: Send {
+    /// Decode the next chunk of interleaved f32 samples, or None at end/fatal error.
+    fn next_pcm(&mut self) -> Option<Vec<f32>>;
+    fn spec(&self) -> SignalSpec;
+}
+
+// ── SymphoniaDecoder ───────────────────────────────────────────────────────
+
+/// Symphonia-backed implementation of `LiveDecoder`.
+/// Holds the format reader, codec decoder, and track id; the PCM buffer lives
+/// in `LiveSource` so it is shared across future implementations.
+struct SymphoniaDecoder {
     format: Box<dyn symphonia::core::formats::FormatReader>,
     decoder: Box<dyn symphonia::core::codecs::Decoder>,
     track_id: u32,
-    buffer: VecDeque<f32>,
     spec: SignalSpec,
 }
 
-impl LiveSource {
+impl SymphoniaDecoder {
     fn new(consumer: rtrb::Consumer<u8>, hint_mime: Option<&str>) -> anyhow::Result<Self> {
         let reader = RtrbReader { consumer: std::sync::Mutex::new(consumer) };
         let source = ReadOnlySource::new(reader);
@@ -497,10 +508,12 @@ impl LiveSource {
             track.codec_params.sample_rate.unwrap_or(44100),
             track.codec_params.channels.unwrap_or_default(),
         );
-        Ok(Self { format, decoder, track_id, buffer: VecDeque::new(), spec })
+        Ok(Self { format, decoder, track_id, spec })
     }
+}
 
-    fn decode_next_packet(&mut self) -> bool {
+impl LiveDecoder for SymphoniaDecoder {
+    fn next_pcm(&mut self) -> Option<Vec<f32>> {
         let mut consecutive_errors: u32 = 0;
         loop {
             match self.format.next_packet() {
@@ -511,8 +524,7 @@ impl LiveSource {
                                 decoded.frames() as u64, self.spec
                             );
                             samples.copy_interleaved_ref(decoded);
-                            self.buffer.extend(samples.samples().iter().copied());
-                            return true;
+                            return Some(samples.samples().to_vec());
                         }
                         Err(e) => {
                             consecutive_errors += 1;
@@ -522,7 +534,7 @@ impl LiveSource {
                             );
                             if consecutive_errors >= 32 {
                                 log::warn!("[LiveSource] too many consecutive errors, stopping");
-                                return false;
+                                return None;
                             }
                             continue;
                         }
@@ -531,9 +543,43 @@ impl LiveSource {
                 Ok(_) => continue, // different track — skip
                 Err(e) => {
                     log::warn!("[LiveSource] format reader ended: {e}");
-                    return false;
+                    return None;
                 }
             }
+        }
+    }
+
+    fn spec(&self) -> SignalSpec {
+        self.spec
+    }
+}
+
+// ── LiveSource ─────────────────────────────────────────────────────────────
+
+/// Rodio audio source for live HTTP streams.
+/// Owns the PCM sample buffer and a boxed `LiveDecoder`; decoupled from the
+/// specific codec so Task 3/4 can swap in a Media Foundation decoder.
+struct LiveSource {
+    buffer: VecDeque<f32>,
+    decoder: Box<dyn LiveDecoder>,
+    /// Cached spec so `Source` trait methods can be `&self` without borrowing decoder.
+    spec: SignalSpec,
+}
+
+impl LiveSource {
+    fn new(consumer: rtrb::Consumer<u8>, hint_mime: Option<&str>) -> anyhow::Result<Self> {
+        let dec = SymphoniaDecoder::new(consumer, hint_mime)?;
+        let spec = dec.spec();
+        Ok(Self { buffer: VecDeque::new(), decoder: Box::new(dec), spec })
+    }
+
+    fn decode_next_packet(&mut self) -> bool {
+        match self.decoder.next_pcm() {
+            Some(samples) => {
+                self.buffer.extend(samples);
+                true
+            }
+            None => false,
         }
     }
 }
@@ -1013,5 +1059,35 @@ mod tests {
         let p = PlayerEndedPayload { path: "C:/music/song.mp3".to_string() };
         let json = serde_json::to_string(&p).unwrap();
         assert_eq!(json, r#"{"path":"C:/music/song.mp3"}"#);
+    }
+
+    /// Regression test: SymphoniaDecoder produces at least one PCM block from a
+    /// real MP3 fixture fed through an rtrb ring buffer (TDD Step 1 — RED before
+    /// SymphoniaDecoder is introduced, GREEN after).
+    #[test]
+    fn symphonia_decoder_yields_pcm_and_valid_spec() {
+        let fixture: &[u8] = include_bytes!("../../tests/fixtures/sample.mp3");
+        // Ring buffer sized to hold the entire fixture.
+        let (mut producer, consumer) = rtrb::RingBuffer::<u8>::new(fixture.len() + 1);
+        // Fill the ring buffer with the entire fixture byte-by-byte, then drop
+        // the producer so RtrbReader sees EOF once all bytes are consumed.
+        for &b in fixture {
+            producer.push(b).expect("ring buffer full — size mismatch");
+        }
+        drop(producer); // signal EOF to RtrbReader
+
+        let mut dec = SymphoniaDecoder::new(consumer, Some("audio/mpeg"))
+            .expect("SymphoniaDecoder::new failed");
+
+        let spec = dec.spec();
+        assert!(spec.rate > 0, "sample rate must be > 0, got {}", spec.rate);
+        assert!(
+            spec.channels.count() >= 1,
+            "channel count must be >= 1, got {}",
+            spec.channels.count()
+        );
+
+        let first = dec.next_pcm().expect("expected at least one PCM block");
+        assert!(!first.is_empty(), "first PCM block must not be empty");
     }
 }
