@@ -107,6 +107,9 @@ const PCM_CHANNEL_CAP: usize = 16;
 /// absolute retention floor (that was the leak — see [`RtrbByteStreamInner`]); it
 /// is only the upper bound on how far back the source ever seeks, used to size
 /// [`HISTORY_RETAIN_WINDOW`] so a probe seek is always still resolvable.
+// Documents the probe-seek bound and is asserted by the history-bounding test;
+// only read from `#[cfg(test)]`, so allow dead_code for non-test builds.
+#[allow(dead_code)]
 const HISTORY_PROBE_REGION: u64 = 64 * 1024;
 
 /// Trailing replay window kept *behind* the live read position. `trim_history`
