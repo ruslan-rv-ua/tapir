@@ -143,7 +143,14 @@ roving-focus на одному активному рядку; моделі ви�
 Порядок за ризиком; кожна віха — самодостатня цінність, мерджиться окремо.
 Залежності: **A → B → C**; **D — після A** (бажано після C, щоб модель стабілізувалась).
 
-### A. Фундамент + масове видалення (streams) — `P1`
+### A. Фундамент + масове видалення (streams) — `P1` — ✅ реалізовано
+
+> **Статус: ✅ реалізовано й перевірено з NVDA (2026-06-18).** Гілка
+> `feature/bulk-stream-operations`; гейти зелені (`pnpm test`, `pnpm vite:build`,
+> `cargo test`). Spec/план: [A-design](../superpowers/specs/2026-06-14-bulk-stream-operations-A-design.md)
+> · [A-plan](../superpowers/plans/2026-06-14-bulk-stream-operations-A.md). Перелік
+> нижче — *як* побудовано (історична довідка); шаблони, що їх перевикористовує B/C/D,
+> зведені у «Промпті для агента».
 
 - Шар виділення в `useCompositeList`/`CompositeList` (opt-in) поверх `$streamSelection`
   (`atom<Set<string>>`); адаптер `isSelected/toggle/selectAll/clear` (рішення №10).
@@ -220,13 +227,19 @@ Ctrl+A/Escape, lifecycle, динамічні назви кнопок) — ріш
   у roadmap не промотуємо (реалізація йде по-віхово через superpowers spec/plan).
 - spec/plan кожної віхи: [docs/superpowers/specs/](../superpowers/specs/) ·
   [docs/superpowers/plans/](../superpowers/plans/)
+  - віха A: [spec](../superpowers/specs/2026-06-14-bulk-stream-operations-A-design.md) ·
+    [план](../superpowers/plans/2026-06-14-bulk-stream-operations-A.md) (реалізовано)
 - шляхи коду:
-  - `src/hooks/useCompositeList.ts` — roving-focus; сюди додається шар виділення (віха A)
-  - `src/components/common/composite-list/` — `CompositeList`/`CompositeRow` (спільний рендер)
-  - `src/components/streams/StreamList.tsx` — поточні одиничні delete / copy / move
-  - `src/components/streams/StreamContextMenu.tsx` — меню рядка
+  - `src/hooks/useCompositeList.ts` — roving-focus + **шар виділення** (віха A: `resolveKeyAction`,
+    `CompositeSelection`/`SelectionChange`, anchor/anchorBase, делегований mouse-`onClick`)
+  - `src/stores/streams.ts` — `$streamSelection` + `replaceSelection`/`pruneSelection` (віха A)
+  - `src/components/common/composite-list/` — `CompositeList`/`CompositeRow` (спільний рендер; selection-пропси)
+  - `src/components/streams/StreamList.tsx` — одиничні delete/copy/move + **bulk-видалення**
+    (`handleConfirmBulkDelete`, `StreamListHandle.requestBulkDelete`) — шаблон bulk-операції для B/C
+  - `src/components/streams/StreamContextMenu.tsx` — меню рядка (динамічний підпис delete за виділенням)
   - `src/components/streams/StreamTransferDialog.tsx` — діалог вибору профілю (адаптувати під множину, віха B)
-  - `src/components/streams/StreamsPanel.tsx` — тулбар, глобальні «Записати/Зупинити все»
+  - `src/components/streams/StreamsPanel.tsx` — тулбар (кластер виділення, roving-12, lifecycle-clear), глобальні «Записати/Зупинити все»
+  - `src-tauri/src/commands/stream_commands.rs` — `retain_streams`/`remove_streams` (віха A; патерн bulk-backend для B/C)
   - інші списки (віха D): wishlist, ignorelist, profiles, browser, schedule
 
 ## Промпт для агента
@@ -234,37 +247,38 @@ Ctrl+A/Escape, lifecycle, динамічні назви кнопок) — ріш
 Адаптований промпт типу `заплановано`
 ([README — Каталог промптів](README.md#каталог-промптів-за-типом)) — цей запис
 **парасолька**, тож реалізуємо не його цілком, а наступну незмерджену **віху**
-(зараз — **A**). Коли A змерджено й перевірено, у цьому промпті міняється лише назва
-й обсяг віхи (B → C → D).
+(зараз — **B**; віха A реалізована 2026-06-18). Коли B змерджено й перевірено, у цьому
+промпті міняється лише назва й обсяг віхи (C → D).
 
 ```text
 Реалізуй наступну віху цього запису. Рішення вже прийняті — мета довести віху до робочого, протестованого, перевіреного з NVDA коду.
 
-Що реалізуємо: «Масові операції над списком потоків» — віха A: фундамент виділення + масове видалення (streams).
+Що реалізуємо: «Масові операції над списком потоків» — віха B: масовий перенос у профіль (копіювати/перемістити, streams).
 
-Це парасолька (north-star): НЕ реалізуй A–D одним циклом — бери лише віху A. Spec пишемо just-in-time, наступні віхи наперед не специфікуй.
+Це парасолька (north-star): НЕ реалізуй A–D одним циклом — бери лише віху B. Spec пишемо just-in-time, віхи C/D наперед не специфікуй.
 
-Почни зі скіла `superpowers:brainstorming` саме по віхі A (їй належить найглибший brainstorming — вона задає спільний API виділення в useCompositeList, клавіатурну модель і ARIA, від яких залежать B/C/D). Далі веди роботу за процесом superpowers: spec у docs/superpowers/specs/ → план у docs/superpowers/plans/ → реалізація через TDD → merge → перевірка з NVDA. Spec і план посилаються на цей запис, а не дублюють рішення.
+Віха A вже змерджена й перевірена 2026-06-18 (фундамент виділення + масове видалення streams). Спирайся на готову інфраструктуру, НЕ перевідкривай її — перевикористовуй як шаблон:
+- виділення: $streamSelection (atom<Set<string>>) + replaceSelection/pruneSelection у src/stores/streams.ts; selection-адаптер (CompositeSelection) і SelectionChange у src/hooks/useCompositeList.ts; central announce() (одиничний жест озвучується явно, груповий — одним зведеним оголошенням); section-scoped lifecycle (фільтр/профіль/вихід очищають, зниклі id авто-prune);
+- Explorer-модель дії над виділенням (№15): за наявності виділення дія йде на множину; ⋯ на НЕвиділеному рядку спершу згортає виділення до нього;
+- готовий патерн bulk-операції — копіюй його форму: handleConfirmBulkDelete у src/components/streams/StreamList.tsx (ціль/виживші рахуються ДО await; програмний фокус через pendingFocusRef/focusItem; оголошення-підсумок), плюс requestBulkDelete на StreamListHandle + кнопка в тулбарі StreamsPanel;
+- backend-патерн: retain_streams/remove_streams у src-tauri/src/commands/stream_commands.rs (один save під write-lock active_profile, чесний лічильник) + тонка обгортка в src/lib/tauri.ts.
+Спека/план A — для довідки (структура й стиль): docs/superpowers/specs/2026-06-14-bulk-stream-operations-A-design.md, docs/superpowers/plans/2026-06-14-bulk-stream-operations-A.md.
 
-Дизайн уже зафіксовано — не перевідкривай його, спирайся на нього: рішення 1–8 (що), 9–14 (як), 15–18 (шов «по-рядкова модель ↔ виділення»). Відкритих питань немає.
+Почни зі скіла `superpowers:brainstorming` саме по віхі B. Далі веди роботу за процесом superpowers: spec у docs/superpowers/specs/ → план у docs/superpowers/plans/ → реалізація через TDD → merge → перевірка з NVDA. Spec і план посилаються на цей запис, а не дублюють рішення.
 
-Обсяг віхи A (розділ «Віхи»):
-- шар виділення в useCompositeList/CompositeList (opt-in) поверх $streamSelection (atom<Set<string>>); адаптер isSelected/toggle/selectAll/clear (№10);
-- виділення для NVDA — суфікс в accessible name рядка + polite announce() на одиничний toggle, одне зведене оголошення на груповий жест; зрячим — CSS-підсвітка, без per-row контролу (№9);
-- клавіатура: Ctrl+Space — toggle активного рядка + якір; Shift+↓/↑ — діапазон від якоря; Shift+Click — спан; Ctrl+Click — toggle (№11); Space лишається за record/play;
-- «Виділити все»/«Зняти» — кнопка в тулбарі та Ctrl+A (toggle); Escape очищає; «все» = лише видимі (№12);
-- lifecycle section-scoped: фільтр/профіль/вихід із секції очищають, сорт і tab/F6 зберігають, зниклі id авто-prune (№13); live-лічильник виділеного;
-- масове видалення з одним ConfirmDialog (точна кількість); за наявності виділення Delete і ⋯-меню діють на множину (Explorer-модель, №15); фокус після видалення — на найближчий уцілілий рядок, ніколи на <body> (№18);
-- лише streams; інші списки не чіпай.
+Дизайн уже зафіксовано — спирайся на нього, не перевідкривай: рішення №3 (набір операцій), №5 (частковий успіх + skip-семантика, узгоджено зі startAllRecordings), №16 (змішане ⋯-меню: bulk-придатні пункти несуть кількість в accessible name, суто-одиничні лишаються в однині й діють на відкритий рядок). Відкритих питань немає.
 
-Передумови-рефактори всередині A (звірено по коду, рев'ю 2026-06-14):
-- у src/hooks/useCompositeList.ts перевести обробку клавіш на таблицю key→actionType ДО додавання нових клавіш (REFACTOR TRIGGER, рядки ~272–273 — спрацьовує вже на 3-й прив'язці, а A додає Ctrl+Space/Ctrl+A/Escape/Shift+↑↓);
-- розгалузити case ' ' за e.ctrlKey: зараз він ігнорує модифікатори, тож Ctrl+Space помилково падає в record/play-гілку;
-- фокус після bulk-видалення — ОКРЕМА логіка від живої реконсиляції (та ключується на одному активному рядку й виходить через `if (exists) return;`): верхній видалений індекс рахуй із множини виділення, цільовий рядок фокусуй програмно (focusItem/pendingFocusRef).
+Обсяг віхи B (розділ «Віхи»):
+- масові «Копіювати»/«Перемістити» в профіль; ціль (профіль) обирається ОДИН раз — адаптувати StreamTransferDialog під множину виділених замість одного streamName (заголовок/підрахунок «N потоків»);
+- в ⋯-меню «Перемістити»/«Копіювати» на виділеному рядку діють на множину й несуть кількість в accessible name («Перемістити виділені (N)…»); суто-одиничні пункти меню — лише на відкритий рядок (№16);
+- частковий успіх + зведене оголошення «Зроблено N, пропущено M (причина)»; skip move-while-recording (потік, що записується, не переноситься — пропускається, не блокує решту);
+- backend: розширити copy/move-у-профіль, щоб приймали список id (або bulk-команда, що повертає чесний підсумок зроблено/пропущено), за патерном remove_streams з A; один запис на диск;
+- фокус/виділення після переносу: move прибирає рядки → застосуй bulk-фокус-патерн A (найближчий уцілілий, ніколи <body>); copy лишає рядки на місці;
+- лише streams; інші списки НЕ чіпай (це віха D).
 
-Перед стартом звірся з контекстом: цей запис беклогу та його критерії готовності, AGENTS.md, implementation-phases.md і шляхи коду з розділу «Документи». Дотримуйся конвенцій AGENTS.md; доступність/NVDA закладай від початку, не як доробку.
+Перед стартом звірся з контекстом: цей запис беклогу та його критерії готовності, AGENTS.md, implementation-phases.md, спека/план A і шляхи коду з розділу «Документи». Дотримуйся конвенцій AGENTS.md; доступність/NVDA закладай від початку, не як доробку.
 
 Питання, якщо виникають, став по одному: контекст, варіанти відповіді, рекомендований. Дочекайся відповіді перед наступним.
 
-Гейти перед завершенням: pnpm test і pnpm vite:build мають проходити; вручну перевір цикл виділення → видалення з NVDA. Онови критерії готовності в записі (познач закрите по віхі A). Запис НЕ видаляй — він лишається парасолькою, поки не змерджено всі віхи A–D.
+Гейти перед завершенням: pnpm test, pnpm vite:build і cargo test мають проходити; вручну перевір цикл виділення → перенос у профіль з NVDA (incl. частковий успіх зі skip). Онови критерії готовності в записі (познач закрите по віхі B). Запис НЕ видаляй — він лишається парасолькою, поки не змерджено всі віхи A–D.
 ```
