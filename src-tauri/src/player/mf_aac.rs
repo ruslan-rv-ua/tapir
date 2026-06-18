@@ -19,25 +19,56 @@
 //! wraps the consumer and blocks-reads exactly like `engine.rs`'s `RtrbReader`.
 //! The reader is created with `MFCreateSourceReaderFromByteStream`.
 //!
-//! ## COM / threading
-//! All MF objects are created and used on **one** thread — the `spawn_blocking`
-//! thread that constructs the decoder (Task 4 owns it). That thread must be a COM
-//! **MTA** apartment: [`MfAacDecoder::new`] calls
-//! `CoInitializeEx(None, COINIT_MULTITHREADED)` (tolerating `S_FALSE` /
-//! `RPC_E_CHANGED_MODE` — another component may already have initialized COM on
-//! the thread) and `MFStartup`. The objects are not `Send`-safe to move across
-//! threads, which is why everything stays local to the owning thread.
+//! ## COM / threading — the decoder owns one dedicated decode thread
+//! COM objects (`IMFSourceReader`, the byte stream, samples) are apartment-bound:
+//! they may only be touched from the apartment that created them. The decoder is
+//! constructed on a tokio `spawn_blocking` thread but pulled (`next_pcm`) by
+//! rodio/cpal on *its own* audio-callback thread — a different apartment. Calling
+//! the MF objects across that boundary without marshalling is undefined behavior.
+//!
+//! So `MfAacDecoder` does **not** hold any COM pointer. Instead [`MfAacDecoder::new`]
+//! spawns **one dedicated decode thread** that it owns; that thread:
+//!   * `CoInitializeEx(MTA)` + `MFStartup` (refcount guard),
+//!   * builds the byte stream + `IMFSourceReader`, sets the PCM16 output type,
+//!     reads back the negotiated [`SignalSpec`],
+//!   * sends the spec (or the init error) back to `new()` over a rendezvous
+//!     channel — `new()` blocks until init is confirmed, preserving the existing
+//!     probe/timeout contract (`play_live` wraps `new()` in `PROBE_TIMEOUT`),
+//!   * then runs the `ReadSample` loop, converts S16→f32, and pushes `Vec<f32>`
+//!     blocks into a **bounded** channel (backpressure paces decode to playback),
+//!   * on teardown releases the reader, then `MFShutdown` (guard), then
+//!     `CoUninitialize` — in that order, all on this one thread.
+//!
+//! `MfAacDecoder` then holds only `Send` things (the PCM `Receiver`, the cached
+//! `SignalSpec`, a stop flag, and the `JoinHandle`), so it is naturally `Send`
+//! and `next_pcm` (a channel `recv`) is apartment-agnostic — safe from cpal.
+//!
+//! ## Shutdown (no hang, no deadlock)
+//! Two things can block the decode thread: a `ReadSample` whose byte stream is
+//! waiting on the ring, and a `send` into a full bounded PCM channel. Drop must
+//! be able to unblock both and then `join`:
+//!   * a shared `Arc<AtomicBool> stop` flag is checked by the byte stream's
+//!     fill loop, so a `ReadSample` blocked waiting for live bytes returns EOF;
+//!   * dropping the PCM `Receiver` makes a blocked `send` return `Err`, which the
+//!     thread treats as "consumer gone → exit".
+//!
+//! Drop sets `stop`, drops the receiver, then joins — neither block can outlive
+//! it. The original cancel path (writer task drops the rtrb producer → consumer
+//! abandoned → byte-stream EOF → `ReadSample` ENDOFSTREAM → thread exits) still
+//! works unchanged.
 //!
 //! ## MF lifecycle guard
 //! `MFStartup`/`MFShutdown` are process-global and reference-counted by MF
 //! itself, but we additionally guard with a process-wide counter so concurrent
 //! decoders (e.g. play + record of two AAC streams) never tear MF down out from
 //! under each other: the **first** decoder calls `MFStartup`, the **last** to
-//! drop calls `MFShutdown`. `CoInitializeEx`/`CoUninitialize` are per-thread, so
-//! we only `CoUninitialize` on the threads where *we* successfully initialized.
+//! drop calls `MFShutdown`. The guard now lives and dies entirely on the decode
+//! thread that created it.
 
+use std::sync::Arc;
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
 
 use anyhow::{Context, Result, anyhow};
 use symphonia::core::audio::{Channels, SignalSpec};
@@ -61,6 +92,20 @@ use windows::Win32::System::Com::{COINIT_MULTITHREADED, CoInitializeEx, CoUninit
 use windows::core::{BOOL, PCWSTR, PWSTR, Ref, implement};
 
 use super::engine::LiveDecoder;
+
+/// Bound on the PCM block channel between the decode thread and `next_pcm`.
+/// Small enough to provide real backpressure (the decode thread blocks on `send`
+/// once this many blocks are buffered, pacing decode to playback instead of
+/// decoding the whole stream into RAM), large enough to absorb cpal's pull jitter.
+/// Each block is one MF sample worth of f32 (~hundreds of frames), so this is a
+/// few hundred ms of audio.
+const PCM_CHANNEL_CAP: usize = 16;
+
+/// Once the format-probe seek phase has settled, history below this offset can be
+/// dropped: every backward seek the ADTS source issues lands in the first few KB
+/// (header sniffing). 64 KB is a generous safety margin over the observed seeks,
+/// so trimming below it never strands a replay target. See [`RtrbByteStreamInner`].
+const HISTORY_RETAIN_FLOOR: u64 = 64 * 1024;
 
 // ── MF lifecycle guard ──────────────────────────────────────────────────────
 
@@ -102,15 +147,18 @@ impl Drop for MfStartupGuard {
 
 // ── RtrbByteStream: IMFByteStream over an rtrb consumer ──────────────────────
 
-/// A live, forward-only `IMFByteStream` backed by the player's `rtrb` byte ring.
+/// A live `IMFByteStream` backed by the player's `rtrb` byte ring.
 ///
-/// MF's ADTS source pulls bytes through this stream. It is non-seekable and of
-/// unknown length (a live HTTP stream): `GetCapabilities` reports readable-only,
-/// `GetLength`/`Seek`/`SetLength`/`Write` fail, and `IsEndOfStream` reflects the
-/// abandoned-and-drained consumer (producer dropped == upstream EOF).
+/// MF's ADTS source pulls bytes through this stream. Reads block-spin exactly
+/// like `engine.rs`'s `RtrbReader`: yield 1 ms while the ring is empty but the
+/// producer is alive; return 0 (EOF) once it is abandoned **or** the decoder's
+/// `stop` flag is set (so Drop can unblock a `ReadSample` that is waiting on the
+/// live tail).
 ///
-/// Reads block-spin exactly like `engine.rs`'s `RtrbReader`: yield 1 ms while the
-/// ring is empty but the producer is alive; return 0 (EOF) once it is abandoned.
+/// It is seekable (the ADTS source requires seekability at open) and backs
+/// backward seeks with a replay buffer (`history`). `GetLength` reports
+/// bytes-available-so-far (via a high-water counter) so the source clamps its
+/// read-ahead to data we actually have and reads strictly sequentially.
 ///
 /// It **also** implements `IMFAttributes`: a raw byte stream has no URL/extension,
 /// so MF's source resolver cannot guess the format and fails with
@@ -120,6 +168,10 @@ impl Drop for MfStartupGuard {
 #[implement(IMFByteStream, IMFAttributes)]
 struct RtrbByteStream {
     inner: Mutex<RtrbByteStreamInner>,
+    /// Set by `MfAacDecoder::drop` to unblock a fill loop that is waiting on the
+    /// live tail. When set, `fill_history` returns 0 (synthetic EOF) so the
+    /// pending `ReadSample` completes and the decode thread can exit + join.
+    stop: Arc<AtomicBool>,
     /// Byte count returned by the most recent `BeginRead`, handed back by the
     /// matching `EndRead`. Begin/End are always paired and serialized by the
     /// source, so a single slot is sufficient.
@@ -131,26 +183,32 @@ struct RtrbByteStream {
 
 struct RtrbByteStreamInner {
     consumer: rtrb::Consumer<u8>,
-    /// All bytes ever pulled from the ring, in stream order. Backs seeking: the
-    /// ADTS source seeks backward (typically to small offsets) while detecting
-    /// the format, which a raw forward-only ring cannot satisfy — so we replay
-    /// from here. `history.len()` is the high-water byte offset pulled so far.
+    /// Replay buffer for backward seeks. The ADTS source seeks backward (to small
+    /// offsets) while detecting the format; a raw forward-only ring cannot satisfy
+    /// that, so we replay from here.
     ///
-    /// NOTE: this grows with the stream. For a multi-hour live stream that is a
-    /// real (slow) leak; Task 4/5 should bound it (e.g. only retain history
-    /// until the source stops seeking, then switch to pure passthrough). Kept
-    /// simple here because the decoder is correctness-first and the format
-    /// probe's seeks all land in the first few KB.
+    /// **Bounded:** `history` is *not* the whole stream. `history_base` is the
+    /// absolute stream offset of `history[0]`; once the format-probe seeks have
+    /// settled past [`HISTORY_RETAIN_FLOOR`], bytes below that floor are dropped
+    /// (every observed backward seek lands inside the floor, so trimming below it
+    /// never strands a replay target). `total_pulled` (below) — not `history.len()`
+    /// — is the GetLength high-water mark.
     history: Vec<u8>,
-    /// Current logical read position (`GetCurrentPosition`). May be < or ==
-    /// `history.len()`; reads past the end pull fresh bytes from the ring.
+    /// Absolute stream offset of `history[0]`. `history` covers
+    /// `[history_base, history_base + history.len())`.
+    history_base: u64,
+    /// Total bytes ever pulled from the ring (high-water mark). This is what
+    /// `GetLength` reports — it must keep growing even as `history` is trimmed,
+    /// otherwise the source would think the stream shrank.
+    total_pulled: u64,
+    /// Current logical read position (`GetCurrentPosition`).
     position: u64,
 }
 
 impl RtrbByteStream {
     /// Build the byte stream, seeding the attribute store with the content-type
     /// hint MF's resolver needs to select the ADTS source.
-    fn new(consumer: rtrb::Consumer<u8>, content_type: &str) -> Result<Self> {
+    fn new(consumer: rtrb::Consumer<u8>, content_type: &str, stop: Arc<AtomicBool>) -> Result<Self> {
         // SAFETY: MFCreateAttributes allocates a fresh store; we set one string.
         let attributes = unsafe {
             let mut attrs = None;
@@ -166,8 +224,11 @@ impl RtrbByteStream {
             inner: Mutex::new(RtrbByteStreamInner {
                 consumer,
                 history: Vec::new(),
+                history_base: 0,
+                total_pulled: 0,
                 position: 0,
             }),
+            stop,
             last_async_read: Mutex::new(0),
             attributes,
         })
@@ -175,13 +236,16 @@ impl RtrbByteStream {
 
     /// Pull `want` more bytes from the ring into `history`, blocking like
     /// `engine.rs`'s `RtrbReader` until data arrives or the producer is dropped.
-    /// Returns the number actually appended (0 == upstream EOF). Caller holds the
-    /// lock.
-    fn fill_history(inner: &mut RtrbByteStreamInner, want: usize) -> usize {
+    /// Returns the number actually appended (0 == upstream EOF or stop). Caller
+    /// holds the lock. Also bumps `total_pulled` (the GetLength high-water mark).
+    fn fill_history(inner: &mut RtrbByteStreamInner, want: usize, stop: &AtomicBool) -> usize {
         if want == 0 {
             return 0;
         }
         loop {
+            if stop.load(Ordering::Relaxed) {
+                return 0; // Drop signalled — synthesize EOF.
+            }
             let available = inner.consumer.slots();
             if available == 0 {
                 if inner.consumer.is_abandoned() {
@@ -199,36 +263,75 @@ impl RtrbByteStream {
             inner.history.extend_from_slice(head);
             inner.history.extend_from_slice(tail);
             chunk.commit(n);
+            inner.total_pulled += n as u64;
+            Self::trim_history(inner);
             return n;
         }
     }
 
+    /// Drop replay bytes the source can no longer seek back to. Every backward
+    /// seek the ADTS source issues lands within [`HISTORY_RETAIN_FLOOR`] of the
+    /// stream start, so once we've pulled past that floor we keep only the tail
+    /// from `HISTORY_RETAIN_FLOOR` onward (anything the source still reads
+    /// forward). This caps `history` instead of letting it grow with the stream.
+    fn trim_history(inner: &mut RtrbByteStreamInner) {
+        // The lowest offset we must still be able to serve: never below the retain
+        // floor (probe seeks) and never above the current read position.
+        let keep_from = HISTORY_RETAIN_FLOOR.min(inner.position);
+        if keep_from <= inner.history_base {
+            return;
+        }
+        let drop_n = (keep_from - inner.history_base) as usize;
+        if drop_n == 0 || drop_n > inner.history.len() {
+            return;
+        }
+        inner.history.drain(..drop_n);
+        inner.history_base += drop_n as u64;
+    }
+
     /// Blocking read of up to `buf.len()` bytes starting at the current logical
-    /// position; returns bytes read (0 == EOF at the live tail). Serves replayed
-    /// bytes from `history` and pulls fresh bytes from the ring as needed.
+    /// position; returns bytes read (0 == EOF at the live tail / stop). Serves
+    /// replayed bytes from `history` and pulls fresh bytes from the ring as needed.
     fn blocking_read(&self, buf: &mut [u8]) -> usize {
         if buf.is_empty() {
             return 0;
         }
         let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
-        let pos = inner.position as usize;
+        let pos = inner.position;
 
-        // If reading at/after the live tail, pull more bytes until we have data
-        // beyond `pos` (a forward seek may sit past the current tail) or hit EOF.
-        // Each fill_history blocks for at least one chunk, so this does not spin.
-        while pos >= inner.history.len() {
-            let need = pos - inner.history.len() + buf.len();
-            if Self::fill_history(&mut inner, need) == 0 {
-                return 0; // genuine EOF (producer dropped, nothing more coming)
+        // A seek below what we retain would be unservable; the floor guarantees
+        // the source never does this, but guard against it loudly rather than
+        // reading garbage.
+        if pos < inner.history_base {
+            log::error!(
+                "[RtrbByteStream] read at {pos} below retained base {}; history trimmed too far",
+                inner.history_base
+            );
+            return 0;
+        }
+
+        // `rel` is the offset into `history` we want to read from. If we're at or
+        // past the live tail, pull more bytes until we have data beyond `pos`
+        // (a forward seek may sit past the current tail) or hit EOF. Each
+        // fill_history blocks for at least one chunk, so this does not spin.
+        loop {
+            let history_end = inner.history_base + inner.history.len() as u64;
+            if pos < history_end {
+                break;
+            }
+            let need = (pos - history_end) as usize + buf.len();
+            if Self::fill_history(&mut inner, need, &self.stop) == 0 {
+                return 0; // genuine EOF (producer dropped / stop) or trim race
             }
         }
 
-        let avail = inner.history.len().saturating_sub(pos);
+        let rel = (pos - inner.history_base) as usize;
+        let avail = inner.history.len().saturating_sub(rel);
         if avail == 0 {
             return 0;
         }
         let n = avail.min(buf.len());
-        buf[..n].copy_from_slice(&inner.history[pos..pos + n]);
+        buf[..n].copy_from_slice(&inner.history[rel..rel + n]);
         inner.position += n as u64;
         n
     }
@@ -249,17 +352,18 @@ impl IMFByteStream_Impl for RtrbByteStream_Impl {
     }
 
     fn GetLength(&self) -> windows::core::Result<u64> {
-        // Report how many bytes are currently available (everything pulled into
-        // history plus whatever is sitting in the ring right now). The ADTS
-        // source clamps its read-ahead seeks to this, so it never overshoots the
-        // live tail; as more audio streams in, the reported length grows.
+        // Report how many bytes have ever been available (the high-water mark:
+        // everything pulled into history plus whatever is sitting in the ring
+        // right now). The ADTS source clamps its read-ahead seeks to this, so it
+        // never overshoots the live tail; as more audio streams in, the reported
+        // length grows. We use `total_pulled` rather than `history.len()` because
+        // `history` is now trimmed and would otherwise under-report.
         let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         let ready = inner.consumer.slots();
         if ready > 0 {
-            RtrbByteStream::fill_history(&mut inner, ready);
+            RtrbByteStream::fill_history(&mut inner, ready, &self.stop);
         }
-        let len = inner.history.len() as u64;
-        Ok(len)
+        Ok(inner.total_pulled)
     }
 
     fn SetLength(&self, _qwlength: u64) -> windows::core::Result<()> {
@@ -281,7 +385,7 @@ impl IMFByteStream_Impl for RtrbByteStream_Impl {
     fn IsEndOfStream(&self) -> windows::core::Result<BOOL> {
         let inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         // EOF iff we've consumed past everything pulled AND no more is coming.
-        let drained = inner.position as usize >= inner.history.len();
+        let drained = inner.position >= inner.total_pulled;
         let eof = drained && inner.consumer.is_abandoned() && inner.consumer.slots() == 0;
         Ok(eof.into())
     }
@@ -497,153 +601,362 @@ impl IMFAttributes_Impl for RtrbByteStream_Impl {
 
 /// Media Foundation HE-AAC/HE-AACv2 live decoder implementing [`LiveDecoder`].
 ///
-/// Owns the COM/MF lifecycle (via [`MfStartupGuard`]) and the `IMFSourceReader`.
-/// Construct, decode, and drop all on a single MTA thread.
+/// Holds **no COM pointer**: all MF work runs on a dedicated decode thread the
+/// decoder owns (see module docs). This struct keeps only `Send` things — the
+/// PCM block receiver, the cached spec, a stop flag, and the thread handle — so
+/// it is naturally `Send` (no `unsafe impl Send`) and `next_pcm` is a plain
+/// channel `recv` safe to call from cpal's audio thread.
 pub(crate) struct MfAacDecoder {
-    reader: IMFSourceReader,
+    /// Decoded interleaved-f32 blocks from the decode thread. `None` (channel
+    /// closed) means EOF or a fatal decode error.
+    pcm_rx: Option<Receiver<Vec<f32>>>,
+    /// Negotiated output spec, learned during `new()` (before any pull).
     spec: SignalSpec,
-    /// Whether this instance successfully `CoInitializeEx`'d its thread (and so
-    /// must `CoUninitialize` on drop).
-    co_initialized: bool,
-    /// Keeps MF alive while this decoder exists; drops last.
-    _mf_guard: MfStartupGuard,
+    /// Signals the decode thread (and its byte stream) to stop and exit.
+    stop: Arc<AtomicBool>,
+    /// The decode thread; joined on drop.
+    handle: Option<std::thread::JoinHandle<()>>,
 }
 
-// All MF objects are confined to the constructing thread; `LiveDecoder: Send`
-// is required by the trait, and Task 4 moves the value onto a single
-// spawn_blocking thread before any decode call. The raw COM pointers are never
-// shared, so this is sound under that usage contract.
-unsafe impl Send for MfAacDecoder {}
+/// What the decode thread sends back to `new()` once init either succeeds (with
+/// the negotiated spec) or fails.
+type InitResult = Result<SignalSpec>;
 
 impl MfAacDecoder {
-    /// Build a decoder over the live byte ring. `content_type` is accepted for
-    /// parity with `SymphoniaDecoder::new` but is unused: MF's ADTS source
-    /// sniffs the format from the bytes themselves.
+    /// Build a decoder over the live byte ring, spawning the dedicated decode
+    /// thread and blocking until it confirms the reader exists and the output
+    /// spec is known (or reports an init error). `content_type` is accepted for
+    /// parity with `SymphoniaDecoder::new` but unused: MF's ADTS source sniffs
+    /// the format from the bytes themselves.
     pub(crate) fn new(consumer: rtrb::Consumer<u8>, _content_type: Option<&str>) -> Result<Self> {
-        // 1. COM apartment: MTA. Tolerate S_FALSE (already init MTA) and
-        //    RPC_E_CHANGED_MODE (thread already STA) — do NOT propagate either.
-        // SAFETY: standard COM init on the owning thread.
-        let hr = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) };
-        let co_initialized = if hr.is_ok() {
-            true
-        } else if hr == RPC_E_CHANGED_MODE {
-            // Thread is already STA (e.g. set up by another component). MF works
-            // from STA too; we just must not CoUninitialize what we didn't own.
-            log::debug!("[MfAacDecoder] CoInitializeEx returned RPC_E_CHANGED_MODE (thread is STA); continuing");
-            false
-        } else {
-            return Err(anyhow!("CoInitializeEx failed: {hr:?}"));
-        };
+        let stop = Arc::new(AtomicBool::new(false));
+        let (pcm_tx, pcm_rx) = sync_channel::<Vec<f32>>(PCM_CHANNEL_CAP);
+        // Rendezvous channel for the init handshake: `new()` blocks on recv until
+        // the decode thread reports Ok(spec) or Err.
+        let (init_tx, init_rx) = sync_channel::<InitResult>(0);
 
-        // 2. MFStartup (refcounted across decoder instances).
-        let mf_guard = match MfStartupGuard::acquire() {
-            Ok(g) => g,
-            Err(e) => {
-                if co_initialized {
-                    // SAFETY: balances our own CoInitializeEx.
-                    unsafe { CoUninitialize() };
-                }
+        let stop_thread = Arc::clone(&stop);
+        let handle = std::thread::Builder::new()
+            .name("mf-aac-decode".into())
+            .spawn(move || {
+                decode_thread_main(consumer, stop_thread, init_tx, pcm_tx);
+            })
+            .context("failed to spawn MF AAC decode thread")?;
+
+        // Block until init confirmed. recv errors only if the thread died without
+        // sending (e.g. panic) — surface that as an init failure.
+        let spec = match init_rx.recv() {
+            Ok(Ok(spec)) => spec,
+            Ok(Err(e)) => {
+                // Init failed on the thread; it has already torn down and will
+                // exit. Join to reap it (it is not blocked on anything).
+                let _ = handle.join();
                 return Err(e);
+            }
+            Err(_) => {
+                let _ = handle.join();
+                return Err(anyhow!("MF AAC decode thread exited before init"));
             }
         };
 
-        // `build` takes the MF guard by value: on success it moves into the
-        // returned decoder; on failure it is dropped there (MFShutdown handled by
-        // the guard's Drop). COM is per-thread and owned by us, so we balance our
-        // own CoInitializeEx here on the error path.
-        let result = Self::build(consumer, co_initialized, mf_guard);
-        if result.is_err() && co_initialized {
-            // SAFETY: balances our CoInitializeEx above; only when we owned it.
-            unsafe { CoUninitialize() };
-        }
-        result
-    }
-
-    fn build(
-        consumer: rtrb::Consumer<u8>,
-        co_initialized: bool,
-        mf_guard: MfStartupGuard,
-    ) -> Result<Self> {
-        // 3. Wrap the rtrb consumer in our IMFByteStream. The content-type hint
-        //    lives on the byte stream's own IMFAttributes (see RtrbByteStream),
-        //    which is how the source resolver selects the ADTS source for a raw
-        //    (URL-less) byte stream.
-        let byte_stream: IMFByteStream = RtrbByteStream::new(consumer, "audio/aac")?.into();
-
-        // 4. Reader attributes: audio-only (disable advanced video processing).
-        // SAFETY: MFCreateAttributes allocates a fresh attribute store.
-        let attributes = unsafe {
-            let mut attrs = None;
-            MFCreateAttributes(&mut attrs, 1).context("MFCreateAttributes failed")?;
-            let attrs = attrs.ok_or_else(|| anyhow!("MFCreateAttributes returned null"))?;
-            attrs
-                .SetUINT32(&MF_SOURCE_READER_ENABLE_ADVANCED_VIDEO_PROCESSING, 0)
-                .context("set ENABLE_ADVANCED_VIDEO_PROCESSING failed")?;
-            attrs
-        };
-
-        // 5. Create the source reader over our byte stream. MF's ADTS source
-        //    handler parses headers and instantiates the AAC decoder internally.
-        // SAFETY: byte_stream and attributes are valid live COM objects.
-        let reader = unsafe {
-            MFCreateSourceReaderFromByteStream(&byte_stream, &attributes)
-                .context("MFCreateSourceReaderFromByteStream failed (not AAC/ADTS?)")?
-        };
-
-        let stream_index = MF_SOURCE_READER_FIRST_AUDIO_STREAM.0 as u32;
-
-        // 6. Desired OUTPUT type: PCM, 16-bit, rate/channels UNSET. MF negotiates
-        //    the real post-SBR/PS rate + channel count for us.
-        // SAFETY: media type is a fresh MF object; GUIDs are static.
-        unsafe {
-            let out_type = MFCreateMediaType().context("MFCreateMediaType failed")?;
-            out_type
-                .SetGUID(&MF_MT_MAJOR_TYPE, &MFMediaType_Audio)
-                .context("set MAJOR_TYPE failed")?;
-            out_type
-                .SetGUID(&MF_MT_SUBTYPE, &MFAudioFormat_PCM)
-                .context("set SUBTYPE failed")?;
-            out_type
-                .SetUINT32(&MF_MT_AUDIO_BITS_PER_SAMPLE, 16)
-                .context("set BITS_PER_SAMPLE failed")?;
-            reader
-                .SetCurrentMediaType(stream_index, None, &out_type)
-                .context("SetCurrentMediaType(PCM16) failed — stream not decodable?")?;
-        }
-
-        // 7. Read back the negotiated type to learn the true spec (32000/2 for
-        //    the HE-AACv2 test stream).
-        let spec = Self::read_spec(&reader, stream_index)?;
-        log::info!(
-            "[MfAacDecoder] negotiated output: {} Hz, {} ch",
-            spec.rate,
-            spec.channels.count()
-        );
-
         Ok(Self {
-            reader,
+            pcm_rx: Some(pcm_rx),
             spec,
-            co_initialized,
-            _mf_guard: mf_guard,
+            stop,
+            handle: Some(handle),
         })
     }
+}
 
-    /// Read the source reader's current output media type and build a `SignalSpec`.
-    fn read_spec(reader: &IMFSourceReader, stream_index: u32) -> Result<SignalSpec> {
-        // SAFETY: reader is a valid source reader; stream_index is the audio stream.
-        let (rate, channels) = unsafe {
-            let media_type = reader
-                .GetCurrentMediaType(stream_index)
-                .context("GetCurrentMediaType failed")?;
-            let rate = media_type
-                .GetUINT32(&MF_MT_AUDIO_SAMPLES_PER_SECOND)
-                .context("output type missing SAMPLES_PER_SECOND")?;
-            let channels = media_type
-                .GetUINT32(&MF_MT_AUDIO_NUM_CHANNELS)
-                .context("output type missing NUM_CHANNELS")?;
-            (rate, channels)
+impl LiveDecoder for MfAacDecoder {
+    fn next_pcm(&mut self) -> Option<Vec<f32>> {
+        // Pure channel recv — no COM here, so this is safe to call from cpal's
+        // audio thread (a different COM apartment than the decode thread).
+        self.pcm_rx.as_ref()?.recv().ok()
+    }
+
+    fn spec(&self) -> SignalSpec {
+        self.spec
+    }
+}
+
+impl Drop for MfAacDecoder {
+    fn drop(&mut self) {
+        // Signal stop so a fill loop waiting on the live tail returns EOF...
+        self.stop.store(true, Ordering::Relaxed);
+        // ...and drop the receiver so a decode thread blocked on a full PCM
+        // `send` unblocks (send returns Err → thread exits). Either way the
+        // thread is now guaranteed to make progress to its teardown.
+        self.pcm_rx = None;
+        if let Some(handle) = self.handle.take() {
+            let _ = handle.join();
+        }
+    }
+}
+
+// ── decode thread ────────────────────────────────────────────────────────────
+
+/// Body of the dedicated decode thread. Owns the entire COM/MF lifecycle: it
+/// initializes COM (MTA) + MF, builds the reader, reports the spec back through
+/// `init_tx`, then runs the ReadSample → S16→f32 → bounded-send loop. On exit it
+/// releases the reader, then MF (guard drop), then COM — in that order, all here.
+fn decode_thread_main(
+    consumer: rtrb::Consumer<u8>,
+    stop: Arc<AtomicBool>,
+    init_tx: SyncSender<InitResult>,
+    pcm_tx: SyncSender<Vec<f32>>,
+) {
+    // 1. COM apartment: MTA. Tolerate S_FALSE (already init MTA) and
+    //    RPC_E_CHANGED_MODE (thread already STA) — do NOT propagate either.
+    // SAFETY: standard COM init on this (the decode) thread.
+    let hr = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) };
+    let co_initialized = if hr.is_ok() {
+        true
+    } else if hr == RPC_E_CHANGED_MODE {
+        // Thread already STA (shouldn't happen for our own thread, but tolerate).
+        log::debug!("[MfAacDecoder] CoInitializeEx returned RPC_E_CHANGED_MODE; continuing");
+        false
+    } else {
+        let _ = init_tx.send(Err(anyhow!("CoInitializeEx failed: {hr:?}")));
+        return;
+    };
+
+    // 2. MFStartup (refcounted across decoder instances), owned by this thread.
+    let mf_guard = match MfStartupGuard::acquire() {
+        Ok(g) => g,
+        Err(e) => {
+            if co_initialized {
+                // SAFETY: balances our CoInitializeEx on this thread.
+                unsafe { CoUninitialize() };
+            }
+            let _ = init_tx.send(Err(e));
+            return;
+        }
+    };
+
+    // 3. Build the reader + negotiate the output spec.
+    let (reader, spec) = match build_reader(consumer, &stop) {
+        Ok(r) => r,
+        Err(e) => {
+            // Teardown order: MF guard drops here, then COM below.
+            drop(mf_guard);
+            if co_initialized {
+                // SAFETY: balances our CoInitializeEx on this thread.
+                unsafe { CoUninitialize() };
+            }
+            let _ = init_tx.send(Err(e));
+            return;
+        }
+    };
+
+    // 4. Confirm init to `new()`. If the receiver is already gone (the future
+    //    wrapping new() was cancelled), just tear down.
+    if init_tx.send(Ok(spec)).is_err() {
+        teardown(reader, mf_guard, co_initialized);
+        return;
+    }
+
+    // 5. Decode loop: ReadSample → S16→f32 → bounded send. Backpressure paces
+    //    decode to playback. Exits on EOF/error/stop/consumer-gone.
+    decode_loop(&reader, &stop, &pcm_tx);
+
+    // 6. Teardown on this same thread: reader Release, then MF, then COM.
+    teardown(reader, mf_guard, co_initialized);
+}
+
+/// Release the reader, then MF (guard), then COM — strictly in that order, all on
+/// the decode thread.
+fn teardown(reader: IMFSourceReader, mf_guard: MfStartupGuard, co_initialized: bool) {
+    drop(reader); // IMFSourceReader Release
+    drop(mf_guard); // MFShutdown if last (guard's Drop)
+    if co_initialized {
+        // SAFETY: balances the CoInitializeEx performed on this same thread.
+        unsafe { CoUninitialize() };
+    }
+}
+
+/// Build the byte stream + `IMFSourceReader`, set the PCM16 output type, and read
+/// back the negotiated `SignalSpec`. Mirrors the original `build`/`read_spec`.
+fn build_reader(
+    consumer: rtrb::Consumer<u8>,
+    stop: &Arc<AtomicBool>,
+) -> Result<(IMFSourceReader, SignalSpec)> {
+    // Wrap the rtrb consumer in our IMFByteStream. The content-type hint lives on
+    // the byte stream's own IMFAttributes, which is how the source resolver
+    // selects the ADTS source for a raw (URL-less) byte stream.
+    let byte_stream: IMFByteStream =
+        RtrbByteStream::new(consumer, "audio/aac", Arc::clone(stop))?.into();
+
+    // Reader attributes: audio-only (disable advanced video processing).
+    // SAFETY: MFCreateAttributes allocates a fresh attribute store.
+    let attributes = unsafe {
+        let mut attrs = None;
+        MFCreateAttributes(&mut attrs, 1).context("MFCreateAttributes failed")?;
+        let attrs = attrs.ok_or_else(|| anyhow!("MFCreateAttributes returned null"))?;
+        attrs
+            .SetUINT32(&MF_SOURCE_READER_ENABLE_ADVANCED_VIDEO_PROCESSING, 0)
+            .context("set ENABLE_ADVANCED_VIDEO_PROCESSING failed")?;
+        attrs
+    };
+
+    // Create the source reader over our byte stream. MF's ADTS source handler
+    // parses headers and instantiates the AAC decoder internally.
+    // SAFETY: byte_stream and attributes are valid live COM objects.
+    let reader = unsafe {
+        MFCreateSourceReaderFromByteStream(&byte_stream, &attributes)
+            .context("MFCreateSourceReaderFromByteStream failed (not AAC/ADTS?)")?
+    };
+
+    let stream_index = MF_SOURCE_READER_FIRST_AUDIO_STREAM.0 as u32;
+
+    // Desired OUTPUT type: PCM, 16-bit, rate/channels UNSET. MF negotiates the
+    // real post-SBR/PS rate + channel count for us.
+    // SAFETY: media type is a fresh MF object; GUIDs are static.
+    unsafe {
+        let out_type = MFCreateMediaType().context("MFCreateMediaType failed")?;
+        out_type
+            .SetGUID(&MF_MT_MAJOR_TYPE, &MFMediaType_Audio)
+            .context("set MAJOR_TYPE failed")?;
+        out_type
+            .SetGUID(&MF_MT_SUBTYPE, &MFAudioFormat_PCM)
+            .context("set SUBTYPE failed")?;
+        out_type
+            .SetUINT32(&MF_MT_AUDIO_BITS_PER_SAMPLE, 16)
+            .context("set BITS_PER_SAMPLE failed")?;
+        reader
+            .SetCurrentMediaType(stream_index, None, &out_type)
+            .context("SetCurrentMediaType(PCM16) failed — stream not decodable?")?;
+    }
+
+    // Read back the negotiated type to learn the true spec (32000/2 for the
+    // HE-AACv2 test stream).
+    let spec = read_spec(&reader, stream_index)?;
+    log::info!(
+        "[MfAacDecoder] negotiated output: {} Hz, {} ch",
+        spec.rate,
+        spec.channels.count()
+    );
+    Ok((reader, spec))
+}
+
+/// Read the source reader's current output media type and build a `SignalSpec`.
+fn read_spec(reader: &IMFSourceReader, stream_index: u32) -> Result<SignalSpec> {
+    // SAFETY: reader is a valid source reader; stream_index is the audio stream.
+    let (rate, channels) = unsafe {
+        let media_type = reader
+            .GetCurrentMediaType(stream_index)
+            .context("GetCurrentMediaType failed")?;
+        let rate = media_type
+            .GetUINT32(&MF_MT_AUDIO_SAMPLES_PER_SECOND)
+            .context("output type missing SAMPLES_PER_SECOND")?;
+        let channels = media_type
+            .GetUINT32(&MF_MT_AUDIO_NUM_CHANNELS)
+            .context("output type missing NUM_CHANNELS")?;
+        (rate, channels)
+    };
+    Ok(SignalSpec::new(rate, channels_from_count(channels)))
+}
+
+/// The ReadSample → S16→f32 → bounded-send loop. Runs entirely on the decode
+/// thread. Returns when the stream ends, a fatal error occurs, the stop flag is
+/// set, or the PCM consumer is gone (send fails).
+///
+/// The cached spec lives in `MfAacDecoder` (set once at init); since it cannot be
+/// pushed back to the struct from this thread, a mid-stream
+/// `CURRENTMEDIATYPECHANGED` is logged but not propagated — the S16→f32 path is
+/// rate/channel-agnostic (it copies whatever the buffer holds), so a spec change
+/// only matters for `LiveSource`'s declared `sample_rate`/`channels`, which is
+/// out of scope here and was equally true of the single-threaded version.
+fn decode_loop(
+    reader: &IMFSourceReader,
+    stop: &Arc<AtomicBool>,
+    pcm_tx: &SyncSender<Vec<f32>>,
+) {
+    let stream_index = MF_SOURCE_READER_FIRST_AUDIO_STREAM.0 as u32;
+    loop {
+        if stop.load(Ordering::Relaxed) {
+            return;
+        }
+        let mut flags: u32 = 0;
+        let mut sample = None;
+        // SAFETY: reader is valid; out-params are local.
+        let read = unsafe {
+            reader.ReadSample(
+                stream_index,
+                0,
+                None,
+                Some(&mut flags),
+                None,
+                Some(&mut sample),
+            )
         };
-        Ok(SignalSpec::new(rate, channels_from_count(channels)))
+        if let Err(e) = read {
+            log::warn!("[MfAacDecoder] ReadSample failed: {e}");
+            return;
+        }
+
+        let flags = MF_SOURCE_READER_FLAG(flags as i32);
+        let has = |flag: MF_SOURCE_READER_FLAG| flags.0 & flag.0 != 0;
+        if has(MF_SOURCE_READERF_ENDOFSTREAM) {
+            log::info!("[MfAacDecoder] end of stream");
+            return;
+        }
+        if has(MF_SOURCE_READERF_CURRENTMEDIATYPECHANGED) {
+            // Defensive (the spike saw the spec constant from frame 0, but a
+            // mid-stream bitrate/codec change could flip it). Logged only; see
+            // the function doc for why it is not propagated.
+            match read_spec(reader, stream_index) {
+                Ok(s) => log::info!(
+                    "[MfAacDecoder] media type changed: {} Hz, {} ch",
+                    s.rate,
+                    s.channels.count()
+                ),
+                Err(e) => log::warn!("[MfAacDecoder] failed to re-read spec: {e}"),
+            }
+        }
+
+        let Some(sample) = sample else {
+            // No sample but not EOF (e.g. a gap / stream tick) — try again.
+            continue;
+        };
+
+        // Convert the sample to one contiguous buffer of interleaved S16LE.
+        // SAFETY: sample is a valid IMFSample from ReadSample.
+        let pcm = unsafe {
+            let buffer = match sample.ConvertToContiguousBuffer() {
+                Ok(b) => b,
+                Err(e) => {
+                    log::warn!("[MfAacDecoder] ConvertToContiguousBuffer failed: {e}");
+                    return;
+                }
+            };
+            let mut ptr: *mut u8 = std::ptr::null_mut();
+            let mut current_len: u32 = 0;
+            if let Err(e) = buffer.Lock(&mut ptr, None, Some(&mut current_len)) {
+                log::warn!("[MfAacDecoder] buffer Lock failed: {e}");
+                return;
+            }
+            // Copy out S16LE and convert to f32 while the buffer is locked.
+            let byte_len = current_len as usize;
+            let sample_count = byte_len / 2;
+            let mut out = Vec::with_capacity(sample_count);
+            let s16 = std::slice::from_raw_parts(ptr as *const i16, sample_count);
+            for &v in s16 {
+                out.push(v as f32 / 32768.0);
+            }
+            let _ = buffer.Unlock();
+            out
+        };
+
+        if pcm.is_empty() {
+            continue;
+        }
+        // Bounded send: blocks when the channel is full (backpressure), so the
+        // decoder paces to playback rather than buffering the whole stream. If
+        // the receiver is gone (decoder dropped), send errors → exit.
+        if pcm_tx.send(pcm).is_err() {
+            return;
+        }
     }
 }
 
@@ -654,107 +967,5 @@ fn channels_from_count(count: u32) -> Channels {
         1 => Channels::FRONT_LEFT,
         2 => Channels::FRONT_LEFT | Channels::FRONT_RIGHT,
         n => Channels::from_bits_truncate((1u32 << n) - 1),
-    }
-}
-
-impl LiveDecoder for MfAacDecoder {
-    fn next_pcm(&mut self) -> Option<Vec<f32>> {
-        let stream_index = MF_SOURCE_READER_FIRST_AUDIO_STREAM.0 as u32;
-        loop {
-            let mut flags: u32 = 0;
-            let mut sample = None;
-            // SAFETY: reader is valid; out-params are local.
-            let read = unsafe {
-                self.reader.ReadSample(
-                    stream_index,
-                    0,
-                    None,
-                    Some(&mut flags),
-                    None,
-                    Some(&mut sample),
-                )
-            };
-            if let Err(e) = read {
-                log::warn!("[MfAacDecoder] ReadSample failed: {e}");
-                return None;
-            }
-
-            let flags = MF_SOURCE_READER_FLAG(flags as i32);
-            let has = |flag: MF_SOURCE_READER_FLAG| flags.0 & flag.0 != 0;
-            if has(MF_SOURCE_READERF_ENDOFSTREAM) {
-                log::info!("[MfAacDecoder] end of stream");
-                return None;
-            }
-            if has(MF_SOURCE_READERF_CURRENTMEDIATYPECHANGED) {
-                // Defensive (the spike saw the spec constant from frame 0, but a
-                // mid-stream bitrate/codec change could flip it).
-                match Self::read_spec(&self.reader, stream_index) {
-                    Ok(s) => {
-                        log::info!(
-                            "[MfAacDecoder] media type changed: {} Hz, {} ch",
-                            s.rate,
-                            s.channels.count()
-                        );
-                        self.spec = s;
-                    }
-                    Err(e) => log::warn!("[MfAacDecoder] failed to re-read spec: {e}"),
-                }
-            }
-
-            let Some(sample) = sample else {
-                // No sample but not EOF (e.g. a gap / stream tick) — try again.
-                continue;
-            };
-
-            // Convert the sample to one contiguous buffer of interleaved S16LE.
-            // SAFETY: sample is a valid IMFSample from ReadSample.
-            let pcm = unsafe {
-                let buffer = match sample.ConvertToContiguousBuffer() {
-                    Ok(b) => b,
-                    Err(e) => {
-                        log::warn!("[MfAacDecoder] ConvertToContiguousBuffer failed: {e}");
-                        return None;
-                    }
-                };
-                let mut ptr: *mut u8 = std::ptr::null_mut();
-                let mut current_len: u32 = 0;
-                if let Err(e) = buffer.Lock(&mut ptr, None, Some(&mut current_len)) {
-                    log::warn!("[MfAacDecoder] buffer Lock failed: {e}");
-                    return None;
-                }
-                // Copy out S16LE and convert to f32 while the buffer is locked.
-                let byte_len = current_len as usize;
-                let sample_count = byte_len / 2;
-                let mut out = Vec::with_capacity(sample_count);
-                let s16 = std::slice::from_raw_parts(ptr as *const i16, sample_count);
-                for &v in s16 {
-                    out.push(v as f32 / 32768.0);
-                }
-                let _ = buffer.Unlock();
-                out
-            };
-
-            if pcm.is_empty() {
-                continue;
-            }
-            return Some(pcm);
-        }
-    }
-
-    fn spec(&self) -> SignalSpec {
-        self.spec
-    }
-}
-
-impl Drop for MfAacDecoder {
-    fn drop(&mut self) {
-        // Order: drop the reader (and its byte stream) first, then MF
-        // (_mf_guard runs after this body), then COM. We explicitly handle COM
-        // here; MF teardown is the guard's job.
-        if self.co_initialized {
-            // SAFETY: balances the CoInitializeEx we performed in `new` on this
-            // same thread.
-            unsafe { CoUninitialize() };
-        }
     }
 }
