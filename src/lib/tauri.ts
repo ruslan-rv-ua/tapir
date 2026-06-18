@@ -614,6 +614,20 @@ export async function moveStreamToProfile(streamId: string, targetProfile: strin
   return invoke("transfer_stream_to_profile", { streamId, targetProfile, mode: "move" });
 }
 
+export interface BulkTransferResult {
+  transferred: string[];
+  skippedRecording: number;
+  skippedConflict: number;
+}
+
+export async function copyStreamsToProfile(streamIds: string[], targetProfile: string): Promise<BulkTransferResult> {
+  return invoke("transfer_streams_to_profile", { streamIds, targetProfile, mode: "copy" });
+}
+
+export async function moveStreamsToProfile(streamIds: string[], targetProfile: string): Promise<BulkTransferResult> {
+  return invoke("transfer_streams_to_profile", { streamIds, targetProfile, mode: "move" });
+}
+
 // ── Stream import/export (Phase 3J) ───────────────────────────────────────
 
 export interface ImportCandidate {
