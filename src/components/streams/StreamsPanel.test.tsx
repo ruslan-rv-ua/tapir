@@ -25,6 +25,13 @@ vi.mock("../../lib/tauri", () => ({
   beginStreamImport: vi.fn().mockResolvedValue(null),
   addExampleStreams: vi.fn().mockResolvedValue([]),
   saveSettings: vi.fn().mockResolvedValue(undefined),
+  listProfiles: vi.fn().mockResolvedValue([
+    { name: "Default", streamCount: 3, isActive: true },
+    { name: "Jazz", streamCount: 0, isActive: false },
+  ]),
+  createProfile: vi.fn().mockResolvedValue({ name: "Fresh", streamCount: 0, isActive: false }),
+  copyStreamsToProfile: vi.fn().mockResolvedValue({ transferred: [], skippedRecording: 0, skippedConflict: 0 }),
+  moveStreamsToProfile: vi.fn().mockResolvedValue({ transferred: [], skippedRecording: 0, skippedConflict: 0 }),
 }));
 
 // ImportStreamsDialog uses useTauriEvent; stub it so jsdom doesn't try to call
@@ -487,14 +494,30 @@ describe("StreamsPanel — selection toolbar cluster", () => {
     expect(await screen.findByText(m.confirm_delete_selected({ count: 2 }))).toBeTruthy();
   });
 
-  it("keeps a 12-stop roving toolbar in DOM order", () => {
+  it("shows disabled Move/Copy selected (0) buttons with no selection", () => {
+    renderPanel();
+    const move = screen.getByRole("button", { name: m.move_selected({ count: 0 }) });
+    const copy = screen.getByRole("button", { name: m.copy_selected({ count: 0 }) });
+    expect(move.getAttribute("aria-disabled")).toBe("true");
+    expect(copy.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("the toolbar move button opens the list's bulk transfer picker", async () => {
+    replaceSelection(new Set(["a", "b"]));
+    renderPanel();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: m.move_selected({ count: 2 }) }));
+    });
+    expect(await screen.findByText(m.move_selected_to_profile_title({ count: 2 }))).toBeTruthy();
+  });
+
+  it("keeps a 14-stop roving toolbar in DOM order", () => {
     const { container } = renderPanel();
     const toolbar = container.querySelector('[data-zone-id="streams-toolbar"]')!;
     const stops = Array.from(toolbar.querySelectorAll<HTMLButtonElement>("button"));
-    // Roving tabindex: exactly one stop is tabbable (0); the rest are -1.
     const tabbable = stops.filter((b) => b.getAttribute("tabindex") === "0");
     expect(tabbable).toHaveLength(1);
-    expect(stops.length).toBeGreaterThanOrEqual(12);
+    expect(stops.length).toBeGreaterThanOrEqual(14);
   });
 });
 
