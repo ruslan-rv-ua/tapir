@@ -43,6 +43,9 @@ pub enum RadioError {
 
     #[error("InvalidData: {0}")]
     InvalidData(String),
+
+    #[error("UnsupportedStreamFormat")]
+    UnsupportedStreamFormat,
 }
 
 impl From<RadioError> for String {
@@ -61,5 +64,15 @@ mod tests {
         assert_eq!(RadioError::Forbidden("x".into()).to_string(), "Forbidden: x");
         assert_eq!(RadioError::InvalidName("x".into()).to_string(), "InvalidName: x");
         assert_eq!(RadioError::InvalidData("x".into()).to_string(), "InvalidData: x");
+    }
+
+    #[test]
+    fn unsupported_stream_format_token() {
+        // This exact token is the contract with the frontend (Task 7).
+        // Do NOT change the Display without updating the frontend string-match.
+        assert_eq!(
+            RadioError::UnsupportedStreamFormat.to_string(),
+            "UnsupportedStreamFormat"
+        );
     }
 }

@@ -924,19 +924,21 @@ impl PlayerEngine {
         let live_source = match probe {
             Ok(Ok(Ok(src))) => src,
             Ok(Ok(Err(e))) => {
+                log::warn!("Player: stream decoder rejected the format: {e:#}");
                 cancel.cancel();
-                return Err(e).context("could not decode stream (unsupported format?)");
+                return Err(crate::errors::RadioError::UnsupportedStreamFormat.into());
             }
             Ok(Err(e)) => {
                 cancel.cancel();
                 return Err(anyhow::anyhow!("LiveSource init task panicked: {e}"));
             }
             Err(_elapsed) => {
-                cancel.cancel();
-                return Err(anyhow::anyhow!(
-                    "timed out probing stream format after {}s (unsupported codec?)",
+                log::warn!(
+                    "Player: format probe timed out after {}s (stream likely uses an unsupported codec)",
                     PROBE_TIMEOUT.as_secs()
-                ));
+                );
+                cancel.cancel();
+                return Err(crate::errors::RadioError::UnsupportedStreamFormat.into());
             }
         };
 
