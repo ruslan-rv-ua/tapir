@@ -554,6 +554,56 @@ impl LiveDecoder for SymphoniaDecoder {
     }
 }
 
+// ── Decoder routing ────────────────────────────────────────────────────────
+
+/// Which decoder implementation to use for a live stream.
+/// Factored out of `LiveSource::new` so it can be unit-tested without touching
+/// the rtrb ring or any OS audio stack.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum DecoderKind {
+    /// Windows Media Foundation — handles AAC-LC, HE-AAC, HE-AACv2.
+    #[cfg(windows)]
+    Mf,
+    /// Symphonia — handles MP3 and any unknown/unsupported content-type.
+    Symphonia,
+}
+
+/// Map a MIME content-type to the decoder that should handle it.
+///
+/// The MIME string is matched case-insensitively. Parameters after `;` (e.g.
+/// `audio/aac; charset=utf-8`) are stripped before matching.
+///
+/// Rules (from the user-approved OVERRIDE, Task 4):
+/// - AAC family → `DecoderKind::Mf` (Windows only; on other platforms falls
+///   through to `DecoderKind::Symphonia`).
+/// - MP3 / `audio/mpeg` / `audio/mp3` → `DecoderKind::Symphonia`.
+/// - Anything else (unknown, absent) → `DecoderKind::Symphonia`.
+pub(crate) fn decoder_kind_for_mime(hint_mime: Option<&str>) -> DecoderKind {
+    let mime = match hint_mime {
+        Some(m) => m,
+        None => return DecoderKind::Symphonia,
+    };
+    // Strip parameters (e.g. "; charset=utf-8") and normalise case.
+    let base = mime.split(';').next().unwrap_or("").trim().to_ascii_lowercase();
+
+    #[cfg(windows)]
+    {
+        match base.as_str() {
+            "audio/aac"
+            | "audio/aacp"
+            | "application/aac"
+            | "audio/x-aac"
+            | "audio/mp4" => return DecoderKind::Mf,
+            _ => {}
+        }
+    }
+
+    DecoderKind::Symphonia
+}
+
+#[cfg(windows)]
+use crate::player::mf_aac::MfAacDecoder;
+
 // ── LiveSource ─────────────────────────────────────────────────────────────
 
 /// Rodio audio source for live HTTP streams.
@@ -568,9 +618,19 @@ struct LiveSource {
 
 impl LiveSource {
     fn new(consumer: rtrb::Consumer<u8>, hint_mime: Option<&str>) -> anyhow::Result<Self> {
-        let dec = SymphoniaDecoder::new(consumer, hint_mime)?;
+        let dec: Box<dyn LiveDecoder> = match decoder_kind_for_mime(hint_mime) {
+            #[cfg(windows)]
+            DecoderKind::Mf => {
+                let mf = MfAacDecoder::new(consumer, hint_mime)
+                    .context("Media Foundation AAC decoder failed to initialise")?;
+                Box::new(mf)
+            }
+            DecoderKind::Symphonia => {
+                Box::new(SymphoniaDecoder::new(consumer, hint_mime)?)
+            }
+        };
         let spec = dec.spec();
-        Ok(Self { buffer: VecDeque::new(), decoder: Box::new(dec), spec })
+        Ok(Self { buffer: VecDeque::new(), decoder: dec, spec })
     }
 
     fn decode_next_packet(&mut self) -> bool {
@@ -1059,6 +1119,73 @@ mod tests {
         let p = PlayerEndedPayload { path: "C:/music/song.mp3".to_string() };
         let json = serde_json::to_string(&p).unwrap();
         assert_eq!(json, r#"{"path":"C:/music/song.mp3"}"#);
+    }
+
+    // ── decoder_kind_for_mime routing tests ───────────────────────────────────
+
+    #[test]
+    fn routing_aac_family_to_mf_on_windows() {
+        let aac_types = [
+            "audio/aac",
+            "audio/aacp",
+            "application/aac",
+            "audio/x-aac",
+            "audio/mp4",
+            // case-insensitive
+            "Audio/AAC",
+            "AUDIO/AACP",
+            // with parameters
+            "audio/aac; charset=utf-8",
+            "audio/mp4;codecs=mp4a.40.2",
+        ];
+        for mime in &aac_types {
+            let kind = decoder_kind_for_mime(Some(mime));
+            #[cfg(windows)]
+            assert_eq!(
+                kind,
+                DecoderKind::Mf,
+                "expected Mf for {:?}",
+                mime
+            );
+            #[cfg(not(windows))]
+            assert_eq!(
+                kind,
+                DecoderKind::Symphonia,
+                "expected Symphonia (no MF) for {:?}",
+                mime
+            );
+        }
+    }
+
+    #[test]
+    fn routing_mp3_to_symphonia() {
+        for mime in &["audio/mpeg", "audio/mp3", "Audio/MPEG", "audio/mpeg; charset=utf-8"] {
+            assert_eq!(
+                decoder_kind_for_mime(Some(mime)),
+                DecoderKind::Symphonia,
+                "expected Symphonia for {:?}",
+                mime
+            );
+        }
+    }
+
+    #[test]
+    fn routing_unknown_and_missing_to_symphonia() {
+        let cases: &[Option<&str>] = &[
+            None,
+            Some(""),
+            Some("application/octet-stream"),
+            Some("audio/ogg"),
+            Some("video/mp4"),
+        ];
+        for case in cases {
+            assert_eq!(
+                decoder_kind_for_mime(*case),
+                DecoderKind::Symphonia,
+                "expected Symphonia for {:?}",
+                case
+            );
+        }
     }
 
     /// Regression test: SymphoniaDecoder produces at least one PCM block from a
