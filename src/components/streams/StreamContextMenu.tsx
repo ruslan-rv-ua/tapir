@@ -145,15 +145,17 @@ export function StreamContextMenu({ stream, status, menuFocused, onAddToWishlist
             id="copy-to-profile"
             className="cursor-pointer px-3 py-1.5 text-sm text-slate-200 outline-none hover:bg-slate-700 focus:bg-slate-700"
           >
-            <span aria-hidden="true" className="mr-2 inline-flex"><Copy size={14} /></span>{m.copy_to_profile()}
+            <span aria-hidden="true" className="mr-2 inline-flex"><Copy size={14} /></span>
+            {isSelected ? m.copy_selected({ count: selection.size }) : m.copy_to_profile()}
           </MenuItem>
           <MenuItem
             id="move-to-profile"
-            isDisabled={moveDisabled}
-            title={moveDisabled ? m.move_disabled_reason() : undefined}
+            isDisabled={isSelected ? false : moveDisabled}
+            title={!isSelected && moveDisabled ? m.move_disabled_reason() : undefined}
             className="cursor-pointer px-3 py-1.5 text-sm text-slate-200 outline-none hover:bg-slate-700 focus:bg-slate-700 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-40"
           >
-            <span aria-hidden="true" className="mr-2 inline-flex"><FolderInput size={14} /></span>{m.move_to_profile()}
+            <span aria-hidden="true" className="mr-2 inline-flex"><FolderInput size={14} /></span>
+            {isSelected ? m.move_selected({ count: selection.size }) : m.move_to_profile()}
           </MenuItem>
           <Separator className="my-1 border-t border-slate-700" />
           <MenuItem

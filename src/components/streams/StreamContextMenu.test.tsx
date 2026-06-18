@@ -21,6 +21,8 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   move_to_profile: () => "Перемістити в профіль…",
   move_disabled_reason: () => "Не можна перемістити активний потік",
   copy_url: () => "Копіювати URL",
+  move_selected: ({ count }: { count: number }) => `Перемістити виділені (${count})`,
+  copy_selected: ({ count }: { count: number }) => `Копіювати виділені (${count})`,
 }));
 
 const mkStream = (over: Partial<StreamInfo> = {}): StreamInfo => ({
@@ -115,5 +117,35 @@ describe("StreamContextMenu — selection-aware delete label", () => {
     const { container } = renderMenu(mkStatus("idle"));
     open(container);
     expect(await screen.findByRole("menuitem", { name: "Видалити потік" })).toBeTruthy();
+  });
+});
+
+describe("StreamContextMenu — selection-aware move/copy labels", () => {
+  const open = (container: HTMLElement) =>
+    fireEvent.click(container.querySelector('button[data-segment="action-menu"]')!);
+
+  it("shows bulk move/copy labels with the count when the row is selected", async () => {
+    replaceSelection(new Set(["s1", "s2"])); // row under test is s1
+    const { container } = renderMenu(mkStatus("idle"));
+    open(container);
+    expect(await screen.findByRole("menuitem", { name: "Перемістити виділені (2)" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Копіювати виділені (2)" })).toBeTruthy();
+  });
+
+  it("keeps Move enabled even while recording when the row is selected (bulk skips server-side)", async () => {
+    replaceSelection(new Set(["s1"]));
+    const { container } = renderMenu(mkStatus("recording"));
+    open(container);
+    const move = await screen.findByRole("menuitem", { name: "Перемістити виділені (1)" });
+    expect(move.getAttribute("aria-disabled")).not.toBe("true");
+  });
+
+  it("uses single labels + the moveDisabled gate when the row is NOT selected", async () => {
+    replaceSelection(new Set(["other"]));
+    const { container } = renderMenu(mkStatus("recording"));
+    open(container);
+    expect(await screen.findByRole("menuitem", { name: "Перемістити в профіль…" })).toBeTruthy();
+    const move = screen.getByRole("menuitem", { name: "Перемістити в профіль…" });
+    expect(move.getAttribute("aria-disabled")).toBe("true");
   });
 });
