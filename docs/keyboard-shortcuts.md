@@ -3,8 +3,10 @@
 - **Тип:** живий довідник (reference), **не** ADR. Тут — *що забіндано зараз*;
   *чому* саме так — у відповідних ADR (посилання в рядках).
 - **Оновлювати:** при кожному додаванні/зміні названого шортката (Tier 1–2).
-- **Останнє звірення з кодом:** 2026-06-14 (Tier 2′: дописано наявний `Ctrl+C`,
-  виправлено стан `Delete`, додано carve-out для list-scoped Ctrl-комбо; решта — 2026-06-11).
+- **Останнє звірення з кодом:** 2026-06-18 (Tier 2′: реалізовано віху A — виділення
+  `Ctrl+Space`/`Ctrl+A`/`Shift+↑↓`, bulk-`Delete`, `Escape`-clear переведено ⬜→✅;
+  2026-06-14: дописано наявний `Ctrl+C`, виправлено стан `Delete`, carve-out для
+  list-scoped Ctrl-комбо; решта — 2026-06-11).
 
 ## Як читати
 
@@ -167,12 +169,12 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 | `Shift+Enter` | **прослухати** рядок незалежно від налаштування (Streams: toggle відтворення · Browser: toggle прев'ю) | фокус на рядку Streams/Browser | модифікатори в `onAction` ([useCompositeList.ts](../src/hooks/useCompositeList.ts)); гілки: [StreamList.tsx](../src/components/streams/StreamList.tsx), [StationList.tsx](../src/components/browser/StationList.tsx) | ✅ |
 | `Ctrl+Enter` | **записати** рядок незалежно від налаштування (лише Streams: toggle запису) | фокус на рядку Streams | ↑ | ✅ |
 | `Ctrl+C` | копіювати щодо рядка (generic `copy`; Streams: URL потоку) | фокус на рядку списку | [useCompositeList.ts:274](../src/hooks/useCompositeList.ts#L274) (`e.code === "KeyC"`) → `onAction("copy")` списку | ✅ |
-| `Ctrl+Space` | перемкнути виділення активного рядка (+ ставить якір) | фокус у списку з multi-select | [spec віхи A](superpowers/specs/2026-06-14-bulk-stream-operations-A-design.md) | ⬜ |
-| `Ctrl+A` | виділити всі видимі / зняти (toggle) | фокус у списку з multi-select | ↑ | ⬜ |
-| `Shift+↑` / `Shift+↓` | розширити / звузити діапазон виділення від якоря | фокус у списку з multi-select | ↑ | ⬜ |
+| `Ctrl+Space` | перемкнути виділення активного рядка (+ ставить якір) | фокус у списку з multi-select | [useCompositeList.ts](../src/hooks/useCompositeList.ts) `resolveKeyAction` → `selectToggle` | ✅ |
+| `Ctrl+A` | виділити всі видимі / зняти (toggle) | фокус у списку з multi-select | ↑ (`selectAll` / `clearSelection`) | ✅ |
+| `Shift+↑` / `Shift+↓` | розширити / звузити діапазон виділення від якоря | фокус у списку з multi-select | ↑ (`selectRangeUp` / `selectRangeDown`) | ✅ |
 | `F2` | редагувати / перейменувати рядок (Streams: edit · Songs/Profiles: rename) | фокус на рядку (де застосовно) | — | ⬜ |
-| `Delete` | видалити рядок (з підтвердженням); за наявності виділення — масове видалення множини (Explorer-модель) | фокус на рядку списку | [useCompositeList.ts:361](../src/hooks/useCompositeList.ts#L361) → `onAction("delete")` → [StreamList.tsx](../src/components/streams/StreamList.tsx); bulk — [spec віхи A](superpowers/specs/2026-06-14-bulk-stream-operations-A-design.md) | одинично ✅ · bulk ⬜ |
-| `Escape` | закрити палітру / діалог (або скасувати запис хоткея); **у списку з непорожнім виділенням — зняти виділення** (list-scoped, consume) | палітра / модаль / рекордер відкриті · або список із виділенням | палітра [CommandPalette.tsx:150](../src/components/common/CommandPalette.tsx#L150); Settings — react-aria `isDismissable` [SettingsDialog.tsx:35](../src/components/settings/SettingsDialog.tsx#L35); рекордер [KeyRecorder.tsx:51](../src/components/settings/KeyRecorder.tsx#L51); clear-selection — [spec віхи A](superpowers/specs/2026-06-14-bulk-stream-operations-A-design.md) | палітра/діалог ✅ · clear-selection ⬜ |
+| `Delete` | видалити рядок (з підтвердженням); за наявності виділення — масове видалення множини (Explorer-модель) | фокус на рядку списку | [useCompositeList.ts:361](../src/hooks/useCompositeList.ts#L361) → `onAction("delete")` → [StreamList.tsx](../src/components/streams/StreamList.tsx); bulk — `handleConfirmBulkDelete` ([StreamList.tsx](../src/components/streams/StreamList.tsx)) | одинично ✅ · bulk ✅ |
+| `Escape` | закрити палітру / діалог (або скасувати запис хоткея); **у списку з непорожнім виділенням — зняти виділення** (list-scoped, consume) | палітра / модаль / рекордер відкриті · або список із виділенням | палітра [CommandPalette.tsx:150](../src/components/common/CommandPalette.tsx#L150); Settings — react-aria `isDismissable` [SettingsDialog.tsx:35](../src/components/settings/SettingsDialog.tsx#L35); рекордер [KeyRecorder.tsx:51](../src/components/settings/KeyRecorder.tsx#L51); clear-selection — [useCompositeList.ts](../src/hooks/useCompositeList.ts) `clearSelection` | палітра/діалог ✅ · clear-selection ✅ |
 
 > `Shift+F10`/`ContextMenu` не обробляються окремо: WebView2 для всіх трьох
 > (ПКМ, клавіша Menu, `Shift+F10`) емітить один `contextmenu` event — його й
