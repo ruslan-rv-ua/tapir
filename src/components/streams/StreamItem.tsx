@@ -99,7 +99,11 @@ export function StreamItem({
       if (isThisStreamPlaying) await tauri.stopPlayback();
       else await tauri.playStream(stream.id);
     } catch (err) {
-      addToast(String(err), "error");
+      const msg =
+        String(err) === "UnsupportedStreamFormat"
+          ? m.player_error_unsupported_format()
+          : String(err);
+      addToast(msg, "error");
     }
   };
 

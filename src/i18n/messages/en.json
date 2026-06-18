@@ -400,6 +400,7 @@
   "commands_label": "Commands",
   "player_nothing_playing": "Nothing playing",
   "player_recording_badge": "Recording",
+  "player_error_unsupported_format": "This stream format can't be played",
   "profile_manager_title": "Profile Manager",
   "profile_manager_open": "Manage profiles",
   "profile_switch": "Switch",
