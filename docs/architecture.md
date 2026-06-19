@@ -71,7 +71,8 @@ src-tauri/src/
 │   └── playlist.rs            # PLS/M3U parser
 ├── player/                    # Audio playback engine
 │   ├── mod.rs
-│   └── engine.rs              # rodio + symphonia, device selection
+│   ├── engine.rs              # rodio + LiveDecoder routing, device selection
+│   └── mf_aac.rs              # Media Foundation HE-AAC decoder (#[cfg(windows)])
 ├── scheduler/                 # Scheduled recordings
 │   ├── mod.rs
 │   └── timer.rs               # Per-minute check loop
@@ -104,7 +105,8 @@ src-tauri/src/
 | `stream::connection` | HTTP з'єднання з ICY; отримує raw bytes та метадані | `reqwest`, `icy-metadata` |
 | `stream::recorder` | Пише raw bytes у файл; розділяє треки за метаданими | `stream::splitter`, `tags`, `sanitize` |
 | `stream::splitter` | Логіка розділення: коли метадані змінюються → фіналізувати попередній трек, розпочати новий | — |
-| `player::engine` | Створює sink через rodio 0.22 (`DeviceSinkBuilder`/`MixerDeviceSink`/`Player`); live playback через незалежне HTTP-з'єднання з rtrb SPSC ring buffer та `LiveSource` (symphonia); файлове відтворення через `rodio::Decoder`; volume/device | `rodio`, `symphonia`, `rtrb`, `stream::connection` |
+| `player::engine` | Створює sink через rodio 0.22 (`DeviceSinkBuilder`/`MixerDeviceSink`/`Player`); live playback через незалежне HTTP-з'єднання з rtrb SPSC ring buffer та `LiveSource` (тонкий `rodio::Source` над трейтом `LiveDecoder`); маршрутизація декодера за `content_type`; файлове відтворення через `rodio::Decoder`; volume/device | `rodio`, `symphonia`, `rtrb`, `player::mf_aac`, `stream::connection` |
+| `player::mf_aac` | `MfAacDecoder` (`#[cfg(windows)]`): декодування HE-AAC/HE-AACv2 через Media Foundation `IMFSourceReader` поверх власного `IMFByteStream` над rtrb; уся COM/MF-робота на власному потоці декодера | `windows` (Media Foundation), `rtrb` |
 | `scheduler::timer` | Перевіряє заплановані записи щохвилини; делегує `stream::manager` | `stream::manager` |
 | `browser::api` | REST клієнт Radio Browser API | `reqwest` |
 | `tags::writer` | Пише ID3v2 / M4A теги після завершення запису треку | `lofty` |
@@ -356,7 +358,11 @@ StreamManager read_loop
                │
                └─ PlayerEngine reads from channel
                     │
-                    ├─ symphonia decoder (MP3/AAC-LC → PCM)
+                    ├─ LiveDecoder (маршрутизація за content_type):
+                    │     ├─ audio/aac, audio/aacp, audio/mp4 … → MfAacDecoder (Media Foundation, HE-AAC/HE-AACv2)
+                    │     └─ audio/mpeg / невідоме               → SymphoniaDecoder (MP3/AAC-LC)
+                    │   → інтерлівані f32 PCM
+                    │   (недекодоване → типізована помилка UnsupportedStreamFormat → локалізований toast)
                     │
                     └─ rodio Sink → WASAPI → speakers
 
@@ -1207,7 +1213,7 @@ Global hotkeys (configurable):
 | `decorations: true` | NVDA mouse tracking працює коректно | Кастомний title bar неможливий |
 | React 19 (не Svelte 5) | React Aria — єдина бібліотека з JAWS/NVDA тестуванням | Більший бандл (~80–130 KB gzip vs ~30–50 KB) |
 | Запис raw bytes (без decode) | Мінімальне CPU для 20+ потоків | Не можемо нормалізувати рівень гучності під час запису |
-| symphonia (без HE-AAC v2/AAC-ELD; HE-AAC v1 підтримується) | Pure Rust, без FFmpeg dependency | Деякі станції 32-64 kbps не програються (але записуються нормально) |
+| symphonia лише MP3/AAC-LC; HE-AAC/HE-AACv2 через Media Foundation (`MfAacDecoder`, Windows-only) | Pure-Rust ядро без FFmpeg; HE-AAC — OS-кодек без бандлу | На Windows «N»-виданнях без Media Feature Pack HE-AAC не програється → типізована помилка `UnsupportedStreamFormat` |
 | Portable data layout | Файли поряд з EXE, працює з флешки | `current_exe()` може повернути різні шляхи через symlinks |
 | Один лог-файл | Простота, зрозумілість для користувача | Менш зручний аналіз окремих підсистем (можна компенсувати prefixed записами) |
 
@@ -1230,8 +1236,8 @@ Global hotkeys (configurable):
     ┌─────▼─────┐   ┌─────▼─────┐           │
     │ connection│   │   rodio   │    uses stream/manager
     │  recorder │   │ symphonia │    to start/stop recordings
-    │  splitter │   └───────────┘
-    └─────┬─────┘
+    │  splitter │   │  mf_aac   │
+    └─────┬─────┘   └───────────┘
           │
     ┌─────▼─────┐   ┌───────────┐   ┌───────────┐
     │   tags/   │   │ wishlist/ │   │ postproc/ │

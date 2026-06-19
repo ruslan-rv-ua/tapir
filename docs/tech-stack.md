@@ -22,11 +22,12 @@
 | **ICY Protocol** | icy-metadata | 0.6 | ICY заголовки (лише `IcyHeaders`; парсинг метаданих потоку — ручний) |
 | **Stream Buffer** | stream-download | 0.24 | Ring buffer для стрімів |
 | **Playback** | rodio | 0.22 | WASAPI audio output |
-| **Decoding** | symphonia | 0.5.5 | MP3 + AAC-LC decoder |
+| **Decoding (MP3/AAC-LC)** | symphonia | 0.5.5 | MP3 + AAC-LC decoder (pure Rust) |
+| **Decoding (HE-AAC)** | Windows Media Foundation | OS | HE-AAC/HE-AACv2 (SBR+PS) через `IMFSourceReader`; Windows-only, без бандлу |
 | **Tags** | lofty | 0.23 | ID3v2 + M4A metadata |
 | **Async** | tokio | ~1.51 | Async runtime (LTS) |
 | **Logging** | tauri-plugin-log + log | 2.x / 0.4 | Файловий лог у `data/logs/`, `log::*` макроси |
-| **Win API** | windows-rs | 0.61 | Registry, toast, balloon tip |
+| **Win API** | windows-rs | 0.62 | Registry, toast, balloon tip, Media Foundation (HE-AAC) |
 | **Errors** | anyhow + thiserror | 1 / 2 | Error handling |
 | **Time** | chrono | 0.4 | Date/time з serde |
 | **Locale** | sys-locale | 0.3 | System locale detection |
@@ -127,8 +128,16 @@ Compiler-based i18n. Мінімальний runtime, tree-shakable, typesafe. У
 |---|---|
 | `rodio` 0.22 | Playback через WASAPI (cpal), mixer, volume |
 | `symphonia` 0.5.5 | MP3 (Excellent) + AAC-LC (Great) decoder, pure Rust |
+| Windows Media Foundation (`windows` crate) | HE-AAC / HE-AACv2 (SBR+PS) decode — OS-наданий кодек, без бандлу |
 
-⚠️ **Обмеження:** HE-AAC (aacPlus, 32-64 kbps) не підтримується symphonia. Запис raw bytes працює, відтворення — ні.
+**Декодування live-стрімів** абстраговане за трейтом `LiveDecoder` (`next_pcm` → інтерлівані f32 + `spec`), а `LiveSource` — тонкий `rodio::Source`-адаптер над *будь-яким* декодером:
+
+- `SymphoniaDecoder` — MP3 та **AAC-LC** (поведінка незмінна).
+- `MfAacDecoder` (`#[cfg(windows)]`) — **HE-AAC/HE-AACv2**, які symphonia декодувати не вміє (його AAC-декодер реалізує лише AAC-LC; SBR/PS не підтримуються, тож 16 kbps станції на кшталт SomaFM `groovesalad-16-aac` ніколи не дають придатний фрейм). Бекенд — AAC-декодер Media Foundation через `IMFSourceReader` поверх власного `IMFByteStream`, що обгортає live-кільце байтів (`rtrb`). Уся COM/MF-робота виконується на окремому потоці декодера (MTA), а `next_pcm` лише приймає f32-блоки з каналу.
+
+`LiveSource::new` маршрутизує за `content_type`: `audio/aac`/`audio/aacp`/`application/aac`/`audio/x-aac`/`audio/mp4` → Media Foundation; `audio/mpeg` та невідомі → symphonia. Якщо MF недоступний (напр. Windows «N»-видання без Media Feature Pack), ініціалізація повертає типізовану помилку `UnsupportedStreamFormat`, яку фронтенд локалізує замість «зависання» чи raw-тексту.
+
+> **Чому не просто оновити symphonia?** Станом на 0.6.0 (травень 2026) HE-AAC у symphonia все ще не реалізований (`he-aac`/`he-aac-v2` — зарезервовані заглушки). Тригер перегляду: якщо symphonia додасть реальний SBR/PS, можна буде замінити `MfAacDecoder` на «bump symphonia + увімкнути `he-aac-v2`».
 
 ### Tags
 
@@ -275,10 +284,17 @@ chrono = { version = "0.4", features = ["serde"] }
 sys-locale = "0.3"
 
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.61", features = [
+windows = { version = "0.62", features = [
     "Win32_UI_Shell",
     "Win32_System_Registry",
+    # Media Foundation — HE-AAC/HE-AACv2 decode (MfAacDecoder)
+    "Win32_Media_MediaFoundation",
+    "Win32_System_Com",
+    "Win32_System_Com_StructuredStorage",
+    "Win32_System_Variant",
 ] }
+# Потрібен прямо, бо #[implement] для IMFByteStream емітить абсолютні ::windows_core:: шляхи
+windows-core = "0.62"
 
 [profile.release]
 opt-level = "s"
@@ -459,7 +475,8 @@ install:
 
 | Обмеження | Вплив | Мітигація |
 |---|---|---|
-| HE-AAC не декодується | Деякі 32-64 kbps станції не програються | Запис raw bytes працює; моніторити symphonia roadmap |
+| HE-AAC у symphonia (AAC-LC only) | symphonia сам не декодує HE-AAC/HE-AACv2 | Відтворення через Windows Media Foundation (`MfAacDecoder`); symphonia лишається для MP3/AAC-LC |
+| MF AAC-кодек відсутній (Windows «N») | HE-AAC не програється на «N»-виданнях без Media Feature Pack | Типізована помилка `UnsupportedStreamFormat` + локалізоване повідомлення (не зависання) |
 | `decorations: true` | Кастомний titlebar неможливий | Стандартний Windows titlebar — прийнятно для a11y-first |
 | NVDA IA2 vs UIA | Mouse tracking обмежений без налаштувань | Документувати для користувачів |
 | Notifications portable | Toast показує "PowerShell" | Balloon tip через system tray |
