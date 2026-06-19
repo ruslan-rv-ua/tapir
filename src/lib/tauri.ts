@@ -663,6 +663,6 @@ export async function commitStreamImport(
   return invoke("commit_stream_import", { selected });
 }
 /** Resolves to `true` when a file was written, `false` when the save dialog was cancelled. */
-export async function exportStreams(format: "m3u8" | "pls"): Promise<boolean> {
-  return invoke("export_streams", { format });
+export async function exportStreams(format: "m3u8" | "pls", ids?: string[]): Promise<boolean> {
+  return invoke("export_streams", { format, streamIds: ids ?? null });
 }

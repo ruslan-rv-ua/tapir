@@ -166,19 +166,41 @@ pub async fn commit_stream_import(
     Ok(ImportResult { added, skipped })
 }
 
-/// Serialize the active profile's streams to the chosen format and write them to
-/// a user-picked file. `format` is "m3u8" (default) or "pls". Returns `true`
-/// when a file was actually written, `false` when the user cancelled the save
-/// dialog — so the frontend only announces success for a real write.
+/// Default file name proposed in the Save dialog. Selected exports carry the
+/// scope in the name (`-selected-{count}`) so the native Save dialog — the final
+/// confirmation surface NVDA reads — doesn't propose an identical name for a
+/// subset vs the whole profile (finding 4). `count` is the POST-filter count.
+fn export_file_name(profile_name: &str, ext: &str, count: Option<usize>) -> String {
+    match count {
+        Some(n) => format!("{profile_name}-selected-{n}.{ext}"),
+        None => format!("{profile_name}.{ext}"),
+    }
+}
+
+/// Serialize the active profile's streams (or only `stream_ids`, when given) to
+/// the chosen format and write them to a user-picked file. `format` is "m3u8"
+/// (default) or "pls". Returns `true` when a file was written, `false` when the
+/// user cancelled the save dialog. The proposed file name encodes the scope
+/// (finding 4): selected → `{name}-selected-{count}.{ext}`, where `count` is the
+/// post-filter count (unknown ids are dropped by `select_by_ids`).
 #[tauri::command]
 pub async fn export_streams(
     app: AppHandle,
     format: String,
+    stream_ids: Option<Vec<String>>,
     state: State<'_, AppState>,
 ) -> Result<bool, String> {
-    let (streams, profile_name) = {
+    let (all, profile_name) = {
         let profile = state.active_profile.read().await;
         (profile.streams.clone(), profile.name.clone())
+    };
+    let (streams, scope_count) = match &stream_ids {
+        Some(ids) => {
+            let sel = crate::commands::stream_commands::select_by_ids(&all, ids);
+            let n = sel.len();
+            (sel, Some(n))
+        }
+        None => (all, None),
     };
     let fmt = format.as_str();
     let (ext, content) = match fmt {
@@ -188,7 +210,7 @@ pub async fn export_streams(
     let path = app
         .dialog()
         .file()
-        .set_file_name(&format!("{profile_name}.{ext}"))
+        .set_file_name(&export_file_name(&profile_name, ext, scope_count))
         .add_filter("Playlist", &[ext])
         .blocking_save_file();
     match path {
@@ -233,5 +255,15 @@ mod tests {
         assert_eq!(got[0].name, "Alpha");
         assert_eq!(got[1].already_in_profile, false);
         assert_eq!(got[1].name, "https://b/2", "name falls back to URL when no title");
+    }
+
+    #[test]
+    fn export_file_name_whole_profile_uses_plain_name() {
+        assert_eq!(export_file_name("My Radio", "m3u8", None), "My Radio.m3u8");
+    }
+
+    #[test]
+    fn export_file_name_selected_encodes_post_filter_count() {
+        assert_eq!(export_file_name("My Radio", "pls", Some(3)), "My Radio-selected-3.pls");
     }
 }

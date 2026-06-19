@@ -154,6 +154,15 @@ pub async fn add_stream(
     Ok(new_stream)
 }
 
+/// Keep only the streams whose id is in `ids`, in `streams` order (profile
+/// order). Unknown ids are ignored. Shared by export / start / stop of the
+/// selected subset. `pub(crate)` — `export_streams` lives in the sibling
+/// `stream_io_commands` module.
+pub(crate) fn select_by_ids(streams: &[StreamInfo], ids: &[String]) -> Vec<StreamInfo> {
+    let want: std::collections::HashSet<&str> = ids.iter().map(String::as_str).collect();
+    streams.iter().filter(|s| want.contains(s.id.as_str())).cloned().collect()
+}
+
 /// Remove every stream whose id is in `ids`. Returns how many were actually
 /// removed (ignores ids not present). Pure over the vector — unit-testable
 /// without any Tauri state, mirroring `prepare_transfer_stream`.
@@ -646,5 +655,20 @@ mod tests {
             insert_transfers(&mut target, &sources, &TransferMode::Move, "NOW").unwrap();
         assert_eq!(transferred, vec!["keep-id".to_string()]);
         assert_eq!(target.streams[0].id, "keep-id"); // move keeps id
+    }
+
+    #[test]
+    fn select_by_ids_keeps_profile_order_and_ignores_unknown() {
+        let all = vec![with_id("a"), with_id("b"), with_id("c")];
+        let ids = vec!["c".to_string(), "a".to_string(), "zzz".to_string()];
+        let got = select_by_ids(&all, &ids);
+        // profile order (a before c), unknown id dropped
+        assert_eq!(got.iter().map(|s| s.id.clone()).collect::<Vec<_>>(), vec!["a", "c"]);
+    }
+
+    #[test]
+    fn select_by_ids_empty_ids_yields_empty() {
+        let all = vec![with_id("a")];
+        assert!(select_by_ids(&all, &[]).is_empty());
     }
 }
