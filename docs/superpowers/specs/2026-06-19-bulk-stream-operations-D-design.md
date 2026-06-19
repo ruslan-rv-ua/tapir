@@ -89,8 +89,10 @@ announce → програмний фокус над **реально видал�
   `item_deselected({name})`; group → `selection_count`/`selection_cleared`.
 - **`src/lib/bulkFocus.ts`** — pure `computeBulkFocusTarget(visibleItems, removedIds): string | null`
   → id першого вцілілого на/після верхнього **видаленого** індексу (правило A8; `null` = усе видиме
-  видалено → `onEmpty`). `removedIds` — **реально видалені**, не сире виділення (див. D8: skip).
-  Мутація даних і бекенд-виклик лишаються per-list (різні); спільна **лише** ця індексна арифметика +
+  видалено → `onEmpty`). `removedIds` — **реально видалені**, не сире виділення (див. D8: skip), і
+  **непорожні**: повний-skip-no-op (`removedIds.length === 0`) ловить **виклик** ДО цієї функції (D8),
+  бо тут `findIndex === -1` дав би fallback на перший рядок — хибний focus-jump після no-op. Мутація
+  даних і бекенд-виклик лишаються per-list (різні); спільна **лише** ця індексна арифметика +
   focus-ефект-патерн (документуємо як шаблон, не як god-хук).
 - **`src/components/common/SelectionToolbar.tsx`** — кластер для списків з **однією** масовою дією:
   кнопка «Виділити все/Зняти» (toggle, дзеркало Ctrl+A, `aria-disabled` коли немає видимих) +
@@ -181,18 +183,27 @@ announce → програмний фокус над **реально видал�
   одиничного `delete_song`, який повертає помилку — для bulk це частковий успіх, не провал).
   **НЕ емітить per-file `song-deleted`** (інакше N озвучень панеллю): повертає списки, фронт оновлює
   `$songs` один раз і дає **один** підсумок. (Одиничне видалення лишається на наявному `song-deleted`.)
-- **`delete_profiles(names) -> BulkDeleteProfiles { deleted: u32, skipped_active: bool }`** —
+- **`delete_profiles(names) -> BulkDeleteProfiles { deleted: Vec<String>, skipped_active: bool }`** —
   по кожному `Profile::delete`, **пропускає активний** (звіряє з `state.active_profile`). Один прохід.
+  `deleted` — **імена реально видалених** профілів (дзеркало `delete_songs.deleted`; назва профілю = row id),
+  тож D8 бере `removedIds = result.deleted` напряму, а count для announce = `deleted.len()`; `skipped_active`
+  — чи був серед виділених активний (хвіст підсумку). Повертаємо список, а не `u32`, бо `computeBulkFocusTarget`
+  працює по видимому **порядку рядків** (id), а не по count.
 - **`delete_schedules(ids) -> u32`** — один `retain` + один `save` + `notify_schedule_deleted` по
   кожному видаленому id (зупинка in-progress, §3.5). Pure `retain_schedules(&mut profile, &ids)`.
 - **`remove_from_wishlist_bulk(patterns) -> u32`** і **`remove_from_ignorelist_bulk(patterns) -> u32`** —
   один `retain` + один `save` на список.
 - **`add_stations_from_browser(stations) -> Vec<StreamInfo>`** — через наявний
   `append_streams_to_active_profile`, який **сам** робить один save **і емітить `streams-changed`**
-  (App перезавантажує `$streams`), і вже дедупить url. Повернені = реально додані; пропущені =
-  `stations.len() − added.len()` (вже в профілі). **Фронт `$streams` НЕ чіпає** (як одиничний
-  `add_station_from_browser` — оновлення йде через подію); bulk-хендлер лише дає підсумок-announce
-  «Додано N, пропущено M (вже у профілі)».
+  (App перезавантажує `$streams`), і вже дедупить **по `url`**. Повернені = реально додані; пропущені =
+  `stations.len() − added.len()`. **⚠ Причина skip — НЕ лише «вже у профілі».** `dedup_new_streams`
+  одним `HashSet` відкидає url, що (а) вже в профілі **або** (б) повторюється **всередині самого
+  виділення** — а виділення ідентифікується по `stationuuid`, тож два різні результати можуть вести на
+  один `url` (один додасться, інший впаде в skip як дубль-у-виділенні, **не** будучи в профілі до операції).
+  Тож копі skip — **нейтральне «дублікати»**, не «вже у профілі» (інакше summary/тести брешуть про
+  семантику). **Фронт `$streams` НЕ чіпає** (як одиничний `add_station_from_browser` — оновлення йде
+  через подію; коли `added` порожній, бекенд save/emit **пропускає** — це коректно, бо чіпати нема що);
+  bulk-хендлер лише дає підсумок-announce «Додано N, пропущено M (дублікати)».
 
 ### D7. Тулбар-кластери per-list (рішення №2, №6, №8 для browser-add — окрема дія-кнопка)
 
@@ -222,9 +233,19 @@ announce → програмний фокус над **реально видал�
 
 Кожен список володіє своїм `ConfirmDialog` (точний count) і bulk-хендлером (форма
 `handleConfirmBulkDelete`). Послідовність: знімок **видимого** списку ДО await; бекенд-виклик;
-оновлення стора (видалити/додати); `replaceSelection($sel, ∅)`; `announce`-підсумок; програмний фокус
-через `pendingBulkFocusRef` + `useLayoutEffect` на `[items, bulkSeq]`; `onEmpty()` коли вцілілих нема.
-Тригери (тулбар-кнопка / `Delete` / ⋯ / inline-✕) сходяться в одному хендлері.
+**обчислити `removedIds`** (реально видалені, з результату бекенду — див. skip-нотатку нижче);
+**далі — лише якщо `removedIds.length > 0`:** оновлення стора (видалити/додати); `replaceSelection($sel, ∅)`;
+програмний фокус через `pendingBulkFocusRef` + `useLayoutEffect` на `[items, bulkSeq]`; `onEmpty()` коли
+вцілілих нема. `announce`-підсумок — **завжди** (і при частковому, і при повному skip). Тригери
+(тулбар-кнопка / `Delete` / ⋯ / inline-✕) сходяться в одному хендлері.
+
+> **⚠ Повний skip (`removedIds.length === 0`) — справжній no-op для фокуса.** Якщо бекенд нічого не
+> прибрав (виділено лише активний профіль / лише поточну грану пісню), фокус **не рухаємо взагалі**:
+> `pendingBulkFocusRef` не ставимо, `onEmpty()` НЕ кличемо, стор не чіпаємо, selection лишаємо як є
+> (skipped-рядки лишаються виділені) — лише `announce`-підсумок. Інакше `computeBulkFocusTarget` дістав
+> би порожній `removedIds`, `findIndex` повернув би `-1`, і фокус сів би повз після фактичного no-op
+> (особливо болісно для NVDA). Це дзеркало `doBulkTransfer`, де мутація+фокус під вартою
+> `res.transferred.length > 0`.
 
 > **⚠ `removedIds` ≠ сире виділення, коли є skip (важливо для фокуса).** `computeBulkFocusTarget`
 > має дістати **реально видалені** id, інакше фокус сяде повз. Де skip можливий — рахуємо `removedIds`
@@ -232,7 +253,8 @@ announce → програмний фокус над **реально видал�
 > знімком видимого до await:
 > - **streams (A):** skip немає (delete дозволено й для recording) → `removedIds = selection`, можна ДО await.
 > - **songs:** skipped-playing → `removedIds = result.deleted` (бекенд повертає `{deleted, skipped}`).
-> - **profiles:** skipped-active → `removedIds = result.deleted` (активний завжди серед `skipped`).
+> - **profiles:** skipped-active → `removedIds = result.deleted` (імена видалених; активного в `deleted`
+>   немає — про нього сигналить `skipped_active`).
 > - **schedule / patterns:** skip немає → `removedIds = selection`.
 
 - **browser-add** **не видаляє** рядки видимого списку (станції лишаються, лише позначаються `isAdded`
@@ -290,8 +312,8 @@ announce → програмний фокус над **реально видал�
   lifecycle-clear **лише** на unmount (switch НЕ очищає — членство списку незмінне, D5); `listRef`
   уже `ProfileListHandle` — лише розширити тип `requestBulkDelete`. (Список не «спорожніє» через bulk:
   активний завжди виживає, тож гілка `onEmpty` недосяжна — окремий empty-фокус не потрібен.)
-- `src-tauri`: `delete_profiles(names) -> {deleted, skipped_active}` (пропускає активний) + реєстрація;
-  `lib/tauri.ts`: `deleteProfiles`.
+- `src-tauri`: `delete_profiles(names) -> {deleted: string[], skipped_active}` (пропускає активний;
+  `deleted` = імена реально видалених) + реєстрація; `lib/tauri.ts`: `deleteProfiles`.
 
 **Schedule:**
 - `stores/schedule.ts` — `$scheduleSelection`.
@@ -321,8 +343,9 @@ announce → програмний фокус над **реально видал�
   (НЕ оновлює `$streams` — бекенд емітить `streams-changed`, App перезавантажує); clear-тригер на
   точках нового пошуку (`updateSearchParam`/`resetSearch`).
 - `components/browser/StationList.tsx` — selection-wiring (`useListSelection`), bulk-add
-  (`requestBulkAdd`), `isSelected` суфікс + `selected`; bulk пропускає вже-додані (бекенд дедупить;
-  підсумок «Додано N, пропущено M»). Фокус **не** рухається (рядки лишаються).
+  (`requestBulkAdd`), `isSelected` суфікс + `selected`; bulk пропускає **дублікати** url (бекенд дедупить
+  по url — і проти профілю, і всередині виділення; підсумок «Додано N, пропущено M (дублікати)»).
+  Фокус **не** рухається (рядки лишаються).
 - `components/browser/StationItem.tsx` — `isSelected` + суфікс + `selected`.
 - `components/browser/BrowserPanel.tsx` — `ScreenHeader`+кластер у новій `browser-selection` зоні
   (зони `[selection, search, results]`); **додати `useAnnounce`** (select-all, A7); типізувати
@@ -358,12 +381,14 @@ announce → програмний фокус над **реально видал�
    (точний count); browser — «Додати виділені (N)». Тригери (тулбар / `Delete` / ⋯ / ✕) сходяться;
    ⋯/✕ на невиділеному спершу згортає до рядка (№15).
 4. **Частковий успіх + підсумок:** profiles пропускає активний; songs пропускає те, що грає; browser
-   пропускає вже-додані; кожен дає зведений announce «Зроблено N, пропущено M (причина)».
+   пропускає **дублікати** url (вже в профілі **або** повтор у виділенні); кожен дає зведений announce
+   «Зроблено N, пропущено M (причина)». Повний skip (нічого не зроблено) — фокус не рухає (D8).
 5. **Фокус після bulk-видалення:** найближчий уцілілий (через `computeBulkFocusTarget`); хвіст → новий
    останній; усе видиме → `onEmpty` (відповідна порожня зона/контрол); **ніколи `<body>`**; незалежно
    від тригера. (browser-add фокус не рухає.)
-6. **Lifecycle:** фільтр (songs) / вкладка (patterns) / пошук (browser) / профіль (profiles) / вихід
-   із секції очищають; сорт і Tab/F6 зберігають; зниклі id auto-prune; `[N вибрано]` чесний.
+6. **Lifecycle:** фільтр (songs) / вкладка (patterns) / новий пошук чи зміна режиму (browser) / вихід
+   із секції очищають; сорт, Tab/F6 і **перемикання активного профілю (profiles — членство списку
+   незмінне, D5)** зберігають; зниклі id auto-prune; `[N вибрано]` чесний.
 7. **Тулбар:** кластер присутній і коректний у кожному списку (нова зона для songs/browser; розширений
    roving для profiles/schedule/wishlist); «Виділити все/Зняти» (toggle, видимі) і дія-кнопка
    (`aria-disabled` без виділення; видимий текст = accessible name).
@@ -394,7 +419,8 @@ announce → програмний фокус над **реально видал�
   - **browser:** bulk-add; пропуск вже-доданих; підсумок; фокус **не** рухається; **`$streams` не
     чіпається фронтом** (оновлення через `streams-changed`); clear на новий пошук, **load-more
     зберігає** виділення.
-- **Rust:** `delete_songs` (recycle-bin mock/skip-playing), `delete_profiles` (skip-active, count),
+- **Rust:** `delete_songs` (recycle-bin mock/skip-playing), `delete_profiles` (skip-active; `deleted` =
+  імена видалених, активного немає в списку),
   `retain_schedules` (pure), `remove_from_*_bulk` (один save), `add_stations_from_browser` (dedup,
   added vs skipped) — pure-хелпери юніт-тестуються без Tauri-стану, як `retain_streams`.
 - **Ручний NVDA (по кожному списку):** виділити (Ctrl+Space / Shift / Ctrl+A) → почути суфікс +
