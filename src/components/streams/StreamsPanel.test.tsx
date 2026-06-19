@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, act, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, act, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import * as tauri from "../../lib/tauri";
 import { $streams, $statuses, $streamFilter, $streamSelection, replaceSelection, $exportStreamsRequest } from "../../stores/streams";
 import { $toasts } from "../../stores/toasts";
@@ -16,7 +16,7 @@ vi.mock("../../lib/tauri", () => ({
   stopPlayback: vi.fn().mockResolvedValue(undefined),
   startRecording: vi.fn().mockResolvedValue(undefined),
   stopRecording: vi.fn().mockResolvedValue(undefined),
-  stopAllRecordings: vi.fn().mockResolvedValue(undefined),
+  stopAllRecordings: vi.fn().mockResolvedValue(0),
   startAllRecordings: vi.fn().mockResolvedValue(0),
   removeStream: vi.fn().mockResolvedValue(undefined),
   removeStreams: vi.fn().mockResolvedValue(0),
@@ -204,24 +204,20 @@ describe("StreamsPanel — record all", () => {
     expect(tauri.startAllRecordings).toHaveBeenCalledOnce();
   });
 
-  it("disables Record-all when every stream is already active", () => {
+  it("disables Record-all (aria) when every stream is already active", () => {
     $streams.set([mkStream("a", "Alpha")]);
     $statuses.set({ a: mkStatus("a", "recording") });
     renderPanel();
-    const btn = screen.getByRole("button", {
-      name: /записати все|record all/i,
-    }) as HTMLButtonElement;
-    expect(btn.disabled).toBe(true);
+    const btn = screen.getByRole("button", { name: /записати все|record all/i });
+    expect(btn.getAttribute("aria-disabled")).toBe("true");
   });
 
   it("enables Record-all when a stream is idle or errored", () => {
     $streams.set([mkStream("a", "Alpha"), mkStream("b", "Bravo")]);
     $statuses.set({ a: mkStatus("a", "recording"), b: mkStatus("b", "error") });
     renderPanel();
-    const btn = screen.getByRole("button", {
-      name: /записати все|record all/i,
-    }) as HTMLButtonElement;
-    expect(btn.disabled).toBe(false);
+    const btn = screen.getByRole("button", { name: /записати все|record all/i });
+    expect(btn.getAttribute("aria-disabled")).toBeNull();
   });
 });
 
@@ -596,5 +592,64 @@ describe("StreamsPanel — selection lifecycle", () => {
         screen.getByRole("button", { name: /додати приклади потоків|add example streams/i }),
       ),
     );
+  });
+});
+
+describe("StreamsPanel — Record/Stop selected (C4, R6/R8)", () => {
+  beforeEach(() => {
+    $streams.set([mkStream("a", "Alpha"), mkStream("b", "Bravo"), mkStream("c", "Charlie")]);
+    $statuses.set({});
+  });
+
+  it("relabels Record/Stop to the selected count and snapshots selection on Record", async () => {
+    $statuses.set({ a: mkStatus("a", "idle"), b: mkStatus("b", "recording") });
+    replaceSelection(new Set(["a", "b"]));
+    vi.mocked(tauri.startAllRecordings).mockResolvedValueOnce(1); // only 'a' startable
+    renderPanel();
+    $announcer.set({ message: "", priority: "polite" });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: m.record_selected({ count: 2 }) }));
+    });
+    expect(new Set(vi.mocked(tauri.startAllRecordings).mock.calls[0][0])).toEqual(new Set(["a", "b"]));
+    // started 1, skipped 1 (b already recording)
+    expect($announcer.get().message).toBe(`${m.record_done({ count: 1 })}, ${m.record_skipped({ count: 1 })}`);
+  });
+
+  it("Stop-selected aria-disabled when no selected stream is active (idle selection)", () => {
+    replaceSelection(new Set(["a", "b"])); // both idle
+    renderPanel();
+    const stop = screen.getByRole("button", { name: m.stop_selected({ count: 2 }) });
+    expect(stop.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("Stop-selected stops directly (no confirm) when exactly one selected is active", async () => {
+    $statuses.set({ a: mkStatus("a", "recording"), b: mkStatus("b", "idle") });
+    replaceSelection(new Set(["a", "b"]));
+    vi.mocked(tauri.stopAllRecordings).mockResolvedValueOnce(1);
+    renderPanel();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: m.stop_selected({ count: 2 }) }));
+    });
+    expect(new Set(vi.mocked(tauri.stopAllRecordings).mock.calls[0][0])).toEqual(new Set(["a", "b"]));
+  });
+
+  it("Stop-selected confirms when >1 selected is active, then stops on confirm", async () => {
+    $statuses.set({ a: mkStatus("a", "recording"), b: mkStatus("b", "connecting") });
+    replaceSelection(new Set(["a", "b"]));
+    renderPanel();
+    // Only the toolbar button exists yet, so this opens the confirm dialog.
+    fireEvent.click(screen.getByRole("button", { name: m.stop_selected({ count: 2 }) }));
+    // The dialog's confirm button shares the label — scope the query to the dialog.
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText(m.confirm_stop_selected_message({ count: 2 }))).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: m.stop_selected({ count: 2 }) }));
+    await waitFor(() => expect(tauri.stopAllRecordings).toHaveBeenCalledTimes(1));
+  });
+
+  it("R6: a reconnecting stream makes Stop-all enabled (broad is_active), metric stays recording-only", () => {
+    $statuses.set({ a: mkStatus("a", "reconnecting") });
+    renderPanel();
+    const stop = screen.getByRole("button", { name: /^зупинити запис$|^stop recording$/i });
+    expect(stop.getAttribute("aria-disabled")).toBeNull(); // broad stoppableCount = 1 → enabled
   });
 });

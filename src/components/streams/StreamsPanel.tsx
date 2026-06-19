@@ -25,6 +25,10 @@ interface Props {
   exitZone: (fromId: string, forward: boolean) => void;
 }
 
+// Backend `is_active` (recording_control.rs): a stream with an in-flight
+// recording task. startable = !IS_ACTIVE, stoppable = IS_ACTIVE (R6).
+const IS_ACTIVE = new Set(["recording", "connecting", "reconnecting"]);
+
 const FILTER_CHIPS = [
   { id: "all",       labelFn: () => m.filter_all() },
   { id: "recording", labelFn: () => m.filter_recording() },
@@ -57,10 +61,10 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   // Streams whose recording task is NOT currently live (idle / error / stopped /
   // never-started) — these are what "Записати все" will start. Backend skips any
   // already-active stream, so this only drives the button's disabled state.
-  const startableCount = useMemo(() => {
-    const active = new Set(["recording", "connecting", "reconnecting"]);
-    return streams.filter((s) => !active.has(statuses[s.id]?.state ?? "idle")).length;
-  }, [streams, statuses]);
+  const startableCount = useMemo(
+    () => streams.filter((s) => !IS_ACTIVE.has(statuses[s.id]?.state ?? "idle")).length,
+    [streams, statuses],
+  );
 
   const pluralRules = useMemo(
     () => new Intl.PluralRules(settings?.language || document.documentElement.lang || "uk"),
@@ -107,7 +111,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
   // ── Filter chip state ─────────────────────────────────────
   const activeChip = useStore($streamFilter);
-  const [confirmStopAll, setConfirmStopAll] = useState(false);
+  const [confirmStop, setConfirmStop] = useState<null | { scope: "all" | "selected" }>(null);
   const announce = useAnnounce();
 
   // Pluralized "Фільтр «X»: N потоків" used both for the live announcement
@@ -149,6 +153,21 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
   const selection = useStore($streamSelection);
   const selCount = selection.size;
+
+  const selectedStartableCount = useMemo(
+    () => [...selection].filter((id) => streamIds.has(id) && !IS_ACTIVE.has(statuses[id]?.state ?? "idle")).length,
+    [selection, statuses, streamIds],
+  );
+  const selectedStoppableCount = useMemo(
+    () => [...selection].filter((id) => streamIds.has(id) && IS_ACTIVE.has(statuses[id]?.state ?? "idle")).length,
+    [selection, statuses, streamIds],
+  );
+  const stoppableCount = useMemo(
+    () => streams.filter((s) => IS_ACTIVE.has(statuses[s.id]?.state ?? "idle")).length,
+    [streams, statuses],
+  );
+  const recordDisabled = selCount > 0 ? selectedStartableCount === 0 : startableCount === 0;
+  const stopDisabled = selCount > 0 ? selectedStoppableCount === 0 : stoppableCount === 0;
 
   const visibleIds = useMemo(() => sortedStreams.map((s) => s.id), [sortedStreams]);
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selection.has(id));
@@ -351,14 +370,37 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   // Selection is section-scoped: clear it when the streams screen unmounts.
   useEffect(() => () => { replaceSelection(new Set()); }, []);
 
+  const composeRecordSummary = (sel: number, started: number): string => {
+    const parts = [m.record_done({ count: started })];
+    if (sel - started > 0) parts.push(m.record_skipped({ count: sel - started }));
+    return parts.join(", ");
+  };
+  const composeStopSummary = (sel: number, stopped: number): string => {
+    const parts = [m.stop_done({ count: stopped })];
+    if (sel - stopped > 0) parts.push(m.stop_skipped({ count: sel - stopped }));
+    return parts.join(", ");
+  };
+
   const doStopAll = async () => {
     try { await tauri.stopAllRecordings(); }
     catch (err) { addToast(String(err), "error"); }
   };
+  const doStopSelected = async (ids: string[]) => {
+    try {
+      const stopped = await tauri.stopAllRecordings(ids);
+      announce(composeStopSummary(ids.length, stopped), "polite");
+    } catch (err) { addToast(String(err), "error"); }
+  };
   const handleStopAll = () => {
-    if (activeCount === 0) return;
-    if (activeCount > 1) setConfirmStopAll(true);
-    else doStopAll();
+    if (selCount > 0) {
+      if (selectedStoppableCount === 0) return;
+      if (selectedStoppableCount > 1) { setConfirmStop({ scope: "selected" }); return; }
+      doStopSelected([...selection]);
+    } else {
+      if (stoppableCount === 0) return;
+      if (stoppableCount > 1) { setConfirmStop({ scope: "all" }); return; }
+      doStopAll();
+    }
   };
 
   const recordAllAnnouncement = useCallback(
@@ -374,12 +416,19 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   );
 
   const handleRecordAll = async () => {
-    if (startableCount === 0) return;
-    try {
-      const started = await tauri.startAllRecordings();
-      announce(recordAllAnnouncement(started), "polite");
-    } catch (err) {
-      addToast(String(err), "error");
+    if (selCount > 0) {
+      if (selectedStartableCount === 0) return;
+      const ids = [...selection];
+      try {
+        const started = await tauri.startAllRecordings(ids);
+        announce(composeRecordSummary(ids.length, started), "polite");
+      } catch (err) { addToast(String(err), "error"); }
+    } else {
+      if (startableCount === 0) return;
+      try {
+        const started = await tauri.startAllRecordings();
+        announce(recordAllAnnouncement(started), "polite");
+      } catch (err) { addToast(String(err), "error"); }
     }
   };
 
@@ -538,26 +587,30 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
           <div className="mx-1 h-4 w-px bg-slate-700 forced-colors:bg-[ButtonText]" aria-hidden="true" />
 
-          {/* Index 7: Записати все (primary) */}
+          {/* Index 7: Записати все / Записати виділені (N) — aria-disabled (R8) */}
           <button
             ref={recordAllBtn}
             tabIndex={toolbarTabIndex(7)}
             onClick={handleRecordAll}
-            disabled={startableCount === 0}
-            className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-600 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
+            aria-disabled={recordDisabled || undefined}
+            className={`rounded bg-blue-600 px-3 py-1 text-xs text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText] ${
+              recordDisabled ? "cursor-not-allowed opacity-50" : "hover:bg-blue-700"
+            }`}
           >
-            {m.record_all()}
+            {selCount > 0 ? m.record_selected({ count: selCount }) : m.record_all()}
           </button>
 
-          {/* Index 8: Зупинити запис */}
+          {/* Index 8: Зупинити запис / Зупинити виділені (N) — aria-disabled (R8) */}
           <button
             ref={stopAllBtn}
             tabIndex={toolbarTabIndex(8)}
             onClick={handleStopAll}
-            disabled={activeCount === 0}
-            className="rounded px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+            aria-disabled={stopDisabled || undefined}
+            className={`rounded px-3 py-1 text-xs text-slate-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
+              stopDisabled ? "cursor-not-allowed opacity-50" : "hover:bg-slate-800"
+            }`}
           >
-            {m.stop_all()}
+            {selCount > 0 ? m.stop_selected({ count: selCount }) : m.stop_all()}
           </button>
 
           <div className="mx-1 h-4 w-px bg-slate-700 forced-colors:bg-[ButtonText]" aria-hidden="true" />
@@ -686,13 +739,20 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
       <AddStreamDialog />
       <ImportStreamsDialog />
       <ExportFormatDialog />
-      {confirmStopAll && createPortal(
+      {confirmStop && createPortal(
         <ConfirmDialog
-          title={m.confirm_stop_all_title()}
-          message={m.confirm_stop_all_message({ count: activeCount })}
-          confirmLabel={m.stop_all()}
-          onConfirm={() => { setConfirmStopAll(false); doStopAll(); }}
-          onCancel={() => setConfirmStopAll(false)}
+          title={confirmStop.scope === "selected" ? m.confirm_stop_selected_title() : m.confirm_stop_all_title()}
+          message={confirmStop.scope === "selected"
+            ? m.confirm_stop_selected_message({ count: selectedStoppableCount })
+            : m.confirm_stop_all_message({ count: stoppableCount })}
+          confirmLabel={confirmStop.scope === "selected" ? m.stop_selected({ count: selCount }) : m.stop_all()}
+          onConfirm={() => {
+            const scope = confirmStop.scope;
+            setConfirmStop(null);
+            if (scope === "selected") doStopSelected([...$streamSelection.get()]);
+            else doStopAll();
+          }}
+          onCancel={() => setConfirmStop(null)}
         />,
         document.body,
       )}
