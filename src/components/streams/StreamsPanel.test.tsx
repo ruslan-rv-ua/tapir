@@ -646,6 +646,20 @@ describe("StreamsPanel — Record/Stop selected (C4, R6/R8)", () => {
     await waitFor(() => expect(tauri.stopAllRecordings).toHaveBeenCalledTimes(1));
   });
 
+  it("Stop-selected confirm uses the stoppable count, toolbar button keeps the selection count", async () => {
+    // a,b active, c idle → selCount=3 but only 2 are stoppable.
+    $statuses.set({ a: mkStatus("a", "recording"), b: mkStatus("b", "connecting"), c: mkStatus("c", "idle") });
+    replaceSelection(new Set(["a", "b", "c"]));
+    renderPanel();
+    // Toolbar button shows the full selection count (R1).
+    fireEvent.click(screen.getByRole("button", { name: m.stop_selected({ count: 3 }) }));
+    const dialog = await screen.findByRole("alertdialog");
+    // Message AND confirm button use the actionable (stoppable) count, not selCount.
+    expect(within(dialog).getByText(m.confirm_stop_selected_message({ count: 2 }))).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: m.stop_selected({ count: 2 }) }));
+    await waitFor(() => expect(tauri.stopAllRecordings).toHaveBeenCalledTimes(1));
+  });
+
   it("R6: a reconnecting stream makes Stop-all enabled (broad is_active), metric stays recording-only", () => {
     $statuses.set({ a: mkStatus("a", "reconnecting") });
     renderPanel();

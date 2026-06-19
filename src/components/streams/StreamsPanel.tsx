@@ -29,6 +29,19 @@ interface Props {
 // recording task. startable = !IS_ACTIVE, stoppable = IS_ACTIVE (R6).
 const IS_ACTIVE = new Set(["recording", "connecting", "reconnecting"]);
 
+// Partial-success announcements: skipped = requested − done (R5). Pure of
+// component state, so they live at module scope.
+const composeRecordSummary = (sel: number, started: number): string => {
+  const parts = [m.record_done({ count: started })];
+  if (sel - started > 0) parts.push(m.record_skipped({ count: sel - started }));
+  return parts.join(", ");
+};
+const composeStopSummary = (sel: number, stopped: number): string => {
+  const parts = [m.stop_done({ count: stopped })];
+  if (sel - stopped > 0) parts.push(m.stop_skipped({ count: sel - stopped }));
+  return parts.join(", ");
+};
+
 const FILTER_CHIPS = [
   { id: "all",       labelFn: () => m.filter_all() },
   { id: "recording", labelFn: () => m.filter_recording() },
@@ -370,17 +383,6 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   // Selection is section-scoped: clear it when the streams screen unmounts.
   useEffect(() => () => { replaceSelection(new Set()); }, []);
 
-  const composeRecordSummary = (sel: number, started: number): string => {
-    const parts = [m.record_done({ count: started })];
-    if (sel - started > 0) parts.push(m.record_skipped({ count: sel - started }));
-    return parts.join(", ");
-  };
-  const composeStopSummary = (sel: number, stopped: number): string => {
-    const parts = [m.stop_done({ count: stopped })];
-    if (sel - stopped > 0) parts.push(m.stop_skipped({ count: sel - stopped }));
-    return parts.join(", ");
-  };
-
   const doStopAll = async () => {
     try { await tauri.stopAllRecordings(); }
     catch (err) { addToast(String(err), "error"); }
@@ -606,7 +608,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
             tabIndex={toolbarTabIndex(8)}
             onClick={handleStopAll}
             aria-disabled={stopDisabled || undefined}
-            className={`rounded px-3 py-1 text-xs text-slate-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
+            className={`rounded px-3 py-1 text-xs text-slate-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText] ${
               stopDisabled ? "cursor-not-allowed opacity-50" : "hover:bg-slate-800"
             }`}
           >
@@ -745,7 +747,9 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
           message={confirmStop.scope === "selected"
             ? m.confirm_stop_selected_message({ count: selectedStoppableCount })
             : m.confirm_stop_all_message({ count: stoppableCount })}
-          confirmLabel={confirmStop.scope === "selected" ? m.stop_selected({ count: selCount }) : m.stop_all()}
+          /* Confirm button counts only the actionable (stoppable) subset, so it
+             matches the dialog message; the toolbar button keeps selCount (R1). */
+          confirmLabel={confirmStop.scope === "selected" ? m.stop_selected({ count: selectedStoppableCount }) : m.stop_all()}
           onConfirm={() => {
             const scope = confirmStop.scope;
             setConfirmStop(null);
