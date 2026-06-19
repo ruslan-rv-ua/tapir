@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { createPortal } from "react-dom";
-import { $streams, $statuses, $showAddStreamDialog, $streamFilter, $importCandidates, $showExportStreamsDialog, $streamSelection, replaceSelection, type StreamFilter, type StreamSort } from "../../stores/streams";
+import { $streams, $statuses, $showAddStreamDialog, $streamFilter, $importCandidates, $exportStreamsRequest, $streamSelection, replaceSelection, type StreamFilter, type StreamSort } from "../../stores/streams";
 import { $settings } from "../../stores/settings";
 import { $freeSpace } from "../../stores/system";
 import { FreeSpaceMetric } from "./FreeSpaceMetric";
@@ -465,14 +465,14 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
             ref={exportBtn}
             tabIndex={toolbarTabIndex(2)}
             aria-disabled={isEmpty || undefined}
-            onClick={() => { if (!isEmpty) $showExportStreamsDialog.set(true); }}
+            onClick={() => { if (!isEmpty) $exportStreamsRequest.set({ ids: selCount > 0 ? [...selection] : null }); }}
             className={`rounded px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
               isEmpty
                 ? "cursor-not-allowed text-slate-600"
                 : "text-slate-400 hover:bg-slate-800"
             }`}
           >
-            {m.streams_export_button()}
+            {selCount > 0 ? m.streams_export_selected({ count: selCount }) : m.streams_export_button()}
           </button>
         </ScreenHeader>
 

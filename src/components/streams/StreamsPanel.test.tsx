@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, act, screen, fireEvent, waitFor } from "@testing-library/react";
 import * as tauri from "../../lib/tauri";
-import { $streams, $statuses, $streamFilter, $streamSelection, replaceSelection } from "../../stores/streams";
+import { $streams, $statuses, $streamFilter, $streamSelection, replaceSelection, $exportStreamsRequest } from "../../stores/streams";
 import { $toasts } from "../../stores/toasts";
 import { $announcer } from "../../stores/announcer";
 import type { StreamInfo, StreamStatus } from "../../lib/tauri";
@@ -24,6 +24,7 @@ vi.mock("../../lib/tauri", () => ({
   addToIgnorelist: vi.fn().mockResolvedValue(undefined),
   beginStreamImport: vi.fn().mockResolvedValue(null),
   addExampleStreams: vi.fn().mockResolvedValue([]),
+  exportStreams: vi.fn().mockResolvedValue(true),
   saveSettings: vi.fn().mockResolvedValue(undefined),
   listProfiles: vi.fn().mockResolvedValue([
     { name: "Default", streamCount: 3, isActive: true },
@@ -106,6 +107,7 @@ beforeEach(() => {
   $toasts.set([]);
   $settings.set(null);
   replaceSelection(new Set());
+  $exportStreamsRequest.set(null);
 });
 
 describe("StreamsPanel — filter state persistence", () => {
@@ -509,6 +511,19 @@ describe("StreamsPanel — selection toolbar cluster", () => {
       fireEvent.click(screen.getByRole("button", { name: m.move_selected({ count: 2 }) }));
     });
     expect(await screen.findByText(m.move_selected_to_profile_title({ count: 2 }))).toBeTruthy();
+  });
+
+  it("export button becomes 'Export selected (N)' and snapshots ids on click", () => {
+    replaceSelection(new Set(["a", "b"]));
+    renderPanel();
+    fireEvent.click(screen.getByRole("button", { name: m.streams_export_selected({ count: 2 }) }));
+    expect($exportStreamsRequest.get()).toEqual({ ids: expect.arrayContaining(["a", "b"]) });
+  });
+
+  it("export button stays whole-profile (ids: null) with no selection", () => {
+    renderPanel();
+    fireEvent.click(screen.getByRole("button", { name: m.streams_export_button() }));
+    expect($exportStreamsRequest.get()).toEqual({ ids: null });
   });
 
   it("keeps a 14-stop roving toolbar in DOM order", () => {

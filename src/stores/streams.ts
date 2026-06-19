@@ -43,8 +43,10 @@ export type StreamSort = "name" | "added";
 
 // Import flow: non-null = the ImportStreamsDialog is open with these candidates.
 export const $importCandidates = atom<ImportCandidate[] | null>(null);
-// Export flow: true = the ExportFormatDialog is open.
-export const $showExportStreamsDialog = atom<boolean>(false);
+// Export flow: non-null = the ExportFormatDialog is open. `ids: null` = whole
+// profile; `ids: string[]` = the selected subset (snapshot taken at click).
+export type ExportRequest = { ids: string[] | null };
+export const $exportStreamsRequest = atom<ExportRequest | null>(null);
 
 export function updateStreamStatus(streamId: string, status: Partial<StreamStatus>) {
   const current = $statuses.get()[streamId] ?? {
