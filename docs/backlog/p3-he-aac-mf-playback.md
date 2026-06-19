@@ -19,10 +19,13 @@
 
 ### Де лежить уже зроблена робота (НЕ видаляти)
 
-- **Гілка `he-aac-mf` @ `74c2d90`** — 10 рев'юнутих коммітів: `LiveDecoder` trait, `src-tauri/src/player/mf_aac.rs` (декодер MF + власний `IMFByteStream` над rtrb), маршрутизація в `LiveSource::new`, типізована помилка `RadioError::UnsupportedStreamFormat` + i18n-тост, `windows`-фічі MF у `Cargo.toml`, оновлені docs.
-- **SDD-журнал усіх рішень/знахідок:** `.git/sdd/progress.md` (включно з двома фікс-пасами і причинами).
-- **План реалізації:** `docs/superpowers/plans/2026-06-15-he-aac-playback.md` (існує на гілці `he-aac-mf`, не на `develop`).
-- **Захоплені семпли для офлайн-тесту:** `target/spike/` (gitignored): `gs16.aac` (HE-AACv2), `lc.aac` (AAC-LC).
+Усе закоммічено на гілці `he-aac-mf` — нічого важливого більше не лежить у незакоммічених/тимчасових місцях (`.git/sdd/`, gitignored `target/`):
+
+- **Реалізація — `he-aac-mf` @ `74c2d90`** (10 рев'юнутих коммітів): `LiveDecoder` trait, `src-tauri/src/player/mf_aac.rs` (декодер MF + власний `IMFByteStream` над rtrb), маршрутизація в `LiveSource::new`, типізована помилка `RadioError::UnsupportedStreamFormat` + i18n-тост, `windows`-фічі MF у `Cargo.toml`, оновлені docs.
+- **Архів — `he-aac-mf` @ `64d2843`** (комміт поверх реалізації — переніс волатильні артефакти під version control):
+  - **SDD-журнал усіх рішень/знахідок:** `docs/superpowers/sdd/2026-06-15-he-aac/progress.md` (включно з двома фікс-пасами і причинами).
+  - **Захоплені семпли для офлайн-тесту:** `src-tauri/tests/fixtures/he-aac/` — `gs16.aac` (HE-AACv2), `lc.aac` (AAC-LC), `README.md` із походженням.
+- **План реалізації:** `docs/superpowers/plans/2026-06-15-he-aac-playback.md` (на гілці `he-aac-mf`, не на `develop`).
 
 ### Найімовірніша причина поломки (не підтверджено)
 
@@ -47,8 +50,9 @@
 
 ## Документи
 
-- Гілка `he-aac-mf` @ `74c2d90` (уся реалізація) + `.git/sdd/progress.md` (журнал рішень)
-- `docs/superpowers/plans/2026-06-15-he-aac-playback.md` (на гілці `he-aac-mf`) — повний план + розділ «Spike Outcome» з точним робочим MF-setup
+- Гілка `he-aac-mf`: реалізація @ `74c2d90`, архів (журнал рішень + семпли) @ `64d2843`
+- `docs/superpowers/sdd/2026-06-15-he-aac/progress.md` (на `he-aac-mf`) — журнал рішень/фікс-пасів
+- `docs/superpowers/plans/2026-06-15-he-aac-playback.md` (на `he-aac-mf`) — повний план + розділ «Spike Outcome» з точним робочим MF-setup
 - `src-tauri/src/player/engine.rs` — `LiveSource` (`Source::sample_rate()`/`channels()`), `play_live` (`PROBE_TIMEOUT`)
 - [docs/architecture.md](../architecture.md), [docs/tech-stack.md](../tech-stack.md) — оновлені описи MF-шляху лежать на `he-aac-mf`
 
@@ -59,7 +63,7 @@
 
 Що дослідити: HE-AAC / HE-AACv2 відтворення через Media Foundation — чому попередня спроба зламала ВСІ AAC у реальному відтворенні, і як її довести до робочого стану.
 
-Контекст (звірся спершу): уся реалізація збережена на гілці `he-aac-mf` @ 74c2d90 (НЕ видаляй її); журнал усіх рішень і фікс-пасів — `.git/sdd/progress.md`; план — `docs/superpowers/plans/2026-06-15-he-aac-playback.md` (на тій гілці). Цей запис беклогу описує симптом і гіпотезу. Захоплені семпли — у `target/spike/` (gitignored).
+Контекст (звірся спершу): уся реалізація збережена на гілці `he-aac-mf` @ 74c2d90 (НЕ видаляй її); журнал усіх рішень і фікс-пасів — `docs/superpowers/sdd/2026-06-15-he-aac/progress.md`; план — `docs/superpowers/plans/2026-06-15-he-aac-playback.md` (обидва на тій гілці, архів-комміт `64d2843`). Цей запис беклогу описує симптом і гіпотезу. Захоплені семпли для офлайн-тесту — `src-tauri/tests/fixtures/he-aac/{gs16,lc}.aac` (на тій гілці).
 
 Гіпотеза (підтвердь або спростуй): усі AAC, включно з AAC-LC, маршрутизувалися в `MfAacDecoder`, чий вихідний spec (32 kHz/stereo) подається в rodio через `LiveSource::sample_rate()`/`channels()`; неправильний spec/ресемплінг → не та швидкість/тон для всього MF-AAC. Офлайн-тест давав коректний PCM, але не проганяв реальний вихід rodio→пристрій.
 
