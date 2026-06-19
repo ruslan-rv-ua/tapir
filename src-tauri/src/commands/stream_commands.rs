@@ -311,18 +311,28 @@ pub async fn stop_recording(
 }
 
 #[tauri::command]
-pub async fn stop_all_recordings(app: tauri::AppHandle) -> Result<(), String> {
-    crate::recording_control::stop_all_now(&app).await;
-    Ok(())
+pub async fn stop_all_recordings(
+    stream_ids: Option<Vec<String>>,
+    app: tauri::AppHandle,
+) -> Result<usize, String> {
+    let set = stream_ids.map(|v| v.into_iter().collect::<std::collections::HashSet<_>>());
+    Ok(crate::recording_control::stop_now(&app, set.as_ref()).await)
 }
 
 #[tauri::command]
-pub async fn start_all_recordings(state: tauri::State<'_, AppState>) -> Result<usize, String> {
+pub async fn start_all_recordings(
+    stream_ids: Option<Vec<String>>,
+    state: tauri::State<'_, AppState>,
+) -> Result<usize, String> {
     check_disk_space(&state).await.map_err(|e| e.to_string())?;
 
-    let (streams, settings) = {
+    let (all, settings) = {
         let profile = state.active_profile.read().await;
         (profile.streams.clone(), profile.recording.clone())
+    };
+    let streams = match stream_ids {
+        Some(ids) => select_by_ids(&all, &ids),
+        None => all,
     };
 
     let manager_arc = state.stream_manager.clone();

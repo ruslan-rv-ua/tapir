@@ -150,11 +150,11 @@ export async function startRecording(streamId: string): Promise<void> {
 export async function stopRecording(streamId: string): Promise<void> {
   return invoke("stop_recording", { streamId });
 }
-export async function stopAllRecordings(): Promise<void> {
-  return invoke("stop_all_recordings");
+export async function stopAllRecordings(ids?: string[]): Promise<number> {
+  return invoke("stop_all_recordings", { streamIds: ids ?? null });
 }
-export async function startAllRecordings(): Promise<number> {
-  return invoke("start_all_recordings");
+export async function startAllRecordings(ids?: string[]): Promise<number> {
+  return invoke("start_all_recordings", { streamIds: ids ?? null });
 }
 export async function getStreamStatus(streamId: string): Promise<StreamStatus> {
   return invoke("get_stream_status", { streamId });

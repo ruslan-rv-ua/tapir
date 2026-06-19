@@ -6,6 +6,7 @@
 //! exercised via manual/integration runs. `stop_all_now` (global stop-all
 //! shortcut, KB-12) is likewise thin orchestration.
 
+use std::collections::HashSet;
 use tauri::{AppHandle, Manager};
 
 use crate::app_state::AppState;
@@ -55,27 +56,47 @@ pub fn decide(active_count: usize) -> ToggleAction {
     }
 }
 
-/// Stop all active recordings unconditionally; returns how many were active.
-/// Єдиний шлях для всіх stop-all поверхонь (IPC-команда, tray, глобальні
-/// хоткеї): session_id читаються ДО cancel (§3.3 — після нього записи
-/// зникають із manager асинхронно), потім спільний хук notify_manual_stop.
-pub async fn stop_all_now(app: &AppHandle) -> usize {
+/// Pick (stream_id, session_id) of active recordings that pass the optional id
+/// filter (None = all active), in status order. Pure — unit-tested without an
+/// AppHandle.
+fn active_targets(statuses: &[StreamStatus], filter: Option<&HashSet<String>>) -> Vec<(String, u64)> {
+    statuses
+        .iter()
+        .filter(|s| is_active(&s.state) && filter.map_or(true, |f| f.contains(&s.stream_id)))
+        .map(|s| (s.stream_id.clone(), s.session_id))
+        .collect()
+}
+
+/// Stop active recordings passing `filter` (None = all). Returns how many were
+/// stopped. session_ids are read BEFORE cancel (§3.3 — entries vanish from the
+/// manager async after cancel), then the shared `notify_manual_stop` hook runs.
+/// `None` keeps the original whole-profile semantics (`mgr.stop_all()` cancels
+/// every entry); `Some` cancels only the filtered active ids.
+pub async fn stop_now(app: &AppHandle, filter: Option<&HashSet<String>>) -> usize {
     let state = app.state::<AppState>();
-    let active: Vec<(String, u64)> = {
+    let targets: Vec<(String, u64)> = {
         let mut mgr = state.stream_manager.write().await;
-        let active: Vec<(String, u64)> = mgr
-            .get_all_statuses()
-            .iter()
-            .filter(|s| is_active(&s.state))
-            .map(|s| (s.stream_id.clone(), s.session_id))
-            .collect();
-        mgr.stop_all();
-        active
+        let targets = active_targets(&mgr.get_all_statuses(), filter);
+        match filter {
+            None => mgr.stop_all(),
+            Some(_) => {
+                for (stream_id, _) in &targets {
+                    let _ = mgr.stop_recording(stream_id);
+                }
+            }
+        }
+        targets
     };
-    for (stream_id, session_id) in &active {
+    for (stream_id, session_id) in &targets {
         crate::scheduler::timer::notify_manual_stop(app, stream_id, *session_id).await;
     }
-    active.len()
+    targets.len()
+}
+
+/// Stop all active recordings unconditionally; returns how many were active.
+/// Single path for every whole-profile stop-all surface (tray, global hotkeys).
+pub async fn stop_all_now(app: &AppHandle) -> usize {
+    stop_now(app, None).await
 }
 
 /// Toggle recording for the whole active profile. Reads the manager to decide,
@@ -159,5 +180,31 @@ mod tests {
     #[test]
     fn count_active_empty_is_zero() {
         assert_eq!(count_active(&[]), 0);
+    }
+
+    fn st(id: &str, state: StreamState, session: u64) -> StreamStatus {
+        StreamStatus {
+            stream_id: id.to_string(), state, current_track: None,
+            recording_started_at: None, bytes_recorded: 0, tracks_recorded: 0,
+            error: None, reconnect_attempt: None, session_id: session,
+        }
+    }
+
+    #[test]
+    fn active_targets_filters_by_state_and_optional_id() {
+        let statuses = vec![
+            st("a", StreamState::Recording, 1),
+            st("b", StreamState::Connecting, 2),
+            st("c", StreamState::Idle, 3),        // not active
+            st("d", StreamState::Reconnecting, 4),
+        ];
+        // None → every active stream (a, b, d), in order.
+        let all: Vec<String> = active_targets(&statuses, None).into_iter().map(|(id, _)| id).collect();
+        assert_eq!(all, vec!["a", "b", "d"]);
+        // Filter {a,c,d} → active ∩ filter = a, d (c is idle; b not in filter).
+        let set: std::collections::HashSet<String> =
+            ["a", "c", "d"].iter().map(|s| s.to_string()).collect();
+        let some: Vec<String> = active_targets(&statuses, Some(&set)).into_iter().map(|(id, _)| id).collect();
+        assert_eq!(some, vec!["a", "d"]);
     }
 }
