@@ -122,6 +122,7 @@
   "stream_already_in_profile": "«{name}» вже є в профілі «{profile}»",
   "move_selected": "Перемістити виділені ({count})…",
   "copy_selected": "Копіювати виділені ({count})…",
+  "selection_actions": "Дії з виділеними ({count})",
   "move_selected_to_profile_title": "Перемістити виділені потоки ({count}) у профіль",
   "copy_selected_to_profile_title": "Копіювати виділені потоки ({count}) у профіль",
   "transfer_done_moved": "Переміщено {count}",

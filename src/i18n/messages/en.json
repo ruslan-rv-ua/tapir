@@ -122,6 +122,7 @@
   "stream_already_in_profile": "“{name}” is already in “{profile}”",
   "move_selected": "Move selected ({count})…",
   "copy_selected": "Copy selected ({count})…",
+  "selection_actions": "Selected actions ({count})",
   "move_selected_to_profile_title": "Move selected streams ({count}) to profile",
   "copy_selected_to_profile_title": "Copy selected streams ({count}) to profile",
   "transfer_done_moved": "Moved {count}",

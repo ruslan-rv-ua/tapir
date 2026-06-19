@@ -6,6 +6,7 @@ import { $settings } from "../../stores/settings";
 import { $freeSpace } from "../../stores/system";
 import { FreeSpaceMetric } from "./FreeSpaceMetric";
 import { StreamList, type StreamListHandle } from "./StreamList";
+import { SelectionActionsMenu } from "./SelectionActionsMenu";
 import { AddStreamDialog } from "./AddStreamDialog";
 import { ImportStreamsDialog } from "./ImportStreamsDialog";
 import { ExportFormatDialog } from "./ExportFormatDialog";
@@ -230,15 +231,15 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     announce(filterAnnouncement(chipId, count), "polite");
   };
 
-  // ── Toolbar zone refs (14 items) ──────────────────────────
+  // ── Toolbar zone refs (12 items) ──────────────────────────
+  // Move/Copy/Delete-selected collapsed into one menu stop (selectionMenuBtn),
+  // so the roving array is fixed at 12 (was 14) — see SelectionActionsMenu.
   const toolbarZoneRef = useRef<HTMLDivElement | null>(null);
   const addBtn            = useRef<HTMLButtonElement | null>(null);
   const importBtn         = useRef<HTMLButtonElement | null>(null);
   const exportBtn         = useRef<HTMLButtonElement | null>(null);
   const selectAllBtn      = useRef<HTMLButtonElement | null>(null);
-  const moveSelectedBtn   = useRef<HTMLButtonElement | null>(null);
-  const copySelectedBtn   = useRef<HTMLButtonElement | null>(null);
-  const deleteSelectedBtn = useRef<HTMLButtonElement | null>(null);
+  const selectionMenuBtn  = useRef<HTMLButtonElement | null>(null);
   const recordAllBtn      = useRef<HTMLButtonElement | null>(null);
   const stopAllBtn        = useRef<HTMLButtonElement | null>(null);
   const chip0Ref   = useRef<HTMLButtonElement | null>(null);
@@ -249,7 +250,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const sort1Ref   = useRef<HTMLButtonElement | null>(null);
   const sortRefs = useMemo(() => [sort0Ref, sort1Ref], []);
   const toolbarRefs = useMemo(
-    () => [addBtn, importBtn, exportBtn, selectAllBtn, moveSelectedBtn, copySelectedBtn, deleteSelectedBtn, recordAllBtn, stopAllBtn, chip0Ref, chip1Ref, chip2Ref, sort0Ref, sort1Ref],
+    () => [addBtn, importBtn, exportBtn, selectAllBtn, selectionMenuBtn, recordAllBtn, stopAllBtn, chip0Ref, chip1Ref, chip2Ref, sort0Ref, sort1Ref],
     [],
   );
 
@@ -527,59 +528,33 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
           </button>
         </ScreenHeader>
 
-        {/* Row 2: Виділити все + Перемістити + Копіювати + Видалити виділені + Записати все + Зупинити запис + Chips */}
-        <div className="flex items-center gap-2 px-4 py-2">
+        {/* Row 2: Виділити все + Дії з виділеними (меню) + Записати все + Зупинити запис + Chips.
+            flex-wrap + whitespace-nowrap/shrink-0 on buttons: at narrow widths the row
+            reflows to a second line instead of crushing button labels (C). */}
+        <div className="flex flex-wrap items-center gap-2 px-4 py-2">
           {/* Index 3: Виділити все / Зняти */}
           <button
             ref={selectAllBtn}
             tabIndex={toolbarTabIndex(3)}
             aria-disabled={visibleIds.length === 0 || undefined}
             onClick={handleSelectAll}
-            className={`rounded px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
+            className={`shrink-0 whitespace-nowrap rounded px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
               visibleIds.length === 0 ? "cursor-not-allowed text-slate-600" : "text-slate-400 hover:bg-slate-800"
             }`}
           >
             {allVisibleSelected ? m.clear_selection() : m.select_all()}
           </button>
 
-          {/* Index 4: Перемістити виділені (N) — count in visible text == accessible name */}
-          <button
-            ref={moveSelectedBtn}
-            tabIndex={toolbarTabIndex(4)}
-            aria-disabled={selCount === 0 || undefined}
-            onClick={() => { if (selCount > 0) streamListRef.current?.requestBulkTransfer("move"); }}
-            className={`rounded px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
-              selCount === 0 ? "cursor-not-allowed text-slate-600" : "text-slate-400 hover:bg-slate-800"
-            }`}
-          >
-            {m.move_selected({ count: selCount })}
-          </button>
-
-          {/* Index 5: Копіювати виділені (N) */}
-          <button
-            ref={copySelectedBtn}
-            tabIndex={toolbarTabIndex(5)}
-            aria-disabled={selCount === 0 || undefined}
-            onClick={() => { if (selCount > 0) streamListRef.current?.requestBulkTransfer("copy"); }}
-            className={`rounded px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
-              selCount === 0 ? "cursor-not-allowed text-slate-600" : "text-slate-400 hover:bg-slate-800"
-            }`}
-          >
-            {m.copy_selected({ count: selCount })}
-          </button>
-
-          {/* Index 6: Видалити виділені (N) — count in visible text == accessible name */}
-          <button
-            ref={deleteSelectedBtn}
-            tabIndex={toolbarTabIndex(6)}
-            aria-disabled={selCount === 0 || undefined}
-            onClick={() => { if (selCount > 0) streamListRef.current?.requestBulkDelete(); }}
-            className={`rounded px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
-              selCount === 0 ? "cursor-not-allowed text-slate-600" : "text-red-400 hover:bg-slate-800"
-            }`}
-          >
-            {m.delete_selected({ count: selCount })}
-          </button>
+          {/* Index 4: Дії з виділеними (N) — overflow menu for move/copy/delete (F).
+              Single roving stop; items live in a Popover, not the toolbar array. */}
+          <SelectionActionsMenu
+            buttonRef={selectionMenuBtn}
+            isActiveStop={toolbarTabIndex(4) === 0}
+            selCount={selCount}
+            onMove={() => streamListRef.current?.requestBulkTransfer("move")}
+            onCopy={() => streamListRef.current?.requestBulkTransfer("copy")}
+            onDelete={() => streamListRef.current?.requestBulkDelete()}
+          />
 
           {/* Plain (NOT live) count — read in browse mode, never double-announced
               (the central announce() on each gesture is the only spoken update). */}
@@ -589,26 +564,26 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
           <div className="mx-1 h-4 w-px bg-slate-700 forced-colors:bg-[ButtonText]" aria-hidden="true" />
 
-          {/* Index 7: Записати все / Записати виділені (N) — aria-disabled (R8) */}
+          {/* Index 5: Записати все / Записати виділені (N) — aria-disabled (R8) */}
           <button
             ref={recordAllBtn}
-            tabIndex={toolbarTabIndex(7)}
+            tabIndex={toolbarTabIndex(5)}
             onClick={handleRecordAll}
             aria-disabled={recordDisabled || undefined}
-            className={`rounded bg-blue-600 px-3 py-1 text-xs text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText] ${
+            className={`shrink-0 whitespace-nowrap rounded bg-blue-600 px-3 py-1 text-xs text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText] ${
               recordDisabled ? "cursor-not-allowed opacity-50" : "hover:bg-blue-700"
             }`}
           >
             {selCount > 0 ? m.record_selected({ count: selCount }) : m.record_all()}
           </button>
 
-          {/* Index 8: Зупинити запис / Зупинити виділені (N) — aria-disabled (R8) */}
+          {/* Index 6: Зупинити запис / Зупинити виділені (N) — aria-disabled (R8) */}
           <button
             ref={stopAllBtn}
-            tabIndex={toolbarTabIndex(8)}
+            tabIndex={toolbarTabIndex(6)}
             onClick={handleStopAll}
             aria-disabled={stopDisabled || undefined}
-            className={`rounded px-3 py-1 text-xs text-slate-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText] ${
+            className={`shrink-0 whitespace-nowrap rounded px-3 py-1 text-xs text-slate-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText] ${
               stopDisabled ? "cursor-not-allowed opacity-50" : "hover:bg-slate-800"
             }`}
           >
@@ -627,7 +602,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
                 <button
                   key={chip.id}
                   ref={chipRefs[i]}
-                  tabIndex={toolbarTabIndex(9 + i)}
+                  tabIndex={toolbarTabIndex(7 + i)}
                   aria-pressed={activeChip === chip.id}
                   aria-label={m.streams_filter_chip_count({ label: chip.labelFn(), count })}
                   onClick={() => handleChipClick(chip.id)}
@@ -657,7 +632,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
               <button
                 key={opt.id}
                 ref={sortRefs[i]}
-                tabIndex={toolbarTabIndex(12 + i)}
+                tabIndex={toolbarTabIndex(10 + i)}
                 aria-pressed={sortBy === opt.id}
                 onClick={() => handleSortChange(opt.id)}
                 className={`inline-flex items-center rounded-full px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${

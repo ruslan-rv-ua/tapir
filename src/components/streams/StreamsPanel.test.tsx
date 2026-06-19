@@ -99,6 +99,17 @@ function sortButtons(container: HTMLElement) {
     : [];
 }
 
+// Move/Copy/Delete-selected now live behind one "Дії з виділеними" menu
+// (SelectionActionsMenu) — query the trigger by its count-agnostic name, then
+// open it and resolve the chosen menuitem.
+function selectionMenuButton() {
+  return screen.getByRole("button", { name: /дії з виділеними|selected actions/i });
+}
+async function openSelectionItem(name: string) {
+  fireEvent.click(selectionMenuButton());
+  return screen.findByRole("menuitem", { name });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   $statuses.set({});
@@ -452,11 +463,10 @@ describe("StreamsPanel — selection toolbar cluster", () => {
     $statuses.set({});
   });
 
-  it("shows 'Виділити все' and a disabled 'Видалити виділені (0)' with no selection", () => {
+  it("shows 'Виділити все' and a disabled 'Дії з виділеними (0)' menu with no selection", () => {
     renderPanel();
     expect(screen.getByRole("button", { name: m.select_all() })).toBeTruthy();
-    const del = screen.getByRole("button", { name: m.delete_selected({ count: 0 }) });
-    expect(del.getAttribute("aria-disabled")).toBe("true");
+    expect(selectionMenuButton().getAttribute("aria-disabled")).toBe("true");
   });
 
   it("flips to 'Зняти виділення' when all visible are selected", () => {
@@ -465,12 +475,11 @@ describe("StreamsPanel — selection toolbar cluster", () => {
     expect(screen.getByRole("button", { name: m.clear_selection() })).toBeTruthy();
   });
 
-  it("shows the [N вибрано] label and an enabled delete button when something is selected", () => {
+  it("shows the [N вибрано] label and an enabled selection menu when something is selected", () => {
     replaceSelection(new Set(["a", "b"]));
     renderPanel();
     expect(screen.getByText(m.selected_count_label({ count: 2 }))).toBeTruthy();
-    const del = screen.getByRole("button", { name: m.delete_selected({ count: 2 }) });
-    expect(del.getAttribute("aria-disabled")).toBeNull();
+    expect(selectionMenuButton().getAttribute("aria-disabled")).toBeNull();
   });
 
   it("clicking 'Виділити все' selects all visible and announces the count on the toolbar's own channel", () => {
@@ -481,31 +490,29 @@ describe("StreamsPanel — selection toolbar cluster", () => {
     expect($announcer.get().message).toBe(m.selection_count({ count: 3 }));
   });
 
-  it("the toolbar delete button triggers the list's bulk confirm", async () => {
+  it("the selection menu's delete item triggers the list's bulk confirm", async () => {
     replaceSelection(new Set(["a", "b"]));
     renderPanel();
-    // The toolbar button reaches into the list via the StreamListHandle ref
+    // The menu item reaches into the list via the StreamListHandle ref
     // (requestBulkDelete) — proves the widened ref is wired end-to-end.
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: m.delete_selected({ count: 2 }) }));
-    });
+    const del = await openSelectionItem(m.delete_selected({ count: 2 }));
+    await act(async () => { fireEvent.click(del); });
     expect(await screen.findByText(m.confirm_delete_selected({ count: 2 }))).toBeTruthy();
   });
 
-  it("shows disabled Move/Copy selected (0) buttons with no selection", () => {
-    renderPanel();
-    const move = screen.getByRole("button", { name: m.move_selected({ count: 0 }) });
-    const copy = screen.getByRole("button", { name: m.copy_selected({ count: 0 }) });
-    expect(move.getAttribute("aria-disabled")).toBe("true");
-    expect(copy.getAttribute("aria-disabled")).toBe("true");
-  });
-
-  it("the toolbar move button opens the list's bulk transfer picker", async () => {
+  it("the selection menu exposes Move and Copy items when something is selected", async () => {
     replaceSelection(new Set(["a", "b"]));
     renderPanel();
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: m.move_selected({ count: 2 }) }));
-    });
+    fireEvent.click(selectionMenuButton());
+    expect(await screen.findByRole("menuitem", { name: m.move_selected({ count: 2 }) })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: m.copy_selected({ count: 2 }) })).toBeTruthy();
+  });
+
+  it("the selection menu's move item opens the list's bulk transfer picker", async () => {
+    replaceSelection(new Set(["a", "b"]));
+    renderPanel();
+    const move = await openSelectionItem(m.move_selected({ count: 2 }));
+    await act(async () => { fireEvent.click(move); });
     expect(await screen.findByText(m.move_selected_to_profile_title({ count: 2 }))).toBeTruthy();
   });
 
@@ -522,13 +529,14 @@ describe("StreamsPanel — selection toolbar cluster", () => {
     expect($exportStreamsRequest.get()).toEqual({ ids: null });
   });
 
-  it("keeps a 14-stop roving toolbar in DOM order", () => {
+  it("keeps a 12-stop roving toolbar in DOM order", () => {
     const { container } = renderPanel();
     const toolbar = container.querySelector('[data-zone-id="streams-toolbar"]')!;
     const stops = Array.from(toolbar.querySelectorAll<HTMLButtonElement>("button"));
     const tabbable = stops.filter((b) => b.getAttribute("tabindex") === "0");
     expect(tabbable).toHaveLength(1);
-    expect(stops.length).toBeGreaterThanOrEqual(14);
+    // 3 (Row 1) + 9 (Row 2: select-all, selection menu, record, stop, 3 chips, 2 sort).
+    expect(stops).toHaveLength(12);
   });
 });
 
@@ -568,7 +576,8 @@ describe("StreamsPanel — selection lifecycle", () => {
     $streamFilter.set("recording");
     replaceSelection(new Set(["a"]));
     renderPanel();
-    fireEvent.click(screen.getByRole("button", { name: m.delete_selected({ count: 1 }) }));
+    const del = await openSelectionItem(m.delete_selected({ count: 1 }));
+    fireEvent.click(del);
     const confirmBtn = await screen.findByRole("button", { name: m["delete"]() });
     // removeStreams is mocked to resolve; handleConfirmBulkDelete then sets $streams
     // itself (full store → [b]), so no manual $streams.set is needed — this is the
@@ -584,7 +593,8 @@ describe("StreamsPanel — selection lifecycle", () => {
     // isEmpty branch of the deferred onEmpty-focus effect must land on add-examples.
     replaceSelection(new Set(["a", "b"]));
     renderPanel();
-    fireEvent.click(screen.getByRole("button", { name: m.delete_selected({ count: 2 }) }));
+    const del = await openSelectionItem(m.delete_selected({ count: 2 }));
+    fireEvent.click(del);
     const confirmBtn = await screen.findByRole("button", { name: m["delete"]() });
     await act(async () => { fireEvent.click(confirmBtn); });
     await waitFor(() =>
