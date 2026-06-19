@@ -8,6 +8,10 @@
   (застиглий count у confirm) — **підтверджений баг**, виправлено (C4 live-count); finding 4
   (однакове ім'я файлу) — **не correctness-баг, а a11y-слабкість**, виправлено (scoped filename,
   C1); finding 2 (палітра) — **не баг поведінки**, задокументовано явний whole-profile-станс (R7).
+  **Повторний само-аудит (2026-06-19):** native `disabled` на RecordAll/StopAll → `useRovingFocus`
+  пропускав би їх, динамічний підпис недосяжний для NVDA, коли disabled → **R8** (`aria-disabled` +
+  клік-гард); плюс дрібні: ім'я файлу рахує count після фільтра (C1), export-клік зберігає
+  `if (!isEmpty)` (C3), партиція `startable+stoppable` прив'язана до `pruneSelection` (R5/C4).
 - **Парасолька (north-star):** [docs/backlog/p1-bulk-stream-operations.md](../../backlog/p1-bulk-stream-operations.md)
   — усі дизайн-рішення (1–18) живуть там; ця спека на них **посилається**, а не дублює.
 - **Спирається на (віхи A, B — реалізовані й перевірені 2026-06-18):**
@@ -79,7 +83,10 @@ section-scoped lifecycle, snapshot-до-await bulk-патерн) і динамі
   кліку** (route-fix як у B): поки модаль відкрита, фокус заблокований — виділення не зміниться.
 - **R5 — підсумок record/stop: `skipped = selCount − done`.** Бекенд повертає лише `done`
   (`started`/`stopped`) — авторитетну кількість. `done = startable/stoppable-серед-виділених` (усі
-  придатні стартують/стопляться), тож `done + skipped = selCount` завжди й `skipped ≥ 0`. Клауза
+  придатні стартують/стопляться). Оскільки `pruneSelection` (A10) тримає виділення ⊆ наявних, на
+  момент дії `selectedStartable + selectedStoppable = selCount`, тож `done + skipped = selCount` і
+  `skipped ≥ 0`. Якщо backend-стан зсунувся між кліком і виконанням (scheduler стартував виділений
+  потік), `done` < очікуваного → `skipped` чесно зростає (та сама причина). Клауза
   причини додається лише за `skipped > 0` (дзеркало B `composeSummary`). Не потрібна структура-
   результат (на відміну від B `BulkTransferResult`): єдина причина скіпа для record — «вже в
   активній сесії запису», для stop — «не записувався», тож лічильника `done` достатньо.
@@ -109,6 +116,20 @@ section-scoped lifecycle, snapshot-до-await bulk-патерн) і динамі
   лишається whole-profile для export/record/stop; selection-aware — **лише** тулбар секції (де
   кнопки явно стають «…виділені (N)»). Це **не** зміна поведінки (палітра-export уже мала бути whole-
   profile), а явна фіксація стансу, яку finding 2 справедливо вимагав від спеки.
+- **R8 — RecordAll/StopAll: `aria-disabled`, НЕ native `disabled` (виправлення re-audit).** Наявні
+  RecordAll/StopAll кнопки використовують **native** `disabled`
+  ([StreamsPanel.tsx:546](../../../src/components/streams/StreamsPanel.tsx#L546),
+  [:557](../../../src/components/streams/StreamsPanel.tsx#L557)), а `useRovingFocus` **пропускає**
+  native-disabled при arrow/Home/End ([useRovingFocus.ts:23-24](../../../src/hooks/useRovingFocus.ts#L23)),
+  тоді як `aria-disabled` навмисно лишається досяжним (для discoverability). Тож динамічний підпис
+  «Записати/Зупинити виділені (N)» був би **недосяжний для NVDA саме тоді, коли кнопка disabled** —
+  прямо ламає №14 (підпис має повідомляти scope тому, хто навігує). А селекційний кластер
+  (Move/Copy/Delete) уже `aria-disabled` (№2) — тож наявна row-2 **непослідовна**. C **уніфікує**:
+  RecordAll/StopAll → `aria-disabled` + клік-гард у хендлері (handleRecordAll/handleStopAll уже мають
+  ранній `return`, лише переводимо на нові лічильники, C4). Стосується **обох** режимів (одна
+  кнопка): тепер коли нема startable/stoppable, кнопка лишається arrow-досяжною й озвучує
+  «недоступно». Потрібен re-style disabled-вигляду умовними класами (як Move/Copy/Delete), бо
+  `:disabled`-CSS більше не спрацьовує.
 
 ## Контекст (поточний стан коду, звірено 2026-06-19)
 
@@ -175,8 +196,9 @@ pub(crate) fn select_by_ids(streams: &[StreamInfo], ids: &[String]) -> Vec<Strea
   Після клону `profile.streams`: `let streams = match &stream_ids { Some(ids) =>
   select_by_ids(&all, ids), None => all };` Гілка формату, write, `Ok(true/false)` — **без змін**.
   **Default-ім'я save-діалогу несе скоуп (виправлення audit finding 4):** whole-profile →
-  `{profile_name}.{ext}` (як зараз); selected → `{profile_name}-selected-{count}.{ext}` (count =
-  `ids.len()`). Native Save dialog — **фінальна** confirmation-поверхня (модального заголовка з R4
+  `{profile_name}.{ext}` (як зараз); selected → `{profile_name}-selected-{count}.{ext}`, де **count =
+  `streams.len()` ПІСЛЯ фільтра** (а не `ids.len()` — невідомі id відкинуто `select_by_ids`, тож ім'я
+  не «бреше» про к-ть). Native Save dialog — **фінальна** confirmation-поверхня (модального заголовка з R4
   **недостатньо**, бо реальна дія відбувається в системному діалозі), а filename-поле — головний
   scope-сигнал, який NVDA озвучує; однакова назва для whole/selected дала б ризик випадково
   перезаписати повний експорт підмножиною. Суфікс `-selected-` — нелокалізований ASCII-токен
@@ -228,7 +250,9 @@ export async function stopAllRecordings(ids?: string[]): Promise<number> {  // �
   - текст = `selCount > 0 ? streams_export_selected({ count: selCount }) : streams_export_button()`
     (visible == accessible name);
   - `aria-disabled` лише коли `isEmpty` (при `selCount>0` потоки завжди є);
-  - клік: `setExport({ ids: selCount > 0 ? [...selection] : null })` (знімок на кліку, R4).
+  - клік (зберігає наявний `if (!isEmpty)`-гард, бо `aria-disabled` досі клікабельний):
+    `if (!isEmpty) $exportStreamsRequest.set({ ids: selCount > 0 ? [...selection] : null })`
+    (знімок на кліку, R4).
 - **`ExportFormatDialog`**: `const req = useStore($exportStreamsRequest); const isOpen = req !==
   null;` heading/`aria-label` = `req?.ids ? streams_export_selected_title({ count: req.ids.length })
   : streams_export_title()`; виклик `tauri.exportStreams(format, req?.ids ?? undefined)`; close →
@@ -240,16 +264,20 @@ export async function stopAllRecordings(ids?: string[]): Promise<number> {  // �
 відміну від delete/move/copy, record/stop **не** рухають фокус і **не** прибирають рядки, тож
 StreamList-хендл **не** потрібен.
 
-- **Похідні лічильники** (мемо). `IS_ACTIVE` = backend `is_active` (broad, R6); `startable =
-  !IS_ACTIVE`, `stoppable = IS_ACTIVE` — розбивають кожен наявний потік навпіл:
+- **Похідні лічильники** (мемо). Виносимо **один** module-level `IS_ACTIVE` (= backend `is_active`,
+  broad, R6) і **перевикористовуємо** його в наявному `startableCount` (зараз має власний локальний
+  `active`-set — дедуплікуємо). `startable = !IS_ACTIVE`, `stoppable = IS_ACTIVE`. Обидва selected-
+  лічильники фільтрують **лише наявні** id (`streamIds.has`), тож для виділення ⊆ наявних (гарантує
+  `pruneSelection`, A10) маємо `selectedStartableCount + selectedStoppableCount = selCount` —
+  партиція, на якій тримається R5:
   ```ts
-  const IS_ACTIVE = new Set(["recording", "connecting", "reconnecting"]);  // = backend is_active (R6)
+  const IS_ACTIVE = new Set(["recording", "connecting", "reconnecting"]);  // module-level = backend is_active (R6)
   const selectedStartableCount = useMemo(() =>
     [...selection].filter(id => streamIds.has(id) && !IS_ACTIVE.has(statuses[id]?.state ?? "idle")).length,
     [selection, statuses, streamIds]);
-  const selectedStoppableCount = useMemo(() =>     // R6: broad, дзеркало whole-profile stoppableCount
-    [...selection].filter(id => IS_ACTIVE.has(statuses[id]?.state ?? "idle")).length,
-    [selection, statuses]);
+  const selectedStoppableCount = useMemo(() =>     // R6: broad; streamIds.has → симетрія з startable (партиція)
+    [...selection].filter(id => streamIds.has(id) && IS_ACTIVE.has(statuses[id]?.state ?? "idle")).length,
+    [selection, statuses, streamIds]);
   // whole-profile Stop тепер теж broad (R6) — НЕ recording-only activeCount:
   const stoppableCount = useMemo(() =>
     streams.filter(s => IS_ACTIVE.has(statuses[s.id]?.state ?? "idle")).length, [streams, statuses]);
@@ -258,18 +286,21 @@ StreamList-хендл **не** потрібен.
   торкаються.
 - **RecordAll (idx 7):** (record уже консистентний — обидва шляхи через `startable`)
   - текст = `selCount > 0 ? record_selected({ count: selCount }) : record_all()`;
-  - `disabled = selCount > 0 ? selectedStartableCount === 0 : startableCount === 0`;
-  - `handleRecordAll`: `selCount > 0` → `const ids = [...selection]; const started = await
-    startAllRecordings(ids); announce(composeRecordSummary(ids.length, started), "polite")`;
-    інакше наявний whole-profile-шлях (`recordAllAnnouncement(started)` — pluralized, без змін).
+  - **`aria-disabled`** (R8, не native `disabled`) `= selCount > 0 ? selectedStartableCount === 0 :
+    startableCount === 0`;
+  - `handleRecordAll` (**клік-гард** обов'язковий, бо `aria-disabled` клікабельний): `selCount > 0` →
+    `if (selectedStartableCount === 0) return;` `const ids = [...selection]; const started = await
+    startAllRecordings(ids); announce(composeRecordSummary(ids.length, started), "polite")`; інакше
+    whole-profile-шлях (наявний `if (startableCount === 0) return;` + `recordAllAnnouncement(started)`
+    — pluralized, без змін).
 - **StopAll (idx 8):** (обидва шляхи через `stoppable`, broad — R6)
   - текст = `selCount > 0 ? stop_selected({ count: selCount }) : stop_all()`;
-  - `disabled = selCount > 0 ? selectedStoppableCount === 0 : stoppableCount === 0`;
-  - `handleStopAll`: `selCount > 0` → `selectedStoppableCount > 1` ? відкрити confirm(selected) :
-    `doStopSelected([...selection])`; інакше whole-profile-шлях
-    (`stoppableCount > 1` ? confirm(all) : `doStopAll()`). **Whole-profile поріг/disabled тепер
-    `stoppableCount`, не `activeCount`** (R6: нормалізація — reconnecting/connecting тепер
-    зупиняється кнопкою, як хоткеєм).
+  - **`aria-disabled`** (R8) `= selCount > 0 ? selectedStoppableCount === 0 : stoppableCount === 0`;
+  - `handleStopAll` (клік-гард): `selCount > 0` → `if (selectedStoppableCount === 0) return;`
+    `selectedStoppableCount > 1` ? відкрити confirm(selected) : `doStopSelected([...selection])`;
+    інакше whole-profile-шлях `if (stoppableCount === 0) return;` `stoppableCount > 1` ? confirm(all)
+    : `doStopAll()`. **Whole-profile поріг/гард тепер `stoppableCount`, не `activeCount`** (R6:
+    нормалізація — reconnecting/connecting тепер зупиняється кнопкою, як хоткеєм).
   - `doStopSelected(ids)`: `const stopped = await stopAllRecordings(ids);
     announce(composeStopSummary(ids.length, stopped), "polite")`.
 - **Підтвердження (R3 + виправлення audit finding 3)** — `confirmStopAll: boolean` → `confirmStop:
@@ -347,13 +378,14 @@ StreamList-хендл **не** потрібен.
   `$showExportStreamsDialog.set(true)` → `$exportStreamsRequest.set({ ids: null })`. Команди
   `record-all` (~89) / `stop-all` (~97) — **без змін** (лишаються whole-profile; R7). Палітра —
   глобальна поверхня, не пов'язана з section-local виділенням.
-- **`src/components/streams/StreamsPanel.tsx`** — `selectedStartableCount` +
-  `selectedStoppableCount`/`stoppableCount` (broad, R6; Stop-кнопка перемикається з `activeCount` на
-  `stoppableCount`, метрика/чип лишають `activeCount`); Export-кнопка (динамічний підпис +
-  знімок-скоуп клік); RecordAll/StopAll (динамічний підпис + disabled-за-виділенням +
-  selected-обробники); `confirmStopAll: boolean` → `confirmStop: {scope} | null` (live-count
-  повідомлення, finding 3); `composeRecord/StopSummary`. **Roving 14 без змін** (жодних нових
-  елементів/індексів).
+- **`src/components/streams/StreamsPanel.tsx`** — module-level `IS_ACTIVE` (дедуплікувати з наявним
+  локальним set у `startableCount`); `selectedStartableCount` + `selectedStoppableCount` +
+  `stoppableCount` (broad, R6; Stop-кнопка перемикається з `activeCount` на `stoppableCount`,
+  метрика/чип лишають `activeCount`); Export-кнопка (динамічний підпис + знімок-скоуп клік,
+  `if (!isEmpty)`-гард); **RecordAll/StopAll: native `disabled` → `aria-disabled` + клік-гард + re-
+  style disabled-вигляду (R8)**, динамічний підпис, selected-обробники; `confirmStopAll: boolean` →
+  `confirmStop: {scope} | null` (live-count повідомлення, finding 3); `composeRecord/StopSummary`.
+  **Roving 14 без змін** (жодних нових елементів/індексів).
 - **i18n** — 10 ключів (C5) у `src/i18n/messages/{uk,en}.json`; регенерувати через `pnpm vite:build`.
 - **Документація (після коду):** парасолька — позначити закрите по віхі C у «Критеріях
   готовності»; оновити шапку запису (C in progress → done) і таблицю/розділ віх (C ✅).
@@ -383,7 +415,9 @@ StreamList-хендл **не** потрібен.
    **Stop active-визначення єдине (R6, finding 1):** і whole-profile, і selected Stop рахують
    stoppability як `recording|connecting|reconnecting` (= backend `is_active`); та сама дія **не**
    міняє придатності залежно від наявності виділення. (Метрика «Активні записи» / чип «Запис»
-   лишаються recording-only.)
+   лишаються recording-only.) **Discoverability (R8):** RecordAll/StopAll — `aria-disabled` (не
+   native `disabled`), тож лишаються досяжними стрілками тулбара й озвучують динамічний підпис +
+   «недоступно», коли немає придатних (інакше roving пропускав би native-disabled — №14 порушено).
 4. **Частковий успіх (№5/R5):** record-виділених стартує придатні (`startable`), скіпає вже-в-сесії;
    stop-виділених зупиняє `stoppable`, скіпає незаписувані; зведене оголошення «Розпочато запис: N[,
    пропущено M (вже записуються)]» / «Зупинено запис: N[, пропущено M (не записувались)]» (клауза
@@ -426,6 +460,9 @@ StreamList-хендл **не** потрібен.
     із/без виділення). Метрика «Активні записи» лишається 0 (recording-only).
   - **R6 (finding 3):** confirm-повідомлення оновлюється, коли `$statuses` змінює стан виділеного
     потоку, поки діалог відкритий (live count, не зі знімка).
+  - **R8:** RecordAll/StopAll рендеряться з `aria-disabled` (не `disabled`-атрибутом), коли немає
+    придатних; клік по `aria-disabled` — no-op (гард не кличе IPC); кнопка лишається в roving-обході
+    (на відміну від native-disabled, який `useRovingFocus` пропускає).
   - `composeRecordSummary`/`composeStopSummary` — лід + клауза скіпа лише за `>0`.
   - roving 14 коректний (без змін індексів).
 - **`ExportFormatDialog` тест:** заголовок = scoped (`streams_export_selected_title({count})` при
