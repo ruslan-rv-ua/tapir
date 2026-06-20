@@ -12,6 +12,9 @@ export const $songsQuery = atom<string>("");
 export const $songsStation = atom<string | null>(null);
 export const $songsSort = atom<SongsSort>("date");
 
+/** Multi-select state for the songs list (milestone D). Keyed by song path. */
+export const $songsSelection = atom<Set<string>>(new Set());
+
 export const $songsStations = computed($songs, (songs) =>
   Array.from(new Set(songs.map((s) => s.station))).sort()
 );
@@ -60,4 +63,10 @@ export function replaceSongByPath(updated: Song, oldPath?: string): void {
 
 export function removeSongByPath(path: string): void {
   $songs.set($songs.get().filter((s) => s.path !== path));
+}
+
+/** Bulk variant of removeSongByPath: drop every listed path in one update. */
+export function removeSongsByPaths(paths: string[]): void {
+  const drop = new Set(paths);
+  $songs.set($songs.get().filter((s) => !drop.has(s.path)));
 }
