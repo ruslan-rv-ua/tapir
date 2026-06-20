@@ -9,13 +9,14 @@ interface Props {
   schedule: ScheduleDto;
   /** True when the menu trigger is the active 'action-menu' focus stop. */
   menuFocused: boolean;
+  selectionCount: number;
   onAction: (action: ScheduleAction) => void;
 }
 
 const ITEM_CLS =
   "cursor-pointer px-3 py-1.5 text-sm text-slate-200 outline-none data-[focused]:bg-slate-700 forced-colors:text-[ButtonText] forced-colors:data-[focused]:bg-[Highlight] forced-colors:data-[focused]:text-[HighlightText]";
 
-export function ScheduleContextMenu({ schedule, menuFocused, onAction }: Props) {
+export function ScheduleContextMenu({ schedule, menuFocused, selectionCount, onAction }: Props) {
   return (
     <MenuTrigger>
       <Button
@@ -40,7 +41,7 @@ export function ScheduleContextMenu({ schedule, menuFocused, onAction }: Props) 
           </MenuItem>
           <Separator className="my-1 border-t border-slate-700" />
           <MenuItem id="delete" className={`${ITEM_CLS} text-red-400`}>
-            {m.schedule_action_delete()}
+            {selectionCount > 0 ? m.delete_selected({ count: selectionCount }) : m.schedule_action_delete()}
           </MenuItem>
         </Menu>
       </Popover>

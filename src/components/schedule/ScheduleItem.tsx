@@ -18,13 +18,15 @@ interface Props {
   /** Назва потоку активного профілю; «потік видалено» для осиротілих. */
   streamName: string;
   isActiveRow: boolean;
+  isSelected?: boolean;
+  selectionCount?: number;
   isFocused: (segment: "summary" | SegmentKind) => boolean;
   onToggle: () => void;
   onAction: (action: ScheduleAction) => void;
 }
 
 export function ScheduleItem({
-  schedule, streamName, isActiveRow, isFocused, onToggle, onAction,
+  schedule, streamName, isActiveRow, isSelected = false, selectionCount = 0, isFocused, onToggle, onAction,
 }: Props) {
   const when = formatWhen(schedule);
   const next = formatNextRun(schedule.nextRun);
@@ -32,9 +34,10 @@ export function ScheduleItem({
   const state = stateText(schedule.enabled);
 
   // Усі «колонки» §5.2 в одному a11y-імені рядка — NVDA читає один чистий label.
-  const summaryLabel = m.schedule_row_summary({
+  const fullSummaryLabel = m.schedule_row_summary({
     name: schedule.name, state, stream: streamName, when, next, result,
   });
+  const summaryLabel = isSelected ? `${fullSummaryLabel}, ${m.selection_suffix()}` : fullSummaryLabel;
 
   // role="group" озвучує лише aria-label — без нього drill-down на рядок 2 німий.
   const techLabel = [
@@ -47,8 +50,9 @@ export function ScheduleItem({
       isFocused={isFocused}
       isActiveRow={isActiveRow}
       label={summaryLabel}
+      selected={isSelected}
       roleDescription={m.item_role_schedule()}
-      className="border-b border-slate-800 px-3 py-2"
+      className="border-b border-slate-800 px-3 py-2 data-[selected=true]:bg-sky-900/40 data-[selected=true]:ring-1 data-[selected=true]:ring-inset data-[selected=true]:ring-sky-400/40 forced-colors:data-[selected=true]:bg-[Highlight] forced-colors:data-[selected=true]:text-[HighlightText]"
       activeClassName="bg-slate-800/40"
     >
       {/* Рядок 1: іконка стану + назва, кнопки праворуч. */}
@@ -89,6 +93,7 @@ export function ScheduleItem({
           <ScheduleContextMenu
             schedule={schedule}
             menuFocused={isFocused("action-menu")}
+            selectionCount={selectionCount}
             onAction={onAction}
           />
         </div>
