@@ -83,6 +83,10 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   save: () => "Зберегти",
   saving: () => "Збереження…",
   delete: () => "Видалити",
+  selection_suffix: () => ", виділено",
+  confirm_delete_selected_schedules: ({ count }: { count: number }) => `Видалити вибрані розклади (${count})?`,
+  delete_selected: ({ count }: { count: number }) => `Видалити вибране (${count})`,
+  schedules_removed_bulk: ({ count }: { count: number }) => `Видалено розкладів: ${count}`,
 }));
 
 const stream: StreamInfo = {
