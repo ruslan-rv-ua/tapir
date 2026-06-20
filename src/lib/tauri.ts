@@ -288,6 +288,9 @@ export async function addToWishlist(pattern: string): Promise<WishlistEntry> {
 export async function removeFromWishlist(pattern: string): Promise<void> {
   return invoke("remove_from_wishlist", { pattern });
 }
+export async function removeFromWishlistBulk(patterns: string[]): Promise<number> {
+  return invoke("remove_from_wishlist_bulk", { patterns });
+}
 export async function updateWishlistPattern(oldPattern: string, newPattern: string): Promise<WishlistEntry> {
   return invoke("update_wishlist_pattern", { oldPattern, newPattern });
 }
@@ -299,6 +302,9 @@ export async function addToIgnorelist(pattern: string): Promise<void> {
 }
 export async function removeFromIgnorelist(pattern: string): Promise<void> {
   return invoke("remove_from_ignorelist", { pattern });
+}
+export async function removeFromIgnorelistBulk(patterns: string[]): Promise<number> {
+  return invoke("remove_from_ignorelist_bulk", { patterns });
 }
 export async function updateIgnorelistPattern(oldPattern: string, newPattern: string): Promise<void> {
   return invoke("update_ignorelist_pattern", { oldPattern, newPattern });
