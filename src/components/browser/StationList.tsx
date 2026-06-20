@@ -1,7 +1,9 @@
 import { forwardRef, useCallback, useMemo, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { $streams } from "../../stores/streams";
-import { addStation } from "../../stores/browser";
+import { addStation, addStations, $stationSelection } from "../../stores/browser";
+import { replaceSelection } from "../../stores/selection";
+import { useListSelection } from "../../hooks/useListSelection";
 import { CompositeList } from "../common/composite-list";
 import { ListCardState } from "../common/ListCard";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
@@ -10,6 +12,8 @@ import { useAnnounce } from "../../hooks/useAnnounce";
 import { addToast } from "../../stores/toasts";
 import { StationItem, getStationSegments } from "./StationItem";
 import * as m from "../../i18n/paraglide/messages";
+
+export type StationListHandle = ZoneEntry & { requestBulkAdd: () => void };
 
 interface Props {
   stations: StationResult[];
@@ -21,11 +25,12 @@ interface Props {
   exitZone: (forward: boolean) => void;
 }
 
-export const StationList = forwardRef<ZoneEntry, Props>(
+export const StationList = forwardRef<StationListHandle, Props>(
   ({ stations, loading, error, hasMore, onLoadMore, emptyMessage, exitZone }, ref) => {
     const streams = useStore($streams);
     const announce = useAnnounce();
     const [failedPreview, setFailedPreview] = useState<Set<string>>(new Set());
+    const selectedSet = useStore($stationSelection);
 
     const existingUrls = useMemo(() => new Set(streams.map((s) => s.url)), [streams]);
     const isAlreadyAdded = useCallback(
@@ -37,6 +42,19 @@ export const StationList = forwardRef<ZoneEntry, Props>(
       () => stations.map((s) => ({ id: s.stationuuid, segments: getStationSegments(s) })),
       [stations],
     );
+
+    const resolveName = useCallback(
+      (id: string) => stations.find((s) => s.stationuuid === id)?.name ?? "",
+      [stations],
+    );
+
+    const { selectionAdapter, onSelectionChange } = useListSelection<StationResult>({
+      $selection: $stationSelection,
+      announce,
+      resolveName,
+      allItems: stations,
+      getId: (s) => s.stationuuid,
+    });
 
     const handleAdd = useCallback(
       async (station: StationResult) => {
@@ -51,6 +69,22 @@ export const StationList = forwardRef<ZoneEntry, Props>(
       [isAlreadyAdded, announce],
     );
 
+    const handleBulkAdd = useCallback(async () => {
+      const ids = $stationSelection.get();
+      if (ids.size === 0) return;
+      const selected = stations.filter((s) => ids.has(s.stationuuid));
+      try {
+        const added = await addStations(selected);
+        const skipped = selected.length - added.length;
+        if (added.length > 0) replaceSelection($stationSelection, new Set()); // full skip keeps selection
+        const parts = [m.stations_added_bulk({ count: added.length })];
+        if (skipped > 0) parts.push(m.stations_skipped_duplicate({ count: skipped }));
+        announce(parts.join(", "), "polite"); // focus deliberately NOT moved
+      } catch (err) {
+        addToast(String(err), "error");
+      }
+    }, [stations, announce]);
+
     const markPreviewFailed = useCallback((id: string) => {
       setFailedPreview((prev) => {
         const next = new Set(prev);
@@ -60,13 +94,16 @@ export const StationList = forwardRef<ZoneEntry, Props>(
     }, []);
 
     return (
-      <CompositeList
+      <CompositeList<StationListHandle>
         ref={ref}
         zoneId="browser-results"
         ariaLabel={m.zone_browser_results()}
         items={items}
         className="flex-1 overflow-auto"
         onTabOut={exitZone}
+        selection={selectionAdapter}
+        onSelectionChange={onSelectionChange}
+        imperativeExtra={() => ({ requestBulkAdd: handleBulkAdd })}
         loading={
           loading ? (
             <ListCardState role="status" aria-live="polite" className="text-slate-400">
@@ -113,6 +150,7 @@ export const StationList = forwardRef<ZoneEntry, Props>(
               isFocused={isFocused}
               isActiveRow={isActive}
               isAdded={isAlreadyAdded(station)}
+              isSelected={selectedSet.has(id)}
               isUnavailable={station.lastcheckok === 0 || failedPreview.has(id)}
               onAdd={() => void handleAdd(station)}
               onPreviewFailed={() => markPreviewFailed(id)}
