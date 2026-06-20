@@ -55,6 +55,8 @@ interface Props {
   isFocused: (segment: "summary" | SegmentKind) => boolean;
   /** This row is the composite list's active item — subtle context highlight. */
   isActiveRow: boolean;
+  isSelected?: boolean;
+  selectionCount?: number;
   onSwitch: (name: string) => void;
   onDuplicate: (name: string) => void;
   onRename: (name: string) => void;
@@ -67,6 +69,8 @@ export function ProfileItem({
   activeProfile,
   isFocused,
   isActiveRow,
+  isSelected = false,
+  selectionCount = 0,
   onSwitch,
   onDuplicate,
   onRename,
@@ -81,15 +85,17 @@ export function ProfileItem({
   const rowLabel = isActive
     ? `${profile.name}, ${m.profile_active_badge()}, ${countLabel}`
     : `${profile.name}, ${countLabel}`;
+  const labelWithSelection = isSelected ? `${rowLabel}, ${m.selection_suffix()}` : rowLabel;
 
   return (
     <CompositeRow
       itemId={profile.name}
       isFocused={isFocused}
       isActiveRow={isActiveRow}
-      label={rowLabel}
+      label={labelWithSelection}
+      selected={isSelected}
       roleDescription={m.item_role_profile()}
-      className="flex items-center gap-2 border-b border-slate-800 px-3 py-2 forced-colors:border-[ButtonText]"
+      className="flex items-center gap-2 border-b border-slate-800 px-3 py-2 forced-colors:border-[ButtonText] data-[selected=true]:bg-sky-900/40 data-[selected=true]:ring-1 data-[selected=true]:ring-inset data-[selected=true]:ring-sky-400/40 forced-colors:data-[selected=true]:bg-[Highlight] forced-colors:data-[selected=true]:text-[HighlightText]"
       activeClassName="bg-slate-800/60"
     >
       <span aria-hidden="true" className="flex h-4 w-4 shrink-0 items-center justify-center">
@@ -156,6 +162,7 @@ export function ProfileItem({
           isActive={isActive}
           isDefault={isDefault}
           menuFocused={isFocused("action-menu")}
+          selectionCount={selectionCount}
           onSwitch={() => onSwitch(profile.name)}
           onDuplicate={() => onDuplicate(profile.name)}
           onRename={() => onRename(profile.name)}

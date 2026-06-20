@@ -23,7 +23,7 @@ function renderMenu(profile: ProfileMeta, isActive: boolean, isDefault: boolean)
     onDelete: vi.fn(), onExport: vi.fn(),
   };
   const utils = render(
-    <ProfileContextMenu profile={profile} isActive={isActive} isDefault={isDefault} menuFocused {...h} />,
+    <ProfileContextMenu profile={profile} isActive={isActive} isDefault={isDefault} menuFocused selectionCount={0} {...h} />,
   );
   return { ...utils, ...h };
 }
