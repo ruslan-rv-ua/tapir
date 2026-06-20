@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, fireEvent } from "@testing-library/react";
 import type { Song } from "../../types/song";
 import { SongItem } from "./SongItem";
+import * as m from "../../i18n/paraglide/messages";
 
 vi.mock("../../i18n/paraglide/messages", () => ({
   item_role_song: () => "запис",
@@ -14,6 +15,8 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   songs_action_rename: () => "Перейменувати",
   songs_action_tags: () => "Теги",
   songs_action_delete: () => "Видалити",
+  selection_suffix: () => "вибрано",
+  delete_selected: ({ count }: { count: number }) => `Видалити вибрані (${count})`,
 }));
 
 const mk = (over: Partial<Song> = {}): Song => ({
@@ -32,13 +35,20 @@ const mk = (over: Partial<Song> = {}): Song => ({
   ...over,
 });
 
-function renderItem(song = mk(), focusedSeg: string = "summary", isPlaying = false) {
+function renderItem(
+  song = mk(),
+  focusedSeg: string = "summary",
+  isPlaying = false,
+  { isSelected = false, selectionCount = 0 }: { isSelected?: boolean; selectionCount?: number } = {},
+) {
   return render(
     <ul>
       <SongItem
         song={song}
         isActiveRow
         isPlaying={isPlaying}
+        isSelected={isSelected}
+        selectionCount={selectionCount}
         isFocused={(seg) => seg === focusedSeg}
         onPlay={() => {}}
         onAction={() => {}}
@@ -144,6 +154,8 @@ describe("SongItem — a11y structure (drift fixes)", () => {
           song={mk()}
           isActiveRow
           isPlaying={false}
+          isSelected={false}
+          selectionCount={0}
           isFocused={(seg) => seg === "summary"}
           onPlay={onPlay}
           onAction={() => {}}
@@ -154,5 +166,12 @@ describe("SongItem — a11y structure (drift fixes)", () => {
     expect(btn.tagName).toBe("BUTTON");
     fireEvent.click(btn);
     expect(onPlay).toHaveBeenCalled();
+  });
+
+  it("appends the selected suffix to the row label and marks the row data-selected", () => {
+    const { container } = renderItem(mk(), "summary", false, { isSelected: true });
+    const li = container.querySelector<HTMLElement>('li[data-segment="summary"]')!;
+    expect(li.getAttribute("aria-label")).toMatch(new RegExp(`${m.selection_suffix()}$`));
+    expect(li.getAttribute("data-selected")).toBe("true");
   });
 });
