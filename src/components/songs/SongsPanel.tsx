@@ -87,17 +87,7 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
   };
 
   // Lifecycle: clear on filter change (query/station); sort changes must NOT clear.
-  // Use direct nanostores subscriptions so the clear fires synchronously on store
-  // change, not deferred through React's effect queue.
-  useEffect(() => {
-    const unsubQ = $songsQuery.subscribe((_, prevQ) => {
-      if (prevQ !== undefined) replaceSelection($songsSelection, new Set());
-    });
-    const unsubS = $songsStation.subscribe((_, prevS) => {
-      if (prevS !== undefined) replaceSelection($songsSelection, new Set());
-    });
-    return () => { unsubQ(); unsubS(); };
-  }, []);
+  useEffect(() => { replaceSelection($songsSelection, new Set()); }, [query, station]);
   // Clear on unmount (section-scoped).
   useEffect(() => () => { replaceSelection($songsSelection, new Set()); }, []);
 

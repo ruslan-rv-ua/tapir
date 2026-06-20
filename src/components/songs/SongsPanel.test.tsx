@@ -1,8 +1,8 @@
 // src/components/songs/SongsPanel.test.tsx
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, fireEvent } from "@testing-library/react";
+import { render, fireEvent, act } from "@testing-library/react";
 import * as m from "../../i18n/paraglide/messages";
-import { $songs, $songsSelection, $songsQuery } from "../../stores/songs";
+import { $songs, $songsSelection, $songsQuery, $songsStation } from "../../stores/songs";
 import { $announcer } from "../../stores/announcer";
 import { replaceSelection } from "../../stores/selection";
 import type { Song } from "../../types/song";
@@ -25,6 +25,7 @@ const mk = (path: string): Song => ({
 beforeEach(() => {
   $songs.set([mk("a.mp3"), mk("b.mp3")]);
   $songsQuery.set("");
+  $songsStation.set(null);
   replaceSelection($songsSelection, new Set());
 });
 
@@ -41,7 +42,14 @@ describe("SongsPanel — selection cluster", () => {
   it("clears the selection when the search query changes (filter change)", () => {
     renderPanel();
     replaceSelection($songsSelection, new Set(["a.mp3"]));
-    $songsQuery.set("rock");
+    act(() => { $songsQuery.set("rock"); });
+    expect($songsSelection.get().size).toBe(0);
+  });
+
+  it("clears the selection when the station filter changes", () => {
+    renderPanel();
+    replaceSelection($songsSelection, new Set(["a.mp3"]));
+    act(() => { $songsStation.set("SomeStation"); });
     expect($songsSelection.get().size).toBe(0);
   });
 });
