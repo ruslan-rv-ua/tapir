@@ -5,6 +5,7 @@ import type { StationResult } from "../../lib/tauri";
 import * as tauri from "../../lib/tauri";
 import { getStationSegments, StationItem } from "./StationItem";
 import { $playerStatus } from "../../stores/player";
+import * as m from "../../i18n/paraglide/messages";
 
 vi.mock("../../lib/tauri", () => ({
   previewStation: vi.fn().mockResolvedValue(undefined),
@@ -37,6 +38,7 @@ function renderItem(over: Partial<Parameters<typeof StationItem>[0]> = {}) {
     isActiveRow: true,
     isAdded: false,
     isUnavailable: false,
+    isSelected: false,
     onAdd: vi.fn(),
     onPreviewFailed: vi.fn(),
     ...over,
@@ -162,5 +164,14 @@ describe("StationItem — add button + liveness", () => {
     expect(li.getAttribute("aria-label")).toMatch(/недоступна|unavailable/i);
     // One extra decorative svg (the warning icon) beyond the action-button icons.
     expect(container.querySelector('svg')).toBeTruthy();
+  });
+});
+
+describe("StationItem — selection", () => {
+  it("appends the selected suffix and marks the row selected", () => {
+    const { container } = renderItem({ isSelected: true });
+    const li = container.querySelector<HTMLElement>('li[data-segment="summary"]')!;
+    expect(li.getAttribute("aria-label")).toMatch(new RegExp(`${m.selection_suffix()}$`));
+    expect(li.getAttribute("data-selected")).toBe("true");
   });
 });

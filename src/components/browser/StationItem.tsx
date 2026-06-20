@@ -43,6 +43,7 @@ interface StationItemProps {
   isAdded: boolean;
   /** lastcheckok === 0 OR a preview attempt has failed this session. */
   isUnavailable: boolean;
+  isSelected: boolean;
   onAdd: () => void;
   onPreviewFailed: () => void;
 }
@@ -53,6 +54,7 @@ export function StationItem({
   isActiveRow,
   isAdded,
   isUnavailable,
+  isSelected,
   onAdd,
   onPreviewFailed,
 }: StationItemProps) {
@@ -91,6 +93,7 @@ export function StationItem({
     : isUnavailable
       ? m.station_summary_offline({ name: summaryName })
       : summaryName;
+  const labelWithSelection = isSelected ? `${summaryLabel}, ${m.selection_suffix()}` : summaryLabel;
 
   const previewLabel = isPreviewing
     ? m.station_preview_stop({ name: station.name })
@@ -116,10 +119,11 @@ export function StationItem({
       itemId={station.stationuuid}
       isFocused={isFocused}
       isActiveRow={isActiveRow}
-      label={summaryLabel}
+      label={labelWithSelection}
+      selected={isSelected}
       roleDescription={m.item_role_station()}
       keyshortcuts="Shift+Enter"
-      className="border-b border-slate-800 px-3 py-2 forced-colors:border-[ButtonText]"
+      className="border-b border-slate-800 px-3 py-2 data-[selected=true]:bg-sky-900/40 data-[selected=true]:ring-1 data-[selected=true]:ring-inset data-[selected=true]:ring-sky-400/40 forced-colors:border-[ButtonText] forced-colors:data-[selected=true]:bg-[Highlight] forced-colors:data-[selected=true]:text-[HighlightText]"
       activeClassName="bg-slate-800/60"
     >
       {/* Line 1: name + action buttons */}
