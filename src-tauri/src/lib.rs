@@ -293,6 +293,7 @@ pub fn run() {
             commands::schedule_commands::add_schedule,
             commands::schedule_commands::update_schedule,
             commands::schedule_commands::delete_schedule,
+            commands::schedule_commands::delete_schedules,
             commands::schedule_commands::toggle_schedule,
             commands::schedule_commands::get_active_scheduled,
         ])

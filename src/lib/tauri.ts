@@ -336,6 +336,10 @@ export async function deleteSchedule(id: string): Promise<void> {
   return invoke("delete_schedule", { id });
 }
 
+export async function deleteSchedules(ids: string[]): Promise<number> {
+  return invoke("delete_schedules", { ids });
+}
+
 export async function toggleSchedule(
   id: string,
   enabled: boolean,
