@@ -520,6 +520,8 @@
   "schedule_confirm_delete_title": "Delete schedule",
   "schedule_confirm_delete_body": "Delete schedule \"{name}\"?",
   "schedule_deleted": "Schedule \"{name}\" deleted",
+  "confirm_delete_selected_schedules": "Delete selected schedules ({count})?",
+  "schedules_removed_bulk": "Schedules removed: {count}",
   "schedule_added": "Schedule \"{name}\" created",
   "schedule_saved": "Schedule \"{name}\" saved",
   "schedule_toggled_on": "Schedule \"{name}\" enabled",

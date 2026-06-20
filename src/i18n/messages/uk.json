@@ -520,6 +520,8 @@
   "schedule_confirm_delete_title": "Видалити розклад",
   "schedule_confirm_delete_body": "Видалити розклад «{name}»?",
   "schedule_deleted": "Розклад «{name}» видалено",
+  "confirm_delete_selected_schedules": "Видалити вибрані розклади ({count})?",
+  "schedules_removed_bulk": "Видалено розкладів: {count}",
   "schedule_added": "Розклад «{name}» створено",
   "schedule_saved": "Розклад «{name}» збережено",
   "schedule_toggled_on": "Розклад «{name}» увімкнено",
