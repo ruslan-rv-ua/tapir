@@ -433,6 +433,10 @@ export async function addStationFromBrowser(station: StationResult): Promise<voi
   return invoke("add_station_from_browser", { station });
 }
 
+export async function addStationsFromBrowser(stations: StationResult[]): Promise<StreamInfo[]> {
+  return invoke("add_stations_from_browser", { stations });
+}
+
 export async function addExampleStreams(): Promise<StreamInfo[]> {
   return invoke<StreamInfo[]>("add_example_streams");
 }

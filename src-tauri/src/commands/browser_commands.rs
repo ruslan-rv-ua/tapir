@@ -212,6 +212,21 @@ pub async fn add_station_from_browser(
         .unwrap_or_else(|| Err(RadioError::DuplicateStream.to_string()))
 }
 
+/// Bulk variant of `add_station_from_browser`: build a StreamInfo per station and
+/// append in ONE save+emit via the shared helper (dedups by url, both against the
+/// profile and within the batch). Returns the streams actually added; the
+/// frontend computes skipped = requested − added. Unlike the single command this
+/// returns the (possibly empty) added list instead of erroring on duplicates.
+#[tauri::command]
+pub async fn add_stations_from_browser(
+    stations: Vec<StationResult>,
+    state: tauri::State<'_, AppState>,
+    app: tauri::AppHandle,
+) -> Result<Vec<StreamInfo>, String> {
+    let streams: Vec<StreamInfo> = stations.iter().map(station_to_stream_info).collect();
+    append_streams_to_active_profile(state.inner(), &app, streams).await
+}
+
 /// Curate up to 3 example stations into the active (empty) profile. Resolves
 /// fresh urls via the Radio Browser client per anchor; on any search failure or
 /// empty result the anchor's offline fallback is used (so offline still adds the
@@ -386,6 +401,17 @@ mod tests {
     #[test]
     fn dedup_collapses_internal_duplicates() {
         let added = dedup_new_streams(&[], vec![stream("https://x"), stream("https://x")]);
+        assert_eq!(added.len(), 1);
+    }
+
+    #[test]
+    fn batch_maps_stations_and_dedups_within_selection() {
+        // station_to_stream_info is already covered; assert the batch builder dedups
+        // two stations that resolve to the same url down to one StreamInfo.
+        let a = mk_station("A", "https://same", "MP3", 128);
+        let b = mk_station("B", "https://same", "MP3", 128);
+        let built: Vec<StreamInfo> = [&a, &b].iter().map(|s| station_to_stream_info(s)).collect();
+        let added = dedup_new_streams(&[], built);
         assert_eq!(added.len(), 1);
     }
 }
