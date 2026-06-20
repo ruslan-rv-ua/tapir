@@ -449,6 +449,9 @@ export async function updateSongTags(
 export async function deleteSong(path: string): Promise<void> {
   return invoke("delete_song", { path });
 }
+export async function deleteSongs(paths: string[]): Promise<{ deleted: string[]; skipped: string[] }> {
+  return invoke("delete_songs", { paths });
+}
 
 // ── Profile types ─────────────────────────────────────────────────────────
 

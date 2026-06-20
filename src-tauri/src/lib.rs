@@ -274,6 +274,7 @@ pub fn run() {
             commands::songs_commands::rename_song,
             commands::songs_commands::update_song_tags,
             commands::songs_commands::delete_song,
+            commands::songs_commands::delete_songs,
             commands::profile_commands::list_profiles,
             commands::profile_commands::create_profile,
             commands::profile_commands::rename_profile,

@@ -154,3 +154,82 @@ pub async fn delete_song(
     let _ = app.emit("song-deleted", DeletedPayload { path: &path });
     Ok(())
 }
+
+/// Result of a bulk delete: which paths were recycle-binned, which were skipped
+/// (currently playing). Mirrors the streams "honest count" pattern but returns
+/// the path lists so the frontend can compute focus over visible row order.
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BulkDeleteSongs {
+    pub deleted: Vec<String>,
+    pub skipped: Vec<String>,
+}
+
+/// Split `paths` into (deletable, skipped) — the currently-playing path is
+/// skipped. Pure; unit-testable without Tauri state.
+fn partition_deletable(paths: &[String], playing: Option<&str>) -> (Vec<String>, Vec<String>) {
+    let mut to_delete = Vec::new();
+    let mut skipped = Vec::new();
+    for p in paths {
+        if Some(p.as_str()) == playing {
+            skipped.push(p.clone());
+        } else {
+            to_delete.push(p.clone());
+        }
+    }
+    (to_delete, skipped)
+}
+
+/// Bulk variant of `delete_song`: recycle-bin each path in one pass, skipping the
+/// currently-playing file (partial success, not an error). Does NOT emit per-file
+/// `song-deleted` (the frontend updates $songs once and gives one summary).
+#[tauri::command]
+pub async fn delete_songs(
+    paths: Vec<String>,
+    state: State<'_, AppState>,
+) -> Result<BulkDeleteSongs, String> {
+    let playing = {
+        use crate::player::engine::PlaybackSource;
+        let status = state.player.get_status().await;
+        match status.source.as_ref() {
+            Some(PlaybackSource::File { path }) => Some(path.clone()),
+            _ => None,
+        }
+    };
+    let (to_delete, skipped) = partition_deletable(&paths, playing.as_deref());
+
+    let recycled = tokio::task::spawn_blocking(move || {
+        let mut ok = Vec::new();
+        for p in to_delete {
+            if songs::ops::delete_to_recycle_bin(Path::new(&p)).is_ok() {
+                ok.push(p);
+            }
+        }
+        ok
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+
+    Ok(BulkDeleteSongs { deleted: recycled, skipped })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn partition_skips_the_playing_path() {
+        let paths = vec!["a.mp3".to_string(), "b.mp3".to_string(), "c.mp3".to_string()];
+        let (to_delete, skipped) = partition_deletable(&paths, Some("b.mp3"));
+        assert_eq!(to_delete, vec!["a.mp3".to_string(), "c.mp3".to_string()]);
+        assert_eq!(skipped, vec!["b.mp3".to_string()]);
+    }
+
+    #[test]
+    fn partition_keeps_all_when_nothing_is_playing() {
+        let paths = vec!["a.mp3".to_string()];
+        let (to_delete, skipped) = partition_deletable(&paths, None);
+        assert_eq!(to_delete, vec!["a.mp3".to_string()]);
+        assert!(skipped.is_empty());
+    }
+}
