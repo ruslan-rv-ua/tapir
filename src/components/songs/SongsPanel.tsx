@@ -4,15 +4,20 @@ import { useStore } from "@nanostores/react";
 import {
   $filteredSongs, $songs, $songsLoading, $songsError,
   loadSongs, replaceSongByPath, removeSongByPath,
+  $songsSelection, $songsQuery, $songsStation,
 } from "../../stores/songs";
+import { replaceSelection } from "../../stores/selection";
 import { $playerStatus } from "../../stores/player";
 import { SongsFilterBar } from "./SongsFilterBar";
-import { SongsList } from "./SongsList";
+import { SongsList, type SongsListHandle } from "./SongsList";
 import { TagEditorDialog } from "./TagEditorDialog";
 import { RenameDialog } from "./RenameDialog";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { ListCard, ListCardState } from "../common/ListCard";
 import { ScreenHeader } from "../layout/ScreenHeader";
+import { ScreenZone } from "../layout/ScreenZone";
+import { SelectionToolbar } from "../common/SelectionToolbar";
+import { useRovingFocus } from "../../hooks/useRovingFocus";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as tauri from "../../lib/tauri";
 import type { Song, SongDeletedPayload, SongRenamedPayload } from "../../types/song";
@@ -33,8 +38,17 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
   const error = useStore($songsError);
   const announce = useAnnounce();
 
+  // Selection state
+  const selection = useStore($songsSelection);
+  const query = useStore($songsQuery);
+  const station = useStore($songsStation);
+  const selCount = selection.size;
+  const visibleIds = useMemo(() => songs.map((s) => s.path), [songs]);
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selection.has(id));
+
   const filterRef = useRef<ZoneEntry | null>(null);
-  const listRef = useRef<ZoneEntry | null>(null);
+  // listRef now carries the bulk-delete entry point
+  const listRef = useRef<SongsListHandle | null>(null);
 
   // Stable proxy for the list zone. SongsList (and its CompositeList) unmounts
   // and remounts whenever $songsLoading toggles — e.g. a rescan after a recording
@@ -49,6 +63,44 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
     focus: (dir) => listRef.current?.focus(dir),
   });
 
+  // Selection toolbar roving zone (two stops)
+  const selectionZoneRef = useRef<HTMLDivElement | null>(null);
+  const selectAllBtn = useRef<HTMLButtonElement | null>(null);
+  const deleteSelectedBtn = useRef<HTMLButtonElement | null>(null);
+  const selectionRefs = useMemo(() => [selectAllBtn, deleteSelectedBtn], []);
+  const {
+    onKeyDown: selKeyDown,
+    getTabIndex: selTabIndex,
+    restoreFocus: selRestore,
+  } = useRovingFocus(selectionRefs, "horizontal", {
+    mode: "mixed-boundary-handoff",
+    onTabBoundary: (forward) => exitZone("songs-selection", forward),
+  });
+
+  const handleSelectAll = () => {
+    if (visibleIds.length === 0) return;
+    const next = new Set(selection);
+    if (allVisibleSelected) visibleIds.forEach((id) => next.delete(id));
+    else visibleIds.forEach((id) => next.add(id));
+    replaceSelection($songsSelection, next);
+    announce(next.size === 0 ? m.selection_cleared() : m.selection_count({ count: next.size }), "polite");
+  };
+
+  // Lifecycle: clear on filter change (query/station); sort changes must NOT clear.
+  // Use direct nanostores subscriptions so the clear fires synchronously on store
+  // change, not deferred through React's effect queue.
+  useEffect(() => {
+    const unsubQ = $songsQuery.subscribe((_, prevQ) => {
+      if (prevQ !== undefined) replaceSelection($songsSelection, new Set());
+    });
+    const unsubS = $songsStation.subscribe((_, prevS) => {
+      if (prevS !== undefined) replaceSelection($songsSelection, new Set());
+    });
+    return () => { unsubQ(); unsubS(); };
+  }, []);
+  // Clear on unmount (section-scoped).
+  useEffect(() => () => { replaceSelection($songsSelection, new Set()); }, []);
+
   const [tagEditorFor, setTagEditorFor] = useState<Song | null>(null);
   const [renameFor, setRenameFor] = useState<Song | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Song | null>(null);
@@ -57,12 +109,17 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
     loadSongs();
   }, []);
 
+  // Zone registration: selection zone FIRST, then filter, then list.
   useEffect(() => {
-    const zones: ZoneEntry[] = [];
+    const zones: ZoneEntry[] = [{
+      id: "songs-selection",
+      get el() { return selectionZoneRef.current!; },
+      focus: selRestore,
+    }];
     if (filterRef.current) zones.push(filterRef.current);
     if (listRef.current) zones.push(listProxyRef.current);
     onZonesChange(zones);
-  }, [onZonesChange, songs.length]);
+  }, [onZonesChange, songs.length, selRestore]);
 
   useTauriEvent<Song>("song-tags-updated", (payload) => {
     replaceSongByPath(payload);
@@ -155,8 +212,29 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
 
   return (
     <div role="region" aria-label={m.songs_section()} className="flex flex-1 flex-col overflow-hidden">
-      {/* No header actions → standalone <h1>, not part of a zone (FRD §7.1.3). */}
-      <ScreenHeader title={m.songs_section()} />
+      {/* songs-selection zone: header title + selection toolbar (two roving stops) */}
+      <ScreenZone
+        ref={selectionZoneRef}
+        id="songs-selection"
+        role="application"
+        label={m.zone_songs_selection()}
+        onKeyDown={selKeyDown}
+      >
+        <ScreenHeader title={m.songs_section()}>
+          <SelectionToolbar
+            selCount={selCount}
+            visibleCount={visibleIds.length}
+            allVisibleSelected={allVisibleSelected}
+            selectAllRef={selectAllBtn}
+            actionRef={deleteSelectedBtn}
+            selectAllTabIndex={selTabIndex(0)}
+            actionTabIndex={selTabIndex(1)}
+            actionLabel={m.delete_selected({ count: selCount })}
+            onSelectAll={handleSelectAll}
+            onAction={() => listRef.current?.requestBulkDelete()}
+          />
+        </ScreenHeader>
+      </ScreenZone>
       <SongsFilterBar ref={filterRef} exitZone={(forward) => exitZone("songs-filter", forward)} />
       <ListCard>
         {loading && <ListCardState role="status" className="text-slate-400">{m.songs_loading()}</ListCardState>}

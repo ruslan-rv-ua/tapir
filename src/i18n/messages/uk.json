@@ -568,5 +568,6 @@
   "cli_invalid_url": "Невалідна URL-адреса: {needle}",
   "cli_flag_ignored": "Прапор «{flag}» проігноровано при повторному запуску",
   "cli_action_failed": "Не вдалося виконати дію: {action}",
-  "cli_invalid_args": "Невалідні аргументи командного рядка"
+  "cli_invalid_args": "Невалідні аргументи командного рядка",
+  "zone_songs_selection": "Дії з вибраними піснями"
 }

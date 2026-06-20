@@ -568,5 +568,6 @@
   "cli_invalid_url": "Invalid URL: {needle}",
   "cli_flag_ignored": "Flag \"{flag}\" ignored on repeated launch",
   "cli_action_failed": "Action failed: {action}",
-  "cli_invalid_args": "Invalid command-line arguments"
+  "cli_invalid_args": "Invalid command-line arguments",
+  "zone_songs_selection": "Selected songs actions"
 }
