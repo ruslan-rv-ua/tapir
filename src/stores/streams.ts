@@ -1,5 +1,6 @@
 import { atom, map } from "nanostores";
 import type { StreamInfo, StreamStatus, ImportCandidate } from "../lib/tauri";
+import { replaceSelection as replaceSel, pruneSelection as pruneSel } from "./selection";
 
 export const $streams = atom<StreamInfo[]>([]);
 export const $statuses = map<Record<string, StreamStatus>>({});
@@ -12,25 +13,14 @@ export const $statuses = map<Record<string, StreamStatus>>({});
  */
 export const $streamSelection = atom<Set<string>>(new Set());
 
-/** Replace the whole selection with a fresh Set (new identity so useStore fires). */
+/** Replace the whole selection. Thin wrapper over the generic helper. */
 export function replaceSelection(next: ReadonlySet<string>): void {
-  $streamSelection.set(new Set(next));
+  replaceSel($streamSelection, next);
 }
 
-/**
- * Drop selected ids that are no longer present in `existingIds`. No-op (keeps the
- * same Set identity) when nothing changed, so it can run in an effect on every
- * $streams change without spurious rerenders.
- */
+/** Prune vanished ids from the streams selection. Thin wrapper. */
 export function pruneSelection(existingIds: ReadonlySet<string>): void {
-  const current = $streamSelection.get();
-  let changed = false;
-  const next = new Set<string>();
-  for (const id of current) {
-    if (existingIds.has(id)) next.add(id);
-    else changed = true;
-  }
-  if (changed) $streamSelection.set(next);
+  pruneSel($streamSelection, existingIds);
 }
 
 export const $showAddStreamDialog = atom<boolean>(false);
