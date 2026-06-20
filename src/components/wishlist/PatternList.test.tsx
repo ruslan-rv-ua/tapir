@@ -23,10 +23,11 @@ function renderList(onBulkRemove = vi.fn().mockResolvedValue(2)) {
 
 it("requestBulkRemove confirms with the count, calls onBulkRemove, announces the summary", async () => {
   replaceSelection($patternSelection, new Set(["*ad*", "*promo*"]));
-  const { ref, onBulkRemove, getByText } = renderList();
+  const { ref, onBulkRemove, getByText, getByRole } = renderList();
   act(() => ref.current!.requestBulkRemove());
   expect(getByText(m.confirm_delete_selected_patterns({ count: 2 }))).toBeTruthy();
-  fireEvent.click(getByText(m["delete"]())); // default confirm label
+  // confirmLabel === title (m.remove_pattern), so disambiguate the button from the dialog heading by role
+  fireEvent.click(getByRole("button", { name: m.remove_pattern() }));
   await waitFor(() => expect(onBulkRemove).toHaveBeenCalledWith(["*ad*", "*promo*"]));
   await waitFor(() => expect($announcer.get()?.message).toBe(m.patterns_removed_bulk({ count: 2 })));
 });

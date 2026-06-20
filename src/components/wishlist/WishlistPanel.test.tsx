@@ -21,12 +21,12 @@ beforeEach(() => {
 });
 
 it("routes the cluster delete to the wishlist bulk command for the active tab", async () => {
-  const { getByText } = render(<WishlistPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
+  const { getByText, getByRole } = render(<WishlistPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
   await waitFor(() => getByText(m.select_all()));
   fireEvent.click(getByText(m.select_all()));
   expect($patternSelection.get().size).toBe(1);
   fireEvent.click(getByText(m.delete_selected({ count: 1 })));
-  fireEvent.click(getByText(m["delete"]())); // confirm
+  fireEvent.click(getByRole("button", { name: m.remove_pattern() })); // confirm (button === title, query by role)
   await waitFor(() => expect(tauri.removeFromWishlistBulk).toHaveBeenCalledWith(["*ad*"]));
 });
 

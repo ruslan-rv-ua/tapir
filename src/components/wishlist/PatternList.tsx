@@ -201,6 +201,7 @@ export const PatternList = forwardRef<PatternListHandle, Props>(
           createPortal(
             <ConfirmDialog
               title={m.remove_pattern()}
+              confirmLabel={m.remove_pattern()}
               message={m.confirm_delete_selected_patterns({ count: selectedSet.size })}
               onConfirm={handleConfirmBulkRemove}
               onCancel={() => setBulkConfirmOpen(false)}
