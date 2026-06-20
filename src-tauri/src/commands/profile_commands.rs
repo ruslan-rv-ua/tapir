@@ -179,3 +179,63 @@ pub async fn switch_profile(
 
     Ok(new_profile)
 }
+
+/// Names actually removed + whether the active profile was among the requested.
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BulkDeleteProfiles {
+    pub deleted: Vec<String>,
+    pub skipped_active: bool,
+}
+
+/// Split requested names into (deletable, whether the active was requested).
+/// Pure; unit-testable without Tauri state.
+fn partition_deletable_profiles(names: &[String], active: &str) -> (Vec<String>, bool) {
+    let mut to_delete = Vec::new();
+    let mut skipped_active = false;
+    for n in names {
+        if n == active { skipped_active = true; } else { to_delete.push(n.clone()); }
+    }
+    (to_delete, skipped_active)
+}
+
+#[tauri::command]
+pub async fn delete_profiles(
+    names: Vec<String>,
+    state: State<'_, AppState>,
+) -> Result<BulkDeleteProfiles, String> {
+    let active = {
+        let profile = state.active_profile.read().await;
+        profile.name.clone()
+    };
+    let (to_delete, skipped_active) = partition_deletable_profiles(&names, &active);
+    let mut deleted = Vec::new();
+    for name in to_delete {
+        // Best-effort per profile; a single failure doesn't abort the batch.
+        if Profile::delete(&name).is_ok() {
+            deleted.push(name);
+        }
+    }
+    Ok(BulkDeleteProfiles { deleted, skipped_active })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn partition_excludes_active() {
+        let names = vec!["Jazz".to_string(), "Default".to_string(), "News".to_string()];
+        let (to_delete, skipped_active) = partition_deletable_profiles(&names, "Default");
+        assert_eq!(to_delete, vec!["Jazz".to_string(), "News".to_string()]);
+        assert!(skipped_active);
+    }
+
+    #[test]
+    fn partition_reports_no_skip_when_active_absent() {
+        let names = vec!["Jazz".to_string()];
+        let (to_delete, skipped_active) = partition_deletable_profiles(&names, "Default");
+        assert_eq!(to_delete, vec!["Jazz".to_string()]);
+        assert!(!skipped_active);
+    }
+}

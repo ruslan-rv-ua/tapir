@@ -279,6 +279,7 @@ pub fn run() {
             commands::profile_commands::create_profile,
             commands::profile_commands::rename_profile,
             commands::profile_commands::delete_profile,
+            commands::profile_commands::delete_profiles,
             commands::profile_commands::duplicate_profile,
             commands::profile_commands::export_profile,
             commands::profile_commands::begin_import,
