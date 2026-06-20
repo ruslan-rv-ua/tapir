@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { createPortal } from "react-dom";
-import { $profileList } from "../../stores/profileManager";
+import { $profileList, $profilesSelection } from "../../stores/profileManager";
+import { replaceSelection } from "../../stores/selection";
 import { $settings } from "../../stores/settings";
 import { ProfileList, type ProfileListHandle } from "./ProfileList";
+import { SelectionToolbar } from "../common/SelectionToolbar";
 import { ProfileNameDialog } from "./ProfileNameDialog";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { ListCard } from "../common/ListCard";
@@ -179,11 +181,28 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
     } catch (e) { handleError(e); } finally { setBusy(false); }
   };
 
-  // ── Toolbar zone (3 items) ──
+  // ── Selection state ──
+  const selection = useStore($profilesSelection);
+  const selCount = selection.size;
+  const allVisibleSelected = profiles.length > 0 && profiles.every((p) => selection.has(p.name));
+  const handleSelectAll = () => {
+    if (profiles.length === 0) return;
+    const next = new Set(selection);
+    if (allVisibleSelected) profiles.forEach((p) => next.delete(p.name));
+    else profiles.forEach((p) => next.add(p.name));
+    replaceSelection($profilesSelection, next);
+    announce(next.size === 0 ? m.selection_cleared() : m.selection_count({ count: next.size }), "polite");
+  };
+  // clear on UNMOUNT ONLY (profiles has no filter; a profile switch keeps membership → keeps selection)
+  useEffect(() => () => { replaceSelection($profilesSelection, new Set()); }, []);
+
+  // ── Toolbar zone (4 items) ──
   const toolbarZoneRef = useRef<HTMLDivElement | null>(null);
   const newBtn = useRef<HTMLButtonElement | null>(null);
   const importBtn = useRef<HTMLButtonElement | null>(null);
-  const toolbarRefs = useMemo(() => [newBtn, importBtn], []);
+  const selectAllBtn = useRef<HTMLButtonElement | null>(null);
+  const deleteSelectedBtn = useRef<HTMLButtonElement | null>(null);
+  const toolbarRefs = useMemo(() => [newBtn, importBtn, selectAllBtn, deleteSelectedBtn], []);
   const {
     onKeyDown: toolbarKeyDown,
     getTabIndex: toolbarTabIndex,
@@ -237,6 +256,18 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
           >
             {m.profile_import()}
           </button>
+          <SelectionToolbar
+            selCount={selCount}
+            visibleCount={profiles.length}
+            allVisibleSelected={allVisibleSelected}
+            selectAllRef={selectAllBtn}
+            actionRef={deleteSelectedBtn}
+            selectAllTabIndex={toolbarTabIndex(2)}
+            actionTabIndex={toolbarTabIndex(3)}
+            actionLabel={m.delete_selected({ count: selCount })}
+            onSelectAll={handleSelectAll}
+            onAction={() => listRef.current?.requestBulkDelete()}
+          />
         </ScreenHeader>
       </ScreenZone>
 
