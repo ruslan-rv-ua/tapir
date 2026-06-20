@@ -1,6 +1,7 @@
 import { atom, computed } from "nanostores";
-import type { StationResult, SearchParams, BrowserFilters } from "../lib/tauri";
-import { searchStationsIpc, getBrowserFilters, addStationFromBrowser } from "../lib/tauri";
+import type { StationResult, SearchParams, BrowserFilters, StreamInfo } from "../lib/tauri";
+import { searchStationsIpc, getBrowserFilters, addStationFromBrowser, addStationsFromBrowser } from "../lib/tauri";
+import { replaceSelection } from "./selection";
 import { addToast } from "./toasts";
 import * as m from "../i18n/paraglide/messages";
 
@@ -22,6 +23,9 @@ export const $popularError = atom<string | null>(null);
 export const $isSearchActive = computed($searchParams, (params) =>
   Boolean(params.query || params.country || params.language || params.codec || params.minBitrate)
 );
+
+/** Multi-select for browser results (milestone D). Keyed by stationuuid. */
+export const $stationSelection = atom<Set<string>>(new Set());
 
 // --- Actions ---
 
@@ -80,11 +84,17 @@ export async function addStation(station: StationResult): Promise<void> {
   await addStationFromBrowser(station);
 }
 
+/** Bulk add: backend appends in one save+emit (streams-changed reloads $streams). */
+export async function addStations(stations: StationResult[]): Promise<StreamInfo[]> {
+  return addStationsFromBrowser(stations);
+}
+
 export function updateSearchParam<K extends keyof SearchParams>(
   key: K,
   value: SearchParams[K],
 ): void {
   $searchParams.set({ ...$searchParams.get(), [key]: value, offset: 0 });
+  replaceSelection($stationSelection, new Set()); // new result set → drop selection
 }
 
 export function resetSearch(): void {
@@ -92,4 +102,5 @@ export function resetSearch(): void {
   $searchResults.set([]);
   $hasMore.set(false);
   $searchError.set(null);
+  replaceSelection($stationSelection, new Set());
 }
