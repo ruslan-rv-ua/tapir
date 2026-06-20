@@ -70,7 +70,7 @@ export const SongsList = forwardRef<SongsListHandle, Props>(
     const handleConfirmBulkDelete = async () => {
       const paths = [...$songsSelection.get()];
       if (paths.length === 0) { setBulkConfirmOpen(false); return; }
-      const visible = songs; // snapshot before await (focus index, A8)
+      const visible = songs.map((s) => ({ id: s.path })); // snapshot before await (focus index, A8)
       try {
         const res = await tauri.deleteSongs(paths);
         const removedIds = new Set(res.deleted);
@@ -91,14 +91,21 @@ export const SongsList = forwardRef<SongsListHandle, Props>(
       setBulkConfirmOpen(false);
     };
 
+    const imperativeExtra = useCallback(
+      ({ focusItem }: { focusItem: (id: string, segment?: SegmentKind) => void }) => {
+        // Stash the latest focusItem; the handle is rebuilt on items change, so this
+        // ref always points at a focusItem that knows the post-delete item set.
+        focusItemRef.current = focusItem;
+        return { requestBulkDelete: () => setBulkConfirmOpen(true) };
+      },
+      [],
+    );
+
     return (
       <>
         <CompositeList<SongsListHandle>
           ref={ref}
-          imperativeExtra={({ focusItem }) => {
-            focusItemRef.current = focusItem;
-            return { requestBulkDelete: () => setBulkConfirmOpen(true) };
-          }}
+          imperativeExtra={imperativeExtra}
           zoneId="songs-list"
           ariaLabel={m.songs_zone_list()}
           items={items}

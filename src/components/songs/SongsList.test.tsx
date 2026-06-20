@@ -18,8 +18,8 @@ vi.mock("../../lib/tauri", () => ({
 }));
 
 const mk = (path: string): Song => ({
-  path, fileName: path, title: path, artist: "", album: "", station: "S",
-  durationMs: 0, sizeBytes: 1, recordedAt: "2026-01-01T00:00:00Z", isComplete: true,
+  path, fileName: path, title: path, artist: "", album: "", genre: "", station: "S",
+  format: "mp3", durationMs: 0, sizeBytes: 1, recordedAt: "2026-01-01T00:00:00Z", isComplete: true,
 });
 
 beforeEach(() => {
@@ -48,6 +48,7 @@ describe("SongsList — bulk delete", () => {
     fireEvent.click(getByText(m.songs_action_delete())); // confirm button label
     await waitFor(() => expect(tauri.deleteSongs).toHaveBeenCalledWith(["b.mp3", "c.mp3"]));
     await waitFor(() => expect($songs.get().map((s) => s.path)).toEqual(["a.mp3"]));
+    await waitFor(() => expect($songsSelection.get().size).toBe(0));
     expect($announcer.get()?.message).toBe(m.songs_removed_bulk({ count: 2 }));
   });
 
