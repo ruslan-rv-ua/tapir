@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { atom } from "nanostores";
 import * as m from "../i18n/paraglide/messages";
@@ -47,6 +47,12 @@ describe("useListSelection — onSelectionChange announces", () => {
     const s = setup(rows);
     fire(s.hook, { kind: "single", via: "key", count: 1, lastId: "a", selected: true });
     expect(s.announce).toHaveBeenCalledWith(m.item_selected({ name: "Alpha" }), "polite");
+  });
+
+  it("key single-deselect announces the localized name", () => {
+    const s = setup(rows);
+    fire(s.hook, { kind: "single", via: "key", count: 0, lastId: "b", selected: false });
+    expect(s.announce).toHaveBeenCalledWith(m.item_deselected({ name: "Bravo" }), "polite");
   });
 
   it("skips a pointer single (DOM focus already moved → NVDA reads the row)", () => {
