@@ -522,6 +522,8 @@
   "schedule_deleted": "Schedule \"{name}\" deleted",
   "confirm_delete_selected_schedules": "Delete selected schedules ({count})?",
   "schedules_removed_bulk": "Schedules removed: {count}",
+  "confirm_delete_selected_patterns": "Delete selected patterns ({count})?",
+  "patterns_removed_bulk": "Removed: {count}",
   "schedule_added": "Schedule \"{name}\" created",
   "schedule_saved": "Schedule \"{name}\" saved",
   "schedule_toggled_on": "Schedule \"{name}\" enabled",

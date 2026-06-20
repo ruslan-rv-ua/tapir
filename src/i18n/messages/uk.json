@@ -522,6 +522,8 @@
   "schedule_deleted": "Розклад «{name}» видалено",
   "confirm_delete_selected_schedules": "Видалити вибрані розклади ({count})?",
   "schedules_removed_bulk": "Видалено розкладів: {count}",
+  "confirm_delete_selected_patterns": "Видалити вибрані шаблони ({count})?",
+  "patterns_removed_bulk": "Видалено: {count}",
   "schedule_added": "Розклад «{name}» створено",
   "schedule_saved": "Розклад «{name}» збережено",
   "schedule_toggled_on": "Розклад «{name}» увімкнено",
