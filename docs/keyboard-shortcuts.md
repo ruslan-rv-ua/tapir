@@ -3,8 +3,12 @@
 - **Тип:** живий довідник (reference), **не** ADR. Тут — *що забіндано зараз*;
   *чому* саме так — у відповідних ADR (посилання в рядках).
 - **Оновлювати:** при кожному додаванні/зміні названого шортката (Tier 1–2).
-- **Останнє звірення з кодом:** 2026-06-18 (Tier 2′: реалізовано віху A — виділення
-  `Ctrl+Space`/`Ctrl+A`/`Shift+↑↓`, bulk-`Delete`, `Escape`-clear переведено ⬜→✅;
+- **Останнє звірення з кодом:** 2026-06-20 (Tier 2′: віха D — модель виділення
+  (`Ctrl+Space`/`Ctrl+A`/`Shift+↑↓`/`Escape`/bulk-`Delete`) розкочена на **всі**
+  композитні списки: streams, songs, profiles, schedule, patterns (wishlist/ignorelist),
+  browser; per-list bulk-дія зафіксована у примітці до Tier 2′);
+  2026-06-18: реалізовано віху A — виділення `Ctrl+Space`/`Ctrl+A`/`Shift+↑↓`,
+  bulk-`Delete`, `Escape`-clear переведено ⬜→✅;
   2026-06-14: дописано наявний `Ctrl+C`, виправлено стан `Delete`, carve-out для
   list-scoped Ctrl-комбо; решта — 2026-06-11).
 
@@ -169,18 +173,31 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 | `Shift+Enter` | **прослухати** рядок незалежно від налаштування (Streams: toggle відтворення · Browser: toggle прев'ю) | фокус на рядку Streams/Browser | модифікатори в `onAction` ([useCompositeList.ts](../src/hooks/useCompositeList.ts)); гілки: [StreamList.tsx](../src/components/streams/StreamList.tsx), [StationList.tsx](../src/components/browser/StationList.tsx) | ✅ |
 | `Ctrl+Enter` | **записати** рядок незалежно від налаштування (лише Streams: toggle запису) | фокус на рядку Streams | ↑ | ✅ |
 | `Ctrl+C` | копіювати щодо рядка (generic `copy`; Streams: URL потоку) | фокус на рядку списку | [useCompositeList.ts:274](../src/hooks/useCompositeList.ts#L274) (`e.code === "KeyC"`) → `onAction("copy")` списку | ✅ |
-| `Ctrl+Space` | перемкнути виділення активного рядка (+ ставить якір) | фокус у списку з multi-select | [useCompositeList.ts](../src/hooks/useCompositeList.ts) `resolveKeyAction` → `selectToggle` | ✅ |
-| `Ctrl+A` | виділити всі видимі / зняти (toggle) | фокус у списку з multi-select | ↑ (`selectAll` / `clearSelection`) | ✅ |
-| `Shift+↑` / `Shift+↓` | розширити / звузити діапазон виділення від якоря | фокус у списку з multi-select | ↑ (`selectRangeUp` / `selectRangeDown`) | ✅ |
+| `Ctrl+Space` | перемкнути виділення активного рядка (+ ставить якір) — у **всіх** композитних списках (streams, songs, profiles, schedule, patterns, browser) | фокус у списку з multi-select | [useCompositeList.ts](../src/hooks/useCompositeList.ts) `resolveKeyAction` → `selectToggle` | ✅ |
+| `Ctrl+A` | виділити всі видимі / зняти (toggle) — у **всіх** композитних списках | фокус у списку з multi-select | ↑ (`selectAll` / `clearSelection`) | ✅ |
+| `Shift+↑` / `Shift+↓` | розширити / звузити діапазон виділення від якоря — у **всіх** композитних списках | фокус у списку з multi-select | ↑ (`selectRangeUp` / `selectRangeDown`) | ✅ |
 | `F2` | редагувати / перейменувати рядок (Streams: edit · Songs/Profiles: rename) | фокус на рядку (де застосовно) | — | ⬜ |
-| `Delete` | видалити рядок (з підтвердженням); за наявності виділення — масове видалення множини (Explorer-модель) | фокус на рядку списку | [useCompositeList.ts:361](../src/hooks/useCompositeList.ts#L361) → `onAction("delete")` → [StreamList.tsx](../src/components/streams/StreamList.tsx); bulk — `handleConfirmBulkDelete` ([StreamList.tsx](../src/components/streams/StreamList.tsx)) | одинично ✅ · bulk ✅ |
-| `Escape` | закрити палітру / діалог (або скасувати запис хоткея); **у списку з непорожнім виділенням — зняти виділення** (list-scoped, consume) | палітра / модаль / рекордер відкриті · або список із виділенням | палітра [CommandPalette.tsx:150](../src/components/common/CommandPalette.tsx#L150); Settings — react-aria `isDismissable` [SettingsDialog.tsx:35](../src/components/settings/SettingsDialog.tsx#L35); рекордер [KeyRecorder.tsx:51](../src/components/settings/KeyRecorder.tsx#L51); clear-selection — [useCompositeList.ts](../src/hooks/useCompositeList.ts) `clearSelection` | палітра/діалог ✅ · clear-selection ✅ |
+| `Delete` | видалити рядок (з підтвердженням); за наявності виділення — масове видалення множини (Explorer-модель) — у **всіх** списках, крім browser (там немає Delete; bulk-дія browser — «Додати виділені» через тулбар/кластер, не клавіша) | фокус на рядку списку | [useCompositeList.ts:361](../src/hooks/useCompositeList.ts#L361) → `onAction("delete")` → per-list bulk handler; bulk-видалення: streams/songs/profiles/schedule; bulk-remove: patterns (wishlist/ignorelist) | одинично ✅ · bulk ✅ |
+| `Escape` | закрити палітру / діалог (або скасувати запис хоткея); **у списку з непорожнім виділенням — зняти виділення** (list-scoped, consume) — у **всіх** композитних списках | палітра / модаль / рекордер відкриті · або список із виділенням | палітра [CommandPalette.tsx:150](../src/components/common/CommandPalette.tsx#L150); Settings — react-aria `isDismissable` [SettingsDialog.tsx:35](../src/components/settings/SettingsDialog.tsx#L35); рекордер [KeyRecorder.tsx:51](../src/components/settings/KeyRecorder.tsx#L51); clear-selection — [useCompositeList.ts](../src/hooks/useCompositeList.ts) `clearSelection` | палітра/діалог ✅ · clear-selection ✅ |
 
 > `Shift+F10`/`ContextMenu` не обробляються окремо: WebView2 для всіх трьох
 > (ПКМ, клавіша Menu, `Shift+F10`) емітить один `contextmenu` event — його й
 > ловить `onContextMenu`, гасячи нативне меню та відкриваючи меню рядка. `Escape`
 > у модалях Settings — нативний react-aria (`ModalOverlay isDismissable`); у
 > hand-rolled палітрі — явний `if (e.key === "Escape")`.
+
+> **Per-list bulk-дії (Milestone D, 2026-06-20).** Клавіші виділення
+> (`Ctrl+Space`/`Ctrl+A`/`Shift+↑↓`/`Escape`/`Delete`) однакові у всіх
+> композитних списках. Bulk-дія за наявності виділення залежить від списку:
+>
+> | Список | Bulk-дія |
+> |---|---|
+> | streams | bulk-delete (з підтвердженням) |
+> | songs | bulk-delete до кошика (поточний файл, що грає, — пропускається) |
+> | profiles | bulk-delete (активний профіль — вибираємо, але пропускаємо при видаленні) |
+> | schedule | bulk-delete |
+> | patterns (wishlist / ignorelist) | bulk-remove |
+> | browser | **bulk-add-selected** — додати до активного профілю (тулбар / кластер зони; `Delete` не діє; фокус не рухається; live-підсумок «Додано N, пропущено M (дублікати)») |
 
 > `F2` / `Delete` — контекстні дії рядка (focus mode), за desktop-list
 > конвенцією.
