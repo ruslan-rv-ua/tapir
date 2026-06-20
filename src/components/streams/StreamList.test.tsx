@@ -372,7 +372,7 @@ describe("StreamList — selection rendering & announcements", () => {
     $announcer.set(null);
     fireEvent.keyDown(document.activeElement!, { key: " ", code: "Space", ctrlKey: true });
     expect($streamSelection.get().has("a")).toBe(true);
-    expect($announcer.get()?.message).toBe(m.stream_selected({ name: "Alpha" }));
+    expect($announcer.get()?.message).toBe(m.item_selected({ name: "Alpha" }));
   });
 
   it("a group gesture announces one summary; a pointer single is NOT announced", () => {

@@ -67,7 +67,7 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
         // c.lastId is always a visible row (focus stays on rendered items), so the
         // filtered `streams` list is the right place to resolve its name.
         const name = streams.find((s) => s.id === c.lastId)?.name ?? "";
-        announce(c.selected ? m.stream_selected({ name }) : m.stream_deselected({ name }), "polite");
+        announce(c.selected ? m.item_selected({ name }) : m.item_deselected({ name }), "polite");
       } else {
         announce(c.count === 0 ? m.selection_cleared() : m.selection_count({ count: c.count }), "polite");
       }
