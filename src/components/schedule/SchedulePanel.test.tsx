@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act, render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SchedulePanel } from "./SchedulePanel";
-import { $schedules, $scheduleSelection, $schedulesLoading, $schedulesError } from "../../stores/schedule";
+import { $schedules, $scheduleSelection, $schedulesLoading, $schedulesError, $showAddScheduleDialog } from "../../stores/schedule";
 import { replaceSelection } from "../../stores/selection";
 import { $streams } from "../../stores/streams";
 import { $announcer } from "../../stores/announcer";
@@ -128,6 +128,7 @@ beforeEach(() => {
   $streams.set([stream]);
   $announcer.set(null);
   replaceSelection($scheduleSelection, new Set());
+  $showAddScheduleDialog.set(false);
 });
 
 describe("SchedulePanel", () => {
@@ -179,6 +180,16 @@ describe("SchedulePanel", () => {
     seed([dto({ streamId: "ghost" })]);
     renderPanel();
     expect(await screen.findByText(/потік видалено/)).toBeTruthy();
+  });
+
+  it("opens the new-schedule form when the Ctrl+N bridge atom is set", async () => {
+    seed([]);
+    renderPanel();
+    await screen.findByText("Поки що немає розкладів");
+    act(() => $showAddScheduleDialog.set(true));
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: m.schedule_form_add_title() })).toBeTruthy();
+    expect($showAddScheduleDialog.get()).toBe(false);
   });
 });
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useStore } from "@nanostores/react";
 import {
-  $schedules, $scheduleSelection, $schedulesError, $schedulesLoading, loadSchedules,
+  $schedules, $scheduleSelection, $schedulesError, $schedulesLoading, $showAddScheduleDialog, loadSchedules,
 } from "../../stores/schedule";
 import { replaceSelection } from "../../stores/selection";
 import { ScheduleTable, type ScheduleTableHandle } from "./ScheduleTable";
@@ -30,6 +30,7 @@ export function SchedulePanel({ onZonesChange, exitZone }: Props) {
   const loading = useStore($schedulesLoading);
   const error = useStore($schedulesError);
   const announce = useAnnounce();
+  const showAddSchedule = useStore($showAddScheduleDialog);
 
   // Selection state
   const selection = useStore($scheduleSelection);
@@ -49,6 +50,14 @@ export function SchedulePanel({ onZonesChange, exitZone }: Props) {
   const [confirmDelete, setConfirmDelete] = useState<ScheduleDto | null>(null);
 
   useEffect(() => { loadSchedules(); }, []);
+
+  // Bridge: global Ctrl+N (schedule) → open the new-schedule form.
+  useEffect(() => {
+    if (showAddSchedule) {
+      setFormFor({ schedule: null });
+      $showAddScheduleDialog.set(false);
+    }
+  }, [showAddSchedule]);
 
   const handleSelectAll = () => {
     if (schedules.length === 0) return;
