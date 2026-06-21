@@ -1,4 +1,5 @@
 mod app_state;
+mod autostart;
 mod commands;
 mod errors;
 mod player;
