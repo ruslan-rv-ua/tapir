@@ -589,16 +589,43 @@ describe("selection — Shift+Arrow range from the anchor", () => {
     );
   });
 
-  it("anchorBase guard: after external clear, the first Shift+Down yields exactly the landed row", () => {
+  it("Shift+Down from an empty selection includes the focused row (Explorer-inclusive)", () => {
+    const selectionRef = { current: new Set<string>() };
+    const onSelectionChange = vi.fn();
+    render(<Harness items={makeItems()} selectionRef={selectionRef} onSelectionChange={onSelectionChange} />);
+    focusStart("a"); // focus on a, selection ∅
+    press("ArrowDown", { shiftKey: true }); // a (anchor) + b (range)
+    expect([...selectionRef.current].sort()).toEqual(["a", "b"]);
+    expectActive("b", "summary");
+    expect(onSelectionChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "group", via: "key", count: 2 }),
+    );
+  });
+
+  it("Shift+Up from an empty selection includes the focused row", () => {
     const selectionRef = { current: new Set<string>() };
     render(<Harness items={makeItems()} selectionRef={selectionRef} />);
     focusStart("a");
-    press(" ", { code: "Space", ctrlKey: true }); // anchor=a, base={a}
-    // External clear (toolbar/lifecycle) WITHOUT touching the hook's anchor:
+    press("End"); // plain move to c (selection stays ∅)
+    press("ArrowUp", { shiftKey: true }); // c (anchor) + b (range)
+    expect([...selectionRef.current].sort()).toEqual(["b", "c"]);
+    expectActive("b", "summary");
+  });
+
+  it("anchorBase guard: after external clear, a stale base row outside the new span does NOT resurrect", () => {
+    const selectionRef = { current: new Set<string>() };
+    render(<Harness items={makeItems()} selectionRef={selectionRef} />);
+    focusStart("a");
+    // Build a stale base of {a,b,c}: select all, then plain moves snapshot it.
+    press("a", { code: "KeyA", ctrlKey: true }); // select {a,b,c}
+    press("End");                                // setAnchor(c) → base = {a,b,c}
+    press("Home");                               // setAnchor(a) → base = {a,b,c}, active = a
+    // External clear (toolbar/lifecycle) WITHOUT touching the hook's anchor/base:
     selectionRef.current = new Set();
     press("ArrowDown", { shiftKey: true });
-    // Stale base {a} must NOT resurrect; result is just the landed row.
-    expect([...selectionRef.current]).toEqual(["b"]);
+    // Explorer-inclusive: focused row a joins via the anchor, b via the range.
+    // Stale base member c is OUTSIDE the span and must NOT resurrect.
+    expect([...selectionRef.current].sort()).toEqual(["a", "b"]);
   });
 
   it("without a selection adapter, Shift+Down is a plain move (1:1 legacy)", () => {
@@ -699,6 +726,18 @@ describe("selection — mouse gestures on the <ul>", () => {
     render(<Harness items={makeItems()} selectionRef={selectionRef} onSelectionChange={onSelectionChange} />);
     clickRow("a"); // anchor = a
     clickRow("c", { shiftKey: true }); // span a..c
+    expect([...selectionRef.current].sort()).toEqual(["a", "b", "c"]);
+    expect(onSelectionChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "group", via: "pointer", count: 3 }),
+    );
+  });
+
+  it("Shift+Click from an empty selection spans the previously-active row → click (Explorer-inclusive)", () => {
+    const selectionRef = { current: new Set<string>() };
+    const onSelectionChange = vi.fn();
+    render(<Harness items={makeItems()} selectionRef={selectionRef} onSelectionChange={onSelectionChange} />);
+    focusStart("a"); // active = a, selection ∅ (no prior click)
+    clickRow("c", { shiftKey: true }); // span (prev-active a)..c
     expect([...selectionRef.current].sort()).toEqual(["a", "b", "c"]);
     expect(onSelectionChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ kind: "group", via: "pointer", count: 3 }),

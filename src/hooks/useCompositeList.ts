@@ -501,10 +501,14 @@ export function useCompositeList<T extends CompositeListItem>({
           const sel = selectionRef.current;
           if (!sel) break; // no adapter → behaves like a plain arrow move
           // Guard: an external clear leaves a stale anchorBase that base ∪ range
-          // would resurrect. On an empty selection, re-anchor to the landed row
-          // with an empty base so the span is just {cursor}.
+          // would resurrect. On an empty selection, anchor to the FOCUSED row
+          // (activeItemId — moveFocus above only queues the cursor move, React
+          // hasn't flushed it) with an empty base. Explorer-inclusive: the span
+          // is {focused row .. cursor}, so the starting row joins the range
+          // instead of being silently dropped. Resetting the base still keeps
+          // stale rows from outside the span from resurrecting.
           if (sel.current().size === 0) {
-            anchorRef.current = cursorId;
+            anchorRef.current = activeItemId;
             anchorBaseRef.current = new Set();
           }
           if (anchorRef.current == null) anchorRef.current = cursorId;
@@ -592,7 +596,11 @@ export function useCompositeList<T extends CompositeListItem>({
       }
       if (e.shiftKey) {
         if (sel.current().size === 0) {
-          anchorRef.current = id;
+          // Explorer-inclusive (mirrors the keyboard branch): anchor to the
+          // PREVIOUSLY-active row so it joins the span, not the clicked id.
+          // Read from memoryRef.current (always fresh) — activeItemId is not in
+          // this callback's deps, so its closure value would be stale.
+          anchorRef.current = memoryRef.current.itemId;
           anchorBaseRef.current = new Set();
         }
         if (anchorRef.current == null) anchorRef.current = id;
