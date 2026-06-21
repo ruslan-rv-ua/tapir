@@ -20,15 +20,17 @@ import * as m from "../../i18n/paraglide/messages";
 import { setLocale } from "../../i18n/paraglide/runtime";
 import type { GlobalSettings } from "../../lib/tauri";
 import { isVerbose, toggleVerbose } from "../../lib/logLevel";
+import { useAnnounce } from "../../hooks/useAnnounce";
+import { addToast } from "../../stores/toasts";
 
 export function GeneralTab() {
   const settings = useStore($settings);
-  if (!settings) return null;
-
+  const announce = useAnnounce();
   const save = useAutoSave(async () => {
     const current = $settings.get();
     if (current) await tauri.saveSettings(current);
   });
+  if (!settings) return null;
 
   function update(patch: Partial<GlobalSettings>) {
     const current = $settings.get();
@@ -197,6 +199,57 @@ export function GeneralTab() {
           </ListBox>
         </Popover>
       </Select>
+      </div>
+
+      {/* Section: Autostart */}
+      <div className="space-y-3 border-t border-slate-700 pt-4">
+        <h3 className="text-sm font-semibold text-slate-200">{m.settings_section_autostart()}</h3>
+
+      {/* Launch with Windows */}
+      <Checkbox
+        isSelected={settings.autostart}
+        onChange={async (val) => {
+          update({ autostart: val }); // optimistic + debounced persist
+          try {
+            await tauri.syncAutostart(val, settings.autostartMinimized);
+            announce(val ? m.autostart_enabled() : m.autostart_disabled(), "polite");
+          } catch {
+            update({ autostart: !val }); // revert — never lie to NVDA
+            announce(m.autostart_error(), "assertive");
+            addToast(m.autostart_error(), "error");
+          }
+        }}
+        className="flex items-center gap-2 text-sm text-slate-300"
+      >
+        <div className="flex h-5 w-5 items-center justify-center rounded border border-slate-600 bg-slate-700">
+          {settings.autostart && <span>✓</span>}
+        </div>
+        <Label>{m.settings_autostart()}</Label>
+      </Checkbox>
+
+      {/* Launch minimized — disabled while autostart is off (an inert control
+          confuses a screen-reader user) */}
+      <Checkbox
+        isSelected={settings.autostartMinimized}
+        isDisabled={!settings.autostart}
+        onChange={async (val) => {
+          update({ autostartMinimized: val });
+          try {
+            // autostart is always true here (else this control is disabled)
+            await tauri.syncAutostart(settings.autostart, val);
+          } catch {
+            update({ autostartMinimized: !val }); // revert
+            announce(m.autostart_error(), "assertive");
+            addToast(m.autostart_error(), "error");
+          }
+        }}
+        className="flex items-center gap-2 text-sm text-slate-300 data-[disabled]:opacity-50"
+      >
+        <div className="flex h-5 w-5 items-center justify-center rounded border border-slate-600 bg-slate-700">
+          {settings.autostartMinimized && <span>✓</span>}
+        </div>
+        <Label>{m.settings_autostart_minimized()}</Label>
+      </Checkbox>
       </div>
 
       {/* Logging */}
