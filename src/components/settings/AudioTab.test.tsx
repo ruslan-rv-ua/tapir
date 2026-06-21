@@ -25,6 +25,7 @@ const baseSettings: GlobalSettings = {
   smtcEnabled: true,
   bandwidthLimitKbps: 0,
   autostart: false,
+  autostartMinimized: true,
   autoAdvance: true,
   prevRestartThresholdMs: 0,
   hotkeys: {

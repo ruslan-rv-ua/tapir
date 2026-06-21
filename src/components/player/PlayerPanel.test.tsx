@@ -17,7 +17,7 @@ const baseSettings: GlobalSettings = {
   language: "en-US", theme: "auto", activeProfile: "Default", outputDevice: null,
   minimizeToTray: true, showTrayNotifications: true, showTrackInTitle: true,
   diskSpaceThresholdGb: 1, doubleClickAction: "play", sortBy: "name", bandwidthLimitKbps: 0,
-  autostart: false, autoAdvance: true, prevRestartThresholdMs: 0,
+  autostart: false, autostartMinimized: true, autoAdvance: true, prevRestartThresholdMs: 0,
   hotkeys: {
     toggleRecording: "", togglePlayback: "", volumeUp: "", volumeDown: "", toggleWindow: "", stopAll: "", prevTrack: "", nextTrack: "",
   },

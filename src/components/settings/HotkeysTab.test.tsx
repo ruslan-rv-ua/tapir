@@ -35,6 +35,7 @@ const baseSettings: GlobalSettings = {
   sortBy: "name",
   bandwidthLimitKbps: 0,
   autostart: false,
+  autostartMinimized: true,
   autoAdvance: true,
   prevRestartThresholdMs: 0,
   smtcEnabled: true,

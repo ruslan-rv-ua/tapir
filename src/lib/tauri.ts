@@ -85,6 +85,7 @@ export interface GlobalSettings {
   sortBy: "name" | "added";
   bandwidthLimitKbps: number;
   autostart: boolean;
+  autostartMinimized: boolean;
   autoAdvance: boolean;
   prevRestartThresholdMs: number;
   volumeStepPercent: number;
@@ -167,6 +168,9 @@ export async function getSettings(): Promise<GlobalSettings> {
 }
 export async function saveSettings(settings: GlobalSettings): Promise<void> {
   return invoke("save_settings", { settings });
+}
+export async function syncAutostart(enabled: boolean, minimized: boolean): Promise<void> {
+  return invoke("sync_autostart", { enabled, minimized });
 }
 export async function getFreeSpace(): Promise<number> {
   return invoke("get_free_space");
