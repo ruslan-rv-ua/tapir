@@ -161,7 +161,9 @@ pub fn run() {
             );
             if moved {
                 settings.autostart = false;
-                let _ = settings.save();
+                if let Err(e) = settings.save() {
+                    log::warn!("autostart: failed to persist autostart=false after EXE move: {e}");
+                }
                 app.manage(autostart::StartupNotice::moved());
             }
             let profile = Profile::load(&settings.active_profile).expect("Failed to load profile");
