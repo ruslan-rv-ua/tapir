@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { createPortal } from "react-dom";
-import { $profileList, $profilesSelection } from "../../stores/profileManager";
+import { $profileList, $profilesSelection, $showCreateProfileDialog } from "../../stores/profileManager";
 import { replaceSelection } from "../../stores/selection";
 import { $settings } from "../../stores/settings";
 import { ProfileList, type ProfileListHandle } from "./ProfileList";
@@ -40,6 +40,7 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
   const settings = useStore($settings);
   const activeProfile = settings?.activeProfile ?? "Default";
   const announce = useAnnounce();
+  const showCreate = useStore($showCreateProfileDialog);
 
   // `target` is the profile a dialog currently operates on (rename/duplicate/delete/switch-confirm).
   const [target, setTarget] = useState(activeProfile);
@@ -55,6 +56,18 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
       .then((list) => $profileList.set(list))
       .catch((e) => addToast(String(e), "error"));
   }, [activeProfile]);
+
+  // Bridge: global Ctrl+N (profiles) → open the create dialog. The atom is the
+  // signal; reset it synchronously so the next Ctrl+N (after close) fires again.
+  // The guard prevents re-opening on unrelated re-renders.
+  useEffect(() => {
+    if (showCreate) {
+      setNameInput("");
+      setNameError(null);
+      setSubDialog({ type: "create" });
+      $showCreateProfileDialog.set(false);
+    }
+  }, [showCreate]);
 
   const refreshList = async () => {
     const list = await tauri.listProfiles();

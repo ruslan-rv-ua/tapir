@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, within, fireEvent, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ProfilesPanel } from "./ProfilesPanel";
-import { $profileList, $profilesSelection } from "../../stores/profileManager";
+import { $profileList, $profilesSelection, $showCreateProfileDialog } from "../../stores/profileManager";
 import { replaceSelection } from "../../stores/selection";
 import { $settings } from "../../stores/settings";
 import { $announcer } from "../../stores/announcer";
@@ -99,6 +99,7 @@ describe("ProfilesPanel", () => {
     $settings.set({ activeProfile: "Default" } as Parameters<typeof $settings.set>[0]);
     $announcer.set({ message: "", priority: "polite" });
     replaceSelection($profilesSelection, new Set());
+    $showCreateProfileDialog.set(false);
   });
 
   it("registers two zones via onZonesChange (no actions sidebar)", () => {
@@ -182,6 +183,15 @@ describe("ProfilesPanel", () => {
     await screen.findByText("Jazz");
     await user.click(screen.getByRole("button", { name: /New profile/ }));
     expect(await screen.findByRole("button", { name: /^OK$/ })).toBeInTheDocument();
+  });
+
+  it("opens the create dialog when the Ctrl+N bridge atom is set", async () => {
+    renderPanel();
+    await screen.findByText("Jazz");
+    act(() => $showCreateProfileDialog.set(true));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByRole("heading", { name: m.profile_create() })).toBeInTheDocument();
+    expect($showCreateProfileDialog.get()).toBe(false);
   });
 });
 
