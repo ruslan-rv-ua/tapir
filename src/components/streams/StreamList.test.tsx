@@ -284,7 +284,7 @@ describe("StreamList — copy/move stream to profile", () => {
     openMenu(container, "a");
     fireEvent.click(await screen.findByRole("menuitem", { name: m.move_to_profile() }));
 
-    fireEvent.click(await screen.findByRole("button", { name: "Jazz" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Jazz, 0 потоків" }));
 
     await waitFor(() => expect(tauri.moveStreamToProfile).toHaveBeenCalledWith("a", "Jazz"));
     await waitFor(() => expect($streams.get().some((s) => s.id === "a")).toBe(false));
@@ -295,7 +295,7 @@ describe("StreamList — copy/move stream to profile", () => {
     openMenu(container, "b");
     fireEvent.click(await screen.findByRole("menuitem", { name: m.copy_to_profile() }));
 
-    fireEvent.click(await screen.findByRole("button", { name: "Jazz" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Jazz, 0 потоків" }));
 
     await waitFor(() => expect(tauri.copyStreamToProfile).toHaveBeenCalledWith("b", "Jazz"));
     expect($streams.get().some((s) => s.id === "b")).toBe(true);
@@ -323,7 +323,7 @@ describe("StreamList — copy/move stream to profile", () => {
     openMenu(container, "a");
     fireEvent.click(await screen.findByRole("menuitem", { name: m.move_to_profile() }));
 
-    fireEvent.click(await screen.findByRole("button", { name: "Jazz" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Jazz, 0 потоків" }));
 
     await waitFor(() => expect(tauri.moveStreamToProfile).toHaveBeenCalledWith("a", "Jazz"));
     expect($streams.get().some((s) => s.id === "a")).toBe(true);
@@ -332,7 +332,7 @@ describe("StreamList — copy/move stream to profile", () => {
         $toasts.get().some((t) => t.message === m.stream_already_in_profile({ name: "Alpha", profile: "Jazz" })),
       ).toBe(true),
     );
-    expect(screen.getByRole("button", { name: "Jazz" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Jazz, 0 потоків" })).toBeTruthy();
   });
 });
 
@@ -496,7 +496,7 @@ describe("StreamList — bulk transfer to profile", () => {
     const { container } = render(<StreamList ref={ref} exitZone={vi.fn()} onEmpty={vi.fn()} />);
     act(() => (ref.current as unknown as ZoneEntry).focus("forward"));
     await act(async () => { ref.current!.requestBulkTransfer("move"); });
-    fireEvent.click(await screen.findByRole("button", { name: "Jazz" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Jazz, 0 потоків" }));
 
     await waitFor(() => expect(tauri.moveStreamsToProfile).toHaveBeenCalledTimes(1));
     expect(new Set(vi.mocked(tauri.moveStreamsToProfile).mock.calls[0][0])).toEqual(new Set(["a", "b"]));
@@ -512,7 +512,7 @@ describe("StreamList — bulk transfer to profile", () => {
     const ref = createRef<ZoneEntry & { requestBulkTransfer(m: "copy" | "move"): void }>();
     render(<StreamList ref={ref} exitZone={vi.fn()} onEmpty={vi.fn()} />);
     await act(async () => { ref.current!.requestBulkTransfer("copy"); });
-    fireEvent.click(await screen.findByRole("button", { name: "Jazz" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Jazz, 0 потоків" }));
 
     await waitFor(() => expect(tauri.copyStreamsToProfile).toHaveBeenCalledTimes(1));
     expect($streams.get().map((s) => s.id)).toEqual(["a", "b", "c"]); // nothing removed
@@ -526,7 +526,7 @@ describe("StreamList — bulk transfer to profile", () => {
     render(<StreamList ref={ref} exitZone={vi.fn()} onEmpty={vi.fn()} />);
     $announcer.set(null);
     await act(async () => { ref.current!.requestBulkTransfer("move"); });
-    fireEvent.click(await screen.findByRole("button", { name: "Jazz" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Jazz, 0 потоків" }));
     await waitFor(() =>
       expect($announcer.get()?.message).toBe(
         `${m.transfer_done_moved({ count: 1 })}, ${m.transfer_skipped_recording({ count: 1 })}, ${m.transfer_skipped_conflict({ count: 1 })}`,

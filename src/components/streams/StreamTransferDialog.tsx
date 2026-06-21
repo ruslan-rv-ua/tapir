@@ -1,8 +1,24 @@
 import { Modal, ModalOverlay, Dialog, Heading } from "react-aria-components";
 import type { ProfileMeta } from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
+import { getLocale } from "../../i18n/paraglide/runtime";
 
 export type TransferSubject = { kind: "single"; name: string } | { kind: "bulk"; count: number };
+
+/** Localized "{count} streams" — mirrors ProfileItem so NVDA hears the same phrasing everywhere. */
+function streamCountLabel(count: number): string {
+  const category = new Intl.PluralRules(getLocale()).select(count);
+  switch (category) {
+    case "one":
+      return m.profile_stream_count_one({ count });
+    case "few":
+      return m.profile_stream_count_few({ count });
+    case "many":
+      return m.profile_stream_count_many({ count });
+    default:
+      return m.profile_stream_count_other({ count });
+  }
+}
 
 interface Props {
   mode: "copy" | "move";
@@ -44,7 +60,12 @@ export function StreamTransferDialog({ mode, subject, profiles, onSelect, onCrea
             <ul aria-label={m.transfer_target_profiles()} className="flex max-h-64 flex-col gap-0.5 overflow-y-auto">
               {profiles.map((p, i) => (
                 <li key={p.name}>
-                  <button autoFocus={i === 0} onClick={() => onSelect(p.name)} className={optionClass}>
+                  <button
+                    autoFocus={i === 0}
+                    onClick={() => onSelect(p.name)}
+                    aria-label={`${p.name}, ${streamCountLabel(p.streamCount)}`}
+                    className={optionClass}
+                  >
                     <span className="truncate">{p.name}</span>
                     <span
                       aria-hidden="true"

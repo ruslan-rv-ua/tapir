@@ -3,6 +3,7 @@ import { render, fireEvent, screen } from "@testing-library/react";
 import type { ProfileMeta } from "../../lib/tauri";
 import { StreamTransferDialog } from "./StreamTransferDialog";
 
+vi.mock("../../i18n/paraglide/runtime", () => ({ getLocale: () => "uk" }));
 vi.mock("../../i18n/paraglide/messages", () => ({
   copy_stream_to_profile_title: ({ name }: { name: string }) => `Копіювати «${name}» у профіль`,
   move_stream_to_profile_title: ({ name }: { name: string }) => `Перемістити «${name}» у профіль`,
@@ -11,6 +12,10 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   transfer_create_new_profile: () => "+ Новий профіль…",
   transfer_no_other_profiles: () => "Інших профілів немає",
   transfer_target_profiles: () => "Цільові профілі",
+  profile_stream_count_one: ({ count }: { count: number }) => `${count} потік`,
+  profile_stream_count_few: ({ count }: { count: number }) => `${count} потоки`,
+  profile_stream_count_many: ({ count }: { count: number }) => `${count} потоків`,
+  profile_stream_count_other: ({ count }: { count: number }) => `${count} потоки`,
   cancel: () => "Скасувати",
 }));
 
@@ -48,15 +53,15 @@ describe("StreamTransferDialog", () => {
     expect(screen.getByText("Перемістити виділені потоки (3) у профіль")).toBeTruthy();
   });
 
-  it("lists the target profiles", () => {
+  it("lists the target profiles with their stream count in the accessible name", () => {
     renderDialog();
-    expect(screen.getByRole("button", { name: "Jazz" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Rock" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Jazz, 5 потоків" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Rock, 0 потоків" })).toBeTruthy();
   });
 
   it("calls onSelect with the chosen profile name", () => {
     const { props } = renderDialog();
-    fireEvent.click(screen.getByRole("button", { name: "Jazz" }));
+    fireEvent.click(screen.getByRole("button", { name: "Jazz, 5 потоків" }));
     expect(props.onSelect).toHaveBeenCalledWith("Jazz");
   });
 
