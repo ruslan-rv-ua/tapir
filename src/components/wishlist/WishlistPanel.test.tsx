@@ -1,6 +1,6 @@
 // src/components/wishlist/WishlistPanel.test.tsx
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, fireEvent, waitFor, screen, act, within } from "@testing-library/react";
+import { render, fireEvent, waitFor, screen, act } from "@testing-library/react";
 import * as m from "../../i18n/paraglide/messages";
 import { $wishlist, $ignorelist, $patternSelection, $showAddPatternDialog } from "../../stores/wishlist";
 import { replaceSelection } from "../../stores/selection";
@@ -43,7 +43,19 @@ it("opens the add-pattern dialog for the active tab when the Ctrl+N bridge atom 
   render(<WishlistPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
   await waitFor(() => screen.getByText(m.select_all()));
   act(() => $showAddPatternDialog.set(true));
-  expect(await screen.findByRole("heading", { name: m.add_to_wishlist() })).toBeTruthy();
+  // Default active tab is "wishlist", so AddPatternDialog opens titled
+  // m.add_to_wishlist() ("Додати до бажаних"). NB: react-aria's ModalOverlay
+  // is given aria-hidden in jsdom when the dialog renders inside this panel's
+  // <Tabs>, so role-based queries (findByRole "dialog"/"heading") can't see it
+  // — true for the shipped button-open path too, not just this bridge. Assert
+  // against the role="dialog" DOM node directly (the a11y-tree filter doesn't
+  // drop a querySelector) and its title text.
+  const dialog = await waitFor(() => {
+    const d = document.querySelector('[role="dialog"]');
+    if (!d) throw new Error("add-pattern dialog did not open");
+    return d as HTMLElement;
+  });
+  expect(dialog).toHaveTextContent(m.add_to_wishlist());
   expect($showAddPatternDialog.get()).toBe(false);
 });
 
