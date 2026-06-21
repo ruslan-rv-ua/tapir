@@ -204,6 +204,7 @@ describe("ProfilesPanel — selection cluster", () => {
     ]);
     $settings.set({ activeProfile: "Default" } as Parameters<typeof $settings.set>[0]);
     $announcer.set({ message: "", priority: "polite" });
+    $showCreateProfileDialog.set(false);
     replaceSelection($profilesSelection, new Set());
   });
 
