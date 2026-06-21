@@ -1,5 +1,5 @@
 use crate::app_state::AppState;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 /// Ready-сигнал webview (§3.5): scheduler стартує лише після нього, інакше
 /// catch-up першого тіка емітив би scheduled-started до підписки frontend —
@@ -21,5 +21,15 @@ pub async fn frontend_ready(
             });
         }
     }
+
+    // Підфаза 3I-2: якщо при старті виявлено переміщення EXE — оголосити ОДИН раз.
+    // Deferred сюди (як StartupPlan): емісія до підписки webview = втрачене
+    // оголошення. take() робить це ідемпотентним на reload.
+    if let Some(notice) = app.try_state::<crate::autostart::StartupNotice>() {
+        if notice.take().is_some() {
+            let _ = app.emit("autostart-deactivated", ());
+        }
+    }
+
     Ok(())
 }

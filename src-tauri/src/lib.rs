@@ -150,7 +150,20 @@ pub fn run() {
                 }
             }
 
-            let settings = initial_settings;
+            let mut settings = initial_settings;
+            // Підфаза 3I-2: звірити реєстр Run з current_exe() ДО AppState::new
+            // (воно споживає settings). DisableMoved → скинути прапорець,
+            // персистити, і відкласти оголошення до frontend_ready (webview ще
+            // не підписаний на події — той самий гейт, що StartupPlan/scheduler).
+            let moved = autostart::reconcile_on_startup(
+                settings.autostart,
+                settings.autostart_minimized,
+            );
+            if moved {
+                settings.autostart = false;
+                let _ = settings.save();
+                app.manage(autostart::StartupNotice::moved());
+            }
             let profile = Profile::load(&settings.active_profile).expect("Failed to load profile");
             let state = match AppState::new(settings, profile, app.handle().clone()) {
                 Ok(s) => s,
