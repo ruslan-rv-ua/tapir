@@ -44,17 +44,15 @@ it("opens the add-pattern dialog for the active tab when the Ctrl+N bridge atom 
   await waitFor(() => screen.getByText(m.select_all()));
   act(() => $showAddPatternDialog.set(true));
   // Default active tab is "wishlist", so AddPatternDialog opens titled
-  // m.add_to_wishlist() ("Додати до бажаних"). NB: react-aria's ModalOverlay
-  // is given aria-hidden in jsdom when the dialog renders inside this panel's
-  // <Tabs>, so role-based queries (findByRole "dialog"/"heading") can't see it
-  // — true for the shipped button-open path too, not just this bridge. Assert
-  // against the role="dialog" DOM node directly (the a11y-tree filter doesn't
-  // drop a querySelector) and its title text.
-  const dialog = await waitFor(() => {
-    const d = document.querySelector('[role="dialog"]');
-    if (!d) throw new Error("add-pattern dialog did not open");
-    return d as HTMLElement;
-  });
+  // m.add_to_wishlist() ("Додати до бажаних"). The dialog MUST be reachable by
+  // role: WishlistPanel wraps the screen in react-aria <Tabs>, a collection
+  // component that renders its children twice. A createPortal dialog nested in
+  // <Tabs> mounts the Modal twice and the two overlays mutually aria-hide each
+  // other, dropping the dialog (and its focused input) from the a11y tree —
+  // NVDA goes silent on open. The portal is now a sibling of <Tabs>, so exactly
+  // one overlay mounts; findByRole("dialog") is the regression guard (it sees
+  // no aria-hidden dialog, and would throw on a double-mount).
+  const dialog = await screen.findByRole("dialog");
   expect(dialog).toHaveTextContent(m.add_to_wishlist());
   expect($showAddPatternDialog.get()).toBe(false);
 });

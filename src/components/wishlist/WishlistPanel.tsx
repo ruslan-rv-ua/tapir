@@ -231,6 +231,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   }, [activeTab, controlsRestore]);
 
   return (
+    <>
     <Tabs
       selectedKey={activeTab}
       onSelectionChange={(k) => setActiveTab(k as "wishlist" | "ignorelist")}
@@ -323,8 +324,15 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
           </ListCard>
         </TabPanel>
       </div>
+    </Tabs>
 
-      {/* Dialog */}
+      {/* Dialog — rendered OUTSIDE <Tabs>. react-aria-components Tabs is a
+          collection component that renders its children twice (once to build the
+          tab collection, once for real). A createPortal child therefore mounts
+          the Modal twice, and the two live overlays mutually aria-hide each other
+          via react-aria's ariaHideOutside — leaving the dialog (and its focused
+          input) hidden from the screen reader, so NVDA goes silent on open.
+          Keeping the portal a sibling of <Tabs> mounts exactly one overlay. */}
       {dialog && createPortal(
         <AddPatternDialog
           listType={dialog.listType}
@@ -335,6 +343,6 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
         />,
         document.body,
       )}
-    </Tabs>
+    </>
   );
 }
