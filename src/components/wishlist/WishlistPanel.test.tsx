@@ -1,8 +1,8 @@
 // src/components/wishlist/WishlistPanel.test.tsx
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, fireEvent, waitFor } from "@testing-library/react";
+import { render, fireEvent, waitFor, screen, act, within } from "@testing-library/react";
 import * as m from "../../i18n/paraglide/messages";
-import { $wishlist, $ignorelist, $patternSelection } from "../../stores/wishlist";
+import { $wishlist, $ignorelist, $patternSelection, $showAddPatternDialog } from "../../stores/wishlist";
 import { replaceSelection } from "../../stores/selection";
 import * as tauri from "../../lib/tauri";
 import { WishlistPanel } from "./WishlistPanel";
@@ -18,6 +18,7 @@ beforeEach(() => {
   $wishlist.set([{ pattern: "*ad*", addedAt: "2026-01-01T00:00:00Z" }]);
   $ignorelist.set([]);
   replaceSelection($patternSelection, new Set());
+  $showAddPatternDialog.set(false);
 });
 
 it("routes the cluster delete to the wishlist bulk command for the active tab", async () => {
@@ -37,3 +38,12 @@ it("clears the selection when the tab changes", async () => {
   fireEvent.click(getByText(m.ignorelist_section_title()));
   await waitFor(() => expect($patternSelection.get().size).toBe(0));
 });
+
+it("opens the add-pattern dialog for the active tab when the Ctrl+N bridge atom is set", async () => {
+  render(<WishlistPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
+  await waitFor(() => screen.getByText(m.select_all()));
+  act(() => $showAddPatternDialog.set(true));
+  expect(await screen.findByRole("heading", { name: m.add_to_wishlist() })).toBeTruthy();
+  expect($showAddPatternDialog.get()).toBe(false);
+});
+

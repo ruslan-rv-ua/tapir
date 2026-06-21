@@ -11,7 +11,7 @@ import { ListCard } from "../common/ListCard";
 import { useFocusBoundary } from "../../hooks/useFocusBoundary";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import { addToast } from "../../stores/toasts";
-import { $wishlist, $ignorelist, $patternSelection } from "../../stores/wishlist";
+import { $wishlist, $ignorelist, $patternSelection, $showAddPatternDialog } from "../../stores/wishlist";
 import { replaceSelection } from "../../stores/selection";
 import * as tauri from "../../lib/tauri";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
@@ -38,12 +38,23 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   const [dialog, setDialog] = useState<DialogState>(null);
   const [activeTab, setActiveTab] = useState<"wishlist" | "ignorelist">("wishlist");
   const announce = useAnnounce();
+  const showAddPattern = useStore($showAddPatternDialog);
 
   // Load data on mount
   useEffect(() => {
     tauri.getWishlist().then((w) => $wishlist.set(w)).catch((e) => { console.error(e); addToast(m.wishlist_load_error(), "error"); });
     tauri.getIgnorelist().then((i) => $ignorelist.set(i)).catch((e) => { console.error(e); addToast(m.wishlist_load_error(), "error"); });
   }, []);
+
+  // Bridge: global Ctrl+N (wishlist) → open the add dialog for the active tab.
+  // activeTab is in deps so the dialog opens against the current tab; the guard
+  // stops a tab switch from re-opening it.
+  useEffect(() => {
+    if (showAddPattern) {
+      setDialog({ mode: "add", listType: activeTab });
+      $showAddPatternDialog.set(false);
+    }
+  }, [showAddPattern, activeTab]);
 
   // --- Wishlist handlers ---
   const handleAddWishlist = useCallback(async (pattern: string) => {
