@@ -36,6 +36,7 @@ import { computePlaybackNeighbors } from "./stores/playbackNeighbors";
 import { resolveEndedAction } from "./lib/playbackTransport";
 import { executeTransportSkip, parseSkipTrigger } from "./lib/transportControl";
 import { applyMuteCleanup } from "./lib/muteCleanup";
+import { windowTitleLabel } from "./lib/windowTitle";
 import { useGlobalShortcuts } from "./hooks/useGlobalShortcuts";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import * as m from "./i18n/paraglide/messages";
@@ -150,19 +151,15 @@ function AppContent() {
     });
   }, []);
 
-  // Window title: show current track when showTrackInTitle is enabled
+  // Window title: show the current track/file when showTrackInTitle is enabled.
+  // Covers all playback sources (stream / file / preview) \u2014 see windowTitleLabel.
   useEffect(() => {
     const win = getCurrentWindow();
     const appTitle = "Tapir";
-    if (settings?.showTrackInTitle && playerStatus.source?.type === "stream") {
-      const track = statuses[playerStatus.source.streamId]?.currentTrack;
-      if (track?.artist || track?.title) {
-        const parts = [track.artist, track.title].filter(Boolean).join(" \u2014 ");
-        win.setTitle(`${parts} \u00b7 ${appTitle}`);
-        return;
-      }
-    }
-    win.setTitle(appTitle);
+    const label = settings?.showTrackInTitle
+      ? windowTitleLabel(playerStatus.source, statuses)
+      : null;
+    win.setTitle(label ? `${label} \u00b7 ${appTitle}` : appTitle);
   }, [settings?.showTrackInTitle, playerStatus.source, statuses]);
 
   // Global Tier-2 webview shortcuts (Alt+digit, Ctrl+K, Ctrl+,, Ctrl+N, F1).
