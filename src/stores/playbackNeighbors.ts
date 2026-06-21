@@ -2,7 +2,7 @@ import { computed } from "nanostores";
 import type { PlaybackSource, StreamInfo } from "../lib/tauri";
 import type { Song } from "../types/song";
 import { $playerStatus } from "./player";
-import { $streams } from "./streams";
+import { $visibleStreams } from "./streams";
 import { $filteredSongs } from "./songs";
 
 export type NeighborTarget =
@@ -53,8 +53,12 @@ export function computePlaybackNeighbors(
   return NONE; // preview
 }
 
-/** Live neighbor descriptor for the current player status. */
+/**
+ * Live neighbor descriptor for the current player status. Reads $visibleStreams
+ * (filtered + sorted on-screen order), NOT raw insertion-order $streams, so
+ * Ctrl+Alt+Left/Right step through streams in the order the list shows them.
+ */
 export const $playbackNeighbors = computed(
-  [$playerStatus, $streams, $filteredSongs],
+  [$playerStatus, $visibleStreams, $filteredSongs],
   (status, streams, songs) => computePlaybackNeighbors(status.source, streams, songs),
 );

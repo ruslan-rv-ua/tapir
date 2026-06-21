@@ -1,6 +1,7 @@
-import { atom, map } from "nanostores";
+import { atom, computed, map } from "nanostores";
 import type { StreamInfo, StreamStatus, ImportCandidate } from "../lib/tauri";
 import { replaceSelection as replaceSel, pruneSelection as pruneSel } from "./selection";
+import { $settings } from "./settings";
 
 export const $streams = atom<StreamInfo[]>([]);
 export const $statuses = map<Record<string, StreamStatus>>({});
@@ -30,6 +31,41 @@ export type StreamFilter = "all" | "recording" | "errors";
 export const $streamFilter = atom<StreamFilter>("all");
 
 export type StreamSort = "name" | "added";
+
+/**
+ * Streams in the active sort order (settings.sortBy). Depends only on $streams and
+ * $settings, so its reference stays stable across live $statuses updates — that's
+ * what lets $visibleStreams pass it straight through under the default "all" filter
+ * without re-notifying $playbackNeighbors (and re-rendering the player) on every
+ * recording tick.
+ */
+const $sortedStreams = computed([$streams, $settings], (streams, settings) => {
+  const sortBy: StreamSort = settings?.sortBy ?? "name";
+  if (sortBy === "added") {
+    return [...streams].sort((a, b) => b.addedAt.localeCompare(a.addedAt));
+  }
+  const collator = new Intl.Collator(settings?.language || "uk", {
+    numeric: true,
+    sensitivity: "base",
+  });
+  return [...streams].sort((a, b) => collator.compare(a.name, b.name));
+});
+
+/**
+ * The exact list StreamsPanel renders: the active filter chip applied to the sort
+ * order (filtering preserves order). The single source of truth for "visible
+ * streams" — both StreamsPanel and $playbackNeighbors read it, so prev/next
+ * navigation walks the same streams, in the same order, the user sees on screen.
+ * Mirrors $filteredSongs on the songs side.
+ */
+export const $visibleStreams = computed(
+  [$sortedStreams, $streamFilter, $statuses],
+  (sorted, filter, statuses) => {
+    if (filter === "all") return sorted;
+    const want = filter === "recording" ? "recording" : "error";
+    return sorted.filter((s) => statuses[s.id]?.state === want);
+  },
+);
 
 // Import flow: non-null = the ImportStreamsDialog is open with these candidates.
 export const $importCandidates = atom<ImportCandidate[] | null>(null);

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { createPortal } from "react-dom";
-import { $streams, $statuses, $showAddStreamDialog, $streamFilter, $importCandidates, $exportStreamsRequest, $streamSelection, replaceSelection, type StreamFilter, type StreamSort } from "../../stores/streams";
+import { $streams, $statuses, $visibleStreams, $showAddStreamDialog, $streamFilter, $importCandidates, $exportStreamsRequest, $streamSelection, replaceSelection, type StreamFilter, type StreamSort } from "../../stores/streams";
 import { $settings } from "../../stores/settings";
 import { $freeSpace } from "../../stores/system";
 import { FreeSpaceMetric } from "./FreeSpaceMetric";
@@ -145,25 +145,12 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     [pluralize],
   );
 
-  const filteredStreams = useMemo(() => {
-    if (activeChip === "all") return streams;
-    if (activeChip === "recording")
-      return streams.filter(s => statuses[s.id]?.state === "recording");
-    return streams.filter(s => statuses[s.id]?.state === "error");
-  }, [streams, statuses, activeChip]);
+  // Visible order = active filter chip applied to the sort order. Lives in the
+  // store ($visibleStreams) so $playbackNeighbors (Ctrl+Alt+Left/Right) walks the
+  // exact same list the user sees — keeping the two in sync was the whole bug.
+  const visibleStreams = useStore($visibleStreams);
 
   const sortBy: StreamSort = settings?.sortBy ?? "name";
-
-  const sortedStreams = useMemo(() => {
-    if (sortBy === "added") {
-      return [...filteredStreams].sort((a, b) => b.addedAt.localeCompare(a.addedAt));
-    }
-    const collator = new Intl.Collator(
-      settings?.language || document.documentElement.lang || "uk",
-      { numeric: true, sensitivity: "base" },
-    );
-    return [...filteredStreams].sort((a, b) => collator.compare(a.name, b.name));
-  }, [filteredStreams, sortBy, settings?.language]);
 
   const selection = useStore($streamSelection);
   const selCount = selection.size;
@@ -183,7 +170,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const recordDisabled = selCount > 0 ? selectedStartableCount === 0 : startableCount === 0;
   const stopDisabled = selCount > 0 ? selectedStoppableCount === 0 : stoppableCount === 0;
 
-  const visibleIds = useMemo(() => sortedStreams.map((s) => s.id), [sortedStreams]);
+  const visibleIds = useMemo(() => visibleStreams.map((s) => s.id), [visibleStreams]);
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selection.has(id));
 
   const handleSelectAll = () => {
@@ -215,7 +202,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     announce(sortAnnouncement(id), "polite");
   };
 
-  const filterHidesAll = !isEmpty && filteredStreams.length === 0;
+  const filterHidesAll = !isEmpty && visibleStreams.length === 0;
 
   const handleChipClick = (chipId: StreamFilter) => {
     if (chipId === activeChip) return;
@@ -706,7 +693,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
           ) : (
             <StreamList
               ref={streamListCallbackRef}
-              streams={sortedStreams}
+              streams={visibleStreams}
               exitZone={(forward) => exitZone("streams-list", forward)}
               onEmpty={() => { pendingFocusEmptyZone.current = true; }}
             />

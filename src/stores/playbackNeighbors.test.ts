@@ -1,9 +1,10 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { computePlaybackNeighbors, $playbackNeighbors } from "./playbackNeighbors";
-import type { StreamInfo, PlaybackSource } from "../lib/tauri";
+import type { StreamInfo, PlaybackSource, GlobalSettings } from "../lib/tauri";
 import type { Song } from "../types/song";
 import { $playerStatus } from "./player";
-import { $streams } from "./streams";
+import { $streams, $streamFilter, $statuses, updateStreamStatus } from "./streams";
+import { $settings } from "./settings";
 import { $songs, $songsQuery, $songsStation, $songsSort } from "./songs";
 
 const mkStream = (id: string): StreamInfo => ({
@@ -41,6 +42,19 @@ const songs = [mkSong("a.mp3"), mkSong("b.mp3"), mkSong("c.mp3")];
 
 const streamSrc = (streamId: string): PlaybackSource => ({ type: "stream", streamId });
 const fileSrc = (path: string): PlaybackSource => ({ type: "file", path });
+
+// Only sortBy/language are read by $sortedStreams; the rest is filler.
+const mkSettings = (sortBy: "name" | "added"): GlobalSettings =>
+  ({ sortBy, language: "uk" } as GlobalSettings);
+
+const playStream = (streamId: string) =>
+  $playerStatus.set({
+    state: "playing",
+    source: { type: "stream", streamId },
+    volume: 0.75,
+    positionMs: null,
+    durationMs: null,
+  });
 
 describe("computePlaybackNeighbors — no context", () => {
   it("returns both null when source is null", () => {
@@ -158,5 +172,66 @@ describe("$playbackNeighbors store wiring", () => {
       prev: { kind: "stream", id: "s1" },
       next: { kind: "stream", id: "s3" },
     });
+  });
+});
+
+describe("$playbackNeighbors — streams follow the on-screen order", () => {
+  afterEach(() => {
+    $playerStatus.set({ state: "stopped", source: null, volume: 0.75, positionMs: null, durationMs: null });
+    $streams.set([]);
+    $statuses.set({});
+    $streamFilter.set("all");
+    $settings.set(null);
+  });
+
+  it("walks the alphabetical (sortBy 'name') order, not insertion order", () => {
+    // Insertion order: Боря → Аліса → Всеволод. On screen (name sort): Аліса, Боря, Всеволод.
+    $settings.set(mkSettings("name"));
+    $streams.set([mkStream("Боря"), mkStream("Аліса"), mkStream("Всеволод")]);
+    playStream("Боря");
+    // Before the fix this returned prev:null (Боря was first in insertion order).
+    expect($playbackNeighbors.get()).toEqual({
+      prev: { kind: "stream", id: "Аліса" },
+      next: { kind: "stream", id: "Всеволод" },
+    });
+  });
+
+  it("walks the addedAt-descending order when sortBy is 'added'", () => {
+    $settings.set(mkSettings("added"));
+    // Insertion order is mid → new → old; addedAt-desc order is new, mid, old.
+    $streams.set([
+      { ...mkStream("mid"), addedAt: "2026-02-01T00:00:00Z" },
+      { ...mkStream("new"), addedAt: "2026-03-01T00:00:00Z" },
+      { ...mkStream("old"), addedAt: "2026-01-01T00:00:00Z" },
+    ]);
+    playStream("mid");
+    expect($playbackNeighbors.get()).toEqual({
+      prev: { kind: "stream", id: "new" },
+      next: { kind: "stream", id: "old" },
+    });
+  });
+
+  it("restricts neighbors to the active filter chip", () => {
+    $settings.set(mkSettings("name"));
+    $streams.set([mkStream("a"), mkStream("b"), mkStream("c")]);
+    // Only a and c are recording; b is idle, so under the "recording" chip b is hidden.
+    updateStreamStatus("a", { state: "recording" });
+    updateStreamStatus("c", { state: "recording" });
+    $streamFilter.set("recording");
+    playStream("a");
+    // b is filtered out, so a's only neighbor is the next visible recording stream, c.
+    expect($playbackNeighbors.get()).toEqual({
+      prev: null,
+      next: { kind: "stream", id: "c" },
+    });
+  });
+
+  it("returns no neighbors when the playing stream is hidden by the filter", () => {
+    $settings.set(mkSettings("name"));
+    $streams.set([mkStream("a"), mkStream("b")]);
+    updateStreamStatus("a", { state: "recording" });
+    $streamFilter.set("recording"); // b is not recording → not visible
+    playStream("b");
+    expect($playbackNeighbors.get()).toEqual({ prev: null, next: null });
   });
 });
