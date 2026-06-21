@@ -240,6 +240,7 @@ pub fn run() {
             commands::stream_commands::get_all_statuses,
             commands::settings_commands::get_settings,
             commands::settings_commands::save_settings,
+            commands::settings_commands::sync_autostart,
             commands::settings_commands::get_recording_settings,
             commands::settings_commands::save_recording_settings,
             commands::settings_commands::get_free_space,

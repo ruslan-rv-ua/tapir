@@ -104,3 +104,17 @@ pub async fn open_directory_picker(
     .map_err(|e| e.to_string())?;
     Ok(result.map(|p| p.to_string()))
 }
+
+/// Привести реєстр `Run` у відповідність до (enabled, minimized). Frontend
+/// передає значення ЯВНО (не читаємо `state.settings`): `useAutoSave` дебаунсить
+/// persist на 300 мс, тож стан тут був би застарілим — явні аргументи усувають
+/// гонку. Окрема команда (а не як SMTC у `save_settings`), бо реєстровий запис
+/// може впасти, і незрячий користувач має почути про це: помилка повертається у
+/// фронт для оголошення + revert. `spawn_blocking` — winreg це блокувальний I/O.
+#[tauri::command]
+pub async fn sync_autostart(enabled: bool, minimized: bool) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || crate::autostart::apply(enabled, minimized))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(Into::into)
+}
