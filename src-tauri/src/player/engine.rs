@@ -62,6 +62,12 @@ use tokio_util::sync::CancellationToken;
 use log::info;
 use crate::wake_lock::WakeLock;
 
+/// Max time to wait for symphonia to identify a live stream's format and first
+/// decodable frame before giving up. Streams symphonia cannot decode (notably
+/// HE-AAC / HE-AACv2, which it does not support) make the probe spin forever on
+/// the byte pipeline, so playback must not block on it indefinitely.
+const PROBE_TIMEOUT: Duration = Duration::from_secs(15);
+
 // ── Internal runtime types (not serialized) ────────────────────────────────
 
 /// Emit `player-status` to the frontend and notify the tray. All callers
@@ -565,9 +571,13 @@ impl PlayerEngine {
     ) -> Result<()> {
         use crate::stream::connection;
 
-        self.stop_session().await;
-
-        // Connect first so we can extract content_type for symphonia probing
+        // Do NOT stop the current session yet. We keep whatever is playing alive
+        // until the new stream is confirmed decodable (stop_session below, after a
+        // successful probe), so a failed play attempt is non-destructive: the
+        // previous stream keeps playing and its UI state stays accurate instead of
+        // being torn down with no replacement.
+        //
+        // Connect first so we can extract content_type for symphonia probing.
         let conn = connection::connect(&url).await
             .context("failed to connect to stream")?;
         let mime_hint: Option<String> = conn.content_type.clone();
@@ -793,29 +803,55 @@ impl PlayerEngine {
             writer_done_signal.cancel();
         });
 
-        // LiveSource::new blocks on RtrbReader (waits for symphonia to probe the stream)
-        // — run in spawn_blocking so we don't block the tokio runtime
-        let live_source = match tokio::task::spawn_blocking(move || {
-            LiveSource::new(consumer, mime_hint.as_deref())
-        })
-        .await
-        {
-            Ok(Ok(src)) => src,
-            Ok(Err(e)) => {
+        // LiveSource::new blocks on RtrbReader (waits for symphonia to probe the
+        // stream) — run it in spawn_blocking so we don't block the tokio runtime,
+        // and wrap it in a timeout so an undecodable stream can't hang playback
+        // forever (the probe otherwise spins indefinitely on the byte pipeline,
+        // e.g. for HE-AAC streams symphonia cannot decode). On any failure we
+        // cancel the byte pipeline and bail *before* stop_session, leaving the
+        // current playback untouched.
+        let probe = tokio::time::timeout(
+            PROBE_TIMEOUT,
+            tokio::task::spawn_blocking(move || LiveSource::new(consumer, mime_hint.as_deref())),
+        )
+        .await;
+        let live_source = match probe {
+            Ok(Ok(Ok(src))) => src,
+            Ok(Ok(Err(e))) => {
                 cancel.cancel();
-                return Err(e).context("LiveSource init failed");
+                return Err(e).context("could not decode stream (unsupported format?)");
             }
-            Err(e) => {
+            Ok(Err(e)) => {
                 cancel.cancel();
                 return Err(anyhow::anyhow!("LiveSource init task panicked: {e}"));
             }
+            Err(_elapsed) => {
+                cancel.cancel();
+                return Err(anyhow::anyhow!(
+                    "timed out probing stream format after {}s (unsupported codec?)",
+                    PROBE_TIMEOUT.as_secs()
+                ));
+            }
         };
+
+        // Format confirmed decodable — now it's safe to replace the current session.
+        self.stop_session().await;
 
         let device_name = self.output_device_name.lock().await.clone();
         let device_sink = match open_device_sink(device_name.as_deref()) {
             Ok(s) => s,
             Err(e) => {
                 cancel.cancel();
+                // The previous session is already stopped, so emit Stopped to keep
+                // the frontend from showing the old stream as still playing.
+                let volume = *self.volume.lock().await;
+                emit_player_status(app, PlayerStatus {
+                    state: PlaybackState::Stopped,
+                    source: None,
+                    volume,
+                    position_ms: None,
+                    duration_ms: None,
+                }, &self.wake_lock);
                 return Err(e).context("Failed to open audio output stream");
             }
         };

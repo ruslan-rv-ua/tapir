@@ -339,6 +339,7 @@
   "zone_status": "Статус",
   "segment_track": "Трек",
   "segment_track_last": "Востаннє грав: {track}",
+  "segment_track_none": "Трек невідомий",
   "segment_tech": "бітрейт",
   "segment_status_duration": "Тривалість запису",
   "segment_playing": "Відтворюється",

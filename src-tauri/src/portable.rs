@@ -24,7 +24,7 @@ pub fn profiles_dir() -> PathBuf {
 }
 
 pub fn recordings_dir() -> PathBuf {
-    data_dir().join("recordings")
+    base_dir().join("recordings")
 }
 
 pub fn logs_dir() -> PathBuf {
@@ -32,13 +32,13 @@ pub fn logs_dir() -> PathBuf {
 }
 
 /// Resolve a possibly-relative path to an absolute path.
-/// Relative paths are joined onto `data_dir()`.
+/// Relative paths are joined onto `base_dir()` (поряд з EXE).
 pub fn resolve_output_dir(rel: &str) -> PathBuf {
     let p = PathBuf::from(rel);
     if p.is_absolute() {
         p
     } else {
-        data_dir().join(p)
+        base_dir().join(p)
     }
 }
 
@@ -108,8 +108,8 @@ mod tests {
     }
 
     #[test]
-    fn resolve_output_dir_relative_joins_data_dir() {
-        assert_eq!(resolve_output_dir("recordings"), data_dir().join("recordings"));
+    fn resolve_output_dir_relative_joins_base_dir() {
+        assert_eq!(resolve_output_dir("recordings"), base_dir().join("recordings"));
     }
 
     #[test]
