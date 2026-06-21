@@ -3,7 +3,14 @@
 - **Тип:** живий довідник (reference), **не** ADR. Тут — *що забіндано зараз*;
   *чому* саме так — у відповідних ADR (посилання в рядках).
 - **Оновлювати:** при кожному додаванні/зміні названого шортката (Tier 1–2).
-- **Останнє звірення з кодом:** 2026-06-11.
+- **Останнє звірення з кодом:** 2026-06-20 (Tier 2′: віха D — модель виділення
+  (`Ctrl+Space`/`Ctrl+A`/`Shift+↑↓`/`Escape`/bulk-`Delete`) розкочена на **всі**
+  композитні списки: streams, songs, profiles, schedule, patterns (wishlist/ignorelist),
+  browser; per-list bulk-дія зафіксована у примітці до Tier 2′);
+  2026-06-18: реалізовано віху A — виділення `Ctrl+Space`/`Ctrl+A`/`Shift+↑↓`,
+  bulk-`Delete`, `Escape`-clear переведено ⬜→✅;
+  2026-06-14: дописано наявний `Ctrl+C`, виправлено стан `Delete`, carve-out для
+  list-scoped Ctrl-комбо; решта — 2026-06-11).
 
 ## Як читати
 
@@ -154,8 +161,9 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 
 Названі клавіші, що є навігаційними/керувальними примітивами, а **не**
 перемикачами app-дій — тому живуть **не** в App.tsx-слухачі Tier 2 і **не**
-конфігуровні. Колізій із Tier 1–2 не дають (функційні/спец-клавіші). Scope —
-`webview` (фокус у вікні).
+конфігуровні. Колізій із Tier 1–2 не дають: це або функційні/спец-клавіші, або
+**list-scoped Ctrl-комбо всередині `role="application"`** (де NVDA — у focus mode,
+не browse; carve-out нижче). Scope — `webview` (фокус у вікні).
 
 | Клавіша | Дія | Умова | Реалізація | Стан |
 |---|---|---|---|---|
@@ -164,9 +172,13 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 | `Enter` | активувати рядок (Streams: record/play за `doubleClickAction` · Browser: додати · Songs: play · Profiles: switch · Wishlist: edit) | фокус на рядку списку | [useCompositeList.ts Enter-case](../src/hooks/useCompositeList.ts) → `onAction` списку | ✅ |
 | `Shift+Enter` | **прослухати** рядок незалежно від налаштування (Streams: toggle відтворення · Browser: toggle прев'ю) | фокус на рядку Streams/Browser | модифікатори в `onAction` ([useCompositeList.ts](../src/hooks/useCompositeList.ts)); гілки: [StreamList.tsx](../src/components/streams/StreamList.tsx), [StationList.tsx](../src/components/browser/StationList.tsx) | ✅ |
 | `Ctrl+Enter` | **записати** рядок незалежно від налаштування (лише Streams: toggle запису) | фокус на рядку Streams | ↑ | ✅ |
+| `Ctrl+C` | копіювати щодо рядка (generic `copy`; Streams: URL потоку) | фокус на рядку списку | [useCompositeList.ts:274](../src/hooks/useCompositeList.ts#L274) (`e.code === "KeyC"`) → `onAction("copy")` списку | ✅ |
+| `Ctrl+Space` | перемкнути виділення активного рядка (+ ставить якір) — у **всіх** композитних списках (streams, songs, profiles, schedule, patterns, browser) | фокус у списку з multi-select | [useCompositeList.ts](../src/hooks/useCompositeList.ts) `resolveKeyAction` → `selectToggle` | ✅ |
+| `Ctrl+A` | виділити всі видимі / зняти (toggle) — у **всіх** композитних списках | фокус у списку з multi-select | ↑ (`selectAll` / `clearSelection`) | ✅ |
+| `Shift+↑` / `Shift+↓` | розширити / звузити діапазон виділення від якоря — у **всіх** композитних списках | фокус у списку з multi-select | ↑ (`selectRangeUp` / `selectRangeDown`) | ✅ |
 | `F2` | редагувати / перейменувати рядок (Streams: edit · Songs/Profiles: rename) | фокус на рядку (де застосовно) | — | ⬜ |
-| `Delete` | видалити рядок (з підтвердженням) | фокус на рядку списку | — | ⬜ |
-| `Escape` | закрити палітру / діалог (або скасувати запис хоткея) | палітра / модаль / рекордер відкриті | палітра [CommandPalette.tsx:150](../src/components/common/CommandPalette.tsx#L150); Settings — react-aria `isDismissable` [SettingsDialog.tsx:35](../src/components/settings/SettingsDialog.tsx#L35); рекордер [KeyRecorder.tsx:51](../src/components/settings/KeyRecorder.tsx#L51) | ✅ |
+| `Delete` | видалити рядок (з підтвердженням); за наявності виділення — масове видалення множини (Explorer-модель) — у **всіх** списках, крім browser (там немає Delete; bulk-дія browser — «Додати виділені» через тулбар/кластер, не клавіша) | фокус на рядку списку | [useCompositeList.ts:361](../src/hooks/useCompositeList.ts#L361) → `onAction("delete")` → per-list bulk handler; bulk-видалення: streams/songs/profiles/schedule; bulk-remove: patterns (wishlist/ignorelist) | одинично ✅ · bulk ✅ |
+| `Escape` | закрити палітру / діалог (або скасувати запис хоткея); **у списку з непорожнім виділенням — зняти виділення** (list-scoped, consume) — у **всіх** композитних списках | палітра / модаль / рекордер відкриті · або список із виділенням | палітра [CommandPalette.tsx:150](../src/components/common/CommandPalette.tsx#L150); Settings — react-aria `isDismissable` [SettingsDialog.tsx:35](../src/components/settings/SettingsDialog.tsx#L35); рекордер [KeyRecorder.tsx:51](../src/components/settings/KeyRecorder.tsx#L51); clear-selection — [useCompositeList.ts](../src/hooks/useCompositeList.ts) `clearSelection` | палітра/діалог ✅ · clear-selection ✅ |
 
 > `Shift+F10`/`ContextMenu` не обробляються окремо: WebView2 для всіх трьох
 > (ПКМ, клавіша Menu, `Shift+F10`) емітить один `contextmenu` event — його й
@@ -174,10 +186,32 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 > у модалях Settings — нативний react-aria (`ModalOverlay isDismissable`); у
 > hand-rolled палітрі — явний `if (e.key === "Escape")`.
 
+> **Per-list bulk-дії (Milestone D, 2026-06-20).** Клавіші виділення
+> (`Ctrl+Space`/`Ctrl+A`/`Shift+↑↓`/`Escape`/`Delete`) однакові у всіх
+> композитних списках. Bulk-дія за наявності виділення залежить від списку:
+>
+> | Список | Bulk-дія |
+> |---|---|
+> | streams | bulk-delete (з підтвердженням) |
+> | songs | bulk-delete до кошика (поточний файл, що грає, — пропускається) |
+> | profiles | bulk-delete (активний профіль — вибираємо, але пропускаємо при видаленні) |
+> | schedule | bulk-delete |
+> | patterns (wishlist / ignorelist) | bulk-remove |
+> | browser | **bulk-add-selected** — додати до активного профілю (тулбар / кластер зони; `Delete` не діє; фокус не рухається; live-підсумок «Додано N, пропущено M (дублікати)») |
+
 > `F2` / `Delete` — контекстні дії рядка (focus mode), за desktop-list
-> конвенцією. `duplicate` (Profiles) свідомо лишаємо **тільки** в меню рядка
-> (`Shift+F10`): голий `Ctrl`-letter ризикований у NVDA browse mode і ламав би
-> інваріант Tier 2′ (лише функційні/спец-клавіші).
+> конвенцією.
+>
+> **Carve-out для list-scoped Ctrl-комбо.** Інваріант «лише функційні/спец-клавіші»
+> стосується **глобального / section-scope** (де NVDA в browse mode перехоплює голі
+> Ctrl-letter — quick-nav). **Усередині `role="application"`-списку NVDA — у focus
+> mode** (browse-quick-nav вимкнено), тож list-scoped Ctrl-комбо безпечні: на цій
+> підставі вже живе **`Ctrl+C`** (у коді [useCompositeList.ts](../src/hooks/useCompositeList.ts)),
+> і на ній же стоятимуть `Ctrl+Space`/`Ctrl+A` виділення (spec віхи A). Ключове —
+> вони **list-scoped** (обробляються в `onKeyDownCapture` списку, не у window-слухачі),
+> тож поза списком не «крадуть» нічого. Тому `duplicate` (Profiles) усе одно лишаємо
+> **тільки** в меню рядка (`Shift+F10`): для нього окремий list-scoped гард не писали,
+> а голий section-scope Ctrl-letter саме й ризикований у browse mode.
 >
 > `Shift+Enter`/`Ctrl+Enter` — **фіксована** семантика (Shift = слухати,
 > Ctrl = записати), вона не інвертується разом із `doubleClickAction`: стабільна

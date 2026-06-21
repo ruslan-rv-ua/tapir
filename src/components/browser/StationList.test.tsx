@@ -1,12 +1,17 @@
 import { createRef } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, fireEvent, act } from "@testing-library/react";
+import { render, fireEvent, act, waitFor } from "@testing-library/react";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import type { StationResult } from "../../lib/tauri";
 import * as tauri from "../../lib/tauri";
 import { $streams } from "../../stores/streams";
 import { $playerStatus } from "../../stores/player";
-import { StationList } from "./StationList";
+import * as m from "../../i18n/paraglide/messages";
+import { $stationSelection } from "../../stores/browser";
+import { $announcer } from "../../stores/announcer";
+import { replaceSelection } from "../../stores/selection";
+import * as browserStore from "../../stores/browser";
+import { StationList, type StationListHandle } from "./StationList";
 
 vi.mock("../../lib/tauri", () => ({
   previewStation: vi.fn().mockResolvedValue(undefined),
@@ -42,6 +47,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   $streams.set([]);
   $playerStatus.set({ state: "stopped", source: null, volume: 0.75, positionMs: null, durationMs: null });
+  replaceSelection($stationSelection, new Set());
 });
 
 function renderList() {
@@ -102,4 +108,28 @@ describe("StationList — row activation", () => {
     const li = container.querySelector('li[data-segment="summary"]')!;
     expect(li.getAttribute("aria-keyshortcuts")).toBe("Shift+Enter");
   });
+});
+
+const mk = (uuid: string): StationResult => ({
+  stationuuid: uuid, name: uuid, url: `http://${uuid}`, urlResolved: `http://${uuid}`,
+  codec: "MP3", bitrate: 128, country: "", countrycode: "", tags: "", language: "",
+  votes: 0, clickcount: 0, hasExtendedInfo: null, homepage: "", lastcheckok: 1,
+});
+
+it("bulk-adds the selection, announces the summary, and does NOT move focus", async () => {
+  const addSpy = vi.spyOn(browserStore, "addStations").mockResolvedValue([{} as never]); // 1 added
+  const stns = [mk("u1"), mk("u2")];
+  replaceSelection($stationSelection, new Set(["u1", "u2"]));
+  const ref = createRef<StationListHandle>();
+  render(<StationList ref={ref} stations={stns} loading={false} error={null} hasMore={false}
+    emptyMessage="empty" exitZone={vi.fn()} />);
+  const before = document.activeElement;
+  await act(async () => { ref.current!.requestBulkAdd(); });
+  await waitFor(() => expect(addSpy).toHaveBeenCalled());
+  await waitFor(() =>
+    expect($announcer.get()?.message).toBe(
+      `${m.stations_added_bulk({ count: 1 })}, ${m.stations_skipped_duplicate({ count: 1 })}`,
+    ),
+  );
+  expect(document.activeElement).toBe(before); // focus untouched
 });

@@ -152,3 +152,64 @@ pub async fn update_ignorelist_pattern(
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
 }
+
+/// Remove every string equal to one in `ids`; returns how many were removed.
+/// Pure over the vector — unit-testable without Tauri state.
+fn retain_patterns(patterns: &mut Vec<String>, ids: &std::collections::HashSet<String>) -> usize {
+    let before = patterns.len();
+    patterns.retain(|p| !ids.contains(p));
+    before - patterns.len()
+}
+
+#[tauri::command]
+pub async fn remove_from_wishlist_bulk(
+    patterns: Vec<String>,
+    state: tauri::State<'_, AppState>,
+) -> Result<u32, String> {
+    let ids: std::collections::HashSet<String> = patterns.into_iter().collect();
+    let (removed, snapshot) = {
+        let mut profile = state.active_profile.write().await;
+        let before = profile.wishlist.len();
+        profile.wishlist.retain(|e| !ids.contains(&e.pattern));
+        let removed = before - profile.wishlist.len();
+        (removed, profile.clone())
+    };
+    tokio::task::spawn_blocking(move || snapshot.save())
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?;
+    Ok(removed as u32)
+}
+
+#[tauri::command]
+pub async fn remove_from_ignorelist_bulk(
+    patterns: Vec<String>,
+    state: tauri::State<'_, AppState>,
+) -> Result<u32, String> {
+    let ids: std::collections::HashSet<String> = patterns.into_iter().collect();
+    let (removed, snapshot) = {
+        let mut profile = state.active_profile.write().await;
+        let removed = retain_patterns(&mut profile.ignorelist, &ids);
+        (removed, profile.clone())
+    };
+    tokio::task::spawn_blocking(move || snapshot.save())
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?;
+    Ok(removed as u32)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn retain_patterns_removes_listed_and_counts() {
+        let mut v = vec!["*ad*".to_string(), "*jingle*".to_string(), "*promo*".to_string()];
+        let ids: std::collections::HashSet<String> =
+            ["*ad*".to_string(), "*promo*".to_string()].into_iter().collect();
+        let removed = retain_patterns(&mut v, &ids);
+        assert_eq!(removed, 2);
+        assert_eq!(v, vec!["*jingle*".to_string()]);
+    }
+}

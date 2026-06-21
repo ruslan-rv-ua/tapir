@@ -2,11 +2,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, within, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ProfilesPanel } from "./ProfilesPanel";
-import { $profileList } from "../../stores/profileManager";
+import { $profileList, $profilesSelection } from "../../stores/profileManager";
+import { replaceSelection } from "../../stores/selection";
 import { $settings } from "../../stores/settings";
 import { $announcer } from "../../stores/announcer";
 import type { ProfileMeta } from "../../lib/tauri";
 import * as tauri from "../../lib/tauri";
+import * as m from "../../i18n/paraglide/messages";
 
 vi.mock("../../lib/tauri", () => ({
   listProfiles: vi.fn(async () => [
@@ -15,6 +17,7 @@ vi.mock("../../lib/tauri", () => ({
   ] as ProfileMeta[]),
   switchProfile: vi.fn(async () => ({})),
   deleteProfile: vi.fn(async () => {}),
+  deleteProfiles: vi.fn(async () => ({ deleted: [], skippedActive: false })),
   createProfile: vi.fn(async (name: string) => ({ name, streamCount: 0, isActive: false })),
   getAllStatuses: vi.fn(async () => []),
   exportProfile: vi.fn(async () => {}),
@@ -69,6 +72,17 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   day_short_0: () => "Пн", day_short_1: () => "Вт", day_short_2: () => "Ср",
   day_short_3: () => "Чт", day_short_4: () => "Пт", day_short_5: () => "Сб",
   day_short_6: () => "Нд",
+  // Selection toolbar messages (Task 17).
+  select_all: () => "Select all",
+  clear_selection: () => "Clear selection",
+  delete_selected: ({ count }: { count: number }) => `Delete selected (${count})`,
+  selected_count_label: ({ count }: { count: number }) => `${count} selected`,
+  selection_count: ({ count }: { count: number }) => `Selected: ${count}`,
+  selection_cleared: () => "Selection cleared",
+  selection_suffix: () => "selected",
+  confirm_delete_selected_profiles: ({ count }: { count: number }) => `Delete selected profiles (${count})?`,
+  profiles_removed_bulk: ({ count }: { count: number }) => `Profiles removed: ${count}`,
+  bulk_skipped_active: () => "active profile skipped",
 }));
 
 function renderPanel() {
@@ -84,6 +98,7 @@ describe("ProfilesPanel", () => {
     ]);
     $settings.set({ activeProfile: "Default" } as Parameters<typeof $settings.set>[0]);
     $announcer.set({ message: "", priority: "polite" });
+    replaceSelection($profilesSelection, new Set());
   });
 
   it("registers two zones via onZonesChange (no actions sidebar)", () => {
@@ -167,5 +182,38 @@ describe("ProfilesPanel", () => {
     await screen.findByText("Jazz");
     await user.click(screen.getByRole("button", { name: /New profile/ }));
     expect(await screen.findByRole("button", { name: /^OK$/ })).toBeInTheDocument();
+  });
+});
+
+describe("ProfilesPanel — selection cluster", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    $profileList.set([
+      { name: "Default", streamCount: 2, isActive: true },
+      { name: "Jazz", streamCount: 5, isActive: false },
+    ]);
+    $settings.set({ activeProfile: "Default" } as Parameters<typeof $settings.set>[0]);
+    $announcer.set({ message: "", priority: "polite" });
+    replaceSelection($profilesSelection, new Set());
+  });
+
+  it("select-all selects every profile and announces the count", async () => {
+    const user = userEvent.setup();
+    renderPanel();
+    await screen.findByText("Jazz");
+    await user.click(screen.getByRole("button", { name: "Select all" }));
+    expect([...$profilesSelection.get()].sort()).toEqual(["Default", "Jazz"]);
+    await waitFor(() =>
+      expect($announcer.get().message).toBe(m.selection_count({ count: 2 })),
+    );
+  });
+
+  it("the cluster Delete-selected opens the bulk confirm", async () => {
+    const user = userEvent.setup();
+    renderPanel();
+    await screen.findByText("Jazz");
+    await user.click(screen.getByRole("button", { name: "Select all" }));
+    await user.click(screen.getByRole("button", { name: "Delete selected (2)" }));
+    await screen.findByText(m.confirm_delete_selected_profiles({ count: 2 }));
   });
 });

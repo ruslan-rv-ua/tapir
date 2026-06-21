@@ -1,11 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { act, render, screen, waitFor, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { SchedulePanel } from "./SchedulePanel";
-import { $schedules, $schedulesLoading, $schedulesError } from "../../stores/schedule";
+import { $schedules, $scheduleSelection, $schedulesLoading, $schedulesError } from "../../stores/schedule";
+import { replaceSelection } from "../../stores/selection";
 import { $streams } from "../../stores/streams";
 import { $announcer } from "../../stores/announcer";
 import * as tauri from "../../lib/tauri";
 import type { ScheduleDto, StreamInfo } from "../../lib/tauri";
+import * as m from "../../i18n/paraglide/messages";
 
 vi.mock("../../lib/tauri", () => ({
   getSchedules: vi.fn(async () => []),
@@ -83,6 +86,15 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   save: () => "Зберегти",
   saving: () => "Збереження…",
   delete: () => "Видалити",
+  selection_suffix: () => ", виділено",
+  confirm_delete_selected_schedules: ({ count }: { count: number }) => `Видалити вибрані розклади (${count})?`,
+  delete_selected: ({ count }: { count: number }) => `Видалити вибране (${count})`,
+  schedules_removed_bulk: ({ count }: { count: number }) => `Видалено розкладів: ${count}`,
+  select_all: () => "Вибрати все",
+  clear_selection: () => "Зняти вибір",
+  selection_count: ({ count }: { count: number }) => `Вибрано: ${count}`,
+  selection_cleared: () => "Вибір знято",
+  selected_count_label: ({ count }: { count: number }) => `${count} вибрано`,
 }));
 
 const stream: StreamInfo = {
@@ -115,6 +127,7 @@ beforeEach(() => {
   $schedulesError.set(null);
   $streams.set([stream]);
   $announcer.set(null);
+  replaceSelection($scheduleSelection, new Set());
 });
 
 describe("SchedulePanel", () => {
@@ -166,5 +179,65 @@ describe("SchedulePanel", () => {
     seed([dto({ streamId: "ghost" })]);
     renderPanel();
     expect(await screen.findByText(/потік видалено/)).toBeTruthy();
+  });
+});
+
+describe("SchedulePanel — selection cluster", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    $schedulesLoading.set(false);
+    $schedulesError.set(null);
+    $streams.set([stream]);
+    $announcer.set(null);
+    replaceSelection($scheduleSelection, new Set());
+  });
+
+  it("renders a select-all control that selects every schedule", async () => {
+    const user = userEvent.setup();
+    const s1 = dto({ id: "sched-1", name: "Morning Jazz" });
+    const s2 = dto({ id: "sched-2", name: "Evening News" });
+    seed([s1, s2]);
+    renderPanel();
+    // Wait for schedules to render
+    await screen.findByText("Morning Jazz");
+    // Click the select-all button
+    await user.click(screen.getByRole("button", { name: m.select_all() }));
+    // All schedule ids must be selected
+    expect($scheduleSelection.get().size).toBe(2);
+    expect([...$scheduleSelection.get()].sort()).toEqual(["sched-1", "sched-2"].sort());
+    // Announce must report the count
+    await waitFor(() =>
+      expect($announcer.get()?.message).toBe(m.selection_count({ count: 2 })),
+    );
+  });
+
+  it("clicking select-all twice clears the selection and announces cleared", async () => {
+    const user = userEvent.setup();
+    const s1 = dto({ id: "sched-1", name: "Morning Jazz" });
+    seed([s1]);
+    seed([s1]);
+    renderPanel();
+    await screen.findByText("Morning Jazz");
+    // Select all
+    await user.click(screen.getByRole("button", { name: m.select_all() }));
+    expect($scheduleSelection.get().size).toBe(1);
+    // Deselect all (button label flips to clear_selection when all selected)
+    await user.click(screen.getByRole("button", { name: m.clear_selection() }));
+    expect($scheduleSelection.get().size).toBe(0);
+    await waitFor(() =>
+      expect($announcer.get()?.message).toBe(m.selection_cleared()),
+    );
+  });
+
+  it("clears selection on unmount", async () => {
+    const s1 = dto({ id: "sched-1", name: "Morning Jazz" });
+    seed([s1]);
+    const { unmount } = renderPanel();
+    await screen.findByText("Morning Jazz");
+    // Manually select something
+    act(() => { replaceSelection($scheduleSelection, new Set(["sched-1"])); });
+    expect($scheduleSelection.get().size).toBe(1);
+    unmount();
+    expect($scheduleSelection.get().size).toBe(0);
   });
 });

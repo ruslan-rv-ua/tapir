@@ -1,13 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, act, screen, fireEvent } from "@testing-library/react";
+import { render, act, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import * as tauri from "../../lib/tauri";
-import { $streams, $statuses, $streamFilter } from "../../stores/streams";
+import { $streams, $statuses, $streamFilter, $streamSelection, replaceSelection, $exportStreamsRequest } from "../../stores/streams";
 import { $toasts } from "../../stores/toasts";
 import { $announcer } from "../../stores/announcer";
 import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import { StreamsPanel } from "./StreamsPanel";
 import { $settings } from "../../stores/settings";
 import type { GlobalSettings } from "../../lib/tauri";
+import * as m from "../../i18n/paraglide/messages";
 
 // No backend in jsdom — stub the Tauri IPC layer.
 vi.mock("../../lib/tauri", () => ({
@@ -15,14 +16,23 @@ vi.mock("../../lib/tauri", () => ({
   stopPlayback: vi.fn().mockResolvedValue(undefined),
   startRecording: vi.fn().mockResolvedValue(undefined),
   stopRecording: vi.fn().mockResolvedValue(undefined),
-  stopAllRecordings: vi.fn().mockResolvedValue(undefined),
+  stopAllRecordings: vi.fn().mockResolvedValue(0),
   startAllRecordings: vi.fn().mockResolvedValue(0),
   removeStream: vi.fn().mockResolvedValue(undefined),
+  removeStreams: vi.fn().mockResolvedValue(0),
   addToWishlist: vi.fn().mockResolvedValue(undefined),
   addToIgnorelist: vi.fn().mockResolvedValue(undefined),
   beginStreamImport: vi.fn().mockResolvedValue(null),
   addExampleStreams: vi.fn().mockResolvedValue([]),
+  exportStreams: vi.fn().mockResolvedValue(true),
   saveSettings: vi.fn().mockResolvedValue(undefined),
+  listProfiles: vi.fn().mockResolvedValue([
+    { name: "Default", streamCount: 3, isActive: true },
+    { name: "Jazz", streamCount: 0, isActive: false },
+  ]),
+  createProfile: vi.fn().mockResolvedValue({ name: "Fresh", streamCount: 0, isActive: false }),
+  copyStreamsToProfile: vi.fn().mockResolvedValue({ transferred: [], skippedRecording: 0, skippedConflict: 0 }),
+  moveStreamsToProfile: vi.fn().mockResolvedValue({ transferred: [], skippedRecording: 0, skippedConflict: 0 }),
 }));
 
 // ImportStreamsDialog uses useTauriEvent; stub it so jsdom doesn't try to call
@@ -89,6 +99,17 @@ function sortButtons(container: HTMLElement) {
     : [];
 }
 
+// Move/Copy/Delete-selected now live behind one "Дії з виділеними" menu
+// (SelectionActionsMenu) — query the trigger by its count-agnostic name, then
+// open it and resolve the chosen menuitem.
+function selectionMenuButton() {
+  return screen.getByRole("button", { name: /дії з виділеними|selected actions/i });
+}
+async function openSelectionItem(name: string) {
+  fireEvent.click(selectionMenuButton());
+  return screen.findByRole("menuitem", { name });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   $statuses.set({});
@@ -96,6 +117,8 @@ beforeEach(() => {
   $streams.set([mkStream("a", "Alpha")]);
   $toasts.set([]);
   $settings.set(null);
+  replaceSelection(new Set());
+  $exportStreamsRequest.set(null);
 });
 
 describe("StreamsPanel — filter state persistence", () => {
@@ -192,24 +215,20 @@ describe("StreamsPanel — record all", () => {
     expect(tauri.startAllRecordings).toHaveBeenCalledOnce();
   });
 
-  it("disables Record-all when every stream is already active", () => {
+  it("disables Record-all (aria) when every stream is already active", () => {
     $streams.set([mkStream("a", "Alpha")]);
     $statuses.set({ a: mkStatus("a", "recording") });
     renderPanel();
-    const btn = screen.getByRole("button", {
-      name: /записати все|record all/i,
-    }) as HTMLButtonElement;
-    expect(btn.disabled).toBe(true);
+    const btn = screen.getByRole("button", { name: /записати все|record all/i });
+    expect(btn.getAttribute("aria-disabled")).toBe("true");
   });
 
   it("enables Record-all when a stream is idle or errored", () => {
     $streams.set([mkStream("a", "Alpha"), mkStream("b", "Bravo")]);
     $statuses.set({ a: mkStatus("a", "recording"), b: mkStatus("b", "error") });
     renderPanel();
-    const btn = screen.getByRole("button", {
-      name: /записати все|record all/i,
-    }) as HTMLButtonElement;
-    expect(btn.disabled).toBe(false);
+    const btn = screen.getByRole("button", { name: /записати все|record all/i });
+    expect(btn.getAttribute("aria-disabled")).toBeNull();
   });
 });
 
@@ -435,5 +454,226 @@ describe("StreamsPanel — stream sorting", () => {
     const name = sortButtons(container).find((b) => /назв|name/i.test(b.textContent ?? ""))!;
     fireEvent.click(name);
     expect(tauri.saveSettings).not.toHaveBeenCalled();
+  });
+});
+
+describe("StreamsPanel — selection toolbar cluster", () => {
+  beforeEach(() => {
+    $streams.set([mkStream("a", "Alpha"), mkStream("b", "Bravo"), mkStream("c", "Charlie")]);
+    $statuses.set({});
+  });
+
+  it("shows 'Виділити все' and a disabled 'Дії з виділеними (0)' menu with no selection", () => {
+    renderPanel();
+    expect(screen.getByRole("button", { name: m.select_all() })).toBeTruthy();
+    expect(selectionMenuButton().getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("flips to 'Зняти виділення' when all visible are selected", () => {
+    replaceSelection(new Set(["a", "b", "c"]));
+    renderPanel();
+    expect(screen.getByRole("button", { name: m.clear_selection() })).toBeTruthy();
+  });
+
+  it("shows the [N вибрано] label and an enabled selection menu when something is selected", () => {
+    replaceSelection(new Set(["a", "b"]));
+    renderPanel();
+    expect(screen.getByText(m.selected_count_label({ count: 2 }))).toBeTruthy();
+    expect(selectionMenuButton().getAttribute("aria-disabled")).toBeNull();
+  });
+
+  it("clicking 'Виділити все' selects all visible and announces the count on the toolbar's own channel", () => {
+    renderPanel();
+    $announcer.set({ message: "", priority: "polite" });
+    fireEvent.click(screen.getByRole("button", { name: m.select_all() }));
+    expect([...$streamSelection.get()].sort()).toEqual(["a", "b", "c"]);
+    expect($announcer.get().message).toBe(m.selection_count({ count: 3 }));
+  });
+
+  it("the selection menu's delete item triggers the list's bulk confirm", async () => {
+    replaceSelection(new Set(["a", "b"]));
+    renderPanel();
+    // The menu item reaches into the list via the StreamListHandle ref
+    // (requestBulkDelete) — proves the widened ref is wired end-to-end.
+    const del = await openSelectionItem(m.delete_selected({ count: 2 }));
+    await act(async () => { fireEvent.click(del); });
+    expect(await screen.findByText(m.confirm_delete_selected({ count: 2 }))).toBeTruthy();
+  });
+
+  it("the selection menu exposes Move and Copy items when something is selected", async () => {
+    replaceSelection(new Set(["a", "b"]));
+    renderPanel();
+    fireEvent.click(selectionMenuButton());
+    expect(await screen.findByRole("menuitem", { name: m.move_selected({ count: 2 }) })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: m.copy_selected({ count: 2 }) })).toBeTruthy();
+  });
+
+  it("the selection menu's move item opens the list's bulk transfer picker", async () => {
+    replaceSelection(new Set(["a", "b"]));
+    renderPanel();
+    const move = await openSelectionItem(m.move_selected({ count: 2 }));
+    await act(async () => { fireEvent.click(move); });
+    expect(await screen.findByText(m.move_selected_to_profile_title({ count: 2 }))).toBeTruthy();
+  });
+
+  it("export button becomes 'Export selected (N)' and snapshots ids on click", () => {
+    replaceSelection(new Set(["a", "b"]));
+    renderPanel();
+    fireEvent.click(screen.getByRole("button", { name: m.streams_export_selected({ count: 2 }) }));
+    expect($exportStreamsRequest.get()).toEqual({ ids: expect.arrayContaining(["a", "b"]) });
+  });
+
+  it("export button stays whole-profile (ids: null) with no selection", () => {
+    renderPanel();
+    fireEvent.click(screen.getByRole("button", { name: m.streams_export_button() }));
+    expect($exportStreamsRequest.get()).toEqual({ ids: null });
+  });
+
+  it("keeps a 12-stop roving toolbar in DOM order", () => {
+    const { container } = renderPanel();
+    const toolbar = container.querySelector('[data-zone-id="streams-toolbar"]')!;
+    const stops = Array.from(toolbar.querySelectorAll<HTMLButtonElement>("button"));
+    const tabbable = stops.filter((b) => b.getAttribute("tabindex") === "0");
+    expect(tabbable).toHaveLength(1);
+    // 3 (Row 1) + 9 (Row 2: select-all, selection menu, record, stop, 3 chips, 2 sort).
+    expect(stops).toHaveLength(12);
+  });
+});
+
+describe("StreamsPanel — selection lifecycle", () => {
+  beforeEach(() => {
+    $streams.set([mkStream("a", "Alpha"), mkStream("b", "Bravo")]);
+    $statuses.set({});
+  });
+
+  it("changing the filter clears the selection", () => {
+    replaceSelection(new Set(["a"]));
+    const { container } = renderPanel();
+    const { chips } = chipButtons(container);
+    fireEvent.click(chips[1]); // "recording" chip
+    expect($streamSelection.get().size).toBe(0);
+  });
+
+  it("resetting the filter clears the selection", () => {
+    $statuses.set({}); // no recording rows → filter "recording" hides all
+    $streamFilter.set("recording");
+    replaceSelection(new Set(["a"]));
+    renderPanel();
+    fireEvent.click(screen.getByRole("button", { name: m.streams_filter_reset() }));
+    expect($streamSelection.get().size).toBe(0);
+  });
+
+  it("clears the selection when the panel unmounts (leaving the section)", () => {
+    replaceSelection(new Set(["a"]));
+    const { unmount } = renderPanel();
+    unmount();
+    expect($streamSelection.get().size).toBe(0);
+  });
+
+  it("deletes all visible under a filter → onEmpty focuses reset-filter (never <body>)", async () => {
+    // a recording, b idle; filter=recording → visible=[a]; select+delete a → filter-empty.
+    $statuses.set({ a: mkStatus("a", "recording") });
+    $streamFilter.set("recording");
+    replaceSelection(new Set(["a"]));
+    renderPanel();
+    const del = await openSelectionItem(m.delete_selected({ count: 1 }));
+    fireEvent.click(del);
+    const confirmBtn = await screen.findByRole("button", { name: m["delete"]() });
+    // removeStreams is mocked to resolve; handleConfirmBulkDelete then sets $streams
+    // itself (full store → [b]), so no manual $streams.set is needed — this is the
+    // real path. b is idle under the recording filter → filter-empty zone mounts.
+    await act(async () => { fireEvent.click(confirmBtn); });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: m.streams_filter_reset() })),
+    );
+  });
+
+  it("deletes every stream → onEmpty focuses the add-examples button (never <body>)", async () => {
+    // No filter: select both and bulk-delete all → the profile goes empty, so the
+    // isEmpty branch of the deferred onEmpty-focus effect must land on add-examples.
+    replaceSelection(new Set(["a", "b"]));
+    renderPanel();
+    const del = await openSelectionItem(m.delete_selected({ count: 2 }));
+    fireEvent.click(del);
+    const confirmBtn = await screen.findByRole("button", { name: m["delete"]() });
+    await act(async () => { fireEvent.click(confirmBtn); });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: /додати приклади потоків|add example streams/i }),
+      ),
+    );
+  });
+});
+
+describe("StreamsPanel — Record/Stop selected (C4, R6/R8)", () => {
+  beforeEach(() => {
+    $streams.set([mkStream("a", "Alpha"), mkStream("b", "Bravo"), mkStream("c", "Charlie")]);
+    $statuses.set({});
+  });
+
+  it("relabels Record/Stop to the selected count and snapshots selection on Record", async () => {
+    $statuses.set({ a: mkStatus("a", "idle"), b: mkStatus("b", "recording") });
+    replaceSelection(new Set(["a", "b"]));
+    vi.mocked(tauri.startAllRecordings).mockResolvedValueOnce(1); // only 'a' startable
+    renderPanel();
+    $announcer.set({ message: "", priority: "polite" });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: m.record_selected({ count: 2 }) }));
+    });
+    expect(new Set(vi.mocked(tauri.startAllRecordings).mock.calls[0][0])).toEqual(new Set(["a", "b"]));
+    // started 1, skipped 1 (b already recording)
+    expect($announcer.get().message).toBe(`${m.record_done({ count: 1 })}, ${m.record_skipped({ count: 1 })}`);
+  });
+
+  it("Stop-selected aria-disabled when no selected stream is active (idle selection)", () => {
+    replaceSelection(new Set(["a", "b"])); // both idle
+    renderPanel();
+    const stop = screen.getByRole("button", { name: m.stop_selected({ count: 2 }) });
+    expect(stop.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("Stop-selected stops directly (no confirm) when exactly one selected is active", async () => {
+    $statuses.set({ a: mkStatus("a", "recording"), b: mkStatus("b", "idle") });
+    replaceSelection(new Set(["a", "b"]));
+    vi.mocked(tauri.stopAllRecordings).mockResolvedValueOnce(1);
+    renderPanel();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: m.stop_selected({ count: 2 }) }));
+    });
+    expect(new Set(vi.mocked(tauri.stopAllRecordings).mock.calls[0][0])).toEqual(new Set(["a", "b"]));
+  });
+
+  it("Stop-selected confirms when >1 selected is active, then stops on confirm", async () => {
+    $statuses.set({ a: mkStatus("a", "recording"), b: mkStatus("b", "connecting") });
+    replaceSelection(new Set(["a", "b"]));
+    renderPanel();
+    // Only the toolbar button exists yet, so this opens the confirm dialog.
+    fireEvent.click(screen.getByRole("button", { name: m.stop_selected({ count: 2 }) }));
+    // The dialog's confirm button shares the label — scope the query to the dialog.
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText(m.confirm_stop_selected_message({ count: 2 }))).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: m.stop_selected({ count: 2 }) }));
+    await waitFor(() => expect(tauri.stopAllRecordings).toHaveBeenCalledTimes(1));
+  });
+
+  it("Stop-selected confirm uses the stoppable count, toolbar button keeps the selection count", async () => {
+    // a,b active, c idle → selCount=3 but only 2 are stoppable.
+    $statuses.set({ a: mkStatus("a", "recording"), b: mkStatus("b", "connecting"), c: mkStatus("c", "idle") });
+    replaceSelection(new Set(["a", "b", "c"]));
+    renderPanel();
+    // Toolbar button shows the full selection count (R1).
+    fireEvent.click(screen.getByRole("button", { name: m.stop_selected({ count: 3 }) }));
+    const dialog = await screen.findByRole("alertdialog");
+    // Message AND confirm button use the actionable (stoppable) count, not selCount.
+    expect(within(dialog).getByText(m.confirm_stop_selected_message({ count: 2 }))).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: m.stop_selected({ count: 2 }) }));
+    await waitFor(() => expect(tauri.stopAllRecordings).toHaveBeenCalledTimes(1));
+  });
+
+  it("R6: a reconnecting stream makes Stop-all enabled (broad is_active), metric stays recording-only", () => {
+    $statuses.set({ a: mkStatus("a", "reconnecting") });
+    renderPanel();
+    const stop = screen.getByRole("button", { name: /^зупинити запис$|^stop recording$/i });
+    expect(stop.getAttribute("aria-disabled")).toBeNull(); // broad stoppableCount = 1 → enabled
   });
 });

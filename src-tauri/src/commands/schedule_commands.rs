@@ -159,6 +159,14 @@ fn dto_for(schedule: ScheduledRecording, now: chrono::NaiveDateTime) -> Schedule
     ScheduleDto { schedule, next_run }
 }
 
+/// Remove every schedule whose id is in `ids`; returns how many were removed.
+/// Pure over the profile — unit-testable without Tauri state.
+pub fn retain_schedules(profile: &mut Profile, ids: &std::collections::HashSet<String>) -> usize {
+    let before = profile.scheduled_recordings.len();
+    profile.scheduled_recordings.retain(|s| !ids.contains(&s.id));
+    before - profile.scheduled_recordings.len()
+}
+
 // --- Tauri-команди (спека §4): працюють з активним профілем і одразу персистять ---
 
 #[tauri::command]
@@ -236,6 +244,29 @@ pub async fn delete_schedule(
     // §3.5: видалення під час запису — просто зупинка (фіксувати нікуди)
     crate::scheduler::timer::notify_schedule_deleted(&app, &id).await;
     Ok(())
+}
+
+#[tauri::command]
+pub async fn delete_schedules(
+    ids: Vec<String>,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+) -> Result<u32, String> {
+    let id_set: std::collections::HashSet<String> = ids.iter().cloned().collect();
+    let (removed, snapshot) = {
+        let mut profile = state.active_profile.write().await;
+        let removed = retain_schedules(&mut profile, &id_set);
+        (removed, profile.clone())
+    };
+    tokio::task::spawn_blocking(move || snapshot.save())
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?;
+    // §3.5: stop any in-progress recording for each deleted id (nothing to record).
+    for id in &ids {
+        crate::scheduler::timer::notify_schedule_deleted(&app, id).await;
+    }
+    Ok(removed as u32)
 }
 
 #[tauri::command]
@@ -485,6 +516,19 @@ mod tests {
         assert!(dto.next_run.is_none(), "початок у минулому → None, frontend покаже «—»");
         let dto = dto_for(schedule, at("2026-06-12T10:00"));
         assert_eq!(dto.next_run.as_deref(), Some("2026-06-14T20:00"));
+    }
+
+    #[test]
+    fn retain_schedules_removes_listed_and_counts() {
+        let mut p = profile_with_stream();
+        let a = add_schedule_impl(&mut p, valid_input()).unwrap();
+        let mut second = valid_input();
+        second.name = "Second".into();
+        let b = add_schedule_impl(&mut p, second).unwrap();
+        let ids: std::collections::HashSet<String> = [a.id.clone()].into_iter().collect();
+        let removed = retain_schedules(&mut p, &ids);
+        assert_eq!(removed, 1);
+        assert_eq!(p.scheduled_recordings.iter().map(|s| s.id.clone()).collect::<Vec<_>>(), vec![b.id]);
     }
 
     #[test]

@@ -10,6 +10,7 @@ interface Props {
   isDefault: boolean;
   /** True when the trigger is the active 'action-menu' focus stop. */
   menuFocused: boolean;
+  selectionCount: number;
   onSwitch: () => void;
   onDuplicate: () => void;
   onRename: () => void;
@@ -18,7 +19,7 @@ interface Props {
 }
 
 export function ProfileContextMenu({
-  profile, isActive, isDefault, menuFocused,
+  profile, isActive, isDefault, menuFocused, selectionCount,
   onSwitch, onDuplicate, onRename, onDelete, onExport,
 }: Props) {
   const handleAction = (key: React.Key) => {
@@ -64,7 +65,7 @@ export function ProfileContextMenu({
             <span aria-hidden="true" className="mr-2 inline-flex"><Pencil size={14} /></span>{m.profile_rename()}
           </MenuItem>
           <MenuItem id="delete" isDisabled={isDefault || isActive} className={`${itemClass} text-red-400 forced-colors:text-[CanvasText]`}>
-            <span aria-hidden="true" className="mr-2 inline-flex"><Trash2 size={14} /></span>{m.profile_delete()}
+            <span aria-hidden="true" className="mr-2 inline-flex"><Trash2 size={14} /></span>{selectionCount > 0 ? m.delete_selected({ count: selectionCount }) : m.profile_delete()}
           </MenuItem>
           <Separator className="my-1 border-t border-slate-700" />
           <MenuItem id="export" className={itemClass}>

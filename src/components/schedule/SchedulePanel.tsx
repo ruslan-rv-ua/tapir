@@ -2,14 +2,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useStore } from "@nanostores/react";
 import {
-  $schedules, $schedulesError, $schedulesLoading, loadSchedules,
+  $schedules, $scheduleSelection, $schedulesError, $schedulesLoading, loadSchedules,
 } from "../../stores/schedule";
+import { replaceSelection } from "../../stores/selection";
 import { ScheduleTable, type ScheduleTableHandle } from "./ScheduleTable";
 import { ScheduleForm } from "./ScheduleForm";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { ListCard, ListCardState } from "../common/ListCard";
 import { ScreenHeader } from "../layout/ScreenHeader";
 import { ScreenZone } from "../layout/ScreenZone";
+import { SelectionToolbar } from "../common/SelectionToolbar";
 import { useRovingFocus } from "../../hooks/useRovingFocus";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
@@ -29,6 +31,11 @@ export function SchedulePanel({ onZonesChange, exitZone }: Props) {
   const error = useStore($schedulesError);
   const announce = useAnnounce();
 
+  // Selection state
+  const selection = useStore($scheduleSelection);
+  const selCount = selection.size;
+  const allVisibleSelected = schedules.length > 0 && schedules.every((s) => selection.has(s.id));
+
   const tableRef = useRef<ScheduleTableHandle | null>(null);
   // Stable proxy: таблиця демонтується на loading/error/empty — App не повинен
   // тримати мертвий ZoneEntry, інакше F6 мовчки глухне (патерн SongsPanel).
@@ -43,10 +50,24 @@ export function SchedulePanel({ onZonesChange, exitZone }: Props) {
 
   useEffect(() => { loadSchedules(); }, []);
 
-  // ── Toolbar zone (одна кнопка «Додати розклад») ──
+  const handleSelectAll = () => {
+    if (schedules.length === 0) return;
+    const next = new Set(selection);
+    if (allVisibleSelected) schedules.forEach((s) => next.delete(s.id));
+    else schedules.forEach((s) => next.add(s.id));
+    replaceSelection($scheduleSelection, next);
+    announce(next.size === 0 ? m.selection_cleared() : m.selection_count({ count: next.size }), "polite");
+  };
+
+  // Clear on unmount only (schedule has no filter that should clear selection).
+  useEffect(() => () => { replaceSelection($scheduleSelection, new Set()); }, []);
+
+  // ── Toolbar zone (три кнопки: Add, SelectAll, DeleteSelected) ──
   const toolbarZoneRef = useRef<HTMLDivElement | null>(null);
   const addBtn = useRef<HTMLButtonElement | null>(null);
-  const toolbarRefs = useMemo(() => [addBtn], []);
+  const selectAllBtn = useRef<HTMLButtonElement | null>(null);
+  const deleteSelectedBtn = useRef<HTMLButtonElement | null>(null);
+  const toolbarRefs = useMemo(() => [addBtn, selectAllBtn, deleteSelectedBtn], []);
   const {
     onKeyDown: toolbarKeyDown,
     getTabIndex: toolbarTabIndex,
@@ -136,6 +157,18 @@ export function SchedulePanel({ onZonesChange, exitZone }: Props) {
           >
             {m.schedule_add()}
           </button>
+          <SelectionToolbar
+            selCount={selCount}
+            visibleCount={schedules.length}
+            allVisibleSelected={allVisibleSelected}
+            selectAllRef={selectAllBtn}
+            actionRef={deleteSelectedBtn}
+            selectAllTabIndex={toolbarTabIndex(1)}
+            actionTabIndex={toolbarTabIndex(2)}
+            actionLabel={m.delete_selected({ count: selCount })}
+            onSelectAll={handleSelectAll}
+            onAction={() => tableRef.current?.requestBulkDelete()}
+          />
         </ScreenHeader>
       </ScreenZone>
 

@@ -38,6 +38,42 @@ fn move_blocked_by_state(state: &StreamState) -> bool {
     )
 }
 
+/// Result of a bulk transfer: which source ids actually landed in the target,
+/// plus how many were skipped and why. `Conflict` is the only skip from the
+/// insert step; recording-skips are counted by the command (move only).
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BulkTransferResult {
+    pub transferred: Vec<String>,
+    pub skipped_recording: usize,
+    pub skipped_conflict: usize,
+}
+
+/// Insert each source into `target` with URL dedup. Returns (source ids that
+/// landed; conflict count) or an error. `sources` are pre-filtered to the
+/// eligible set (the command drops recording streams for move). `Conflict` is
+/// the ONLY skip branch; any other `add_stream_checked` error propagates so a
+/// future validation can't be silently mislabelled as a conflict (finding 5).
+/// Pure over the profile — unit-testable without Tauri state.
+pub fn insert_transfers(
+    target: &mut Profile,
+    sources: &[StreamInfo],
+    mode: &TransferMode,
+    now: &str,
+) -> Result<(Vec<String>, usize), RadioError> {
+    let mut transferred = Vec::new();
+    let mut skipped_conflict = 0;
+    for src in sources {
+        let entry = prepare_transfer_stream(src, mode, now.to_string());
+        match target.add_stream_checked(entry) {
+            Ok(()) => transferred.push(src.id.clone()),
+            Err(RadioError::Conflict(_)) => skipped_conflict += 1,
+            Err(e) => return Err(e),
+        }
+    }
+    Ok((transferred, skipped_conflict))
+}
+
 fn below_threshold(free_bytes: u64, threshold_gb: u32) -> bool {
     // cast to u64 first — u32::MAX × 1 GiB < u64::MAX, no overflow
     threshold_gb > 0 && free_bytes < (threshold_gb as u64) * 1_073_741_824
@@ -118,6 +154,24 @@ pub async fn add_stream(
     Ok(new_stream)
 }
 
+/// Keep only the streams whose id is in `ids`, in `streams` order (profile
+/// order). Unknown ids are ignored. Shared by export / start / stop of the
+/// selected subset. `pub(crate)` — `export_streams` lives in the sibling
+/// `stream_io_commands` module.
+pub(crate) fn select_by_ids(streams: &[StreamInfo], ids: &[String]) -> Vec<StreamInfo> {
+    let want: std::collections::HashSet<&str> = ids.iter().map(String::as_str).collect();
+    streams.iter().filter(|s| want.contains(s.id.as_str())).cloned().collect()
+}
+
+/// Remove every stream whose id is in `ids`. Returns how many were actually
+/// removed (ignores ids not present). Pure over the vector — unit-testable
+/// without any Tauri state, mirroring `prepare_transfer_stream`.
+pub fn retain_streams(streams: &mut Vec<StreamInfo>, ids: &std::collections::HashSet<String>) -> usize {
+    let before = streams.len();
+    streams.retain(|s| !ids.contains(&s.id));
+    before - streams.len()
+}
+
 #[tauri::command]
 pub async fn remove_stream(
     stream_id: String,
@@ -141,6 +195,41 @@ pub async fn remove_stream(
         .await
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
+}
+
+/// Bulk variant of `remove_stream`: one stop-recordings pass, one `retain`, one
+/// save. Returns the count actually removed (honest, vs an N-save frontend loop).
+/// Deleting a stream that is currently recording is allowed (same as the single
+/// `remove_stream`), so there is no "skipped" category for delete.
+#[tauri::command]
+pub async fn remove_streams(
+    stream_ids: Vec<String>,
+    state: tauri::State<'_, AppState>,
+) -> Result<usize, String> {
+    let ids: std::collections::HashSet<String> = stream_ids.into_iter().collect();
+
+    // 1. Stop recordings first (best-effort; NotFound is a harmless no-op).
+    {
+        let mut manager = state.stream_manager.write().await;
+        for id in &ids {
+            let _ = manager.stop_recording(id);
+        }
+    }
+
+    // 2. Retain survivors + count removed, snapshot while the write lock is held.
+    let (removed, snapshot) = {
+        let mut profile = state.active_profile.write().await;
+        let removed = retain_streams(&mut profile.streams, &ids);
+        (removed, profile.clone())
+    };
+
+    // 3. One save on a blocking thread (don't starve the async worker).
+    tokio::task::spawn_blocking(move || snapshot.save())
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?;
+
+    Ok(removed)
 }
 
 #[tauri::command]
@@ -222,18 +311,28 @@ pub async fn stop_recording(
 }
 
 #[tauri::command]
-pub async fn stop_all_recordings(app: tauri::AppHandle) -> Result<(), String> {
-    crate::recording_control::stop_all_now(&app).await;
-    Ok(())
+pub async fn stop_all_recordings(
+    stream_ids: Option<Vec<String>>,
+    app: tauri::AppHandle,
+) -> Result<usize, String> {
+    let set = stream_ids.map(|v| v.into_iter().collect::<std::collections::HashSet<_>>());
+    Ok(crate::recording_control::stop_now(&app, set.as_ref()).await)
 }
 
 #[tauri::command]
-pub async fn start_all_recordings(state: tauri::State<'_, AppState>) -> Result<usize, String> {
+pub async fn start_all_recordings(
+    stream_ids: Option<Vec<String>>,
+    state: tauri::State<'_, AppState>,
+) -> Result<usize, String> {
     check_disk_space(&state).await.map_err(|e| e.to_string())?;
 
-    let (streams, settings) = {
+    let (all, settings) = {
         let profile = state.active_profile.read().await;
         (profile.streams.clone(), profile.recording.clone())
+    };
+    let streams = match stream_ids {
+        Some(ids) => select_by_ids(&all, &ids),
+        None => all,
     };
 
     let manager_arc = state.stream_manager.clone();
@@ -341,6 +440,112 @@ pub async fn transfer_stream_to_profile(
     Ok(())
 }
 
+/// Bulk variant of `transfer_stream_to_profile`. Target chosen once. Partial
+/// success: for `Move`, streams in a recording-like state are skipped
+/// (`skipped_recording`); a duplicate URL in the target is skipped
+/// (`skipped_conflict`) for both modes. One save to the target; for `Move`, one
+/// save to the active profile after removing only the transferred ids. Mirrors
+/// `remove_streams` (one stop-pass, one retain, one save) and the single
+/// `transfer_stream_to_profile` move branch — incl. its accepted TOCTOU window
+/// (finding 3): a stream idle at eligibility may be stopped at removal if it
+/// became active during the I/O window, same as single-move. One consequence of
+/// that window: a stream that races from idle into recording during the I/O is
+/// still counted as `transferred` (and stopped at removal), not
+/// `skipped_recording`, so the summary may under-report recording-skips by one
+/// in that rare race.
+///
+/// Failure ordering (move): the target is saved BEFORE the active profile is
+/// mutated, so if the active save fails after the target save succeeded the
+/// moved streams are DUPLICATED (present in both profiles), never lost. Keep
+/// this order — reversing it to save the active profile first would turn a
+/// partial failure into data loss.
+#[tauri::command]
+pub async fn transfer_streams_to_profile(
+    stream_ids: Vec<String>,
+    target_profile: String,
+    mode: TransferMode,
+    state: tauri::State<'_, AppState>,
+) -> Result<BulkTransferResult, String> {
+    // 1. Guard: never transfer into the active profile.
+    {
+        let profile = state.active_profile.read().await;
+        if profile.name == target_profile {
+            return Err(RadioError::Forbidden(
+                "Cannot transfer a stream into the active profile".into(),
+            )
+            .to_string());
+        }
+    }
+
+    let id_set: std::collections::HashSet<String> = stream_ids.into_iter().collect();
+
+    // 2. Collect sources from the active profile (active-profile order).
+    let sources: Vec<StreamInfo> = {
+        let profile = state.active_profile.read().await;
+        profile.streams.iter().filter(|s| id_set.contains(&s.id)).cloned().collect()
+    };
+
+    // 3. Move: skip recording-like streams. Copy is never blocked by state (R4:
+    //    a merely-playing stream is moved; playback is not a recording state).
+    let (eligible, skipped_recording): (Vec<StreamInfo>, usize) = if mode == TransferMode::Move {
+        let manager = state.stream_manager.read().await;
+        let mut eligible = Vec::new();
+        let mut skipped = 0usize;
+        for s in sources {
+            let blocked = manager
+                .get_status(&s.id)
+                .map(|st| move_blocked_by_state(&st.state))
+                .unwrap_or(false);
+            if blocked { skipped += 1; } else { eligible.push(s); }
+        }
+        (eligible, skipped)
+    } else {
+        (sources, 0)
+    };
+
+    // 4. Load the target off the async worker.
+    let mut target = {
+        let name = target_profile.clone();
+        tokio::task::spawn_blocking(move || Profile::load(&name))
+            .await
+            .map_err(|e| e.to_string())?
+            .map_err(|e| e.to_string())?
+    };
+
+    // 5. Insert eligible with URL dedup (Conflict → skip; other → error, finding 5).
+    let now = chrono::Local::now().to_rfc3339();
+    let (transferred, skipped_conflict) =
+        insert_transfers(&mut target, &eligible, &mode, &now).map_err(|e| e.to_string())?;
+
+    // 6. One save to the target.
+    tokio::task::spawn_blocking(move || target.save())
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?;
+
+    // 7. Move only: stop + remove the transferred ids from active, one save.
+    if mode == TransferMode::Move && !transferred.is_empty() {
+        let removed: std::collections::HashSet<String> = transferred.iter().cloned().collect();
+        {
+            let mut manager = state.stream_manager.write().await;
+            for id in &removed {
+                let _ = manager.stop_recording(id);
+            }
+        }
+        let snapshot = {
+            let mut profile = state.active_profile.write().await;
+            profile.streams.retain(|s| !removed.contains(&s.id));
+            profile.clone()
+        };
+        tokio::task::spawn_blocking(move || snapshot.save())
+            .await
+            .map_err(|e| e.to_string())?
+            .map_err(|e| e.to_string())?;
+    }
+
+    Ok(BulkTransferResult { transferred, skipped_recording, skipped_conflict })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -399,5 +604,81 @@ mod tests {
     #[test]
     fn one_byte_under_threshold_blocks() {
         assert!(below_threshold(1_073_741_823, 1)); // one byte short → blocked
+    }
+
+    fn with_id(id: &str) -> StreamInfo {
+        StreamInfo { id: id.into(), ..sample() }
+    }
+
+    #[test]
+    fn retain_streams_removes_only_targeted_ids_and_counts() {
+        let mut v = vec![with_id("a"), with_id("b"), with_id("c")];
+        let ids: std::collections::HashSet<String> =
+            ["a".to_string(), "c".to_string()].into_iter().collect();
+        let removed = retain_streams(&mut v, &ids);
+        assert_eq!(removed, 2);
+        assert_eq!(v.iter().map(|s| s.id.clone()).collect::<Vec<_>>(), vec!["b"]);
+    }
+
+    #[test]
+    fn retain_streams_ignores_unknown_ids() {
+        let mut v = vec![with_id("a")];
+        let ids: std::collections::HashSet<String> =
+            ["does-not-exist".to_string()].into_iter().collect();
+        assert_eq!(retain_streams(&mut v, &ids), 0);
+        assert_eq!(v.len(), 1);
+    }
+
+    fn src(id: &str, url: &str) -> StreamInfo {
+        StreamInfo { id: id.into(), url: url.into(), ..sample() }
+    }
+
+    #[test]
+    fn insert_transfers_copy_assigns_fresh_ids_and_returns_source_ids() {
+        let mut target = Profile::create_default();
+        let sources = vec![src("a", "http://a"), src("b", "http://b")];
+        let (transferred, conflicts) =
+            insert_transfers(&mut target, &sources, &TransferMode::Copy, "NOW").unwrap();
+        assert_eq!(transferred, vec!["a".to_string(), "b".to_string()]); // source ids, in order
+        assert_eq!(conflicts, 0);
+        assert_eq!(target.streams.len(), 2);
+        assert!(target.streams.iter().all(|s| s.id != "a" && s.id != "b"), "copy gets fresh ids");
+    }
+
+    #[test]
+    fn insert_transfers_skips_duplicate_url_as_conflict() {
+        let mut target = Profile::create_default();
+        target.streams.push(src("existing", "http://dup"));
+        let sources = vec![src("a", "http://dup"), src("b", "http://new")];
+        let (transferred, conflicts) =
+            insert_transfers(&mut target, &sources, &TransferMode::Copy, "NOW").unwrap();
+        assert_eq!(transferred, vec!["b".to_string()]);
+        assert_eq!(conflicts, 1);
+        assert_eq!(target.streams.len(), 2); // existing + b only
+    }
+
+    #[test]
+    fn insert_transfers_move_preserves_source_id() {
+        let mut target = Profile::create_default();
+        let sources = vec![src("keep-id", "http://a")];
+        let (transferred, _) =
+            insert_transfers(&mut target, &sources, &TransferMode::Move, "NOW").unwrap();
+        assert_eq!(transferred, vec!["keep-id".to_string()]);
+        assert_eq!(target.streams[0].id, "keep-id"); // move keeps id
+    }
+
+    #[test]
+    fn select_by_ids_keeps_profile_order_and_ignores_unknown() {
+        let all = vec![with_id("a"), with_id("b"), with_id("c")];
+        let ids = vec!["c".to_string(), "a".to_string(), "zzz".to_string()];
+        let got = select_by_ids(&all, &ids);
+        // profile order (a before c), unknown id dropped
+        assert_eq!(got.iter().map(|s| s.id.clone()).collect::<Vec<_>>(), vec!["a", "c"]);
+    }
+
+    #[test]
+    fn select_by_ids_empty_ids_yields_empty() {
+        let all = vec![with_id("a")];
+        assert!(select_by_ids(&all, &[]).is_empty());
     }
 }

@@ -85,6 +85,33 @@ interface FocusMemory {
   scrollTop: number;
 }
 
+/** Two-method bridge to the consumer's selection store (atom). */
+export interface CompositeSelection {
+  /** Event-time snapshot (atom.get). */
+  current: () => ReadonlySet<string>;
+  /**
+   * Delegates to the store's replaceSelection (new Set identity). MUST update the
+   * store synchronously: the hook calls `current()` immediately after `replace()`
+   * (e.g. to snapshot the range-anchor base), so a deferred/batched update would
+   * read stale state. A nanostores `atom.set` satisfies this.
+   */
+  replace: (next: ReadonlySet<string>) => void;
+}
+
+/** Emitted after every selection gesture so the consumer can localize an announce. */
+export interface SelectionChange {
+  /** single = Ctrl+Space/Ctrl+Click/simple click; group = range/all/clear. */
+  kind: "single" | "group";
+  /** pointer gestures already moved DOM focus (NVDA reads the row) → caller skips single. */
+  via: "key" | "pointer";
+  /** New selection size. */
+  count: number;
+  /** Toggled row (single only). */
+  lastId?: string;
+  /** Its new state (single only). */
+  selected?: boolean;
+}
+
 interface UseCompositeListOptions<T extends CompositeListItem> {
   /** Zone identifier — reserved for zone-system registration (Task 4 wires this up). */
   zoneId: string;
@@ -101,6 +128,51 @@ interface UseCompositeListOptions<T extends CompositeListItem> {
    * Parent should switch to empty-state zone.
    */
   onEmpty?: () => void;
+  /** Opt-in: enables the selection layer. Omit → list behaves exactly as before. */
+  selection?: CompositeSelection;
+  onSelectionChange?: (change: SelectionChange) => void;
+}
+
+/** Semantic key intents resolved from a KeyboardEvent (pure; no list state). */
+type ActionId =
+  | "up" | "down" | "left" | "right"
+  | "home" | "end" | "pageup" | "pagedown"
+  | "enter" | "space" | "delete" | "tab" | "copy" | "selectToggle"
+  | "selectRangeUp" | "selectRangeDown" | "selectAll" | "clearSelection";
+
+/**
+ * Map a keyboard event to a single list intent, or null to let it bubble.
+ * Letters/Space use e.code (Cyrillic-layout safe); navigation/activation keys
+ * use e.key. Modifiers for Enter/Space (Shift=listen, Ctrl=record) are NOT
+ * encoded here — they ride along via `modifiers(e)` at dispatch time.
+ */
+function resolveKeyAction(e: React.KeyboardEvent): ActionId | null {
+  if (
+    (e.code === "Space" || e.key === " ") &&
+    (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey
+  ) return "selectToggle";
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === "KeyC") return "copy";
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === "KeyA") return "selectAll";
+  if (e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+    if (e.key === "ArrowDown") return "selectRangeDown";
+    if (e.key === "ArrowUp") return "selectRangeUp";
+  }
+  switch (e.key) {
+    case "ArrowUp": return "up";
+    case "ArrowDown": return "down";
+    case "ArrowLeft": return "left";
+    case "ArrowRight": return "right";
+    case "Home": return "home";
+    case "End": return "end";
+    case "PageUp": return "pageup";
+    case "PageDown": return "pagedown";
+    case "Escape": return "clearSelection";
+    case "Enter": return "enter";
+    case "Delete": return "delete";
+    case "Tab": return "tab";
+  }
+  if (e.code === "Space" || e.key === " ") return "space";
+  return null;
 }
 
 /**
@@ -126,6 +198,8 @@ export function useCompositeList<T extends CompositeListItem>({
   onTabOut,
   onAction,
   onEmpty,
+  selection,
+  onSelectionChange,
 }: UseCompositeListOptions<T>) {
   const [activeItemId, setActiveItemId] = useState<string | null>(
     items.length > 0 ? items[0].id : null,
@@ -152,6 +226,14 @@ export function useCompositeList<T extends CompositeListItem>({
   onActionRef.current = onAction;
   const onEmptyRef = useRef(onEmpty);
   onEmptyRef.current = onEmpty;
+  const selectionRef = useRef(selection);
+  selectionRef.current = selection;
+  const onSelectionChangeRef = useRef(onSelectionChange);
+  onSelectionChangeRef.current = onSelectionChange;
+
+  // Range anchor (id) + snapshot of the selection when the anchor was (re)set.
+  const anchorRef = useRef<string | null>(null);
+  const anchorBaseRef = useRef<ReadonlySet<string>>(new Set());
 
   // Fire pending focus after DOM updates (tabIndex changes happen during render)
   useLayoutEffect(() => {
@@ -222,6 +304,34 @@ export function useCompositeList<T extends CompositeListItem>({
     return ['summary', ...item.segments] as SegmentKind[];
   }
 
+  /** Contiguous ids from `fromId` to `toId` over the current visible items. */
+  const rangeIds = useCallback((fromId: string, toId: string): string[] => {
+    const i = items.findIndex((it) => it.id === fromId);
+    const j = items.findIndex((it) => it.id === toId);
+    if (i < 0 || j < 0) return [toId];
+    const [lo, hi] = i <= j ? [i, j] : [j, i];
+    return items.slice(lo, hi + 1).map((it) => it.id);
+  }, [items]);
+
+  /** (Re)set the anchor and snapshot the *current* selection as its base. */
+  const setAnchor = useCallback((id: string) => {
+    anchorRef.current = id;
+    anchorBaseRef.current = new Set(selectionRef.current?.current() ?? []);
+  }, []);
+
+  /** Toggle one row's membership; (re)sets the anchor; emits a single change. */
+  const toggleSelection = useCallback((id: string, via: "key" | "pointer") => {
+    const sel = selectionRef.current;
+    if (!sel) return;
+    const next = new Set(sel.current());
+    const willSelect = !next.has(id);
+    if (willSelect) next.add(id);
+    else next.delete(id);
+    sel.replace(next);
+    setAnchor(id); // base snapshot now includes the just-toggled row
+    onSelectionChangeRef.current?.({ kind: "single", via, count: next.size, lastId: id, selected: willSelect });
+  }, [setAnchor]);
+
   const moveFocus = useCallback(
     (itemId: string, segment: SegmentKind) => {
       setActiveItemId(itemId);
@@ -257,21 +367,27 @@ export function useCompositeList<T extends CompositeListItem>({
       // literal it used to be, which had drifted and missed aria-modal.
       if (isInModal()) return;
 
+      const action = resolveKeyAction(e);
+      if (!action) return;
+
       if (!activeItemId) {
-        if (e.key === 'Tab') {
+        if (action === "tab") {
           consume();
           onTabOutRef.current(!e.shiftKey);
         }
         return;
       }
 
-      // Ctrl/Cmd+C → generic "copy" for the active row; the consumer (e.g. StreamList)
-      // decides what to copy. e.code, not e.key — Cyrillic layouts (accessibility.md §12).
-      // List-scoped on purpose: a registry "match" would hijack Ctrl+C in text fields
-      // across the whole section.
-      // REFACTOR TRIGGER: 2 hardcoded list key→action mappings now (Delete, Ctrl+C).
-      // On a 3rd/4th, replace this if/switch scatter with a key→actionType table.
-      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === "KeyC") {
+      if (action === "tab") {
+        consume();
+        onTabOutRef.current(!e.shiftKey);
+        return;
+      }
+
+      // Ctrl/Cmd+C → generic "copy" for the active row; the consumer decides what
+      // to copy. List-scoped on purpose (a registry match would hijack Ctrl+C in
+      // text fields across the whole section).
+      if (action === "copy") {
         consume();
         onActionRef.current("copy", activeItemId, activeSegment, modifiers(e));
         return;
@@ -283,94 +399,224 @@ export function useCompositeList<T extends CompositeListItem>({
       const allSegments = resolveSegments(currentItem);
       const segIdx = allSegments.indexOf(activeSegment);
 
-      switch (e.key) {
-        case 'ArrowUp':
+      // Plain row navigation (up/down/home/end/page) re-anchors the selection to
+      // the landed row so a following Shift-extend spans from the new cursor, not
+      // the old anchor. left/right are within-row moves and deliberately do not
+      // re-anchor; Shift-range gestures keep the existing anchor (see Task 6).
+      switch (action) {
+        case "up": {
           consume();
-          // Vertical move always returns to the whole-row summary of the target.
-          if (currentIdx > 0) moveFocus(items[currentIdx - 1].id, 'summary');
-          break;
-
-        case 'ArrowDown':
-          consume();
-          if (currentIdx < items.length - 1) moveFocus(items[currentIdx + 1].id, 'summary');
-          break;
-
-        case 'ArrowLeft':
-          consume();
-          if (segIdx > 0) {
-            moveFocus(activeItemId, allSegments[segIdx - 1]);
-          }
-          // At 'summary' → stay
-          break;
-
-        case 'ArrowRight':
-          consume();
-          if (segIdx < allSegments.length - 1) {
-            moveFocus(activeItemId, allSegments[segIdx + 1]);
+          if (currentIdx > 0) {
+            const id = items[currentIdx - 1].id;
+            moveFocus(id, "summary");
+            if (selectionRef.current) setAnchor(id);
           }
           break;
+        }
 
-        case 'Home':
+        case "down": {
           consume();
-          if (items.length > 0) moveFocus(items[0].id, 'summary');
+          if (currentIdx < items.length - 1) {
+            const id = items[currentIdx + 1].id;
+            moveFocus(id, "summary");
+            if (selectionRef.current) setAnchor(id);
+          }
+          break;
+        }
+
+        case "left":
+          consume();
+          if (segIdx > 0) moveFocus(activeItemId, allSegments[segIdx - 1]);
           break;
 
-        case 'End':
+        case "right":
           consume();
-          if (items.length > 0) moveFocus(items[items.length - 1].id, 'summary');
+          if (segIdx < allSegments.length - 1) moveFocus(activeItemId, allSegments[segIdx + 1]);
           break;
 
-        case 'PageUp': {
+        case "home": {
+          consume();
+          if (items.length > 0) {
+            const id = items[0].id;
+            moveFocus(id, "summary");
+            if (selectionRef.current) setAnchor(id);
+          }
+          break;
+        }
+
+        case "end": {
+          consume();
+          if (items.length > 0) {
+            const id = items[items.length - 1].id;
+            moveFocus(id, "summary");
+            if (selectionRef.current) setAnchor(id);
+          }
+          break;
+        }
+
+        case "pageup": {
           consume();
           const container = listRef.current;
           if (!container || items.length === 0) break;
-          const firstItemEl = container.querySelector<HTMLElement>('[data-item-id]');
+          const firstItemEl = container.querySelector<HTMLElement>("[data-item-id]");
           const itemH = firstItemEl?.offsetHeight || 40;
           const page = Math.max(1, Math.floor(container.clientHeight / itemH));
           const targetIdx = Math.max(0, currentIdx - page);
-          moveFocus(items[targetIdx].id, 'summary');
+          const id = items[targetIdx].id;
+          moveFocus(id, "summary");
+          if (selectionRef.current) setAnchor(id);
           break;
         }
 
-        case 'PageDown': {
+        case "pagedown": {
           consume();
           const container = listRef.current;
           if (!container || items.length === 0) break;
-          const firstItemEl = container.querySelector<HTMLElement>('[data-item-id]');
+          const firstItemEl = container.querySelector<HTMLElement>("[data-item-id]");
           const itemH = firstItemEl?.offsetHeight || 40;
           const page = Math.max(1, Math.floor(container.clientHeight / itemH));
           const targetIdx = Math.min(items.length - 1, currentIdx + page);
-          moveFocus(items[targetIdx].id, 'summary');
+          const id = items[targetIdx].id;
+          moveFocus(id, "summary");
+          if (selectionRef.current) setAnchor(id);
           break;
         }
 
-        case 'Enter':
-          // On an action button let the native click fire — don't consume.
+        case "selectToggle":
+          // Selection toggle for the active row. NOT gated by isNativeControl:
+          // it works from any segment incl. an action button, and consume() mutes
+          // the native click. No-op (and no consume) when selection is disabled.
+          if (!selectionRef.current) break;
+          consume();
+          toggleSelection(activeItemId, "key");
+          break;
+
+        case "selectRangeDown":
+        case "selectRangeUp": {
+          consume();
+          const dir = action === "selectRangeDown" ? 1 : -1;
+          const nextIdx = Math.max(0, Math.min(items.length - 1, currentIdx + dir));
+          const cursorId = items[nextIdx].id;
+          moveFocus(cursorId, "summary");
+          const sel = selectionRef.current;
+          if (!sel) break; // no adapter → behaves like a plain arrow move
+          // Guard: an external clear leaves a stale anchorBase that base ∪ range
+          // would resurrect. On an empty selection, anchor to the FOCUSED row
+          // (activeItemId — moveFocus above only queues the cursor move, React
+          // hasn't flushed it) with an empty base. Explorer-inclusive: the span
+          // is {focused row .. cursor}, so the starting row joins the range
+          // instead of being silently dropped. Resetting the base still keeps
+          // stale rows from outside the span from resurrecting.
+          if (sel.current().size === 0) {
+            anchorRef.current = activeItemId;
+            anchorBaseRef.current = new Set();
+          }
+          if (anchorRef.current == null) anchorRef.current = cursorId;
+          const span = rangeIds(anchorRef.current, cursorId);
+          const next = new Set(anchorBaseRef.current);
+          for (const id of span) next.add(id);
+          sel.replace(next);
+          onSelectionChangeRef.current?.({ kind: "group", via: "key", count: next.size });
+          break;
+        }
+
+        case "selectAll": {
+          const sel = selectionRef.current;
+          if (!sel) break;
+          consume();
+          const next = new Set(sel.current());
+          const visibleIds = items.map((it) => it.id);
+          const allSelected = visibleIds.length > 0 && visibleIds.every((id) => next.has(id));
+          if (allSelected) visibleIds.forEach((id) => next.delete(id));
+          else visibleIds.forEach((id) => next.add(id));
+          sel.replace(next);
+          onSelectionChangeRef.current?.({ kind: "group", via: "key", count: next.size });
+          break;
+        }
+
+        case "clearSelection": {
+          const sel = selectionRef.current;
+          if (sel && sel.current().size > 0) {
+            consume();
+            sel.replace(new Set());
+            anchorRef.current = null;
+            anchorBaseRef.current = new Set();
+            onSelectionChangeRef.current?.({ kind: "group", via: "key", count: 0 });
+          }
+          // empty (or no adapter): do NOT consume — Escape is free in the list.
+          break;
+        }
+
+        case "enter":
           if (isNativeControl(document.activeElement)) break;
           consume();
-          onActionRef.current('primary', activeItemId, activeSegment, modifiers(e));
+          onActionRef.current("primary", activeItemId, activeSegment, modifiers(e));
           break;
 
-        case ' ':
-          // Space activates a focused button natively; otherwise it toggles.
+        case "space":
           if (isNativeControl(document.activeElement)) break;
           consume();
-          onActionRef.current('toggle', activeItemId, activeSegment, modifiers(e));
+          onActionRef.current("toggle", activeItemId, activeSegment, modifiers(e));
           break;
 
-        case 'Delete':
+        case "delete":
           consume();
-          onActionRef.current('delete', activeItemId, activeSegment, modifiers(e));
-          break;
-
-        case 'Tab':
-          consume();
-          onTabOutRef.current(!e.shiftKey);
+          onActionRef.current("delete", activeItemId, activeSegment, modifiers(e));
           break;
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeItemId, activeSegment, items, moveFocus],
+    [activeItemId, activeSegment, items, moveFocus, toggleSelection, setAnchor, rangeIds],
+  );
+
+  // Delegated mouse selection on the <ul> (only active when `selection` is set),
+  // mirroring onContextMenu. All gestures move DOM focus to the clicked row, so
+  // NVDA reads it (with the ", виділено" suffix) — that's why single-row pointer
+  // changes are emitted via:"pointer" (the consumer must NOT re-announce them).
+  const onClick = useCallback(
+    (e: React.MouseEvent) => {
+      const sel = selectionRef.current;
+      if (!sel) return;
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      // The row's own controls handle their own clicks.
+      if (target.closest("button, a, input, select, textarea")) return;
+      const row = target.closest<HTMLElement>("[data-item-id]");
+      const id = row?.dataset.itemId;
+      if (!id || !items.some((it) => it.id === id)) return;
+
+      // Move active + DOM focus to the clicked row.
+      setActiveItemId(id);
+      setActiveSegment("summary");
+      pendingFocusRef.current = { itemId: id, segment: "summary" };
+
+      if (e.ctrlKey && !e.shiftKey) {
+        toggleSelection(id, "pointer");
+        return;
+      }
+      if (e.shiftKey) {
+        if (sel.current().size === 0) {
+          // Explorer-inclusive (mirrors the keyboard branch): anchor to the
+          // PREVIOUSLY-active row so it joins the span, not the clicked id.
+          // Read from memoryRef.current (always fresh) — activeItemId is not in
+          // this callback's deps, so its closure value would be stale.
+          anchorRef.current = memoryRef.current.itemId;
+          anchorBaseRef.current = new Set();
+        }
+        if (anchorRef.current == null) anchorRef.current = id;
+        const span = rangeIds(anchorRef.current, id);
+        const next = new Set(anchorBaseRef.current);
+        for (const x of span) next.add(x);
+        sel.replace(next);
+        onSelectionChangeRef.current?.({ kind: "group", via: "pointer", count: next.size });
+        return;
+      }
+      // Simple click → collapse to {id}, anchor here.
+      sel.replace(new Set([id]));
+      setAnchor(id);
+      onSelectionChangeRef.current?.({ kind: "single", via: "pointer", count: 1, lastId: id, selected: true });
+    },
+    [items, rangeIds, setAnchor, toggleSelection],
   );
 
   // Single source of truth for the per-row context menu: WebView2 emits a
@@ -443,5 +689,5 @@ export function useCompositeList<T extends CompositeListItem>({
     [items],
   );
 
-  return { listRef, onKeyDownCapture, onContextMenu, isFocused, restoreFocus, focusItem, activeItemId, activeSegment };
+  return { listRef, onKeyDownCapture, onContextMenu, onClick, isFocused, restoreFocus, focusItem, activeItemId, activeSegment };
 }

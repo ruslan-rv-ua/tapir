@@ -7,6 +7,9 @@ export const $schedules = atom<ScheduleDto[]>([]);
 export const $schedulesLoading = atom(false);
 export const $schedulesError = atom<string | null>(null);
 
+/** Стан множинного вибору для списку розкладів (D). Ключ — id розкладу. */
+export const $scheduleSelection = atom<Set<string>>(new Set());
+
 let loadSeq = 0;
 
 /**

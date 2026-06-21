@@ -9,10 +9,11 @@ interface Props {
   song: Song;
   /** True when the menu trigger is the active 'action-menu' focus stop. */
   menuFocused: boolean;
+  selectionCount: number;
   onAction: (action: SongAction) => void;
 }
 
-export function SongContextMenu({ song, menuFocused, onAction }: Props) {
+export function SongContextMenu({ song, menuFocused, selectionCount, onAction }: Props) {
   const handleAction = (key: Key) => {
     onAction(key as SongAction);
   };
@@ -49,7 +50,7 @@ export function SongContextMenu({ song, menuFocused, onAction }: Props) {
           </MenuItem>
           <Separator className="my-1 border-t border-slate-700" />
           <MenuItem id="delete" className="cursor-pointer px-3 py-1.5 text-sm text-red-400 outline-none data-[focused]:bg-slate-700 forced-colors:text-[ButtonText] forced-colors:data-[focused]:bg-[Highlight] forced-colors:data-[focused]:text-[HighlightText]">
-            {m.songs_action_delete()}
+            {selectionCount > 0 ? m.delete_selected({ count: selectionCount }) : m.songs_action_delete()}
           </MenuItem>
         </Menu>
       </Popover>

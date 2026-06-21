@@ -1,7 +1,12 @@
 import { createRef } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, fireEvent, act } from "@testing-library/react";
+import { render, fireEvent, act, waitFor } from "@testing-library/react";
+import * as m from "../../i18n/paraglide/messages";
+import { $profileList, $profilesSelection } from "../../stores/profileManager";
+import { $announcer } from "../../stores/announcer";
+import { replaceSelection } from "../../stores/selection";
 import type { ProfileMeta } from "../../lib/tauri";
+import * as tauri from "../../lib/tauri";
 import { ProfileList, type ProfileListHandle } from "./ProfileList";
 
 vi.mock("../../i18n/paraglide/runtime", () => ({ getLocale: () => "uk" }));
@@ -26,6 +31,21 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   profile_stream_count_few: ({ count }: { count: number }) => `${count} потоки`,
   profile_stream_count_many: ({ count }: { count: number }) => `${count} потоків`,
   profile_stream_count_other: ({ count }: { count: number }) => `${count} потоки`,
+  // Bulk-delete keys (Task 16)
+  confirm_delete_selected_profiles: ({ count }: { count: number }) => `Видалити вибрані профілі (${count})?`,
+  profiles_removed_bulk: ({ count }: { count: number }) => `Видалено профілів: ${count}`,
+  bulk_skipped_active: () => "активний профіль пропущено",
+  delete_selected: ({ count }: { count: number }) => `Видалити вибрані (${count})`,
+  selection_suffix: () => "виділено",
+  cancel: () => "Скасувати",
+  selection_count: ({ count }: { count: number }) => `Вибрано: ${count}`,
+  selection_cleared: () => "Виділення знято",
+  item_selected: ({ name }: { name: string }) => `${name}, виділено`,
+  item_deselected: ({ name }: { name: string }) => `${name}, знято`,
+}));
+
+vi.mock("../../lib/tauri", () => ({
+  deleteProfiles: vi.fn().mockResolvedValue({ deleted: ["Jazz"], skippedActive: true }),
 }));
 
 const profiles: ProfileMeta[] = [
@@ -51,7 +71,11 @@ const activeAttrs = () => ({
   seg: document.activeElement?.getAttribute("data-segment") ?? null,
 });
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  $profileList.set(profiles);
+  replaceSelection($profilesSelection, new Set());
+});
 
 describe("ProfileList — composite navigation", () => {
   it("renders one row per profile, each described as a profile", () => {
@@ -112,5 +136,34 @@ describe("ProfileList — composite navigation", () => {
     const { ref } = renderList();
     act(() => ref.current!.focusProfile("Rock"));
     expect(activeAttrs()).toEqual({ id: "Rock", seg: "summary" });
+  });
+});
+
+describe("ProfileList — bulk delete", () => {
+  it("skips the active profile and announces the partial-success tail", async () => {
+    replaceSelection($profilesSelection, new Set(["Default", "Jazz"]));
+    const { ref, getByRole } = renderList();
+    act(() => ref.current!.requestBulkDelete());
+    fireEvent.click(getByRole("button", { name: m.profile_delete() }));
+    await waitFor(() => expect(tauri.deleteProfiles).toHaveBeenCalledWith(["Default", "Jazz"]));
+    await waitFor(() => expect($profileList.get().map((p) => p.name)).toEqual(["Default", "Rock"]));
+    expect($announcer.get()?.message).toBe(
+      `${m.profiles_removed_bulk({ count: 1 })}, ${m.bulk_skipped_active()}`,
+    );
+  });
+
+  it("full-skip (only active selected) announces without mutating the store", async () => {
+    vi.mocked(tauri.deleteProfiles).mockResolvedValueOnce({ deleted: [], skippedActive: true });
+    replaceSelection($profilesSelection, new Set(["Default"]));
+    const { ref, getByRole } = renderList();
+    act(() => ref.current!.requestBulkDelete());
+    fireEvent.click(getByRole("button", { name: m.profile_delete() }));
+    await waitFor(() => expect(tauri.deleteProfiles).toHaveBeenCalledWith(["Default"]));
+    // Store unchanged — active "Default" was skipped, so only Default+Rock+Jazz still present...
+    // Actually store was set to all 3 profiles in beforeEach, so it remains 3 after full-skip.
+    await waitFor(() => expect($profileList.get().map((p) => p.name)).toEqual(["Default", "Jazz", "Rock"]));
+    expect($announcer.get()?.message).toBe(
+      `${m.profiles_removed_bulk({ count: 0 })}, ${m.bulk_skipped_active()}`,
+    );
   });
 });

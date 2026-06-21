@@ -20,12 +20,14 @@ interface Props {
   song: Song;
   isActiveRow: boolean;
   isPlaying: boolean;
+  isSelected?: boolean;
+  selectionCount?: number;
   isFocused: (segment: "summary" | SegmentKind) => boolean;
   onPlay: () => void;
   onAction: (action: SongAction) => void;
 }
 
-export function SongItem({ song, isActiveRow, isPlaying, isFocused, onPlay, onAction }: Props) {
+export function SongItem({ song, isActiveRow, isPlaying, isSelected = false, selectionCount = 0, isFocused, onPlay, onAction }: Props) {
   const baseSummary = m.songs_row_summary({
     title: song.title || song.fileName,
     artist: song.artist || "—",
@@ -33,9 +35,10 @@ export function SongItem({ song, isActiveRow, isPlaying, isFocused, onPlay, onAc
     size: formatBytes(song.sizeBytes),
     date: formatDateTime(song.recordedAt), // a11y name keeps the full date + time
   });
-  const summaryLabel = song.isComplete
+  const baseSummaryWithState = song.isComplete
     ? baseSummary
     : `${m.songs_incomplete_badge()}, ${baseSummary}`;
+  const summaryLabel = isSelected ? `${baseSummaryWithState}, ${m.selection_suffix()}` : baseSummaryWithState;
 
   // Line 2 tail: short, fixed-width values that must always stay visible.
   const metaTail = [
@@ -65,8 +68,9 @@ export function SongItem({ song, isActiveRow, isPlaying, isFocused, onPlay, onAc
       isFocused={isFocused}
       isActiveRow={isActiveRow}
       label={summaryLabel}
+      selected={isSelected}
       roleDescription={m.item_role_song()}
-      className="border-b border-slate-800 px-3 py-2"
+      className="border-b border-slate-800 px-3 py-2 data-[selected=true]:bg-sky-900/40 data-[selected=true]:ring-1 data-[selected=true]:ring-inset data-[selected=true]:ring-sky-400/40 forced-colors:data-[selected=true]:bg-[Highlight] forced-colors:data-[selected=true]:text-[HighlightText]"
       activeClassName="bg-slate-800/40"
     >
       {/* Line 1: state icon + title, with the action buttons pushed right. */}
@@ -103,7 +107,7 @@ export function SongItem({ song, isActiveRow, isPlaying, isFocused, onPlay, onAc
             {isPlaying ? <Square size={16} aria-hidden /> : <Play size={16} aria-hidden />}
           </CompositeAction>
 
-          <SongContextMenu song={song} menuFocused={isFocused("action-menu")} onAction={onAction} />
+          <SongContextMenu song={song} menuFocused={isFocused("action-menu")} selectionCount={selectionCount} onAction={onAction} />
         </div>
       </div>
 

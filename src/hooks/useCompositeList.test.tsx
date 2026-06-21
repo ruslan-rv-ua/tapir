@@ -7,6 +7,7 @@ import {
   type SegmentKind,
   type ActionType,
   type ActionModifiers,
+  type SelectionChange,
 } from "./useCompositeList";
 
 /* ------------------------------------------------------------------ */
@@ -27,6 +28,8 @@ interface HarnessProps {
   onEmpty?: () => void;
   onButtonClick?: (itemId: string, segment: string) => void;
   onParentKeyDown?: (e: ReactKeyboardEvent) => void;
+  selectionRef?: { current: Set<string> };
+  onSelectionChange?: (c: SelectionChange) => void;
 }
 
 function Harness({
@@ -36,13 +39,26 @@ function Harness({
   onEmpty,
   onButtonClick,
   onParentKeyDown,
+  selectionRef,
+  onSelectionChange,
 }: HarnessProps) {
-  const { listRef, onKeyDownCapture, onContextMenu, isFocused, restoreFocus } = useCompositeList({
+  const selection = selectionRef
+    ? {
+        current: () => selectionRef.current as ReadonlySet<string>,
+        replace: (next: ReadonlySet<string>) => {
+          selectionRef.current = new Set(next);
+        },
+      }
+    : undefined;
+
+  const { listRef, onKeyDownCapture, onContextMenu, onClick, isFocused, restoreFocus } = useCompositeList({
     zoneId: "test",
     items,
     onTabOut,
     onAction,
     onEmpty,
+    selection,
+    onSelectionChange,
   });
 
   return (
@@ -53,7 +69,7 @@ function Harness({
       <button data-testid="restore" onClick={() => restoreFocus("forward")}>
         restore
       </button>
-      <ul ref={listRef} role="list" data-testid="list" onKeyDownCapture={onKeyDownCapture} onContextMenu={onContextMenu}>
+      <ul ref={listRef} role="list" data-testid="list" onKeyDownCapture={onKeyDownCapture} onContextMenu={onContextMenu} onClick={onClick}>
         {items.map((item) => (
           <li
             key={item.id}
@@ -495,5 +511,243 @@ describe("live reconciliation when items change under the active row", () => {
 
     // Focus must remain where the user put it; the hook must not yank it back.
     expect(document.activeElement).toBe(screen.getByTestId("outside"));
+  });
+});
+
+describe("selection — Ctrl+Space toggles the active row", () => {
+  it("adds the active row to the selection and emits a single change (not toggle/record)", () => {
+    const selectionRef = { current: new Set<string>() };
+    const onAction = vi.fn();
+    const onSelectionChange = vi.fn();
+    render(
+      <Harness items={makeItems()} onAction={onAction} selectionRef={selectionRef} onSelectionChange={onSelectionChange} />,
+    );
+    focusStart("a");
+
+    press(" ", { code: "Space", ctrlKey: true });
+
+    expect([...selectionRef.current]).toEqual(["a"]);
+    expect(onSelectionChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "single", via: "key", count: 1, lastId: "a", selected: true }),
+    );
+    // Must NOT fall into the record/play toggle branch.
+    expect(onAction).not.toHaveBeenCalledWith("toggle", "a", "summary", expect.anything());
+  });
+
+  it("Ctrl+Space again removes the row (selected:false)", () => {
+    const selectionRef = { current: new Set<string>(["a"]) };
+    const onSelectionChange = vi.fn();
+    render(<Harness items={makeItems()} selectionRef={selectionRef} onSelectionChange={onSelectionChange} />);
+    focusStart("a");
+    press(" ", { code: "Space", ctrlKey: true });
+    expect(selectionRef.current.has("a")).toBe(false);
+    expect(onSelectionChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "single", via: "key", count: 0, lastId: "a", selected: false }),
+    );
+  });
+
+  it("plain Space still fires record/play toggle (no selection change)", () => {
+    const selectionRef = { current: new Set<string>() };
+    const onAction = vi.fn();
+    render(<Harness items={makeItems()} onAction={onAction} selectionRef={selectionRef} />);
+    focusStart("a");
+    press(" ");
+    expect(onAction).toHaveBeenCalledWith("toggle", "a", "summary", noMods);
+    expect(selectionRef.current.size).toBe(0);
+  });
+
+  it("Ctrl+Space on an action button still toggles the ROW (not gated by isNativeControl)", () => {
+    const selectionRef = { current: new Set<string>() };
+    render(<Harness items={makeItems()} selectionRef={selectionRef} />);
+    focusStart("a");
+    press("ArrowRight"); press("ArrowRight"); press("ArrowRight"); // a/action-play (a button)
+    expectActive("a", "action-play");
+    press(" ", { code: "Space", ctrlKey: true });
+    expect([...selectionRef.current]).toEqual(["a"]);
+  });
+});
+
+describe("selection — Shift+Arrow range from the anchor", () => {
+  it("Shift+Down expands, then Shift+Up contracts (anchored, base-snapshot model)", () => {
+    const selectionRef = { current: new Set<string>() };
+    const onSelectionChange = vi.fn();
+    render(<Harness items={makeItems()} selectionRef={selectionRef} onSelectionChange={onSelectionChange} />);
+    focusStart("a");
+
+    press(" ", { code: "Space", ctrlKey: true }); // anchor = a, select a
+    press("ArrowDown", { shiftKey: true }); // span a..b
+    expect([...selectionRef.current].sort()).toEqual(["a", "b"]);
+    expectActive("b", "summary");
+
+    press("ArrowDown", { shiftKey: true }); // span a..c
+    expect([...selectionRef.current].sort()).toEqual(["a", "b", "c"]);
+
+    press("ArrowUp", { shiftKey: true }); // span a..b — c drops
+    expect([...selectionRef.current].sort()).toEqual(["a", "b"]);
+    expect(onSelectionChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "group", via: "key", count: 2 }),
+    );
+  });
+
+  it("Shift+Down from an empty selection includes the focused row (Explorer-inclusive)", () => {
+    const selectionRef = { current: new Set<string>() };
+    const onSelectionChange = vi.fn();
+    render(<Harness items={makeItems()} selectionRef={selectionRef} onSelectionChange={onSelectionChange} />);
+    focusStart("a"); // focus on a, selection ∅
+    press("ArrowDown", { shiftKey: true }); // a (anchor) + b (range)
+    expect([...selectionRef.current].sort()).toEqual(["a", "b"]);
+    expectActive("b", "summary");
+    expect(onSelectionChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "group", via: "key", count: 2 }),
+    );
+  });
+
+  it("Shift+Up from an empty selection includes the focused row", () => {
+    const selectionRef = { current: new Set<string>() };
+    render(<Harness items={makeItems()} selectionRef={selectionRef} />);
+    focusStart("a");
+    press("End"); // plain move to c (selection stays ∅)
+    press("ArrowUp", { shiftKey: true }); // c (anchor) + b (range)
+    expect([...selectionRef.current].sort()).toEqual(["b", "c"]);
+    expectActive("b", "summary");
+  });
+
+  it("anchorBase guard: after external clear, a stale base row outside the new span does NOT resurrect", () => {
+    const selectionRef = { current: new Set<string>() };
+    render(<Harness items={makeItems()} selectionRef={selectionRef} />);
+    focusStart("a");
+    // Build a stale base of {a,b,c}: select all, then plain moves snapshot it.
+    press("a", { code: "KeyA", ctrlKey: true }); // select {a,b,c}
+    press("End");                                // setAnchor(c) → base = {a,b,c}
+    press("Home");                               // setAnchor(a) → base = {a,b,c}, active = a
+    // External clear (toolbar/lifecycle) WITHOUT touching the hook's anchor/base:
+    selectionRef.current = new Set();
+    press("ArrowDown", { shiftKey: true });
+    // Explorer-inclusive: focused row a joins via the anchor, b via the range.
+    // Stale base member c is OUTSIDE the span and must NOT resurrect.
+    expect([...selectionRef.current].sort()).toEqual(["a", "b"]);
+  });
+
+  it("without a selection adapter, Shift+Down is a plain move (1:1 legacy)", () => {
+    render(<Harness items={makeItems()} />);
+    focusStart("a");
+    press("ArrowDown", { shiftKey: true });
+    expectActive("b", "summary");
+  });
+});
+
+describe("selection — Escape clears non-empty, otherwise passes through", () => {
+  it("non-empty: clears, emits group count 0, and consumes (no bubble)", () => {
+    const selectionRef = { current: new Set<string>(["a", "b"]) };
+    const onSelectionChange = vi.fn();
+    const onParentKeyDown = vi.fn();
+    render(
+      <Harness items={makeItems()} selectionRef={selectionRef} onSelectionChange={onSelectionChange} onParentKeyDown={onParentKeyDown} />,
+    );
+    focusStart("a");
+    press("Escape");
+    expect(selectionRef.current.size).toBe(0);
+    expect(onSelectionChange).toHaveBeenLastCalledWith(expect.objectContaining({ kind: "group", count: 0 }));
+    expect(onParentKeyDown).not.toHaveBeenCalled(); // consumed
+  });
+
+  it("empty: does NOT consume — Escape stays free in the list", () => {
+    const selectionRef = { current: new Set<string>() };
+    const onParentKeyDown = vi.fn();
+    render(<Harness items={makeItems()} selectionRef={selectionRef} onParentKeyDown={onParentKeyDown} />);
+    focusStart("a");
+    press("Escape");
+    expect(onParentKeyDown).toHaveBeenCalledTimes(1); // bubbled
+  });
+});
+
+describe("selection — plain navigation re-sets the anchor", () => {
+  it("after moving the cursor, Shift+Up contracts toward the NEW anchor, not the old one", () => {
+    const selectionRef = { current: new Set<string>() };
+    render(<Harness items={makeItems()} selectionRef={selectionRef} />);
+    focusStart("a");
+    press(" ", { code: "Space", ctrlKey: true }); // anchor=a
+    press("End"); // plain move to c → anchor=c, base={a}
+    press("ArrowUp", { shiftKey: true }); // span c..b → base{a} ∪ range(c,b)={b,c}
+    expect([...selectionRef.current].sort()).toEqual(["a", "b", "c"]);
+    press("ArrowDown", { shiftKey: true }); // back to c → base{a} ∪ {c} = {a,c}
+    expect([...selectionRef.current].sort()).toEqual(["a", "c"]);
+  });
+});
+
+describe("selection — Ctrl+A toggles all visible", () => {
+  it("from partial selection → all visible selected; group change", () => {
+    const selectionRef = { current: new Set<string>(["a"]) };
+    const onSelectionChange = vi.fn();
+    render(<Harness items={makeItems()} selectionRef={selectionRef} onSelectionChange={onSelectionChange} />);
+    focusStart("a");
+    press("a", { code: "KeyA", ctrlKey: true });
+    expect([...selectionRef.current].sort()).toEqual(["a", "b", "c"]);
+    expect(onSelectionChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "group", count: 3 }),
+    );
+  });
+
+  it("from all-visible-selected → cleared (those rows removed)", () => {
+    const selectionRef = { current: new Set<string>(["a", "b", "c"]) };
+    render(<Harness items={makeItems()} selectionRef={selectionRef} />);
+    focusStart("a");
+    press("a", { code: "KeyA", ctrlKey: true });
+    expect(selectionRef.current.size).toBe(0);
+  });
+});
+
+function clickRow(id: string, init: MouseEventInit = {}) {
+  fireEvent.click(stop(id, "summary"), { bubbles: true, ...init });
+}
+
+describe("selection — mouse gestures on the <ul>", () => {
+  it("simple click collapses the selection to that row (single, pointer)", () => {
+    const selectionRef = { current: new Set<string>(["a", "b"]) };
+    const onSelectionChange = vi.fn();
+    render(<Harness items={makeItems()} selectionRef={selectionRef} onSelectionChange={onSelectionChange} />);
+    clickRow("c");
+    expect([...selectionRef.current]).toEqual(["c"]);
+    expect(onSelectionChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "single", via: "pointer", count: 1, lastId: "c", selected: true }),
+    );
+  });
+
+  it("Ctrl+Click toggles that row (single, pointer)", () => {
+    const selectionRef = { current: new Set<string>(["a"]) };
+    render(<Harness items={makeItems()} selectionRef={selectionRef} />);
+    clickRow("b", { ctrlKey: true });
+    expect([...selectionRef.current].sort()).toEqual(["a", "b"]);
+  });
+
+  it("Shift+Click spans anchor→click (group, pointer)", () => {
+    const selectionRef = { current: new Set<string>() };
+    const onSelectionChange = vi.fn();
+    render(<Harness items={makeItems()} selectionRef={selectionRef} onSelectionChange={onSelectionChange} />);
+    clickRow("a"); // anchor = a
+    clickRow("c", { shiftKey: true }); // span a..c
+    expect([...selectionRef.current].sort()).toEqual(["a", "b", "c"]);
+    expect(onSelectionChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "group", via: "pointer", count: 3 }),
+    );
+  });
+
+  it("Shift+Click from an empty selection spans the previously-active row → click (Explorer-inclusive)", () => {
+    const selectionRef = { current: new Set<string>() };
+    const onSelectionChange = vi.fn();
+    render(<Harness items={makeItems()} selectionRef={selectionRef} onSelectionChange={onSelectionChange} />);
+    focusStart("a"); // active = a, selection ∅ (no prior click)
+    clickRow("c", { shiftKey: true }); // span (prev-active a)..c
+    expect([...selectionRef.current].sort()).toEqual(["a", "b", "c"]);
+    expect(onSelectionChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "group", via: "pointer", count: 3 }),
+    );
+  });
+
+  it("clicks on the row's own controls do not touch the selection", () => {
+    const selectionRef = { current: new Set<string>(["a"]) };
+    render(<Harness items={makeItems()} selectionRef={selectionRef} />);
+    fireEvent.click(stop("a", "action-play"), { bubbles: true });
+    expect([...selectionRef.current]).toEqual(["a"]); // unchanged
   });
 });

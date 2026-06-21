@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { createPortal } from "react-dom";
-import { $streams, $statuses, $showAddStreamDialog, $streamFilter, $importCandidates, $showExportStreamsDialog, type StreamFilter, type StreamSort } from "../../stores/streams";
+import { $streams, $statuses, $showAddStreamDialog, $streamFilter, $importCandidates, $exportStreamsRequest, $streamSelection, replaceSelection, type StreamFilter, type StreamSort } from "../../stores/streams";
 import { $settings } from "../../stores/settings";
 import { $freeSpace } from "../../stores/system";
 import { FreeSpaceMetric } from "./FreeSpaceMetric";
-import { StreamList } from "./StreamList";
+import { StreamList, type StreamListHandle } from "./StreamList";
+import { SelectionActionsMenu } from "./SelectionActionsMenu";
 import { AddStreamDialog } from "./AddStreamDialog";
 import { ImportStreamsDialog } from "./ImportStreamsDialog";
 import { ExportFormatDialog } from "./ExportFormatDialog";
@@ -24,6 +25,23 @@ interface Props {
   onZonesChange: (zones: ZoneEntry[]) => void;
   exitZone: (fromId: string, forward: boolean) => void;
 }
+
+// Backend `is_active` (recording_control.rs): a stream with an in-flight
+// recording task. startable = !IS_ACTIVE, stoppable = IS_ACTIVE (R6).
+const IS_ACTIVE = new Set(["recording", "connecting", "reconnecting"]);
+
+// Partial-success announcements: skipped = requested − done (R5). Pure of
+// component state, so they live at module scope.
+const composeRecordSummary = (sel: number, started: number): string => {
+  const parts = [m.record_done({ count: started })];
+  if (sel - started > 0) parts.push(m.record_skipped({ count: sel - started }));
+  return parts.join(", ");
+};
+const composeStopSummary = (sel: number, stopped: number): string => {
+  const parts = [m.stop_done({ count: stopped })];
+  if (sel - stopped > 0) parts.push(m.stop_skipped({ count: sel - stopped }));
+  return parts.join(", ");
+};
 
 const FILTER_CHIPS = [
   { id: "all",       labelFn: () => m.filter_all() },
@@ -57,10 +75,10 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   // Streams whose recording task is NOT currently live (idle / error / stopped /
   // never-started) — these are what "Записати все" will start. Backend skips any
   // already-active stream, so this only drives the button's disabled state.
-  const startableCount = useMemo(() => {
-    const active = new Set(["recording", "connecting", "reconnecting"]);
-    return streams.filter((s) => !active.has(statuses[s.id]?.state ?? "idle")).length;
-  }, [streams, statuses]);
+  const startableCount = useMemo(
+    () => streams.filter((s) => !IS_ACTIVE.has(statuses[s.id]?.state ?? "idle")).length,
+    [streams, statuses],
+  );
 
   const pluralRules = useMemo(
     () => new Intl.PluralRules(settings?.language || document.documentElement.lang || "uk"),
@@ -107,7 +125,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
   // ── Filter chip state ─────────────────────────────────────
   const activeChip = useStore($streamFilter);
-  const [confirmStopAll, setConfirmStopAll] = useState(false);
+  const [confirmStop, setConfirmStop] = useState<null | { scope: "all" | "selected" }>(null);
   const announce = useAnnounce();
 
   // Pluralized "Фільтр «X»: N потоків" used both for the live announcement
@@ -147,6 +165,38 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     return [...filteredStreams].sort((a, b) => collator.compare(a.name, b.name));
   }, [filteredStreams, sortBy, settings?.language]);
 
+  const selection = useStore($streamSelection);
+  const selCount = selection.size;
+
+  const selectedStartableCount = useMemo(
+    () => [...selection].filter((id) => streamIds.has(id) && !IS_ACTIVE.has(statuses[id]?.state ?? "idle")).length,
+    [selection, statuses, streamIds],
+  );
+  const selectedStoppableCount = useMemo(
+    () => [...selection].filter((id) => streamIds.has(id) && IS_ACTIVE.has(statuses[id]?.state ?? "idle")).length,
+    [selection, statuses, streamIds],
+  );
+  const stoppableCount = useMemo(
+    () => streams.filter((s) => IS_ACTIVE.has(statuses[s.id]?.state ?? "idle")).length,
+    [streams, statuses],
+  );
+  const recordDisabled = selCount > 0 ? selectedStartableCount === 0 : startableCount === 0;
+  const stopDisabled = selCount > 0 ? selectedStoppableCount === 0 : stoppableCount === 0;
+
+  const visibleIds = useMemo(() => sortedStreams.map((s) => s.id), [sortedStreams]);
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selection.has(id));
+
+  const handleSelectAll = () => {
+    if (visibleIds.length === 0) return;
+    const next = new Set(selection);
+    if (allVisibleSelected) visibleIds.forEach((id) => next.delete(id));
+    else visibleIds.forEach((id) => next.add(id));
+    replaceSelection(next);
+    // Toolbar acts beside the hook, so it announces itself on the same central
+    // channel (A7) — otherwise Ctrl+A would announce but its mirror button wouldn't.
+    announce(next.size === 0 ? m.selection_cleared() : m.selection_count({ count: next.size }), "polite");
+  };
+
   const sortAnnouncement = useCallback(
     (id: StreamSort) => {
       const opt = SORT_OPTIONS.find((o) => o.id === id);
@@ -170,6 +220,9 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const handleChipClick = (chipId: StreamFilter) => {
     if (chipId === activeChip) return;
     $streamFilter.set(chipId);
+    // The visible set changes under the new filter — selection is scoped to what's
+    // visible, so clear it rather than leaving stale (now-hidden) ids selected.
+    replaceSelection(new Set());
     const count = chipId === "all"
       ? streams.length
       : chipId === "recording"
@@ -178,13 +231,17 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     announce(filterAnnouncement(chipId, count), "polite");
   };
 
-  // ── Toolbar zone refs (10 items) ──────────────────────────
+  // ── Toolbar zone refs (12 items) ──────────────────────────
+  // Move/Copy/Delete-selected collapsed into one menu stop (selectionMenuBtn),
+  // so the roving array is fixed at 12 (was 14) — see SelectionActionsMenu.
   const toolbarZoneRef = useRef<HTMLDivElement | null>(null);
-  const addBtn       = useRef<HTMLButtonElement | null>(null);
-  const importBtn    = useRef<HTMLButtonElement | null>(null);
-  const exportBtn    = useRef<HTMLButtonElement | null>(null);
-  const recordAllBtn = useRef<HTMLButtonElement | null>(null);
-  const stopAllBtn   = useRef<HTMLButtonElement | null>(null);
+  const addBtn            = useRef<HTMLButtonElement | null>(null);
+  const importBtn         = useRef<HTMLButtonElement | null>(null);
+  const exportBtn         = useRef<HTMLButtonElement | null>(null);
+  const selectAllBtn      = useRef<HTMLButtonElement | null>(null);
+  const selectionMenuBtn  = useRef<HTMLButtonElement | null>(null);
+  const recordAllBtn      = useRef<HTMLButtonElement | null>(null);
+  const stopAllBtn        = useRef<HTMLButtonElement | null>(null);
   const chip0Ref   = useRef<HTMLButtonElement | null>(null);
   const chip1Ref   = useRef<HTMLButtonElement | null>(null);
   const chip2Ref   = useRef<HTMLButtonElement | null>(null);
@@ -193,7 +250,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const sort1Ref   = useRef<HTMLButtonElement | null>(null);
   const sortRefs = useMemo(() => [sort0Ref, sort1Ref], []);
   const toolbarRefs = useMemo(
-    () => [addBtn, importBtn, exportBtn, recordAllBtn, stopAllBtn, chip0Ref, chip1Ref, chip2Ref, sort0Ref, sort1Ref],
+    () => [addBtn, importBtn, exportBtn, selectAllBtn, selectionMenuBtn, recordAllBtn, stopAllBtn, chip0Ref, chip1Ref, chip2Ref, sort0Ref, sort1Ref],
     [],
   );
 
@@ -207,8 +264,10 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   });
 
   // ── List zone ────────────────────────────────────────────
-  const streamListRef = useRef<ZoneEntry | null>(null);
-  const streamListCallbackRef = useCallback((zone: ZoneEntry | null) => {
+  // Typed as the full StreamListHandle (ZoneEntry + requestBulkDelete) so the
+  // toolbar's Видалити виділені button can drive the list's bulk-confirm dialog.
+  const streamListRef = useRef<StreamListHandle | null>(null);
+  const streamListCallbackRef = useCallback((zone: StreamListHandle | null) => {
     streamListRef.current = zone;
   }, []);
 
@@ -221,9 +280,13 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const addExamplesBtnRef = useRef<HTMLButtonElement | null>(null);
   const [loadingExamples, setLoadingExamples] = useState(false);
   const pendingFocusFirstRow = useRef(false);
+  // Set by StreamList.onEmpty when a bulk delete clears the visible list — the
+  // target button isn't mounted yet, so a deferred effect focuses it (see below).
+  const pendingFocusEmptyZone = useRef(false);
 
   const handleResetFilter = () => {
     $streamFilter.set("all");
+    replaceSelection(new Set());
     announce(filterAnnouncement("all", streams.length), "polite");
   };
 
@@ -304,14 +367,43 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     }
   }, [isEmpty]);
 
+  // After a bulk delete empties the visible list, StreamList.onEmpty set a flag;
+  // the target button isn't mounted until isEmpty / filterHidesAll flips true, so
+  // focus it here (never let focus fall to <body>).
+  useEffect(() => {
+    if (!pendingFocusEmptyZone.current) return;
+    if (isEmpty) {
+      pendingFocusEmptyZone.current = false;
+      addExamplesBtnRef.current?.focus();
+    } else if (filterHidesAll) {
+      pendingFocusEmptyZone.current = false;
+      resetFilterBtnRef.current?.focus();
+    }
+  }, [isEmpty, filterHidesAll]);
+
+  // Selection is section-scoped: clear it when the streams screen unmounts.
+  useEffect(() => () => { replaceSelection(new Set()); }, []);
+
   const doStopAll = async () => {
     try { await tauri.stopAllRecordings(); }
     catch (err) { addToast(String(err), "error"); }
   };
+  const doStopSelected = async (ids: string[]) => {
+    try {
+      const stopped = await tauri.stopAllRecordings(ids);
+      announce(composeStopSummary(ids.length, stopped), "polite");
+    } catch (err) { addToast(String(err), "error"); }
+  };
   const handleStopAll = () => {
-    if (activeCount === 0) return;
-    if (activeCount > 1) setConfirmStopAll(true);
-    else doStopAll();
+    if (selCount > 0) {
+      if (selectedStoppableCount === 0) return;
+      if (selectedStoppableCount > 1) { setConfirmStop({ scope: "selected" }); return; }
+      doStopSelected([...selection]);
+    } else {
+      if (stoppableCount === 0) return;
+      if (stoppableCount > 1) { setConfirmStop({ scope: "all" }); return; }
+      doStopAll();
+    }
   };
 
   const recordAllAnnouncement = useCallback(
@@ -327,12 +419,19 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   );
 
   const handleRecordAll = async () => {
-    if (startableCount === 0) return;
-    try {
-      const started = await tauri.startAllRecordings();
-      announce(recordAllAnnouncement(started), "polite");
-    } catch (err) {
-      addToast(String(err), "error");
+    if (selCount > 0) {
+      if (selectedStartableCount === 0) return;
+      const ids = [...selection];
+      try {
+        const started = await tauri.startAllRecordings(ids);
+        announce(composeRecordSummary(ids.length, started), "polite");
+      } catch (err) { addToast(String(err), "error"); }
+    } else {
+      if (startableCount === 0) return;
+      try {
+        const started = await tauri.startAllRecordings();
+        announce(recordAllAnnouncement(started), "polite");
+      } catch (err) { addToast(String(err), "error"); }
     }
   };
 
@@ -386,7 +485,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
       {/* ── Workspace titlebar + Toolbar = streams-toolbar zone ── */}
       {/* IMPORTANT: Both rows must live inside ScreenZone so mixed-boundary-handoff
-          sees all 8 interactive items (indices 0–7). The heading is structural, not focusable. */}
+          sees all 14 interactive items (indices 0–13). The heading is structural, not focusable. */}
       <ScreenZone
         ref={toolbarZoneRef}
         id="streams-toolbar"
@@ -418,44 +517,82 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
             ref={exportBtn}
             tabIndex={toolbarTabIndex(2)}
             aria-disabled={isEmpty || undefined}
-            onClick={() => { if (!isEmpty) $showExportStreamsDialog.set(true); }}
+            onClick={() => { if (!isEmpty) $exportStreamsRequest.set({ ids: selCount > 0 ? [...selection] : null }); }}
             className={`rounded px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
               isEmpty
                 ? "cursor-not-allowed text-slate-600"
                 : "text-slate-400 hover:bg-slate-800"
             }`}
           >
-            {m.streams_export_button()}
+            {selCount > 0 ? m.streams_export_selected({ count: selCount }) : m.streams_export_button()}
           </button>
         </ScreenHeader>
 
-        {/* Row 2: Записати все + Зупинити запис + Chips */}
-        <div className="flex items-center gap-2 px-4 py-2">
-          {/* Index 3: Записати все (primary) */}
+        {/* Row 2: Виділити все + Дії з виділеними (меню) + Записати все + Зупинити запис + Chips.
+            flex-wrap + whitespace-nowrap/shrink-0 on buttons: at narrow widths the row
+            reflows to a second line instead of crushing button labels (C). */}
+        <div className="flex flex-wrap items-center gap-2 px-4 py-2">
+          {/* Index 3: Виділити все / Зняти */}
           <button
-            ref={recordAllBtn}
+            ref={selectAllBtn}
             tabIndex={toolbarTabIndex(3)}
-            onClick={handleRecordAll}
-            disabled={startableCount === 0}
-            className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-600 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
+            aria-disabled={visibleIds.length === 0 || undefined}
+            onClick={handleSelectAll}
+            className={`shrink-0 whitespace-nowrap rounded px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
+              visibleIds.length === 0 ? "cursor-not-allowed text-slate-600" : "text-slate-400 hover:bg-slate-800"
+            }`}
           >
-            {m.record_all()}
+            {allVisibleSelected ? m.clear_selection() : m.select_all()}
           </button>
 
-          {/* Index 4: Зупинити запис */}
+          {/* Index 4: Дії з виділеними (N) — overflow menu for move/copy/delete (F).
+              Single roving stop; items live in a Popover, not the toolbar array. */}
+          <SelectionActionsMenu
+            buttonRef={selectionMenuBtn}
+            isActiveStop={toolbarTabIndex(4) === 0}
+            selCount={selCount}
+            onMove={() => streamListRef.current?.requestBulkTransfer("move")}
+            onCopy={() => streamListRef.current?.requestBulkTransfer("copy")}
+            onDelete={() => streamListRef.current?.requestBulkDelete()}
+          />
+
+          {/* Plain (NOT live) count — read in browse mode, never double-announced
+              (the central announce() on each gesture is the only spoken update). */}
+          {selCount > 0 && (
+            <span className="text-xs text-slate-400">{m.selected_count_label({ count: selCount })}</span>
+          )}
+
+          <div className="mx-1 h-4 w-px bg-slate-700 forced-colors:bg-[ButtonText]" aria-hidden="true" />
+
+          {/* Index 5: Записати все / Записати виділені (N) — aria-disabled (R8) */}
+          <button
+            ref={recordAllBtn}
+            tabIndex={toolbarTabIndex(5)}
+            onClick={handleRecordAll}
+            aria-disabled={recordDisabled || undefined}
+            className={`shrink-0 whitespace-nowrap rounded bg-blue-600 px-3 py-1 text-xs text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText] ${
+              recordDisabled ? "cursor-not-allowed opacity-50" : "hover:bg-blue-700"
+            }`}
+          >
+            {selCount > 0 ? m.record_selected({ count: selCount }) : m.record_all()}
+          </button>
+
+          {/* Index 6: Зупинити запис / Зупинити виділені (N) — aria-disabled (R8) */}
           <button
             ref={stopAllBtn}
-            tabIndex={toolbarTabIndex(4)}
+            tabIndex={toolbarTabIndex(6)}
             onClick={handleStopAll}
-            disabled={activeCount === 0}
-            className="rounded px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+            aria-disabled={stopDisabled || undefined}
+            className={`shrink-0 whitespace-nowrap rounded px-3 py-1 text-xs text-slate-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText] ${
+              stopDisabled ? "cursor-not-allowed opacity-50" : "hover:bg-slate-800"
+            }`}
           >
-            {m.stop_all()}
+            {selCount > 0 ? m.stop_selected({ count: selCount }) : m.stop_all()}
           </button>
 
           <div className="mx-1 h-4 w-px bg-slate-700 forced-colors:bg-[ButtonText]" aria-hidden="true" />
 
-          {/* Indices 5–7: Filter chips — semantic group, toggle chips kept */}
+          {/* Indices 9–11: Filter chips — semantic group, toggle chips kept */}
           <div role="group" aria-label={m.streams_filter_group()} className="flex items-center gap-2">
             {FILTER_CHIPS.map((chip, i) => {
               const count = chip.id === "recording" ? activeCount
@@ -465,7 +602,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
                 <button
                   key={chip.id}
                   ref={chipRefs[i]}
-                  tabIndex={toolbarTabIndex(5 + i)}
+                  tabIndex={toolbarTabIndex(7 + i)}
                   aria-pressed={activeChip === chip.id}
                   aria-label={m.streams_filter_chip_count({ label: chip.labelFn(), count })}
                   onClick={() => handleChipClick(chip.id)}
@@ -489,13 +626,13 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
           <div className="mx-1 h-4 w-px bg-slate-700 forced-colors:bg-[ButtonText]" aria-hidden="true" />
 
-          {/* Indices 8–9: Sort toggle — segmented group mirroring the filter chips */}
+          {/* Indices 12–13: Sort toggle — segmented group mirroring the filter chips */}
           <div role="group" aria-label={m.streams_sort_group()} className="flex items-center gap-2">
             {SORT_OPTIONS.map((opt, i) => (
               <button
                 key={opt.id}
                 ref={sortRefs[i]}
-                tabIndex={toolbarTabIndex(8 + i)}
+                tabIndex={toolbarTabIndex(10 + i)}
                 aria-pressed={sortBy === opt.id}
                 onClick={() => handleSortChange(opt.id)}
                 className={`inline-flex items-center rounded-full px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 ${
@@ -571,7 +708,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
               ref={streamListCallbackRef}
               streams={sortedStreams}
               exitZone={(forward) => exitZone("streams-list", forward)}
-              onEmpty={() => {/* handled by isEmpty effect */}}
+              onEmpty={() => { pendingFocusEmptyZone.current = true; }}
             />
           )}
       </ListCard>
@@ -579,13 +716,22 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
       <AddStreamDialog />
       <ImportStreamsDialog />
       <ExportFormatDialog />
-      {confirmStopAll && createPortal(
+      {confirmStop && createPortal(
         <ConfirmDialog
-          title={m.confirm_stop_all_title()}
-          message={m.confirm_stop_all_message({ count: activeCount })}
-          confirmLabel={m.stop_all()}
-          onConfirm={() => { setConfirmStopAll(false); doStopAll(); }}
-          onCancel={() => setConfirmStopAll(false)}
+          title={confirmStop.scope === "selected" ? m.confirm_stop_selected_title() : m.confirm_stop_all_title()}
+          message={confirmStop.scope === "selected"
+            ? m.confirm_stop_selected_message({ count: selectedStoppableCount })
+            : m.confirm_stop_all_message({ count: stoppableCount })}
+          /* Confirm button counts only the actionable (stoppable) subset, so it
+             matches the dialog message; the toolbar button keeps selCount (R1). */
+          confirmLabel={confirmStop.scope === "selected" ? m.stop_selected({ count: selectedStoppableCount }) : m.stop_all()}
+          onConfirm={() => {
+            const scope = confirmStop.scope;
+            setConfirmStop(null);
+            if (scope === "selected") doStopSelected([...$streamSelection.get()]);
+            else doStopAll();
+          }}
+          onCancel={() => setConfirmStop(null)}
         />,
         document.body,
       )}

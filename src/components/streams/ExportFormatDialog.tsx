@@ -2,7 +2,7 @@ import { Dialog, Modal, ModalOverlay, Heading, RadioGroup, Radio } from "react-a
 import { useEffect, useState } from "react";
 import { useStore } from "@nanostores/react";
 import * as tauri from "../../lib/tauri";
-import { $showExportStreamsDialog } from "../../stores/streams";
+import { $exportStreamsRequest } from "../../stores/streams";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import { addToast } from "../../stores/toasts";
 import * as m from "../../i18n/paraglide/messages";
@@ -15,7 +15,8 @@ const FORMATS: { value: ExportFormat; label: string; desc: () => string }[] = [
 ];
 
 export function ExportFormatDialog() {
-  const isOpen = useStore($showExportStreamsDialog);
+  const request = useStore($exportStreamsRequest);
+  const isOpen = request !== null;
   const announce = useAnnounce();
   const [format, setFormat] = useState<ExportFormat>("m3u8");
   const [busy, setBusy] = useState(false);
@@ -25,13 +26,17 @@ export function ExportFormatDialog() {
     if (isOpen) setFormat("m3u8");
   }, [isOpen]);
 
-  const close = () => $showExportStreamsDialog.set(false);
+  const close = () => $exportStreamsRequest.set(null);
+
+  const title = request?.ids
+    ? m.streams_export_selected_title({ count: request.ids.length })
+    : m.streams_export_title();
 
   const handleExport = async () => {
     setBusy(true);
     try {
       // false = the user cancelled the save dialog — close without claiming success
-      const written = await tauri.exportStreams(format);
+      const written = await tauri.exportStreams(format, request?.ids ?? undefined);
       if (written) announce(m.streams_export_done());
       close();
     } catch (e) {
@@ -48,9 +53,9 @@ export function ExportFormatDialog() {
       onOpenChange={(open) => { if (!open) close(); }}
     >
       <Modal className="w-96 rounded-lg bg-slate-800 p-6 shadow-2xl outline-none forced-colors:bg-[Canvas] forced-colors:border forced-colors:border-[ButtonText]">
-        <Dialog className="outline-none" aria-label={m.streams_export_title()}>
+        <Dialog className="outline-none" aria-label={title}>
           <Heading slot="title" className="mb-4 text-lg font-semibold text-slate-100">
-            {m.streams_export_title()}
+            {title}
           </Heading>
           <RadioGroup
             aria-label={m.streams_export_format_label()}

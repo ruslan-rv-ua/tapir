@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import {
   $songs, $songsQuery, $songsStation, $songsSort, $filteredSongs, $songsStations,
+  removeSongsByPaths,
 } from "./songs";
 import type { Song } from "../types/song";
 
@@ -98,5 +99,13 @@ describe("$songsStations", () => {
       song({ station: "B" }), song({ station: "A" }), song({ station: "B" }),
     ]);
     expect($songsStations.get()).toEqual(["A", "B"]);
+  });
+});
+
+describe("removeSongsByPaths", () => {
+  it("removes every listed path in one update", () => {
+    $songs.set([song({ path: "a.mp3" }), song({ path: "b.mp3" }), song({ path: "c.mp3" })]);
+    removeSongsByPaths(["a.mp3", "c.mp3"]);
+    expect($songs.get().map((s) => s.path)).toEqual(["b.mp3"]);
   });
 });

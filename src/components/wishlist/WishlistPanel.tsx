@@ -2,7 +2,8 @@ import { Button, Tabs, TabList, Tab, TabPanel } from "react-aria-components";
 import { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useStore } from "@nanostores/react";
-import { PatternList } from "./PatternList";
+import { PatternList, type PatternListHandle } from "./PatternList";
+import { SelectionToolbar } from "../common/SelectionToolbar";
 import { AddPatternDialog } from "./AddPatternDialog";
 import { ScreenZone } from "../layout/ScreenZone";
 import { ScreenHeader } from "../layout/ScreenHeader";
@@ -10,7 +11,8 @@ import { ListCard } from "../common/ListCard";
 import { useFocusBoundary } from "../../hooks/useFocusBoundary";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import { addToast } from "../../stores/toasts";
-import { $wishlist, $ignorelist } from "../../stores/wishlist";
+import { $wishlist, $ignorelist, $patternSelection } from "../../stores/wishlist";
+import { replaceSelection } from "../../stores/selection";
 import * as tauri from "../../lib/tauri";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as m from "../../i18n/paraglide/messages";
@@ -29,6 +31,8 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   // --- Store subscriptions ---
   const wishlist = useStore($wishlist);
   const ignorelist = useStore($ignorelist);
+  const selection = useStore($patternSelection);
+  const selCount = selection.size;
 
   // --- Local state ---
   const [dialog, setDialog] = useState<DialogState>(null);
@@ -122,8 +126,10 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
 
   // --- Zone navigation ---
   const controlsRef = useRef<HTMLDivElement | null>(null);
-  const patternListRef = useRef<ZoneEntry | null>(null);
+  const patternListRef = useRef<PatternListHandle | null>(null);
   const addPatternBtnRef = useRef<HTMLButtonElement | null>(null);
+  const selectAllBtnRef = useRef<HTMLButtonElement | null>(null);
+  const deleteSelectedBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const { refreshBoundary, restoreFocus: controlsRestore } = useFocusBoundary(
     controlsRef,
@@ -143,8 +149,47 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
     [ignorelist],
   );
 
+  // --- Selection cluster ---
+  const activeItems = activeTab === "wishlist" ? wishlistItems : ignorelistItems;
+  const visibleIds = useMemo(() => activeItems.map((it) => it.pattern), [activeItems]);
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selection.has(id));
+
+  const handleSelectAll = useCallback(() => {
+    if (visibleIds.length === 0) return;
+    const next = new Set(selection);
+    if (allVisibleSelected) visibleIds.forEach((id) => next.delete(id));
+    else visibleIds.forEach((id) => next.add(id));
+    replaceSelection($patternSelection, next);
+    announce(next.size === 0 ? m.selection_cleared() : m.selection_count({ count: next.size }), "polite");
+  }, [visibleIds, allVisibleSelected, selection, announce]);
+
+  const handleBulkRemove = useCallback(
+    async (patterns: string[]): Promise<number> => {
+      const drop = new Set(patterns);
+      try {
+        if (activeTab === "wishlist") {
+          const n = await tauri.removeFromWishlistBulk(patterns);
+          $wishlist.set($wishlist.get().filter((e) => !drop.has(e.pattern)));
+          return n;
+        }
+        const n = await tauri.removeFromIgnorelistBulk(patterns);
+        $ignorelist.set($ignorelist.get().filter((p) => !drop.has(p)));
+        return n;
+      } catch (err) {
+        addToast(String(err), "error");
+        throw err;
+      }
+    },
+    [activeTab],
+  );
+
+  // Lifecycle: clear selection on tab change.
+  useEffect(() => { replaceSelection($patternSelection, new Set()); }, [activeTab]);
+  // Lifecycle: clear selection on unmount.
+  useEffect(() => () => { replaceSelection($patternSelection, new Set()); }, []);
+
   // Stable callback ref — only sets the ref, useEffect handles zone registration
-  const patternListCallbackRef = useCallback((zone: ZoneEntry | null) => {
+  const patternListCallbackRef = useCallback((zone: PatternListHandle | null) => {
     patternListRef.current = zone;
   }, []);
 
@@ -221,6 +266,16 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
           >
             {m.add_pattern()}
           </Button>
+          <SelectionToolbar
+            selCount={selCount}
+            visibleCount={visibleIds.length}
+            allVisibleSelected={allVisibleSelected}
+            selectAllRef={selectAllBtnRef}
+            actionRef={deleteSelectedBtnRef}
+            actionLabel={m.delete_selected({ count: selCount })}
+            onSelectAll={handleSelectAll}
+            onAction={() => patternListRef.current?.requestBulkRemove()}
+          />
         </ScreenZone>
 
         {/* Pattern list zones */}
@@ -236,6 +291,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
               onEmpty={() => addPatternBtnRef.current?.focus()}
               onEdit={(pattern) => setDialog({ mode: "edit", listType: "wishlist", pattern })}
               onRemove={handleRemoveWishlist}
+              onBulkRemove={handleBulkRemove}
             />
           </ListCard>
         </TabPanel>
@@ -251,6 +307,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
               onEmpty={() => addPatternBtnRef.current?.focus()}
               onEdit={(pattern) => setDialog({ mode: "edit", listType: "ignorelist", pattern })}
               onRemove={handleRemoveIgnorelist}
+              onBulkRemove={handleBulkRemove}
             />
           </ListCard>
         </TabPanel>

@@ -138,6 +138,9 @@ export async function addStream(url: string, name?: string): Promise<StreamInfo>
 export async function removeStream(streamId: string): Promise<void> {
   return invoke("remove_stream", { streamId });
 }
+export async function removeStreams(streamIds: string[]): Promise<number> {
+  return invoke("remove_streams", { streamIds });
+}
 export async function updateStream(streamId: string, name: string): Promise<StreamInfo> {
   return invoke("update_stream", { streamId, name });
 }
@@ -147,11 +150,11 @@ export async function startRecording(streamId: string): Promise<void> {
 export async function stopRecording(streamId: string): Promise<void> {
   return invoke("stop_recording", { streamId });
 }
-export async function stopAllRecordings(): Promise<void> {
-  return invoke("stop_all_recordings");
+export async function stopAllRecordings(ids?: string[]): Promise<number> {
+  return invoke("stop_all_recordings", { streamIds: ids ?? null });
 }
-export async function startAllRecordings(): Promise<number> {
-  return invoke("start_all_recordings");
+export async function startAllRecordings(ids?: string[]): Promise<number> {
+  return invoke("start_all_recordings", { streamIds: ids ?? null });
 }
 export async function getStreamStatus(streamId: string): Promise<StreamStatus> {
   return invoke("get_stream_status", { streamId });
@@ -285,6 +288,9 @@ export async function addToWishlist(pattern: string): Promise<WishlistEntry> {
 export async function removeFromWishlist(pattern: string): Promise<void> {
   return invoke("remove_from_wishlist", { pattern });
 }
+export async function removeFromWishlistBulk(patterns: string[]): Promise<number> {
+  return invoke("remove_from_wishlist_bulk", { patterns });
+}
 export async function updateWishlistPattern(oldPattern: string, newPattern: string): Promise<WishlistEntry> {
   return invoke("update_wishlist_pattern", { oldPattern, newPattern });
 }
@@ -296,6 +302,9 @@ export async function addToIgnorelist(pattern: string): Promise<void> {
 }
 export async function removeFromIgnorelist(pattern: string): Promise<void> {
   return invoke("remove_from_ignorelist", { pattern });
+}
+export async function removeFromIgnorelistBulk(patterns: string[]): Promise<number> {
+  return invoke("remove_from_ignorelist_bulk", { patterns });
 }
 export async function updateIgnorelistPattern(oldPattern: string, newPattern: string): Promise<void> {
   return invoke("update_ignorelist_pattern", { oldPattern, newPattern });
@@ -331,6 +340,10 @@ export async function updateSchedule(
 
 export async function deleteSchedule(id: string): Promise<void> {
   return invoke("delete_schedule", { id });
+}
+
+export async function deleteSchedules(ids: string[]): Promise<number> {
+  return invoke("delete_schedules", { ids });
 }
 
 export async function toggleSchedule(
@@ -420,6 +433,10 @@ export async function addStationFromBrowser(station: StationResult): Promise<voi
   return invoke("add_station_from_browser", { station });
 }
 
+export async function addStationsFromBrowser(stations: StationResult[]): Promise<StreamInfo[]> {
+  return invoke("add_stations_from_browser", { stations });
+}
+
 export async function addExampleStreams(): Promise<StreamInfo[]> {
   return invoke<StreamInfo[]>("add_example_streams");
 }
@@ -445,6 +462,9 @@ export async function updateSongTags(
 }
 export async function deleteSong(path: string): Promise<void> {
   return invoke("delete_song", { path });
+}
+export async function deleteSongs(paths: string[]): Promise<{ deleted: string[]; skipped: string[] }> {
+  return invoke("delete_songs", { paths });
 }
 
 // ── Profile types ─────────────────────────────────────────────────────────
@@ -592,6 +612,9 @@ export async function renameProfile(oldName: string, newName: string): Promise<P
 export async function deleteProfile(name: string): Promise<void> {
   return invoke("delete_profile", { name });
 }
+export async function deleteProfiles(names: string[]): Promise<{ deleted: string[]; skippedActive: boolean }> {
+  return invoke("delete_profiles", { names });
+}
 export async function duplicateProfile(sourceName: string, newName: string): Promise<ProfileMeta> {
   return invoke("duplicate_profile", { sourceName, newName });
 }
@@ -609,6 +632,20 @@ export async function copyStreamToProfile(streamId: string, targetProfile: strin
 }
 export async function moveStreamToProfile(streamId: string, targetProfile: string): Promise<void> {
   return invoke("transfer_stream_to_profile", { streamId, targetProfile, mode: "move" });
+}
+
+export interface BulkTransferResult {
+  transferred: string[];
+  skippedRecording: number;
+  skippedConflict: number;
+}
+
+export async function copyStreamsToProfile(streamIds: string[], targetProfile: string): Promise<BulkTransferResult> {
+  return invoke("transfer_streams_to_profile", { streamIds, targetProfile, mode: "copy" });
+}
+
+export async function moveStreamsToProfile(streamIds: string[], targetProfile: string): Promise<BulkTransferResult> {
+  return invoke("transfer_streams_to_profile", { streamIds, targetProfile, mode: "move" });
 }
 
 // ── Stream import/export (Phase 3J) ───────────────────────────────────────
@@ -646,6 +683,6 @@ export async function commitStreamImport(
   return invoke("commit_stream_import", { selected });
 }
 /** Resolves to `true` when a file was written, `false` when the save dialog was cancelled. */
-export async function exportStreams(format: "m3u8" | "pls"): Promise<boolean> {
-  return invoke("export_streams", { format });
+export async function exportStreams(format: "m3u8" | "pls", ids?: string[]): Promise<boolean> {
+  return invoke("export_streams", { format, streamIds: ids ?? null });
 }

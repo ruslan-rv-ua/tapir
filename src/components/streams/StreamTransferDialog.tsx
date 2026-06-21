@@ -2,21 +2,28 @@ import { Modal, ModalOverlay, Dialog, Heading } from "react-aria-components";
 import type { ProfileMeta } from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 
+export type TransferSubject = { kind: "single"; name: string } | { kind: "bulk"; count: number };
+
 interface Props {
   mode: "copy" | "move";
-  streamName: string;
-  /** Non-active profiles the stream can be sent to. */
+  /** What is being transferred — drives the title by ROUTE, not by count (finding 2). */
+  subject: TransferSubject;
+  /** Non-active profiles the stream(s) can be sent to. */
   profiles: ProfileMeta[];
   onSelect: (profileName: string) => void;
   onCreateNew: () => void;
   onCancel: () => void;
 }
 
-export function StreamTransferDialog({ mode, streamName, profiles, onSelect, onCreateNew, onCancel }: Props) {
+export function StreamTransferDialog({ mode, subject, profiles, onSelect, onCreateNew, onCancel }: Props) {
   const title =
-    mode === "copy"
-      ? m.copy_stream_to_profile_title({ name: streamName })
-      : m.move_stream_to_profile_title({ name: streamName });
+    subject.kind === "bulk"
+      ? mode === "copy"
+        ? m.copy_selected_to_profile_title({ count: subject.count })
+        : m.move_selected_to_profile_title({ count: subject.count })
+      : mode === "copy"
+        ? m.copy_stream_to_profile_title({ name: subject.name })
+        : m.move_stream_to_profile_title({ name: subject.name });
 
   const optionClass =
     "flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm text-slate-200 outline-none hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400";
