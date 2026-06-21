@@ -24,7 +24,7 @@ import { useScheduleEvents } from "./hooks/useScheduleEvents";
 import { useAnnounce } from "./hooks/useAnnounce";
 import { $streams, $statuses, updateStreamStatus } from "./stores/streams";
 import { $settings } from "./stores/settings";
-import { $playerStatus, $muteState } from "./stores/player";
+import { $playerStatus } from "./stores/player";
 import { $wishlist } from "./stores/wishlist";
 import { $activeSection } from "./stores/navigation";
 import { SECTIONS } from "./lib/sections";
@@ -35,6 +35,7 @@ import { $filteredSongs } from "./stores/songs";
 import { computePlaybackNeighbors } from "./stores/playbackNeighbors";
 import { resolveEndedAction } from "./lib/playbackTransport";
 import { executeTransportSkip, parseSkipTrigger } from "./lib/transportControl";
+import { applyMuteCleanup } from "./lib/muteCleanup";
 import { useGlobalShortcuts } from "./hooks/useGlobalShortcuts";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import * as m from "./i18n/paraglide/messages";
@@ -238,43 +239,7 @@ function AppContent() {
     }
 
     // ── Mute state cleanup ───────────────────────────────────────────────────
-    // Case 1: keyboard shortcut raised volume while muted — clear mute UI
-    if ($muteState.get().muted && !$muteState.get().restoring && payload.volume > 0) {
-      const { savedVolume } = $muteState.get();
-      $muteState.set({ muted: false, savedVolume, restoring: false });
-    }
-
-    // Case 2: new source started (stopped→playing or source switch) while muted
-    // Resume (paused→playing) intentionally excluded — user paused while muted, they
-    // expect to stay muted on resume.
-    if ((stateChangedToPlaying || sourceChangedWhilePlaying) && $muteState.get().muted) {
-      const { savedVolume } = $muteState.get();
-      tauri.setVolume(savedVolume)
-        .then(() => $muteState.set({ muted: false, savedVolume, restoring: false }))
-        .catch((e) => {
-          console.error("mute restore failed on new source:", e);
-          $muteState.set({ muted: true, savedVolume, restoring: false });
-        });
-    }
-
-    // Unexpected stop while muted — restore volume.
-    // restoring flag prevents re-entry if setVolume itself emits another stopped event.
-    if (payload.state === "stopped" && $muteState.get().muted && !$muteState.get().restoring) {
-      const { savedVolume } = $muteState.get();
-      $muteState.set({ muted: true, savedVolume, restoring: true });
-      tauri.setVolume(savedVolume)
-        .then(() => {
-          if ($muteState.get().restoring) {
-            $muteState.set({ muted: false, savedVolume, restoring: false });
-          }
-        })
-        .catch((e) => {
-          if ($muteState.get().restoring) {
-            console.error("mute restore failed:", e);
-            $muteState.set({ muted: true, savedVolume, restoring: false });
-          }
-        });
-    }
+    applyMuteCleanup(payload, { stateChangedToPlaying, sourceChangedWhilePlaying });
   }, []);
 
   const handlePlayerProgress = useCallback((payload: PlayerProgressPayload) => {
