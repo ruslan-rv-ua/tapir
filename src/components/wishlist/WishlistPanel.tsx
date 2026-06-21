@@ -1,5 +1,6 @@
-import { Button, Tabs, TabList, Tab, TabPanel } from "react-aria-components";
+import { Tabs, TabList, Tab, TabPanel } from "react-aria-components";
 import { useEffect, useCallback, useMemo, useRef, useState } from "react";
+import type React from "react";
 import { createPortal } from "react-dom";
 import { useStore } from "@nanostores/react";
 import { PatternList, type PatternListHandle } from "./PatternList";
@@ -8,7 +9,7 @@ import { AddPatternDialog } from "./AddPatternDialog";
 import { ScreenZone } from "../layout/ScreenZone";
 import { ScreenHeader } from "../layout/ScreenHeader";
 import { ListCard } from "../common/ListCard";
-import { useFocusBoundary } from "../../hooks/useFocusBoundary";
+import { useRovingFocus } from "../../hooks/useRovingFocus";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import { addToast } from "../../stores/toasts";
 import { $wishlist, $ignorelist, $patternSelection, $showAddPatternDialog } from "../../stores/wishlist";
@@ -142,13 +143,45 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   const selectAllBtnRef = useRef<HTMLButtonElement | null>(null);
   const deleteSelectedBtnRef = useRef<HTMLButtonElement | null>(null);
 
-  const { refreshBoundary, restoreFocus: controlsRestore } = useFocusBoundary(
-    controlsRef,
-    (forward) => exitZone("wishlist-controls", forward),
-  );
+  // Focus the currently-selected Wishlist/Ignorelist tab (react-aria marks it
+  // aria-selected="true" + tabindex="0"). Used as the toolbar's backward exit
+  // and as the zone's forward F6 entry.
+  const focusActiveTab = useCallback(() => {
+    controlsRef.current
+      ?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
+      ?.focus();
+  }, []);
 
-  // Re-discover boundary when tab changes
-  useEffect(() => { refreshBoundary(); }, [activeTab, refreshBoundary]);
+  // Roving toolbar over the three action buttons (Add, Select-all, Delete).
+  // composite-exit: Tab from ANY button leaves the toolbar — forward → list,
+  // backward → the tabs that sit before it in the same zone. (mixed-boundary-
+  // handoff would wrongly treat the Add button as the zone's backward boundary.)
+  const toolbarRefs = useMemo(
+    () => [addPatternBtnRef, selectAllBtnRef, deleteSelectedBtnRef],
+    [],
+  );
+  const {
+    onKeyDown: toolbarKeyDown,
+    getTabIndex: toolbarTabIndex,
+    restoreFocus: toolbarRestore,
+  } = useRovingFocus(toolbarRefs, "horizontal", {
+    mode: "composite-exit",
+    onTabOut: (forward) =>
+      forward ? exitZone("wishlist-controls", true) : focusActiveTab(),
+  });
+
+  // Bridge Tab between the react-aria <TabList> (owns ←/→) and the toolbar.
+  // Tab → toolbar's active button; Shift+Tab → exit the zone backward. Arrows
+  // are left to react-aria for tab switching.
+  const tabsKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      e.preventDefault();
+      if (e.shiftKey) exitZone("wishlist-controls", false);
+      else toolbarRestore("forward");
+    },
+    [exitZone, toolbarRestore],
+  );
 
   // Memoize items to prevent identity churn in PatternList → restoreFocus
   const wishlistItems = useMemo(
@@ -216,19 +249,21 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
     focus: (dir) => patternListRef.current?.focus(dir),
   });
 
-  // Register zones whenever tab or controls restore changes
+  // Register zones whenever tab or roving restore changes.
+  // Zone entry: forward (F6) lands on the tabs (visually first), backward
+  // (Shift+F6) lands on the last enabled toolbar button.
   useEffect(() => {
     const controlsZone: ZoneEntry = {
       id: "wishlist-controls",
       get el() { return controlsRef.current!; },
-      focus: controlsRestore,
+      focus: (dir) => (dir === "forward" ? focusActiveTab() : toolbarRestore("backward")),
     };
     const zones: ZoneEntry[] = [controlsZone];
     if (patternListRef.current) zones.push(patternListProxyRef.current);
     onZonesChange(zones);
     // onZonesChange intentionally omitted — callers must pass a stable (useCallback-wrapped) reference.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, controlsRestore]);
+  }, [activeTab, toolbarRestore, focusActiveTab]);
 
   return (
     <>
@@ -246,16 +281,19 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
             Wishlist/Ignorelist tabs), so the <h1> itself carries no actions and is
             not part of a zone (FRD §7.1.3). */}
         <ScreenHeader title={m.wishlist_section()} />
-        {/* Controls zone */}
+        {/* Controls zone — single F6 zone holding the tabs (←/→ switch tabs)
+            and a roving toolbar (←/→ move between the three action buttons).
+            role="application" passes arrow keys through to our handlers. */}
         <ScreenZone
           ref={controlsRef}
           id="wishlist-controls"
-          role="group"
+          role="application"
           label={m.zone_wishlist_controls()}
           className="flex items-center gap-2 px-4 py-2"
         >
           <TabList
             aria-label={m.wishlist_section()}
+            onKeyDown={tabsKeyDown}
             className="flex flex-1 gap-1"
           >
             <Tab
@@ -271,23 +309,33 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
               {m.ignorelist_section_title()}
             </Tab>
           </TabList>
-          <Button
-            ref={addPatternBtnRef}
-            onPress={() => setDialog({ mode: "add", listType: activeTab })}
-            className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText] forced-colors:focus-visible:outline-[Highlight]"
+          <div
+            role="toolbar"
+            aria-label={m.zone_wishlist_controls()}
+            onKeyDown={toolbarKeyDown}
+            className="flex items-center gap-2"
           >
-            {m.add_pattern()}
-          </Button>
-          <SelectionToolbar
-            selCount={selCount}
-            visibleCount={visibleIds.length}
-            allVisibleSelected={allVisibleSelected}
-            selectAllRef={selectAllBtnRef}
-            actionRef={deleteSelectedBtnRef}
-            actionLabel={m.delete_selected({ count: selCount })}
-            onSelectAll={handleSelectAll}
-            onAction={() => patternListRef.current?.requestBulkRemove()}
-          />
+            <button
+              ref={addPatternBtnRef}
+              tabIndex={toolbarTabIndex(0)}
+              onClick={() => setDialog({ mode: "add", listType: activeTab })}
+              className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText] forced-colors:focus-visible:outline-[Highlight]"
+            >
+              {m.add_pattern()}
+            </button>
+            <SelectionToolbar
+              selCount={selCount}
+              visibleCount={visibleIds.length}
+              allVisibleSelected={allVisibleSelected}
+              selectAllRef={selectAllBtnRef}
+              actionRef={deleteSelectedBtnRef}
+              selectAllTabIndex={toolbarTabIndex(1)}
+              actionTabIndex={toolbarTabIndex(2)}
+              actionLabel={m.delete_selected({ count: selCount })}
+              onSelectAll={handleSelectAll}
+              onAction={() => patternListRef.current?.requestBulkRemove()}
+            />
+          </div>
         </ScreenZone>
 
         {/* Pattern list zones */}
