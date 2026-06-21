@@ -81,6 +81,7 @@ interface GlobalSettings {
   sortBy: "name" | "added";        // порядок списку потоків
   bandwidthLimitKbps: number;
   autostart: boolean;
+  autostartMinimized: boolean;
   hotkeys: HotkeyMap;
   logRotation: boolean;
   logLevel: "error" | "warn" | "info" | "debug";
@@ -115,6 +116,7 @@ pub struct GlobalSettings {
     pub sort_by: String, // "name" | "added"
     pub bandwidth_limit_kbps: u32,
     pub autostart: bool,
+    pub autostart_minimized: bool,
     pub hotkeys: HotkeyMap,
     pub log_rotation: bool,
     pub log_level: LogLevel,
@@ -977,6 +979,7 @@ interface PostprocessErrorPayload {
   "doubleClickAction": "record",
   "bandwidthLimitKbps": 0,
   "autostart": false,
+  "autostartMinimized": true,
   "hotkeys": {
     "toggleRecording": "Ctrl+Shift+R",
     "togglePlayback": "Ctrl+Shift+P",

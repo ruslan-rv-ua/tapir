@@ -33,6 +33,8 @@ pub struct GlobalSettings {
     pub bandwidth_limit_kbps: u32,
     #[serde(default)]
     pub autostart: bool,
+    #[serde(default = "default_true")]
+    pub autostart_minimized: bool,
     #[serde(default)]
     pub hotkeys: HotkeyMap,
     #[serde(default = "default_true")]
@@ -187,6 +189,7 @@ impl Default for GlobalSettings {
             double_click_action: DoubleClickAction::Record,
             bandwidth_limit_kbps: 0,
             autostart: false,
+            autostart_minimized: true,
             hotkeys: HotkeyMap::default(),
             log_rotation: true,
             log_max_size_mb: 10,
@@ -407,5 +410,28 @@ mod tests {
         let json = serde_json::to_string(&s).unwrap();
         let back: GlobalSettings = serde_json::from_str(&json).unwrap();
         assert_eq!(back.sort_by, "added");
+    }
+
+    #[test]
+    fn autostart_minimized_defaults_to_true() {
+        assert!(GlobalSettings::default().autostart_minimized);
+    }
+
+    #[test]
+    fn legacy_config_without_autostart_minimized_defaults_to_true() {
+        // A settings.json written before this field existed must still load,
+        // with the new field taking its default (KB-12 / smtc pattern).
+        let json = r#"{"language":"en-US","theme":"auto","activeProfile":"Default"}"#;
+        let s: GlobalSettings = serde_json::from_str(json).unwrap();
+        assert!(s.autostart_minimized);
+    }
+
+    #[test]
+    fn autostart_minimized_false_round_trips() {
+        let mut s = GlobalSettings::default();
+        s.autostart_minimized = false;
+        let json = serde_json::to_string(&s).unwrap();
+        let back: GlobalSettings = serde_json::from_str(&json).unwrap();
+        assert!(!back.autostart_minimized);
     }
 }
