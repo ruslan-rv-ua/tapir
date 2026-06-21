@@ -88,14 +88,34 @@ fn reconcile(
 ) -> Reconcile
 ```
 
-Таблиця рішень `reconcile`:
+Алгоритм `reconcile` (явний, без двозначностей). `desired =
+build_run_command(current_exe, minimized)`. Усі порівняння — **case-insensitive**
+(Windows). Витяг exe — `exe_path_from_command(reg)`:
+
+```
+match registered {
+    None            => if autostart { Write(desired) } else { None },
+    Some(reg)       => {
+        if !autostart { return DeleteStale; }
+        match exe_path_from_command(reg) {
+            Some(e) if eq_ic(e, current_exe) =>
+                if eq_ic(reg, desired) { None } else { Write(desired) }, // змінено minimized
+            Some(_) => DisableMoved,   // розібрано ІНШИЙ шлях → переміщення
+            None    => Write(desired),  // значення нерозбірливе → тихе self-heal
+        }
+    }
+}
+```
+
+Таблиця (підсумок):
 
 | `autostart` | `registered` | Результат |
 |---|---|---|
-| `true` | `None` (відсутній) | `Write` — тихе самовідновлення (напр., попередній запис не вдався) |
-| `true` | exe == current, команда не збігається (змінено `minimized`) | `Write` — тихий перезапис |
+| `true` | відсутній | `Write` — тихе self-heal (попередній запис не вдався) |
 | `true` | exe == current, команда збігається | `None` |
+| `true` | exe == current, команда різна (змінено `minimized`) | `Write` — тихий перезапис |
 | `true` | exe **≠** current | `DisableMoved` |
+| `true` | значення нерозбірливе (exe не парситься) | `Write` — тихе self-heal |
 | `false` | присутній | `DeleteStale` |
 | `false` | відсутній | `None` |
 
@@ -115,27 +135,42 @@ pub fn apply(enabled: bool, minimized: bool) -> Result<(), RadioError>
 pub fn reconcile_on_startup(autostart: bool, minimized: bool) -> bool
 ```
 
-`apply` бере `current_exe` через `std::env::current_exe()` всередині (impure).
-Усі winreg-помилки логуються; `apply` повертає `Err` у команду для UI-оголошення;
-`reconcile_on_startup` помилки лише логує (старт не блокуємо).
+`apply` і `reconcile_on_startup` **обидва** беруть `current_exe` через
+`std::env::current_exe()` (impure) і будують команду через той самий
+`build_run_command` — щоб збережений при `apply` рядок дослівно дорівнював
+перебудованому при старті (інакше зайвий `Write`). Усі winreg-помилки логуються;
+`apply` повертає `Err` у команду для UI-оголошення; `reconcile_on_startup`
+помилки лише логує (старт не блокуємо).
 
 ## Backend: IPC-команда
 
 `src-tauri/src/commands/settings_commands.rs`:
 
 ```rust
-/// Привести реєстр Run у відповідність до поточних settings (autostart,
-/// autostart_minimized). Frontend викликає після persist toggle.
+/// Привести реєстр Run у відповідність до (enabled, minimized).
+/// Frontend передає значення явно (НЕ читаємо state — див. нижче).
 #[tauri::command]
-pub async fn sync_autostart(state: State<'_, AppState>) -> Result<(), String>
+pub async fn sync_autostart(enabled: bool, minimized: bool) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || autostart::apply(enabled, minimized))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(Into::into)
+}
 ```
 
-Читає `state.settings` (уже оновлені через `save_settings`), викликає
-`autostart::apply(autostart, autostart_minimized)`. Реєструється в `invoke_handler`.
+**Чому явні аргументи, а не читання `state.settings` (B1):** `useAutoSave`
+дебаунсить persist на **300 мс** (useAutoSave.ts:10). Якби команда читала
+`state.settings`, вона прочитала б **застарілий** стан (debounced `save_settings`
+ще не виконався). Явні аргументи усувають гонку: реєстр пишеться тими самими
+значеннями, що й оптимістичний апдейт стора.
 
-Чому окрема команда, а не як SMTC у `save_settings`: реєстровий запис **може
+**Чому `spawn_blocking` (B2):** winreg — блокувальний I/O; у async-команді його
+треба винести з runtime-потоку (патерн `save_settings`).
+
+**Чому окрема команда, а не як SMTC у `save_settings`:** реєстровий запис **може
 впасти** (на відміну від in-process SMTC), і незрячий користувач має почути про
-це. `save_settings` лишається суто про persist.
+це. `save_settings` лишається суто про persist. Реєструється в `invoke_handler`.
+Власні команди застосунку не потребують ACL-запису (на відміну від plugin-команд).
 
 ## Backend: старт (`lib.rs setup`)
 
@@ -174,31 +209,44 @@ webview = втрачене оголошення.
 ### GeneralTab (`src/components/settings/GeneralTab.tsx`)
 
 Нова секція «Автозапуск» (`settings_section_autostart`) з двома `Checkbox`
-(патерн існуючих чекбоксів у файлі):
+(патерн існуючих чекбоксів у файлі). Обидва `onChange` — async; передають значення
+в `syncAutostart` **явно** (не покладаючись на дебаунснутий persist), і **revert
+оптимістичного апдейту при помилці** (I2 — UI/настройка не «брешуть» незрячому):
 
-1. **«Запускати разом із Windows»** ← `settings.autostart`.
-   `onChange`: `update({ autostart: val })` → `await tauri.syncAutostart()` →
-   `announce(val ? m.autostart_enabled() : m.autostart_disabled(), "polite")`.
-   На помилку: `announce(m.autostart_error(), "assertive")` + error-toast.
+1. **«Запускати разом із Windows»** ← `settings.autostart`:
+   ```ts
+   onChange={async (val) => {
+     update({ autostart: val });               // оптимістично + debounced persist
+     try {
+       await tauri.syncAutostart(val, settings.autostartMinimized);
+       announce(val ? m.autostart_enabled() : m.autostart_disabled(), "polite");
+     } catch {
+       update({ autostart: !val });            // revert
+       announce(m.autostart_error(), "assertive");
+       addToast(m.autostart_error(), "error");
+     }
+   }}
+   ```
 2. **«Запускати мінімізованим»** ← `settings.autostartMinimized`,
-   **`isDisabled={!settings.autostart}`**. `onChange`:
-   `update({ autostartMinimized: val })` → `await tauri.syncAutostart()`
-   (autostart увімкнено → перезаписує команду з/без `--minimize`).
+   **`isDisabled={!settings.autostart}`** (рішення: задизейблити). `onChange` аналогічно, але
+   `syncAutostart(settings.autostart, val)` (autostart тут завжди `true`, бо інакше
+   контрол задизейблений) і revert поля `autostartMinimized`.
 
-`update()` уже існує (persist через `useAutoSave`). Послідовність: спершу persist
-(оновлює і `state.settings` у Rust через `save_settings`), потім `syncAutostart`
-читає оновлений стан.
+`update()` уже існує (persist через `useAutoSave`, debounced 300 мс). Реєстр
+синхронізується **негайно** через явні аргументи — persist відбувається окремо й
+асинхронно; рідкісне розходження вирівнюється `reconcile_on_startup` при старті.
 
 ### Хук `useAutostartFeedback` (`src/hooks/useAutostartFeedback.ts`)
 
-Як `useCliFeedback`: слухає подію `autostart-deactivated` →
-`announce(m.autostart_deactivated_moved(), "polite")` + info-toast. Підключити в
-`App.tsx` поряд з `useCliFeedback`.
+Як `useCliFeedback`: слухає подію `autostart-deactivated` (payload порожній,
+`useTauriEvent<void>`) → `announce(m.autostart_deactivated_moved(), "polite")` +
+info-toast. Підключити в `App.tsx` поряд з `useCliFeedback()` (App.tsx:315).
 
 ### `src/lib/tauri.ts`
 
 - Тип: `autostartMinimized: boolean` у `GlobalSettings`.
-- Біндинг: `export const syncAutostart = () => invoke<void>("sync_autostart")`.
+- Біндинг: `export const syncAutostart = (enabled: boolean, minimized: boolean) =>
+  invoke<void>("sync_autostart", { enabled, minimized });`
 
 ### i18n (`src/i18n/messages/{uk,en}.json`)
 
@@ -220,22 +268,49 @@ paraglide (не правити згенероване вручну).
 
 **Rust (`autostart.rs` `#[cfg(test)]`):**
 - `build_run_command`: лапки навколо exe; з/без `--minimize`.
-- `exe_path_from_command`: значення в лапках з аргументами; без лапок; порожнє.
-- `reconcile`: повна таблиця рішень (6 рядків), включно з case-insensitive
-  порівнянням шляху (різний регістр = той самий exe).
+- `exe_path_from_command`: значення в лапках з аргументами; без лапок; порожнє/garbage → `None`.
+- `reconcile`: **уся таблиця (7 рядків)**, включно з case-insensitive порівнянням
+  шляху (різний регістр = той самий exe), з нерозбірливим значенням (`None` exe →
+  `Write`), і з `minimized`-перезаписом (exe той самий, команда різна → `Write`).
 - `settings.rs`: `autostart_minimized` default `true`; legacy-конфіг без поля
   вантажиться з default; round-trip.
 
 **Frontend (Vitest):**
-- `GeneralTab.test.tsx`: клік по «Запускати разом із Windows» пише
-  `autostart` у стор і викликає `syncAutostart`; «Запускати мінімізованим»
-  задизейблений при `autostart=false`, активний при `true`.
+- `GeneralTab.test.tsx` (**новий файл**): клік по «Запускати разом із Windows» пише
+  `autostart` у стор і викликає `syncAutostart(true, …)`; «Запускати мінімізованим»
+  задизейблений при `autostart=false`, активний при `true`; **revert при rejected
+  `syncAutostart`** (стор повертається до попереднього значення). Мок `lib/tauri`
+  має включати `syncAutostart` (і `saveSettings`).
 - `useAutostartFeedback`: подія `autostart-deactivated` → `announce` викликано.
+
+**Гепи тестових фікстур (G1):** додавання обов'язкового `autostartMinimized` до
+TS-типу `GlobalSettings` ламає typecheck у **5 наявних фікстурах**, які будують
+повний об'єкт — оновити кожну (`+ autostartMinimized: true`):
+`HotkeysTab.test.tsx:37`, `AudioTab.test.tsx:27`, `PlayerPanel.test.tsx:20`,
+`StreamList.test.tsx:56`, `transportControl.test.ts:52`.
 
 **Не покривається юніт-тестами (ручна перевірка з NVDA):**
 - Реальний запис/видалення в `HKCU\...\Run`.
 - Старт із `--minimize` → лише іконка в треї.
 - Переміщення EXE → тиха деактивація + оголошення.
+
+## Відомі обмеження / краєві випадки
+
+- **Кілька копій EXE.** `DisableMoved` видаляє запис `Run`, що вказує на ту копію,
+  з якої НЕ запущено поточний процес. Якщо існують дві копії й autostart вів на
+  копію A, запуск копії B вимкне autostart (видалить запис A). Відповідає наміру
+  беклогу («розходження шляху → деактивувати»); рідкісний кейс портативного app.
+- **Dev-запуск (`just dev`).** `current_exe()` вказує на debug-білд. Якщо в
+  `settings.json` лишився autostart=true від реального білда, dev-запуск побачить
+  розходження шляху → `DisableMoved` → видалить реальний `Run`-запис і скине
+  прапорець. Очікувано (інший exe), але варто пам'ятати під час розробки.
+- **Рідкісна реєстр-помилка (self-heal, G4).** Якщо `apply` впав (напр.,
+  enterprise-політика блокує `Run`), фронт оголошує помилку й revert-ить toggle —
+  тож persist лишається консистентним з реальністю. Якщо ж persist випередив
+  revert (await > 300 мс), розходження вирівняє `reconcile_on_startup` при старті.
+  Старт-помилки лише логуються (без оголошення).
+- **`Emitter` import (G2).** `frontend_ready` емітить `autostart-deactivated` —
+  додати `use tauri::Emitter;` у `app_commands.rs` (зараз там лише `Manager`).
 
 ## Критерії готовності (з беклогу)
 
@@ -261,5 +336,3 @@ paraglide (не правити згенероване вручну).
 - Без анонсу «Tapir запущений автоматично» при кожному вході.
 - Без HKLM / прав адміністратора (тільки HKCU, портативна модель).
 - Без міграції наявних `settings.json` (default `autostartMinimized=true` достатньо).
-</content>
-</invoke>
