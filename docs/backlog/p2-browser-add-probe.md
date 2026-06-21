@@ -51,6 +51,7 @@
 - Код: `src-tauri/src/browser/types.rs` — `StationResult.lastcheckok`
 - Код: `src-tauri/src/stream/probe.rs` — `probe()` (вже є)
 - Зразок: `src-tauri/src/commands/stream_io_commands.rs` — async probe pattern
+- Пов'язано: [p2-add-stream-probe.md](p2-add-stream-probe.md) — аналогічний probe для ручного додавання (sync spinner); IPC-команда `probe_stream(url)` може бути спільною
 
 ## Промпт для агента
 

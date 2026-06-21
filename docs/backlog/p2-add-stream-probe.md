@@ -52,6 +52,7 @@
 - Код: `src-tauri/src/commands/stream_commands.rs` — `add_stream`
 - Код: `src-tauri/src/stream/probe.rs` — `probe()` (вже є)
 - Код: `src-tauri/src/commands/stream_io_commands.rs` — `validate_import_candidates` (зразок)
+- Пов'язано: [p2-browser-add-probe.md](p2-browser-add-probe.md) — аналогічний probe для Stream Browser (async тост замість sync spinner)
 
 ## Промпт для агента
 
