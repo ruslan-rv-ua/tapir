@@ -2,9 +2,9 @@
 
 - **Слаг:** `bulk-stream-operations`
 - **Тип:** заплановано
-- **Стан:** реалізовано (всі віхи A–D); гейти зелені (pnpm test 580/580, pnpm vite:build, cargo test 324/0); приймання з NVDA для D — за користувачем
+- **Стан:** реалізовано й перевірено з NVDA (всі віхи A–D); гейти зелені після зведення develop (pnpm test 583/583, pnpm vite:build, cargo test 324/0); готово до зливу в develop
 - **Зусилля:** L
-- **Оновлено:** 2026-06-20
+- **Оновлено:** 2026-06-21
 - **Гілка:** `feature/bulk-stream-operations`
 - **Залежності:** немає
 
@@ -205,9 +205,9 @@ roving-focus на одному активному рядку; моделі ви�
 
 ### D. Розкочування на решту списків — `P2` — ✅ реалізовано
 
-> **Статус: ✅ реалізовано (2026-06-20); приймання з NVDA — за користувачем.** Гілка
-> `feature/bulk-stream-operations`; гейти зелені (`pnpm test` 580/580, `pnpm vite:build`,
-> `cargo test` 324/0). Spec/план: [D-plan](../superpowers/plans/2026-06-19-bulk-stream-operations-D.md).
+> **Статус: ✅ реалізовано й перевірено з NVDA (2026-06-21).** Гілка
+> `feature/bulk-stream-operations`; гейти зелені після зведення develop (`pnpm test` 583/583,
+> `pnpm vite:build`, `cargo test` 324/0). Spec/план: [D-plan](../superpowers/plans/2026-06-19-bulk-stream-operations-D.md).
 
 - Увімкнено виділення у songs, profiles, browser, schedule і `PatternList`
   (спільний компонент вкладок wishlist/ignorelist — одна точка зміни).
