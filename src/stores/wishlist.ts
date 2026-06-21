@@ -6,3 +6,6 @@ export const $ignorelist = atom<string[]>([]);
 
 /** Shared multi-select for whichever PatternList tab is mounted (milestone D). */
 export const $patternSelection = atom<Set<string>>(new Set());
+
+/** Signal: global Ctrl+N (wishlist) wants the add-pattern dialog opened. */
+export const $showAddPatternDialog = atom<boolean>(false);

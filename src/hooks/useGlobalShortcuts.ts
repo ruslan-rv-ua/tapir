@@ -4,6 +4,9 @@ import { isInModal } from "../lib/shortcutGuard";
 import { $activeSection, $commandPaletteOpen, $helpOpen } from "../stores/navigation";
 import { $settingsDialogOpen } from "../stores/settings";
 import { $showAddStreamDialog } from "../stores/streams";
+import { $showCreateProfileDialog } from "../stores/profileManager";
+import { $showAddPatternDialog } from "../stores/wishlist";
+import { $showAddScheduleDialog } from "../stores/schedule";
 
 /**
  * Global Tier-2 webview shortcuts (Alt+digit, Ctrl+K, Ctrl+,, Ctrl+N, F1),
@@ -28,6 +31,9 @@ export function useGlobalShortcuts(): void {
       toggleSettings: () => $settingsDialogOpen.set(!$settingsDialogOpen.get()),
       openAddStream: () => $showAddStreamDialog.set(true),
       openHelp: () => $helpOpen.set(true),
+      openCreateProfile: () => $showCreateProfileDialog.set(true),
+      openAddPattern: () => $showAddPatternDialog.set(true),
+      openCreateSchedule: () => $showAddScheduleDialog.set(true),
     };
     const handler = (e: KeyboardEvent) => {
       if (e.repeat) return;

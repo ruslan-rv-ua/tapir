@@ -4,6 +4,9 @@ import { render, screen, fireEvent, act } from "@testing-library/react";
 import { useGlobalShortcuts } from "./useGlobalShortcuts";
 import { $activeSection, $commandPaletteOpen } from "../stores/navigation";
 import { $showAddStreamDialog } from "../stores/streams";
+import { $showCreateProfileDialog } from "../stores/profileManager";
+import { $showAddPatternDialog } from "../stores/wishlist";
+import { $showAddScheduleDialog } from "../stores/schedule";
 
 function Harness({ children }: { children?: ReactNode }) {
   useGlobalShortcuts();
@@ -29,6 +32,9 @@ beforeEach(() => {
   $activeSection.set("browser");
   $commandPaletteOpen.set(false);
   $showAddStreamDialog.set(false);
+  $showCreateProfileDialog.set(false);
+  $showAddPatternDialog.set(false);
+  $showAddScheduleDialog.set(false);
 });
 
 describe("useGlobalShortcuts", () => {
@@ -98,6 +104,45 @@ describe("useGlobalShortcuts", () => {
     );
     act(() => screen.getByTestId("field").focus());
     fireEvent.keyDown(screen.getByTestId("field"), { code: "KeyN", ctrlKey: true });
+    expect($showAddStreamDialog.get()).toBe(false);
+  });
+
+  it("opens Create Profile on Ctrl+N on the profiles section, not Add Stream", () => {
+    $activeSection.set("profiles");
+    render(
+      <Harness>
+        <input data-testid="field" />
+      </Harness>,
+    );
+    act(() => screen.getByTestId("field").focus());
+    fireEvent.keyDown(screen.getByTestId("field"), { code: "KeyN", ctrlKey: true });
+    expect($showCreateProfileDialog.get()).toBe(true);
+    expect($showAddStreamDialog.get()).toBe(false);
+  });
+
+  it("opens Add Pattern on Ctrl+N on the wishlist section, not Add Stream", () => {
+    $activeSection.set("wishlist");
+    render(
+      <Harness>
+        <input data-testid="field" />
+      </Harness>,
+    );
+    act(() => screen.getByTestId("field").focus());
+    fireEvent.keyDown(screen.getByTestId("field"), { code: "KeyN", ctrlKey: true });
+    expect($showAddPatternDialog.get()).toBe(true);
+    expect($showAddStreamDialog.get()).toBe(false);
+  });
+
+  it("opens Create Schedule on Ctrl+N on the schedule section, not Add Stream", () => {
+    $activeSection.set("schedule");
+    render(
+      <Harness>
+        <input data-testid="field" />
+      </Harness>,
+    );
+    act(() => screen.getByTestId("field").focus());
+    fireEvent.keyDown(screen.getByTestId("field"), { code: "KeyN", ctrlKey: true });
+    expect($showAddScheduleDialog.get()).toBe(true);
     expect($showAddStreamDialog.get()).toBe(false);
   });
 });

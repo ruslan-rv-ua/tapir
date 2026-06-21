@@ -9,7 +9,9 @@ import { SHORTCUTS } from "./shortcuts";
 export const RESERVED_WEBVIEW_COMBOS: ReadonlyArray<{
   combo: string;
   label: () => string;
-}> = SHORTCUTS.filter((s) => s.reserved).map(({ combo, label }) => ({ combo, label }));
+}> = SHORTCUTS.filter((s) => s.reserved)
+  .filter((s, i, arr) => arr.findIndex((x) => x.combo === s.combo) === i)
+  .map(({ combo, label }) => ({ combo, label }));
 
 /**
  * Returns the conflicting reserved entry's label getter, or null if `combo`

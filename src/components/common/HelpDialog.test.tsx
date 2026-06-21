@@ -29,10 +29,10 @@ describe("HelpDialog", () => {
     act(() => $helpOpen.set(true));
     render(<HelpDialog />);
     await userEvent.click(screen.getByRole("tab", { name: "Гарячі клавіші" }));
-    expect(screen.getByText("Ctrl+K")).toBeTruthy();    // global
-    expect(screen.getByText("Alt+1")).toBeTruthy();     // navigation
-    expect(screen.getByText("Ctrl+N")).toBeTruthy();    // context
-    expect(screen.getByText("Shift+F10")).toBeTruthy(); // list
+    expect(screen.getByText("Ctrl+K")).toBeTruthy();        // global
+    expect(screen.getByText("Alt+1")).toBeTruthy();         // navigation
+    expect(screen.getAllByText("Ctrl+N").length).toBeGreaterThanOrEqual(1); // context (multiple per-screen entries)
+    expect(screen.getByText("Shift+F10")).toBeTruthy();     // list
   });
 
   it("closes when the store flips to false", () => {

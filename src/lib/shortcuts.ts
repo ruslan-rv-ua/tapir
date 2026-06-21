@@ -15,6 +15,9 @@ export interface ShortcutActions {
   toggleSettings: () => void;
   openAddStream: () => void;
   openHelp: () => void;
+  openCreateProfile: () => void;
+  openAddPattern: () => void;
+  openCreateSchedule: () => void;
 }
 
 export interface Shortcut {
@@ -100,6 +103,36 @@ export const SHORTCUTS: readonly Shortcut[] = [
     match: (e) => ctrlOrMeta(e) && e.code === "KeyN",
     when: (ctx) => ctx.activeSection === "streams",
     run: (a) => a.openAddStream(),
+  },
+  {
+    id: "new:profiles",
+    combo: "Ctrl+N",
+    label: m.profile_create,
+    group: "context",
+    reserved: true,
+    match: (e) => ctrlOrMeta(e) && e.code === "KeyN",
+    when: (ctx) => ctx.activeSection === "profiles",
+    run: (a) => a.openCreateProfile(),
+  },
+  {
+    id: "new:wishlist",
+    combo: "Ctrl+N",
+    label: m.add_pattern,
+    group: "context",
+    reserved: true,
+    match: (e) => ctrlOrMeta(e) && e.code === "KeyN",
+    when: (ctx) => ctx.activeSection === "wishlist",
+    run: (a) => a.openAddPattern(),
+  },
+  {
+    id: "new:schedule",
+    combo: "Ctrl+N",
+    label: m.schedule_add,
+    group: "context",
+    reserved: true,
+    match: (e) => ctrlOrMeta(e) && e.code === "KeyN",
+    when: (ctx) => ctx.activeSection === "schedule",
+    run: (a) => a.openCreateSchedule(),
   },
   // Tier 2′ — handled by their own hooks; here for help + reserved guard only.
   {

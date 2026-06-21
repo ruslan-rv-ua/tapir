@@ -10,6 +10,9 @@ export const $schedulesError = atom<string | null>(null);
 /** Стан множинного вибору для списку розкладів (D). Ключ — id розкладу. */
 export const $scheduleSelection = atom<Set<string>>(new Set());
 
+/** Signal: global Ctrl+N (schedule) wants the new-schedule form opened. */
+export const $showAddScheduleDialog = atom<boolean>(false);
+
 let loadSeq = 0;
 
 /**
