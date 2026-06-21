@@ -67,16 +67,39 @@ pub fn render_template(
     out
 }
 
+/// Windows reserved device names. A path component whose stem (the text before
+/// the first `.`) equals one of these is rejected by the OS, with or without an
+/// extension. Matching is case-insensitive — `NUL`, `nul`, and `CON.mp3` are all
+/// reserved. Only an exact stem match counts: `NUL - Something.mp3` (stem
+/// `NUL - Something`) and `COM10` are fine.
+const WINDOWS_RESERVED: &[&str] = &[
+    "CON", "PRN", "AUX", "NUL",
+    "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+    "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+];
+
 /// Replace Windows-forbidden characters in a filename component (not a path).
 /// Forbidden: \ / : * ? " < > |
 /// Replaces each with _
 /// Also trims trailing dots and spaces from the result (Windows rejects them).
+/// Finally, if the stem (text before the first `.`) is a reserved Windows device
+/// name (see [`WINDOWS_RESERVED`]), prefixes the component with `_` so the OS
+/// accepts it. This mirrors the Win32 rule: the extension is ignored and trailing
+/// spaces on the stem don't matter, so `CON`, `con.mp3`, and `COM1 .aac` are all
+/// guarded, while `NUL - Something.mp3` is left untouched.
 pub fn sanitize_component(name: &str) -> String {
     let forbidden = |c: char| matches!(c, '\\' | '/' | ':' | '*' | '?' | '"' | '<' | '>' | '|');
     let sanitized: String = name.chars()
         .map(|c| if forbidden(c) { '_' } else { c })
         .collect();
-    sanitized.trim_end_matches(|c| c == '.' || c == ' ').to_string()
+    let sanitized = sanitized.trim_end_matches(|c| c == '.' || c == ' ').to_string();
+
+    let stem = sanitized.split('.').next().unwrap_or("").trim_end_matches(' ');
+    if WINDOWS_RESERVED.iter().any(|r| r.eq_ignore_ascii_case(stem)) {
+        format!("_{}", sanitized)
+    } else {
+        sanitized
+    }
 }
 
 /// Sanitize a full path that may contain path separators.
@@ -214,6 +237,41 @@ mod tests {
         assert_eq!(sanitize_component("name..."), "name");
         assert_eq!(sanitize_component("name   "), "name");
         assert_eq!(sanitize_component("name. "), "name");
+    }
+
+    #[test]
+    fn test_sanitize_component_reserved_names() {
+        assert_eq!(sanitize_component("NUL"), "_NUL");
+        assert_eq!(sanitize_component("CON.mp3"), "_CON.mp3");
+        assert_eq!(sanitize_component("nul"), "_nul"); // case-insensitive
+        assert_eq!(sanitize_component("Normal Name"), "Normal Name"); // unchanged
+    }
+
+    #[test]
+    fn test_sanitize_component_all_reserved_names() {
+        // Every reserved name must be guarded: bare, with extension, and lowercase.
+        for name in WINDOWS_RESERVED {
+            assert_eq!(sanitize_component(name), format!("_{}", name), "bare {name}");
+            let with_ext = format!("{name}.mp3");
+            assert_eq!(sanitize_component(&with_ext), format!("_{with_ext}"), "{name}.mp3");
+            let lower = name.to_lowercase();
+            assert_eq!(sanitize_component(&lower), format!("_{lower}"), "lowercase {name}");
+        }
+    }
+
+    #[test]
+    fn test_sanitize_component_reserved_only_exact_stem() {
+        // Only an exact stem match is reserved — substrings/longer names are valid files.
+        assert_eq!(sanitize_component("NUL - Something.mp3"), "NUL - Something.mp3");
+        assert_eq!(sanitize_component("CONcert"), "CONcert");
+        assert_eq!(sanitize_component("COM10"), "COM10");
+        assert_eq!(sanitize_component("LPT0"), "LPT0");
+    }
+
+    #[test]
+    fn test_sanitize_component_reserved_with_trailing_space_stem() {
+        // Win32 ignores trailing spaces on the stem, so "COM1 .aac" is still a device.
+        assert_eq!(sanitize_component("COM1 .aac"), "_COM1 .aac");
     }
 
     #[test]
