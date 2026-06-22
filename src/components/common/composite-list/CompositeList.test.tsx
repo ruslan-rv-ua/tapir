@@ -107,6 +107,72 @@ describe("CompositeList", () => {
     expect(activeAttrs()).toEqual({ id: "b", seg: "summary" });
   });
 
+  it("first entry lands on the current first row even if items reordered before focus", () => {
+    // Repro of the streams-screen bug: the list mounts under one order (seeding the
+    // active item from items[0]), then the persisted sort order arrives and reorders
+    // the rows BEFORE the user ever tabs in. The first entry must land on the new
+    // first row, not the stale mount-time seed.
+    const ref = createRef<ZoneEntry>();
+    const make = (order: string[]) => (
+      <CompositeList
+        ref={ref}
+        zoneId="test-list"
+        ariaLabel="Test list"
+        items={order.map((id) => ({ id, segments: [] }))}
+        onTabOut={vi.fn()}
+        onAction={vi.fn()}
+        renderRow={({ id, isActive, isFocused }) => (
+          <CompositeRow key={id} itemId={id} isFocused={isFocused} isActiveRow={isActive} label={`Row ${id}`}>
+            {`Row ${id}`}
+          </CompositeRow>
+        )}
+      />
+    );
+    const { rerender } = render(make(["a", "b", "c"]));
+    // Reorder before any focus (simulates the sort order arriving after mount).
+    rerender(make(["c", "b", "a"]));
+    act(() => ref.current!.focus("forward"));
+    expect(activeAttrs()).toEqual({ id: "c", seg: "summary" });
+
+    // Memory still works after the first entry: navigate away, leave, return.
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+    expect(activeAttrs()).toEqual({ id: "b", seg: "summary" });
+    act(() => (document.activeElement as HTMLElement).blur());
+    act(() => ref.current!.focus("forward"));
+    expect(activeAttrs()).toEqual({ id: "b", seg: "summary" });
+  });
+
+  it("re-anchors the roving tabIndex=0 to the new first row after a reorder before any navigation", () => {
+    // The roving tabIndex=0 stop is where a NATIVE Tab into the list lands (it does
+    // not go through restoreFocus). If the list reorders before the user navigates,
+    // that stop must follow to the new first row — otherwise native Tab focuses the
+    // stale mount-time seed row, which is the streams-screen bug under "added" sort.
+    const ref = createRef<ZoneEntry>();
+    const make = (order: string[]) => (
+      <CompositeList
+        ref={ref}
+        zoneId="test-list"
+        ariaLabel="Test list"
+        items={order.map((id) => ({ id, segments: [] }))}
+        onTabOut={vi.fn()}
+        onAction={vi.fn()}
+        renderRow={({ id, isActive, isFocused }) => (
+          <CompositeRow key={id} itemId={id} isFocused={isFocused} isActiveRow={isActive} label={`Row ${id}`}>
+            {`Row ${id}`}
+          </CompositeRow>
+        )}
+      />
+    );
+    const { rerender, container } = render(make(["a", "b", "c"]));
+    const tab = (id: string) =>
+      (container.querySelector(`li[data-item-id="${id}"][data-segment="summary"]`) as HTMLElement).tabIndex;
+    expect(tab("a")).toBe(0); // mount-time seed: first row is the roving stop
+
+    rerender(make(["c", "b", "a"])); // sort order arrives post-mount, before any nav
+    expect(tab("c")).toBe(0); // new first row is now the roving stop
+    expect(tab("a")).toBe(-1); // stale seed no longer holds it
+  });
+
   it("Tab exits the zone via onTabOut", () => {
     const { ref, onTabOut } = renderList();
     act(() => ref.current!.focus("forward"));

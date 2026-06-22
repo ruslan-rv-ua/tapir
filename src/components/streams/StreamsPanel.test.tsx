@@ -8,6 +8,7 @@ import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import { StreamsPanel } from "./StreamsPanel";
 import { $settings } from "../../stores/settings";
 import type { GlobalSettings } from "../../lib/tauri";
+import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as m from "../../i18n/paraglide/messages";
 
 // No backend in jsdom — stub the Tauri IPC layer.
@@ -420,6 +421,39 @@ describe("StreamsPanel — stream sorting", () => {
     ]);
     const { container } = renderPanel();
     expect(rowOrder(container)).toEqual(["new", "mid", "old"]);
+  });
+
+  it("Tab into the list focuses the first row after the sort order arrives post-mount", () => {
+    // Repro of the streams-screen focus bug. The list mounts under the default
+    // "name" order (settings not loaded yet), seeding the active row from the
+    // name-first stream AND freezing the list's zone entry over that order. When
+    // the persisted "added" order then arrives and reorders the rows, Tab-into-list
+    // must still land on the NEW first visible row, not the stale name-first one.
+    let listZone: ZoneEntry | undefined;
+    const onZonesChange = (zones: ZoneEntry[]) => {
+      listZone = zones.find((z) => z.id === "streams-list");
+    };
+    // name order: Alpha(a), Bravo(b), Charlie(c). added order (newest first): b, c, a.
+    $settings.set({ sortBy: "name", language: "uk" } as GlobalSettings);
+    $streams.set([
+      { ...mkStream("a", "Alpha"),   addedAt: "2026-01-01T00:00:00Z" }, // oldest
+      { ...mkStream("b", "Bravo"),   addedAt: "2026-03-01T00:00:00Z" }, // newest
+      { ...mkStream("c", "Charlie"), addedAt: "2026-02-01T00:00:00Z" },
+    ]);
+    const { container } = render(<StreamsPanel onZonesChange={onZonesChange} exitZone={vi.fn()} />);
+    expect(rowOrder(container)).toEqual(["a", "b", "c"]); // mounted under name order
+
+    // The persisted "added" order arrives after mount → rows re-sort to [b, c, a].
+    // The zone-registration effect does NOT re-run (its deps are unchanged), so a
+    // raw handle here would stay frozen over the name order.
+    act(() => $settings.set({ sortBy: "added", language: "uk" } as GlobalSettings));
+    expect(rowOrder(container)).toEqual(["b", "c", "a"]);
+
+    // Tab into the list zone (cycleZone calls the zone's focus()).
+    act(() => listZone!.focus("forward"));
+
+    expect(document.activeElement?.getAttribute("data-item-id")).toBe("b");
+    expect(document.activeElement?.getAttribute("data-segment")).toBe("summary");
   });
 
   it("applies sort within the active filter", () => {

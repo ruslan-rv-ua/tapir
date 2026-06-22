@@ -257,6 +257,18 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const streamListCallbackRef = useCallback((zone: StreamListHandle | null) => {
     streamListRef.current = zone;
   }, []);
+  // Stable zone proxy delegating to the CURRENT handle. The zone-registration
+  // effect below doesn't depend on the handle, so it doesn't re-run when the list
+  // re-sorts (e.g. the persisted "added" order arriving after $streams loaded) or
+  // remounts — pushing the raw handle would freeze a stale ZoneEntry (with a stale
+  // `items` closure) in App's zones array, so Tab-into-list would focus the old
+  // first row. The proxy is created once and always routes focus() to the live
+  // handle. See zone-navigation-stable-proxies; mirrors SongsPanel/SchedulePanel.
+  const streamListProxyRef = useRef<ZoneEntry>({
+    id: "streams-list",
+    get el() { return streamListRef.current?.el as HTMLElement; },
+    focus: (dir) => streamListRef.current?.focus(dir),
+  });
 
   // ── Filter-empty zone (streams exist but filter hides them) ─────
   const filterEmptyZoneRef = useRef<HTMLDivElement | null>(null);
@@ -333,7 +345,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
         focus: () => resetFilterBtnRef.current?.focus(),
       });
     } else if (streamListRef.current) {
-      zones.push(streamListRef.current);
+      zones.push(streamListProxyRef.current);
     }
     onZonesChange(zones);
   // onZonesChange intentionally omitted — callers must pass a stable reference.

@@ -222,6 +222,13 @@ export function useCompositeList<T extends CompositeListItem>({
   // to tell "the active row was removed (recover focus)" apart from "the user
   // tabbed away on purpose (leave focus alone)".
   const hasFocusRef = useRef(false);
+  // Whether the user has DELIBERATELY moved within the list (arrow/Home/End/Page,
+  // a click, or a programmatic focusItem after a bulk op). Set only by real
+  // navigation — NOT by mere focus-in (restoreFocus / a transient focus) and NOT
+  // by the mount-time seed. While this is false the active row is kept pinned to
+  // the current first row (see the re-seed effect below), so both Tab-entry and a
+  // native Tab into the list land on items[0] even after the list reorders.
+  const userNavigatedRef = useRef(false);
 
   // Keep options in refs to avoid stale closure
   const onTabOutRef = useRef(onTabOut);
@@ -272,6 +279,24 @@ export function useCompositeList<T extends CompositeListItem>({
       scrollTop: listRef.current?.scrollTop ?? 0,
     };
   }, [activeItemId, activeSegment, items]);
+
+  // Keep the active row pinned to the CURRENT first row until the user navigates.
+  // The list can reorder after mount — most importantly when the persisted sort
+  // order (e.g. "added", newest-first) arrives after the data has already loaded
+  // and rendered under the default order. The mount-time seed (items[0] at first
+  // render) would otherwise leave the roving tabIndex=0 AND the focus memory on a
+  // row that is no longer first, so a Tab into the list — whether via restoreFocus
+  // or a native Tab onto the tabIndex=0 stop — lands on the wrong row. Skipped once
+  // the user deliberately arrows/clicks (their position wins) and while the list
+  // currently holds focus (never yank a live cursor).
+  useEffect(() => {
+    if (userNavigatedRef.current) return;
+    if (items.length === 0) return;
+    if (activeItemId === items[0].id) return;
+    if (listRef.current?.contains(document.activeElement)) return;
+    setActiveItemId(items[0].id);
+    setActiveSegment('summary');
+  }, [items, activeItemId]);
 
   // Live reconciliation: active item removed while list has/had focus
   useEffect(() => {
@@ -338,6 +363,10 @@ export function useCompositeList<T extends CompositeListItem>({
 
   const moveFocus = useCallback(
     (itemId: string, segment: SegmentKind) => {
+      // Any move through here (arrow/Home/End/Page, range-extend, or a
+      // programmatic focusItem after a bulk op) is a deliberate position — stop
+      // the re-seed effect from pinning the active row to items[0].
+      userNavigatedRef.current = true;
       setActiveItemId(itemId);
       setActiveSegment(segment);
       pendingFocusRef.current = { itemId, segment };
@@ -589,6 +618,8 @@ export function useCompositeList<T extends CompositeListItem>({
       const id = row?.dataset.itemId;
       if (!id || !items.some((it) => it.id === id)) return;
 
+      // A click is a deliberate position — pin the re-seed effect off.
+      userNavigatedRef.current = true;
       // Move active + DOM focus to the clicked row.
       setActiveItemId(id);
       setActiveSegment("summary");
@@ -671,18 +702,28 @@ export function useCompositeList<T extends CompositeListItem>({
         return;
       }
       const mem = memoryRef.current;
-      const existingIdx = items.findIndex((it) => it.id === mem.itemId);
       let targetIdx: number;
       let targetSeg: SegmentKind;
 
-      if (existingIdx >= 0) {
-        targetIdx = existingIdx;
-        const item = items[existingIdx];
-        const segs = resolveSegments(item);
-        targetSeg = segs.includes(mem.activeSegment) ? mem.activeSegment : 'summary';
-      } else {
-        targetIdx = Math.max(0, Math.min(mem.prevIndex, items.length - 1));
+      if (!userNavigatedRef.current) {
+        // The user has never deliberately moved within the list, so there is no
+        // real remembered position — the memory is just the (possibly reordered)
+        // mount-time seed. Land on the current first visible row. The re-seed
+        // effect normally keeps the seed correct already; this is the belt-and
+        // -suspenders for the entry path.
+        targetIdx = 0;
         targetSeg = 'summary';
+      } else {
+        const existingIdx = items.findIndex((it) => it.id === mem.itemId);
+        if (existingIdx >= 0) {
+          targetIdx = existingIdx;
+          const item = items[existingIdx];
+          const segs = resolveSegments(item);
+          targetSeg = segs.includes(mem.activeSegment) ? mem.activeSegment : 'summary';
+        } else {
+          targetIdx = Math.max(0, Math.min(mem.prevIndex, items.length - 1));
+          targetSeg = 'summary';
+        }
       }
 
       const target = items[targetIdx];
