@@ -107,6 +107,7 @@ export const PatternList = forwardRef<PatternListHandle, Props>(
           onEmpty={onEmpty}
           selection={selectionAdapter}
           onSelectionChange={onSelectionChange}
+          emptyLabel={emptyMessage}
           empty={
             <ListCardState role="status">{emptyMessage}</ListCardState>
           }

@@ -1,11 +1,42 @@
 // src/components/wishlist/WishlistPanel.test.tsx
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent, waitFor, screen, act } from "@testing-library/react";
+import { useEffect, useRef, useState } from "react";
 import * as m from "../../i18n/paraglide/messages";
 import { $wishlist, $ignorelist, $patternSelection, $showAddPatternDialog } from "../../stores/wishlist";
 import { replaceSelection } from "../../stores/selection";
 import * as tauri from "../../lib/tauri";
 import { WishlistPanel } from "./WishlistPanel";
+import { useZoneNavigation, type ZoneEntry } from "../../hooks/useZoneNavigation";
+
+// Faithful mirror of App.tsx's zone wiring: a permanent activity-bar zone, the
+// panel's screen zones, a player zone that DECLINES focus (nothing playing —
+// PlayerPanel.restoreFocusPlayer returns), and a status-bar zone. This exercises
+// the real cycleZone path that WishlistPanel's own tests bypass by mocking exitZone.
+function ZoneHarness() {
+  const [screenZones, setScreenZones] = useState<ZoneEntry[]>([]);
+  const orderedZonesRef = useRef<ZoneEntry[]>([]);
+  const activityRef = useRef<HTMLButtonElement>(null);
+  const statusRef = useRef<HTMLButtonElement>(null);
+  const { exitZone } = useZoneNavigation(orderedZonesRef);
+
+  useEffect(() => {
+    orderedZonesRef.current = [
+      { id: "activity-bar", get el() { return activityRef.current!; }, focus: () => activityRef.current?.focus() },
+      ...screenZones,
+      { id: "player", get el() { return document.body; }, focus: () => {} }, // declines (stopped)
+      { id: "status-bar", get el() { return statusRef.current!; }, focus: () => statusRef.current?.focus() },
+    ];
+  }, [screenZones]);
+
+  return (
+    <>
+      <button ref={activityRef} data-zone-id="activity-bar">activity</button>
+      <WishlistPanel onZonesChange={setScreenZones} exitZone={exitZone} />
+      <button ref={statusRef} data-zone-id="status-bar">status</button>
+    </>
+  );
+}
 
 vi.mock("../../lib/tauri", () => ({
   getWishlist: vi.fn().mockResolvedValue([{ pattern: "*ad*", addedAt: "2026-01-01T00:00:00Z" }]),
@@ -96,6 +127,52 @@ describe("controls zone — roving toolbar", () => {
     expect(getByText(m.add_pattern())).toHaveAttribute("tabindex", "0");
     expect(getByText(m.select_all())).toHaveAttribute("tabindex", "-1");
     expect(getByText(m.delete_selected({ count: 0 }))).toHaveAttribute("tabindex", "-1");
+  });
+
+  it("registers the wishlist-list zone so Tab from the controls reaches the list", async () => {
+    const onZonesChange = vi.fn();
+    render(<WishlistPanel onZonesChange={onZonesChange} exitZone={vi.fn()} />);
+    await waitFor(() => screen.getByText(m.select_all()));
+    const zones = onZonesChange.mock.calls.at(-1)![0] as {
+      id: string;
+      focus: (d: "forward" | "backward") => void;
+    }[];
+    const listZone = zones.find((z) => z.id === "wishlist-list");
+    expect(listZone).toBeTruthy();
+    act(() => listZone!.focus("forward"));
+    expect(document.activeElement?.getAttribute("data-item-id")).toBe("*ad*");
+  });
+
+  it("Tab from a toolbar button lands on the pattern list (real cycleZone path)", async () => {
+    render(<ZoneHarness />);
+    await waitFor(() => screen.getByText(m.select_all()));
+    const addBtn = screen.getByText(m.add_pattern());
+    act(() => addBtn.focus());
+    expect(addBtn).toHaveFocus();
+    fireEvent.keyDown(addBtn, { key: "Tab" });
+    // Expected: focus enters the pattern list, NOT the status bar.
+    expect(document.activeElement?.getAttribute("data-item-id")).toBe("*ad*");
+  });
+
+  it("Tab from a toolbar button lands on the EMPTY list region, not the status bar", async () => {
+    // The reported bug: with no patterns, Tab from the toolbar skipped the
+    // row-less list zone and jumped to the status bar. The empty list region is
+    // now a focusable zone anchor, so focus lands there and NVDA reads it.
+    $wishlist.set([]);
+    vi.mocked(tauri.getWishlist).mockResolvedValueOnce([]);
+    render(<ZoneHarness />);
+    await waitFor(() => screen.getByText(m.select_all()));
+    const addBtn = screen.getByText(m.add_pattern());
+    act(() => addBtn.focus());
+    fireEvent.keyDown(addBtn, { key: "Tab" });
+    const ae = document.activeElement;
+    expect(ae?.closest("[data-zone-id]")?.getAttribute("data-zone-id")).toBe("wishlist-list");
+    expect(ae?.getAttribute("aria-label")).toBe(m.empty_wishlist());
+
+    // Not a focus trap: Tab forward out of the empty region advances to the next
+    // zone (player declines → status bar in this harness).
+    fireEvent.keyDown(ae!, { key: "Tab" });
+    expect(document.activeElement?.closest("[data-zone-id]")?.getAttribute("data-zone-id")).toBe("status-bar");
   });
 });
 

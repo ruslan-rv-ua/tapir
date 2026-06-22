@@ -213,6 +213,10 @@ export function useCompositeList<T extends CompositeListItem>({
     scrollTop: 0,
   });
   const listRef = useRef<HTMLUListElement | null>(null);
+  // Focus anchor for the empty-state region (rendered instead of the <ul> when
+  // there are no rows). Lets restoreFocus land the zone on the empty message so
+  // cycleZone doesn't skip a row-less list — see restoreFocus below.
+  const emptyRef = useRef<HTMLDivElement | null>(null);
   const pendingFocusRef = useRef<{ itemId: string; segment: SegmentKind } | null>(null);
   // Whether the list currently/recently owns focus. Used by live reconciliation
   // to tell "the active row was removed (recover focus)" apart from "the user
@@ -656,7 +660,16 @@ export function useCompositeList<T extends CompositeListItem>({
   /** Called when zone receives focus from outside (Tab/F6 entry). */
   const restoreFocus = useCallback(
     (_direction: 'forward' | 'backward') => {
-      if (items.length === 0) return;
+      if (items.length === 0) {
+        // No rows to land on. Focus the empty-state region (CompositeList renders
+        // it as a focusable [data-zone-id] anchor) so the zone still ACCEPTS focus
+        // — otherwise cycleZone sees no focus change and skips the whole list,
+        // landing on a later zone (the reported wishlist Tab→status-bar bug).
+        // NVDA then reads the empty message. During loading/error there is no
+        // emptyRef, so focus declines exactly as before.
+        emptyRef.current?.focus();
+        return;
+      }
       const mem = memoryRef.current;
       const existingIdx = items.findIndex((it) => it.id === mem.itemId);
       let targetIdx: number;
@@ -689,5 +702,5 @@ export function useCompositeList<T extends CompositeListItem>({
     [items],
   );
 
-  return { listRef, onKeyDownCapture, onContextMenu, onClick, isFocused, restoreFocus, focusItem, activeItemId, activeSegment };
+  return { listRef, emptyRef, onKeyDownCapture, onContextMenu, onClick, isFocused, restoreFocus, focusItem, activeItemId, activeSegment };
 }

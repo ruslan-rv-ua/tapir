@@ -38,6 +38,11 @@ export interface CompositeListProps {
   error?: ReactNode;
   /** Render instead of the <ul> when items is empty. */
   empty?: ReactNode;
+  /**
+   * Accessible name for the focusable empty-state region (so Tab/F6 into a
+   * row-less list lands there and NVDA announces it). Defaults to `ariaLabel`.
+   */
+  emptyLabel?: string;
   /** Render after the rows, inside the <ul> (e.g. a "Load more" control). */
   footer?: ReactNode;
   /** Augment the imperative handle with extra methods (must be pure over `api`). */
@@ -65,13 +70,14 @@ function CompositeListInner<H extends ZoneEntry = ZoneEntry>(
     loading,
     error,
     empty,
+    emptyLabel,
     footer,
     imperativeExtra,
     selection,
     onSelectionChange,
   } = props;
 
-  const { listRef, onKeyDownCapture, onContextMenu, onClick, isFocused, restoreFocus, focusItem, activeItemId } =
+  const { listRef, emptyRef, onKeyDownCapture, onContextMenu, onClick, isFocused, restoreFocus, focusItem, activeItemId } =
     useCompositeList({ zoneId, items, onTabOut, onAction, onEmpty, selection, onSelectionChange });
 
   /**
@@ -111,7 +117,25 @@ function CompositeListInner<H extends ZoneEntry = ZoneEntry>(
 
   if (loading != null) return <>{loading}</>;
   if (error != null) return <>{error}</>;
-  if (items.length === 0 && empty != null) return <>{empty}</>;
+  // Empty state is a focusable zone anchor (carries data-zone-id + tabIndex=-1)
+  // so cycleZone can land focus here instead of skipping a row-less list. The
+  // onKeyDownCapture handler already routes Tab → onTabOut when there's no active
+  // item, so the user can leave the empty zone. Mirrors StreamsPanel's empty zone.
+  if (items.length === 0 && empty != null) {
+    return (
+      <div
+        ref={emptyRef}
+        data-zone-id={zoneId}
+        role="region"
+        aria-label={emptyLabel ?? ariaLabel}
+        tabIndex={-1}
+        className="flex flex-1 flex-col"
+        onKeyDownCapture={onKeyDownCapture}
+      >
+        {empty}
+      </div>
+    );
+  }
 
   // The <ul> adds py-1 so each row's focus outline (global rule in styles.css:
   // outline-offset 2px + 2px width) isn't clipped at the scroll container's

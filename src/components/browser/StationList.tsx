@@ -112,6 +112,7 @@ export const StationList = forwardRef<StationListHandle, Props>(
           ) : undefined
         }
         error={error ? <ListCardState role="alert" className="text-red-400">{error}</ListCardState> : undefined}
+        emptyLabel={emptyMessage}
         empty={<ListCardState role="status">{emptyMessage}</ListCardState>}
         footer={
           hasMore && onLoadMore ? (
