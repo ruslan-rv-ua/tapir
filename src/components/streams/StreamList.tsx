@@ -1,6 +1,6 @@
 import { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@nanostores/react";
-import { $streams, $statuses, $streamSelection, replaceSelection, pruneSelection } from "../../stores/streams";
+import { $streams, $statuses, $streamSelection, $editStream, replaceSelection, pruneSelection } from "../../stores/streams";
 import { $recordingSettings, $settings } from "../../stores/settings";
 import { $playerStatus } from "../../stores/player";
 import { CompositeList } from "../common/composite-list";
@@ -324,6 +324,14 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
           if (type === "copy") {
             const stream = streams.find((s) => s.id === itemId);
             if (stream) copyStreamUrl(stream);
+            return;
+          }
+          if (type === "edit") {
+            // F2 → edit (rename) the focused row. Single-row only: ignores the
+            // selection (unlike Delete) and opens AddStreamDialog in edit mode via
+            // the shared $editStream store — the same path as the ⋯-menu "Edit".
+            const stream = streams.find((s) => s.id === itemId);
+            if (stream) $editStream.set(stream);
             return;
           }
           if (type === "delete") {

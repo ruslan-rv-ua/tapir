@@ -2,7 +2,7 @@ import { createRef } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent, act, waitFor, screen } from "@testing-library/react";
 import * as m from "../../i18n/paraglide/messages";
-import { $streams, $statuses, $streamSelection, replaceSelection } from "../../stores/streams";
+import { $streams, $statuses, $streamSelection, $editStream, replaceSelection } from "../../stores/streams";
 import { $announcer } from "../../stores/announcer";
 import { $settings } from "../../stores/settings";
 import { $playerStatus } from "../../stores/player";
@@ -66,6 +66,7 @@ beforeEach(() => {
   $streams.set([mkStream("a", "Alpha"), mkStream("b", "Bravo"), mkStream("c", "Charlie")]);
   $toasts.set([]);
   replaceSelection(new Set());
+  $editStream.set(null);
   Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
   writeText.mockClear();
 });
@@ -121,6 +122,14 @@ describe("StreamList — integration with composite-list navigation", () => {
     act(() => ref.current!.focus("forward"));
     fireEvent.keyDown(document.activeElement!, { key: "Tab" });
     expect(exitZone).toHaveBeenCalledWith(true);
+  });
+
+  it("F2 on a row opens the edit dialog for that stream (sets $editStream)", () => {
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward"));
+    expect(activeAttrs()).toEqual({ id: "a", seg: "summary" });
+    fireEvent.keyDown(document.activeElement!, { key: "F2" });
+    expect($editStream.get()?.id).toBe("a");
   });
 
   it("exposes the list as an application region (NVDA focus mode)", () => {

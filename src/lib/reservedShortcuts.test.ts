@@ -12,6 +12,7 @@ describe("RESERVED_WEBVIEW_COMBOS", () => {
       "F6", "Shift+F6", "Shift+F10",
       "Shift+Enter", "Ctrl+Enter",
       "Ctrl+C",
+      "F2",
     ]);
   });
 });
@@ -35,6 +36,7 @@ describe("findReservedConflict", () => {
     expect(findReservedConflict("F6")).not.toBeNull();
     expect(findReservedConflict("Shift+F6")).not.toBeNull();
     expect(findReservedConflict("Shift+F10")).not.toBeNull();
+    expect(findReservedConflict("F2")).not.toBeNull();
   });
 
   it("returns null for a free combo", () => {

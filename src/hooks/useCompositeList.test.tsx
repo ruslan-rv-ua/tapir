@@ -309,6 +309,14 @@ describe("activation keys", () => {
     expect(onAction).not.toHaveBeenCalled();
   });
 
+  it("F2 fires edit for the active row", () => {
+    const onAction = vi.fn();
+    render(<Harness items={makeItems()} onAction={onAction} />);
+    focusStart("a");
+    press("F2");
+    expect(onAction).toHaveBeenCalledWith("edit", "a", "summary", noMods);
+  });
+
   it("Ctrl+C fires copy for the active row", () => {
     const onAction = vi.fn();
     render(<Harness items={makeItems()} onAction={onAction} />);

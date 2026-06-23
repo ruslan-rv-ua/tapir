@@ -31,7 +31,7 @@ export type SegmentKind =
   // Schedule rows
   | 'action-toggle';
 
-export type ActionType = 'primary' | 'toggle' | 'delete' | 'copy';
+export type ActionType = 'primary' | 'toggle' | 'delete' | 'copy' | 'edit';
 
 /**
  * Modifier keys held during an activation key (Enter/Space) or Delete.
@@ -137,7 +137,7 @@ interface UseCompositeListOptions<T extends CompositeListItem> {
 type ActionId =
   | "up" | "down" | "left" | "right"
   | "home" | "end" | "pageup" | "pagedown"
-  | "enter" | "space" | "delete" | "tab" | "copy" | "selectToggle"
+  | "enter" | "space" | "delete" | "edit" | "tab" | "copy" | "selectToggle"
   | "selectRangeUp" | "selectRangeDown" | "selectAll" | "clearSelection";
 
 /**
@@ -169,6 +169,9 @@ function resolveKeyAction(e: React.KeyboardEvent): ActionId | null {
     case "Escape": return "clearSelection";
     case "Enter": return "enter";
     case "Delete": return "delete";
+    // F2 — desktop "rename/edit" row key (Explorer/VS Code/NVDA convention).
+    // Generic intent; each list decides what "edit" means (no-op if it doesn't).
+    case "F2": return "edit";
     case "Tab": return "tab";
   }
   if (e.code === "Space" || e.key === " ") return "space";
@@ -590,6 +593,15 @@ export function useCompositeList<T extends CompositeListItem>({
           if (isNativeControl(document.activeElement)) break;
           consume();
           onActionRef.current("toggle", activeItemId, activeSegment, modifiers(e));
+          break;
+
+        case "edit":
+          // Single-row edit/rename (e.g. Streams → open AddStreamDialog in edit
+          // mode). Unlike "delete" this never fans out to the selection; the
+          // consumer routes it by activeItemId. Lists that don't handle "edit"
+          // simply ignore it (the consume below still mutes the bare key).
+          consume();
+          onActionRef.current("edit", activeItemId, activeSegment, modifiers(e));
           break;
 
         case "delete":

@@ -316,6 +316,7 @@
   "settings_hotkey_action_row_menu": "Меню рядка",
   "settings_hotkey_action_row_listen": "Прослухати рядок (потік: відтворити, браузер: прев'ю)",
   "settings_hotkey_action_row_record": "Записати рядок (потоки)",
+  "settings_hotkey_action_row_edit": "Редагувати / перейменувати рядок (потоки)",
   "settings_hotkey_changed": "Хоткей змінено: {combo}",
   "settings_hotkey_registration_failed": "Не вдалося зареєструвати хоткей {combo}",
   "settings_hotkeys_reset": "Скинути до стандартних",

@@ -316,6 +316,7 @@
   "settings_hotkey_action_row_menu": "Row menu",
   "settings_hotkey_action_row_listen": "Listen to row (stream: play, browser: preview)",
   "settings_hotkey_action_row_record": "Record row (streams)",
+  "settings_hotkey_action_row_edit": "Edit / rename row (streams)",
   "settings_hotkey_changed": "Hotkey changed: {combo}",
   "settings_hotkey_registration_failed": "Failed to register hotkey {combo}",
   "settings_hotkeys_reset": "Reset to defaults",

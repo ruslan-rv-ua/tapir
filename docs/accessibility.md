@@ -296,7 +296,7 @@ React Aria `TableView` з `selectionMode="multiple"`:
 | Enter | Подвійний клік (запис або відтворення, за `doubleClickAction`) |
 | `P` | Відтворити потік (window-scoped shortcut у таблиці; незалежно від `doubleClickAction`) |
 | `R` | Toggle запис потоку (window-scoped shortcut у таблиці; незалежно від `doubleClickAction`) |
-| F2 | Відкрити діалог редагування потоку (EditStreamDialog) |
+| F2 | Відкрити діалог редагування потоку (`AddStreamDialog` в edit-режимі; поки лише перейменування) |
 | Delete | Видалити вибраний потік (з підтвердженням) |
 | Shift+F10 / Context Menu | Контекстне меню |
 | Ctrl+A | Вибрати всі |

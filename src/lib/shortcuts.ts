@@ -179,6 +179,16 @@ export const SHORTCUTS: readonly Shortcut[] = [
     group: "list",
     reserved: true,
   },
+  // F2 — edit/rename the focused row. Handled by useCompositeList (no match/run);
+  // listed here so it's reserved against the KeyRecorder (F2 is recordable, unlike
+  // bare Enter/Delete) and surfaces in the F1 help.
+  {
+    id: "row-edit",
+    combo: "F2",
+    label: m.settings_hotkey_action_row_edit,
+    group: "list",
+    reserved: true,
+  },
 ];
 
 /**
