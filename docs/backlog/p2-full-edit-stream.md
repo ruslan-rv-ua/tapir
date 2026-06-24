@@ -3,9 +3,9 @@
 - **Слаг:** `full-edit-stream`
 - **Тип:** покращення
 - **Пріоритет:** P2
-- **Стан:** ідея (винесено з [p1-f2-edit-stream.md](p1-f2-edit-stream.md), 2026-06-23)
+- **Стан:** ідея (винесено з rename-only F2-беклога, 2026-06-23; той реалізовано в `ee9a704`)
 - **Зусилля:** M (Rust `update_stream` + UI-поля в edit-режимі + re-resolve PLS/M3U + guard для активного запису/відтворення + i18n + тести)
-- **Залежності:** [p1-f2-edit-stream.md](p1-f2-edit-stream.md) (F2 / edit-режим `AddStreamDialog`)
+- **Залежності:** F2 / edit-режим `AddStreamDialog` — ✅ у продакшені (`ee9a704`)
 
 ## Опис
 
@@ -43,6 +43,6 @@ P1 (`F2`) — чисто провід клавіші до **наявного** r
 
 ## Документи
 
-- Походить із: [p1-f2-edit-stream.md](p1-f2-edit-stream.md)
+- Походить із: rename-only F2-беклог (реалізовано в `ee9a704`)
 - Код: [stream_commands.rs](../../src-tauri/src/commands/stream_commands.rs) (`update_stream`), [tauri.ts](../../src/lib/tauri.ts) (`updateStream`), [AddStreamDialog.tsx](../../src/components/streams/AddStreamDialog.tsx)
 - [architecture.md](../architecture.md) — таблиця Streams-команд (звірити сигнатуру `update_stream`)
