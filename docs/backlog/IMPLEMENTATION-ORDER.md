@@ -24,7 +24,7 @@
 | 7 | [browser-add-probe](p2-browser-add-probe.md) | P2 | ідея | ready | S | Phase 3B/3J, **#6** | — |
 | 8 | [streams-ctrlk-empty-hint](p2-streams-ctrlk-empty-hint.md) | P2 | заплановано | ready | S | — | завершує ADR 2026-05-31 §6 |
 | 9 | [wishlist-example-patterns](p2-wishlist-example-patterns.md) | P2 | заплановано | ready | S | — | патерн порожн. стану як у #8 |
-| 10 | [resume-last-playback](p2-resume-last-playback.md) | P2 | ідея | draft | S | Phase 2A/2C, **узгодити з #1, #3** | autostart (#15) |
+| 10 | [resume-last-playback](p2-resume-last-playback.md) | P2 | покращення | draft (модель ✅) | M | **надбудова над #1** (`PlayerSession`) | autostart (#15) |
 | 11 | [log-rotation](p2-log-rotation.md) | P2 | ідея | draft* | S | — | — |
 | 12 | [open-song-with-default-app](p2-open-song-with-default-app.md) | P2 | ідея | draft | S | Phase 3C | — |
 | 13 | [import-duplicate-metadata-update](p2-import-duplicate-metadata-update.md) | P2 | ідея | draft | S | Phase 3J | — |
@@ -68,8 +68,8 @@
 
 **3. [crash-recovery](p1-crash-recovery.md)** (P1, M, ready)
 Вводить `data/state.json` (`clean_shutdown` + живий снапшот) і **прибирає мертве поле**
-`Profile.active_recording_urls`. Узгодити з #10, який кладе поруч окремий
-`last_playback.json` (свідомо **різні** файли — звірити структури).
+`Profile.active_recording_urls`. Стан відтворення (#10) живе в `PlayerSession` профілю
+(після A1 окремого `last_playback.json` немає) — два чітко різні сховища, звіряти нема чого.
 
 **4. [activity-bar-help-button](p1-activity-bar-help-button.md)** (P1, S, ready) — тривіальна,
 видима a11y-перемога; ідеальна «розминка» або філер між M-задачами.
@@ -97,11 +97,12 @@ bugfix межі IPC (`is_finite()` перед `clamp`), з готовими те
 
 ### Хвиля 4 — узгодити resume + дрібний polish (P2)
 
-**10. [resume-last-playback](p2-resume-last-playback.md)** (P2, S, draft) — ⚠️ **спершу groom**:
-перетинається з #1 (пропонує власний `last_playback.json` + enum `startup_playback_mode`,
-тоді як #1 уже персистить `last_stream_id`/`last_file_position`). Вирішити, чи це окрема
-авто-resume-на-старті поверх #1, чи дублювання — **до** написання коду. Також узгодити з
-#3 (`state.json`) і #15 (autostart).
+**10. [resume-last-playback](p2-resume-last-playback.md)** (P2, M, draft — модель ✅ узгоджена 2026-06-25)
+Надбудова **над #1**: per-profile поле `startup_playback_mode` (`never`/`always_paused`/
+`always_play`, дефолт `never`, без `restore`) у `PlayerSession`; **без** окремого
+`last_playback.json`; авто-гра — явний opt-in; UI — окремий діалог «Налаштування профілю»
+з `ProfileContextMenu`; скидання режиму при дублюванні/експорті. Лишилась спадщина #1
+(дискримінатор `last_active`, seek). Деталі — у записі (A1 закрито).
 
 Далі — незалежні дрібниці (S, будь-який порядок):
 **11. [log-rotation](p2-log-rotation.md)** · **12. [open-song-with-default-app](p2-open-song-with-default-app.md)** ·
@@ -112,7 +113,8 @@ bugfix межі IPC (`is_finite()` перед `clamp`), з готовими те
 
 **15. [autostart](p2-autostart.md)** (P2, S, draft) — ⚠️ перевірити, що CLI `--minimize`
 (колишня Phase 3G) **уже реалізовано** (запис `p1-cli-arguments.md` зник із беклогу →
-ймовірно зроблено). Має координуватися з #1/#10: autostart **не** авто-грає.
+ймовірно зроблено). Координація з #1/#10 (A3): autostart сам **не** грає — авто-гра лише
+якщо активний профіль має `startup_playback_mode = always_play`.
 **16. [command-palette-phase-3](p2-command-palette-phase-3.md)** (P2, M, draft) — розширення
 вмісту палітри (станції/пісні/навігація); **розблоковує #21**.
 **17. [post-processing](p2-post-processing.md)** (P2, M, draft) — об'ємна фіча, нижча
@@ -155,21 +157,23 @@ profile switch (сам запис так і каже). Інакше тримат
   це fork-in-the-road, що може зробити їх непотрібними. Дослідити розвилку дешевше, ніж
   паралельно тягнути MF-шлях.
 
-## Перехресні рішення, які треба закрити до коду
+## Перехресні рішення
 
-1. **resume-last-playback (#10) vs playback-toggle (#1).** Дві моделі персистенсу resume.
-   Вирішити: #10 — це авто-старт-надбудова над `PlayerSession` з #1, чи окремий
-   `last_playback.json`? Уникнути дублювання джерел правди.
-2. **state.json (#3) vs last_playback.json (#10).** Свідомо різні файли (crash recovery ≠
-   playback position) — але звірити структури при реалізації, щоб не дублювати поля.
-3. **autostart (#15) ↔ відтворення (#1/#10).** Autostart запускає `--minimize` і **не**
-   авто-грає; гра — лише явним жестом (Ctrl+Shift+K).
-4. **mpv (#19) ↔ he-aac-mf / hls (#20).** Якщо mpv проходить PoC — видалити обидва записи.
+1. ✅ **resume-last-playback (#10) vs playback-toggle (#1)** — _вирішено 2026-06-25 (A1)._
+   #10 — надбудова над `PlayerSession` з #1; **окремого `last_playback.json` немає.** Режим
+   `startup_playback_mode` (`never`/`always_paused`/`always_play`, без `restore`) — нове поле
+   **в `PlayerSession`** → per-profile. Авто-гра — явний opt-in.
+2. ✅ **state.json (#3) vs стан відтворення (#10)** — _знято (A1)._ Стан відтворення живе в
+   `PlayerSession` (профіль), crash — у `state.json`; два чітко різні сховища, звіряти нема чого.
+3. ✅ **autostart (#15) ↔ відтворення (#1/#10)** — _вирішено (A3 через A1)._ Autostart сам **не**
+   грає; авто-гра ⇔ активний профіль має `startup_playback_mode = always_play`.
+4. **mpv (#19) ↔ he-aac-mf / hls (#20).** Якщо mpv проходить PoC — видалити обидва записи. _(A4 — відкрите.)_
 
 ## Готовність-сигнал (для вибору наступного)
 
 - **Готові до коду зараз** (`ready`/«рішення прийняті»): #1, #2, #3, #4, #5, #6, #7, #8, #9, #11, #23.
-- **Потребують grooming-пасу** (тип `ідея`/`draft`, є відкриті питання): #10, #12, #13, #14,
+- **Модель узгоджена, чекає лише #1** (промпт уже імплементаційний): #10 (A1 закрито 2026-06-25).
+- **Потребують grooming-пасу** (тип `ідея`/`draft`, є відкриті питання): #12, #13, #14,
   #15, #16, #17, #18 — їхній промпт у записі досі «лише обговорення»; спершу довести до
   `заплановано`, тоді кодити.
 - **Дослідження/розвилка**: #19, #20.

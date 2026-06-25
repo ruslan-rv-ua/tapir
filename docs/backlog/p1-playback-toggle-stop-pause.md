@@ -70,6 +70,7 @@ pub struct PlayerSession {
 - **Stopped/cold-гілка** читає `active_profile.player_session` і за дискримінатором запускає `play_live` або `play_file(seek)`. Це **єдиний** механізм — in-session reconnect і cold-start resume зливаються; окремий in-memory last-source не потрібен (джерело правди — персистнутий `PlayerSession`).
 - **Потрібен метод stop** на player (у поточному match лише pause/resume). Узгодити з трей-кнопкою `MENU_ID_TOGGLE_PLAYBACK` ([tray/handlers.rs](../../src-tauri/src/tray/handlers.rs), [tray/menu.rs](../../src-tauri/src/tray/menu.rs)).
 - **Дискримінатор:** додати у `PlayerSession` маркер останнього активного — рекоменд. окреме поле `last_active: Option<"stream"|"file">`, що виставляється на кожному play-start (альтернатива — timestamp на кожному полі).
+- **Координація з #10:** [resume-last-playback](p2-resume-last-playback.md) (A1) додає в **ту саму** `PlayerSession` per-profile поле `startup_playback_mode` (`never`/`always_paused`/`always_play`). #10 — надбудова над цими полями (єдине джерело правди); цей запис закладає поля й резюм-функцію, #10 викликає її на старті. Жодного окремого `last_playback.json`.
 - **Запис позиції** — лише на переходах (pause/stop/track-change/quit); не на кожен progress-tick (запис у профіль-JSON важчий за крихітний state-файл; уникнути рейсів з іншими записами профілю).
 - **Дефолт клавіші:** `default_hk_toggle_playback()` [settings.rs:138](../../src-tauri/src/settings.rs#L138) → `"Ctrl+Shift+K"` + супутні тести [settings.rs:291](../../src-tauri/src/settings.rs#L291).
 - **NVDA-анонс:** Rust емітить статус+назву, webview озвучує через LiveAnnouncer; на cold-start вікно вже OS-foreground ([[nvda-startup-foreground]]). Лейбл дії у Settings/F1 (`settings_hotkey_toggle_playback` = «Відтворення (toggle)») лишається **загальним**.
@@ -87,7 +88,7 @@ pub struct PlayerSession {
 - [ ] Недоступний таргет → анонс «недоступно» + no-op + очищення запису
 - [ ] NVDA озвучує статус+назву для кожного переходу (пауза/відновлено/зупинено/підключення/недоступно)
 - [ ] Трей-кнопка Play/Pause узгоджена з новою семантикою; debounce спільний
-- [ ] Autostart (якщо вже є, [2026-06-21-autostart.md](../superpowers/plans/2026-06-21-autostart.md)) **не** авто-грає — гра завжди через K
+- [ ] Autostart (якщо вже є, [2026-06-21-autostart.md](../superpowers/plans/2026-06-21-autostart.md)) **не** авто-грає в межах #1 — гра через K. _(Per-profile авто-гра з'являється лише з #10 [resume-last-playback](p2-resume-last-playback.md): режим `always_play` активного профілю; A3.)_
 - [ ] Оновлені доки (нижче); `cargo test` + `cargo clippy` зелені; `pnpm test` + `pnpm vite:build` зелені; ручний gate з NVDA на потоці й файлі
 
 ## Відкриті питання (рівень реалізації)

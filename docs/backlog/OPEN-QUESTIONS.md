@@ -23,9 +23,9 @@
 
 | # | Питання | Тип | Зачіпає | Рекомендація |
 |---|---------|-----|---------|--------------|
-| A1 | **Єдина модель resume-персистенсу.** `resume-last-playback` пропонує власний `last_playback.json` + enum `startup_playback_mode`, тоді як `playback-toggle` уже персистить `last_stream_id`/`last_file_position` у `PlayerSession`. Це надбудова поверх P1 чи дублювання джерела правди? | 🟥 рішення | [playback-toggle](p1-playback-toggle-stop-pause.md), [resume-last-playback](p2-resume-last-playback.md) | Будувати #10 поверх `PlayerSession` з P1; уникнути двох джерел правди |
-| A2 | **`state.json` vs `last_playback.json`.** Crash recovery кладе живий снапшот записів у `data/state.json`; resume-last-playback — позицію відтворення в окремий файл. Звірити структури, щоб не дублювати поля. | 🟥 рішення | [crash-recovery](p1-crash-recovery.md), [resume-last-playback](p2-resume-last-playback.md) | Свідомо **різні** файли (запис ≠ відтворення), але узгодити схему |
-| A3 | **Autostart не авто-грає.** Autostart стартує з `--minimize`; гра — лише явним жестом (Ctrl+Shift+K). Узгодити з resume-моделлю A1. | 🟥 рішення | [autostart](p2-autostart.md), [playback-toggle](p1-playback-toggle-stop-pause.md) | Autostart **ніколи** не запускає звук автоматично |
+| A1 | **Єдина модель resume-персистенсу.** `resume-last-playback` пропонував власний `last_playback.json` + enum `startup_playback_mode`, тоді як `playback-toggle` уже персистить `last_stream_id`/`last_file_position` у `PlayerSession`. Надбудова поверх P1 чи дублювання? | ✅ **вирішено** (2026-06-25) | [playback-toggle](p1-playback-toggle-stop-pause.md), [resume-last-playback](p2-resume-last-playback.md) | **#10 — надбудова над `PlayerSession` з P1.** Окремого `last_playback.json` немає. Режим `startup_playback_mode` (`never`/`always_paused`/`always_play`, дефолт `never`, без `restore`) — нове поле **в `PlayerSession`** → **per-profile**. Авто-гра = явний opt-in. UI — окремий діалог «Налаштування профілю». Деталі в записі. |
+| A2 | **`state.json` vs стан відтворення.** Crash recovery кладе живий снапшот записів у `data/state.json`; resume-позиція — раніше планувалась в окремий файл. | ✅ **знято** (через A1) | [crash-recovery](p1-crash-recovery.md), [resume-last-playback](p2-resume-last-playback.md) | A1 скасував `last_playback.json` → стан відтворення живе в `PlayerSession` (профіль), crash — у `state.json`. Два чітко різні сховища; звіряти нема чого. |
+| A3 | **Autostart не авто-грає.** Autostart стартує з `--minimize`. Узгодити з resume-моделлю A1. | ✅ **вирішено** (через A1) | [autostart](p2-autostart.md), [playback-toggle](p1-playback-toggle-stop-pause.md), [resume-last-playback](p2-resume-last-playback.md) | Autostart сам **не** грає; відтворення вирішує `startup_playback_mode` **активного профілю**. Авто-гра ⇔ активний профіль = `always_play` (явний opt-in). |
 | A4 | **mpv закриває he-aac + hls?** Якщо PoC mpv проходить — `he-aac-mf` і `hls` стають непотрібні (mpv декодує обидва). Не вести MF-шлях і mpv паралельно. | 🟨 дослідження | [mpv](p3-mpv-playback-engine.md), [he-aac-mf](p3-he-aac-mf-playback.md), [hls](p3-hls-stream-support.md) | Спершу PoC-gate mpv; за `go` — видалити обидва записи |
 | A5 | **CLI `--minimize` уже є?** Autostart залежить від нього (колишня Phase 3G). Запис `p1-cli-arguments.md` зник із беклогу → ймовірно зроблено. | 🟦 перевірка | [autostart](p2-autostart.md) | Звірити в коді перед стартом autostart |
 
@@ -71,8 +71,10 @@
 ### [wishlist-example-patterns](p2-wishlist-example-patterns.md) (ready)
 - ✅ Усі питання закриті в сесії 2026-06-24.
 
-### [resume-last-playback](p2-resume-last-playback.md) (draft)
-- 🟥 Власних відкритих питань немає, але **спершу A1/A2** (модель resume + узгодження файлів стану).
+### [resume-last-playback](p2-resume-last-playback.md) (draft, модель узгоджена 2026-06-25)
+- ✅ **A1/A2 закрито:** надбудова над `PlayerSession` з #1; per-profile `startup_playback_mode` (`never`/`always_paused`/`always_play`); окремий діалог «Налаштування профілю»; скидання режиму при дублюванні/експорті. Деталі — в записі.
+- 🟦 **Спадщина #1:** форма дискримінатора `last_active`; seek до `position_ms` для всіх форматів.
+- 🟨 **Рівень реалізації:** синхронізація in-memory активного профілю при редагуванні; NVDA-перевірка `Select` у модалці.
 
 ### [log-rotation](p2-log-rotation.md) (draft, рішення прийняті)
 - 🟦 **Portable-шлях:** чи `tauri_plugin_log` поважає `portable::log_dir()` (пише в `data/logs/`, не `%APPDATA%`)? Якщо ні — додати в `portable.rs`.
@@ -96,6 +98,7 @@
 ### [autostart](p2-autostart.md) (draft, більшість рішень прийнята)
 - 🟥 **Анонс «Tapir запущений автоматично»** при autostart-старті? _Рішення в записі: ні (не анонсувати при кожному вході), але лишилось як відкрите._
 - 🟦 Залежність A5 (CLI `--minimize`).
+- ✅ **A3 (через A1):** autostart сам не грає; авто-гра ⇔ активний профіль має `startup_playback_mode = always_play` (per-profile opt-in).
 
 ### [command-palette-phase-3](p2-command-palette-phase-3.md) (draft)
 - 🟥 **Ліміт результатів:** показувати перші N (15–20) / «показати ще» / лише за query? _Рекоменд.: порожній query → лише дії+навігація; query ≥ 2 → підмішувати станції/пісні (до 10 кожного типу)._
@@ -165,7 +168,7 @@
 
 ## Зведення для дій
 
-- **Закрити першими (блокують код):** A1–A5 — перехресні; без них кластер відтворення/resume/crash робити наосліп ризиковано.
+- **Закрити першими (блокують код):** ~~A1~~ ✅, ~~A2~~ ✅, ~~A3~~ ✅ (усі вирішені 2026-06-25 — resume = надбудова над `PlayerSession`, per-profile режим). Лишились **A4** (mpv-gate) і **A5** (CLI `--minimize` — перевірка).
 - **Чисті перевірки коду** (не «рішення», звірити grep'ом): B-crash (розміщення задачі), B-playback (seek-формати, doc-фікс), C-resume-file (tab), C-log (portable-шлях), C-open-song (opener у Cargo), C-phase3 (теги пісень), D-hls (зрілість крейтів), A5 (CLI --minimize).
 - **Дослідницькі gate'и** (відповідь — під час spike): A4, D-mpv (перший ICY-тайтл — go/no-go), D-he-aac (першопричина), D-hls (% станцій).
 - **Записи без відкритих питань:** activity-bar-help-button, wishlist-example-patterns, post-processing, volume-nan-validation, unwrap-in-tests.

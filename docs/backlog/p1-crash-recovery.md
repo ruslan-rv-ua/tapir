@@ -155,8 +155,9 @@ credentials / ignorelist); незіставлений URL (потік видал
   - `src/stores/announcer.ts`
   - `src/hooks/useAnnounce.ts`
 - [accessibility.md — §11 live-regions, §1.4 modal-hacks](../accessibility.md)
-- Суміжний беклог: [p2-resume-last-playback.md](p2-resume-last-playback.md) — узгодити, що
-  `last_playback.json` (стан відтворення) і `state.json` (crash recovery) — **окремі** файли
+- Суміжний беклог: [p2-resume-last-playback.md](p2-resume-last-playback.md) — стан відтворення
+  живе в `PlayerSession` профілю (після A1 окремого `last_playback.json` немає); `state.json`
+  (crash recovery) — інше сховище. Два чітко різні стани, звіряти нема чого.
 - Пам'ять: [[live-region-inside-modals]], [[branch-model-main-stale]]
 
 ## Промпт для агента
