@@ -33,9 +33,9 @@
 
 ## B. Питання P1
 
-### [crash-recovery](p1-crash-recovery.md) (ready)
-- 🟥 **Снапшот за URL чи за `stream_id`?** URL не стабільний ключ (дублікати; credentials треба відновити зіставленням зі `StreamInfo`). _Рекомендація запису: лишити URL-и + зіставлення з профілем; незіставлений URL → невдале відновлення («N з M»)._
-- 🟦 **Розміщення періодичної задачі:** поряд зі scheduler-тіком чи окремий spawn у `lib.rs` setup-хуку?
+### [crash-recovery](p1-crash-recovery.md) (ready — рівень реалізації закрито 2026-06-25)
+- ✅ **Снапшот за `stream_id`, не URL.** Стабільний унікальний ключ → однозначний розв'язок у `StreamInfo` (точні credentials/ignorelist), стійкий до правки URL, чистий «N з M». `manual_resume_urls` → `manual_resume_stream_ids`. `url` лишається лише діагностичним полем у снапшоті.
+- ✅ **Окрема виділена tokio-задача** (за зразком `SchedulerShared`), spawn у setup-хуку `lib.rs` — не піггібек на scheduler-тіку (його ~60 с каданс не дає ≤ 30 с + подієвість), не `frontend_ready` (писар не емітить UI-подій). Тригер: `Notify` на зміну складу + `interval` ≤ 30 с.
 
 ### [playback-toggle-stop-pause](p1-playback-toggle-stop-pause.md) (ready — рівень реалізації закрито 2026-06-25)
 - ✅ **Форма дискримінатора:** окреме поле `last_active` enum (`stream|file`), **не** timestamp — слотів лише 2, enum = єдине джерело правди, resolve толерує висячий дискримінатор (+ очищає).
@@ -170,6 +170,6 @@
 ## Зведення для дій
 
 - **Закрити першими (блокують код):** ~~A1~~ ✅, ~~A2~~ ✅, ~~A3~~ ✅, ~~A5~~ ✅ (вирішені/перевірені 2026-06-25 — resume = надбудова над `PlayerSession`, per-profile режим; CLI `--minimize` є в коді, autostart фактично реалізований). Лишився **A4** (mpv-gate).
-- **Чисті перевірки коду** (не «рішення», звірити grep'ом): B-crash (розміщення задачі), C-resume-file (tab), C-log (portable-шлях), C-open-song (opener у Cargo), C-phase3 (теги пісень), D-hls (зрілість крейтів). _(A5 — ✅ перевірено; B-playback — ✅ закрито 2026-06-25: seek уже підключено, graceful-hook уже є, doc-фікс визначено.)_
+- **Чисті перевірки коду** (не «рішення», звірити grep'ом): C-resume-file (tab), C-log (portable-шлях), C-open-song (opener у Cargo), C-phase3 (теги пісень), D-hls (зрілість крейтів). _(A5 — ✅ перевірено; B-playback — ✅ закрито 2026-06-25; B-crash — ✅ закрито 2026-06-25: снапшот за `stream_id`, окрема задача-писар spawn у setup-хуку.)_
 - **Дослідницькі gate'и** (відповідь — під час spike): A4, D-mpv (перший ICY-тайтл — go/no-go), D-he-aac (першопричина), D-hls (% станцій).
 - **Записи без відкритих питань:** activity-bar-help-button, wishlist-example-patterns, post-processing, volume-nan-validation, unwrap-in-tests.

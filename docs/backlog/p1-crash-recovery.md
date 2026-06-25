@@ -4,8 +4,9 @@
 - **Тип:** заплановано
 - **Стан:** ready (усі питання дизайну закриті — див. «Прийняті рішення»)
 - **Зусилля:** M
-- **Оновлено:** 2026-06-23
-- **Залежності:** Phase 1 (✅) — `graceful_shutdown`, `manual_resume_urls` уже в коді;
+- **Оновлено:** 2026-06-25
+- **Залежності:** Phase 1 (✅) — `graceful_shutdown` та чистий фільтр resume
+  (`manual_resume_urls`, адаптувати → `manual_resume_stream_ids`) уже в коді;
   scheduler (`scheduler-owned` пари для виключення планових записів); LiveAnnouncer
   (`data-live-announcer`, [[live-region-inside-modals]]). Фаза **прибирає**
   `Profile.active_recording_urls`.
@@ -53,27 +54,58 @@
 ```json
 {
   "clean_shutdown": false,
-  "active_recording_urls": ["https://radio.example/stream-a", "https://radio.example/stream-b"]
+  "active_recordings": [
+    { "stream_id": "st-abc", "url": "https://radio.example/stream-a" },
+    { "stream_id": "st-def", "url": "https://radio.example/stream-b" }
+  ]
 }
 ```
+
+Ключ — `stream_id` (= `StreamInfo.id`): стабільний унікальний ідентифікатор, який
+однозначно розв'язується у `StreamInfo` активного профілю → точні credentials /
+ignorelist. URL так не годиться: не унікальний (можливі дублікати — той самий сервер
+із різними акаунтами; станцію додали двічі) і не несе credentials, тож зіставлення за
+ним нечітке й ламається при правці URL ([full-edit-stream](p2-full-edit-stream.md)
+лишає `id` незмінним).
+Поле `url` у снапшоті — **діагностичне, лише для логів і читабельності `state.json`**;
+у зіставленні на resume **не** бере участі.
 
 ### Resume-споживач
 
 Resume-споживача зараз **немає взагалі** — `Profile.active_recording_urls` є лише в
 типах і ніде на старті не читається. Цю фазу й треба дотягнути: при виявленому збої
-(`clean_shutdown = false`) прочитати URL-и з живого снапшота і запустити записи через
-`stream::manager`. URL відображається на `StreamInfo` профілю (щоб відновити
-credentials / ignorelist); незіставлений URL (потік видалено) рахується як **невдале
-відновлення** і йде в підсумок «N з M» (нижче).
+(`clean_shutdown = false`) прочитати `stream_id`-и з живого снапшота і запустити записи
+через `stream::manager`. Кожен `stream_id` розв'язується у `StreamInfo` активного
+профілю (`streams.iter().find(|st| st.id == stream_id)`) → звідти URL + credentials +
+ignorelist. Незіставлений `stream_id` (потік видалили між снапшотом і рестартом)
+рахується як **невдале відновлення** і йде в підсумок «N з M» (нижче).
 
 ### Хто пише снапшот
 
-**Окрема періодична app-задача** (tokio-task на рівні застосунку, як scheduler-тік),
-що читає `AppState` (статуси записів + `scheduler-owned` пари + профіль-стріми) і
-реюзає чисту функцію `manual_resume_urls(statuses, scheduler_owned, streams)`. Це
-**не** обов'язок `StreamManager` — він не знає ні про scheduler, ні про профіль;
-давати йому ці залежності зіпсувало б його межі. Тригер запису: подія зміни складу
-активних записів + таймер ≤ 30 с як safety net. Запис атомарний (`temp → rename`).
+**Окрема виділена tokio-задача**, змодельована за зразком `SchedulerShared`
+([`scheduler/timer.rs`](../../src-tauri/src/scheduler/timer.rs)): власний
+`tokio::select!` над notify-каналом, `interval` і `CancellationToken`. Вона читає
+`AppState` (статуси записів + `scheduler-owned` пари) і реюзає чисту функцію
+`manual_resume_stream_ids(statuses, scheduler_owned)`, що повертає `stream_id`-и
+активних **непланових** записів (розв'язання id → `StreamInfo` переходить на resume).
+
+Це **не** обов'язок `StreamManager` (він не знає ні про scheduler, ні про профіль —
+дати йому ці залежності зіпсувало б його межі) і **не** піггібек на scheduler-тіку:
+тік прив'язаний до межі календарної хвилини (~60 с) і чисто таймерний, а снапшоту
+треба ≤ 30 с **+ реакція на зміну складу**. Підганяти каданс планувальника заради
+чужої потреби зламало б його межі.
+
+**Тригер:** `tokio::sync::Notify` (або `watch`), який `StreamManager` /
+`recording_control` смикає при зміні стану запису (старт / стоп / error) → миттєвий
+запис із легким debounce; плюс `interval ≤ 30 с` як safety net. Запис атомарний
+(`temp → rename`).
+
+**Де spawn:** у **setup-хуку** (`lib.rs`, після `AppState::new`), **не** у
+`frontend_ready`. Scheduler і `StartupPlan` відкладені до `frontend_ready`, бо
+**емітять UI-події** до підписки webview; снапшот-писар не емітить нічого — лише
+атомарно пише файл, тож гейт webview йому не потрібен, і персистенс крихкого стану не
+варто чіпляти до життя webview. Відкласти до `frontend_ready` треба **лише анонс**
+підсумку resume (див. NVDA).
 
 ### Взаємодія з NVDA
 
@@ -87,25 +119,29 @@ credentials / ignorelist); незіставлений URL (потік видал
 - **частково** — «Відновлено N з M записів після аварійного завершення; решта
   потоків недоступні».
 
-Анонс через `LiveAnnouncer` (`data-live-announcer`) — поза модалом, одразу після
-старту, коли DOM готовий ([[live-region-inside-modals]]).
+Анонс через `LiveAnnouncer` (`data-live-announcer`) — поза модалом
+([[live-region-inside-modals]]). Підсумок resume обчислюється в setup-хуку, але
+**емітується через відкладений механізм** (як `StartupPlan` / `StartupNotice`): setup
+стешить результат, а `frontend_ready` його дренує й емітує. Інакше подія піде до
+підписки webview і озвучення загубиться — той самий гейт, що в scheduler-а.
 
 ## Критерії готовності
 
-- [ ] `data/state.json` містить `clean_shutdown: bool` і список URL активних ручних
-  записів (живий снапшот)
+- [ ] `data/state.json` містить `clean_shutdown: bool` і список `stream_id` активних
+  ручних записів (живий снапшот; `url` — опційне діагностичне поле, не для матчингу)
 - [ ] При кожному старті `clean_shutdown` записується `false` (атомарний write);
   відсутній файл трактується як аварія, але з порожнім снапшотом
 - [ ] В `graceful_shutdown` перед виходом `clean_shutdown` записується `true`
-- [ ] Окрема періодична app-задача оновлює снапшот URL активних записів у
-  `data/state.json` (тригер на зміну складу + таймер ≤ 30 с), реюзаючи
-  `manual_resume_urls`
+- [ ] Окрема виділена tokio-задача (за зразком `SchedulerShared`; spawn у setup-хуку)
+  оновлює снапшот `stream_id` активних записів у `data/state.json` (тригер `Notify` на
+  зміну складу + `interval` ≤ 30 с), реюзаючи `manual_resume_stream_ids`
 - [ ] Поле `Profile.active_recording_urls` прибрано (модель, `default`, dup-clear,
   `profile_commands`); його запис у `graceful_shutdown` знято
-- [ ] На старті: якщо `clean_shutdown = false` і снапшот непорожній — бекенд запускає
-  записи через `stream::manager` (resume-споживач, якого зараз немає)
-- [ ] Тихий авто-resume без діалогу; фронтенд отримує подію після resume і виводить
-  `aria-live` анонс
+- [ ] На старті: якщо `clean_shutdown = false` і снапшот непорожній — бекенд розв'язує
+  кожен `stream_id` у `StreamInfo` активного профілю і запускає записи через
+  `stream::manager` (resume-споживач, якого зараз немає)
+- [ ] Тихий авто-resume без діалогу; підсумок обчислено в setup, відкладено й емітовано
+  у `frontend_ready` (як `StartupPlan`); фронтенд виводить `aria-live` анонс
 - [ ] Анонс: порожній снапшот → тиша; усі підняті → «Відновлено N…»; частково →
   «Відновлено N з M…»; через `data-live-announcer` поза модалом
 - [ ] NVDA озвучує підсумок відновлення одразу після завантаження UI (коли DOM готовий)
@@ -121,34 +157,43 @@ credentials / ignorelist); незіставлений URL (потік видал
 | Авто-resume vs діалог? | **Тихий авто-resume + `aria-live` анонс.** Немає несподіваних діалогів при запуску. |
 | Коли відновлювати? | **Тільки після аварії** (`clean_shutdown = false`). Чистий вихід = свідома зупинка → не відновлюємо. |
 | Джерело правди? | **Живий снапшот у `data/state.json`** — єдине джерело. `Profile.active_recording_urls` **прибрано** (мертве поле: писалось лише в `graceful_shutdown`, ніде не читалось). |
-| Хто пише снапшот? | **Окрема app-задача** (періодична tokio-task), що реюзає `manual_resume_urls(statuses, scheduler_owned, streams)`. **Не** `StreamManager` — він не знає про scheduler/профіль. |
-| Частота снапшота? | **Тригер на зміну складу + таймер ≤ 30 с (safety net).** |
+| Ключ снапшота — URL чи `stream_id`? | **`stream_id`, не URL.** Стабільний унікальний ідентифікатор → однозначний розв'язок у `StreamInfo` (точні credentials / ignorelist), стійкий до правки URL, чистий «N з M» (id відсутній → промах). URL не унікальний (дублікати) і не несе credentials. `url` лишається в снапшоті лише діагностичним полем. |
+| Хто пише снапшот? | **Окрема виділена tokio-задача** (за зразком `SchedulerShared`), що реюзає `manual_resume_stream_ids(statuses, scheduler_owned)`. **Не** `StreamManager` (не знає про scheduler/профіль) і **не** scheduler-тік. **Spawn у setup-хуку** (писар не емітить UI-подій → гейт `frontend_ready` не потрібен; відкладається лише анонс resume). |
+| Частота / каданс снапшота? | **`Notify` на зміну складу + `interval` ≤ 30 с (safety net)** у `tokio::select!`. **Не** піггібек на scheduler-тіку: його ~60 с календарний каданс і чисто-таймерна модель не дають ≤ 30 с + подієвість без спотворення меж планувальника. |
 | Анонс resume? | Порожній снапшот (вкл. перший запуск) → **тиша**. Усі підняті → «Відновлено N…». Частково → «Відновлено N з M…». |
 | Partial-файли після збою? | **Залишити як є.** MP3/AAC — кадровий потік без обов'язкової фіналізації; плеєр відтворить більшу частину. Подія фіксується в лозі. |
 | Resume при зміні IP/мережі? | **Не в scope цієї фази.** Reconnect-логіка (`stream::manager`) — окрема задача. |
-| Планові записи при збої? | **Scheduler-owned потоки не входять у resume.** Снапшот їх виключає через `manual_resume_urls`; їх catch-up лежить у `ScheduleManager`. |
+| Планові записи при збої? | **Scheduler-owned потоки не входять у resume.** Снапшот їх виключає через `manual_resume_stream_ids`; їх catch-up лежить у `ScheduleManager`. |
 | Атомарний write `state.json`? | **Так, `write temp → rename`.** Той самий підхід, що у `profile.rs`. |
 
 ## Відкриті питання (рівень реалізації)
 
-- Снапшот за URL чи за `stream_id`? Зараз `manual_resume_urls` повертає URL-и (як у
-  Phase 1). URL не стабільний ключ (можливі дублікати; credentials треба відновити
-  зіставленням зі `StreamInfo`). Рекомендовано лишити URL-и + зіставлення з профілем;
-  незіставлений URL → невдале відновлення (йде в «N з M»).
-- Точне розміщення періодичної задачі: поряд зі scheduler-тіком чи окремий spawn у
-  `lib.rs` setup-хуку.
+Усі закриті (2026-06-25) — рішення в таблиці «Прийняті рішення» вище:
+
+- ✅ **Снапшот за URL чи за `stream_id`?** → **`stream_id`.** Стабільний унікальний ключ;
+  однозначний розв'язок у `StreamInfo` (точні credentials / ignorelist); стійкий до
+  правки URL; чистий «N з M». `manual_resume_urls` → `manual_resume_stream_ids` (повертає
+  id замість url). `url` лишається в снапшоті лише як діагностичне поле.
+- ✅ **Розміщення періодичної задачі?** → **окрема виділена tokio-задача** (за зразком
+  `SchedulerShared`), **spawn у setup-хуку** `lib.rs` — не піггібек на scheduler-тіку
+  (його ~60 с каданс не дає ≤ 30 с + подієвість), не `frontend_ready` (писар не емітить
+  UI-подій). Тригер: `Notify` на зміну складу + `interval` ≤ 30 с. Деталі — розділ
+  «Хто пише снапшот».
 
 ## Документи
 
 - [implementation-phases.md §3K](../implementation-phases.md)
 - Код бекенду:
-  - `src-tauri/src/app_state.rs` — `graceful_shutdown`, `manual_resume_urls` (фільтр resume)
+  - `src-tauri/src/app_state.rs` — `graceful_shutdown`, `manual_resume_urls` (фільтр resume →
+    перейменувати на `manual_resume_stream_ids`, повертати `stream_id` замість `url`; тести оновити)
   - `src-tauri/src/profile.rs` — **прибрати** поле `active_recording_urls` (~306) і
     його скиди при дублюванні (~520, ~568)
   - `src-tauri/src/portable.rs` — шлях до `data/` (новий `state.json` поряд із `settings.json`)
   - `src-tauri/src/stream/manager.rs` — `StreamManager`, `stop_all`, статуси записів
-  - `src-tauri/src/lib.rs` — setup-хук (виявлення збою + resume), `ensure_data_dirs`
-  - `src-tauri/src/scheduler/timer.rs` — `owned_sessions` / `on_app_closing` (виключення планових)
+  - `src-tauri/src/lib.rs` — setup-хук (виявлення збою + resume + spawn снапшот-писаря),
+    `ensure_data_dirs`; відкладений анонс resume дренується у `frontend_ready`
+  - `src-tauri/src/scheduler/timer.rs` — `owned_sessions` / `on_app_closing` (виключення планових);
+    `SchedulerShared` — зразок патерну задачі для снапшот-писаря (`select!` над notify / interval / cancel)
   - `src-tauri/src/commands/profile_commands.rs` — **прибрати** скид `active_recording_urls` (~142)
 - Код фронтенду:
   - `src/components/common/LiveAnnouncer.tsx`
