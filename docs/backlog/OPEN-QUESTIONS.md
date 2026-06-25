@@ -19,61 +19,20 @@
 
 ## A. Перехресні питання (найвищий пріоритет — зачіпають кілька записів)
 
-Закрити **до** коду кластера відтворення/resume/crash, бо визначають межі кількох записів.
-
 | # | Питання | Тип | Зачіпає | Рекомендація |
 |---|---------|-----|---------|--------------|
-| A1 | **Єдина модель resume-персистенсу.** `resume-last-playback` пропонував власний `last_playback.json` + enum `startup_playback_mode`, тоді як `playback-toggle` уже персистить `last_stream_id`/`last_file_position` у `PlayerSession`. Надбудова поверх P1 чи дублювання? | ✅ **вирішено** (2026-06-25) | [playback-toggle](p1-playback-toggle-stop-pause.md), [resume-last-playback](p2-resume-last-playback.md) | **#10 — надбудова над `PlayerSession` з P1.** Окремого `last_playback.json` немає. Режим `startup_playback_mode` (`never`/`always_paused`/`always_play`, дефолт `never`, без `restore`) — нове поле **в `PlayerSession`** → **per-profile**. Авто-гра = явний opt-in. UI — окремий діалог «Налаштування профілю». Деталі в записі. |
-| A2 | **`state.json` vs стан відтворення.** Crash recovery кладе живий снапшот записів у `data/state.json`; resume-позиція — раніше планувалась в окремий файл. | ✅ **знято** (через A1) | [crash-recovery](p1-crash-recovery.md), [resume-last-playback](p2-resume-last-playback.md) | A1 скасував `last_playback.json` → стан відтворення живе в `PlayerSession` (профіль), crash — у `state.json`. Два чітко різні сховища; звіряти нема чого. |
-| A3 | **Autostart не авто-грає.** Autostart стартує з `--minimize`. Узгодити з resume-моделлю A1. | ✅ **вирішено** (через A1) | [autostart](p2-autostart.md), [playback-toggle](p1-playback-toggle-stop-pause.md), [resume-last-playback](p2-resume-last-playback.md) | Autostart сам **не** грає; відтворення вирішує `startup_playback_mode` **активного профілю**. Авто-гра ⇔ активний профіль = `always_play` (явний opt-in). |
 | A4 | **mpv закриває he-aac + hls?** Якщо PoC mpv проходить — `he-aac-mf` і `hls` стають непотрібні (mpv декодує обидва). Не вести MF-шлях і mpv паралельно. | 🟨 дослідження | [mpv](p3-mpv-playback-engine.md), [he-aac-mf](p3-he-aac-mf-playback.md), [hls](p3-hls-stream-support.md) | Спершу PoC-gate mpv; за `go` — видалити обидва записи |
-| A5 | **CLI `--minimize` уже є?** Autostart залежить від нього (колишня Phase 3G). Запис `p1-cli-arguments.md` зник із беклогу → ймовірно зроблено. | ✅ **перевірено** (2026-06-25) | [autostart](p2-autostart.md) | **Так, реалізовано.** Прапорець у `cli.rs:42` (`#[arg(long)] minimize`, startup-only; forwarded-`--minimize` ігнорується, є тести). У setup: `show()+set_focus()` → `hide()` (старт у трей, NVDA встигає приєднатися) — `lib.rs:145`. Понад те, **увесь** autostart (бекенд + frontend) уже на місці: `autostart.rs` (build/reconcile/apply + тести), IPC `sync_autostart` (`lib.rs:258`), 2 toggle у `GeneralTab.tsx`, `useAutostartFeedback`, i18n — запис `p2-autostart.md` переведено у `done`. |
-
----
-
-## B. Питання P1
-
-### [crash-recovery](p1-crash-recovery.md) (ready — рівень реалізації закрито 2026-06-25)
-- ✅ **Снапшот за `stream_id`, не URL.** Стабільний унікальний ключ → однозначний розв'язок у `StreamInfo` (точні credentials/ignorelist), стійкий до правки URL, чистий «N з M». `manual_resume_urls` → `manual_resume_stream_ids`. `url` лишається лише діагностичним полем у снапшоті.
-- ✅ **Окрема виділена tokio-задача** (за зразком `SchedulerShared`), spawn у setup-хуку `lib.rs` — не піггібек на scheduler-тіку (його ~60 с каданс не дає ≤ 30 с + подієвість), не `frontend_ready` (писар не емітить UI-подій). Тригер: `Notify` на зміну складу + `interval` ≤ 30 с.
-
-### [playback-toggle-stop-pause](p1-playback-toggle-stop-pause.md) (ready — рівень реалізації закрито 2026-06-25)
-- ✅ **Форма дискримінатора:** окреме поле `last_active` enum (`stream|file`), **не** timestamp — слотів лише 2, enum = єдине джерело правди, resolve толерує висячий дискримінатор (+ очищає).
-- ✅ **Seek до `position_ms`:** підтримується й **уже підключено** — `Decoder::try_from` виставляє `is_seekable`, команда `seek_playback`/`try_seek` fallible. Cold-start: `play_file` → `try_seek`, на `Err` — з початку.
-- ✅ **Запис на «переходах»:** **НЕ** новий хук — розширити наявний `graceful_shutdown` (вже зберігає volume); знімок позиції зчитати **до** `stop_session_public`. pause/stop/track-change пишуть зі своїх команд.
-- ✅ **Легасі-edge:** закрито дизайном dispatch — гілка `Stream` діє на `Playing||Paused` → stop, тож `Paused+Stream` зі старого білда коректно резолвиться у stop. Міграції не треба.
-- ✅ **Doc-фікс:** `architecture.md:1178` «Switch Profile» — **помилка** (це MenuTrigger-кнопка, не хоткей) → прибрати; `:1193` → `Ctrl+Shift+K` разом із кодовим ребіндом.
-- _Деталі та обґрунтування — секція «Рішення (рівень реалізації)» у записі._
-
-### [activity-bar-help-button](p1-activity-bar-help-button.md) (ready)
-- ✅ Відкритих питань немає.
 
 ---
 
 ## C. Питання P2
-
-### [resume-file-from-setting](p2-resume-file-from-setting.md) (ready — питання закрито 2026-06-25)
-- ✅ **Tab — AudioTab, секція «Керування плеєром»** ([AudioTab.tsx:138](../../src/components/settings/AudioTab.tsx#L138)), поруч із `auto_advance` / `prev_restart_threshold_ms`. **Не** GeneralTab: припущення хибне — у коді `auto_advance` в AudioTab, а `double_click_action` окремо в GeneralTab → «Поведінка». `resume_file_from` = кластер resume/advance → AudioTab.
-- ✅ **«За довжиною» — ні (фінально).** Поріг лише ховає вибір (магічне число) і ламає передбачуваність для NVDA; бінарний enum `position|start` лишається, 3-й варіант (найімовірніше «питати», як VLC `Never/Ask/Always`) — back-compat-двері відчинені.
-
-### [add-stream-probe](p2-add-stream-probe.md) (ready)
-- 🟥 **Реюз IPC:** використати наявні `begin_stream_import` + `validate_import_candidates` чи зробити спрощений `probe_stream(url)`? _(Спільне з browser-add-probe — одна IPC на двох.)_
-- 🟥 **Timeout probe:** 5 секунд фіксовано чи з налаштуванням?
-
-### [browser-add-probe](p2-browser-add-probe.md) (ready)
-- 🟥 **Async тост (вар. 1) чи sync blocking (вар. 2)?** _Рекомендація запису: вар. 1 (async тост) — не блокує масове додавання._
-- 🟥 **Показувати `lastcheckok`** у таблиці результатів Browser як badge («остання перевірка: OK/FAIL»)?
 
 ### [streams-ctrlk-empty-hint](p2-streams-ctrlk-empty-hint.md) (ready)
 - 🟥 **Текст бейджа:** лише «Ctrl+K», чи з підписом («Команди — Ctrl+K» / «Палітра команд»)?
 - 🟥 **Показувати бейдж у filter-empty стані** теж, чи лише в порожньому профілі?
 - 🟨 **(тригер)** ADR §9.2: якщо порожнього стану як єдиного місця навчання замало — повернутись до `aria-keyshortcuts` (S4). Окремий тригер, не частина запису.
 
-### [wishlist-example-patterns](p2-wishlist-example-patterns.md) (ready)
-- ✅ Усі питання закриті в сесії 2026-06-24.
-
 ### [resume-last-playback](p2-resume-last-playback.md) (draft, модель узгоджена 2026-06-25)
-- ✅ **A1/A2 закрито:** надбудова над `PlayerSession` з #1; per-profile `startup_playback_mode` (`never`/`always_paused`/`always_play`); окремий діалог «Налаштування профілю»; скидання режиму при дублюванні/експорті. Деталі — в записі.
 - 🟦 **Спадщина #1:** форма дискримінатора `last_active`; seek до `position_ms` для всіх форматів.
 - 🟨 **Рівень реалізації:** синхронізація in-memory активного профілю при редагуванні; NVDA-перевірка `Select` у модалці.
 
@@ -96,11 +55,6 @@
 - 🟥 **Скоуп полів у 1-й ітерації:** лише URL, чи одразу URL+auth+ignorelist? _Менший крок — лише URL._
 - 🟥 **Збереження позиції/статусу потоку** при зміні URL (id незмінний → так, але re-resolve може змінити метадані)?
 
-### [autostart](p2-autostart.md) (✅ done — реалізовано, перевірено 2026-06-25)
-- ✅ **Анонс «Tapir запущений автоматично» при autostart-старті — «ні» (фінальне).** Підтверджено в коді: `useAutostartFeedback` озвучує лише деактивацію через переміщення EXE, звичайний autostart-старт не анонсується.
-- ✅ **A5 закрито (2026-06-25):** CLI `--minimize` є й працює (`cli.rs:42`, `lib.rs:145`). Бекенд і frontend autostart реалізовані повністю (`autostart.rs`, `sync_autostart`, toggle у `GeneralTab.tsx`, `useAutostartFeedback`) → запис переведено у `done`.
-- ✅ **A3 (через A1):** autostart сам не грає; авто-гра ⇔ активний профіль має `startup_playback_mode = always_play` (per-profile opt-in).
-
 ### [command-palette-phase-3](p2-command-palette-phase-3.md) (draft)
 - 🟥 **Ліміт результатів:** показувати перші N (15–20) / «показати ще» / лише за query? _Рекоменд.: порожній query → лише дії+навігація; query ≥ 2 → підмішувати станції/пісні (до 10 кожного типу)._
 - 🟨 **Сортування:** підіймати «нещодавні»? _Recency-ранжування — у Phase 4._
@@ -109,15 +63,9 @@
 - 🟨 **Взаємодія з Phase 4:** не закладати жорсткий порядок — лишити місце для ранжування.
 - 🟥 **Кнопка «Команди» в шапці (DA5):** прибрати в цій же задачі чи окремо?
 
-### [post-processing](p2-post-processing.md) (draft, рішення прийняті)
-- ✅ Відкритих питань немає (усе в «Прийняті рішення»).
-
 ### [bug-profile-switch-orphaned-tasks](p2-bug-profile-switch-orphaned-tasks.md) (draft)
 - 🟨 **Наскільки реальний сценарій**, де task не завершується за 2с? _(Тригер узяти в роботу взагалі.)_
 - 🟥 **Track-level shutdown (CancellationToken)** замість process-level kill? (Вибір між 3 варіантами фіксу: ↑timeout / CancellationToken / детект+лог+NVDA.)
-
-### [bug-volume-nan-validation](p2-bug-volume-nan-validation.md) (ready)
-- ✅ Відкритих питань немає.
 
 ---
 
@@ -162,14 +110,10 @@
 ### [screen-reader-direct-speech](p3-screen-reader-direct-speech.md) (відкладено)
 - 🟨 **(тригер повернення):** лише якщо balloon tips виявляться недостатніми для швидкого фідбеку на глобальні хоткеї (типово — гучність). Тоді scope — **тільки** озвучення глобальних хоткеїв, не заміна `LiveAnnouncer`.
 
-### [unwrap-in-tests](p3-unwrap-in-tests.md) (ready)
-- ✅ Відкритих питань немає.
-
 ---
 
 ## Зведення для дій
 
-- **Закрити першими (блокують код):** ~~A1~~ ✅, ~~A2~~ ✅, ~~A3~~ ✅, ~~A5~~ ✅ (вирішені/перевірені 2026-06-25 — resume = надбудова над `PlayerSession`, per-profile режим; CLI `--minimize` є в коді, autostart фактично реалізований). Лишився **A4** (mpv-gate).
-- **Чисті перевірки коду** (не «рішення», звірити grep'ом): C-log (portable-шлях), C-open-song (opener у Cargo), C-phase3 (теги пісень), D-hls (зрілість крейтів). _(A5 — ✅ перевірено; B-playback — ✅ закрито 2026-06-25; B-crash — ✅ закрито 2026-06-25: снапшот за `stream_id`, окрема задача-писар spawn у setup-хуку; C-resume-file — ✅ закрито 2026-06-25: tab = AudioTab, «за довжиною» — ні.)_
+- **Лишився відкритим (блокує код):** **A4** (mpv-gate).
+- **Чисті перевірки коду** (не «рішення», звірити grep'ом): C-log (portable-шлях), C-open-song (opener у Cargo), C-phase3 (теги пісень), D-hls (зрілість крейтів).
 - **Дослідницькі gate'и** (відповідь — під час spike): A4, D-mpv (перший ICY-тайтл — go/no-go), D-he-aac (першопричина), D-hls (% станцій).
-- **Записи без відкритих питань:** activity-bar-help-button, wishlist-example-patterns, post-processing, volume-nan-validation, unwrap-in-tests.

@@ -23,14 +23,14 @@
 ## Технічна реалізація
 
 **Frontend (`AddStreamDialog.tsx`):**
-- Після submit → IPC `probe_stream(url)` (новий або існуючий)
+- Після submit → IPC `probe_stream(url)` (нова спільна команда, див. нижче)
 - Поки probe → `aria-busy`, кнопка "Зберегти" disabled, spinner
 - Результат → або зберегти, або показати inline попередження над кнопками
 
 **Backend:**
 - `probe::probe()` вже є в `src-tauri/src/stream/probe.rs`
-- Нова IPC-команда `probe_stream(url: String)` (або розширити існуючу `validate_import_candidates`)
-- Результат: `{ ok: bool, error: Option<String> }` (не повний `ProbeResult` — лише ping)
+- **Нова IPC-команда `probe_stream(url: String) -> { ok: bool, error: Option<String> }`** — тонка обгортка над `probe::probe` (повертає лише ping, не повний `ProbeResult`). **Не** реюзати `validate_import_candidates`: вона подієва (еміттить `stream-import-progress`, повертає `()`) і заточена під масовий пікер імпорту — для одного URL у діалозі це нав'язало б крихку обв'язку слухача події. `begin_stream_import` — взагалі файловий пікер плейлиста, не стосується. `probe_stream` — це і є «одна IPC на двох» (спільна з [browser-add-probe](p2-browser-add-probe.md)). Рішення закрите 2026-06-25.
+- **Timeout: обгорнути виклик у `tokio::time::timeout(Duration::from_secs(5), …)`** іменованою константою. `connection::connect` має лише `connect_timeout(10s)` і **жодного** загального ліміту — без зовнішнього timeout діалог може зависнути на 10+ с.
 
 ## Критерії готовності
 
@@ -43,8 +43,10 @@
 
 ## Відкриті питання
 
-- Чи використовувати вже існуючу IPC-команду `begin_stream_import` + `validate_import_candidates` або зробити спрощений `probe_stream(url)`?
-- Timeout: 5 секунд? Чи з налаштуванням?
+_Закрито 2026-06-25 (аудит коду + рішення)._
+
+- ✅ **Нова команда `probe_stream(url) -> { ok, error }`, не реюз `validate_import_candidates`.** Остання подієва (`stream-import-progress`, повертає `()`) і заточена під масовий пікер імпорту; для одного URL це форсувало б крихку обв'язку слухача події на фронтенді. `begin_stream_import` — взагалі файловий пікер плейлиста, не стосується. `probe_stream` — тонка обгортка над `probe::probe`, спільна з [browser-add-probe](p2-browser-add-probe.md).
+- ✅ **Timeout — фіксовані 5 с (іменована константа), без налаштування.** Probe тут необов'язкове попередження, не блокатор збереження → точність порогу не важлива, а налаштування додало б UI/персист/i18n/NVDA заради числа, яке ніхто не крутитиме (YAGNI). Увага: під 5 с потрібен зовнішній `tokio::time::timeout` — вбудований `connect_timeout` це 10 с і лише на стадію конекту.
 
 ## Документи
 
