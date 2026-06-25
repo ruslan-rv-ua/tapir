@@ -37,12 +37,13 @@
 - 🟥 **Снапшот за URL чи за `stream_id`?** URL не стабільний ключ (дублікати; credentials треба відновити зіставленням зі `StreamInfo`). _Рекомендація запису: лишити URL-и + зіставлення з профілем; незіставлений URL → невдале відновлення («N з M»)._
 - 🟦 **Розміщення періодичної задачі:** поряд зі scheduler-тіком чи окремий spawn у `lib.rs` setup-хуку?
 
-### [playback-toggle-stop-pause](p1-playback-toggle-stop-pause.md) (ready)
-- 🟥 **Форма дискримінатора:** окреме поле `last_active` enum vs `updated_at`-timestamp на кожному полі. _Рекомендація: окреме поле `last_active`._
-- 🟦 **Seek до `position_ms`:** чи `play_file` підтримує seek для всіх форматів (symphonia seek)? Якщо ні — fallback «з початку».
-- 🟥 **Семантика «переходів» для запису позиції:** чи додавати graceful-shutdown hook на вихід застосунку?
-- 🟨 **Легасі-edge:** користувач зі старого білда (де потік ставав на pause) — наступне натискання має коректно резолвитись у stop.
-- 🟦 **Doc-фікс:** `architecture.md` має дві суперечливі згадки `Ctrl+Shift+P` (Switch Profile :1178 і Play/pause :1193) — виправити заразом.
+### [playback-toggle-stop-pause](p1-playback-toggle-stop-pause.md) (ready — рівень реалізації закрито 2026-06-25)
+- ✅ **Форма дискримінатора:** окреме поле `last_active` enum (`stream|file`), **не** timestamp — слотів лише 2, enum = єдине джерело правди, resolve толерує висячий дискримінатор (+ очищає).
+- ✅ **Seek до `position_ms`:** підтримується й **уже підключено** — `Decoder::try_from` виставляє `is_seekable`, команда `seek_playback`/`try_seek` fallible. Cold-start: `play_file` → `try_seek`, на `Err` — з початку.
+- ✅ **Запис на «переходах»:** **НЕ** новий хук — розширити наявний `graceful_shutdown` (вже зберігає volume); знімок позиції зчитати **до** `stop_session_public`. pause/stop/track-change пишуть зі своїх команд.
+- ✅ **Легасі-edge:** закрито дизайном dispatch — гілка `Stream` діє на `Playing||Paused` → stop, тож `Paused+Stream` зі старого білда коректно резолвиться у stop. Міграції не треба.
+- ✅ **Doc-фікс:** `architecture.md:1178` «Switch Profile» — **помилка** (це MenuTrigger-кнопка, не хоткей) → прибрати; `:1193` → `Ctrl+Shift+K` разом із кодовим ребіндом.
+- _Деталі та обґрунтування — секція «Рішення (рівень реалізації)» у записі._
 
 ### [activity-bar-help-button](p1-activity-bar-help-button.md) (ready)
 - ✅ Відкритих питань немає.
@@ -169,6 +170,6 @@
 ## Зведення для дій
 
 - **Закрити першими (блокують код):** ~~A1~~ ✅, ~~A2~~ ✅, ~~A3~~ ✅, ~~A5~~ ✅ (вирішені/перевірені 2026-06-25 — resume = надбудова над `PlayerSession`, per-profile режим; CLI `--minimize` є в коді, autostart фактично реалізований). Лишився **A4** (mpv-gate).
-- **Чисті перевірки коду** (не «рішення», звірити grep'ом): B-crash (розміщення задачі), B-playback (seek-формати, doc-фікс), C-resume-file (tab), C-log (portable-шлях), C-open-song (opener у Cargo), C-phase3 (теги пісень), D-hls (зрілість крейтів). _(A5 — ✅ перевірено, див. вище.)_
+- **Чисті перевірки коду** (не «рішення», звірити grep'ом): B-crash (розміщення задачі), C-resume-file (tab), C-log (portable-шлях), C-open-song (opener у Cargo), C-phase3 (теги пісень), D-hls (зрілість крейтів). _(A5 — ✅ перевірено; B-playback — ✅ закрито 2026-06-25: seek уже підключено, graceful-hook уже є, doc-фікс визначено.)_
 - **Дослідницькі gate'и** (відповідь — під час spike): A4, D-mpv (перший ICY-тайтл — go/no-go), D-he-aac (першопричина), D-hls (% станцій).
 - **Записи без відкритих питань:** activity-bar-help-button, wishlist-example-patterns, post-processing, volume-nan-validation, unwrap-in-tests.
