@@ -52,9 +52,9 @@
 
 ## C. Питання P2
 
-### [resume-file-from-setting](p2-resume-file-from-setting.md) (ready)
-- 🟦 **У якому tab розмістити** (де живе `auto_advance` / `double_click_action`) — перевірити (ймовірно GeneralTab).
-- 🟥 **Розширювати до «за довжиною»** (поріг хвилин) замість ручного вибору? _Поки ні (YAGNI); enum лишає двері відчиненими._
+### [resume-file-from-setting](p2-resume-file-from-setting.md) (ready — питання закрито 2026-06-25)
+- ✅ **Tab — AudioTab, секція «Керування плеєром»** ([AudioTab.tsx:138](../../src/components/settings/AudioTab.tsx#L138)), поруч із `auto_advance` / `prev_restart_threshold_ms`. **Не** GeneralTab: припущення хибне — у коді `auto_advance` в AudioTab, а `double_click_action` окремо в GeneralTab → «Поведінка». `resume_file_from` = кластер resume/advance → AudioTab.
+- ✅ **«За довжиною» — ні (фінально).** Поріг лише ховає вибір (магічне число) і ламає передбачуваність для NVDA; бінарний enum `position|start` лишається, 3-й варіант (найімовірніше «питати», як VLC `Never/Ask/Always`) — back-compat-двері відчинені.
 
 ### [add-stream-probe](p2-add-stream-probe.md) (ready)
 - 🟥 **Реюз IPC:** використати наявні `begin_stream_import` + `validate_import_candidates` чи зробити спрощений `probe_stream(url)`? _(Спільне з browser-add-probe — одна IPC на двох.)_
@@ -170,6 +170,6 @@
 ## Зведення для дій
 
 - **Закрити першими (блокують код):** ~~A1~~ ✅, ~~A2~~ ✅, ~~A3~~ ✅, ~~A5~~ ✅ (вирішені/перевірені 2026-06-25 — resume = надбудова над `PlayerSession`, per-profile режим; CLI `--minimize` є в коді, autostart фактично реалізований). Лишився **A4** (mpv-gate).
-- **Чисті перевірки коду** (не «рішення», звірити grep'ом): C-resume-file (tab), C-log (portable-шлях), C-open-song (opener у Cargo), C-phase3 (теги пісень), D-hls (зрілість крейтів). _(A5 — ✅ перевірено; B-playback — ✅ закрито 2026-06-25; B-crash — ✅ закрито 2026-06-25: снапшот за `stream_id`, окрема задача-писар spawn у setup-хуку.)_
+- **Чисті перевірки коду** (не «рішення», звірити grep'ом): C-log (portable-шлях), C-open-song (opener у Cargo), C-phase3 (теги пісень), D-hls (зрілість крейтів). _(A5 — ✅ перевірено; B-playback — ✅ закрито 2026-06-25; B-crash — ✅ закрито 2026-06-25: снапшот за `stream_id`, окрема задача-писар spawn у setup-хуку; C-resume-file — ✅ закрито 2026-06-25: tab = AudioTab, «за довжиною» — ні.)_
 - **Дослідницькі gate'и** (відповідь — під час spike): A4, D-mpv (перший ICY-тайтл — go/no-go), D-he-aac (першопричина), D-hls (% станцій).
 - **Записи без відкритих питань:** activity-bar-help-button, wishlist-example-patterns, post-processing, volume-nan-validation, unwrap-in-tests.

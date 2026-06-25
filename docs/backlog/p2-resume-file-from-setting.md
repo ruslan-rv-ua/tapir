@@ -29,8 +29,8 @@ P1 запроваджує resume останнього: cold-start `Ctrl+Shift+K`
 
 - Додати поле в `GlobalSettings` + `default_resume_file_from()` + `#[serde(default = ...)]` (back-compat: старий `settings.json` без поля → `position`). Узгодити з тестами серіалізації в [settings.rs](../../src-tauri/src/settings.rs#L291).
 - Cold-start-гілка `Ctrl+Shift+K` (з P1, [shortcuts.rs](../../src-tauri/src/shortcuts.rs)): прочитати прапорець → `play_file(path)` + `seek(position_ms)` (mode `position`) або старт з 0 (mode `start`).
-- UI: перемикач/radio у тому ж tab, що й `auto_advance` / `double_click_action` (перевірити: ймовірно GeneralTab — [src/components/settings/](../../src/components/settings/)). i18n EN/UK + NVDA-лейбл.
-- Лишити enum, а не bool — на випадок майбутнього третього варіанту (напр. «питати»/«за довжиною»), хоча зараз лише два.
+- UI: перемикач/radio у **AudioTab → секція «Керування плеєром» (`player_controls`)**, поруч із `auto_advance` ([AudioTab.tsx:138](../../src/components/settings/AudioTab.tsx#L138)) і `prev_restart_threshold_ms` ([AudioTab.tsx:150](../../src/components/settings/AudioTab.tsx#L150)) — спільний кластер resume/advance. **Не** GeneralTab: там у окремій секції «Поведінка» живе лише `double_click_action` ([GeneralTab.tsx:172](../../src/components/settings/GeneralTab.tsx#L172)) — це поведінка взаємодії зі списком, інший клас. i18n EN/UK + NVDA-лейбл.
+- Лишити enum, а не bool — на випадок майбутнього третього варіанту (найімовірніше «питати» — як `Never/Ask/Always` для «Continue playback» у VLC — а не «за довжиною»), хоча зараз лише два.
 
 ## Критерії готовності
 
@@ -42,8 +42,10 @@ P1 запроваджує resume останнього: cold-start `Ctrl+Shift+K`
 
 ## Відкриті питання
 
-- У якому саме tab розмістити (де живе `auto_advance` / `double_click_action`) — перевірити при реалізації.
-- Чи варто колись розширити до «за довжиною» (поріг хвилин) замість ручного вибору — поки ні (YAGNI), але enum лишає двері відчиненими.
+_Закрито 2026-06-25 (аудит коду + рішення)._
+
+- ✅ **Tab — AudioTab, секція «Керування плеєром» (`player_controls`)**, поруч із `auto_advance` ([AudioTab.tsx:138](../../src/components/settings/AudioTab.tsx#L138)) і `prev_restart_threshold_ms`. Припущення «GeneralTab» було хибним: у коді `auto_advance` живе в AudioTab, а `double_click_action` — окремо в GeneralTab → «Поведінка» ([GeneralTab.tsx:172](../../src/components/settings/GeneralTab.tsx#L172)); вони **не** в одному табі. `resume_file_from` належить до кластера resume/advance → AudioTab.
+- ✅ **«За довжиною» (поріг хвилин) — ні (фінально).** Поріг лише ховає рішення (магічне число, яке саме треба налаштовувати) і ламає передбачуваність для NVDA (незрячий не бачить тривалості → старт «із середини» дезорієнтує); до того ж потребує знати повну тривалість файлу до seek. Бінарний enum `position|start` лишається; back-compat-двері для 3-го варіанту відчинені — найімовірніший кандидат «питати» (`Never/Ask/Always`, як VLC), а не «за довжиною».
 
 ## Документи
 
