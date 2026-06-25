@@ -27,7 +27,7 @@
 | A2 | **`state.json` vs стан відтворення.** Crash recovery кладе живий снапшот записів у `data/state.json`; resume-позиція — раніше планувалась в окремий файл. | ✅ **знято** (через A1) | [crash-recovery](p1-crash-recovery.md), [resume-last-playback](p2-resume-last-playback.md) | A1 скасував `last_playback.json` → стан відтворення живе в `PlayerSession` (профіль), crash — у `state.json`. Два чітко різні сховища; звіряти нема чого. |
 | A3 | **Autostart не авто-грає.** Autostart стартує з `--minimize`. Узгодити з resume-моделлю A1. | ✅ **вирішено** (через A1) | [autostart](p2-autostart.md), [playback-toggle](p1-playback-toggle-stop-pause.md), [resume-last-playback](p2-resume-last-playback.md) | Autostart сам **не** грає; відтворення вирішує `startup_playback_mode` **активного профілю**. Авто-гра ⇔ активний профіль = `always_play` (явний opt-in). |
 | A4 | **mpv закриває he-aac + hls?** Якщо PoC mpv проходить — `he-aac-mf` і `hls` стають непотрібні (mpv декодує обидва). Не вести MF-шлях і mpv паралельно. | 🟨 дослідження | [mpv](p3-mpv-playback-engine.md), [he-aac-mf](p3-he-aac-mf-playback.md), [hls](p3-hls-stream-support.md) | Спершу PoC-gate mpv; за `go` — видалити обидва записи |
-| A5 | **CLI `--minimize` уже є?** Autostart залежить від нього (колишня Phase 3G). Запис `p1-cli-arguments.md` зник із беклогу → ймовірно зроблено. | 🟦 перевірка | [autostart](p2-autostart.md) | Звірити в коді перед стартом autostart |
+| A5 | **CLI `--minimize` уже є?** Autostart залежить від нього (колишня Phase 3G). Запис `p1-cli-arguments.md` зник із беклогу → ймовірно зроблено. | ✅ **перевірено** (2026-06-25) | [autostart](p2-autostart.md) | **Так, реалізовано.** Прапорець у `cli.rs:42` (`#[arg(long)] minimize`, startup-only; forwarded-`--minimize` ігнорується, є тести). У setup: `show()+set_focus()` → `hide()` (старт у трей, NVDA встигає приєднатися) — `lib.rs:145`. Понад те, **увесь** autostart (бекенд + frontend) уже на місці: `autostart.rs` (build/reconcile/apply + тести), IPC `sync_autostart` (`lib.rs:258`), 2 toggle у `GeneralTab.tsx`, `useAutostartFeedback`, i18n — запис `p2-autostart.md` переведено у `done`. |
 
 ---
 
@@ -95,9 +95,9 @@
 - 🟥 **Скоуп полів у 1-й ітерації:** лише URL, чи одразу URL+auth+ignorelist? _Менший крок — лише URL._
 - 🟥 **Збереження позиції/статусу потоку** при зміні URL (id незмінний → так, але re-resolve може змінити метадані)?
 
-### [autostart](p2-autostart.md) (draft, більшість рішень прийнята)
-- 🟥 **Анонс «Tapir запущений автоматично»** при autostart-старті? _Рішення в записі: ні (не анонсувати при кожному вході), але лишилось як відкрите._
-- 🟦 Залежність A5 (CLI `--minimize`).
+### [autostart](p2-autostart.md) (✅ done — реалізовано, перевірено 2026-06-25)
+- ✅ **Анонс «Tapir запущений автоматично» при autostart-старті — «ні» (фінальне).** Підтверджено в коді: `useAutostartFeedback` озвучує лише деактивацію через переміщення EXE, звичайний autostart-старт не анонсується.
+- ✅ **A5 закрито (2026-06-25):** CLI `--minimize` є й працює (`cli.rs:42`, `lib.rs:145`). Бекенд і frontend autostart реалізовані повністю (`autostart.rs`, `sync_autostart`, toggle у `GeneralTab.tsx`, `useAutostartFeedback`) → запис переведено у `done`.
 - ✅ **A3 (через A1):** autostart сам не грає; авто-гра ⇔ активний профіль має `startup_playback_mode = always_play` (per-profile opt-in).
 
 ### [command-palette-phase-3](p2-command-palette-phase-3.md) (draft)
@@ -168,7 +168,7 @@
 
 ## Зведення для дій
 
-- **Закрити першими (блокують код):** ~~A1~~ ✅, ~~A2~~ ✅, ~~A3~~ ✅ (усі вирішені 2026-06-25 — resume = надбудова над `PlayerSession`, per-profile режим). Лишились **A4** (mpv-gate) і **A5** (CLI `--minimize` — перевірка).
-- **Чисті перевірки коду** (не «рішення», звірити grep'ом): B-crash (розміщення задачі), B-playback (seek-формати, doc-фікс), C-resume-file (tab), C-log (portable-шлях), C-open-song (opener у Cargo), C-phase3 (теги пісень), D-hls (зрілість крейтів), A5 (CLI --minimize).
+- **Закрити першими (блокують код):** ~~A1~~ ✅, ~~A2~~ ✅, ~~A3~~ ✅, ~~A5~~ ✅ (вирішені/перевірені 2026-06-25 — resume = надбудова над `PlayerSession`, per-profile режим; CLI `--minimize` є в коді, autostart фактично реалізований). Лишився **A4** (mpv-gate).
+- **Чисті перевірки коду** (не «рішення», звірити grep'ом): B-crash (розміщення задачі), B-playback (seek-формати, doc-фікс), C-resume-file (tab), C-log (portable-шлях), C-open-song (opener у Cargo), C-phase3 (теги пісень), D-hls (зрілість крейтів). _(A5 — ✅ перевірено, див. вище.)_
 - **Дослідницькі gate'и** (відповідь — під час spike): A4, D-mpv (перший ICY-тайтл — go/no-go), D-he-aac (першопричина), D-hls (% станцій).
 - **Записи без відкритих питань:** activity-bar-help-button, wishlist-example-patterns, post-processing, volume-nan-validation, unwrap-in-tests.

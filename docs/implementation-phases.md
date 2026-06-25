@@ -528,11 +528,13 @@
 - `forced-colors:` CSS для всіх custom компонентів (StatusIcon, Badge, Toast, Slider thumb, Progress track)
 - [x] Усі кастомні елементи коректно відображаються у Windows High Contrast mode
 
-#### 3I-2. Autostart
+#### 3I-2. Autostart (✅ Complete)
 
-- `tauri-plugin-autostart` + перевірка шляху EXE при запуску
-- [ ] Setting "Запускати з Windows" працює
-- [ ] Якщо EXE переміщено, autostart деактивується
+- Прямий запис у `HKCU\…\Run` через `winreg` (`autostart.rs`) + перевірка шляху EXE при запуску (`reconcile_on_startup`). _Не `tauri-plugin-autostart` — ручний winreg для контролю над командою portable-EXE._
+- CLI `--minimize` (`cli.rs`) → старт у трей; IPC `sync_autostart`; UI — два toggle у `GeneralTab.tsx`.
+- [x] Setting "Запускати з Windows" працює
+- [x] Окреме setting "Запускати мінімізованим" (`autostart_minimized`)
+- [x] Якщо EXE переміщено, autostart деактивується (тихо + polite NVDA)
 
 #### 3I-3. Log Rotation
 

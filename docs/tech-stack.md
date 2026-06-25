@@ -154,7 +154,7 @@ Compiler-based i18n. Мінімальний runtime, tree-shakable, typesafe. У
 | Shell / Process | `tauri-plugin-shell` | ✅ |
 | File Dialog | `tauri-plugin-dialog` | ✅ |
 | Logging | `tauri-plugin-log` | ✅ |
-| Autostart | `tauri-plugin-autostart` | ⚠️ абсолютний шлях у реєстрі |
+| Autostart | `winreg` (HKCU\…\Run, **не** плагін) | ✅ |
 | Notifications | Tray balloon tip (Win32) | ✅ |
 
 `tauri-plugin-notification` показує "PowerShell" у portable mode → використовувати balloon tip через system tray або `windows-rs`.
@@ -243,7 +243,9 @@ tauri-plugin-http = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-notification = "2"
-tauri-plugin-autostart = "2"
+
+# Windows registry — HKCU\…\Run для autostart + AUMID для toast (не tauri-plugin-autostart)
+winreg = "0.55"
 
 # HTTP Streaming
 reqwest = { version = "0.13", features = ["stream"] }

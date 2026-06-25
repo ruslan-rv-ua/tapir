@@ -29,7 +29,7 @@
 | 12 | [open-song-with-default-app](p2-open-song-with-default-app.md) | P2 | ідея | draft | S | Phase 3C | — |
 | 13 | [import-duplicate-metadata-update](p2-import-duplicate-metadata-update.md) | P2 | ідея | draft | S | Phase 3J | — |
 | 14 | [full-edit-stream](p2-full-edit-stream.md) | P2 | покращення | ідея | M | F2 edit-режим ✅ | — |
-| 15 | [autostart](p2-autostart.md) | P2 | ідея | draft | S | CLI `--minimize` (3G), узгодити з #1/#10 | — |
+| 15 | [autostart](p2-autostart.md) | P2 | ідея | ✅ done | S | CLI `--minimize` (3G) ✅, узгодити з #1/#10 | — |
 | 16 | [command-palette-phase-3](p2-command-palette-phase-3.md) | P2 | ідея | draft | M | Phase 3C | **розблоковує #21** |
 | 17 | [post-processing](p2-post-processing.md) | P2 | ідея | draft | M | Phase 1 | — |
 | 18 | [profile-switch-orphaned-tasks](p2-bug-profile-switch-orphaned-tasks.md) | P2 | ідея | draft | M | Phase 3F | **умовний** (тригер нижче) |
@@ -111,10 +111,11 @@ bugfix межі IPC (`is_finite()` перед `clamp`), з готовими те
 
 ### Хвиля 5 — більші P2-фічі (після стабілізації відтворення)
 
-**15. [autostart](p2-autostart.md)** (P2, S, draft) — ⚠️ перевірити, що CLI `--minimize`
-(колишня Phase 3G) **уже реалізовано** (запис `p1-cli-arguments.md` зник із беклогу →
-ймовірно зроблено). Координація з #1/#10 (A3): autostart сам **не** грає — авто-гра лише
-якщо активний профіль має `startup_playback_mode = always_play`.
+**15. [autostart](p2-autostart.md)** (P2, S, ✅ done) — реалізовано (бекенд + frontend +
+тести; перевірено 2026-06-25, A5). CLI `--minimize` (колишня Phase 3G) звірено в коді
+(`cli.rs:42`). Механізм — прямий winreg-запис (`autostart.rs`), не плагін. Координація з
+#1/#10 (A3) дотримана: autostart сам **не** грає — авто-гра лише якщо активний профіль має
+`startup_playback_mode = always_play`.
 **16. [command-palette-phase-3](p2-command-palette-phase-3.md)** (P2, M, draft) — розширення
 вмісту палітри (станції/пісні/навігація); **розблоковує #21**.
 **17. [post-processing](p2-post-processing.md)** (P2, M, draft) — об'ємна фіча, нижча

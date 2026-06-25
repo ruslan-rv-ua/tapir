@@ -389,12 +389,12 @@ main.rs
   │     .plugin(shell)
   │     .plugin(dialog)                  // folder/file picker
   │     .plugin(notification)
-  │     .plugin(autostart)
   │     .plugin(log)                    // logging — до setup
   │     .setup(|app| {
   │          // Initialize AppState
   │          // Start Scheduler timer
-  │          // Parse CLI args
+  │          // Parse CLI args (--minimize → hide to tray)
+  │          // Reconcile autostart Run entry (winreg, не plugin; deactivate if EXE moved)
   │          // Restore previous recording sessions (if configured)
   │          // Register global shortcuts
   │          // Setup system tray

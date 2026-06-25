@@ -2,10 +2,23 @@
 
 - **Слаг:** `autostart`
 - **Тип:** ідея
-- **Стан:** draft
+- **Стан:** done (реалізовано; перевірено в коді 2026-06-25)
 - **Зусилля:** S
-- **Оновлено:** 2026-06-15
+- **Оновлено:** 2026-06-25
 - **Залежності:** Phase 2C ✅ (SettingsDialog — додати нову опцію туди); Phase 3A ✅ (System Tray — запуск мінімізованим); Phase 3D ✅ (Scheduler — ключовий use case автостарту)
+
+## Стан реалізації (2026-06-25)
+
+✅ **Реалізовано повністю** (бекенд + frontend + тести). Усі критерії готовності виконані.
+
+- **CLI `--minimize`** (залежність A5, колишня Phase 3G): прапорець `cli.rs:42` (`#[arg(long)] minimize`, startup-only; forwarded ігнорується). У setup `lib.rs:145`: `show()`+`set_focus()` → `hide()` (старт у трей, NVDA встигає приєднатися).
+- **Механізм реєстру:** прямий запис у `HKCU\…\Run` через `winreg` (`autostart.rs`: `build_run_command`/`apply`/`reconcile`/`reconcile_on_startup`), **не** `tauri-plugin-autostart` — плагін у проєкт не додавали; ручний запис дає повний контроль над командою для portable-EXE.
+- **IPC:** `sync_autostart(enabled, minimized)` (`commands/settings_commands.rs`), зареєстровано в `invoke_handler` (`lib.rs:258`).
+- **Поля `Settings`:** `autostart: bool` (default `false`) і `autostart_minimized: bool` (default `true`) — `settings.rs:35`.
+- **UI:** два `<Switch>` у `GeneralTab.tsx` (autostart + «Запускати мінімізованим»; другий disabled, поки перший вимкнено; optimistic + revert + NVDA-анонс).
+- **Старт-звірка:** `reconcile_on_startup` (`lib.rs:158`); при переміщенні EXE — тиха деактивація, скидання `autostart=false`, polite-оголошення через `StartupNotice` → emit `autostart-deactivated` у `frontend_ready` → `useAutostartFeedback.ts`.
+
+> Нижче — первісний опис ідеї (для історії). Назви полів виправлено на фактичні (`autostart`, не `autostart_enabled`) і механізм — на winreg.
 
 ## Опис
 
@@ -17,11 +30,11 @@ Tapir має вміти запускатися автоматично разом
 
 ### Технічне рішення
 
-**Механізм:** `tauri-plugin-autostart` (офіційний плагін Tauri), який записує шлях до EXE у `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`. Реєстр `HKCU` (а не `HKLM`) — не вимагає прав адміністратора, що узгоджується з портативною моделлю Tapir.
+**Механізм:** прямий запис у `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` через `winreg` (модуль `autostart.rs`). _(Первісно планувався `tauri-plugin-autostart`, але обрали ручний winreg — повний контроль над командою для portable-EXE; деталі у [специфікації](../superpowers/specs/2026-06-21-autostart-design.md).)_ Реєстр `HKCU` (а не `HKLM`) — не вимагає прав адміністратора, що узгоджується з портативною моделлю Tapir.
 
-**Команда запуску в реєстрі:** `tapir.exe --minimize` — щоб при autostart застосунок одразу згортався у System Tray без показу вікна. Аргумент `--minimize` вже є в Phase 3G (CLI Arguments).
+**Команда запуску в реєстрі:** `"tapir.exe" --minimize` — щоб при autostart застосунок одразу згортався у System Tray без показу вікна. Аргумент `--minimize` реалізований (Phase 3G, `cli.rs:42`) — звірено в коді 2026-06-25 (A5).
 
-**Налаштування:** новий toggle «Запускати разом із Windows» у SettingsDialog (Phase 2C). Поле у `Settings` — `autostart_enabled: bool`. При зміні toggle — негайний виклик `tauri_plugin_autostart::enable()` або `disable()`.
+**Налаштування:** toggle «Запускати разом із Windows» у SettingsDialog (GeneralTab). Поля у `Settings` — `autostart: bool` та `autostart_minimized: bool`. При зміні toggle — IPC `sync_autostart(enabled, minimized)` → `autostart::apply` (запис/видалення значення в `Run`).
 
 ### Проблема Portable EXE
 
@@ -30,9 +43,9 @@ Tapir — portable застосунок, EXE можна перемістити �
 - При наступному запуску з нового розташування Tapir **повинен** виявити цю розбіжність.
 
 **Алгоритм перевірки при старті:**
-1. Прочитати поточний `settings.autostart_enabled`.
-2. Якщо `true` — через `tauri_plugin_autostart` отримати зареєстрований шлях і порівняти з `std::env::current_exe()`.
-3. Якщо шляхи розходяться — **тихо деактивувати** autostart (`disable()`) і оновити `settings.autostart_enabled = false`.
+1. Прочитати поточний `settings.autostart`.
+2. Якщо `true` — прочитати зареєстроване значення `Run` (`winreg`) і порівняти з `std::env::current_exe()`.
+3. Якщо шляхи розходяться — **тихо деактивувати** autostart (видалити значення `Run`) і оновити `settings.autostart = false`.
 4. Оголосити через NVDA (polite): «Autostart деактивовано: виявлено переміщення застосунку».
 
 Деактивація тиха (не питати користувача) — це детерміновано коректна поведінка, не дія з побічними ефектами.
@@ -54,14 +67,16 @@ Scheduler сам по собі не забезпечує запуск Tapir — 
 
 ## Критерії готовності
 
-- [ ] Toggle «Запускати разом із Windows» присутній у SettingsDialog і доступний з клавіатури/NVDA
-- [ ] Увімкнення toggle реєструє EXE у `HKCU\...\Run` з параметром `--minimize`
-- [ ] Вимкнення toggle видаляє запис з реєстру
-- [ ] При старті перевіряється відповідність зареєстрованого шляху та `current_exe()`
-- [ ] Якщо EXE переміщено — autostart тихо деактивується, `autostart_enabled` скидається в `false`
-- [ ] При деактивації через переміщення — polite NVDA-оголошення
-- [ ] Toggle у SettingsDialog відображає актуальний стан після перевірки при старті
-- [ ] При autostart застосунок стартує з `--minimize` і з'являється лише у System Tray
+_Усі виконані (звірено в коді 2026-06-25; файли — у «Стан реалізації» вище)._
+
+- [x] Toggle «Запускати разом із Windows» присутній у SettingsDialog і доступний з клавіатури/NVDA
+- [x] Увімкнення toggle реєструє EXE у `HKCU\...\Run` з параметром `--minimize`
+- [x] Вимкнення toggle видаляє запис з реєстру
+- [x] При старті перевіряється відповідність зареєстрованого шляху та `current_exe()`
+- [x] Якщо EXE переміщено — autostart тихо деактивується, `autostart` скидається в `false`
+- [x] При деактивації через переміщення — polite NVDA-оголошення
+- [x] Toggle у SettingsDialog відображає актуальний стан після перевірки при старті
+- [x] При autostart застосунок стартує з `--minimize` і з'являється лише у System Tray
 
 ## Прийняті рішення
 
@@ -69,19 +84,22 @@ Scheduler сам по собі не забезпечує запуск Tapir — 
 |---------|--------|
 | Мінімізація при autostart? | **Окреме налаштування «Запускати мінімізованим»** поруч з toggle autostart у SettingsDialog. |
 | Деактивація при переміщенні EXE? | **Тихо + NVDA-оголошення.** Немає несподіваних діалогів при запуску. |
-| Анонс при autostart-старті? | **Ні.** Не анонсувати при кожному вході в Windows. |
-| Phase 3G залежність? | **Autostart з `--minimize` реалізується після 3G.** До 3G аутостарт запускає з вікном. |
+| Анонс при autostart-старті? | **Ні** (фінальне). Не анонсувати при кожному вході в Windows. _Підтверджено в коді: `useAutostartFeedback` озвучує лише деактивацію через переміщення EXE, звичайний autostart-старт не анонсується._ |
+| Phase 3G залежність? | **Закрито (A5, 2026-06-25):** `--minimize` є в коді (`cli.rs:42`); autostart реалізований з ним. |
 
 ## Документи
 
 - [implementation-phases.md §3I](../implementation-phases.md) — підфаза 3I-2 (Autostart)
 - [implementation-phases.md §3A](../implementation-phases.md) — System Tray (залежність)
 - [implementation-phases.md §3D](../implementation-phases.md) — Scheduler (ключовий use case)
-- [p1-cli-arguments.md](p1-cli-arguments.md) — аргумент `--minimize` (потрібен для autostart)
-- Код: `src-tauri/src/settings.rs` — структура `Settings` (додати поле `autostart_enabled`)
-- Код: `src-tauri/src/lib.rs` — перевірка шляху EXE при старті
-- Код: `src/components/settings/` — SettingsDialog (додати toggle)
-- Код: `src/i18n/messages/uk.json`, `en.json` — i18n-ключі для нових рядків
+- `src-tauri/src/cli.rs` — аргумент `--minimize` (Phase 3G; запис `p1-cli-arguments.md` закрито/видалено)
+- Код: `src-tauri/src/autostart.rs` — winreg-логіка (`build_run_command`/`apply`/`reconcile`/`reconcile_on_startup`)
+- Код: `src-tauri/src/settings.rs` — поля `autostart` / `autostart_minimized`
+- Код: `src-tauri/src/lib.rs` — `--minimize` у setup, старт-звірка, реєстрація `sync_autostart`
+- Код: `src-tauri/src/commands/settings_commands.rs` — IPC `sync_autostart`
+- Код: `src/components/settings/GeneralTab.tsx` — toggles autostart / «Запускати мінімізованим»
+- Код: `src/hooks/useAutostartFeedback.ts` — озвучення деактивації при переміщенні EXE
+- Код: `src/i18n/messages/uk.json`, `en.json` — i18n-ключі (`autostart_*`, `settings_autostart*`)
 
 ## Промпт для агента
 
