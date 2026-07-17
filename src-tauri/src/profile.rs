@@ -227,6 +227,17 @@ impl Default for PostprocessConfig {
 }
 
 // --- PlayerSession ---
+/// Which source was last active — the single discriminator cold-start uses to
+/// decide what `Ctrl+Shift+K` resumes. Set on every play-start; the resolve step
+/// tolerates a dangling value (discriminator set but its data field `None`) by
+/// treating it as "nothing saved". Two slots only, so no timestamp/ordering.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LastActive {
+    Stream,
+    File,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FilePosition {
@@ -243,6 +254,8 @@ pub struct PlayerSession {
     pub last_stream_id: Option<String>,
     #[serde(default)]
     pub last_file_position: Option<FilePosition>,
+    #[serde(default)]
+    pub last_active: Option<LastActive>,
 }
 
 fn default_volume() -> f32 { 0.75 }
@@ -254,6 +267,7 @@ impl Default for PlayerSession {
             volume: 0.75,
             last_stream_id: None,
             last_file_position: None,
+            last_active: None,
         }
     }
 }
@@ -908,5 +922,34 @@ mod tests {
         assert_eq!(back.reason, Some(ScheduleResultReason::ProfileSwitch));
         assert_eq!(back.recorded_minutes, 45);
         assert_eq!(back.occurrence, "2026-06-12T20:00");
+    }
+
+    #[test]
+    fn last_active_serializes_lowercase() {
+        assert_eq!(serde_json::to_string(&LastActive::Stream).unwrap(), "\"stream\"");
+        assert_eq!(serde_json::to_string(&LastActive::File).unwrap(), "\"file\"");
+    }
+
+    #[test]
+    fn player_session_defaults_last_active_none() {
+        let s = PlayerSession::default();
+        assert!(s.last_active.is_none());
+    }
+
+    #[test]
+    fn player_session_without_last_active_still_loads() {
+        // A profile written before this field existed must still deserialize.
+        let json = r#"{"volume":0.5,"lastStreamId":"abc"}"#;
+        let s: PlayerSession = serde_json::from_str(json).unwrap();
+        assert!(s.last_active.is_none());
+        assert_eq!(s.last_stream_id.as_deref(), Some("abc"));
+    }
+
+    #[test]
+    fn player_session_round_trips_last_active() {
+        let mut s = PlayerSession::default();
+        s.last_active = Some(LastActive::File);
+        let back: PlayerSession = serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
+        assert_eq!(back.last_active, Some(LastActive::File));
     }
 }
