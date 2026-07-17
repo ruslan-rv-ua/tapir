@@ -33,19 +33,18 @@ pub fn on_menu_event(app: &AppHandle, event: MenuEvent) {
 fn spawn_toggle_playback(app: &AppHandle) {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
-        let state = app.state::<crate::app_state::AppState>();
-        let status = state.player.get_status().await;
-        let _ = match status.state {
-            crate::player::engine::PlaybackState::Playing => state.player.pause_playback(&app).await,
-            crate::player::engine::PlaybackState::Paused  => state.player.resume_playback(&app).await,
-            _ => Ok(()),
-        };
+        // Same entry point as Ctrl+Shift+K: stream=stop, file=pause/resume,
+        // cold=resume-last, shared debounce.
+        crate::playback_control::toggle_playback(&app).await;
     });
 }
 
 fn spawn_stop_playback(app: &AppHandle) {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
+        // Explicit "Зупинити": capture the file position first so a later K
+        // resumes where it left off, then stop.
+        crate::playback_control::persist_session_snapshot(&app).await;
         let state = app.state::<crate::app_state::AppState>();
         let _ = state.player.stop_playback(&app).await;
     });

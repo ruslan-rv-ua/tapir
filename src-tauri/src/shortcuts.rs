@@ -1,5 +1,4 @@
 use crate::app_state::AppState;
-use crate::player::engine::PlaybackState;
 use crate::settings::HotkeyMap;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
@@ -123,7 +122,6 @@ fn handle_shortcut_action(app: &AppHandle, action: &str) {
     let app = app.clone();
     let action = action.to_string();
     tauri::async_runtime::spawn(async move {
-        let state = app.state::<AppState>();
         match action.as_str() {
             "toggle_recording" => {
                 if recently_fired(&LAST_TOGGLE_RECORDING_MS) {
@@ -144,16 +142,9 @@ fn handle_shortcut_action(app: &AppHandle, action: &str) {
                 }
             }
             "toggle_playback" => {
-                if recently_fired(&LAST_TOGGLE_PLAYBACK_MS) {
-                    debug!("Global shortcut: toggle_playback ignored (debounce)");
-                } else {
-                    let status = state.player.get_status().await;
-                    match status.state {
-                        PlaybackState::Playing => { let _ = state.player.pause_playback(&app).await; }
-                        PlaybackState::Paused => { let _ = state.player.resume_playback(&app).await; }
-                        _ => { info!("Global shortcut: toggle_playback — nothing playing"); }
-                    }
-                }
+                // Debounce + full source-aware dispatch live in playback_control;
+                // shared verbatim with the tray Play/Pause item.
+                crate::playback_control::toggle_playback(&app).await;
             }
             "toggle_window" => {
                 if let Some(window) = app.get_webview_window("main") {
