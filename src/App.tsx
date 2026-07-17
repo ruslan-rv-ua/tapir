@@ -31,12 +31,13 @@ import { $activeSection } from "./stores/navigation";
 import { SECTIONS } from "./lib/sections";
 import { addToast } from "./stores/toasts";
 import * as tauri from "./lib/tauri";
-import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, RecordingStartedPayload, RecordingCompletedPayload, StreamInfo, PlayerStatus, PlayerProgressPayload, WishlistMatchPayload, TrackIgnoredPayload, PlayerEndedPayload } from "./lib/tauri";
+import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, RecordingStartedPayload, RecordingCompletedPayload, StreamInfo, PlayerStatus, PlayerProgressPayload, WishlistMatchPayload, TrackIgnoredPayload, PlayerEndedPayload, PlaybackAnnounce } from "./lib/tauri";
 import { $filteredSongs } from "./stores/songs";
 import { computePlaybackNeighbors } from "./stores/playbackNeighbors";
 import { resolveEndedAction } from "./lib/playbackTransport";
 import { executeTransportSkip, parseSkipTrigger } from "./lib/transportControl";
 import { applyMuteCleanup } from "./lib/muteCleanup";
+import { selectPlaybackAnnouncement } from "./lib/playbackAnnounce";
 import { windowTitleLabel } from "./lib/windowTitle";
 import { useGlobalShortcuts } from "./hooks/useGlobalShortcuts";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -207,6 +208,36 @@ function AppContent() {
     const prev = $playerStatus.get();
     $playerStatus.set(payload);
 
+    const nameOf = (source: NonNullable<PlayerStatus["source"]>): string => {
+      if (source.type === "stream") {
+        return $streams.get().find((s) => s.id === source.streamId)?.name ?? source.streamId;
+      }
+      if (source.type === "preview") return source.name;
+      return source.path.split(/[\\/]/).pop() ?? source.path;
+    };
+
+    const a = selectPlaybackAnnouncement(prev, payload, nameOf);
+    if (a) {
+      switch (a.kind) {
+        case "started":
+          announceRef.current(m.playback_started({ name: a.name }), "assertive");
+          break;
+        case "paused":
+          announceRef.current(m.playback_paused_named({ name: a.name }), "assertive");
+          break;
+        case "resumed":
+          announceRef.current(m.playback_resumed_named({ name: a.name }), "assertive");
+          break;
+        case "stopped":
+          announceRef.current(
+            a.name ? m.playback_stopped_named({ name: a.name }) : m.playback_stopped(),
+            "assertive",
+          );
+          break;
+      }
+    }
+
+    // ── Mute state cleanup ───────────────────────────────────────────────────
     const stateChangedToPlaying = prev.state === "stopped" && payload.state === "playing";
     const sourceChangedWhilePlaying =
       payload.state === "playing" &&
@@ -217,26 +248,6 @@ function AppContent() {
         (payload.source?.type === "file" &&
           prev.source?.type === "file" &&
           prev.source.path !== payload.source.path));
-
-    // ── Announce state transitions only ──────────────────────────────────────
-    // Announce playback_started only on stopped→playing or source switch.
-    // Volume-only events (set_volume IPC) and paused→playing are excluded.
-    if (stateChangedToPlaying || sourceChangedWhilePlaying) {
-      const src = payload.source;
-      if (src?.type === "stream") {
-        const name = $streams.get().find(s => s.id === src.streamId)?.name ?? src.streamId;
-        announceRef.current(m.playback_started({ name }), "assertive");
-      } else if (src?.type === "file") {
-        const name = src.path.split(/[\\/]/).pop() ?? src.path;
-        announceRef.current(m.playback_started({ name }), "assertive");
-      }
-    }
-    // Note: paused→playing is announced by handlePlayPause, not here.
-    if (prev.state !== "stopped" && payload.state === "stopped") {
-      announceRef.current(m.playback_stopped(), "assertive");
-    }
-
-    // ── Mute state cleanup ───────────────────────────────────────────────────
     applyMuteCleanup(payload, { stateChangedToPlaying, sourceChangedWhilePlaying });
   }, []);
 
@@ -289,6 +300,20 @@ function AppContent() {
     tauri.getWishlist().then((wl) => $wishlist.set(wl)).catch(console.error);
   }, []);
 
+  const handlePlayerAnnounce = useCallback((payload: PlaybackAnnounce) => {
+    switch (payload.kind) {
+      case "connecting":
+        announceRef.current(m.playback_connecting({ name: payload.name ?? "" }), "assertive");
+        break;
+      case "unavailable":
+        announceRef.current(m.playback_unavailable(), "assertive");
+        break;
+      case "error":
+        announceRef.current(m.playback_error(), "assertive");
+        break;
+    }
+  }, []);
+
   useTauriEvent<RecordingStatusPayload>("recording-status", handleRecordingStatus);
   useTauriEvent<TrackChangedPayload>("track-changed", handleTrackChanged);
   useTauriEvent<StreamErrorPayload>("stream-error", handleStreamError);
@@ -299,6 +324,7 @@ function AppContent() {
   useTauriEvent<PlayerStatus>("player-status", handlePlayerStatus);
   useTauriEvent<PlayerProgressPayload>("player-progress", handlePlayerProgress);
   useTauriEvent<PlayerEndedPayload>("player-ended", handlePlayerEnded);
+  useTauriEvent<PlaybackAnnounce>("player-announce", handlePlayerAnnounce);
   useTauriEvent<WishlistMatchPayload>("wishlist-match", handleWishlistMatch);
   useTauriEvent<TrackIgnoredPayload>("track-ignored", handleTrackIgnored);
   useTauriEvent("streams-changed", handleStreamsChanged);

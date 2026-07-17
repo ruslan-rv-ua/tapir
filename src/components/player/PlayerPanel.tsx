@@ -211,11 +211,11 @@ export const PlayerPanel = forwardRef<
     try {
       if (isPlaying) {
         await tauri.pausePlayback();
-        announce(m.playback_paused(), "assertive");
       } else if (isPaused) {
         await tauri.resumePlayback();
-        announce(m.playback_resumed(), "assertive");
       }
+      // Announce is driven by handlePlayerStatus (App.tsx) off the player-status
+      // event, so a hotkey press and this button behave identically.
     } catch (e) {
       console.error(e);
       announce(m.playback_error(), "assertive");

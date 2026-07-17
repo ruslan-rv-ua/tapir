@@ -202,6 +202,11 @@ export interface PlayerEndedPayload {
   path: string;
 }
 
+export interface PlaybackAnnounce {
+  kind: "connecting" | "unavailable" | "error";
+  name: string | null;
+}
+
 export interface AudioDevice {
   name: string;
   isDefault: boolean;
