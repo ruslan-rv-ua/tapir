@@ -135,7 +135,7 @@ pub struct HotkeyMap {
 }
 
 fn default_hk_toggle_recording() -> String { "Ctrl+Shift+R".to_string() }
-fn default_hk_toggle_playback() -> String { "Ctrl+Shift+P".to_string() }
+fn default_hk_toggle_playback() -> String { "Ctrl+Shift+K".to_string() }
 // Arrows live on Ctrl+Alt (like prev/next_track), never Ctrl+Shift: an
 // OS-global grab of Ctrl+Shift+Up/Down would steal paragraph selection in
 // every editor system-wide (docs/keyboard-shortcuts.md, Tier 1 notes).
@@ -433,5 +433,20 @@ mod tests {
         let json = serde_json::to_string(&s).unwrap();
         let back: GlobalSettings = serde_json::from_str(&json).unwrap();
         assert!(!back.autostart_minimized);
+    }
+
+    #[test]
+    fn default_toggle_playback_is_ctrl_shift_k() {
+        assert_eq!(HotkeyMap::default().toggle_playback, "Ctrl+Shift+K");
+    }
+
+    #[test]
+    fn stored_toggle_playback_combo_is_not_migrated() {
+        // The old default (Ctrl+Shift+P) collided with Firefox private-window /
+        // VS Code command palette. The new default is for fresh installs only;
+        // a stored combo — old default or customization — must survive verbatim.
+        let json = r#"{ "hotkeys": { "togglePlayback": "Ctrl+Shift+P" } }"#;
+        let settings: GlobalSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(settings.hotkeys.toggle_playback, "Ctrl+Shift+P");
     }
 }
