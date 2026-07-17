@@ -1175,7 +1175,6 @@ Within Activity Bar:
 Global:
   Ctrl+K — Command Palette (fuzzy search actions, stations, songs)
   Ctrl+, — Налаштування (повноекранний діалог)
-  Ctrl+Shift+P — Switch Profile
 
 Within Streams Section:
   [Stream Table] → [Add Stream Button] → [Start All Button]
@@ -1190,7 +1189,7 @@ Within Stream Table:
 
 Global hotkeys (configurable):
   Ctrl+Shift+R — Start/stop recording (active profile)
-  Ctrl+Shift+P — Play/pause
+  Ctrl+Shift+K — Toggle playback (source-aware: stream → stop; file → pause/resume at position; cold start → resume last source)
   Ctrl+Alt+Up — Volume up
   Ctrl+Alt+Down — Volume down
   Ctrl+Shift+H — Show/hide window

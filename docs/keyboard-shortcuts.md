@@ -40,7 +40,7 @@ OS-хоткей на `Ctrl+K`/`Alt+digit`/`F6`/… — гард і реєстр 
 | Комбо (дефолт) | Дія | Scope | Стан |
 |---|---|---|---|
 | `Ctrl+Shift+R` | toggle_recording (запис/зупинка всього активного профілю + toast) | OS | ✅ |
-| `Ctrl+Shift+P` | toggle_playback | OS | ✅ |
+| `Ctrl+Shift+K` | toggle_playback (джерело-залежний: стрім → **зупинити**; файл → **пауза/відновлення** з позиції; холодний старт → **відновити** останнє джерело). Розділяє debounce з tray Play/Pause і SMTC. | OS | ✅ |
 | `Ctrl+Alt+Up` | volume_up (+5%) | OS | ✅ |
 | `Ctrl+Alt+Down` | volume_down (−5%) | OS | ✅ |
 | `Ctrl+Shift+H` | toggle_window (показати/сховати) | OS | ✅ |
@@ -54,7 +54,7 @@ OS-хоткей на `Ctrl+K`/`Alt+digit`/`F6`/… — гард і реєстр 
 > Rust→webview для таких дій уже існує (подія `transport-skip` для
 > prev/next_track — [shortcuts.rs](../src-tauri/src/shortcuts.rs) →
 > [transportControl.ts](../src/lib/transportControl.ts)); mute лишається
-> окремою задачею. Глобальний stop-playback не додаємо (`Ctrl+Shift+P`
+> окремою задачею. Глобальний stop-playback не додаємо (`Ctrl+Shift+K`
 > достатньо). Дефолт — `Ctrl+Shift+U`, **не** `Ctrl+Shift+M` (початковий
 > кандидат, відхилено 2026-06-11): `Ctrl+Shift+M` — глобальний mute мікрофона
 > в MS Teams і Discord; красти його під час дзвінка заради audio-mute плеєра —

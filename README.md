@@ -123,7 +123,7 @@ Tapir is fully keyboard-operable.
 | Action | Default |
 |--------|---------|
 | Toggle recording (active profile) | Ctrl+Shift+R |
-| Toggle playback | Ctrl+Shift+P |
+| Toggle playback | Ctrl+Shift+K |
 | Volume up | Ctrl+Alt+↑ |
 | Volume down | Ctrl+Alt+↓ |
 | Show / hide window | Ctrl+Shift+H |
