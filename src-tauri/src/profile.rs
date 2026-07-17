@@ -947,8 +947,7 @@ mod tests {
 
     #[test]
     fn player_session_round_trips_last_active() {
-        let mut s = PlayerSession::default();
-        s.last_active = Some(LastActive::File);
+        let s = PlayerSession { last_active: Some(LastActive::File), ..Default::default() };
         let back: PlayerSession = serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
         assert_eq!(back.last_active, Some(LastActive::File));
     }
