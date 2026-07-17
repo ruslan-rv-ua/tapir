@@ -34,7 +34,9 @@ pub async fn play_saved_song(
     state: State<'_, AppState>,
     app: AppHandle,
 ) -> Result<(), String> {
-    state.player.play_file(path, &app).await.map_err(|e| e.to_string())
+    state.player.play_file(path, &app).await.map_err(|e| e.to_string())?;
+    crate::playback_control::persist_session_snapshot(&app).await;
+    Ok(())
 }
 
 #[tauri::command]

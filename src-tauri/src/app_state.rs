@@ -73,12 +73,18 @@ pub async fn graceful_shutdown(app: &AppHandle) {
     }
     drop(profile);
 
+    // Capture the resume snapshot BEFORE tearing the player down — stop loses
+    // the source and position. Merge it with the volume into a single save
+    // (impl-decision #3: avoid a third profile write / racing saves).
+    let player_status = state.player.get_status().await;
+
     state.player.stop_session_public().await;
     let volume = state.player.current_volume().await;
     let mut profile = state.active_profile.write().await;
     profile.player_session.volume = volume;
+    crate::playback_control::apply_session_snapshot(&mut profile.player_session, &player_status);
     if let Err(e) = profile.save() {
-        log::error!("Failed to save profile volume on shutdown: {e}");
+        log::error!("Failed to save profile session on shutdown: {e}");
     }
     drop(profile);
 

@@ -15,7 +15,9 @@ pub async fn play_stream(
             .map(|s| s.url.clone())
             .ok_or_else(|| format!("stream not found: {stream_id}"))?
     };
-    state.player.play_stream(stream_id, url, &app).await.map_err(|e| e.to_string())
+    state.player.play_stream(stream_id, url, &app).await.map_err(|e| e.to_string())?;
+    crate::playback_control::persist_session_snapshot(&app).await;
+    Ok(())
 }
 
 #[tauri::command]
@@ -34,7 +36,9 @@ pub async fn play_file(
     state: State<'_, AppState>,
     app: AppHandle,
 ) -> Result<(), String> {
-    state.player.play_file(path, &app).await.map_err(|e| e.to_string())
+    state.player.play_file(path, &app).await.map_err(|e| e.to_string())?;
+    crate::playback_control::persist_session_snapshot(&app).await;
+    Ok(())
 }
 
 #[tauri::command]
@@ -58,6 +62,9 @@ pub async fn stop_playback(
     state: State<'_, AppState>,
     app: AppHandle,
 ) -> Result<(), String> {
+    // Capture the file position before teardown so a later Ctrl+Shift+K resumes
+    // where it left off (no-op for streams/preview).
+    crate::playback_control::persist_session_snapshot(&app).await;
     state.player.stop_playback(&app).await.map_err(|e| e.to_string())
 }
 
