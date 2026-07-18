@@ -286,12 +286,11 @@ pub struct HotkeyMap {
       "isWishlistMatch": false,
       "recordedAt": "2026-01-15T22:15:30"
     }
-  ],
-
-  // URL потоків, що записувалися при останньому виході
-  "activeRecordingUrls": []
+  ]
 }
 ```
+
+> **Phase 3K:** поле `activeRecordingUrls` (URL потоків, що записувалися при останньому виході) **прибрано** — писалось лише в `graceful_shutdown` і ніде на старті не читалось (мертве поле). Живий снапшот активних записів для crash recovery живе окремо, у `data/state.json` (§8 нижче), ключований стабільним `streamId`, а не URL.
 
 ### TypeScript тип
 
@@ -307,7 +306,6 @@ interface Profile {
   postprocess: PostprocessConfig;
   playerSession: PlayerSession;
   savedTracks: SavedTrack[];
-  activeRecordingUrls: string[];  // URL потоків, що записувалися при закритті; заповнюється при graceful shutdown, очищується після відновлення
 }
 ```
 
@@ -327,7 +325,6 @@ pub struct Profile {
     pub postprocess: PostprocessConfig,
     pub player_session: PlayerSession,
     pub saved_tracks: Vec<SavedTrack>,
-    pub active_recording_urls: Vec<String>,
 }
 ```
 
@@ -1096,8 +1093,7 @@ interface PostprocessErrorPayload {
     "lastStreamId": null,
     "lastFilePosition": null
   },
-  "savedTracks": [],
-  "activeRecordingUrls": []
+  "savedTracks": []
 }
 ```
 
@@ -1130,3 +1126,83 @@ pub struct GlobalSettings {
 ```
 
 Backward compatibility: старі файли без нових полів читаються коректно завдяки `#[serde(default)]`. Нові поля отримують значення за замовчуванням.
+
+---
+
+## 8. Сесійний стан crash recovery (`data/state.json`, Phase 3K)
+
+Окремий файл поряд із `settings.json` і `profiles/`, **не** частина профілю. Єдине
+джерело правди для відновлення записів після аварійного завершення (вимкнення
+живлення, `End Task`, паніка, зависання) — до Phase 3K це намагалося робити мертве
+поле `Profile.activeRecordingUrls` (писалось лише при чистому виході, ніде не
+читалось), яке ця фаза прибрала.
+
+```jsonc
+{
+  // false при кожному старті програми (атомарний запис); true — лише в
+  // graceful_shutdown, перед виходом. Відсутній/битий файл трактується так само,
+  // як false (аварія), але з порожнім снапшотом — resume тоді no-op.
+  "cleanShutdown": false,
+
+  // Живий снапшот активних РУЧНИХ записів (планові через scheduler виключені —
+  // їхній catch-up лежить у ScheduleManager). Оновлюється під час роботи, а не
+  // лише на виході.
+  "activeRecordings": [
+    { "streamId": "abc123", "url": "https://ice1.somafm.com/groovesalad-256-mp3" },
+    { "streamId": "def456" }
+  ]
+}
+```
+
+### TypeScript тип
+
+```typescript
+interface SessionState {
+  cleanShutdown: boolean;
+  activeRecordings: ActiveRecording[];
+}
+
+interface ActiveRecording {
+  streamId: string;   // ключ матчингу на resume — StreamInfo.id активного профілю
+  url?: string;        // ДІАГНОСТИЧНЕ поле (логи/читабельність); у матчингу участі не бере
+}
+```
+
+### Rust struct
+
+```rust
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActiveRecording {
+    pub stream_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionState {
+    pub clean_shutdown: bool,
+    #[serde(default)]
+    pub active_recordings: Vec<ActiveRecording>,
+}
+```
+
+(`src-tauri/src/crash_recovery.rs` — джерело правди.)
+
+### Семантика
+
+| Аспект | Поведінка |
+|---|---|
+| `cleanShutdown` | `false` записано при кожному старті (`mark_session_start`, до читання попереднього стану для detection); переписано на `true` в `graceful_shutdown`, **останнім кроком** — після зупинки снапшот-писаря, стріму, плеєра й збереження профілю. Якщо писар не зупинити першим, його наступний тик перезапише `true` назад на `false` (спурйозний resume наступного старту). |
+| Відсутній/битий файл | Трактується як аварія (`cleanShutdown = false`), але з **порожнім** снапшотом → resume — no-op, анонс мовчить (немає різниці між «перший запуск» і «аварія без активних записів»). |
+| Ключ снапшота | `streamId` (= `StreamInfo.id`), **не** URL — стабільний, однозначно розв'язується у `StreamInfo` активного профілю (credentials, ignorelist); стійкий до редагування URL. Незіставлений `streamId` (потік видалили між снапшотом і рестартом) — промах, рахується в підсумку «N з M». |
+| `url` у записі | Лише діагностика (логи, читабельність файлу) — у матчингу на resume участі не бере. |
+| Живість снапшота | Пише **окрема tokio-задача** (`spawn_snapshot_writer`, spawn у setup-хуку `lib.rs` — не в `frontend_ready`, оскільки писар не емітить UI-подій): тригер `tokio::sync::Notify` на кожну зміну складу активних записів (старт/стоп/error) із debounce 500мс + `interval` 30с як safety net. Отже знімок «живих» записів ніколи не старіший за ~30с. |
+| Атомарність запису | `write temp → rename` (той самий підхід, що `Profile::save`) — інший процес ніколи не бачить частково записаний JSON. |
+| Resume на старті | При `cleanShutdown = false` і непорожньому снапшоті: кожен `streamId` розв'язується у `StreamInfo` активного профілю (`streams.iter().find(|st| st.id == stream_id)`), перевіряється вільне місце на диску, і запис стартує тим самим шляхом, що ручний/плановий старт. Незіставлений `streamId` або невдалий старт — промах у підсумку. |
+| Анонс (NVDA) | Підсумок `{resumed, total}` обчислюється в setup-хуку, стешиться (`ResumeNotice`, той самий deferred-патерн, що `StartupPlan`/`StartupNotice`) і емітується подією `crash-resume` лише з `frontend_ready` (webview вже підписаний). Фронтенд (`useCrashResumeFeedback`) локалізує (uk plural forms) і озвучує через `LiveAnnouncer` (polite) + info-toast. Порожній снапшот → події `crash-resume` не буде взагалі → тиша (без хибних тривог на першому запуску чи чистому виході). |
+| Часткові файли | MP3/AAC-файли з моменту збою (незафіналізовані, без ICY-тегу поточного треку) залишаються **без змін** — кадровий потік не потребує обов'язкової фіналізації, більшість плеєрів відтворять записану частину. Подія лише логується, файл не видаляється й не відновлюється. |
+| Заплановані записи | Scheduler-owned потоки **виключені** зі снапшота (`manual_resume_stream_ids` фільтрує за парою `(streamId, sessionId)` з `owned_sessions()`) — їхнє відновлення після збою лежить у `ScheduleManager`, не в crash recovery. |
+
+Докладніше про прийняті рішення й вимоги — [docs/backlog/done/p1-crash-recovery.md](backlog/done/p1-crash-recovery.md).

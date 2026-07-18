@@ -22,7 +22,7 @@ See [docs/implementation-phases.md](docs/implementation-phases.md) for the full 
 | Phase 3H — Post-processing | ⬜ Not started | — |
 | Phase 3I — Polish Bundle | ⬜ Not started | — |
 | Phase 3J — Stream Import/Export | ✅ Complete | merged to `develop` |
-| Phase 3K — Crash Recovery | ⬜ Not started | — |
+| Phase 3K — Crash Recovery | ✅ Complete | `feature/phase-3k-crash-recovery` |
 
 ## Developer Context
 

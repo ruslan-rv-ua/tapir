@@ -2,9 +2,9 @@
 
 - **Слаг:** `crash-recovery`
 - **Тип:** заплановано
-- **Стан:** ready (усі питання дизайну закриті — див. «Прийняті рішення»)
+- **Стан:** done (реалізовано у `feature/phase-3k-crash-recovery`)
 - **Зусилля:** M
-- **Оновлено:** 2026-06-25
+- **Оновлено:** 2026-07-18
 - **Залежності:** Phase 1 (✅) — `graceful_shutdown` та чистий фільтр resume
   (`manual_resume_urls`, адаптувати → `manual_resume_stream_ids`) уже в коді;
   scheduler (`scheduler-owned` пари для виключення планових записів); LiveAnnouncer
@@ -61,11 +61,16 @@
 }
 ```
 
+> **Реалізація:** серіалізується в camelCase (`cleanShutdown`, `activeRecordings`,
+> `streamId`), як і решта персистованих структур проєкту — див.
+> [docs/data-models.md §8](../../data-models.md) і `src-tauri/src/crash_recovery.rs`
+> (джерело правди). Поля вище — snake_case з чернетки цього запису, лишено як є.
+
 Ключ — `stream_id` (= `StreamInfo.id`): стабільний унікальний ідентифікатор, який
 однозначно розв'язується у `StreamInfo` активного профілю → точні credentials /
 ignorelist. URL так не годиться: не унікальний (можливі дублікати — той самий сервер
 із різними акаунтами; станцію додали двічі) і не несе credentials, тож зіставлення за
-ним нечітке й ламається при правці URL ([full-edit-stream](p2-full-edit-stream.md)
+ним нечітке й ламається при правці URL ([full-edit-stream](../p2-full-edit-stream.md)
 лишає `id` незмінним).
 Поле `url` у снапшоті — **діагностичне, лише для логів і читабельності `state.json`**;
 у зіставленні на resume **не** бере участі.
@@ -83,7 +88,7 @@ ignorelist. Незіставлений `stream_id` (потік видалили 
 ### Хто пише снапшот
 
 **Окрема виділена tokio-задача**, змодельована за зразком `SchedulerShared`
-([`scheduler/timer.rs`](../../src-tauri/src/scheduler/timer.rs)): власний
+([`scheduler/timer.rs`](../../../src-tauri/src/scheduler/timer.rs)): власний
 `tokio::select!` над notify-каналом, `interval` і `CancellationToken`. Вона читає
 `AppState` (статуси записів + `scheduler-owned` пари) і реюзає чисту функцію
 `manual_resume_stream_ids(statuses, scheduler_owned)`, що повертає `stream_id`-и
@@ -127,28 +132,30 @@ ignorelist. Незіставлений `stream_id` (потік видалили 
 
 ## Критерії готовності
 
-- [ ] `data/state.json` містить `clean_shutdown: bool` і список `stream_id` активних
+- [x] `data/state.json` містить `clean_shutdown: bool` і список `stream_id` активних
   ручних записів (живий снапшот; `url` — опційне діагностичне поле, не для матчингу)
-- [ ] При кожному старті `clean_shutdown` записується `false` (атомарний write);
+- [x] При кожному старті `clean_shutdown` записується `false` (атомарний write);
   відсутній файл трактується як аварія, але з порожнім снапшотом
-- [ ] В `graceful_shutdown` перед виходом `clean_shutdown` записується `true`
-- [ ] Окрема виділена tokio-задача (за зразком `SchedulerShared`; spawn у setup-хуку)
+- [x] В `graceful_shutdown` перед виходом `clean_shutdown` записується `true`
+- [x] Окрема виділена tokio-задача (за зразком `SchedulerShared`; spawn у setup-хуку)
   оновлює снапшот `stream_id` активних записів у `data/state.json` (тригер `Notify` на
   зміну складу + `interval` ≤ 30 с), реюзаючи `manual_resume_stream_ids`
-- [ ] Поле `Profile.active_recording_urls` прибрано (модель, `default`, dup-clear,
+- [x] Поле `Profile.active_recording_urls` прибрано (модель, `default`, dup-clear,
   `profile_commands`); його запис у `graceful_shutdown` знято
-- [ ] На старті: якщо `clean_shutdown = false` і снапшот непорожній — бекенд розв'язує
+- [x] На старті: якщо `clean_shutdown = false` і снапшот непорожній — бекенд розв'язує
   кожен `stream_id` у `StreamInfo` активного профілю і запускає записи через
   `stream::manager` (resume-споживач, якого зараз немає)
-- [ ] Тихий авто-resume без діалогу; підсумок обчислено в setup, відкладено й емітовано
+- [x] Тихий авто-resume без діалогу; підсумок обчислено в setup, відкладено й емітовано
   у `frontend_ready` (як `StartupPlan`); фронтенд виводить `aria-live` анонс
-- [ ] Анонс: порожній снапшот → тиша; усі підняті → «Відновлено N…»; частково →
+- [x] Анонс: порожній снапшот → тиша; усі підняті → «Відновлено N…»; частково →
   «Відновлено N з M…»; через `data-live-announcer` поза модалом
-- [ ] NVDA озвучує підсумок відновлення одразу після завантаження UI (коли DOM готовий)
-- [ ] Часткові файли записів (з моменту збою) залишені без змін — поведінка
+- [x] NVDA озвучує підсумок відновлення одразу після завантаження UI (коли DOM готовий)
+  — механізм реалізовано й покрито тестами (`useCrashResumeFeedback.test.tsx`);
+  живий прогін з екранним читачем — окремий пункт нижче
+- [x] Часткові файли записів (з моменту збою) залишені без змін — поведінка
   задокументована
-- [ ] Гейти: `cargo test` + `cargo clippy` зелені; `pnpm test` + `pnpm vite:build`
-  проходять; ручний прогін з NVDA (аварія з ≥1 активним записом)
+- [x] Гейти: `cargo test` + `cargo clippy` зелені; `pnpm test` + `pnpm vite:build` проходять
+- [ ] Ручний прогін з NVDA (аварія з ≥1 активним записом) — **(очікує ручного прогону)**
 
 ## Прийняті рішення
 
@@ -182,7 +189,7 @@ ignorelist. Незіставлений `stream_id` (потік видалили 
 
 ## Документи
 
-- [implementation-phases.md §3K](../implementation-phases.md)
+- [implementation-phases.md §3K](../../implementation-phases.md)
 - Код бекенду:
   - `src-tauri/src/app_state.rs` — `graceful_shutdown`, `manual_resume_urls` (фільтр resume →
     перейменувати на `manual_resume_stream_ids`, повертати `stream_id` замість `url`; тести оновити)
@@ -199,13 +206,13 @@ ignorelist. Незіставлений `stream_id` (потік видалили 
   - `src/components/common/LiveAnnouncer.tsx`
   - `src/stores/announcer.ts`
   - `src/hooks/useAnnounce.ts`
-- [accessibility.md — §11 live-regions, §1.4 modal-hacks](../accessibility.md)
-- Суміжний беклог: [p2-resume-last-playback.md](p2-resume-last-playback.md) — стан відтворення
+- [accessibility.md — §11 live-regions, §1.4 modal-hacks](../../accessibility.md)
+- Суміжний беклог: [p2-resume-last-playback.md](../p2-resume-last-playback.md) — стан відтворення
   живе в `PlayerSession` профілю (після A1 окремого `last_playback.json` немає); `state.json`
   (crash recovery) — інше сховище. Два чітко різні стани, звіряти нема чого.
 - Пам'ять: [[live-region-inside-modals]], [[branch-model-main-stale]]
 
 ## Промпт для агента
 
-Каталог промптів за типом: [README — Каталог промптів](README.md#каталог-промптів-за-типом).
+Каталог промптів за типом: [README — Каталог промптів](../README.md#каталог-промптів-за-типом).
 Тип `заплановано`.

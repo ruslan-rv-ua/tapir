@@ -27,7 +27,7 @@
 | 3H | Post-processing | Зовнішні програми після запису | ⬜ |
 | 3I | Polish Bundle | High Contrast, Autostart, Log rotation | ⬜ |
 | 3J | Stream Import/Export | Імпорт/експорт потоків профілю (M3U8/PLS) з перевіркою | ✅ Complete |
-| 3K | Crash Recovery | clean_shutdown flag + resume записів на старті | ⬜ |
+| 3K | Crash Recovery | clean_shutdown flag + resume записів на старті | ✅ Complete |
 
 ---
 
@@ -266,7 +266,7 @@
 | 3H | Post-processing | Phase 1 | 🟢 Низька |
 | 3I | Polish Bundle (HC, Autostart, Logs, BW) | — (незалежні) | 🟢 Низька |
 | 3J | Stream Import/Export (M3U8/PLS) | Phase 1 (stream::playlist) | 🟡 Середня |
-| 3K | Crash Recovery (clean_shutdown + resume) | Phase 1 (graceful_shutdown, active_recording_urls) | 🟠 Висока |
+| 3K | Crash Recovery (clean_shutdown + resume) | Phase 1 (graceful_shutdown) | 🟠 Висока |
 
 ---
 
@@ -587,31 +587,43 @@
 
 ---
 
-### Фаза 3K — Crash Recovery
+### Фаза 3K — Crash Recovery (✅ Complete)
 
 **Ціль:** виявлення аварійного завершення і безпечне відновлення активних записів після рестарту.
 
-**Залежності:** Phase 1 (`graceful_shutdown`, `active_recording_urls`).
+**Залежності:** Phase 1 (`graceful_shutdown`).
 
-**Контекст:** `active_recording_urls` уже зберігається у `app_state::graceful_shutdown`, але **споживача немає** — resume на старті ще не реалізовано (поле є лише в типах). Список оновлюється тільки при чистому виході, тож після збою він застарілий; сліпе відновлення з нього хибне — звідси потрібен guard (`clean_shutdown`) і живий снапшот.
+**Контекст:** до цієї фази `Profile.active_recording_urls` існувало лише в типах — оновлювалось у `graceful_shutdown`, але споживача не було. Список писався тільки при чистому виході, тож після збою він застарілий; сліпе відновлення з нього хибне. Фаза вводить окремий живий снапшот `data/state.json` і **прибирає** мертве поле `active_recording_urls` з `Profile`.
 
 **Backend:**
 
+| Модуль | Опис |
+|--------|------|
+| `crash_recovery.rs` | `SessionState` (`clean_shutdown` + `active_recordings: Vec<ActiveRecording>`) — `load`/`save` атомарні (temp→rename); `mark_session_start`/`mark_clean_shutdown`; `build_snapshot`/`resume_recordings`; снапшот-писар (`spawn_snapshot_writer`, `SnapshotShared`: `Notify` + `interval` 30с + 500мс debounce) |
+| `portable.rs` | `state_path()` → `data/state.json` |
+| `app_state.rs` | `manual_resume_stream_ids(statuses, scheduler_owned)` — чиста функція, `stream_id`-и активних непланових записів; `graceful_shutdown` скасовує писаря **першим**, потім пише `clean_shutdown: true` останнім |
+| `lib.rs` (setup-хук) | читає попередній `SessionState` **до** `mark_session_start()`; якщо `!clean_shutdown && !active_recordings.is_empty()` — `resume_recordings` (кожен `stream_id` → `StreamInfo` активного профілю, з перевіркою вільного місця), підсумок стешиться в `ResumeNotice`; спавнить писаря |
+| `commands/app_commands.rs` (`frontend_ready`) | дренує `ResumeNotice` (якщо є) → емітує подію `crash-resume` `{resumed, total}` |
+
+**Frontend:**
+
 | Елемент | Опис |
 |---------|------|
-| `clean_shutdown` прапор у `data/state.json` | `false` записується при старті, `true` — у `graceful_shutdown` |
-| Періодичний снапшот | `stream_id` живих записів пишуться під час роботи, а не лише на виході — інакше після збою resume бере застарілий список. Пише **окрема tokio-задача** (за зразком `SchedulerShared`, spawn у setup-хуку): `Notify` на зміну складу + `interval` ≤ 30 с |
-| Resume-споживач | На старті (при `clean_shutdown = false`) розв'язати кожен `stream_id` зі снапшота `state.json` у `StreamInfo` активного профілю → відновити записи (споживача зараз немає). Незіставлений id → «N з M» |
-| Live-анонс | aria-live: «Відновлено N записів» / «Відновлено N з M…» (підсумок обчислено в setup, відкладено й емітовано у `frontend_ready`) |
+| `useCrashResumeFeedback` | слухає `crash-resume`, локалізує (uk plural forms) і озвучує через `LiveAnnouncer` (polite) + info-toast; порожній снапшот → події немає взагалі → тиша |
 
-**Відкрите питання дизайну (вирішити на старті фази):** поведінка при виявленому збої — тихий авто-resume + анонс, діалог «відновити?», чи лише запис у лог. Дружній до NVDA дефолт: тихий авто-resume + live-анонс (анонс поза модалом потребує `data-live-announcer`, див. live-region-inside-modals).
+**Поведінка при виявленому збої:** тихий авто-resume без діалогу + `aria-live` анонс (дружній до NVDA дефолт). Анонс: усі підняті → «Відновлено N…»; частково → «Відновлено N з M…»; порожній снапшот (вкл. перший запуск) → тиша.
+
+**Часткові файли** з моменту збою залишаються без змін (лише лог) — MP3/AAC не потребують обов'язкової фіналізації.
 
 **Критерії "Done":**
-- [ ] `clean_shutdown` пишеться `false` на старті / `true` при чистому виході
-- [ ] Періодичний снапшот `stream_id` живих записів окремою tokio-задачею (resume не залежить лише від чистого виходу)
-- [ ] Resume зі снапшота `state.json` на старті — `stream_id` → `StreamInfo` (споживач, якого зараз немає)
-- [ ] Визначена й реалізована поведінка при виявленому збої + live-анонс
-- [ ] NVDA: підсумок відновлення озвучується
+- [x] `clean_shutdown` пишеться `false` на старті / `true` при чистому виході (після скасування писаря)
+- [x] Періодичний снапшот `stream_id` живих записів окремою tokio-задачею (`Notify` + `interval` ≤ 30с)
+- [x] Resume зі снапшота `state.json` на старті — `stream_id` → `StreamInfo` активного профілю
+- [x] Тихий авто-resume + live-анонс (без модального діалогу)
+- [x] NVDA: підсумок відновлення озвучується (`useCrashResumeFeedback`)
+- [x] `Profile.active_recording_urls` прибрано
+
+Докладніше — [docs/backlog/done/p1-crash-recovery.md](backlog/done/p1-crash-recovery.md) (прийняті рішення, критерії) і `src-tauri/src/crash_recovery.rs` (джерело правди для точної структури `state.json`).
 
 ---
 
@@ -641,7 +653,7 @@ Phase 3G: CLI ← Phase 1 + Phase 2A + Phase 3E
 Phase 3H: Post-processing ← Phase 1 (recordings)
 Phase 3I: Polish Bundle ← незалежна (кожен елемент)
 Phase 3J: Stream Import/Export ← Phase 1 (stream::playlist, stream::connection)
-Phase 3K: Crash Recovery ← Phase 1 (graceful_shutdown, active_recording_urls)
+Phase 3K: Crash Recovery ✅ ← Phase 1 (graceful_shutdown)
 ```
 
 Підфази 2B і 2C незалежні одна від одної. Підфази 3B, 3E, 3I повністю незалежні. Підфази 3C, 3D, 3F, 3H, 3J, 3K залежать лише від Phase 1 (завершена) → можна починати негайно. Тільки 3A та 3G мають залежність від Phase 2A.

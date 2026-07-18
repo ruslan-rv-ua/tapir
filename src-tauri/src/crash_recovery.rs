@@ -1,6 +1,6 @@
 //! Phase 3K Crash Recovery: сесійний стан `data/state.json` — прапор
 //! `clean_shutdown` + живий снапшот активних ручних записів. Єдине джерело
-//! правди для resume після аварії (spec: docs/backlog/p1-crash-recovery.md).
+//! правди для resume після аварії (spec: docs/backlog/done/p1-crash-recovery.md).
 
 use serde::{Deserialize, Serialize};
 use std::path::Path;

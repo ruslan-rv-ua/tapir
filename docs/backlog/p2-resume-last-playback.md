@@ -5,7 +5,7 @@
 - **Стан:** draft (модель узгоджена 2026-06-25 — див. «Прийняті рішення»)
 - **Зусилля:** M (раніше S; зросло через окремий per-profile діалог «Налаштування профілю» + нову IPC-команду + правила скидання при дублюванні/експорті)
 - **Оновлено:** 2026-06-25
-- **Залежності:** **#1 [playback-toggle-stop-pause](done/p1-playback-toggle-stop-pause.md)** — єдине джерело правди `PlayerSession`; цей запис є **надбудовою** над ним. Phase 2A (PlayerEngine ✅), Phase 2C (SettingsDialog ✅), `profile.rs` (`PlayerSession`, `duplicate`, `export_json_str`, `commit_import`), профільний UI (`ProfileContextMenu`). Координація з [autostart](done/p2-autostart.md) і [crash-recovery](p1-crash-recovery.md).
+- **Залежності:** **#1 [playback-toggle-stop-pause](done/p1-playback-toggle-stop-pause.md)** — єдине джерело правди `PlayerSession`; цей запис є **надбудовою** над ним. Phase 2A (PlayerEngine ✅), Phase 2C (SettingsDialog ✅), `profile.rs` (`PlayerSession`, `duplicate`, `export_json_str`, `commit_import`), профільний UI (`ProfileContextMenu`). Координація з [autostart](done/p2-autostart.md) і [crash-recovery](done/p1-crash-recovery.md) (✅ реалізовано).
 
 ## Опис
 
