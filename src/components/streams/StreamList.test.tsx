@@ -53,7 +53,7 @@ const baseSettings: GlobalSettings = {
   language: "uk", theme: "auto", activeProfile: "Default", outputDevice: null,
   minimizeToTray: false, showTrayNotifications: false, showTrackInTitle: false,
   diskSpaceThresholdGb: 0, doubleClickAction: "record", sortBy: "name", bandwidthLimitKbps: 0,
-  autostart: false, autostartMinimized: true, autoAdvance: false, prevRestartThresholdMs: 0,
+  autostart: false, autostartMinimized: true, autoAdvance: false, prevRestartThresholdMs: 0, resumeFileFrom: "position",
   hotkeys: { toggleRecording: "", togglePlayback: "", volumeUp: "", volumeDown: "", toggleWindow: "", stopAll: "", prevTrack: "", nextTrack: "" },
   logRotation: false, logMaxSizeMb: 10, logLevel: "info",
 };

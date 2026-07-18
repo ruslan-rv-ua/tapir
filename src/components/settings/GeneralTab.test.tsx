@@ -28,6 +28,7 @@ const baseSettings: GlobalSettings = {
   autostartMinimized: true,
   autoAdvance: true,
   prevRestartThresholdMs: 0,
+  resumeFileFrom: "position",
   smtcEnabled: true,
   hotkeys: {
     toggleRecording: "", togglePlayback: "", volumeUp: "", volumeDown: "",

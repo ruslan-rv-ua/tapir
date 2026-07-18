@@ -28,6 +28,7 @@ const baseSettings: GlobalSettings = {
   autostartMinimized: true,
   autoAdvance: true,
   prevRestartThresholdMs: 0,
+  resumeFileFrom: "position",
   hotkeys: {
     toggleRecording: "",
     togglePlayback: "",
@@ -72,6 +73,14 @@ describe("AudioTab — playback settings", () => {
     // react-aria NumberField commits on Enter in jsdom.
     fireEvent.keyDown(input, { key: "Enter" });
     expect($settings.get()?.prevRestartThresholdMs).toBe(3000);
+  });
+
+  it("changes resumeFileFrom into the settings store", () => {
+    const { getByRole } = render(<AudioTab />);
+    // react-aria Select trigger's accessible name includes the label.
+    fireEvent.click(getByRole("button", { name: new RegExp(m.settings_resume_file_from()) }));
+    fireEvent.click(getByRole("option", { name: m.settings_resume_from_start() }));
+    expect($settings.get()?.resumeFileFrom).toBe("start");
   });
 });
 
