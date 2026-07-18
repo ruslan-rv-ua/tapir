@@ -286,11 +286,11 @@ async fn resume_last(app: &AppHandle) {
             }
             match state.player.play_file(fp.path.clone(), app).await {
                 Ok(()) => {
-                    if let FileResumePlan::FromPosition { position_ms } = plan {
-                        if let Err(e) = state.player.seek_playback(position_ms, app).await {
-                            // Best-effort: stay at the start rather than fail the resume.
-                            log::warn!("playback: cold-start seek failed, staying at start: {e}");
-                        }
+                    if let FileResumePlan::FromPosition { position_ms } = plan
+                        && let Err(e) = state.player.seek_playback(position_ms, app).await
+                    {
+                        // Best-effort: stay at the start rather than fail the resume.
+                        log::warn!("playback: cold-start seek failed, staying at start: {e}");
                     }
                     persist_session_snapshot(app).await;
                     // FromStart: `playback_started` (stopped→playing, file) announces
