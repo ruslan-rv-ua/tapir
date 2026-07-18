@@ -79,5 +79,5 @@
 - [ ] Cold-start K: mode `position` → з `position_ms`; mode `start` → з 0
 - [ ] `pause→resume` у межах сесії не зачеплено — регресійний guard
 - [ ] NVDA-анонс resume з позиції містить позицію; дубль-«started» супрессується
-- [ ] RadioGroup у AudioTab → «Керування плеєром», i18n EN/UK, доступний з клавіатури
+- [ ] Select у AudioTab → «Керування плеєром», i18n EN/UK, доступний з клавіатури
 - [ ] Усі гейти зелені
