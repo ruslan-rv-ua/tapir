@@ -86,6 +86,7 @@ interface GlobalSettings {
   logRotation: boolean;
   logLevel: "error" | "warn" | "info" | "debug";
   logMaxSizeMb: number;
+  resumeFileFrom: "position" | "start"; // тільки cold-start Ctrl+Shift+K; pause→resume завжди з позиції
 }
 
 interface HotkeyMap {
@@ -121,6 +122,8 @@ pub struct GlobalSettings {
     pub log_rotation: bool,
     pub log_level: LogLevel,
     pub log_max_size_mb: u32,
+    #[serde(default)]
+    pub resume_file_from: ResumeFileFrom,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -136,6 +139,16 @@ pub enum Theme {
 pub enum DoubleClickAction {
     Record,
     Play,
+}
+
+/// Тільки cold-start `Ctrl+Shift+K` резюме файлу. `pause→resume` у межах
+/// сесії завжди з позиції — це поле його не чіпає.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ResumeFileFrom {
+    #[default]
+    Position,
+    Start,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -686,6 +699,12 @@ pub struct FilePosition {
 
 Превью-відтворення (Preview) **не** пише у `playerSession`; перезапуск після
 превью не відновлює попередній стан превью.
+
+`lastFilePosition.positionMs` персиститься **завжди**, незалежно від
+`GlobalSettings.resumeFileFrom`. Це поле лише вибирає, чи cold-start
+`Ctrl+Shift+K` виконує `seek(positionMs)` (`position`, дефолт) чи стартує
+файл з 0 (`start`) — рішення читається один раз у `resume_last`, `pause→resume`
+у межах сесії його не бачить.
 
 ---
 
