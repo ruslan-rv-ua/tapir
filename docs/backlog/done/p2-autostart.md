@@ -30,7 +30,7 @@ Tapir має вміти запускатися автоматично разом
 
 ### Технічне рішення
 
-**Механізм:** прямий запис у `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` через `winreg` (модуль `autostart.rs`). _(Первісно планувався `tauri-plugin-autostart`, але обрали ручний winreg — повний контроль над командою для portable-EXE; деталі у [специфікації](../superpowers/specs/2026-06-21-autostart-design.md).)_ Реєстр `HKCU` (а не `HKLM`) — не вимагає прав адміністратора, що узгоджується з портативною моделлю Tapir.
+**Механізм:** прямий запис у `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` через `winreg` (модуль `autostart.rs`). _(Первісно планувався `tauri-plugin-autostart`, але обрали ручний winreg — повний контроль над командою для portable-EXE; деталі у [специфікації](../../superpowers/specs/2026-06-21-autostart-design.md).)_ Реєстр `HKCU` (а не `HKLM`) — не вимагає прав адміністратора, що узгоджується з портативною моделлю Tapir.
 
 **Команда запуску в реєстрі:** `"tapir.exe" --minimize` — щоб при autostart застосунок одразу згортався у System Tray без показу вікна. Аргумент `--minimize` реалізований (Phase 3G, `cli.rs:42`) — звірено в коді 2026-06-25 (A5).
 
@@ -89,9 +89,9 @@ _Усі виконані (звірено в коді 2026-06-25; файли — 
 
 ## Документи
 
-- [implementation-phases.md §3I](../implementation-phases.md) — підфаза 3I-2 (Autostart)
-- [implementation-phases.md §3A](../implementation-phases.md) — System Tray (залежність)
-- [implementation-phases.md §3D](../implementation-phases.md) — Scheduler (ключовий use case)
+- [implementation-phases.md §3I](../../implementation-phases.md) — підфаза 3I-2 (Autostart)
+- [implementation-phases.md §3A](../../implementation-phases.md) — System Tray (залежність)
+- [implementation-phases.md §3D](../../implementation-phases.md) — Scheduler (ключовий use case)
 - `src-tauri/src/cli.rs` — аргумент `--minimize` (Phase 3G; запис `p1-cli-arguments.md` закрито/видалено)
 - Код: `src-tauri/src/autostart.rs` — winreg-логіка (`build_run_command`/`apply`/`reconcile`/`reconcile_on_startup`)
 - Код: `src-tauri/src/settings.rs` — поля `autostart` / `autostart_minimized`

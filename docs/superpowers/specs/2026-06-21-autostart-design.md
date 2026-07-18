@@ -3,7 +3,7 @@
 - **Дата:** 2026-06-21
 - **Гілка:** `feature/3i-2-autostart`
 - **Слаг:** `autostart`
-- **Беклог:** [docs/backlog/p2-autostart.md](../../backlog/p2-autostart.md)
+- **Беклог:** [docs/backlog/p2-autostart.md](../../backlog/done/p2-autostart.md)
 - **Залежності (перевірені):** Phase 2C SettingsDialog ✅, Phase 3A System Tray ✅,
   Phase 3D Scheduler ✅, Phase 3G CLI `--minimize` ✅
 

@@ -6,7 +6,7 @@
 - **Стан:** ready (scoped follow-up до P1)
 - **Зусилля:** S (одне поле в `GlobalSettings` + читання у cold-start-гілці + UI-перемикач + i18n + тести)
 - **Оновлено:** 2026-06-23
-- **Залежності:** **P1** [p1-playback-toggle-stop-pause.md](p1-playback-toggle-stop-pause.md) (resume останнього файлу з `position_ms`); `GlobalSettings` (`auto_advance`, `prev_restart_threshold_ms`, `double_click_action`); Settings-tab + i18n (EN/UK)
+- **Залежності:** **P1** [p1-playback-toggle-stop-pause.md](done/p1-playback-toggle-stop-pause.md) (resume останнього файлу з `position_ms`); `GlobalSettings` (`auto_advance`, `prev_restart_threshold_ms`, `double_click_action`); Settings-tab + i18n (EN/UK)
 
 ## Опис
 
@@ -49,14 +49,14 @@ _Закрито 2026-06-25 (аудит коду + рішення)._
 
 ## Документи
 
-- Залежить від: [p1-playback-toggle-stop-pause.md](p1-playback-toggle-stop-pause.md)
+- Залежить від: [p1-playback-toggle-stop-pause.md](done/p1-playback-toggle-stop-pause.md)
 - Код: [src-tauri/src/settings.rs](../../src-tauri/src/settings.rs) (`GlobalSettings` + тести), [src-tauri/src/shortcuts.rs](../../src-tauri/src/shortcuts.rs) (cold-start-гілка з P1), [src/components/settings/](../../src/components/settings/)
 - [docs/data-models.md](../data-models.md) (GlobalSettings), [docs/accessibility.md](../accessibility.md) (Settings/NVDA)
 
 ## Промпт для агента
 
 ```text
-Невелике scoped-покращення поверх P1 (p1-playback-toggle-stop-pause.md). Спершу переконайся, що P1 (resume останнього файлу з position_ms) уже реалізовано — інакше цей запис передчасний.
+Невелике scoped-покращення поверх P1 (done/p1-playback-toggle-stop-pause.md). Спершу переконайся, що P1 (resume останнього файлу з position_ms) уже реалізовано — інакше цей запис передчасний.
 
 Що зробити: додати глобальне налаштування resume_file_from: position | start (default position), що керує ЛИШЕ cold-start / Stopped→K відновленням файлу.
 1) Поле в GlobalSettings (settings.rs) + default_* fn + serde default; back-compat тест на старий settings.json без поля.
