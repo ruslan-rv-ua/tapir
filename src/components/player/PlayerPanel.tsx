@@ -135,7 +135,7 @@ export const PlayerPanel = forwardRef<
     { ref: bitrateRowRef,                                                enabled: isActive && isStream },
     { ref: prevRef      as RefObject<HTMLElement | null>,                enabled: canPrev },
     { ref: playPauseRef as RefObject<HTMLElement | null>,                enabled: isActive },
-    { ref: stopRef      as RefObject<HTMLElement | null>,                enabled: isActive },
+    { ref: stopRef      as RefObject<HTMLElement | null>,                enabled: isActive && !isStream },
     { ref: nextRef      as RefObject<HTMLElement | null>,                enabled: canNext },
     { ref: muteRef      as RefObject<HTMLElement | null>,                enabled: isActive },
     { ref: positionInputRef as unknown as RefObject<HTMLElement | null>, enabled: isActive && hasPositionSlider },
@@ -209,7 +209,12 @@ export const PlayerPanel = forwardRef<
 
   const handlePlayPause = async () => {
     try {
-      if (isPlaying) {
+      if (isStream) {
+        // A live stream can't be meaningfully paused (the buffer goes stale and
+        // you lag the broadcast), so the primary control stops it — same
+        // semantics as Ctrl+Shift+K, the tray toggle and the SMTC keys.
+        await tauri.stopPlayback();
+      } else if (isPlaying) {
         await tauri.pausePlayback();
       } else if (isPaused) {
         await tauri.resumePlayback();
@@ -340,27 +345,39 @@ export const PlayerPanel = forwardRef<
 
             <Button
               ref={playPauseRef}
-              aria-label={isPlaying ? m.pause() : m.play()}
+              // For a live stream the primary control is a Stop (pause is
+              // meaningless); for a file it toggles Play/Pause.
+              aria-label={isStream ? m.stop_stream_playback() : isPlaying ? m.pause() : m.play()}
               isDisabled={!isActive}
               onPress={handlePlayPause}
               // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
               tabIndex={-1}
               className="w-[52px] h-[52px] rounded-2xl bg-blue-700 border border-transparent flex items-center justify-center hover:bg-blue-600 focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:bg-[Highlight] forced-colors:text-[HighlightText] forced-colors:disabled:text-[GrayText]"
             >
-              {isPlaying ? <Pause aria-hidden={true} size={20} /> : <Play aria-hidden={true} size={20} />}
+              {isStream ? (
+                <Square aria-hidden={true} size={20} />
+              ) : isPlaying ? (
+                <Pause aria-hidden={true} size={20} />
+              ) : (
+                <Play aria-hidden={true} size={20} />
+              )}
             </Button>
 
-            <Button
-              ref={stopRef}
-              aria-label={m.stop()}
-              isDisabled={!isActive}
-              onPress={handleStop}
-              // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
-              tabIndex={-1}
-              className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText]"
-            >
-              <Square aria-hidden={true} size={18} />
-            </Button>
+            {/* Streams stop via the primary control above; a second Stop would be
+                a redundant, identically-labelled button for screen-reader users. */}
+            {!isStream && (
+              <Button
+                ref={stopRef}
+                aria-label={m.stop()}
+                isDisabled={!isActive}
+                onPress={handleStop}
+                // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
+                tabIndex={-1}
+                className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText]"
+              >
+                <Square aria-hidden={true} size={18} />
+              </Button>
+            )}
 
             <Button
               ref={nextRef}

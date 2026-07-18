@@ -29,9 +29,9 @@ fn emit_announce(app: &AppHandle, kind: &str, name: Option<String>) {
 /// What `toggle_playback` should do for a given live status. Branch by source
 /// **type first** (impl-decision #4): a `Stream` is stopped whether Playing or
 /// Paused — resuming a live buffer is meaningless (you'd replay a stale buffer
-/// and lag the broadcast). A legacy `Paused + Stream` (only an old build could
-/// create it; an in-memory session never survives restart) thus resolves to
-/// stop, correctly.
+/// and lag the broadcast). A `Paused + Stream` state can still arise at runtime
+/// (the player-panel Pause button and the SMTC Pause key both pause a live
+/// stream), so this arm handles it explicitly and resolves it to stop.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum ToggleAction {
     StopStream,
@@ -212,7 +212,16 @@ async fn resume_last(app: &AppHandle) {
     let has_stream_id = last_stream_id.is_some();
     let stream_in_profile = stream.is_some();
     let has_file = last_file.is_some();
-    let file_exists = last_file.as_ref().map(|f| std::path::Path::new(&f.path).exists()).unwrap_or(false);
+    // The `exists()` stat is blocking — keep it off the async executor thread.
+    let file_exists = match last_file.as_ref() {
+        Some(f) => {
+            let path = f.path.clone();
+            tokio::task::spawn_blocking(move || std::path::Path::new(&path).exists())
+                .await
+                .unwrap_or(false)
+        }
+        None => false,
+    };
 
     match decide_cold_start(last_active.as_ref(), has_stream_id, stream_in_profile, has_file, file_exists) {
         ColdStart::PlayStream => {

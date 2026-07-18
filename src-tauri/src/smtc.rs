@@ -217,7 +217,16 @@ fn handle_button(app: &AppHandle, button: SystemMediaTransportControlsButton) {
                     log::debug!("SMTC: pause ignored (debounce)");
                     return;
                 }
-                let _ = state.player.pause_playback(&app).await;
+                // A live stream can't be meaningfully paused — the buffer goes
+                // stale and you lag the broadcast on resume — so Pause on a stream
+                // stops it, consistent with the Ctrl+Shift+K / tray toggle. Files
+                // pause normally.
+                let status = state.player.get_status().await;
+                if matches!(status.source, Some(PlaybackSource::Stream { .. })) {
+                    let _ = state.player.stop_playback(&app).await;
+                } else {
+                    let _ = state.player.pause_playback(&app).await;
+                }
             }
             // FR-5: Stop stops playback, NOT recording. No debounce — idempotent.
             SystemMediaTransportControlsButton::Stop => {

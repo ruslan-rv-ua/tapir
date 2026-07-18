@@ -181,13 +181,36 @@ describe("PlayerPanel — prev/next race guard", () => {
   });
 });
 
+describe("PlayerPanel — primary transport is source-aware", () => {
+  it("stops a live stream from the primary control (never pauses)", () => {
+    playingStream("s2");
+    const { getByRole, queryByRole } = renderPanel();
+    fireEvent.click(getByRole("button", { name: m.stop_stream_playback() }));
+    expect(tauri.stopPlayback).toHaveBeenCalledTimes(1);
+    expect(tauri.pausePlayback).not.toHaveBeenCalled();
+    // No redundant second Stop button while a stream plays.
+    expect(queryByRole("button", { name: m.stop() })).toBeNull();
+  });
+
+  it("pauses a file from the primary control", () => {
+    playingFile("b.mp3");
+    const { getByRole } = renderPanel();
+    fireEvent.click(getByRole("button", { name: m.pause() }));
+    expect(tauri.pausePlayback).toHaveBeenCalledTimes(1);
+    expect(tauri.stopPlayback).not.toHaveBeenCalled();
+    // A file keeps its dedicated Stop button.
+    expect(getByRole("button", { name: m.stop() })).toBeEnabled();
+  });
+});
+
 describe("PlayerPanel — boundary focus", () => {
   it("anchors focus to Play/Pause when a skip lands on the last element", () => {
     playingStream("s2"); // next → s3 (last); the Next button will disable
     const { getByRole } = renderPanel();
     fireEvent.click(getByRole("button", { name: m.player_next() }));
-    // While playing, the central control is labelled with the Pause action.
-    expect(document.activeElement).toBe(getByRole("button", { name: m.pause() }));
+    // For a live stream the central control is the Stop action (pause is
+    // meaningless); it's still the focus anchor at a transport boundary.
+    expect(document.activeElement).toBe(getByRole("button", { name: m.stop_stream_playback() }));
   });
 });
 

@@ -427,6 +427,8 @@ PlayerPanel (role="complementary", aria-label="Програвач")
 
 NVDA/JAWS читає: "Play, toggle button, not pressed" → "Pause, toggle button, pressed".
 
+Основна кнопка транспорту **джерело-залежна** (як і `Ctrl+Shift+K`, трей-перемикач та SMTC): для **файлу** — Play/Pause (пауза/відновлення з позиції); для **живого потоку** — Stop (паузи в ефірі немає — буфер застаріває й слухач відстає). Для потоку окрема кнопка «Зупинити» не рендериться, щоб скрінрідер не бачив дві однакові кнопки Stop.
+
 ### 4.3. Volume Slider
 
 React Aria `Slider`:

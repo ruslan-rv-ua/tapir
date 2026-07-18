@@ -204,8 +204,6 @@
   "pause": "Pause",
   "play": "Play",
   "stop": "Stop",
-  "playback_paused": "Playback paused",
-  "playback_resumed": "Playback resumed",
   "playback_stopped": "Playback stopped",
   "playback_started": "Playing: {name}",
   "playback_paused_named": "Paused — {name}",
