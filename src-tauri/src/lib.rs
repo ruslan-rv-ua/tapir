@@ -3,6 +3,7 @@ mod autostart;
 mod commands;
 mod errors;
 mod player;
+mod playback_control;
 mod portable;
 mod profile;
 mod recording_control;

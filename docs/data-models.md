@@ -49,7 +49,7 @@
   // Глобальні гарячі клавіші
   "hotkeys": {
     "toggleRecording": "Ctrl+Shift+R",
-    "togglePlayback": "Ctrl+Shift+P",
+    "togglePlayback": "Ctrl+Shift+K",
     "volumeUp": "Ctrl+Alt+Up",
     "volumeDown": "Ctrl+Alt+Down",
     "toggleWindow": "Ctrl+Shift+H",
@@ -251,7 +251,10 @@ pub struct HotkeyMap {
 
   // Сесія програвача
   "playerSession": {
-    "volume": 0.75
+    "volume": 0.75,
+    "lastActive": null,
+    "lastStreamId": null,
+    "lastFilePosition": null
   },
 
   // Збережені треки (lightweight metadata, не файли)
@@ -620,11 +623,25 @@ pub struct SavedTrack {
 
 ### 3.7. PlayerSession
 
+Зберігається у профілі (`data/profiles/<name>.tapirprofile`, поле
+`playerSession`), **не** у `settings.json`. При дублюванні профілю поле
+скидається (не копіюється).
+
 ```typescript
 interface PlayerSession {
   volume: number;  // 0.0 — 1.0
-  lastStreamId?: string;      // ID останнього відтвореного потоку
-  lastFilePosition?: {        // для файлів: resume position
+
+  // Дискримінатор: яке джерело було активним останнім.
+  // null — нічого не відтворювалось (або поле відсутнє — зворотна сумісність).
+  lastActive?: "stream" | "file" | null;
+
+  // ID останнього відтвореного потоку (стріму).
+  // Записується при: старті відтворення стріму, зупинці стріму, виході з програми.
+  lastStreamId?: string;
+
+  // Позиція відновлення для файлів.
+  // Записується при: старті відтворення файлу, паузі файлу, виході з програми.
+  lastFilePosition?: {
     path: string;
     positionMs: number;
   };
@@ -636,8 +653,17 @@ interface PlayerSession {
 #[serde(rename_all = "camelCase")]
 pub struct PlayerSession {
     pub volume: f32,
+    /// Дискримінатор джерела для toggle_playback / холодного старту.
+    pub last_active: Option<LastActive>,
     pub last_stream_id: Option<String>,
     pub last_file_position: Option<FilePosition>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum LastActive {
+    Stream,
+    File,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -647,6 +673,19 @@ pub struct FilePosition {
     pub position_ms: u64,
 }
 ```
+
+#### Семантика запису `lastActive` / `lastStreamId` / `lastFilePosition`
+
+| Подія | `lastActive` | `lastStreamId` | `lastFilePosition` |
+|---|---|---|---|
+| Старт відтворення стріму | `"stream"` | ID потоку | без змін |
+| Зупинка стріму (`stop`) | `"stream"` | ID потоку | без змін |
+| Старт відтворення файлу | `"file"` | без змін | `{path, positionMs: 0}` |
+| Пауза файлу | `"file"` | без змін | `{path, positionMs}` (поточна) |
+| Вихід із програми (`graceful_shutdown`) | без змін | без змін | `positionMs` оновлюється (якщо файл грав) |
+
+Превью-відтворення (Preview) **не** пише у `playerSession`; перезапуск після
+превью не відновлює попередній стан превью.
 
 ---
 
@@ -982,7 +1021,7 @@ interface PostprocessErrorPayload {
   "autostartMinimized": true,
   "hotkeys": {
     "toggleRecording": "Ctrl+Shift+R",
-    "togglePlayback": "Ctrl+Shift+P",
+    "togglePlayback": "Ctrl+Shift+K",
     "volumeUp": "Ctrl+Alt+Up",
     "volumeDown": "Ctrl+Alt+Down",
     "toggleWindow": "Ctrl+Shift+H",
@@ -1033,7 +1072,10 @@ interface PostprocessErrorPayload {
     "runOnIncomplete": false
   },
   "playerSession": {
-    "volume": 0.75
+    "volume": 0.75,
+    "lastActive": null,
+    "lastStreamId": null,
+    "lastFilePosition": null
   },
   "savedTracks": [],
   "activeRecordingUrls": []

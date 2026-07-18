@@ -427,6 +427,8 @@ PlayerPanel (role="complementary", aria-label="Програвач")
 
 NVDA/JAWS читає: "Play, toggle button, not pressed" → "Pause, toggle button, pressed".
 
+Основна кнопка транспорту **джерело-залежна** (як і `Ctrl+Shift+K`, трей-перемикач та SMTC): для **файлу** — Play/Pause (пауза/відновлення з позиції); для **живого потоку** — Stop (паузи в ефірі немає — буфер застаріває й слухач відстає). Для потоку окрема кнопка «Зупинити» не рендериться, щоб скрінрідер не бачив дві однакові кнопки Stop.
+
 ### 4.3. Volume Slider
 
 React Aria `Slider`:
@@ -916,7 +918,7 @@ document.addEventListener("keydown", (e) => {
 | Дія | Default | Scope |
 |---|---|---|
 | Toggle recording | Ctrl+Shift+R | Global (працює у фоні) |
-| Toggle playback | Ctrl+Shift+P | Global |
+| Toggle playback | Ctrl+Shift+K | Global |
 | Volume up (+5%) | Ctrl+Alt+Up | Global |
 | Volume down (-5%) | Ctrl+Alt+Down | Global |
 | Show/hide window | Ctrl+Shift+H | Global |
@@ -927,6 +929,23 @@ document.addEventListener("keydown", (e) => {
 Реалізація через `tauri-plugin-global-shortcut`. Усі клавіші налаштовуються.
 Принцип вибору дефолтів (літери на `Ctrl+Shift`, стрілки на `Ctrl+Alt`) —
 [keyboard-shortcuts.md](keyboard-shortcuts.md), розділ «Принципи вибору Tier-1 дефолтів».
+
+#### Оголошення toggle_playback (Ctrl+Shift+K)
+
+`toggle_playback` — джерело-залежний перемикач; кожен перехід оголошується
+через LiveAnnouncer разом із назвою джерела (назва станції або трек):
+
+| Перехід | Оголошення |
+|---|---|
+| Стрім зупинено (`stop`) | «Зупинено — <назва станції>» |
+| Файл поставлено на паузу | «Пауза — <назва треку>» |
+| Файл відновлено | «Відновлено — <назва треку>» |
+| Холодний старт → стрім | «Підключення — <назва станції>» → «Відтворення: …» |
+| Холодний старт → файл | «Відновлено — <назва треку>» |
+| Останнє джерело недоступне | «Останнє відтворення недоступне» |
+
+Оголошення відповідають подіям `player-announce` (`kind`: `"stop"` / `"pause"` /
+`"resume"` / `"connecting"` / `"unavailable"`).
 
 ### Локальні клавіші (у вікні)
 
