@@ -19,6 +19,11 @@ pub fn settings_path() -> PathBuf {
     data_dir().join("settings.json")
 }
 
+/// Phase 3K: сесійний стан crash recovery (clean_shutdown + живий снапшот).
+pub fn state_path() -> PathBuf {
+    data_dir().join("state.json")
+}
+
 pub fn profiles_dir() -> PathBuf {
     data_dir().join("profiles")
 }

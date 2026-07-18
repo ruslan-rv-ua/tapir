@@ -1,6 +1,7 @@
 mod app_state;
 mod autostart;
 mod commands;
+mod crash_recovery;
 mod errors;
 mod player;
 mod playback_control;
