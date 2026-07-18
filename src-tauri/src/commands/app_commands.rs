@@ -33,10 +33,10 @@ pub async fn frontend_ready(
 
     // Phase 3K: підсумок crash-resume — deferred (як StartupPlan/StartupNotice).
     // Порожній снапшот / чистий вихід → ResumeNotice не managed → тиша.
-    if let Some(notice) = app.try_state::<crate::crash_recovery::ResumeNotice>() {
-        if let Some(summary) = notice.take() {
-            let _ = app.emit("crash-resume", summary);
-        }
+    if let Some(notice) = app.try_state::<crate::crash_recovery::ResumeNotice>()
+        && let Some(summary) = notice.take()
+    {
+        let _ = app.emit("crash-resume", summary);
     }
 
     Ok(())
