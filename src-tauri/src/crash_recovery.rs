@@ -4,6 +4,14 @@
 
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use std::sync::Arc;
+use std::time::Duration;
+use tauri::{AppHandle, Manager};
+use tokio_util::sync::CancellationToken;
+
+use crate::app_state::AppState;
+use crate::profile::StreamInfo;
+use crate::stream::manager::StreamStatus;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -60,10 +68,151 @@ impl SessionState {
     }
 }
 
+/// Safety net писаря: спека вимагає ≤ 30 с.
+const SNAPSHOT_INTERVAL: Duration = Duration::from_secs(30);
+/// Легкий debounce: серія переходів (start_all / stop_all) → один запис.
+const SNAPSHOT_DEBOUNCE: Duration = Duration::from_millis(500);
+
+/// Снапшот-писар (за зразком `SchedulerShared`): notify на зміну складу
+/// записів + interval як safety net; cancel — із graceful_shutdown.
+pub struct SnapshotShared {
+    pub notify: tokio::sync::Notify,
+    pub cancel: CancellationToken,
+}
+
+impl SnapshotShared {
+    pub fn new() -> Arc<Self> {
+        Arc::new(Self {
+            notify: tokio::sync::Notify::new(),
+            cancel: CancellationToken::new(),
+        })
+    }
+}
+
+/// Чиста: вміст живого снапшота — активні ручні записи. `url` — діагностика
+/// (може бути відсутнім, якщо StreamInfo уже видалено з профілю).
+pub fn build_snapshot(
+    statuses: &[StreamStatus],
+    scheduler_owned: &[(String, u64)],
+    streams: &[StreamInfo],
+) -> Vec<ActiveRecording> {
+    crate::app_state::manual_resume_stream_ids(statuses, scheduler_owned)
+        .into_iter()
+        .map(|stream_id| {
+            let url = streams.iter().find(|st| st.id == stream_id).map(|st| st.url.clone());
+            ActiveRecording { stream_id, url }
+        })
+        .collect()
+}
+
+/// Кожен старт: маркер «сеанс у польоті» (clean_shutdown=false, снапшот
+/// порожній — записи ще не стартували).
+pub fn mark_session_start() {
+    let s = SessionState { clean_shutdown: false, active_recordings: vec![] };
+    if let Err(e) = s.save() {
+        log::warn!("crash-recovery: failed to mark session start: {e}");
+    }
+}
+
+/// Чистий вихід. Викликати ЛИШЕ після cancel писаря — інакше його
+/// відкладений запис перетре true → спурйозний resume наступного старту.
+pub fn mark_clean_shutdown() {
+    let s = SessionState { clean_shutdown: true, active_recordings: vec![] };
+    if let Err(e) = s.save() {
+        log::error!("crash-recovery: failed to mark clean shutdown: {e}");
+    }
+}
+
+/// Spawn у setup-хуку (НЕ frontend_ready: писар не емітить UI-подій — гейт
+/// webview йому не потрібен; спека, «Хто пише снапшот»).
+pub fn spawn_snapshot_writer(app: AppHandle) {
+    let shared = app.state::<AppState>().snapshot.clone();
+    tauri::async_runtime::spawn(async move {
+        log::info!("Crash-recovery snapshot writer started");
+        loop {
+            tokio::select! {
+                _ = shared.cancel.cancelled() => break,
+                _ = shared.notify.notified() => {
+                    tokio::time::sleep(SNAPSHOT_DEBOUNCE).await;
+                }
+                _ = tokio::time::sleep(SNAPSHOT_INTERVAL) => {}
+            }
+            // Після cancel (у т.ч. під час debounce-сну) НЕ писати — див.
+            // mark_clean_shutdown.
+            if shared.cancel.is_cancelled() {
+                break;
+            }
+            write_snapshot(&app).await;
+        }
+        log::info!("Crash-recovery snapshot writer stopped");
+    });
+}
+
+async fn write_snapshot(app: &AppHandle) {
+    let state = app.state::<AppState>();
+    let statuses = state.stream_manager.read().await.get_all_statuses();
+    let scheduler_owned = state.scheduler.core.lock().await.owned_sessions();
+    let streams = state.active_profile.read().await.streams.clone();
+    let snapshot = SessionState {
+        clean_shutdown: false,
+        active_recordings: build_snapshot(&statuses, &scheduler_owned, &streams),
+    };
+    if let Err(e) = snapshot.save() {
+        log::warn!("crash-recovery: failed to write snapshot: {e}");
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::*;
+    use crate::stream::manager::StreamState;
+
+    fn status(stream_id: &str, state: StreamState, session_id: u64) -> StreamStatus {
+        StreamStatus {
+            stream_id: stream_id.into(),
+            state,
+            current_track: None,
+            recording_started_at: None,
+            bytes_recorded: 0,
+            tracks_recorded: 0,
+            error: None,
+            reconnect_attempt: None,
+            session_id,
+        }
+    }
+
+    fn stream(id: &str, url: &str) -> StreamInfo {
+        StreamInfo {
+            id: id.into(), url: url.into(), name: id.into(),
+            format: None, bitrate: None, icy_name: None, icy_genre: None,
+            icy_url: None, ignorelist: vec![], username: None, password: None,
+            added_at: "2026-01-01".into(),
+        }
+    }
+
+    #[test]
+    fn build_snapshot_maps_manual_ids_with_diagnostic_url() {
+        let statuses = [
+            status("manual", StreamState::Recording, 1),
+            status("planned", StreamState::Recording, 2),
+        ];
+        let owned = [("planned".to_string(), 2u64)];
+        let streams = [stream("manual", "http://m"), stream("planned", "http://p")];
+        assert_eq!(
+            build_snapshot(&statuses, &owned, &streams),
+            vec![ActiveRecording { stream_id: "manual".into(), url: Some("http://m".into()) }]
+        );
+    }
+
+    #[test]
+    fn build_snapshot_keeps_id_when_stream_info_missing() {
+        // url — лише діагностика: без StreamInfo id все одно у снапшоті
+        let statuses = [status("ghost", StreamState::Recording, 1)];
+        assert_eq!(
+            build_snapshot(&statuses, &[], &[]),
+            vec![ActiveRecording { stream_id: "ghost".into(), url: None }]
+        );
+    }
 
     fn sample() -> SessionState {
         SessionState {

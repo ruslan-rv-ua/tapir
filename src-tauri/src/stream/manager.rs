@@ -290,6 +290,10 @@ impl StreamManager {
 // ---------------------------------------------------------------------------
 
 fn emit_recording_status(app: &AppHandle, stream_id: &str, status: &str, error: Option<String>) {
+    // Phase 3K: будь-який перехід стану запису — тригер живого снапшота.
+    if let Some(state) = app.try_state::<crate::app_state::AppState>() {
+        state.snapshot.notify.notify_one();
+    }
     debug!("[{}] Emitting recording-status: {}", stream_id, status);
     match app.emit(
         "recording-status",

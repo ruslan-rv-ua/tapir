@@ -16,6 +16,7 @@ pub struct AppState {
     pub player: Arc<PlayerEngine>,
     pub browser_client: Arc<tokio::sync::OnceCell<RadioBrowserClient>>,
     pub scheduler: Arc<crate::scheduler::timer::SchedulerShared>,
+    pub snapshot: Arc<crate::crash_recovery::SnapshotShared>,
 }
 
 impl AppState {
@@ -38,6 +39,7 @@ impl AppState {
             player: Arc::new(player),
             browser_client,
             scheduler: crate::scheduler::timer::SchedulerShared::new(),
+            snapshot: crate::crash_recovery::SnapshotShared::new(),
         })
     }
 }
@@ -47,6 +49,10 @@ impl AppState {
 /// is false) and by tray "Quit".
 pub async fn graceful_shutdown(app: &AppHandle) {
     let state = app.state::<AppState>();
+
+    // Phase 3K: зупинити снапшот-писаря ДО будь-яких зупинок — інакше «stopped»
+    // переходи розбудять його і він перетре clean_shutdown=true нижче.
+    state.snapshot.cancel.cancel();
 
     // Зупинити тік-задачу і зафіксувати StoppedByUser(AppClosing) для своїх
     // записів (пише last_result + save + подія scheduled-completed).
@@ -70,6 +76,9 @@ pub async fn graceful_shutdown(app: &AppHandle) {
     drop(profile);
 
     tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+
+    // Phase 3K: писар скасований (вище) — цей запис останній.
+    crate::crash_recovery::mark_clean_shutdown();
 }
 
 /// Чиста (§3.5, Phase 3K): stream_id-и активних НЕпланових записів — вміст

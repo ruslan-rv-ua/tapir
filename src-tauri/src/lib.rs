@@ -183,6 +183,10 @@ pub fn run() {
                 }
             };
             app.manage(state);
+            // Phase 3K: маркер «сеанс у польоті» + снапшот-писар. Писар не
+            // емітить UI-подій, тож НЕ чекає frontend_ready.
+            crash_recovery::mark_session_start();
+            crash_recovery::spawn_snapshot_writer(app.handle().clone());
             tray::setup_tray(app.handle()).expect("Failed to set up system tray");
             tray::notify::register_aumid(&app.config().identifier, "Tapir");
             let state_ref = app.state::<AppState>();
