@@ -148,6 +148,74 @@ pub fn spawn_snapshot_writer(app: AppHandle) {
     });
 }
 
+/// Підсумок «N з M» — payload події `crash-resume`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResumeSummary {
+    pub resumed: usize,
+    pub total: usize,
+}
+
+/// One-shot deferred-анонс resume — той самий гейт, що StartupPlan /
+/// StartupNotice: setup стешить, frontend_ready дренує й емітує (емісія до
+/// підписки webview = втрачене озвучення).
+pub struct ResumeNotice(std::sync::Mutex<Option<ResumeSummary>>);
+
+impl ResumeNotice {
+    pub fn new(summary: ResumeSummary) -> Self {
+        Self(std::sync::Mutex::new(Some(summary)))
+    }
+    pub fn take(&self) -> Option<ResumeSummary> {
+        self.0.lock().unwrap().take()
+    }
+}
+
+/// Виявлений збій: тихий авто-resume записів зі снапшота. Незіставлений
+/// stream_id (потік видалили) чи невдалий старт — промах у «N з M».
+/// Часткові файли попереднього сеансу не чіпаємо (спека: MP3/AAC — кадровий
+/// потік, фіналізація не обов'язкова).
+pub async fn resume_recordings(app: &AppHandle, prev: &SessionState) -> ResumeSummary {
+    let state = app.state::<AppState>();
+    let total = prev.active_recordings.len();
+    let mut resumed = 0usize;
+    for rec in &prev.active_recordings {
+        let stream = {
+            let profile = state.active_profile.read().await;
+            profile.streams.iter().find(|st| st.id == rec.stream_id).cloned()
+        };
+        let Some(stream) = stream else {
+            log::warn!(
+                "crash-recovery: stream '{}' (url {:?}) not in active profile — not resumed",
+                rec.stream_id, rec.url
+            );
+            continue;
+        };
+        match try_start(&state, stream).await {
+            Ok(()) => resumed += 1,
+            Err(e) => log::warn!("crash-recovery: failed to resume '{}': {e}", rec.stream_id),
+        }
+    }
+    log::info!("crash-recovery: resumed {resumed} of {total} recordings after crash");
+    ResumeSummary { resumed, total }
+}
+
+/// Той самий шлях, що ручний/плановий старт (scheduler::timer::try_start):
+/// check_disk_space НЕ обходиться.
+async fn try_start(
+    state: &tauri::State<'_, AppState>,
+    stream: StreamInfo,
+) -> Result<(), String> {
+    crate::commands::stream_commands::check_disk_space(state)
+        .await
+        .map_err(|e| e.to_string())?;
+    let settings = state.active_profile.read().await.recording.clone();
+    let mgr_arc = state.stream_manager.clone();
+    let mut mgr = mgr_arc.write().await;
+    mgr.start_recording(stream, settings, mgr_arc.clone())
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
 async fn write_snapshot(app: &AppHandle) {
     let state = app.state::<AppState>();
     let statuses = state.stream_manager.read().await.get_all_statuses();
@@ -258,5 +326,13 @@ mod tests {
         sample().save_to(&path).unwrap();
         assert!(path.exists());
         assert!(!path.with_extension("json.tmp").exists());
+    }
+
+    #[test]
+    fn resume_notice_take_is_one_shot() {
+        // Reload-safe: повторний frontend_ready не повинен анонсувати вдруге
+        let n = ResumeNotice::new(ResumeSummary { resumed: 2, total: 3 });
+        assert_eq!(n.take(), Some(ResumeSummary { resumed: 2, total: 3 }));
+        assert_eq!(n.take(), None);
     }
 }

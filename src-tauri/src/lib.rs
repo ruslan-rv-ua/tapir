@@ -183,9 +183,19 @@ pub fn run() {
                 }
             };
             app.manage(state);
-            // Phase 3K: маркер «сеанс у польоті» + снапшот-писар. Писар не
-            // емітить UI-подій, тож НЕ чекає frontend_ready.
+            // Phase 3K: виявлення збою. prev — стан ПОПЕРЕДНЬОГО сеансу,
+            // читаємо ДО перезапису маркером нового сеансу.
+            let prev_session = crash_recovery::SessionState::load();
             crash_recovery::mark_session_start();
+            if !prev_session.clean_shutdown && !prev_session.active_recordings.is_empty() {
+                // Тихий авто-resume (без діалогу). Підсумок стешиться і
+                // емітується з frontend_ready (гейт StartupPlan) — інакше
+                // подія піде до підписки webview і озвучення загубиться.
+                let summary = tauri::async_runtime::block_on(
+                    crash_recovery::resume_recordings(app.handle(), &prev_session),
+                );
+                app.manage(crash_recovery::ResumeNotice::new(summary));
+            }
             crash_recovery::spawn_snapshot_writer(app.handle().clone());
             tray::setup_tray(app.handle()).expect("Failed to set up system tray");
             tray::notify::register_aumid(&app.config().identifier, "Tapir");
