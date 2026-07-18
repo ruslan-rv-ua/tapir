@@ -88,6 +88,7 @@ export interface GlobalSettings {
   autostartMinimized: boolean;
   autoAdvance: boolean;
   prevRestartThresholdMs: number;
+  resumeFileFrom: "position" | "start";
   volumeStepPercent: number;
   smtcEnabled: boolean;
   hotkeys: HotkeyMap;
@@ -203,8 +204,9 @@ export interface PlayerEndedPayload {
 }
 
 export interface PlaybackAnnounce {
-  kind: "connecting" | "unavailable" | "error";
+  kind: "connecting" | "unavailable" | "error" | "resuming";
   name: string | null;
+  positionMs: number | null;
 }
 
 export interface AudioDevice {

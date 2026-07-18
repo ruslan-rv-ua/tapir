@@ -38,6 +38,7 @@ import { resolveEndedAction } from "./lib/playbackTransport";
 import { executeTransportSkip, parseSkipTrigger } from "./lib/transportControl";
 import { applyMuteCleanup } from "./lib/muteCleanup";
 import { selectPlaybackAnnouncement, suppressesStarted, type PendingConnect } from "./lib/playbackAnnounce";
+import { formatTimeParts } from "./lib/time";
 import { windowTitleLabel } from "./lib/windowTitle";
 import { useGlobalShortcuts } from "./hooks/useGlobalShortcuts";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -313,6 +314,18 @@ function AppContent() {
         announceRef.current(m.playback_connecting({ name: payload.name ?? "" }), "assertive");
         // The eventual stopped→playing "started" for this source would be a
         // duplicate — arm a one-shot suppression. TTL covers the ≤15 s probe.
+        pendingConnectRef.current = { name: payload.name ?? "", until: Date.now() + 20_000 };
+        break;
+      case "resuming":
+        announceRef.current(
+          m.playback_resuming({
+            name: payload.name ?? "",
+            position: m.time_format_min_sec(formatTimeParts(payload.positionMs ?? 0)),
+          }),
+          "assertive",
+        );
+        // The eventual stopped→playing "started" for this file would duplicate
+        // this announce — arm the same one-shot suppression as "connecting".
         pendingConnectRef.current = { name: payload.name ?? "", until: Date.now() + 20_000 };
         break;
       case "unavailable":

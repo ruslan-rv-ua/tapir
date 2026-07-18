@@ -6,6 +6,7 @@ import { $playerStatus } from "../../stores/player";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 import { useAnnounce } from "../../hooks/useAnnounce";
+import { formatTimeParts } from "../../lib/time";
 
 interface PlaybackPositionProps {
   inputRef?: RefObject<HTMLInputElement | null>;
@@ -13,10 +14,7 @@ interface PlaybackPositionProps {
 }
 
 function formatTime(ms: number): string {
-  const totalSec = Math.floor(ms / 1000);
-  const min = Math.floor(totalSec / 60);
-  const sec = totalSec % 60;
-  return m.time_format_min_sec({ min, sec });
+  return m.time_format_min_sec(formatTimeParts(ms));
 }
 
 export function PlaybackPosition({ inputRef, onNavigate }: PlaybackPositionProps) {
