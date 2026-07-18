@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { selectPlaybackAnnouncement } from "./playbackAnnounce";
+import { selectPlaybackAnnouncement, suppressesStarted } from "./playbackAnnounce";
 import type { PlayerStatus, PlaybackSource } from "./tauri";
 
 const stream = (id = "s1"): PlaybackSource => ({ type: "stream", streamId: id });
@@ -51,5 +51,32 @@ describe("selectPlaybackAnnouncement", () => {
 
   it("no transition (stopped→stopped) is silent", () => {
     expect(selectPlaybackAnnouncement(st("stopped"), st("stopped"), nameOf)).toBeNull();
+  });
+});
+
+describe("suppressesStarted", () => {
+  const started = { kind: "started" as const, name: "S:a" };
+  const pending = { name: "S:a", until: 1_000 };
+
+  it("suppresses the started that matches a live pending connect", () => {
+    expect(suppressesStarted(pending, started, 500)).toBe(true);
+  });
+
+  it("does not suppress after the pending window expires", () => {
+    expect(suppressesStarted(pending, started, 1_001)).toBe(false);
+  });
+
+  it("does not suppress a started for a different source", () => {
+    expect(suppressesStarted(pending, { kind: "started", name: "S:b" }, 500)).toBe(false);
+  });
+
+  it("does not suppress non-started announcements", () => {
+    expect(suppressesStarted(pending, { kind: "stopped", name: "S:a" }, 500)).toBe(false);
+    expect(suppressesStarted(pending, { kind: "resumed", name: "S:a" }, 500)).toBe(false);
+    expect(suppressesStarted(pending, null, 500)).toBe(false);
+  });
+
+  it("does nothing without a pending connect", () => {
+    expect(suppressesStarted(null, started, 500)).toBe(false);
   });
 });

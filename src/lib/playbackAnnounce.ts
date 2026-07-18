@@ -7,6 +7,32 @@ export type PlaybackAnnouncement =
   | { kind: "stopped"; name: string | null }
   | null;
 
+/** A Rust-side "connecting" announce that is still awaiting its outcome. */
+export interface PendingConnect {
+  name: string;
+  /** Epoch ms after which the pending connect is considered stale. */
+  until: number;
+}
+
+/**
+ * Cold-start stream resume announces "Connecting — X" (Rust side) and would
+ * then announce "Playing: X" when the connect lands — a duplicate for the same
+ * gesture. Suppress the "started" that matches a live pending connect; anything
+ * else (different name, expired window) announces normally.
+ */
+export function suppressesStarted(
+  pending: PendingConnect | null,
+  announcement: PlaybackAnnouncement,
+  now: number,
+): boolean {
+  return (
+    pending !== null &&
+    announcement?.kind === "started" &&
+    announcement.name === pending.name &&
+    now <= pending.until
+  );
+}
+
 function sameSource(a: PlaybackSource | null, b: PlaybackSource | null): boolean {
   if (!a || !b) return a === b;
   if (a.type !== b.type) return false;

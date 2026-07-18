@@ -226,7 +226,10 @@ async fn resume_last(app: &AppHandle) {
     match decide_cold_start(last_active.as_ref(), has_stream_id, stream_in_profile, has_file, file_exists) {
         ColdStart::PlayStream => {
             let (id, url, name) = stream.expect("PlayStream implies Some(stream)");
-            emit_announce(app, "connecting", Some(name)); // before the ≤15 s blocking connect
+            // Before the ≤15 s blocking connect. The webview arms a one-shot
+            // suppression so the eventual stopped→playing "started" for this
+            // source is not announced on top of "Connecting — X".
+            emit_announce(app, "connecting", Some(name));
             match state.player.play_stream(id, url, app).await {
                 Ok(()) => persist_session_snapshot(app).await,
                 Err(e) => {

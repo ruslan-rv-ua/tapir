@@ -37,7 +37,7 @@ import { computePlaybackNeighbors } from "./stores/playbackNeighbors";
 import { resolveEndedAction } from "./lib/playbackTransport";
 import { executeTransportSkip, parseSkipTrigger } from "./lib/transportControl";
 import { applyMuteCleanup } from "./lib/muteCleanup";
-import { selectPlaybackAnnouncement } from "./lib/playbackAnnounce";
+import { selectPlaybackAnnouncement, suppressesStarted, type PendingConnect } from "./lib/playbackAnnounce";
 import { windowTitleLabel } from "./lib/windowTitle";
 import { useGlobalShortcuts } from "./hooks/useGlobalShortcuts";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -204,6 +204,10 @@ function AppContent() {
     $streams.set($streams.get().map((s) => (s.id === updated.id ? updated : s)));
   }, []);
 
+  // Set by a Rust "connecting" announce (cold-start stream resume); the matching
+  // stopped→playing "started" would duplicate it for the same key press.
+  const pendingConnectRef = useRef<PendingConnect | null>(null);
+
   const handlePlayerStatus = useCallback((payload: PlayerStatus) => {
     const prev = $playerStatus.get();
     $playerStatus.set(payload);
@@ -217,7 +221,10 @@ function AppContent() {
     };
 
     const a = selectPlaybackAnnouncement(prev, payload, nameOf);
-    if (a) {
+    if (suppressesStarted(pendingConnectRef.current, a, Date.now())) {
+      // "Connecting — X" already covered this gesture; don't double up.
+      pendingConnectRef.current = null;
+    } else if (a) {
       switch (a.kind) {
         case "started":
           announceRef.current(m.playback_started({ name: a.name }), "assertive");
@@ -304,12 +311,17 @@ function AppContent() {
     switch (payload.kind) {
       case "connecting":
         announceRef.current(m.playback_connecting({ name: payload.name ?? "" }), "assertive");
+        // The eventual stopped→playing "started" for this source would be a
+        // duplicate — arm a one-shot suppression. TTL covers the ≤15 s probe.
+        pendingConnectRef.current = { name: payload.name ?? "", until: Date.now() + 20_000 };
         break;
       case "unavailable":
         announceRef.current(m.playback_unavailable(), "assertive");
+        pendingConnectRef.current = null;
         break;
       case "error":
         announceRef.current(m.playback_error(), "assertive");
+        pendingConnectRef.current = null;
         break;
     }
   }, []);
