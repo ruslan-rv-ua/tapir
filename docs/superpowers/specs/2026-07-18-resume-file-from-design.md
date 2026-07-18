@@ -58,8 +58,8 @@
 
 ### 5. UI ([AudioTab.tsx](../../../src/components/settings/AudioTab.tsx))
 
-- Секція `player_controls`, після `auto_advance`: react-aria **RadioGroup** (2 radio: `position` / `start`) з видимим `Label`, керований `settings.resumeFileFrom`, `onChange → update({ resumeFileFrom })`.
-- Доступність: стандартний react-aria RadioGroup (стрілки в межах групи, Tab між контролами), лейбли з i18n — NVDA читає групу + вибрану опцію. Стилі за сусідами по секції.
+- Секція `player_controls`, після `auto_advance`: react-aria **Select** (2 опції: `position` / `start`) з видимим `Label`, керований `settings.resumeFileFrom`, `onSelectionChange → update({ resumeFileFrom })` — той самий віджет-патерн, що в `doubleClickAction` у GeneralTab (рішення 2026-07-18: Select замість RadioGroup зі спеки — консистентність із наявним кодом).
+- Доступність: стандартний react-aria Select (як у `doubleClickAction`), лейбли з i18n — NVDA читає лейбл + вибрану опцію. Стилі за сусідами по секції.
 
 ### 6. Тести
 
