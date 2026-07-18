@@ -288,6 +288,15 @@ export type CliFeedbackPayload =
   | { kind: "action-failed"; action: string }
   | { kind: "invalid-args" };
 
+/**
+ * Backend `crash-resume` event (Phase 3K): підсумок тихого авто-resume
+ * після аварійного завершення. Порожній снапшот → події немає (тиша).
+ */
+export interface CrashResumeSummary {
+  resumed: number;
+  total: number;
+}
+
 // ── Wishlist/Ignorelist IPC wrappers ──────────────────────────────────────
 
 export async function getWishlist(): Promise<WishlistEntry[]> {
