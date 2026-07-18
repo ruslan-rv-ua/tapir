@@ -47,6 +47,8 @@ pub struct GlobalSettings {
     pub auto_advance: bool,
     #[serde(default)]
     pub prev_restart_threshold_ms: u32,
+    #[serde(default)]
+    pub resume_file_from: ResumeFileFrom,
     #[serde(default = "default_volume_step_percent")]
     pub volume_step_percent: u8,
     #[serde(default = "default_true")]
@@ -87,6 +89,18 @@ pub enum DoubleClickAction {
     #[default]
     Record,
     Play,
+}
+
+/// What position the cold-start `Ctrl+Shift+K` file resume starts from.
+/// ONLY consulted on cold-start — in-session pause→resume always keeps the
+/// position (pause semantics). Enum (not bool) to leave the door open for a
+/// third variant (e.g. Ask), per the backlog decision.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ResumeFileFrom {
+    #[default]
+    Position,
+    Start,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]
@@ -196,6 +210,7 @@ impl Default for GlobalSettings {
             log_level: LogLevel::Info,
             auto_advance: true,
             prev_restart_threshold_ms: 0,
+            resume_file_from: ResumeFileFrom::Position,
             volume_step_percent: 5,
             smtc_enabled: true,
             sort_by: "name".to_string(),
@@ -284,6 +299,28 @@ mod tests {
         let s: GlobalSettings = serde_json::from_str(json).unwrap();
         assert!(s.auto_advance);
         assert_eq!(s.prev_restart_threshold_ms, 0);
+    }
+
+    #[test]
+    fn resume_file_from_defaults_to_position() {
+        assert_eq!(GlobalSettings::default().resume_file_from, ResumeFileFrom::Position);
+    }
+
+    #[test]
+    fn legacy_config_without_resume_file_from_defaults_to_position() {
+        // A settings.json saved before this field existed must still load.
+        let json = r#"{"language":"en-US","theme":"auto","activeProfile":"Default"}"#;
+        let s: GlobalSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(s.resume_file_from, ResumeFileFrom::Position);
+    }
+
+    #[test]
+    fn resume_file_from_serde_round_trip() {
+        let s = GlobalSettings { resume_file_from: ResumeFileFrom::Start, ..GlobalSettings::default() };
+        let json = serde_json::to_string(&s).unwrap();
+        assert!(json.contains(r#""resumeFileFrom":"start""#));
+        let back: GlobalSettings = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.resume_file_from, ResumeFileFrom::Start);
     }
 
     #[test]
