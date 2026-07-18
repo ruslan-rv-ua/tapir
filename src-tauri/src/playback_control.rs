@@ -8,6 +8,7 @@
 use crate::app_state::AppState;
 use crate::player::engine::{PlaybackSource, PlaybackState, PlayerStatus};
 use crate::profile::{FilePosition, LastActive, PlayerSession};
+use crate::settings::ResumeFileFrom;
 use tauri::{AppHandle, Emitter, Manager};
 
 /// Cold-start hints the webview can't derive from `player-status`. The webview
@@ -17,10 +18,24 @@ use tauri::{AppHandle, Emitter, Manager};
 struct PlaybackAnnounce {
     kind: String,
     name: Option<String>,
+    position_ms: Option<u64>,
 }
 
 fn emit_announce(app: &AppHandle, kind: &str, name: Option<String>) {
-    let payload = PlaybackAnnounce { kind: kind.to_string(), name };
+    let payload = PlaybackAnnounce { kind: kind.to_string(), name, position_ms: None };
+    if let Err(e) = app.emit("player-announce", payload) {
+        log::warn!("playback: failed to emit player-announce: {e}");
+    }
+}
+
+/// "Playing — X, from mm:ss": emitted BEFORE `play_file` (mirrors "connecting"
+/// before `play_stream`) so the webview arms the started-suppression in time.
+fn emit_resuming(app: &AppHandle, name: String, position_ms: u64) {
+    let payload = PlaybackAnnounce {
+        kind: "resuming".to_string(),
+        name: Some(name),
+        position_ms: Some(position_ms),
+    };
     if let Err(e) = app.emit("player-announce", payload) {
         log::warn!("playback: failed to emit player-announce: {e}");
     }
@@ -94,6 +109,23 @@ pub(crate) fn decide_cold_start(
                 ColdStart::Unavailable // file moved / deleted
             }
         }
+    }
+}
+
+/// How the cold-start `PlayFile` branch starts the file. `FromStart` = play at 0,
+/// no seek, no position announce (mode `start`, or a saved position of 0);
+/// `FromPosition` = announce "resuming" then play + seek.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum FileResumePlan {
+    FromStart,
+    FromPosition { position_ms: u64 },
+}
+
+pub(crate) fn plan_file_resume(mode: ResumeFileFrom, position_ms: u64) -> FileResumePlan {
+    match mode {
+        ResumeFileFrom::Start => FileResumePlan::FromStart,
+        ResumeFileFrom::Position if position_ms > 0 => FileResumePlan::FromPosition { position_ms },
+        ResumeFileFrom::Position => FileResumePlan::FromStart,
     }
 }
 
@@ -240,18 +272,33 @@ async fn resume_last(app: &AppHandle) {
         }
         ColdStart::PlayFile => {
             let fp = last_file.expect("PlayFile implies Some(file)");
+            let mode = state.settings.read().await.resume_file_from;
+            let plan = plan_file_resume(mode, fp.position_ms);
+            if let FileResumePlan::FromPosition { position_ms } = &plan {
+                // Basename must match the webview's `nameOf()` for a file source
+                // (path basename with extension) or the started-suppression
+                // won't engage and NVDA would hear a duplicate.
+                let name = std::path::Path::new(&fp.path)
+                    .file_name()
+                    .map(|s| s.to_string_lossy().into_owned())
+                    .unwrap_or_else(|| fp.path.clone());
+                emit_resuming(app, name, *position_ms);
+            }
             match state.player.play_file(fp.path.clone(), app).await {
                 Ok(()) => {
-                    if let Err(e) = state.player.seek_playback(fp.position_ms, app).await {
-                        // Best-effort: stay at the start rather than fail the resume.
-                        log::warn!("playback: cold-start seek failed, staying at start: {e}");
+                    if let FileResumePlan::FromPosition { position_ms } = plan {
+                        if let Err(e) = state.player.seek_playback(position_ms, app).await {
+                            // Best-effort: stay at the start rather than fail the resume.
+                            log::warn!("playback: cold-start seek failed, staying at start: {e}");
+                        }
                     }
                     persist_session_snapshot(app).await;
-                    // `playback_started` (stopped→playing, file) announces webview-side.
+                    // FromStart: `playback_started` (stopped→playing, file) announces
+                    // webview-side, unchanged.
                 }
                 Err(e) => {
                     log::warn!("playback: cold-start file failed: {e}");
-                    emit_announce(app, "error", None); // keep the record
+                    emit_announce(app, "error", None); // keep the record; clears webview pending
                 }
             }
         }
@@ -358,6 +405,33 @@ mod tests {
             decide_cold_start(Some(&LastActive::File), false, false, false, false),
             ColdStart::Silent
         );
+    }
+
+    #[test]
+    fn file_resume_position_mode_resumes_from_saved_position() {
+        assert_eq!(
+            plan_file_resume(ResumeFileFrom::Position, 4200),
+            FileResumePlan::FromPosition { position_ms: 4200 }
+        );
+    }
+
+    #[test]
+    fn file_resume_start_mode_plays_from_zero() {
+        assert_eq!(plan_file_resume(ResumeFileFrom::Start, 4200), FileResumePlan::FromStart);
+    }
+
+    #[test]
+    fn file_resume_position_zero_behaves_like_start() {
+        // No seek and no "resuming from 0:00" announce — same UX as a fresh start.
+        assert_eq!(plan_file_resume(ResumeFileFrom::Position, 0), FileResumePlan::FromStart);
+    }
+
+    #[test]
+    fn paused_file_resume_is_not_gated_by_resume_setting() {
+        // Regression guard (spec §Не в скоупі): in-session pause→resume routes
+        // through ToggleAction::ResumeFile → resume_playback and never consults
+        // resume_file_from; only ColdStart::PlayFile calls plan_file_resume.
+        assert_eq!(decide_toggle(Some(&file()), PlaybackState::Paused), ToggleAction::ResumeFile);
     }
 
     #[test]
