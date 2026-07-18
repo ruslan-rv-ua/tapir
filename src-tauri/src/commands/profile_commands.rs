@@ -134,12 +134,11 @@ pub async fn switch_profile(
         futures::future::join_all(handles),
     ).await;
 
-    // Step 6-7: save volume + urls to old profile
+    // Step 6-7: save volume to old profile
     {
         let volume = state.player.current_volume().await;
         let mut profile = state.active_profile.write().await;
         profile.player_session.volume = volume;
-        profile.active_recording_urls = vec![];
         if let Err(e) = profile.save() {
             log::warn!("Could not save old profile on switch: {e}");
         }

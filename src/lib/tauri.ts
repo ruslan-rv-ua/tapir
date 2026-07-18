@@ -599,7 +599,6 @@ export interface Profile {
     lastFilePosition: { path: string; positionMs: number } | null;
   };
   savedTracks: unknown[];
-  activeRecordingUrls: string[];
 }
 
 export interface ProfileChangedPayload {

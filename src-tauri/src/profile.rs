@@ -316,8 +316,6 @@ pub struct Profile {
     // existing profile JSON files; reserved for a future cached-index approach.
     #[serde(default)]
     pub saved_tracks: Vec<SavedTrack>,
-    #[serde(default)]
-    pub active_recording_urls: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -424,7 +422,6 @@ impl Profile {
             postprocess: PostprocessConfig::default(),
             player_session: PlayerSession::default(),
             saved_tracks: vec![],
-            active_recording_urls: vec![],
         }
     }
 
@@ -530,8 +527,6 @@ impl Profile {
         validate_profile_name(new_name, &existing)?;
         let mut profile = Self::load(src_name)?;
         profile.name = new_name.to_string();
-        // Clear session state — duplicated profile starts fresh
-        profile.active_recording_urls = vec![];
         profile.save()?;
         Ok(ProfileMeta {
             name: new_name.to_string(),
@@ -579,7 +574,6 @@ impl Profile {
             stream.password = None;
         }
         profile.name = name.to_string();
-        profile.active_recording_urls = vec![];
         profile.save()?;
         Ok(ProfileMeta {
             name: name.to_string(),

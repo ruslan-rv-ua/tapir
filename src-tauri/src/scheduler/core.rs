@@ -150,7 +150,7 @@ impl SchedulerCore {
     }
 
     /// (stream_id, session_id) своїх активних записів — для фільтра
-    /// active_recording_urls у graceful_shutdown (§3.5).
+    /// снапшота state.json (manual_resume_stream_ids) (§3.5).
     pub fn owned_sessions(&self) -> Vec<(String, u64)> {
         self.active.iter().map(|a| (a.stream_id.clone(), a.session_id)).collect()
     }

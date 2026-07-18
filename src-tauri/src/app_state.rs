@@ -42,36 +42,17 @@ impl AppState {
     }
 }
 
-/// Stop all recordings, save active URLs, stop player, save volume,
-/// then briefly wait for in-flight tasks. Used by close-button shutdown
-/// (when minimize_to_tray is false) and by tray "Quit".
+/// Stop all recordings, stop player, save volume/session, then briefly wait
+/// for in-flight tasks. Used by close-button shutdown (when minimize_to_tray
+/// is false) and by tray "Quit".
 pub async fn graceful_shutdown(app: &AppHandle) {
     let state = app.state::<AppState>();
-
-    // Статуси і scheduler-owned пари — ДО stop_all (§3.5): після скасування
-    // записи зникають із manager асинхронно, фільтрувати було б ні по чому.
-    let statuses = state.stream_manager.read().await.get_all_statuses();
-    let scheduler_owned = state.scheduler.core.lock().await.owned_sessions();
 
     // Зупинити тік-задачу і зафіксувати StoppedByUser(AppClosing) для своїх
     // записів (пише last_result + save + подія scheduled-completed).
     crate::scheduler::timer::on_app_closing(app).await;
 
     state.stream_manager.write().await.stop_all();
-
-    // active_recording_urls — лише ручні записи: відновлення планових
-    // після рестарту — виключно через catch-up (§3.5).
-    let urls = {
-        let profile = state.active_profile.read().await;
-        manual_resume_urls(&statuses, &scheduler_owned, &profile.streams)
-    };
-
-    let mut profile = state.active_profile.write().await;
-    profile.active_recording_urls = urls;
-    if let Err(e) = profile.save() {
-        log::error!("Failed to save profile on shutdown: {e}");
-    }
-    drop(profile);
 
     // Capture the resume snapshot BEFORE tearing the player down — stop loses
     // the source and position. Merge it with the volume into a single save
@@ -91,13 +72,14 @@ pub async fn graceful_shutdown(app: &AppHandle) {
     tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 }
 
-/// Чиста (§3.5): URL-и активних НЕпланових записів для відновлення після
-/// рестарту. Scheduler-owned визначається парою (stream_id, session_id) —
-/// сам stream_id недостатній: потік міг перейти до ручного запису.
-pub fn manual_resume_urls(
+/// Чиста (§3.5, Phase 3K): stream_id-и активних НЕпланових записів — вміст
+/// живого снапшота state.json. Scheduler-owned визначається парою
+/// (stream_id, session_id) — сам stream_id недостатній: потік міг перейти до
+/// ручного запису. Розв'язання id → StreamInfo (URL/credentials) — на боці
+/// resume-споживача.
+pub fn manual_resume_stream_ids(
     statuses: &[StreamStatus],
     scheduler_owned: &[(String, u64)],
-    streams: &[crate::profile::StreamInfo],
 ) -> Vec<String> {
     statuses
         .iter()
@@ -107,14 +89,13 @@ pub fn manual_resume_urls(
                 .iter()
                 .any(|(id, sid)| *id == s.stream_id && *sid == s.session_id)
         })
-        .filter_map(|s| streams.iter().find(|st| st.id == s.stream_id).map(|st| st.url.clone()))
+        .map(|s| s.stream_id.clone())
         .collect()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::profile::StreamInfo;
     use crate::stream::manager::StreamStatus;
 
     fn status(stream_id: &str, state: StreamState, session_id: u64) -> StreamStatus {
@@ -131,26 +112,16 @@ mod tests {
         }
     }
 
-    fn stream(id: &str, url: &str) -> StreamInfo {
-        StreamInfo {
-            id: id.into(), url: url.into(), name: id.into(),
-            format: None, bitrate: None, icy_name: None, icy_genre: None,
-            icy_url: None, ignorelist: vec![], username: None, password: None,
-            added_at: "2026-01-01".into(),
-        }
-    }
-
     #[test]
     fn scheduler_owned_recordings_are_excluded_from_resume() {
-        // §3.5: планові записи не потрапляють в active_recording_urls —
-        // інакше після рестарту вони стали б «нічийними» і не зупинились би
+        // §3.5: планові записи не потрапляють у снапшот — їх catch-up
+        // лежить у ScheduleManager, а не в crash-resume
         let statuses = [
             status("manual", StreamState::Recording, 1),
             status("planned", StreamState::Recording, 2),
         ];
         let owned = [("planned".to_string(), 2u64)];
-        let streams = [stream("manual", "http://m"), stream("planned", "http://p")];
-        assert_eq!(manual_resume_urls(&statuses, &owned, &streams), vec!["http://m".to_string()]);
+        assert_eq!(manual_resume_stream_ids(&statuses, &owned), vec!["manual".to_string()]);
     }
 
     #[test]
@@ -159,8 +130,7 @@ mod tests {
         // зайняв ручний запис (інший session) — він має відновитися
         let statuses = [status("st1", StreamState::Recording, 5)];
         let owned = [("st1".to_string(), 2u64)]; // застаріла пара scheduler-а
-        let streams = [stream("st1", "http://x")];
-        assert_eq!(manual_resume_urls(&statuses, &owned, &streams), vec!["http://x".to_string()]);
+        assert_eq!(manual_resume_stream_ids(&statuses, &owned), vec!["st1".to_string()]);
     }
 
     #[test]
@@ -171,14 +141,14 @@ mod tests {
             status("c", StreamState::Connecting, 3),
             status("d", StreamState::Reconnecting, 4),
         ];
-        let streams = [stream("a", "ua"), stream("b", "ub"), stream("c", "uc"), stream("d", "ud")];
-        assert_eq!(manual_resume_urls(&statuses, &[], &streams), vec!["uc".to_string(), "ud".to_string()]);
+        assert_eq!(manual_resume_stream_ids(&statuses, &[]), vec!["c".to_string(), "d".to_string()]);
     }
 
     #[test]
-    fn unknown_stream_id_is_skipped() {
-        // Статус без відповідного StreamInfo (потік видалили) — без URL
+    fn ids_are_returned_even_without_stream_info() {
+        // Розв'язання id → StreamInfo — на resume: видалений потік лишається у
+        // снапшоті і рахується промахом «N з M» (спека, «Resume-споживач»)
         let statuses = [status("ghost", StreamState::Recording, 1)];
-        assert!(manual_resume_urls(&statuses, &[], &[]).is_empty());
+        assert_eq!(manual_resume_stream_ids(&statuses, &[]), vec!["ghost".to_string()]);
     }
 }
