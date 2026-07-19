@@ -31,24 +31,3 @@ it("requestBulkRemove confirms with the count, calls onBulkRemove, announces the
   await waitFor(() => expect(onBulkRemove).toHaveBeenCalledWith(["*ad*", "*promo*"]));
   await waitFor(() => expect($announcer.get()?.message).toBe(m.patterns_removed_bulk({ count: 2 })));
 });
-
-it("renders emptyExtra inside the empty region", () => {
-  const { getByText } = render(
-    <PatternList items={[]} ariaLabel="Wishlist" showDate={false}
-      emptyMessage="empty" exitZone={vi.fn()} onEmpty={vi.fn()} onEdit={vi.fn()}
-      onRemove={vi.fn()} onBulkRemove={vi.fn()}
-      emptyExtra={<button>seed me</button>} />,
-  );
-  const btn = getByText("seed me");
-  expect(btn.closest("[data-zone-id]")?.getAttribute("data-zone-id")).toBe("wishlist-list");
-});
-
-it("does not render emptyExtra when the list has items", () => {
-  const { queryByText } = render(
-    <PatternList items={[{ pattern: "*ad*" }]} ariaLabel="Wishlist" showDate={false}
-      emptyMessage="empty" exitZone={vi.fn()} onEmpty={vi.fn()} onEdit={vi.fn()}
-      onRemove={vi.fn()} onBulkRemove={vi.fn()}
-      emptyExtra={<button>seed me</button>} />,
-  );
-  expect(queryByText("seed me")).toBeNull();
-});

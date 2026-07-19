@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { forwardRef, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { createPortal } from "react-dom";
 import { $patternSelection } from "../../stores/wishlist";
@@ -24,8 +24,6 @@ interface Props {
   ariaLabel: string;
   showDate: boolean;
   emptyMessage: string;
-  /** Extra content rendered inside the empty-state region, under emptyMessage. */
-  emptyExtra?: ReactNode;
   exitZone: (forward: boolean) => void;
   onEmpty: () => void;
   onEdit: (pattern: string) => void;
@@ -39,7 +37,7 @@ export type PatternListHandle = ZoneEntry & { requestBulkRemove: () => void };
 const PATTERN_SEGMENTS: Exclude<SegmentKind, "summary">[] = ["conditions", "action-edit", "action-delete"];
 
 export const PatternList = forwardRef<PatternListHandle, Props>(
-  ({ items, ariaLabel, showDate, emptyMessage, emptyExtra, exitZone, onEmpty, onEdit, onRemove, onBulkRemove }, ref) => {
+  ({ items, ariaLabel, showDate, emptyMessage, exitZone, onEmpty, onEdit, onRemove, onBulkRemove }, ref) => {
     const listItems = useMemo(
       () => items.map((item) => ({ id: item.pattern, segments: PATTERN_SEGMENTS })),
       [items],
@@ -113,7 +111,6 @@ export const PatternList = forwardRef<PatternListHandle, Props>(
           empty={
             <ListCardState role="status">
               {emptyMessage}
-              {emptyExtra}
             </ListCardState>
           }
           onAction={(type, itemId, segment) => {
