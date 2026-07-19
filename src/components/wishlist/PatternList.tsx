@@ -109,9 +109,7 @@ export const PatternList = forwardRef<PatternListHandle, Props>(
           onSelectionChange={onSelectionChange}
           emptyLabel={emptyMessage}
           empty={
-            <ListCardState role="status">
-              {emptyMessage}
-            </ListCardState>
+            <ListCardState role="status">{emptyMessage}</ListCardState>
           }
           onAction={(type, itemId, segment) => {
             if (type === "delete") {

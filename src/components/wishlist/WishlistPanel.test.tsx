@@ -44,6 +44,8 @@ function ZoneHarness() {
 vi.mock("../../lib/tauri", () => ({
   getWishlist: vi.fn().mockResolvedValue([{ pattern: "*ad*", addedAt: "2026-01-01T00:00:00Z" }]),
   getIgnorelist: vi.fn().mockResolvedValue([]),
+  removeFromWishlist: vi.fn().mockResolvedValue(undefined),
+  removeFromIgnorelist: vi.fn().mockResolvedValue(undefined),
   removeFromWishlistBulk: vi.fn().mockResolvedValue(1),
   removeFromIgnorelistBulk: vi.fn().mockResolvedValue(0),
   addToWishlist: vi.fn(async (pattern: string) => ({ pattern, addedAt: "2026-07-19T00:00:00Z" })),
@@ -65,6 +67,24 @@ it("routes the cluster delete to the wishlist bulk command for the active tab", 
   fireEvent.click(getByText(m.delete_selected({ count: 1 })));
   fireEvent.click(getByRole("button", { name: m.remove_pattern() })); // confirm (button === title, query by role)
   await waitFor(() => expect(tauri.removeFromWishlistBulk).toHaveBeenCalledWith(["*ad*"]));
+});
+
+it("deleting the last remaining pattern moves focus to the empty-state CTA (R1: onEmpty is dead code once the parent swaps to the empty zone in the same render)", async () => {
+  // Single-row delete: click the row's own delete action, then confirm. The
+  // dialog's confirm button has no explicit confirmLabel, so it falls back to
+  // m.delete() — distinct from the dialog title (m.remove_pattern()), so the
+  // two buttons don't collide by accessible name.
+  const { getByRole } = render(<WishlistPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
+  await waitFor(() => screen.getByText(m.select_all()));
+  fireEvent.click(getByRole("button", { name: `${m.remove_pattern()}: *ad*` }));
+  fireEvent.click(getByRole("button", { name: m["delete"]() }));
+  await waitFor(() => expect(tauri.removeFromWishlist).toHaveBeenCalledWith("*ad*"));
+  await waitFor(() => expect($wishlist.get()).toEqual([]));
+  await waitFor(() => {
+    const cta = document.activeElement as HTMLElement;
+    expect(cta.tagName).toBe("BUTTON");
+    expect(cta).toHaveAccessibleName(m.wishlist_add_example());
+  });
 });
 
 it("clears the selection when the tab changes", async () => {
@@ -278,6 +298,26 @@ describe("empty-state example seeding", () => {
     const badge = screen.getByText(m.pattern_hint());
     expect(badge.tagName).toBe("P");
     expect(badge.hasAttribute("tabindex")).toBe(false);
+  });
+
+  it("merges the first successful pattern into the store when the second seed call rejects, and announces failure (R2: partial seed failure)", async () => {
+    $wishlist.set([]);
+    vi.mocked(tauri.getWishlist).mockResolvedValueOnce([]);
+    vi.mocked(tauri.addToWishlist)
+      .mockImplementationOnce(async (pattern: string) => ({ pattern, addedAt: "2026-07-19T00:00:00Z" }))
+      .mockImplementationOnce(async () => { throw new Error("boom"); });
+    render(<WishlistPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: m.wishlist_add_example() }));
+
+    await waitFor(() => expect(vi.mocked(tauri.addToWishlist).mock.calls.length).toBe(2));
+    await waitFor(() =>
+      expect($announcer.get()?.message).toBe(m.wishlist_examples_failed()),
+    );
+    // The backend already accepted the first pattern — the store must reflect
+    // that even though the run as a whole failed, or the UI keeps lying that
+    // the list is empty until a retry or remount.
+    expect($wishlist.get().map((e) => e.pattern)).toEqual([EXAMPLE_WISHLIST_PATTERNS[0]]);
   });
 
   it("hides the CTA once the list has patterns", async () => {

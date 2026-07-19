@@ -87,7 +87,13 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   const handleRemoveWishlist = useCallback(async (pattern: string) => {
     try {
       await tauri.removeFromWishlist(pattern);
-      $wishlist.set($wishlist.get().filter((e) => e.pattern !== pattern));
+      const next = $wishlist.get().filter((e) => e.pattern !== pattern);
+      $wishlist.set(next);
+      // PatternList unmounts in the SAME render as this store write (the parent
+      // swaps straight to the empty zone), so useCompositeList's own [items]
+      // effect never runs and its onEmpty never fires (R1). Set the flag here —
+      // the CTA-focus effect below picks it up once the empty zone has mounted.
+      if (next.length === 0) pendingFocusEmptyZone.current = true;
       announce(m.announcement_pattern_removed({ pattern }), "polite");
     } catch (err) {
       addToast(String(err), "error");
@@ -121,7 +127,10 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   const handleRemoveIgnorelist = useCallback(async (pattern: string) => {
     try {
       await tauri.removeFromIgnorelist(pattern);
-      $ignorelist.set($ignorelist.get().filter((p) => p !== pattern));
+      const next = $ignorelist.get().filter((p) => p !== pattern);
+      $ignorelist.set(next);
+      // See handleRemoveWishlist above — same dead-onEmpty issue (R1).
+      if (next.length === 0) pendingFocusEmptyZone.current = true;
       announce(m.announcement_pattern_removed({ pattern }), "polite");
     } catch (err) {
       addToast(String(err), "error");
@@ -130,8 +139,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
 
   // Seed the empty list with example patterns. Sequential IPC by design: there is
   // no bulk-add command and adding one is not worth it for at most five calls.
-  // The Rust commands dedupe, so a repeat click is idempotent. The store is
-  // updated once at the end rather than per call, so the list mounts exactly once.
+  // The Rust commands dedupe, so a repeat click is idempotent.
   const handleAddExamples = useCallback(async () => {
     if (seeding) return; // guard double-activation (aria-disabled keeps it clickable)
     setSeeding(true);
@@ -139,26 +147,49 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
     const patterns = activeTab === "wishlist"
       ? EXAMPLE_WISHLIST_PATTERNS
       : EXAMPLE_IGNORELIST_PATTERNS;
+    // Accumulated OUTSIDE the try so a mid-loop rejection (e.g. pattern 2 of 5
+    // fails) still leaves whatever already succeeded available to merge below —
+    // the backend already accepted those calls, so the store must reflect them
+    // even on a partial failure. Merging only inside `try` (the previous shape)
+    // dropped already-succeeded entries on the floor: the UI kept showing the
+    // empty state while the profile on disk already held them, self-healing
+    // only on a retry click or a remount.
+    const addedEntries: tauri.WishlistEntry[] = [];
+    const addedPatterns: string[] = [];
+    let failed = false;
     try {
       if (activeTab === "wishlist") {
-        const entries = [];
-        for (const pattern of patterns) entries.push(await tauri.addToWishlist(pattern));
-        const existing = $wishlist.get();
-        const fresh = entries.filter((e) => !existing.some((x) => x.pattern === e.pattern));
-        $wishlist.set([...existing, ...fresh]);
+        for (const pattern of patterns) addedEntries.push(await tauri.addToWishlist(pattern));
       } else {
-        for (const pattern of patterns) await tauri.addToIgnorelist(pattern);
-        const existing = $ignorelist.get();
-        const fresh = patterns.filter((p) => !existing.includes(p));
-        $ignorelist.set([...existing, ...fresh]);
+        for (const pattern of patterns) {
+          await tauri.addToIgnorelist(pattern);
+          addedPatterns.push(pattern);
+        }
       }
       // The list mounts as the store flips non-empty; focus its first row then.
       pendingFocusFirstRow.current = true;
       announce(m.wishlist_examples_added({ patterns: patterns.join(", ") }), "polite");
     } catch (err) {
+      failed = true;
       addToast(String(err), "error");
       announce(m.wishlist_examples_failed(), "polite");
     } finally {
+      if (addedEntries.length > 0) {
+        const existing = $wishlist.get();
+        const fresh = addedEntries.filter((e) => !existing.some((x) => x.pattern === e.pattern));
+        $wishlist.set([...existing, ...fresh]);
+      }
+      if (addedPatterns.length > 0) {
+        const existing = $ignorelist.get();
+        const fresh = addedPatterns.filter((p) => !existing.includes(p));
+        $ignorelist.set([...existing, ...fresh]);
+      }
+      // A partial failure still grew the list — the CTA (which the user's
+      // focus is still on) is about to unmount as the parent swaps back to
+      // PatternList, so claim the same first-row focus a full success gets.
+      if (failed && (addedEntries.length > 0 || addedPatterns.length > 0)) {
+        pendingFocusFirstRow.current = true;
+      }
       // Unlike StreamsPanel (whose empty node unmounts with the flag), this CTA
       // may still be mounted on failure, so the guard must always be released.
       setSeeding(false);
@@ -189,6 +220,11 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   // reaches the CTA button.
   const emptyZoneRef = useRef<HTMLDivElement | null>(null);
   const addExampleBtnRef = useRef<HTMLButtonElement | null>(null);
+  // Set by a remove/bulk-remove that empties the active list — the CTA isn't
+  // mounted yet at that point, so a deferred effect (below, near activeItems)
+  // focuses it once the empty zone commits. Mirrors StreamsPanel's
+  // pendingFocusEmptyZone (StreamsPanel.tsx:291).
+  const pendingFocusEmptyZone = useRef(false);
 
   // Focus the currently-selected Wishlist/Ignorelist tab (react-aria marks it
   // aria-selected="true" + tabindex="0"). Used as the toolbar's backward exit
@@ -256,6 +292,19 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
 
   // --- Selection cluster ---
   const activeItems = activeTab === "wishlist" ? wishlistItems : ignorelistItems;
+
+  // Consume the pending-empty-focus flag once the empty zone has actually
+  // mounted (covers both single-row delete and bulk delete, on either tab —
+  // see handleRemoveWishlist/handleRemoveIgnorelist and PatternList's onEmpty
+  // below). Never let focus fall to <body> (R1).
+  useEffect(() => {
+    if (!pendingFocusEmptyZone.current) return;
+    if (activeItems.length === 0) {
+      pendingFocusEmptyZone.current = false;
+      addExampleBtnRef.current?.focus();
+    }
+  }, [activeItems.length]);
+
   const visibleIds = useMemo(() => activeItems.map((it) => it.pattern), [activeItems]);
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selection.has(id));
 
@@ -349,7 +398,13 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
       aria-label={emptyMessage}
       className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-10 text-center text-slate-400"
     >
-      <p className="text-sm">{emptyMessage}</p>
+      {/* role="status" only wraps this static message — not the button, whose
+          own text mutates during seeding ("Add example" ↔ "Adding..."). Scoping
+          it this tightly means a re-render that just flips seeding state can't
+          get read twice: once by this live region and once by the seed
+          handler's own explicit announce() calls (mirrors the scoping
+          StreamsPanel keeps between its live regions and mutating widgets). */}
+      <p role="status" className="text-sm">{emptyMessage}</p>
       <button
         ref={addExampleBtnRef}
         aria-disabled={seeding || undefined}
@@ -451,7 +506,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
                 showDate={true}
                 emptyMessage={m.empty_wishlist()}
                 exitZone={(forward) => exitZone("wishlist-list", forward)}
-                onEmpty={() => addPatternBtnRef.current?.focus()}
+                onEmpty={() => { pendingFocusEmptyZone.current = true; }}
                 onEdit={(pattern) => setDialog({ mode: "edit", listType: "wishlist", pattern })}
                 onRemove={handleRemoveWishlist}
                 onBulkRemove={handleBulkRemove}
@@ -469,7 +524,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
                 showDate={false}
                 emptyMessage={m.empty_ignorelist()}
                 exitZone={(forward) => exitZone("wishlist-list", forward)}
-                onEmpty={() => addPatternBtnRef.current?.focus()}
+                onEmpty={() => { pendingFocusEmptyZone.current = true; }}
                 onEdit={(pattern) => setDialog({ mode: "edit", listType: "ignorelist", pattern })}
                 onRemove={handleRemoveIgnorelist}
                 onBulkRemove={handleBulkRemove}
