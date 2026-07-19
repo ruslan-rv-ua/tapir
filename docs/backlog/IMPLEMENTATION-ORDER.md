@@ -45,15 +45,16 @@
 | 4 | [import-duplicate-metadata-update](p2-import-duplicate-metadata-update.md) | P2 | ідея | draft | S | Phase 3J | — |
 | 5 | [full-edit-stream](p2-full-edit-stream.md) | P2 | покращення | ідея | M | F2 edit-режим ✅ | — |
 | 6 | [streams-empty-focus-audit](p2-streams-empty-focus-audit.md) | P2 | дослідити | ready | S | — | спадок wishlist-example-patterns ✅ |
-| 7 | [command-palette-phase-3](p2-command-palette-phase-3.md) | P2 | ідея | draft | M | Phase 3C | **розблоковує #12** |
-| 8 | [post-processing](p2-post-processing.md) | P2 | ідея | draft | M | Phase 1 | — |
-| 9 | [profile-switch-orphaned-tasks](p2-bug-profile-switch-orphaned-tasks.md) | P2 | ідея | draft | M | Phase 3F | **умовний** (тригер нижче) |
-| 10 | [mpv-playback-engine](p3-mpv-playback-engine.md) | P3 | дослідити | draft | L | код плеєра | **розвилка для #11** |
-| 11 | [he-aac-mf-playback](p3-he-aac-mf-playback.md) · [hls-stream-support](p3-hls-stream-support.md) | P3 | дослідити/ідея | draft | M–L | код плеєра | залежать від рішення #10 |
-| 12 | [command-palette-phase-4](p3-command-palette-phase-4.md) | P3 | ідея | **blocked** | M | **#7** | — |
-| 13 | [quick-controls-overlay](p3-quick-controls-overlay.md) | P3 | ідея | draft | L | Phase 3A/2A/3F | — |
-| 14 | [unwrap-in-tests](p3-unwrap-in-tests.md) | P3 | заплановано | ready | S | — | housekeeping (будь-коли) |
-| 15 | [screen-reader-direct-speech](p3-screen-reader-direct-speech.md) | P3 | ідея | **відкладено** | S | — | тригер-gated, не планувати |
+| 7 | [wishlist-stale-list-ref](p2-wishlist-stale-list-ref.md) | P2 | дослідити | ready | S | — | знахідка follow-up-хвилі wishlist-example-patterns ✅; якщо відтвориться — кандидат у P1 |
+| 8 | [command-palette-phase-3](p2-command-palette-phase-3.md) | P2 | ідея | draft | M | Phase 3C | **розблоковує #13** |
+| 9 | [post-processing](p2-post-processing.md) | P2 | ідея | draft | M | Phase 1 | — |
+| 10 | [profile-switch-orphaned-tasks](p2-bug-profile-switch-orphaned-tasks.md) | P2 | ідея | draft | M | Phase 3F | **умовний** (тригер нижче) |
+| 11 | [mpv-playback-engine](p3-mpv-playback-engine.md) | P3 | дослідити | draft | L | код плеєра | **розвилка для #12** |
+| 12 | [he-aac-mf-playback](p3-he-aac-mf-playback.md) · [hls-stream-support](p3-hls-stream-support.md) | P3 | дослідити/ідея | draft | M–L | код плеєра | залежать від рішення #11 |
+| 13 | [command-palette-phase-4](p3-command-palette-phase-4.md) | P3 | ідея | **blocked** | M | **#8** | — |
+| 14 | [quick-controls-overlay](p3-quick-controls-overlay.md) | P3 | ідея | draft | L | Phase 3A/2A/3F | — |
+| 15 | [unwrap-in-tests](p3-unwrap-in-tests.md) | P3 | заплановано | ready | S | — | housekeeping (будь-коли) |
+| 16 | [screen-reader-direct-speech](p3-screen-reader-direct-speech.md) | P3 | ідея | **відкладено** | S | — | тригер-gated, не планувати |
 
 \* `log-rotation` має тип `ідея`/`draft`, але секція «Прийняті рішення» вже фіксує підхід
 (size-based ротація, дефолти) — фактично готовий до планування.
@@ -74,7 +75,7 @@
 Wishlist/Ignorelist, реалізовано й винесено в `done/`. Деталі спадщини — у таблиці «Виконано»
 вище.
 
-**14. [unwrap-in-tests](p3-unwrap-in-tests.md)** (P3, S, ready) — попри мітку P3, це
+**15. [unwrap-in-tests](p3-unwrap-in-tests.md)** (P3, S, ready) — попри мітку P3, це
 тривіальна **гігієна тестів** без залежностей; підтягнути будь-коли як housekeeping.
 
 ### Хвиля 2 — кластер probe (спільна IPC) ✅ виконано 2026-07-19
@@ -102,46 +103,49 @@ UI — окремий діалог «Налаштування профілю» �
 **5. [full-edit-stream](p2-full-edit-stream.md)** (M — потребує дизайну guard'а для активного запису) ·
 **6. [streams-empty-focus-audit](p2-streams-empty-focus-audit.md)** (S, ready, дослідити —
 спадок `wishlist-example-patterns`: чи орфанить фокус видалення останнього потоку в Streams;
-якщо так — фікс за зразком `223fadb`).
+якщо так — фікс за зразком `223fadb`) ·
+**7. [wishlist-stale-list-ref](p2-wishlist-stale-list-ref.md)** (S, ready, дослідити —
+чи мертві тулбарний bulk-delete і F6-зона списку на перемкнутій вкладці; якщо
+відтвориться в реальному застосунку — кандидат у P1).
 
 ### Хвиля 4 — більші P2-фічі (після стабілізації відтворення)
 
-**7. [command-palette-phase-3](p2-command-palette-phase-3.md)** (P2, M, draft) — розширення
-вмісту палітри (станції/пісні/навігація); **розблоковує #12**.
-**8. [post-processing](p2-post-processing.md)** (P2, M, draft) — об'ємна фіча, нижча
+**8. [command-palette-phase-3](p2-command-palette-phase-3.md)** (P2, M, draft) — розширення
+вмісту палітри (станції/пісні/навігація); **розблоковує #13**.
+**9. [post-processing](p2-post-processing.md)** (P2, M, draft) — об'ємна фіча, нижча
 цінність → у кінець P2.
-**9. [profile-switch-orphaned-tasks](p2-bug-profile-switch-orphaned-tasks.md)** (P2, M) —
+**10. [profile-switch-orphaned-tasks](p2-bug-profile-switch-orphaned-tasks.md)** (P2, M) —
 **умовно**: брати лише якщо реальне використання покаже незафіналізовані файли після
 profile switch (сам запис так і каже). Інакше тримати на полиці.
 
 ### Хвиля 5 — P3: дослідження-розвилки й відкладене
 
-**10. [mpv-playback-engine](p3-mpv-playback-engine.md)** (P3, дослідити, L) — **робити ПЕРШИМ
+**11. [mpv-playback-engine](p3-mpv-playback-engine.md)** (P3, дослідити, L) — **робити ПЕРШИМ
 серед декодер-записів**. Це розвилка: PoC-gate (HE-AACv2 грає правильно? перший ICY-тайтл
-вчасно? розмір DLL? ліцензія FFmpeg?) вирішує долю #11. Запис прямо застерігає «не
+вчасно? розмір DLL? ліцензія FFmpeg?) вирішує долю #12. Запис прямо застерігає «не
 починати обидва шляхи паралельно».
 
-**11.** Залежно від результату #10:
+**12.** Залежно від результату #11:
 - mpv **go** → реалізувати mpv (L), потім **винести в `done/`** записи he-aac-mf і hls як
   зняті рішенням (mpv закриває обидва).
 - mpv **no-go** → повернутись до [he-aac-mf-playback](p3-he-aac-mf-playback.md) (діагностувати
   реальний баг на гілці `he-aac-mf`) і/або [hls-stream-support](p3-hls-stream-support.md) окремо.
 
-**12. [command-palette-phase-4](p3-command-palette-phase-4.md)** (P3, blocked) — context-aware
-ранжування; знімається з блоку лише після #7.
-**13. [quick-controls-overlay](p3-quick-controls-overlay.md)** (P3, L) — велика, низький
+**13. [command-palette-phase-4](p3-command-palette-phase-4.md)** (P3, blocked) — context-aware
+ранжування; знімається з блоку лише після #8.
+**14. [quick-controls-overlay](p3-quick-controls-overlay.md)** (P3, L) — велика, низький
 пріоритет; відкласти.
-**15. [screen-reader-direct-speech](p3-screen-reader-direct-speech.md)** — **відкладено під
+**16. [screen-reader-direct-speech](p3-screen-reader-direct-speech.md)** — **відкладено під
 сумнівом** із явним тригером повернення; **не планувати**, тримати запис як маркер рішення.
 
 ---
 
 ## Чому саме так (відхилення від алфавітного порядку README)
 
-- **Кластеризація probe** (обидва записи вже в `done/`) і **палітра (#7→#12)** — щоб спільну
+- **Кластеризація probe** (обидва записи вже в `done/`) і **палітра (#8→#13)** — щоб спільну
   IPC / залежність робити суміжно, а не повертатись двічі. Probe-кластер це підтвердив:
   друга задача звелася до виклику вже наявного `probe_once`.
-- **mpv (#10) перед he-aac/hls (#11)** — попри те, що he-aac/hls «старіші» записи, mpv —
+- **mpv (#11) перед he-aac/hls (#12)** — попри те, що he-aac/hls «старіші» записи, mpv —
   це fork-in-the-road, що може зробити їх непотрібними. Дослідити розвилку дешевше, ніж
   паралельно тягнути MF-шлях.
 
@@ -158,16 +162,16 @@ profile switch (сам запис так і каже). Інакше тримат
 3. ✅ **autostart ↔ відтворення** — _вирішено (A3 через A1), обидві сторони реалізовано._
    Autostart сам **не** грає; авто-гра ⇔ активний профіль має `startup_playback_mode = always_play`
    (поле вводить #1).
-4. **mpv (#10) ↔ he-aac-mf / hls (#11).** Якщо mpv проходить PoC — винести обидва записи в `done/`
+4. **mpv (#11) ↔ he-aac-mf / hls (#12).** Якщо mpv проходить PoC — винести обидва записи в `done/`
    як зняті. _(A4 — відкрите.)_
 
 ## Готовність-сигнал (для вибору наступного)
 
-- **Готові до коду зараз** (`ready`/«рішення прийняті»): #2, #6, #14.
+- **Готові до коду зараз** (`ready`/«рішення прийняті»): #2, #6, #7, #15.
 - **Модель узгоджена, база в коді** (промпт уже імплементаційний): #1 (A1 закрито 2026-06-25;
   `PlayerSession`-спадщина злита 2026-07-18, включно з `resume_file_from`).
 - **Потребують grooming-пасу** (тип `ідея`/`draft`, є відкриті питання): #3, #4, #5,
-  #7, #8, #9 — їхній промпт у записі досі «лише обговорення»; спершу довести до
+  #8, #9, #10 — їхній промпт у записі досі «лише обговорення»; спершу довести до
   `заплановано`, тоді кодити.
-- **Дослідження/розвилка**: #6, #10, #11.
-- **Заблоковано/відкладено**: #12 (чекає #7), #15 (тригер-gated).
+- **Дослідження/розвилка**: #6, #7, #11, #12.
+- **Заблоковано/відкладено**: #13 (чекає #8), #16 (тригер-gated).
