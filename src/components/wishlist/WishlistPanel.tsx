@@ -1,5 +1,5 @@
 import { Tabs, TabList, Tab, TabPanel } from "react-aria-components";
-import { useEffect, useCallback, useMemo, useRef, useState } from "react";
+import { useEffect, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import { createPortal } from "react-dom";
 import { useStore } from "@nanostores/react";
@@ -17,6 +17,7 @@ import { replaceSelection } from "../../stores/selection";
 import * as tauri from "../../lib/tauri";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as m from "../../i18n/paraglide/messages";
+import { EXAMPLE_WISHLIST_PATTERNS, EXAMPLE_IGNORELIST_PATTERNS } from "./examplePatterns";
 
 type DialogState =
   | null
@@ -40,6 +41,8 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   const [activeTab, setActiveTab] = useState<"wishlist" | "ignorelist">("wishlist");
   const announce = useAnnounce();
   const showAddPattern = useStore($showAddPatternDialog);
+  const [seeding, setSeeding] = useState(false);
+  const pendingFocusFirstRow = useRef(false);
 
   // Load data on mount
   useEffect(() => {
@@ -125,6 +128,43 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
     }
   }, [announce]);
 
+  // Seed the empty list with example patterns. Sequential IPC by design: there is
+  // no bulk-add command and adding one is not worth it for at most five calls.
+  // The Rust commands dedupe, so a repeat click is idempotent. The store is
+  // updated once at the end rather than per call, so the list mounts exactly once.
+  const handleAddExamples = useCallback(async () => {
+    if (seeding) return; // guard double-activation (aria-disabled keeps it clickable)
+    setSeeding(true);
+    announce(m.wishlist_examples_adding(), "polite");
+    const patterns = activeTab === "wishlist"
+      ? EXAMPLE_WISHLIST_PATTERNS
+      : EXAMPLE_IGNORELIST_PATTERNS;
+    try {
+      if (activeTab === "wishlist") {
+        const entries = [];
+        for (const pattern of patterns) entries.push(await tauri.addToWishlist(pattern));
+        const existing = $wishlist.get();
+        const fresh = entries.filter((e) => !existing.some((x) => x.pattern === e.pattern));
+        $wishlist.set([...existing, ...fresh]);
+      } else {
+        for (const pattern of patterns) await tauri.addToIgnorelist(pattern);
+        const existing = $ignorelist.get();
+        const fresh = patterns.filter((p) => !existing.includes(p));
+        $ignorelist.set([...existing, ...fresh]);
+      }
+      // The list mounts as the store flips non-empty; focus its first row then.
+      pendingFocusFirstRow.current = true;
+      announce(m.wishlist_examples_added({ patterns: patterns.join(", ") }), "polite");
+    } catch (err) {
+      addToast(String(err), "error");
+      announce(m.wishlist_examples_failed(), "polite");
+    } finally {
+      // Unlike StreamsPanel (whose empty node unmounts with the flag), this CTA
+      // may still be mounted on failure, so the guard must always be released.
+      setSeeding(false);
+    }
+  }, [seeding, activeTab, announce]);
+
   const handleDialogSubmit = useCallback((pattern: string) => {
     if (!dialog) return;
     if (dialog.mode === "edit") {
@@ -192,6 +232,20 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
     () => ignorelist.map((p) => ({ pattern: p })),
     [ignorelist],
   );
+
+  // Consume the pending-focus flag once the seeded rows have mounted. The list
+  // zone's ZoneEntry.focus("forward") lands on the first row — no extra
+  // imperative API needed on PatternList.
+  useLayoutEffect(() => {
+    if (!pendingFocusFirstRow.current) return;
+    // Guard on the ACTIVE tab's list specifically. Checking "either list is
+    // non-empty" would clear the flag on a render where the other tab already
+    // had rows, dropping the focus move on the floor.
+    const active = activeTab === "wishlist" ? wishlistItems : ignorelistItems;
+    if (active.length === 0) return;
+    pendingFocusFirstRow.current = false;
+    patternListRef.current?.focus("forward");
+  }, [activeTab, wishlistItems, ignorelistItems]);
 
   // --- Selection cluster ---
   const activeItems = activeTab === "wishlist" ? wishlistItems : ignorelistItems;
@@ -264,6 +318,27 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
     // onZonesChange intentionally omitted — callers must pass a stable (useCallback-wrapped) reference.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, toolbarRestore, focusActiveTab]);
+
+  // Shared empty-state CTA. Both tabs render the same node; handleAddExamples
+  // branches on activeTab, and only the active tab's PatternList is mounted
+  // empty at any one time.
+  const emptyExtra = (
+    <div className="mt-3 flex flex-col items-center gap-2">
+      <button
+        aria-disabled={seeding || undefined}
+        aria-busy={seeding || undefined}
+        onClick={handleAddExamples}
+        className="rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
+      >
+        {seeding ? m.wishlist_examples_adding() : m.wishlist_add_example()}
+      </button>
+      {/* Not a Tab stop by design: a plain inline node, so NVDA reads the hint
+          in document order without adding a focus stop. Mirrors StreamsPanel. */}
+      <p className="text-xs text-slate-500 forced-colors:text-[ButtonText]">
+        {m.pattern_hint()}
+      </p>
+    </div>
+  );
 
   return (
     <>
@@ -347,6 +422,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
               ariaLabel={m.wishlist_section_title()}
               showDate={true}
               emptyMessage={m.empty_wishlist()}
+              emptyExtra={emptyExtra}
               exitZone={(forward) => exitZone("wishlist-list", forward)}
               onEmpty={() => addPatternBtnRef.current?.focus()}
               onEdit={(pattern) => setDialog({ mode: "edit", listType: "wishlist", pattern })}
@@ -363,6 +439,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
               ariaLabel={m.ignorelist_section_title()}
               showDate={false}
               emptyMessage={m.empty_ignorelist()}
+              emptyExtra={emptyExtra}
               exitZone={(forward) => exitZone("wishlist-list", forward)}
               onEmpty={() => addPatternBtnRef.current?.focus()}
               onEdit={(pattern) => setDialog({ mode: "edit", listType: "ignorelist", pattern })}

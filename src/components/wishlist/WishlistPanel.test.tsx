@@ -4,10 +4,12 @@ import { render, fireEvent, waitFor, screen, act } from "@testing-library/react"
 import { useEffect, useRef, useState } from "react";
 import * as m from "../../i18n/paraglide/messages";
 import { $wishlist, $ignorelist, $patternSelection, $showAddPatternDialog } from "../../stores/wishlist";
+import { $announcer } from "../../stores/announcer";
 import { replaceSelection } from "../../stores/selection";
 import * as tauri from "../../lib/tauri";
 import { WishlistPanel } from "./WishlistPanel";
 import { useZoneNavigation, type ZoneEntry } from "../../hooks/useZoneNavigation";
+import { EXAMPLE_WISHLIST_PATTERNS, EXAMPLE_IGNORELIST_PATTERNS } from "./examplePatterns";
 
 // Faithful mirror of App.tsx's zone wiring: a permanent activity-bar zone, the
 // panel's screen zones, a player zone that DECLINES focus (nothing playing —
@@ -43,6 +45,8 @@ vi.mock("../../lib/tauri", () => ({
   getIgnorelist: vi.fn().mockResolvedValue([]),
   removeFromWishlistBulk: vi.fn().mockResolvedValue(1),
   removeFromIgnorelistBulk: vi.fn().mockResolvedValue(0),
+  addToWishlist: vi.fn(async (pattern: string) => ({ pattern, addedAt: "2026-07-19T00:00:00Z" })),
+  addToIgnorelist: vi.fn(async (_pattern: string) => undefined),
 }));
 
 beforeEach(() => {
@@ -173,6 +177,75 @@ describe("controls zone — roving toolbar", () => {
     // zone (player declines → status bar in this harness).
     fireEvent.keyDown(ae!, { key: "Tab" });
     expect(document.activeElement?.closest("[data-zone-id]")?.getAttribute("data-zone-id")).toBe("status-bar");
+  });
+});
+
+describe("empty-state example seeding", () => {
+  beforeEach(() => {
+    vi.mocked(tauri.addToWishlist).mockClear();
+    vi.mocked(tauri.addToIgnorelist).mockClear();
+  });
+
+  it("seeds the wishlist examples and focuses the first row", async () => {
+    $wishlist.set([]);
+    vi.mocked(tauri.getWishlist).mockResolvedValueOnce([]);
+    render(<WishlistPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
+    const cta = await screen.findByRole("button", { name: m.wishlist_add_example() });
+
+    fireEvent.click(cta);
+
+    await waitFor(() =>
+      expect(vi.mocked(tauri.addToWishlist).mock.calls.map((c) => c[0]))
+        .toEqual([...EXAMPLE_WISHLIST_PATTERNS]),
+    );
+    await waitFor(() =>
+      expect(document.activeElement?.getAttribute("data-item-id"))
+        .toBe(EXAMPLE_WISHLIST_PATTERNS[0]),
+    );
+  });
+
+  it("announces the seeded patterns", async () => {
+    $wishlist.set([]);
+    vi.mocked(tauri.getWishlist).mockResolvedValueOnce([]);
+    render(<WishlistPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: m.wishlist_add_example() }));
+    await waitFor(() =>
+      expect($announcer.get()?.message).toBe(
+        m.wishlist_examples_added({ patterns: EXAMPLE_WISHLIST_PATTERNS.join(", ") }),
+      ),
+    );
+  });
+
+  it("seeds the ignorelist examples from the ignorelist tab", async () => {
+    $wishlist.set([]);
+    vi.mocked(tauri.getWishlist).mockResolvedValueOnce([]);
+    render(<WishlistPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
+    await waitFor(() => screen.getByText(m.select_all()));
+    fireEvent.click(screen.getByText(m.ignorelist_section_title()));
+
+    fireEvent.click(await screen.findByRole("button", { name: m.wishlist_add_example() }));
+
+    await waitFor(() =>
+      expect(vi.mocked(tauri.addToIgnorelist).mock.calls.map((c) => c[0]))
+        .toEqual([...EXAMPLE_IGNORELIST_PATTERNS]),
+    );
+    expect(tauri.addToWishlist).not.toHaveBeenCalled();
+  });
+
+  it("shows the wildcard syntax badge next to the CTA, and it is not a Tab stop", async () => {
+    $wishlist.set([]);
+    vi.mocked(tauri.getWishlist).mockResolvedValueOnce([]);
+    render(<WishlistPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
+    await screen.findByRole("button", { name: m.wishlist_add_example() });
+    const badge = screen.getByText(m.pattern_hint());
+    expect(badge.tagName).toBe("P");
+    expect(badge.hasAttribute("tabindex")).toBe(false);
+  });
+
+  it("hides the CTA once the list has patterns", async () => {
+    render(<WishlistPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
+    await waitFor(() => screen.getByText(m.select_all()));
+    expect(screen.queryByRole("button", { name: m.wishlist_add_example() })).toBeNull();
   });
 });
 
