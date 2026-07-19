@@ -154,6 +154,9 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
 
       if (mode === "move") {
         $streams.set($streams.get().filter((s) => s.id !== streamId));
+        // Same dead-onEmpty issue as handleConfirmDelete: moving the last
+        // visible stream away unmounts this list in the same render.
+        if (streams.every((s) => s.id === streamId)) onEmpty();
         addToast(m.stream_moved_to_profile({ name, profile: targetProfile }), "info");
         announce(m.stream_moved_to_profile({ name, profile: targetProfile }), "polite");
       } else {
@@ -260,6 +263,13 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
     try {
       await tauri.removeStream(pendingDeleteId);
       $streams.set($streams.get().filter((s) => s.id !== pendingDeleteId));
+      // Visible survivors (the filtered prop, not the full store). When the last
+      // visible row goes, the parent swaps this list for an empty zone in the
+      // SAME render as the store write above — useCompositeList's own [items]
+      // effect never runs, so its onEmpty is dead code on this path (the
+      // wishlist 223fadb mechanism). Call it imperatively, like the bulk
+      // handlers below already do.
+      if (streams.every((s) => s.id === pendingDeleteId)) onEmpty();
       addToast(m.stream_removed({ name: streamName }), "info");
     } catch (err) {
       addToast(String(err), "error");

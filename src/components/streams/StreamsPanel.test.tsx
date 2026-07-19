@@ -31,6 +31,7 @@ vi.mock("../../lib/tauri", () => ({
     { name: "Default", streamCount: 3, isActive: true },
     { name: "Jazz", streamCount: 0, isActive: false },
   ]),
+  moveStreamToProfile: vi.fn().mockResolvedValue(undefined),
   createProfile: vi.fn().mockResolvedValue({ name: "Fresh", streamCount: 0, isActive: false }),
   copyStreamsToProfile: vi.fn().mockResolvedValue({ transferred: [], skippedRecording: 0, skippedConflict: 0 }),
   moveStreamsToProfile: vi.fn().mockResolvedValue({ transferred: [], skippedRecording: 0, skippedConflict: 0 }),
@@ -682,6 +683,68 @@ describe("StreamsPanel — selection lifecycle", () => {
     fireEvent.click(del);
     const confirmBtn = await screen.findByRole("button", { name: m["delete"]() });
     await act(async () => { fireEvent.click(confirmBtn); });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: /додати приклади потоків|add example streams/i }),
+      ),
+    );
+  });
+});
+
+describe("StreamsPanel — SINGLE-op empty transitions rescue focus (streams-empty-focus-audit)", () => {
+  // Deleting/moving the LAST visible stream makes the parent swap StreamList for
+  // an empty zone in the same render, so useCompositeList's own [items] effect
+  // (and its onEmpty) never runs — the wishlist 223fadb mechanism. The single-op
+  // handlers must call onEmpty imperatively, like the bulk handlers already do.
+  let zones: ZoneEntry[] = [];
+  const onZonesChange = (z: ZoneEntry[]) => { zones = z; };
+  const renderWithZones = () =>
+    render(<StreamsPanel onZonesChange={onZonesChange} exitZone={vi.fn()} />);
+  const focusList = () =>
+    act(() => zones.find((z) => z.id === "streams-list")!.focus("forward"));
+
+  it("single-deleting the last stream focuses the add-examples CTA (never <body>)", async () => {
+    $streams.set([mkStream("a", "Alpha")]);
+    renderWithZones();
+    focusList();
+    // Selection is empty → Delete routes to the SINGLE-row confirm.
+    fireEvent.keyDown(document.activeElement!, { key: "Delete" });
+    const confirmBtn = await screen.findByRole("button", { name: m["delete"]() });
+    await act(async () => { fireEvent.click(confirmBtn); });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: /додати приклади потоків|add example streams/i }),
+      ),
+    );
+  });
+
+  it("single-deleting the last visible stream under a filter focuses reset-filter", async () => {
+    // a recording, b idle; filter=recording → visible=[a]. Deleting a leaves the
+    // store non-empty ([b]) but the visible list empty → filter-empty zone.
+    $streams.set([mkStream("a", "Alpha"), mkStream("b", "Bravo")]);
+    $statuses.set({ a: mkStatus("a", "recording") });
+    $streamFilter.set("recording");
+    renderWithZones();
+    focusList();
+    fireEvent.keyDown(document.activeElement!, { key: "Delete" });
+    const confirmBtn = await screen.findByRole("button", { name: m["delete"]() });
+    await act(async () => { fireEvent.click(confirmBtn); });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: m.streams_filter_reset() }),
+      ),
+    );
+  });
+
+  it("single-moving the last stream to another profile focuses the add-examples CTA", async () => {
+    $streams.set([mkStream("a", "Alpha")]);
+    const { container } = renderWithZones();
+    fireEvent.click(
+      container.querySelector<HTMLElement>('li[data-item-id="a"] button[data-segment="action-menu"]')!,
+    );
+    fireEvent.click(await screen.findByRole("menuitem", { name: m.move_to_profile() }));
+    fireEvent.click(await screen.findByRole("button", { name: "Jazz, 0 потоків" }));
+    await waitFor(() => expect($streams.get()).toEqual([]));
     await waitFor(() =>
       expect(document.activeElement).toBe(
         screen.getByRole("button", { name: /додати приклади потоків|add example streams/i }),

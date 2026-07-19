@@ -18,7 +18,7 @@ gates: [pnpm test, pnpm vite:build]
 
 # Приклади-патерни у порожньому стані Wishlist / Ignorelist
 
-> **Контекст:** виконано. Реалізація вийшла за рамки первинного плану (rev R1) — CTA переїхав з `PatternList`'s `emptyExtra` у власну зону `wishlist-empty` (keyboard-reachability). Дало дві дослідницькі знахідки — [streams-empty-focus-audit](../p2-streams-empty-focus-audit.md) і [wishlist-stale-list-ref](../p2-wishlist-stale-list-ref.md).
+> **Контекст:** виконано. Реалізація вийшла за рамки первинного плану (rev R1) — CTA переїхав з `PatternList`'s `emptyExtra` у власну зону `wishlist-empty` (keyboard-reachability). Дало дві дослідницькі знахідки — [streams-empty-focus-audit](p2-streams-empty-focus-audit.md) і [wishlist-stale-list-ref](../p2-wishlist-stale-list-ref.md).
 
 ## Опис
 
@@ -104,7 +104,7 @@ gates: [pnpm test, pnpm vite:build]
   `src/components/wishlist/WishlistPanel.test.tsx` (`describe("empty-state example seeding")`
   + regression-тести на keyboard-reachability з R1).
 - Виявлені під час фінального ревʼю (223fadb-фікс, follow-up-хвиля) — окремі дослідницькі
-  записи: [streams-empty-focus-audit](../p2-streams-empty-focus-audit.md) (латентна версія
+  записи: [streams-empty-focus-audit](p2-streams-empty-focus-audit.md) (латентна версія
   фокус-вади в StreamsPanel), [wishlist-stale-list-ref](../p2-wishlist-stale-list-ref.md)
   (застарілий callback-ref після перемикання вкладки).
 

@@ -21,7 +21,6 @@ semver; `unscheduled` — наприкінці.
 | [log-rotation](p2-log-rotation.md) | P2 | planned | ready | S | — | — |
 | [open-song-with-default-app](p2-open-song-with-default-app.md) | P2 | planned | ready | M | — | — |
 | [unwrap-in-tests](p3-unwrap-in-tests.md) | P3 | planned | ready | S | — | — (housekeeping, будь-коли) |
-| [streams-empty-focus-audit](p2-streams-empty-focus-audit.md) | P2 | research | ready | S | [wishlist-example-patterns](done/p2-wishlist-example-patterns.md) ✅ | — |
 | [wishlist-stale-list-ref](p2-wishlist-stale-list-ref.md) | P2 | research | ready | S | [wishlist-example-patterns](done/p2-wishlist-example-patterns.md) ✅ | — |
 | [import-duplicate-metadata-update](p2-import-duplicate-metadata-update.md) | P2 | idea | draft | S | — | — |
 | [full-edit-stream](p2-full-edit-stream.md) | P2 | planned | draft | M | — | — |
@@ -51,6 +50,7 @@ semver; `unscheduled` — наприкінці.
 
 | Запис | Коли | Що лишилось у спадок |
 |-------|------|----------------------|
+| [streams-empty-focus-audit](done/p2-streams-empty-focus-audit.md) | 2026-07-20 | гіпотеза підтверджена + третій мертвий шлях (одиничне move-to-profile); імперативний `onEmpty()` у `handleConfirmDelete`/`doTransfer` (`StreamList.tsx`) за зразком `223fadb`; 3 регресійні тести «SINGLE-op empty transitions» у `StreamsPanel.test.tsx` |
 | [wishlist-example-patterns](done/p2-wishlist-example-patterns.md) | 2026-07-19 | CTA «Додати приклад» у власній зоні `wishlist-empty` (`WishlistPanel.tsx`) — не в `PatternList`'s `emptyExtra` (той варіант виявився keyboard-unreachable, rev R1); фіксований масив `examplePatterns.ts`; ключі `wishlist_add_example`/`wishlist_examples_adding`/`wishlist_examples_added`/`wishlist_examples_failed`. Застосувало патерн `streams-ctrlk-empty-hint` |
 | [streams-ctrlk-empty-hint](done/p2-streams-ctrlk-empty-hint.md) | 2026-07-19 | бейдж «Команди — Ctrl+K» у порожньому стані `StreamsPanel` (не Tab-стоп); константа `PALETTE_COMBO` читає комбінацію з `SHORTCUTS`, тож бейдж не розходиться з F1-довідкою; ключ `streams_empty_palette_hint`. Завершує ADR 2026-05-31 §6 (S3) — патерн для `wishlist-example-patterns` |
 | [browser-add-probe](done/p2-browser-add-probe.md) | 2026-07-19 | подія `browser-station-probe-result` + `useBrowserProbeFeedback` (App-wide, озвучує лише невдачі/підсумок); `spawn_probe_added()` у `browser_commands.rs` — detached probe після збереження, `buffer_unordered(5)` |
