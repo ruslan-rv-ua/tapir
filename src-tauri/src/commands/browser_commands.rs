@@ -1,3 +1,4 @@
+use futures::StreamExt;
 use tauri::Emitter;
 use log::warn;
 
@@ -195,6 +196,49 @@ async fn append_streams_to_active_profile(
     Ok(added)
 }
 
+/// Payload of `browser-station-probe-result`. Emitted ONLY when at least one
+/// stream failed: a fully reachable batch stays silent so bulk adds don't flood
+/// NVDA with success chatter.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BrowserProbeSummary {
+    /// How many streams were checked (the whole batch, not just the failures).
+    pub checked: usize,
+    /// Names of the streams that did not respond, in completion order.
+    pub failed: Vec<String>,
+}
+
+/// Probe the just-added streams in the background and emit one summary event.
+/// Detached on purpose: the add has already been persisted, so the check must
+/// never delay the command nor undo anything — a stream that fails stays in the
+/// profile (Radio Browser's `lastcheckok` is stale often enough that a probe
+/// failure is a hint, not a verdict) and the user is merely told.
+fn spawn_probe_added(app: tauri::AppHandle, added: &[StreamInfo]) {
+    if added.is_empty() {
+        return;
+    }
+    let targets: Vec<(String, String)> =
+        added.iter().map(|s| (s.name.clone(), s.url.clone())).collect();
+
+    tokio::spawn(async move {
+        let checked = targets.len();
+        let failed: Vec<String> = futures::stream::iter(targets.into_iter().map(
+            |(name, url)| async move {
+                let verdict = crate::commands::stream_io_commands::probe_once(&url).await;
+                if verdict.ok { None } else { Some(name) }
+            },
+        ))
+        .buffer_unordered(crate::commands::stream_io_commands::PROBE_CONCURRENCY)
+        .filter_map(|failed_name| async move { failed_name })
+        .collect()
+        .await;
+
+        if !failed.is_empty() {
+            app.emit("browser-station-probe-result", BrowserProbeSummary { checked, failed }).ok();
+        }
+    });
+}
+
 #[tauri::command]
 pub async fn add_station_from_browser(
     station: StationResult,
@@ -203,6 +247,7 @@ pub async fn add_station_from_browser(
 ) -> Result<StreamInfo, String> {
     let stream_info = station_to_stream_info(&station);
     let added = append_streams_to_active_profile(&state, &app, vec![stream_info]).await?;
+    spawn_probe_added(app.clone(), &added);
     // Preserve the original contract: a duplicate url => DuplicateStream error,
     // not a silent Ok. The shared helper drops duplicates, so empty => duplicate.
     added
@@ -224,7 +269,9 @@ pub async fn add_stations_from_browser(
     app: tauri::AppHandle,
 ) -> Result<Vec<StreamInfo>, String> {
     let streams: Vec<StreamInfo> = stations.iter().map(station_to_stream_info).collect();
-    append_streams_to_active_profile(state.inner(), &app, streams).await
+    let added = append_streams_to_active_profile(state.inner(), &app, streams).await?;
+    spawn_probe_added(app.clone(), &added);
+    Ok(added)
 }
 
 /// Curate up to 3 example stations into the active (empty) profile. Resolves

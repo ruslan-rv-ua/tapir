@@ -2,9 +2,9 @@
 
 - **Слаг:** `browser-add-probe`
 - **Тип:** ідея
-- **Стан:** ready
+- **Стан:** done (гілка `feature/add-stream-probe`)
 - **Зусилля:** S
-- **Оновлено:** 2026-06-15
+- **Оновлено:** 2026-07-19
 - **Залежності:** Phase 3B (Stream Browser ✅), Phase 3J (stream::probe ✅)
 
 ## Опис
@@ -36,11 +36,50 @@
 
 ## Критерії готовності
 
-- [ ] `lastcheckok = 0` від Radio Browser API відображається у UI **лише для FAIL** у доступному імені рядка (без окремого стовпця OK/FAIL)
-- [ ] Після `add_station_from_browser` запускається async probe
-- [ ] Тост через `LiveAnnouncer` для NVDA **лише для невдач / підсумку** (успіхи при масовому додаванні не озвучуються)
-- [ ] При невдалому probe потік залишається у профілі (не видаляється автоматично)
-- [ ] Timeout probe: ≤ 5 секунд
+- [x] `lastcheckok = 0` від Radio Browser API відображається у UI **лише для FAIL** у доступному імені рядка (без окремого стовпця OK/FAIL) — **уже було зроблено раніше**, див. нижче
+- [x] Після `add_station_from_browser` запускається async probe
+- [x] Тост через `LiveAnnouncer` для NVDA **лише для невдач / підсумку** (успіхи при масовому додаванні не озвучуються)
+- [x] При невдалому probe потік залишається у профілі (не видаляється автоматично)
+- [x] Timeout probe: ≤ 5 секунд
+
+## Як реалізовано
+
+- `spawn_probe_added()` у `browser_commands.rs` — detached `tokio::spawn` після
+  збереження, `buffer_unordered(PROBE_CONCURRENCY = 5)`. Викликається з
+  `add_station_from_browser` і `add_stations_from_browser`.
+- Реюз спільного шляху: `stream_io_commands::probe_once(url) -> ProbeVerdict`
+  (винесено з команди `probe_stream`), тож 5-с `SINGLE_PROBE_TIMEOUT` спільний з
+  `AddStreamDialog` — одна константа, одна семантика таймауту.
+- Подія `browser-station-probe-result` `{ checked, failed: [names] }` емітиться
+  **лише коли `failed` непорожній** — повністю успішний батч не породжує події
+  взагалі (тиша для NVDA замість фільтрації на фронті).
+- Фронт: `useBrowserProbeFeedback()` (App-wide, поруч із `useCrashResumeFeedback`) →
+  polite announce + info-toast. Одна невдача називає станцію, кілька — згортаються
+  у «N з M». Хук на рівні App, а не BrowserPanel: probe асинхронний і має
+  доозвучитися навіть якщо користувач уже пішов з екрана Browser.
+- Тести: `src/hooks/useBrowserProbeFeedback.test.tsx` (3).
+
+### Що виявилося вже зробленим
+
+Перший критерій (`lastcheckok == 0` у доступному імені) **уже був реалізований** —
+`StationList` рахує `isUnavailable = station.lastcheckok === 0 || failedPreview.has(id)`,
+а `StationItem` підставляє `m.station_summary_offline()` у мітку рядка + іконку
+`TriangleAlert`. Нічого міняти не довелося.
+
+### Уточнення, яких не було в записі
+
+- «Дешевий префільтр `lastcheckok == 0` без probe» на практиці майже не спрацьовує:
+  `api.rs` шле в запиті `hidebroken=true` і `lastcheckok=1`, тож станції з FAIL
+  до списку взагалі не доїжджають. Індикатор у рядку живе переважно з
+  `failedPreview`. Префільтр не додавав би нічого — не реалізовано свідомо.
+- `add_example_streams` probe **не** запускає: анкери мають офлайн-fallback, і
+  озвучувати «не відповіли» на першому запуску без мережі — шум, а не користь.
+
+### Можливий follow-up (не робив)
+
+Результат probe не позначає рядок у таблиці Browser як `isUnavailable` — озвучується
+лише підсумок. Зв'язати подію з `failedPreview`-подібним станом можна, але список на
+той момент часто вже інший (нова сторінка/пошук), тож користь сумнівна.
 
 ## Відкриті питання
 

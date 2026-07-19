@@ -35,6 +35,8 @@
   "browser_station_added": "Station \"{name}\" added",
   "browser_station_already_added": "Station \"{name}\" already added",
   "browser_station_duplicate": "A station with this URL already exists",
+  "browser_probe_failed_one": "The stream “{name}” did not respond — check the URL. The station was kept in your list.",
+  "browser_probe_failed_many": "{count} of {checked} added streams did not respond. The stations were kept in your list.",
   "browser_added": "✓ Added",
   "browser_load_more": "Load more",
   "browser_column_name": "Name",

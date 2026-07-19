@@ -308,6 +308,18 @@ export interface CrashResumeSummary {
   total: number;
 }
 
+/**
+ * Backend `browser-station-probe-result` event: підсумок фонової перевірки
+ * потоків, доданих зі Stream Browser. Емітиться ЛИШЕ коли `failed` непорожній —
+ * повністю успішний батч не породжує події (тиша для NVDA).
+ */
+export interface BrowserProbeSummary {
+  /** Скільки потоків перевірено (увесь батч, не лише невдачі). */
+  checked: number;
+  /** Назви потоків, що не відповіли. */
+  failed: string[];
+}
+
 // ── Wishlist/Ignorelist IPC wrappers ──────────────────────────────────────
 
 export async function getWishlist(): Promise<WishlistEntry[]> {

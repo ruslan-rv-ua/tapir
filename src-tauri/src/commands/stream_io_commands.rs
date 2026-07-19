@@ -6,8 +6,9 @@ use crate::app_state::AppState;
 use crate::profile::{AudioFormat, StreamInfo};
 use crate::stream::{playlist, probe};
 
-/// How many streams to probe at once during import validation.
-const PROBE_CONCURRENCY: usize = 5;
+/// How many streams to probe at once during import validation and the browser's
+/// background post-add check.
+pub(crate) const PROBE_CONCURRENCY: usize = 5;
 
 /// Overall budget for a single interactive probe (`probe_stream`). `probe`
 /// itself has only a 10s *connect* timeout and no total limit, so without this
@@ -139,19 +140,26 @@ pub async fn validate_import_candidates(urls: Vec<String>, app: AppHandle) -> Re
     Ok(())
 }
 
-/// Reachability check for a single URL, for interactive add flows (Add-stream
-/// dialog, Stream Browser). Thin wrapper over `probe::probe` that returns just
-/// the verdict — no ICY details, no events — bounded by `SINGLE_PROBE_TIMEOUT`.
-/// Never `Err`: a failed probe is a warning for the user, not a command error.
-#[tauri::command]
-pub async fn probe_stream(url: String) -> Result<ProbeVerdict, String> {
-    match tokio::time::timeout(SINGLE_PROBE_TIMEOUT, probe::probe(&url)).await {
-        Ok(r) => Ok(ProbeVerdict { ok: r.ok, error: r.error }),
-        Err(_) => Ok(ProbeVerdict {
+/// Reachability check for one URL, bounded by `SINGLE_PROBE_TIMEOUT`. Returns
+/// just the verdict — no ICY details, no events. Shared by the `probe_stream`
+/// command (Add-stream dialog) and the browser's background post-add check, so
+/// both get the same timeout semantics.
+pub(crate) async fn probe_once(url: &str) -> ProbeVerdict {
+    match tokio::time::timeout(SINGLE_PROBE_TIMEOUT, probe::probe(url)).await {
+        Ok(r) => ProbeVerdict { ok: r.ok, error: r.error },
+        Err(_) => ProbeVerdict {
             ok: false,
             error: Some(format!("Timed out after {}s", SINGLE_PROBE_TIMEOUT.as_secs())),
-        }),
+        },
     }
+}
+
+/// Reachability check for a single URL, for interactive add flows (Add-stream
+/// dialog). Never `Err`: a failed probe is a warning for the user, not a
+/// command error.
+#[tauri::command]
+pub async fn probe_stream(url: String) -> Result<ProbeVerdict, String> {
+    Ok(probe_once(&url).await)
 }
 
 /// Add the selected streams to the active profile (URL-dedup via

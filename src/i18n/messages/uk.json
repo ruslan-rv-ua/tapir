@@ -35,6 +35,8 @@
   "browser_station_added": "Станцію «{name}» додано",
   "browser_station_already_added": "Станція «{name}» вже додана",
   "browser_station_duplicate": "Станція з таким URL вже є у списку",
+  "browser_probe_failed_one": "Потік «{name}» не відповів — перевірте URL. Станція залишилася у списку.",
+  "browser_probe_failed_many": "Не відповіли {count} з {checked} доданих потоків. Станції залишилися у списку.",
   "browser_added": "✓ Додано",
   "browser_load_more": "Завантажити ще",
   "browser_column_name": "Назва",
