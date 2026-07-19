@@ -9,12 +9,12 @@
 
 ## Опис
 
-За аналогією з кнопкою [«Додати приклади потоків»](../../src/components/streams/StreamsPanel.tsx#L669-L687)
-у порожньому профілі Streams ([`add_example_streams`](../../src-tauri/src/commands/browser_commands.rs#L235))
+За аналогією з кнопкою [«Додати приклади потоків»](../../../src/components/streams/StreamsPanel.tsx#L669-L687)
+у порожньому профілі Streams ([`add_example_streams`](../../../src-tauri/src/commands/browser_commands.rs#L235))
 дати новачку «з чого почати» в порожньому Wishlist/Ignorelist. Зараз порожній стан —
-це гола фраза [«Список … порожній»](../../src/components/wishlist/PatternList.tsx#L110-L112)
+це гола фраза [«Список … порожній»](../../../src/components/wishlist/PatternList.tsx#L110-L112)
 без жодної підказки, що це за список і як виглядає валідний патерн. Синтаксис `*`/`?`
-показується лише у [діалозі додавання](../../src/components/wishlist/AddPatternDialog.tsx#L57-L59) —
+показується лише у [діалозі додавання](../../../src/components/wishlist/AddPatternDialog.tsx#L57-L59) —
 тобто **після** того, як юзер уже здогадався натиснути «Додати».
 
 **Чому це не буквальний клон Streams.** Приклад-потік (Промінь, SomaFM, FIP) має власну
@@ -42,21 +42,24 @@
   бо seed однаковий для всіх локалей. Нові i18n-ключі потрібні лише для рядків UI
   (назва кнопки «Додати приклад», оголошення результату).
 - Seed робиться **повністю на фронті** через наявні
-  [`add_to_wishlist`/`add_to_ignorelist`](../../src-tauri/src/commands/wishlist_commands.rs#L10-L110).
+  [`add_to_wishlist`/`add_to_ignorelist`](../../../src-tauri/src/commands/wishlist_commands.rs#L10-L110).
   **Нова Rust-команда не потрібна.** Дедуплікація вже вбудована → повторний клік ідемпотентний.
-- **Патерни з `*…*`.** Матчер [`wildcard_match`](../../src-tauri/src/wishlist/matcher.rs#L16) —
+- **Патерни з `*…*`.** Матчер [`wildcard_match`](../../../src-tauri/src/wishlist/matcher.rs#L16) —
   повний-рядковий (anchored), не підрядковий: `новин` зматчить лише `новин` рівно.
   Тому приклади мусять мати обгортку `*…*`, що заодно демонструє синтаксис.
-- **Розміщення:** кнопка в `empty`-рендері кожної вкладки окремо — через `empty` prop
-  [PatternList](../../src/components/wishlist/PatternList.tsx#L110-L113). Вкладка Wishlist
-  сіє один приклад (`*новин*`), вкладка Ignorelist — набір сміттєвих патернів.
+- **Розміщення:** окрема зона `wishlist-empty`, яку рендерить
+  [WishlistPanel](../../../src/components/wishlist/WishlistPanel.tsx), за зразком зони
+  `streams-empty` у `StreamsPanel` — а не `empty`/`emptyExtra` prop `PatternList`, як
+  планувалось спершу (той підхід відкинуто як keyboard-unreachable; деталі — розділ
+  «Спадщина» нижче). Вкладка Wishlist сіє один приклад (`*новин*`), вкладка Ignorelist —
+  набір сміттєвих патернів.
 - **CTA:** «Додати приклад» (нейтральне, пасує і до вішліста, і до ignorelist).
 - **Бейдж синтаксису:** приглушений текст-рядок «`*` — будь-які символи, `?` — один символ»
   поряд із CTA (не Tab-стоп, у природному порядку читання, NVDA читає). Той самий патерн,
-  що вже реалізований для Streams ([done/p2-streams-ctrlk-empty-hint](done/p2-streams-ctrlk-empty-hint.md)) —
-  див. бейдж у порожньому стані [StreamsPanel.tsx](../../src/components/streams/StreamsPanel.tsx).
+  що вже реалізований для Streams ([done/p2-streams-ctrlk-empty-hint](p2-streams-ctrlk-empty-hint.md)) —
+  див. бейдж у порожньому стані [StreamsPanel.tsx](../../../src/components/streams/StreamsPanel.tsx).
 - **A11y / NVDA:** повторити патерн зі StreamsPanel
-  ([`handleAddExamples`](../../src/components/streams/StreamsPanel.tsx#L306-L322)): `aria-busy`
+  ([`handleAddExamples`](../../../src/components/streams/StreamsPanel.tsx#L306-L322)): `aria-busy`
   на кнопці, після додавання — оголосити кількість/назви та перевести фокус на перший рядок.
 
 ## Критерії готовності
@@ -94,19 +97,19 @@ _Усі питання закриті в сесії 2026-06-24._
 
 ## Документи
 
-- Зразок (Streams): [StreamsPanel.tsx:306-322, 669-687](../../src/components/streams/StreamsPanel.tsx#L306-L322),
-  [browser_commands.rs:235](../../src-tauri/src/commands/browser_commands.rs#L235)
-- Код вішліста: [WishlistPanel.tsx](../../src/components/wishlist/WishlistPanel.tsx),
-  [PatternList.tsx](../../src/components/wishlist/PatternList.tsx),
-  [AddPatternDialog.tsx](../../src/components/wishlist/AddPatternDialog.tsx),
-  [wishlist_commands.rs](../../src-tauri/src/commands/wishlist_commands.rs),
-  [matcher.rs](../../src-tauri/src/wishlist/matcher.rs)
-- i18n: [uk.json](../../src/i18n/messages/uk.json), [en.json](../../src/i18n/messages/en.json)
-- Сусідній (уже реалізований) патерн порожнього стану: [done/p2-streams-ctrlk-empty-hint.md](done/p2-streams-ctrlk-empty-hint.md)
+- Зразок (Streams): [StreamsPanel.tsx:306-322, 669-687](../../../src/components/streams/StreamsPanel.tsx#L306-L322),
+  [browser_commands.rs:235](../../../src-tauri/src/commands/browser_commands.rs#L235)
+- Код вішліста: [WishlistPanel.tsx](../../../src/components/wishlist/WishlistPanel.tsx),
+  [PatternList.tsx](../../../src/components/wishlist/PatternList.tsx),
+  [AddPatternDialog.tsx](../../../src/components/wishlist/AddPatternDialog.tsx),
+  [wishlist_commands.rs](../../../src-tauri/src/commands/wishlist_commands.rs),
+  [matcher.rs](../../../src-tauri/src/wishlist/matcher.rs)
+- i18n: [uk.json](../../../src/i18n/messages/uk.json), [en.json](../../../src/i18n/messages/en.json)
+- Сусідній (уже реалізований) патерн порожнього стану: [done/p2-streams-ctrlk-empty-hint.md](p2-streams-ctrlk-empty-hint.md)
 
 ## Промпт для агента
 
-Каталог промптів за типом: [README — Каталог промптів](README.md#каталог-промптів-за-типом).
+Каталог промптів за типом: [README — Каталог промптів](../README.md#каталог-промптів-за-типом).
 
 ```text
 Реалізуй цей запис. Рішення вже прийняте — мета довести до робочого, протестованого коду.
