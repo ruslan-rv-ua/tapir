@@ -3,12 +3,14 @@ import { render, fireEvent, act } from "@testing-library/react";
 import { createRef } from "react";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import { ActivityBar } from "./ActivityBar";
-import { $activeSection } from "../../stores/navigation";
+import { $activeSection, $helpOpen } from "../../stores/navigation";
 import { $settings } from "../../stores/settings";
+import * as m from "../../i18n/paraglide/messages";
 
 beforeEach(() => {
   $activeSection.set("streams");
   $settings.set(null);
+  $helpOpen.set(false);
 });
 
 function renderBar() {
@@ -34,10 +36,10 @@ describe("ActivityBar — structure", () => {
     );
   });
 
-  it("renders 7 buttons with the profile button first", () => {
+  it("renders 8 buttons with the profile button first", () => {
     const { container } = renderBar();
     const buttons = container.querySelectorAll("button");
-    expect(buttons.length).toBe(7);
+    expect(buttons.length).toBe(8);
     // Profile button is first and carries the active profile name in its label.
     expect(buttons[0].getAttribute("aria-label")).toMatch(/default/i);
   });
@@ -75,6 +77,46 @@ describe("ActivityBar — profile section behaviour", () => {
     const { container } = renderBar();
     const nav = container.querySelector("nav")!;
     expect(tabIndices(nav)[0]).toBe("0");
+  });
+});
+
+describe("ActivityBar — help button", () => {
+  const helpButton = (root: HTMLElement) =>
+    Array.from(root.querySelectorAll<HTMLButtonElement>("button")).find(
+      (b) => b.getAttribute("aria-label") === m.help_title(),
+    )!;
+
+  it("renders a labelled help button in the footer, above Settings", () => {
+    const { container } = renderBar();
+    const buttons = Array.from(container.querySelectorAll("button"));
+    const help = helpButton(container);
+    expect(help).toBeTruthy();
+    // Footer order: Help then Settings (Settings stays last).
+    expect(buttons.indexOf(help)).toBe(buttons.length - 2);
+    expect(buttons[buttons.length - 1].getAttribute("aria-label")).toBe(
+      m.settings_title(),
+    );
+  });
+
+  it("opens the help dialog when pressed", () => {
+    const { container } = renderBar();
+    fireEvent.click(helpButton(container));
+    expect($helpOpen.get()).toBe(true);
+  });
+
+  it("joins the roving-focus order between the sections and Settings", () => {
+    const { container, ref } = renderBar();
+    const nav = container.querySelector("nav")!;
+    const buttons = Array.from(container.querySelectorAll<HTMLButtonElement>("button"));
+    const help = helpButton(container);
+
+    act(() => ref.current!.focus("forward"));
+    // End lands on the last roving item (Settings); ArrowUp from there is Help.
+    fireEvent.keyDown(nav, { key: "End" });
+    expect(document.activeElement).toBe(buttons[buttons.length - 1]);
+    fireEvent.keyDown(nav, { key: "ArrowUp" });
+    expect(document.activeElement).toBe(help);
+    expect(help.getAttribute("tabindex")).toBe("0");
   });
 });
 

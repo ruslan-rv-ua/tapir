@@ -2,9 +2,9 @@
 
 - **Слаг:** `activity-bar-help-button`
 - **Тип:** заплановано
-- **Стан:** ready
+- **Стан:** done (реалізовано у `feature/activity-bar-help-button`)
 - **Зусилля:** S
-- **Оновлено:** 2026-06-15
+- **Оновлено:** 2026-07-19
 - **Залежності:** Phase 1 (ActivityBar ✅), HelpDialog (✅ реалізовано)
 
 ## Опис
@@ -42,11 +42,12 @@
 
 ## Критерії готовності
 
-- [ ] Кнопка `?` у footer ActivityBar поряд з Settings
-- [ ] Клік відкриває `HelpDialog`
-- [ ] NVDA озвучує `aria-label` при фокусі
-- [ ] Входить у roving-focus order ActivityBar
-- [ ] F1 і кнопка відкривають одну і ту ж HelpDialog
+- [x] Кнопка `?` у footer ActivityBar поряд з Settings (над Settings — Settings лишається останнім)
+- [x] Клік відкриває `HelpDialog` (`$helpOpen.set(true)`)
+- [ ] NVDA озвучує `aria-label` при фокусі — потребує ручного прогону; розмітка ідентична
+      кнопці Settings (`aria-label` + `aria-hidden` іконка)
+- [x] Входить у roving-focus order ActivityBar (індекс `sectionItems.length + 1`, перед Settings)
+- [x] F1 і кнопка відкривають одну і ту ж HelpDialog (спільний атом `$helpOpen`)
 
 ## Документи
 

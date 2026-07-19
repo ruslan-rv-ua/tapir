@@ -1,9 +1,9 @@
 import type { ComponentType } from "react";
 import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 import { Button } from "react-aria-components";
-import { Radio, Globe, Heart, Calendar, Music, Settings, Layers } from "lucide-react";
+import { Radio, Globe, Heart, Calendar, Music, Settings, Layers, HelpCircle } from "lucide-react";
 import { useStore } from "@nanostores/react";
-import { $activeSection } from "../../stores/navigation";
+import { $activeSection, $helpOpen } from "../../stores/navigation";
 import { $settingsDialogOpen, $settings } from "../../stores/settings";
 import { useRovingFocus } from "../../hooks/useRovingFocus";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
@@ -36,17 +36,18 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
   const settings = useStore($settings);
   const navRef = useRef<HTMLElement | null>(null);
 
-  // Roving order: [profile, streams, browser, wishlist, schedule, songs, settings]
+  // Roving order: [profile, streams, browser, wishlist, schedule, songs, help, settings]
   const profileRef = useRef<HTMLButtonElement | null>(null);
   const ref0 = useRef<HTMLButtonElement | null>(null);
   const ref1 = useRef<HTMLButtonElement | null>(null);
   const ref2 = useRef<HTMLButtonElement | null>(null);
   const ref3 = useRef<HTMLButtonElement | null>(null);
   const ref4 = useRef<HTMLButtonElement | null>(null);
+  const helpRef = useRef<HTMLButtonElement | null>(null);
   const settingsRef = useRef<HTMLButtonElement | null>(null);
   const sectionRefs = useMemo(() => [ref0, ref1, ref2, ref3, ref4], []);
   const allRefs = useMemo(
-    () => [profileRef, ...sectionRefs, settingsRef],
+    () => [profileRef, ...sectionRefs, helpRef, settingsRef],
     [sectionRefs],
   );
 
@@ -161,12 +162,26 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
           );
         })}
 
-        {/* Footer: Settings stays a dialog (P6) */}
+        {/* Footer: Help and Settings both stay dialogs (P6) */}
         <div className="mt-auto flex flex-col gap-1">
+          <Button
+            ref={helpRef}
+            aria-label={m.help_title()}
+            excludeFromTabOrder={getTabIndex(sectionItems.length + 1) === -1}
+            onPress={() => $helpOpen.set(true)}
+            className="flex items-center gap-3 w-full min-h-[58px] px-[14px] py-3 rounded-[18px] border border-slate-700/30 bg-white/[.02] text-slate-400 hover:bg-white/[.05] hover:border-slate-600/50 hover:text-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:text-[ButtonText] forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText] transition-colors"
+          >
+            <span className="relative flex items-center justify-center w-[42px] h-[42px] flex-none rounded-[14px] bg-white/[.04] text-slate-400 hover:text-slate-200">
+              <HelpCircle size={20} aria-hidden={true} />
+            </span>
+            <span className="flex flex-col gap-0.5 min-w-0">
+              <span className="text-sm font-bold leading-tight">{m.help_title()}</span>
+            </span>
+          </Button>
           <Button
             ref={settingsRef}
             aria-label={m.settings_title()}
-            excludeFromTabOrder={getTabIndex(sectionItems.length + 1) === -1}
+            excludeFromTabOrder={getTabIndex(sectionItems.length + 2) === -1}
             onPress={() => $settingsDialogOpen.set(true)}
             className="flex items-center gap-3 w-full min-h-[58px] px-[14px] py-3 rounded-[18px] border border-slate-700/30 bg-white/[.02] text-slate-400 hover:bg-white/[.05] hover:border-slate-600/50 hover:text-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:text-[ButtonText] forced-colors:hover:bg-[Highlight] forced-colors:hover:text-[HighlightText] transition-colors"
           >
