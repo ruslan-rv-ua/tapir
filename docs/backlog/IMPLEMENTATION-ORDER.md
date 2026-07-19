@@ -31,7 +31,7 @@
 | [crash-recovery](done/p1-crash-recovery.md) | 2026-07-18 | `data/state.json` (`cleanShutdown` + `activeRecordings[{streamId, url?}]`), снапшот-писар (`Notify` + 30с interval + 500мс debounce, `crash_recovery.rs`), auto-resume в setup-хуку, deferred подія `crash-resume`, `useCrashResumeFeedback` (NVDA polite + toast) — `Profile.active_recording_urls` прибрано |
 | [resume-file-from-setting](done/p2-resume-file-from-setting.md) | 2026-07-18 | `resume_file_from` у `GlobalSettings`, `plan_file_resume`/`emit_resuming` у `playback_control.rs`, NVDA-анонс позиції — нульового виносу немає, чисто адитивно |
 | [playback-toggle-stop-pause](done/p1-playback-toggle-stop-pause.md) | 2026-07-18 | `PlayerSession.last_active` + оживлені `last_stream_id`/`last_file_position`, `playback_control.rs`, cold-start resume — база для `resume-last-playback` (нижче) |
-| [autostart](done/p2-autostart.md) | 2026-06-25 | winreg-автостарт (`autostart.rs`), CLI `--minimize`; сам **не** грає — авто-гра лише через `startup_playback_mode` (`resume-last-playback`) |
+| [autostart](done/p2-autostart.md) | 2026-06-25 | winreg-автостарт (`autostart.rs`), CLI `--minimize`; сам **не** грає — авто-гра лише через `autoplay_on_startup` (`resume-last-playback`) |
 
 ---
 
@@ -39,7 +39,7 @@
 
 | # | Запис | P | Тип | Стан | Зусилля | Залежить від | Розблоковує / зв'язок |
 |---|-------|---|-----|------|---------|--------------|----------------------|
-| 1 | [resume-last-playback](p2-resume-last-playback.md) | P2 | покращення | draft (модель ✅) | M | **надбудова над** playback-toggle ✅ (`PlayerSession`) | autostart ✅ |
+| 1 | [resume-last-playback](p2-resume-last-playback.md) | P2 | покращення | ready (2026-07-19) | M | **надбудова над** playback-toggle ✅ (`resume_last`) | autostart ✅ |
 | 2 | [log-rotation](p2-log-rotation.md) | P2 | ідея | draft* | S | — | — |
 | 3 | [open-song-with-default-app](p2-open-song-with-default-app.md) | P2 | ідея | draft | S | Phase 3C | — |
 | 4 | [import-duplicate-metadata-update](p2-import-duplicate-metadata-update.md) | P2 | ідея | draft | S | Phase 3J | — |
@@ -88,14 +88,16 @@ Wishlist/Ignorelist, реалізовано й винесено в `done/`. Де
 
 ### Хвиля 3 — узгодити resume + дрібний polish (P2)
 
-**1. [resume-last-playback](p2-resume-last-playback.md)** (P2, M, draft — модель ✅ узгоджена 2026-06-25)
+**1. [resume-last-playback](p2-resume-last-playback.md)** (P2, M, ready — рішення фіналізовано 2026-07-19)
 Надбудова **над виконаним** [playback-toggle](done/p1-playback-toggle-stop-pause.md): per-profile
-поле `startup_playback_mode` (`never`/`always_paused`/`always_play`, дефолт `never`, без
-`restore`) у `PlayerSession`; **без** окремого `last_playback.json`; авто-гра — явний opt-in;
-UI — окремий діалог «Налаштування профілю» з `ProfileContextMenu`; скидання режиму при
-дублюванні/експорті. Спадщина вже в коді: дискримінатор `last_active`, seek, функція
-`resume_last` (і тепер `resume_file_from` з cold-start-де-ризиком) — лишається startup-hook
-і поле режиму.
+поле `autoplay_on_startup: bool` (дефолт `false`; `always_paused` викинуто — дублює
+cold-start `Ctrl+Shift+K`; без `restore`) у `PlayerSession`; **без** окремого
+`last_playback.json`; авто-гра — явний opt-in; тригер — `frontend_ready` (гейт-патерн
+`StartupPlan`), spawn-нутий реюз `resume_last`; CLI `--play`/`--stop-playback` скасовує
+авто-гру; UI — окремий діалог «Налаштування профілю» (чекбокс) з `ProfileContextMenu`;
+скидання поля + resume-трійки при дублюванні/експорті. Спадщина вже в коді: `last_active`,
+seek, `resume_last`, `resume_file_from` — лишається поле, IPC, діалог і hook у
+`frontend_ready`.
 
 Далі — незалежні дрібниці (S, будь-який порядок):
 **2. [log-rotation](p2-log-rotation.md)** · **3. [open-song-with-default-app](p2-open-song-with-default-app.md)** ·
@@ -152,15 +154,15 @@ profile switch (сам запис так і каже). Інакше тримат
 ## Перехресні рішення
 
 1. ✅ **resume-last-playback (#1) vs playback-toggle** — _вирішено 2026-06-25 (A1), базу
-   реалізовано 2026-07-18._ #1 — надбудова над `PlayerSession`; **окремого
-   `last_playback.json` немає.** Режим `startup_playback_mode`
-   (`never`/`always_paused`/`always_play`, без `restore`) — нове поле **в `PlayerSession`**
-   → per-profile. Авто-гра — явний opt-in.
+   реалізовано 2026-07-18; політику фіналізовано 2026-07-19._ #1 — надбудова над
+   `PlayerSession`; **окремого `last_playback.json` немає.** Політика —
+   `autoplay_on_startup: bool` (без `always_paused` — дублює cold-start `Ctrl+Shift+K`;
+   без `restore`) — нове поле **в `PlayerSession`** → per-profile. Авто-гра — явний opt-in.
 2. ✅ **state.json (crash-recovery, done) vs стан відтворення (#1)** — _знято (A1)._ Стан
    відтворення живе в `PlayerSession` (профіль), crash — у `data/state.json`; два чітко
    різні сховища, звіряти нема чого.
 3. ✅ **autostart ↔ відтворення** — _вирішено (A3 через A1), обидві сторони реалізовано._
-   Autostart сам **не** грає; авто-гра ⇔ активний профіль має `startup_playback_mode = always_play`
+   Autostart сам **не** грає; авто-гра ⇔ активний профіль має `autoplay_on_startup = true`
    (поле вводить #1).
 4. **mpv (#11) ↔ he-aac-mf / hls (#12).** Якщо mpv проходить PoC — винести обидва записи в `done/`
    як зняті. _(A4 — відкрите.)_

@@ -32,9 +32,10 @@
 - ✅ **filter-empty:** бейджа там немає — ADR §7 відкинув «завжди видимий бейдж»; покрито негативним тестом.
 - 🟨 **(тригер, лишається відкритим)** ADR §9.2: якщо порожнього стану як єдиного місця навчання замало — повернутись до `aria-keyshortcuts` (S4). Окремий тригер, не частина запису.
 
-### [resume-last-playback](p2-resume-last-playback.md) (draft, модель узгоджена 2026-06-25)
-- 🟦 **Спадщина #1:** форма дискримінатора `last_active`; seek до `position_ms` для всіх форматів.
-- 🟨 **Рівень реалізації:** синхронізація in-memory активного профілю при редагуванні; NVDA-перевірка `Select` у модалці.
+### [resume-last-playback](p2-resume-last-playback.md) (ready, рішення фіналізовано 2026-07-19)
+- ✅ **Спадщина #1 закрита кодом:** `last_active`, seek, `resume_last`, `resume_file_from` — усе вже в `develop`.
+- ✅ **`always_paused` викинуто** (дублює cold-start `Ctrl+Shift+K`) → політика = `autoplay_on_startup: bool`; тригер — `frontend_ready` (не setup); CLI `--play`/`--stop-playback` скасовує авто-гру; протухлий таргет → анонс «недоступно» (реюз `resume_last`).
+- 🟨 **Рівень реалізації:** вбудувати перевірку `StartupPlan` у `frontend_ready` без зламу ідемпотентності; стандартний NVDA-прогін нового діалогу (Select-портал-ризик знято — чекбокс).
 
 ### [log-rotation](p2-log-rotation.md) (draft, рішення прийняті)
 - 🟦 **Portable-шлях:** чи `tauri_plugin_log` поважає `portable::log_dir()` (пише в `data/logs/`, не `%APPDATA%`)? Якщо ні — додати в `portable.rs`.

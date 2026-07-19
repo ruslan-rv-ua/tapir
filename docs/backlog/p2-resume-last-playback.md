@@ -2,10 +2,10 @@
 
 - **Слаг:** `resume-last-playback`
 - **Тип:** покращення
-- **Стан:** draft (модель узгоджена 2026-06-25 — див. «Прийняті рішення»)
-- **Зусилля:** M (раніше S; зросло через окремий per-profile діалог «Налаштування профілю» + нову IPC-команду + правила скидання при дублюванні/експорті)
-- **Оновлено:** 2026-06-25
-- **Залежності:** **#1 [playback-toggle-stop-pause](done/p1-playback-toggle-stop-pause.md)** — єдине джерело правди `PlayerSession`; цей запис є **надбудовою** над ним. Phase 2A (PlayerEngine ✅), Phase 2C (SettingsDialog ✅), `profile.rs` (`PlayerSession`, `duplicate`, `export_json_str`, `commit_import`), профільний UI (`ProfileContextMenu`). Координація з [autostart](done/p2-autostart.md) і [crash-recovery](done/p1-crash-recovery.md) (✅ реалізовано).
+- **Стан:** ready (рішення фіналізовано 2026-07-19; модель A1 узгоджена 2026-06-25)
+- **Зусилля:** M (діалог «Налаштування профілю» + IPC + startup-hook; зменшилось проти попередньої оцінки: `always_paused` викинуто → не треба engine-API «load без play», у діалозі чекбокс замість Select → знято питання «Select у модалці», анонси реюзаються з #1)
+- **Оновлено:** 2026-07-19
+- **Залежності:** **#1 [playback-toggle-stop-pause](done/p1-playback-toggle-stop-pause.md) ✅** (злито в `develop` 2026-07-18) — єдине джерело правди `PlayerSession` + готова функція `resume_last` ([playback_control.rs](../../src-tauri/src/playback_control.rs)); цей запис — **тонка надбудова** над нею. Також: [resume-file-from-setting](done/p2-resume-file-from-setting.md) ✅ (`resume_file_from`), [autostart](done/p2-autostart.md) ✅ (`--minimize`), [crash-recovery](done/p1-crash-recovery.md) ✅, Phase 3G CLI (`--play`/`--stop-playback`, `StartupPlan`).
 
 ## Опис
 
@@ -16,147 +16,135 @@
 - Для незрячого користувача (NVDA) — критично менша кількість кроків навігації: замість пошуку потоку у списку, вибору, запуску — одразу звук (коли користувач свідомо це ввімкнув).
 - Особливо цінно у поєднанні з autostart: програма запускається у фоні і одразу починає грати — користувач просто вмикає комп'ютер.
 
-## Рішення A1 — модель персистенсу (узгоджено 2026-06-25)
+## Модель (A1 + фіналізація 2026-07-19)
 
-Закрито в [OPEN-QUESTIONS.md → A1](OPEN-QUESTIONS.md). Цей запис — **тонкий шар політики + UI поверх `PlayerSession` з #1**, а не друге джерело правди:
+Закрито в [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) (A1) і рішеннями 2026-07-19. Цей запис — **тонкий шар політики + UI поверх готового `resume_last` з #1**, а не друге джерело правди:
 
-- **Дані** («що грало + позиція») — у `PlayerSession` профілю: `last_stream_id`, `last_file_position {path, position_ms}`, дискримінатор `last_active`. Їх оживляє #1. **Окремого `data/last_playback.json` не буде** (скасовано — уникнути двох джерел правди).
-- **Політика** («чи й як стартувати») — нове поле `startup_playback_mode` **у тому ж `PlayerSession`**, тобто **per-profile**: кожен профіль має свій режим старту, **а не** глобальне поле в `settings.json`.
-- Наслідок: на старті **один read активного профілю** дає одразу і «чи грати», і «що грати» — політика й ціль подорожують разом, нема ризику взяти режим з одного профілю, а ціль з іншого.
+- **Дані** («що грало + позиція») — у `PlayerSession` профілю: `last_stream_id`, `last_file_position {path, position_ms}`, `last_active`. Їх **уже пише й читає #1** ([playback_control.rs:136](../../src-tauri/src/playback_control.rs#L136), `apply_session_snapshot`). Окремого `data/last_playback.json` немає.
+- **Політика** («чи стартувати») — нове поле **`autoplay_on_startup: bool`** у тому ж `PlayerSession`, тобто **per-profile**; `#[serde(default)]` → `false`. **Бінарне, не enum:** режим `always_paused` викинуто (див. «Прийняті рішення» — cold-start `Ctrl+Shift+K` з #1 уже дає «тишу зі зведеною ціллю» на вимогу, а pre-load файлу потребував би нового engine-API «завантажити без гри» заради мілісекунд). Breaking changes дозволені — якщо колись знадобиться третій режим, поле перейменується.
+- Наслідок: на старті **один read активного профілю** дає одразу і «чи грати», і «що грати» — політика й ціль подорожують разом.
 
 ## Критерії готовності
 
-- [ ] У `PlayerSession` ([profile.rs](../../src-tauri/src/profile.rs)) додано поле `startup_playback_mode` з трьома значеннями (`never`, `always_paused`, `always_play`), `#[serde(default)]` → **`never`**. Жодного глобального поля в `settings.json` для цієї фічі.
-- [ ] Дані resume (`last_stream_id` / `last_file_position` / `last_active`) — ті самі, що пише й читає #1; цей запис **не** заводить власного сховища.
-- [ ] На старті (`lib.rs` setup, **після** завантаження активного профілю) читається `active_profile.player_session.startup_playback_mode` і застосовується (таблиця нижче). Помилка / недоступний таргет — startup **не блокується**, протухлий запис очищується (механізм #1).
-- [ ] Авто-гра — **явний opt-in**; дефолт `never`. Хто вмикає `always_play`, свідомо приймає, що NVDA може не прозвучати вітання на старті ([[nvda-startup-foreground]]); підпис у UI прямо про це попереджає.
-- [ ] Окремий діалог **«Налаштування профілю»** (новий компонент, `role="dialog"`), вхід із `ProfileContextMenu` — **не** розширення спільного `ProfileNameDialog`. Містить комбобокс `startup_playback_mode`. Нова IPC-команда зберігає поле в **обраний** профіль (load→modify→save); якщо профіль активний — оновлюється і in-memory `AppState`.
-- [ ] `duplicate()` скидає у дубля `startup_playback_mode→never`, `last_stream_id→None`, `last_file_position→None`, `last_active→None`; `volume` переноситься (роблячи чесним наявний коментар «starts fresh»).
-- [ ] `export_json_str` (поряд зі стрипом паролів) скидає `startup_playback_mode→never` і стирає `last_file_position` (абсолютний шлях — приватність + протухає на чужій машині). `commit_import` додатково клампить `startup_playback_mode→never` (defense-in-depth).
-- [ ] При авто-старті frontend виводить `aria-live="polite"` анонс «Відтворення: [назва]»; назва **резолвиться на льоту** (потік → `StreamInfo`, файл → ім'я файлу), не кешується в профілі.
+- [ ] У `PlayerSession` ([profile.rs:250](../../src-tauri/src/profile.rs#L250)) додано `autoplay_on_startup: bool`, `#[serde(default)]` → `false`. Жодного глобального поля в `settings.json`.
+- [ ] Авто-гра — **явний opt-in**; дефолт `false`. Підпис у діалозі попереджає: звук почне грати одразу після запуску і **накладеться на мовлення NVDA** (вікно фокусується з Rust — [[nvda-startup-foreground]] — NVDA говорить, але поверх музики).
+- [ ] Тригер — **не** `lib.rs` setup, а **`frontend_ready`** ([app_commands.rs:10](../../src-tauri/src/commands/app_commands.rs#L10)), тим самим гейт-патерном, що `StartupPlan`/`StartupNotice`/`ResumeNotice`: інакше анонси `player-announce` емітяться до підписки webview і губляться, а блокуючий конект `play_stream` (≤15 с) не має права висіти в setup. Виконання — `spawn`-нута async-задача, що викликає **наявний `resume_last`** з #1.
+- [ ] **Одноразовість:** `frontend_ready` ідемпотентна (reload webview кличе її знову) — авто-гра захищена one-shot guard'ом (managed state з `take()`, як `StartupNotice`), інакше reload після ручного стопу перезапустив би звук.
+- [ ] **CLI скасовує авто-гру:** якщо `StartupPlan` містить `Play` або `StopPlayback` — авто-гра скипається повністю (явна команда важливіша за збережену політику; без подвійного старту й гонки). `--record` та інші дії авто-гру не чіпають.
+- [ ] Помилка / недоступний таргет — startup **не блокується**; поведінка = поведінка `resume_last`: протухлий таргет → анонс «недоступно» + очистка запису; транзієнтна помилка конекту → анонс «помилка», запис лишається.
+- [ ] Файл відновлюється з урахуванням глобального **`resume_file_from`** (`position|start`) — безкоштовно через реюз `resume_last` (`plan_file_resume`).
+- [ ] Режим діє **лише при запуску застосунку**; `switch_profile` авто-гру нового профілю **не** запускає (семантика «startup», і перемикання профілю й так зупиняє все — [[profiles-recording-model]]).
+- [ ] Окремий діалог **«Налаштування профілю»** (новий компонент, `role="dialog"`), вхід із `ProfileContextMenu` для **обраного** (не обов'язково активного) профілю — **не** розширення спільного `ProfileNameDialog`. Містить **чекбокс** «Автовідтворення при запуску» + попереджувальний підпис (NVDA). Розширюваний під майбутні per-profile налаштування.
+- [ ] Нова IPC-команда `set_profile_autoplay(name, enabled)`. Неактивний профіль: load→modify→save. **Активний:** модифікувати in-memory `AppState.active_profile` під write-lock → clone → `spawn_blocking` save (патерн `persist_session_snapshot`, [playback_control.rs:157](../../src-tauri/src/playback_control.rs#L157)) — **не** load-з-диска→save, бо це затерло б свіжіший in-memory стан (resume-поля, volume).
+- [ ] `duplicate()` ([profile.rs:525](../../src-tauri/src/profile.rs#L525)) скидає у дубля `autoplay_on_startup→false` і resume-трійку (`last_active`/`last_stream_id`/`last_file_position`) → `None`; `volume` переноситься. _(Зараз `duplicate()` копіює все — з #1 resume-поля вже живі, тож без скидання дубль «тягне» чуже останнє відтворення.)_
+- [ ] `export_json_str` (поряд зі стрипом паролів) скидає `autoplay_on_startup→false` і **всю resume-трійку** (не лише `last_file_position` — інакше лишається висячий дискримінатор `last_active=file`; абсолютний шлях — приватність + протухає на чужій машині). `commit_import` додатково клампить `autoplay_on_startup→false` (defense-in-depth).
+- [ ] NVDA-анонси при авто-старті — **ті самі, що в #1** («Підключення — станція», «Відтворення — трек, з mm:ss»): реюз `player-announce`, нових рядків i18n для анонсів не треба (лише для діалогу).
 
 ## Технічні деталі
 
 ### Де зберігати (єдине джерело правди)
 
-Усе — в `PlayerSession` профілю (`*.tapirprofile` JSON), поряд з уже наявним `volume`:
+Усе — в `PlayerSession` профілю (`*.tapirprofile` JSON), поряд з уже живими полями #1:
 
 ```rust
 pub struct PlayerSession {
     pub volume: f32,
-    pub last_stream_id: Option<String>,          // оживляє #1
-    pub last_file_position: Option<FilePosition>, // { path, position_ms } — оживляє #1
-    pub last_active: Option<LastActive>,          // дискримінатор «останнє активне» — #1
-    pub startup_playback_mode: StartupPlaybackMode, // ЦЯ фіча; default = Never
+    pub last_stream_id: Option<String>,           // пише/читає #1
+    pub last_file_position: Option<FilePosition>, // { path, position_ms } — #1
+    pub last_active: Option<LastActive>,          // дискримінатор — #1
+    pub autoplay_on_startup: bool,                // ЦЯ фіча; #[serde(default)] = false
 }
 ```
 
-### Таблиця застосування режиму на старті
+### Поведінка на старті
 
-| Режим | Файл як останнє джерело | Потік як останнє джерело |
-|---|---|---|
-| `never` (дефолт) | нічого | нічого |
-| `always_paused` | завантажити, seek на `position_ms`, **не грати** | тиша, але ціль «зведена» — перше `Ctrl+Shift+K` робить reconnect |
-| `always_play` | завантажити + seek + **грати** | reconnect + **грати** |
+| `autoplay_on_startup` | Дія |
+|---|---|
+| `false` (дефолт) | нічого; resume-поля все одно пишуться (#1), перший `Ctrl+Shift+K` відновлює вручну |
+| `true` | викликати `resume_last`: потік → reconnect + грати; файл → play + seek за `resume_file_from` + грати |
 
-> `restore` (грати, лише якщо минулого разу грало) **відкинуто** — потребував би окремого поля стану «грало/стояло»; не вартий ускладнення в 1-й ітерації. Двері відчинені на потім.
->
-> `always_paused` для потоку фізично вироджується в «тишу + зведену ціль», бо в моделі `PlayerEngine` потік не має паузи (або грає, або зупинений).
+> `always_paused` викинуто (2026-07-19): для потоку він вироджувався в «тишу + зведену ціль» — рівно те, що вже дає cold-start `Ctrl+Shift+K` без жодного налаштування; для файлу унікальна цінність (pre-load) — мілісекунди, а коштувала б нового API «завантажити без гри» в `PlayerEngine` (наявний `play_file` одразу грає; play→pause дав би чутний блип). `restore` («грати, лише якщо грало») відкинуто ще раніше — потребував би окремого поля стану. Двері на повернення будь-якого з них — відчинені, але свідомо не закладаються.
 
-### Коли зберігати (спільний шлях запису з #1)
+### Точка тригера і порядок (frontend_ready)
 
-- `last_stream_id` / `last_file_position` пишуться **на переходах** (pause / stop / зміна треку / graceful-shutdown), як визначає #1 — **не** на кожен progress-tick. Цей запис **не** додає окремого write-path.
-- `startup_playback_mode` пишеться лише з діалогу «Налаштування профілю».
+`frontend_ready` ([app_commands.rs:10](../../src-tauri/src/commands/app_commands.rs#L10)) — єдине місце, де webview гарантовано підписаний на події:
 
-### Взаємодія з Crash Recovery (A2 — знято)
+1. Прочитати `StartupPlan` **до** дренажу (або передати рішення поряд): якщо план містить `Play`/`StopPlayback` → **скип** авто-гри.
+2. Інакше, якщо `active_profile.player_session.autoplay_on_startup` і one-shot guard не спрацьовував → `spawn(resume_last(app))`.
+3. Crash-recovery (`ResumeNotice`) незалежний: відновлення записів і авто-гра співіснують; анонси йдуть послідовно.
 
-Раніше планувався окремий `data/last_playback.json`; **скасовано** (A1). Тепер:
+`--minimize` (autostart): вікно ховається ще в setup, але webview уже ініціалізований і `frontend_ready` приходить — авто-гра працює. Анонс у прихованому вікні NVDA не прочитає (нема фокуса) — це ок: звук сам по собі є підтвердженням, трей-стан оновлюється (`notify_state_changed`).
 
-| Сховище | Призначення |
-|---------|-------------|
-| `PlayerSession` (у профілі) | стан відтворення: останнє джерело, позиція, режим старту (ця фіча + #1) |
-| `data/state.json` (Phase 3K) | crash recovery: незавершені записи |
-
-Це два **чітко різні** сховища (профіль ≠ `state.json`); звіряти структури вже нема потреби — питання A2 знято.
-
-### Взаємодія з Autostart (A3 — per-profile)
-
-- Autostart **сам по собі не грає**. Він лише запускає програму (`--minimize`); далі діє `startup_playback_mode` **активного профілю**.
-- Тобто autostart авто-грає **тоді й лише тоді**, коли активний профіль має `always_play`. Це і є новий, точніший зміст A3 (раніше — «ніколи»).
-- Якщо вікно приховане (tray) — `aria-live`-анонс при першому відкритті; tray-tooltip показує назву потоку.
-
-### Обробка помилок
+### Помилки (= поведінка `resume_last`, без відхилень)
 
 | Ситуація | Поведінка |
 |----------|-----------|
-| Записаний файл не знайдено на диску | Тихо скипати, очистити resume-поля профілю, продовжити (механізм #1) |
-| Потік не відповідає | Стандартна логіка retry/error `PlayerEngine`; startup не блокувати |
-| Профіль пошкоджений / невалідний | Існуюча обробка завантаження профілю; resume просто не спрацьовує |
-| `startup_playback_mode = never` | resume-поля все одно пишуться (для `Ctrl+Shift+K`), але авто-старт не запускається |
+| Файл не знайдено / потік видалений з профілю | Анонс «недоступно», очистити resume-поля, startup продовжується |
+| Потік не відповідає (транзієнтно) | Анонс «помилка», запис **лишається** (наступний запуск/K спробує знову) |
+| Висячий дискримінатор / нічого не збережено | Тихо очистити, нічого не грати |
+| Профіль пошкоджений | Існуюча обробка завантаження профілю; авто-гра просто не спрацьовує |
 
 ### Rust-модулі (орієнтовно)
 
-- `src-tauri/src/profile.rs` — нове поле `startup_playback_mode` у `PlayerSession` (enum `StartupPlaybackMode`, default `Never`); скидання в `duplicate()`; стрип у `export_json_str`; кламп у `commit_import`.
-- `src-tauri/src/commands/profile_commands.rs` — **нова IPC-команда** збереження налаштувань профілю (напр. `set_profile_startup_mode(name, mode)`); коректне оновлення активного профілю в `AppState`, якщо редагується саме він.
-- `src-tauri/src/lib.rs` (startup hook) — після завантаження активного профілю прочитати `startup_playback_mode` і застосувати; ділить resume-функцію з cold-start-гілкою `Ctrl+Shift+K` з #1.
-- `src-tauri/src/player/engine.rs` — повторно використати `play_live` / `play_file` (+ seek) з #1; окремого коду не треба.
+- `src-tauri/src/profile.rs` — поле `autoplay_on_startup` у `PlayerSession`; скидання в `duplicate()`; стрип у `export_json_str` (поле + resume-трійка); кламп у `commit_import`.
+- `src-tauri/src/commands/profile_commands.rs` — IPC `set_profile_autoplay(name, enabled)`; для активного профілю — in-memory-патерн (див. критерії).
+- `src-tauri/src/commands/app_commands.rs` (`frontend_ready`) — one-shot тригер: перевірка `StartupPlan` → `spawn(resume_last)`.
+- `src-tauri/src/playback_control.rs` — `resume_last` стає `pub(crate)`; іншого коду не треба.
 
 ### Frontend (орієнтовно)
 
-- `src/components/profile/ProfileSettingsDialog.tsx` — **новий** діалог `role="dialog"` з комбобоксом `startup_playback_mode` + попереджувальний підпис про NVDA на старті. **Не** розширювати `ProfileNameDialog` (він узагальнений і спільний для create/rename).
-- `src/components/profile/ProfileContextMenu.tsx` — пункт «Налаштування профілю…», що відкриває діалог для **обраного** (не обов'язково активного) профілю.
-- `aria-live="polite"` анонс при авто-старті — через `useAnnounce`; назва резолвиться на льоту.
+- `src/components/profile/ProfileSettingsDialog.tsx` — **новий** діалог `role="dialog"`: чекбокс «Автовідтворення при запуску» + попереджувальний підпис про накладання звуку на мовлення NVDA. **Не** розширювати `ProfileNameDialog` (він узагальнений і спільний для create/rename). Чекбокс — без Select-портала, але діалог усе одно рендерити **сиблінгом** колекційних компонентів ([[portal-dialog-inside-collection-double-mount]]).
+- `src/components/profile/ProfileContextMenu.tsx` — пункт «Налаштування профілю…» для **обраного** профілю.
+- Анонси авто-старту — наявна обробка `player-announce` з #1; нового не треба.
 
 ## Прийняті рішення
 
 | Питання | Рішення |
 |---------|--------|
 | Де зберігати стан? | **`PlayerSession` профілю** (єдине джерело правди з #1). Окремого `last_playback.json` немає. (A1) |
-| Скоуп режиму? | **Per-profile** — поле `startup_playback_mode` у `PlayerSession`, не глобально в `settings.json`. |
-| Які режими? | **`never` / `always_paused` / `always_play`.** `restore` відкинуто (потребував би поля стану). |
-| Авто-гра на старті? | **Явний opt-in**, дефолт `never`. Свідома відмова від «NVDA чути на старті» лише для тих, хто ввімкнув `always_play`. |
-| Де в UI? | **Новий окремий діалог «Налаштування профілю»** з `ProfileContextMenu` (`role="dialog"`), не розширення `ProfileNameDialog`. |
-| Дублювання профілю | Скидати `startup_playback_mode→never` + resume-поля у `None`; `volume` переноситься. |
-| Експорт/імпорт | Скидати `startup_playback_mode→never` і стирати `last_file_position` на експорті; кламп `→never` ще й на імпорті. |
-| Назва для анонсу | **Резолвити на льоту** (потік → `StreamInfo`, файл → ім'я), не кешувати. |
-| Тайм-аут потоку | Існуюча логіка retry у `PlayerEngine`. Окремої поведінки не треба. |
-| Позиція для файлів | Відновлювати з `position_ms` (seek symphonia). Для потоків позиція `null`. |
+| Скоуп політики? | **Per-profile** — `autoplay_on_startup` у `PlayerSession`, не глобально в `settings.json`. |
+| Форма політики? | **`bool`** (2026-07-19). `always_paused` викинуто — дублює cold-start `Ctrl+Shift+K`; `restore` відкинуто ще раніше. |
+| Авто-гра на старті? | **Явний opt-in**, дефолт `false`. Той, хто вмикає, свідомо приймає звук поверх мовлення NVDA на старті. |
+| Точка тригера? | **`frontend_ready`** (гейт-патерн `StartupPlan`), spawn-нутий реюз `resume_last`; one-shot guard проти reload. **Не** `lib.rs` setup (загублені анонси + блокуючий конект). (2026-07-19) |
+| Конфлікт із CLI? | **CLI скасовує авто-гру**: `Play`/`StopPlayback` у `StartupPlan` → скип. (2026-07-19) |
+| Протухлий таргет? | **Анонс «недоступно»** + очистка — реюз `resume_last` як є, без silent-флага. (2026-07-19) |
+| Перемикання профілю? | Режим діє **лише при запуску застосунку**; `switch_profile` авто-гру не запускає. (2026-07-19) |
+| Де в UI? | **Окремий діалог «Налаштування профілю»** з `ProfileContextMenu` (`role="dialog"`), чекбокс. Розширюваний під майбутні per-profile налаштування. (2026-07-19) |
+| Дублювання профілю | Скидати `autoplay_on_startup→false` + resume-трійку в `None`; `volume` переноситься. _(Нова поведінка — зараз `duplicate()` копіює все.)_ |
+| Експорт/імпорт | На експорті скидати поле + **всю** resume-трійку (без висячого `last_active`); на імпорті кламп `→false`. |
+| Позиція для файлів | Через реюз `resume_last`: seek за глобальним `resume_file_from` (`position|start`). Для потоків позиції немає. |
+| Назва для анонсу | Реюз анонсів #1 (`connecting`/`resuming`) — резолвиться на льоту, не кешується. |
 
 ## Відкриті питання (рівень реалізації)
 
-- 🟦 **Форма дискримінатора `last_active`** — спадщина #1 (окреме поле enum vs `updated_at`-timestamp); вирішується разом з #1.
-- 🟦 **Seek до `position_ms` для всіх форматів** (symphonia) — якщо формат не сікається, fallback «з початку». Спільне з #1.
-- 🟨 **Синхронізація активного профілю** — нова IPC при редагуванні **активного** профілю має оновити і файл, і in-memory `AppState`, без рейсів із записом стану відтворення.
-- 🟨 **NVDA: комбобокс у модалці** — react-aria `Select` відкриває listbox через портал; перевірити, що Modal не aria-ховає список ([[live-region-inside-modals]], [[portal-dialog-inside-collection-double-mount]]).
-- 🟥 **Чи лишати `always_paused`** взагалі — для потоку він вироджується в «тишу»; корисний лише для файлів. Тримати (нешкідливий) чи звузити до `never`/`always_play`? _Поки тримати._
+- 🟨 **Порядок у `frontend_ready`** — акуратно вбудувати перевірку `StartupPlan` до/поряд із `take()` (зараз план одразу дренажиться в spawn); не зламати ідемпотентність.
+- 🟨 **NVDA-прогін діалогу** — стандартна перевірка нового модального діалогу (фокус-трап, анонс заголовка, Escape); Select-портал-ризик знято (чекбокс).
 
 ## Документи
 
-- [docs/implementation-phases.md](../implementation-phases.md) — Phase 2A (PlayerEngine), Phase 2C (Settings), Phase 3K (Crash Recovery)
-- [docs/architecture.md](../architecture.md) — backend-first, IPC, PlayerEngine, профілі
-- [docs/data-models.md](../data-models.md) — §3.7 `PlayerSession` (оновити: нове поле `startup_playback_mode`)
-- [docs/accessibility.md](../accessibility.md) — NVDA, `aria-live`, `useAnnounce`, модальні діалоги
-- Код: `src-tauri/src/profile.rs`, `src-tauri/src/commands/profile_commands.rs`, `src-tauri/src/lib.rs`, `src-tauri/src/player/engine.rs`, `src/components/profile/`
-- Portable storage: `src-tauri/src/portable.rs`
-- Пам'ять: [[nvda-startup-foreground]], [[live-region-inside-modals]], [[portal-dialog-inside-collection-double-mount]], [[profiles-recording-model]]
-- Перехресне: [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) (A1 ✅, A2 знято, A3 per-profile), [IMPLEMENTATION-ORDER.md](IMPLEMENTATION-ORDER.md) (#10)
+- [docs/data-models.md](../data-models.md) — §3.7 `PlayerSession` (нове поле `autoplay_on_startup`)
+- [docs/architecture.md](../architecture.md) — backend-first, IPC, startup-послідовність (`frontend_ready`)
+- [docs/accessibility.md](../accessibility.md) — NVDA, модальні діалоги, `player-announce`
+- Код: [src-tauri/src/playback_control.rs](../../src-tauri/src/playback_control.rs) (`resume_last`), [src-tauri/src/profile.rs](../../src-tauri/src/profile.rs), [src-tauri/src/commands/profile_commands.rs](../../src-tauri/src/commands/profile_commands.rs), [src-tauri/src/commands/app_commands.rs](../../src-tauri/src/commands/app_commands.rs), [src-tauri/src/cli.rs](../../src-tauri/src/cli.rs) (`StartupPlan`), [src/components/profile/](../../src/components/profile/)
+- Пам'ять: [[nvda-startup-foreground]], [[portal-dialog-inside-collection-double-mount]], [[profiles-recording-model]]
+- Перехресне: [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) (A1 ✅, A2 знято, A3 per-profile), [IMPLEMENTATION-ORDER.md](IMPLEMENTATION-ORDER.md) (хвиля 3, #1)
 
 ## Промпт для агента
 
 ```text
-Реалізація узгодженої моделі (рішення A1 закрите — див. «Прийняті рішення»). Спершу звірся з контекстом, не починай правок наосліп. Залежність: спершу має бути зроблено #1 (playback-toggle-stop-pause), бо він оживляє PlayerSession (last_stream_id/last_file_position/last_active) — цей запис надбудовується над ним.
+Реалізація фіналізованої моделі (усі рішення закриті — див. «Прийняті рішення»). Спершу звірся з контекстом, не починай правок наосліп. База вже в коді: #1 (playback-toggle-stop-pause) злито — playback_control.rs має resume_last, apply_session_snapshot, persist_session_snapshot; resume_file_from теж реалізовано.
 
 Що зробити:
-1) profile.rs: додати у PlayerSession поле startup_playback_mode (enum Never|AlwaysPaused|AlwaysPlay, #[serde(default)] = Never). Жодного глобального поля в settings.json.
-2) duplicate(): скинути startup_playback_mode→Never + last_stream_id/last_file_position/last_active→None; volume лишити. (Заразом чесний коментар «starts fresh».)
-3) export_json_str(): поряд зі стрипом паролів скинути startup_playback_mode→Never і стерти last_file_position (абсолютний шлях). commit_import: кламп startup_playback_mode→Never.
-4) profile_commands.rs: нова IPC set_profile_startup_mode(name, mode) — load→modify→save обраного профілю; якщо активний — оновити in-memory AppState без рейсів.
-5) lib.rs startup hook: після завантаження активного профілю прочитати startup_playback_mode і застосувати (never→нічого; always_paused→завантажити+seek, не грати [потік: тиша+ціль зведена]; always_play→грати/reconnect). Ділити resume-функцію з cold-start-гілкою Ctrl+Shift+K з #1. Помилка/недоступний таргет — не блокувати startup, очистити запис.
-6) Frontend: новий ProfileSettingsDialog (role="dialog") з комбобоксом режиму + попереджувальний підпис про NVDA на старті; вхід із ProfileContextMenu для ОБРАНОГО профілю. НЕ розширювати спільний ProfileNameDialog. Перевір [[live-region-inside-modals]] / [[portal-dialog-inside-collection-double-mount]] для Select у модалці.
-7) aria-live="polite" «Відтворення: [назва]» на авто-старті; назву резолвити на льоту (потік→StreamInfo, файл→ім'я).
-8) Оновити доки: data-models.md §3.7 (нове поле), architecture.md, accessibility.md.
+1) profile.rs: у PlayerSession додати autoplay_on_startup: bool, #[serde(default)] = false. Жодного глобального поля в settings.json.
+2) duplicate(): скинути autoplay_on_startup→false + last_active/last_stream_id/last_file_position→None; volume лишити. (Зараз duplicate копіює все — це нова поведінка, з #1 resume-поля живі.)
+3) export_json_str(): поряд зі стрипом паролів скинути autoplay_on_startup→false і ВСЮ resume-трійку (не лише last_file_position — без висячого last_active). commit_import: кламп autoplay_on_startup→false.
+4) profile_commands.rs: IPC set_profile_autoplay(name, enabled). Неактивний профіль: load→modify→save. Активний: write-lock in-memory AppState.active_profile → set → clone → spawn_blocking save (патерн persist_session_snapshot) — НЕ load-з-диска, щоб не затерти in-memory resume-поля/volume.
+5) frontend_ready (app_commands.rs): one-shot тригер (managed state з take(), як StartupNotice). Якщо StartupPlan містить Play або StopPlayback → скип авто-гри (перевірити ДО/поряд із дренажем плану, не зламавши ідемпотентність). Інакше якщо active_profile.player_session.autoplay_on_startup → spawn(resume_last). resume_last зробити pub(crate). НЕ в lib.rs setup (анонси до підписки webview губляться; play_stream блокує ≤15 с).
+6) Поведінка помилок/seek/анонсів = resume_last як є: «недоступно»+очистка для протухлого, «помилка» без очистки для транзієнтного, resume_file_from для файлів, анонси connecting/resuming реюзаються. switch_profile авто-гру НЕ запускає.
+7) Frontend: новий ProfileSettingsDialog (role="dialog") з чекбоксом «Автовідтворення при запуску» + підпис-попередження (звук накладеться на мовлення NVDA при запуску); вхід із ProfileContextMenu для ОБРАНОГО профілю, пункт «Налаштування профілю…». НЕ розширювати ProfileNameDialog. Діалог — сиблінгом колекційних компонентів ([[portal-dialog-inside-collection-double-mount]]). i18n uk/en.
+8) Оновити доки: data-models.md §3.7, architecture.md (startup/frontend_ready), accessibility.md.
 
-Звірся: profile.rs (PlayerSession, duplicate, export_json_str), profile_commands.rs (наявні команди, switch/active state), lib.rs (порядок setup — профіль ДО resume-хука), player/engine.rs (play_live/play_file/seek з #1), src/components/profile/. Узгодь з autostart (A3: автогра лише якщо активний профіль = always_play).
+Звірся: playback_control.rs (resume_last, persist_session_snapshot), app_commands.rs (frontend_ready, гейт-патерн), cli.rs (StartupPlan, Action::Play/StopPlayback), profile.rs (PlayerSession, duplicate, export_json_str, commit_import), profile_commands.rs, src/components/profile/. Узгодь з autostart (--minimize: webview ініціалізований, frontend_ready приходить, авто-гра працює; анонс у прихованому вікні не озвучиться — ок).
 
-Гейти: cargo test + cargo clippy; pnpm test + pnpm vite:build (tsc має ~51 преекзистинг-помилку від paraglide — не блокер, [[typecheck-paraglide-gotchas]]); ручний прогін з NVDA: per-profile діалог, авто-старт always_play на потоці й файлі, дубль/експорт скидає режим.
+Гейти: cargo test + cargo clippy; pnpm test + pnpm vite:build (tsc має ~51 преекзистинг-помилку від paraglide — не блокер, [[typecheck-paraglide-gotchas]]); ручний прогін з NVDA: діалог профілю, авто-старт на потоці й файлі (вкл. resume_file_from=start), tapir --play X при увімкненій авто-грі (CLI виграє), reload webview не перезапускає звук, дубль/експорт скидає поле.
 ```
