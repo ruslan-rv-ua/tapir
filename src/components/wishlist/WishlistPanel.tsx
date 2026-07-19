@@ -338,7 +338,10 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
           return n;
         }
         const n = await tauri.removeFromIgnorelistBulk(patterns);
-        $ignorelist.set($ignorelist.get().filter((p) => !drop.has(p)));
+        const next = $ignorelist.get().filter((p) => !drop.has(p));
+        // Same microtask race as the wishlist branch above — see that comment.
+        if (next.length === 0) pendingFocusEmptyZone.current = true;
+        $ignorelist.set(next);
         return n;
       } catch (err) {
         addToast(String(err), "error");
@@ -543,7 +546,11 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
                 showDate={false}
                 emptyMessage={m.empty_ignorelist()}
                 exitZone={(forward) => exitZone("wishlist-list", forward)}
-                onEmpty={() => { pendingFocusEmptyZone.current = true; }}
+                // No-op for the same reason as the wishlist onEmpty above: every
+                // path that can empty this list now sets pendingFocusEmptyZone
+                // synchronously with its store write, and this late callback
+                // would only re-arm a consumed flag.
+                onEmpty={() => {}}
                 onEdit={(pattern) => setDialog({ mode: "edit", listType: "ignorelist", pattern })}
                 onRemove={handleRemoveIgnorelist}
                 onBulkRemove={handleBulkRemove}

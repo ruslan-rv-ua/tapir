@@ -135,6 +135,34 @@ it("deleting the last pattern on the ignorelist tab moves focus to the empty-sta
   });
 });
 
+it("bulk-deleting all remaining patterns on the ignorelist tab moves focus to the empty-state CTA", async () => {
+  // Ignorelist twin of the wishlist bulk test above. Wishlist keeps its
+  // non-empty beforeEach seed ("*ad*") throughout, so this also re-proves the
+  // active-tab (not union) keying. Drive: select-all via the toolbar, then the
+  // ROW's ✕ button — with the row already in the selection, PatternList opens
+  // the BULK confirm (not the single one), so this exercises
+  // handleBulkRemove's ignorelist branch without going through the toolbar's
+  // delete button (whose patternListRef path is a separate known issue).
+  $ignorelist.set(["blocked*"]);
+  vi.mocked(tauri.getIgnorelist).mockResolvedValueOnce(["blocked*"]);
+  vi.mocked(tauri.removeFromIgnorelistBulk).mockResolvedValueOnce(1);
+  render(<WishlistPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
+  await waitFor(() => screen.getByText(m.select_all()));
+  fireEvent.click(screen.getByText(m.ignorelist_section_title()));
+  const rowDeleteBtn = await screen.findByRole("button", { name: `${m.remove_pattern()}: blocked*` });
+  fireEvent.click(screen.getByText(m.select_all()));
+  expect($patternSelection.get().size).toBe(1);
+  fireEvent.click(rowDeleteBtn); // in-selection ✕ → bulk confirm
+  fireEvent.click(screen.getByRole("button", { name: m.remove_pattern() })); // confirm (explicit confirmLabel === title)
+  await waitFor(() => expect(tauri.removeFromIgnorelistBulk).toHaveBeenCalledWith(["blocked*"]));
+  await waitFor(() => expect($ignorelist.get()).toEqual([]));
+  await waitFor(() => {
+    const cta = document.activeElement as HTMLElement;
+    expect(cta.tagName).toBe("BUTTON");
+    expect(cta).toHaveAccessibleName(m.wishlist_add_example());
+  });
+});
+
 it("clears the selection when the tab changes", async () => {
   const { getByText } = render(<WishlistPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
   await waitFor(() => getByText(m.select_all()));
