@@ -55,7 +55,7 @@ _Закрито 2026-06-25 (рішення)._
 - Код: `src-tauri/src/browser/types.rs` — `StationResult.lastcheckok`
 - Код: `src-tauri/src/stream/probe.rs` — `probe()` (вже є)
 - Зразок: `src-tauri/src/commands/stream_io_commands.rs` — async probe pattern
-- Пов'язано: [p2-add-stream-probe.md](p2-add-stream-probe.md) — аналогічний probe для ручного додавання (sync spinner); IPC-команда `probe_stream(url)` може бути спільною
+- Пов'язано: [p2-add-stream-probe.md](done/p2-add-stream-probe.md) — ✅ done; спільна IPC `probe_stream(url) -> { ok, error }` уже існує в `src-tauri/src/commands/stream_io_commands.rs` (5-с `SINGLE_PROBE_TIMEOUT`) — тут її треба лише викликати з `tokio::spawn`
 
 ## Промпт для агента
 

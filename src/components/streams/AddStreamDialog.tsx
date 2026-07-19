@@ -17,6 +17,10 @@ export function AddStreamDialog() {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [probing, setProbing] = useState(false);
+  // Set once a probe has failed for the URL currently in the field: the warning
+  // is shown and the next submit skips the probe and saves anyway.
+  const [probeFailed, setProbeFailed] = useState(false);
 
   // Sync form fields when dialog opens
   useEffect(() => {
@@ -24,9 +28,13 @@ export function AddStreamDialog() {
       setUrl(editStream?.url ?? "");
       setName(editStream?.name ?? "");
       setError(null);
+      setProbeFailed(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
+
+  // Probing and saving both lock the form; only the label distinguishes them.
+  const busy = loading || probing;
 
   const handleClose = () => {
     $showAddStreamDialog.set(false);
@@ -36,6 +44,26 @@ export function AddStreamDialog() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Adding: check reachability first, once per URL. A failed probe is only a
+    // warning — the second submit goes through so a temporarily-down stream can
+    // still be added. Edit never probes (the URL is not editable there).
+    if (!isEdit && !probeFailed) {
+      setProbing(true);
+      let ok = true;
+      try {
+        ok = (await tauri.probeStream(url)).ok;
+      } catch {
+        ok = false; // treat an IPC failure like an unreachable stream
+      } finally {
+        setProbing(false);
+      }
+      if (!ok) {
+        setProbeFailed(true);
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       if (isEdit && editStream) {
@@ -66,17 +94,17 @@ export function AddStreamDialog() {
           <Heading slot="title" className="mb-4 text-lg font-semibold text-slate-100">
             {isEdit ? m.edit_stream() : m.add_stream()}
           </Heading>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <form onSubmit={handleSubmit} aria-busy={busy || undefined} className="flex flex-col gap-3">
             {!isEdit && (
               <label className="flex flex-col gap-1 text-sm text-slate-300">
                 {m.stream_url()}
                 <input
                   type="url"
                   value={url}
-                  onChange={(e) => setUrl(e.target.value)}
+                  onChange={(e) => { setUrl(e.target.value); setProbeFailed(false); }}
                   required
                   autoFocus
-                  disabled={loading}
+                  disabled={busy}
                   className="rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-slate-100 outline-none focus:border-blue-500 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText] forced-colors:text-[CanvasText] forced-colors:focus:border-[Highlight]"
                   placeholder="https://..."
                 />
@@ -89,27 +117,32 @@ export function AddStreamDialog() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 autoFocus={isEdit}
-                disabled={loading}
+                disabled={busy}
                 className="rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-slate-100 outline-none focus:border-blue-500 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText] forced-colors:text-[CanvasText] forced-colors:focus:border-[Highlight]"
               />
             </label>
             {error && <p role="alert" className="text-sm text-red-400 forced-colors:text-[CanvasText]">{error}</p>}
+            {/* Probe status: polite so it does not cut off the field the user
+                is in; one region for both states so NVDA sees a text change. */}
+            <p aria-live="polite" className="text-sm text-amber-300 empty:hidden forced-colors:text-[CanvasText]">
+              {probing ? m.stream_probe_checking() : probeFailed ? m.stream_probe_failed() : ""}
+            </p>
             <div className="mt-2 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={handleClose}
-                disabled={loading}
+                disabled={busy}
                 className="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
               >
                 {m.cancel()}
               </button>
               <button
                 type="submit"
-                disabled={loading}
-                aria-busy={loading || undefined}
+                disabled={busy}
+                aria-busy={busy || undefined}
                 className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
               >
-                {loading ? m.saving() : m.save()}
+                {probing ? m.stream_probe_checking() : loading ? m.saving() : probeFailed ? m.stream_probe_add_anyway() : m.save()}
               </button>
             </div>
           </form>

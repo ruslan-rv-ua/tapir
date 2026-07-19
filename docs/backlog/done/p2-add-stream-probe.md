@@ -2,9 +2,9 @@
 
 - **Слаг:** `add-stream-probe`
 - **Тип:** ідея
-- **Стан:** ready
+- **Стан:** done (гілка `feature/add-stream-probe`)
 - **Зусилля:** S
-- **Оновлено:** 2026-06-15
+- **Оновлено:** 2026-07-19
 - **Залежності:** Phase 3J (stream::probe ✅ — вже реалізований для імпорту)
 
 ## Опис
@@ -34,12 +34,26 @@
 
 ## Критерії готовності
 
-- [ ] При submit `AddStreamDialog` викликається probe перед збереженням
-- [ ] Показується індикатор очікування під час probe
-- [ ] При невдалому probe — inline попередження (не блокує збереження)
-- [ ] При успішному probe — зберегти і закрити без затримок
-- [ ] NVDA: `aria-live="polite"` для результату probe; `aria-busy` під час перевірки
-- [ ] Timeout probe: не більше 5 секунд (щоб діалог не завис)
+- [x] При submit `AddStreamDialog` викликається probe перед збереженням
+- [x] Показується індикатор очікування під час probe
+- [x] При невдалому probe — inline попередження (не блокує збереження)
+- [x] При успішному probe — зберегти і закрити без затримок
+- [x] NVDA: `aria-live="polite"` для результату probe; `aria-busy` під час перевірки
+- [x] Timeout probe: не більше 5 секунд (щоб діалог не завис)
+
+## Як реалізовано
+
+- `probe_stream(url) -> { ok, error }` у `src-tauri/src/commands/stream_io_commands.rs`
+  (поруч із `validate_import_candidates`, обидва — обгортки над `probe::probe`).
+  Ніколи не повертає `Err`: недоступний потік — це вердикт, не помилка команди.
+- Загальний бюджет — константа `SINGLE_PROBE_TIMEOUT = 5s` через `tokio::time::timeout`;
+  таймаут повертається як звичайний `ok: false` з текстом помилки.
+- `AddStreamDialog`: probe робиться один раз на URL. Невдача → попередження в
+  `aria-live="polite"` + кнопка стає «Все одно додати»; другий submit зберігає без
+  повторного probe. Редагування URL скидає стан → probe повториться.
+- Режим редагування не probe-ить (URL там не редагується).
+- Тести: `src/components/streams/AddStreamDialog.test.tsx` (6),
+  `probe_stream_reports_unreachable_as_not_ok` (Rust).
 
 ## Відкриті питання
 

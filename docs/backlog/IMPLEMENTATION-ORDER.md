@@ -34,8 +34,8 @@
 
 | # | Запис | P | Тип | Стан | Зусилля | Залежить від | Розблоковує / зв'язок |
 |---|-------|---|-----|------|---------|--------------|----------------------|
-| 1 | [add-stream-probe](p2-add-stream-probe.md) | P2 | ідея | ready | S | Phase 3J | спільна IPC з #2 |
-| 2 | [browser-add-probe](p2-browser-add-probe.md) | P2 | ідея | ready | S | Phase 3B/3J, **#1** | — |
+| 1 | [add-stream-probe](done/p2-add-stream-probe.md) | P2 | ідея | **done** ✅ | S | Phase 3J | IPC `probe_stream` готова для #2 |
+| 2 | [browser-add-probe](p2-browser-add-probe.md) | P2 | ідея | ready (**розблоковано**) | S | Phase 3B/3J, #1 ✅ | — |
 | 3 | [streams-ctrlk-empty-hint](p2-streams-ctrlk-empty-hint.md) | P2 | заплановано | ready | S | — | завершує ADR 2026-05-31 §6 |
 | 4 | [wishlist-example-patterns](p2-wishlist-example-patterns.md) | P2 | заплановано | ready | S | — | патерн порожн. стану як у #3 |
 | 5 | [resume-last-playback](p2-resume-last-playback.md) | P2 | покращення | draft (модель ✅) | M | **надбудова над** playback-toggle ✅ (`PlayerSession`) | autostart ✅ |
@@ -78,10 +78,11 @@
 
 ### Хвиля 2 — кластер probe (спільна IPC)
 
-**1. [add-stream-probe](p2-add-stream-probe.md)** (P2, S) — вводить IPC `probe_stream(url)`
-(sync-spinner у `AddStreamDialog`).
+**1. [add-stream-probe](done/p2-add-stream-probe.md)** (P2, S) — ✅ **done**: IPC
+`probe_stream(url) -> { ok, error }` у `stream_io_commands.rs` (5-с
+`SINGLE_PROBE_TIMEOUT`), sync-spinner у `AddStreamDialog`.
 **2. [browser-add-probe](p2-browser-add-probe.md)** (P2, S) — **реюзає ту саму IPC** (async-тост
-у Browser). Робити одразу за #1, щоб не дублювати команду.
+у Browser); команда вже є, дублювати не треба.
 
 ### Хвиля 3 — узгодити resume + дрібний polish (P2)
 

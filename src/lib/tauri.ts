@@ -129,6 +129,12 @@ export interface RecordingCompletedPayload {
   durationMs: number;
 }
 
+/** Verdict of a single interactive probe (`probe_stream`). */
+export interface ProbeVerdict {
+  ok: boolean;
+  error: string | null;
+}
+
 // --- Typed invoke wrappers ---
 
 export async function getStreams(): Promise<StreamInfo[]> {
@@ -136,6 +142,11 @@ export async function getStreams(): Promise<StreamInfo[]> {
 }
 export async function addStream(url: string, name?: string): Promise<StreamInfo> {
   return invoke("add_stream", { url, name });
+}
+/** Reachability check for a single URL (5s budget backend-side). Never rejects
+ *  on an unreachable stream — the failure comes back as `{ ok: false, error }`. */
+export async function probeStream(url: string): Promise<ProbeVerdict> {
+  return invoke("probe_stream", { url });
 }
 export async function removeStream(streamId: string): Promise<void> {
   return invoke("remove_stream", { streamId });

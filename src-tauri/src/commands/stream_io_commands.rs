@@ -9,6 +9,11 @@ use crate::stream::{playlist, probe};
 /// How many streams to probe at once during import validation.
 const PROBE_CONCURRENCY: usize = 5;
 
+/// Overall budget for a single interactive probe (`probe_stream`). `probe`
+/// itself has only a 10s *connect* timeout and no total limit, so without this
+/// outer bound the Add-stream dialog could sit spinning for 10s+.
+const SINGLE_PROBE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
+
 /// A stream found in an imported playlist, ready to show in the picker.
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -27,6 +32,14 @@ pub struct ImportProgress {
     pub icy_name: Option<String>,
     pub bitrate: Option<u32>,
     pub format: Option<AudioFormat>,
+    pub error: Option<String>,
+}
+
+/// Verdict of a single interactive probe (`probe_stream`).
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProbeVerdict {
+    pub ok: bool,
     pub error: Option<String>,
 }
 
@@ -124,6 +137,21 @@ pub async fn validate_import_candidates(urls: Vec<String>, app: AppHandle) -> Re
     .collect::<Vec<()>>()
     .await;
     Ok(())
+}
+
+/// Reachability check for a single URL, for interactive add flows (Add-stream
+/// dialog, Stream Browser). Thin wrapper over `probe::probe` that returns just
+/// the verdict — no ICY details, no events — bounded by `SINGLE_PROBE_TIMEOUT`.
+/// Never `Err`: a failed probe is a warning for the user, not a command error.
+#[tauri::command]
+pub async fn probe_stream(url: String) -> Result<ProbeVerdict, String> {
+    match tokio::time::timeout(SINGLE_PROBE_TIMEOUT, probe::probe(&url)).await {
+        Ok(r) => Ok(ProbeVerdict { ok: r.ok, error: r.error }),
+        Err(_) => Ok(ProbeVerdict {
+            ok: false,
+            error: Some(format!("Timed out after {}s", SINGLE_PROBE_TIMEOUT.as_secs())),
+        }),
+    }
 }
 
 /// Add the selected streams to the active profile (URL-dedup via
@@ -225,6 +253,15 @@ pub async fn export_streams(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// An unreachable host must come back as a verdict, not a command error —
+    /// the dialog shows it as a warning and still lets the user save.
+    #[tokio::test]
+    async fn probe_stream_reports_unreachable_as_not_ok() {
+        let v = probe_stream("https://invalid.example.invalid/stream".into()).await.unwrap();
+        assert!(!v.ok);
+        assert!(v.error.is_some());
+    }
 
     fn entry(url: &str, title: Option<&str>) -> playlist::ParsedEntry {
         playlist::ParsedEntry { url: url.into(), title: title.map(|t| t.to_string()) }
