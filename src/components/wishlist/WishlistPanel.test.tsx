@@ -87,6 +87,29 @@ it("deleting the last remaining pattern moves focus to the empty-state CTA (R1: 
   });
 });
 
+it("deleting the last pattern on the ignorelist tab moves focus to the empty-state CTA (active-tab-specific, not union of both lists)", async () => {
+  // Seed BOTH lists — wishlist keeps its default non-empty seed from beforeEach
+  // ("*ad*") and ignorelist gets one pattern of its own. If the focus effect
+  // (WishlistPanel.tsx ~line 300) ever regressed to checking "either list is
+  // non-empty" instead of the ACTIVE tab's list, this proves it: wishlist stays
+  // non-empty throughout, so a union check would never fire the CTA focus here.
+  $ignorelist.set(["blocked*"]);
+  vi.mocked(tauri.getIgnorelist).mockResolvedValueOnce(["blocked*"]);
+  render(<WishlistPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
+  await waitFor(() => screen.getByText(m.select_all()));
+  fireEvent.click(screen.getByText(m.ignorelist_section_title()));
+  const rowDeleteBtn = await screen.findByRole("button", { name: `${m.remove_pattern()}: blocked*` });
+  fireEvent.click(rowDeleteBtn);
+  fireEvent.click(screen.getByRole("button", { name: m["delete"]() }));
+  await waitFor(() => expect(tauri.removeFromIgnorelist).toHaveBeenCalledWith("blocked*"));
+  await waitFor(() => expect($ignorelist.get()).toEqual([]));
+  await waitFor(() => {
+    const cta = document.activeElement as HTMLElement;
+    expect(cta.tagName).toBe("BUTTON");
+    expect(cta).toHaveAccessibleName(m.wishlist_add_example());
+  });
+});
+
 it("clears the selection when the tab changes", async () => {
   const { getByText } = render(<WishlistPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
   await waitFor(() => getByText(m.select_all()));
