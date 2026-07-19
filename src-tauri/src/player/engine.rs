@@ -107,6 +107,14 @@ pub struct PlayerEngine {
     wake_lock: Arc<WakeLock>,
 }
 
+/// Clamp a volume to 0.0–1.0, mapping non-finite input (NaN, ±inf) to 0.0.
+///
+/// `f32::NAN.clamp(0.0, 1.0)` is `NaN`, which would reach `rodio`'s gain stage —
+/// so every value crossing a system boundary (IPC, persisted profile) goes through here.
+fn sanitize_volume(volume: f32) -> f32 {
+    if volume.is_finite() { volume.clamp(0.0, 1.0) } else { 0.0 }
+}
+
 impl PlayerEngine {
     /// Create a new PlayerEngine with the given initial volume and output device.
     /// Verifies that the default audio output can be opened at startup (fail fast).
@@ -117,7 +125,7 @@ impl PlayerEngine {
             .context("Failed to open audio output stream")?;
         Ok(Self {
             session: Arc::new(Mutex::new(None)),
-            volume: Arc::new(Mutex::new(initial_volume.clamp(0.0, 1.0))),
+            volume: Arc::new(Mutex::new(sanitize_volume(initial_volume))),
             output_device_name: Arc::new(Mutex::new(initial_device)),
             wake_lock,
         })
@@ -315,8 +323,9 @@ impl PlayerEngine {
 
 impl PlayerEngine {
     /// Set volume (0.0–1.0). Applied immediately to any active session.
+    /// Non-finite input from the IPC boundary is coerced to 0.0.
     pub async fn set_volume(&self, volume: f32, app: &AppHandle) -> Result<()> {
-        let volume = volume.clamp(0.0, 1.0);
+        let volume = sanitize_volume(volume);
         // Take session first (established lock order: session → volume)
         {
             let session = self.session.lock().await;
@@ -945,6 +954,22 @@ fn open_device_sink(device_name: Option<&str>) -> anyhow::Result<MixerDeviceSink
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sanitize_volume_maps_non_finite_to_zero() {
+        assert_eq!(sanitize_volume(f32::NAN), 0.0);
+        assert_eq!(sanitize_volume(f32::INFINITY), 0.0);
+        assert_eq!(sanitize_volume(f32::NEG_INFINITY), 0.0);
+    }
+
+    #[test]
+    fn sanitize_volume_clamps_finite_input() {
+        assert_eq!(sanitize_volume(-1.0), 0.0);
+        assert_eq!(sanitize_volume(0.0), 0.0);
+        assert_eq!(sanitize_volume(0.42), 0.42);
+        assert_eq!(sanitize_volume(1.0), 1.0);
+        assert_eq!(sanitize_volume(9.5), 1.0);
+    }
 
     #[test]
     fn player_status_stopped_serializes() {

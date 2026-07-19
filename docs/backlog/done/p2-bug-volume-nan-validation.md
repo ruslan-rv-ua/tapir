@@ -2,9 +2,10 @@
 
 - **Слаг:** `p2-volume-nan-validation`
 - **Тип:** заплановано
-- **Стан:** ready
+- **Пріоритет:** P2
+- **Стан:** done (реалізовано на `develop`)
 - **Зусилля:** S
-- **Оновлено:** 2026-06-15
+- **Оновлено:** 2026-07-19
 - **Залежності:** Phase 2A (PlayerEngine ✅)
 
 ## Опис
@@ -33,14 +34,22 @@ let volume = if volume.is_finite() { volume.clamp(0.0, 1.0) } else { 0.0 };
 
 ## Критерії готовності
 
-- [ ] `set_volume()` перевіряє `is_finite()` перед `clamp()`
-- [ ] NaN та ±Infinity замінюються на `0.0`
-- [ ] Додано unit-тест: `set_volume(f32::NAN)` → повертає `Ok(())` без паніки
-- [ ] Додано unit-тест: `set_volume(f32::INFINITY)` → гучність = `0.0`
+- [x] `set_volume()` перевіряє `is_finite()` перед `clamp()` — через хелпер `sanitize_volume()`
+- [x] NaN та ±Infinity замінюються на `0.0`
+- [x] Додано unit-тест: `sanitize_volume(f32::NAN)` → `0.0`
+- [x] Додано unit-тест: `sanitize_volume(f32::INFINITY)` / `NEG_INFINITY` → `0.0`, плюс clamp скінченних значень
+
+**Відхилення від початкового плану:** тести викликають чистий хелпер `sanitize_volume()`, а не
+`set_volume()` — останній потребує `AppHandle`, який неможливо створити в unit-тесті. Уся санітизація
+живе в хелпері, тож покриття еквівалентне.
+
+**Додатково:** `PlayerEngine::new()` теж використовував голий `clamp()` на `initial_volume`, який
+приходить із збереженого профілю (друга системна межа) — переведено на той самий хелпер.
 
 ## Документи
 
-- [architecture.md](../architecture.md) — межі системи та IPC
+- [architecture.md](../../architecture.md) — межі системи та IPC
+- Код: [src-tauri/src/player/engine.rs](../../../src-tauri/src/player/engine.rs) — `sanitize_volume()`, `set_volume()`, `PlayerEngine::new()`
 - [OWASP A03: Injection / Input Validation](https://owasp.org/Top10/A03_2021-Injection/)
 
 ## Промпт для агента
