@@ -1,11 +1,25 @@
+---
+slug: mpv-playback-engine
+title: "Відтворення через mpv / libmpv (альтернативний рушій декодування)"
+priority: P3
+type: research
+status: draft
+effort: L
+kind: feature
+target: unscheduled
+updated: 2026-06-23
+a11y: true
+depends_on: []
+blocks: [he-aac-mf-playback, hls-stream-support]
+touches: [src-tauri/src/player/engine.rs, src-tauri/src/smtc.rs, src-tauri/src/wake_lock.rs]
+gates: [cargo test, cargo clippy, pnpm test, pnpm vite:build]
+depends_on_external: ["player::engine (LiveSource, play_live, play_file, open_device_sink)", "stream::connection (ICY)", "smtc", "wake_lock", "деплой/бандлінг portable-EXE"]
+notes: ["Робити ПЕРШИМ серед декодер-записів — розвилка (PoC-gate), яка може зробити he-aac-mf-playback і hls-stream-support непотрібними; не вести MF-шлях і mpv паралельно"]
+---
+
 # Відтворення через mpv / libmpv (альтернативний рушій декодування)
 
-- **Слаг:** `mpv-playback-engine`
-- **Тип:** дослідити
-- **Стан:** draft
-- **Зусилля:** L (заміна шару декодування/демультиплексування; PoC → рев'ю архітектури → переписування `play_live`/`play_file` + деплой DLL)
-- **Оновлено:** 2026-06-23
-- **Залежності:** `player::engine` (`LiveSource`, `play_live`, `play_file`, `open_device_sink`), `stream::connection` (ICY), `smtc`, `wake_lock`; деплой/бандлінг portable-EXE
+> **Контекст:** дослідження — розвилка (PoC-gate) для [he-aac-mf-playback](p3-he-aac-mf-playback.md) і [hls-stream-support](p3-hls-stream-support.md). Головний ризик — надійність **першого** ICY-тайтла в mpv/FFmpeg.
 
 ## Опис
 
@@ -13,7 +27,7 @@
 Користувач явно погодився на «зайву DLL».
 
 **Поточний стан (звідки росте ідея):**
-Декодер — `symphonia` (через rodio). Він **не вміє HE-AAC / HE-AACv2** (див. [[he-aac-mf-parked]] / [p3-he-aac-mf-playback.md](p3-he-aac-mf-playback.md)) і не парсить HLS-маніфести ([p3-hls-stream-support.md](p3-hls-stream-support.md)). Через це частина радіо-станцій не грає; у коді живе `PROBE_TIMEOUT = 15s` ([engine.rs:69](../../src-tauri/src/player/engine.rs#L69)) саме щоб недекодовані потоки не вішали відтворення.
+Декодер — `symphonia` (через rodio). Він **не вміє HE-AAC / HE-AACv2** (див. [[he-aac-mf-parked]] / [he-aac-mf-playback](p3-he-aac-mf-playback.md)) і не парсить HLS-маніфести ([hls-stream-support](p3-hls-stream-support.md)). Через це частина радіо-станцій не грає; у коді живе `PROBE_TIMEOUT = 15s` ([engine.rs:69](../../src-tauri/src/player/engine.rs#L69)) саме щоб недекодовані потоки не вішали відтворення.
 
 **Чому mpv приваблює:** під капотом FFmpeg (libavcodec/libavformat) → майже всі кодеки **включно з HE-AAC, HE-AACv2, Opus, Vorbis, FLAC**, плюс HLS «з коробки». Один крок закриває одразу два P3-записи (HE-AAC і HLS) і знімає власний декод-пайплайн.
 
@@ -44,7 +58,7 @@
 3. **SMTC-дубль.** Проєкт сам синхронізує SMTC (`crate::smtc`); mpv на Windows теж уміє в SMTC → можливий конфлікт/дубляж. Вимкнути одну сторону.
 4. **mpv — video-движок.** Для audio-only запускати з `--vid=no`/`--no-video`; зайвий «вантаж» заради аудіо.
 5. **Втрата тонкого контролю.** Логіку «спершу переконатися, що потік декодується, лише потім зупиняти старий» ([engine.rs:837](../../src-tauri/src/player/engine.rs#L837)) доведеться перебудовувати на події mpv.
-6. **Можливе перетинання з MF-роботою.** Якщо mpv заходить — гілка `he-aac-mf` і запис [p3-he-aac-mf-playback.md](p3-he-aac-mf-playback.md) стають непотрібні (mpv розв'язує ту саму проблему). Не починати обидва шляхи паралельно.
+6. **Можливе перетинання з MF-роботою.** Якщо mpv заходить — гілка `he-aac-mf` і запис [he-aac-mf-playback](p3-he-aac-mf-playback.md) стають непотрібні (mpv розв'язує ту саму проблему). Не починати обидва шляхи паралельно.
 
 ## Критерії готовності
 
@@ -54,7 +68,7 @@
 - [ ] Оцінено розмір `libmpv-2.dll` + вплив на portable-бандл і час старту
 - [ ] З'ясовано ліцензійну збірку FFmpeg усередині DLL (LGPL vs GPL) і вимоги до дистрибуції
 
-Якщо PoG проходить — повна реалізація:
+Якщо PoC проходить — повна реалізація:
 - [ ] `play_file`, `play_stream`, `preview` через mpv; pause/resume/seek/volume/позиція/тривалість збережені
 - [ ] `track-changed` / SMTC / нотифікації працюють не гірше за поточний ICY-парсер (включно з першим тайтлом)
 - [ ] Вибір аудіопристрою (`set_output_device`) збережено
@@ -69,30 +83,12 @@
 - Як збирати/постачати `libmpv-2.dll` для portable-EXE (звідки беремо бінарник, оновлення, антивірус-false-positive)?
 - Чи зберігається поточна модель «non-destructive probe» (старий потік грає, поки новий не підтверджений) на подіях mpv?
 - Реальна цінність проти ризику: скільки станцій у користувача саме HE-AAC/HLS без MP3/AAC-LC-альтернативи?
-- Чи закриває mpv одразу [p3-he-aac-mf-playback.md](p3-he-aac-mf-playback.md) і [p3-hls-stream-support.md](p3-hls-stream-support.md) — і чи варто тоді їх видалити?
+- Чи закриває mpv одразу [he-aac-mf-playback](p3-he-aac-mf-playback.md) і [hls-stream-support](p3-hls-stream-support.md) — і чи варто тоді їх видалити?
 
 ## Документи
 
-- Пов'язані записи: [p3-he-aac-mf-playback.md](p3-he-aac-mf-playback.md), [p3-hls-stream-support.md](p3-hls-stream-support.md)
+- Пов'язані записи: [he-aac-mf-playback](p3-he-aac-mf-playback.md), [hls-stream-support](p3-hls-stream-support.md)
 - Код: [src-tauri/src/player/engine.rs](../../src-tauri/src/player/engine.rs) — `LiveSource`, `play_live` (`PROBE_TIMEOUT`), `play_file`, `open_device_sink`, ICY-парсер `parse_stream_title`; `src-tauri/src/smtc.rs`, `src-tauri/src/wake_lock.rs`
 - [docs/architecture.md](../architecture.md), [docs/tech-stack.md](../tech-stack.md)
 - Крейти: [libmpv2 — lib.rs](https://lib.rs/crates/libmpv2) · [tauri-plugin-libmpv — crates.io](https://crates.io/crates/tauri-plugin-libmpv) · [tauri-plugin-mpv — lib.rs](https://lib.rs/crates/tauri-plugin-mpv)
 - ICY у mpv/FFmpeg: [mpv commit 0b77649 — stream_lavf: read ICY metadata](https://github.com/mpv-player/mpv/commit/0b77649c0b6afb103e0390163bd14f1cf9d20f06) · [mpv #36](https://github.com/mpv-player/mpv/issues/36) · [mpv #753 — перший тайтл не показано до зміни](https://github.com/mpv-player/mpv/issues/753) · [FFmpeg `-icy` опції](https://ffmpeg.org/pipermail/ffmpeg-user/2014-January/019673.html)
-
-## Промпт для агента
-
-```text
-Нічого не змінюй на старті — спершу дослідження. Не редагуй файли й не створюй коммітів, поки не узгодимо підхід. Відповідай у чаті.
-
-Що дослідити: відтворення через mpv / libmpv як заміна шару декодування (rodio + symphonia + cpal) — чи варто, і чи закриває HE-AAC + HLS одним кроком.
-
-Спершу звірся з контекстом: цей запис беклогу, пов'язані записи (p3-he-aac-mf-playback.md, p3-hls-stream-support.md), і код player::engine (LiveSource, play_live з PROBE_TIMEOUT, play_file, ICY-парсер parse_stream_title, set_output_device), а також smtc та wake_lock. За потреби шукай в інтернеті актуальні версії/API (libmpv2, tauri-plugin-libmpv, tauri-plugin-mpv, ICY у FFmpeg/mpv).
-
-Головне рішення go/no-go — ICY-метадані: поточний власний парсер дає надійний ПЕРШИЙ StreamTitle, від якого залежить track-changed/SMTC/нотифікації; у mpv/FFmpeg історично перший тайтл часто не приходить до першої зміни (mpv #36/#753). З'ясуй реальний поточний стан і запропонуй, як зберегти першу метадану (включно з варіантом «mpv як декодер + власний ICY-pump лише для метаданих»).
-
-Оціни також: in-process (libmpv2) vs окремий процес (tauri-plugin-mpv + JSON-IPC); розмір і бандлінг libmpv-2.dll для portable-EXE; ліцензію (LGPL vs GPL-збірка FFmpeg) і вимоги до дистрибуції; дубль SMTC; збереження non-destructive probe, вибору пристрою, seek/volume/позиції.
-
-Питання став по одному: контекст, варіанти відповіді, рекомендований; чекай відповіді перед наступним.
-
-Наприкінці — оцінка готовності до PoC, чіткий PoC-gate (HE-AACv2 грає правильно; перший ICY-тайтл приходить вчасно; розмір DLL; ліцензія), і чесна рекомендація: робити PoC, відкласти, чи відкинути на користь наявної graceful-degradation. Якщо mpv заходить — порадь, чи закривати p3-he-aac-mf-playback.md і p3-hls-stream-support.md.
-```

@@ -1,11 +1,25 @@
+---
+slug: browser-add-probe
+title: "Перевірка потоку при додаванні з Browser (add_station_from_browser probe)"
+priority: P2
+type: idea
+status: done
+effort: S
+kind: feature
+target: 0.2.0
+updated: 2026-07-19
+completed: 2026-07-19
+a11y: true
+depends_on: [add-stream-probe]
+blocks: []
+touches: [src-tauri/src/commands/browser_commands.rs, src-tauri/src/browser/types.rs]
+gates: [cargo test, pnpm test]
+notes: ["гілка feature/add-stream-probe"]
+---
+
 # Перевірка потоку при додаванні з Browser (add_station_from_browser probe)
 
-- **Слаг:** `browser-add-probe`
-- **Тип:** ідея
-- **Стан:** done (гілка `feature/add-stream-probe`)
-- **Зусилля:** S
-- **Оновлено:** 2026-07-19
-- **Залежності:** Phase 3B (Stream Browser ✅), Phase 3J (stream::probe ✅)
+> **Контекст:** виконано, гілка `feature/add-stream-probe`. Реюзнув спільну IPC `probe_stream` з [add-stream-probe](p2-add-stream-probe.md).
 
 ## Опис
 
@@ -17,14 +31,14 @@
 
 1. **Async probe після додавання** (без блокування): `add_station_from_browser` зберігає потік одразу (як зараз), але потім async запускає probe і надсилає тост з результатом ("Потік доступний ✓" або "Потік не відповів — перевірте URL").
 
-2. **Sync probe перед збереженням**: показати spinner у кнопці "Додати", probe → показати результат → зберегти або попередити. Аналогічно до `p2-add-stream-probe.md`.
+2. **Sync probe перед збереженням**: показати spinner у кнопці "Додати", probe → показати результат → зберегти або попередити. Аналогічно до [add-stream-probe](p2-add-stream-probe.md).
 
 **Рекомендація:** варіант 1 (async тост) кращий для Browser — результати Browser відображаються у таблиці, blocking spinner ускладнює UX при масовому додаванні. Async feedback через тост не блокує навігацію.
 
 ## Технічна реалізація
 
 **Backend (`browser_commands.rs`):**
-- **Вар. 1 (async тост) — обрано.** `add_station_from_browser` / `add_stations_from_browser` зберігають одразу (як зараз), потім async probe через `tokio::spawn` → emit події з результатом. Реюзає probe-шлях зі спільної IPC `probe_stream` (запис #6, [add-stream-probe](p2-add-stream-probe.md)) — той самий `probe::probe` із зовнішнім 5-с timeout.
+- **Вар. 1 (async тост) — обрано.** `add_station_from_browser` / `add_stations_from_browser` зберігають одразу (як зараз), потім async probe через `tokio::spawn` → emit події з результатом. Реюзає probe-шлях зі спільної IPC `probe_stream` ([add-stream-probe](p2-add-stream-probe.md)) — той самий `probe::probe` із зовнішнім 5-с timeout.
 - `lastcheckok == 0` — дешевий префільтр: попередити одразу, без probe.
 - **Масове додавання:** озвучувати лише невдачі (або один підсумок «Перевірено N, не відповіли M»), щоб не залити NVDA потоком тостів; успіхи — тихо.
 
@@ -94,26 +108,4 @@ _Закрито 2026-06-25 (рішення)._
 - Код: `src-tauri/src/browser/types.rs` — `StationResult.lastcheckok`
 - Код: `src-tauri/src/stream/probe.rs` — `probe()` (вже є)
 - Зразок: `src-tauri/src/commands/stream_io_commands.rs` — async probe pattern
-- Пов'язано: [p2-add-stream-probe.md](done/p2-add-stream-probe.md) — ✅ done; спільна IPC `probe_stream(url) -> { ok, error }` уже існує в `src-tauri/src/commands/stream_io_commands.rs` (5-с `SINGLE_PROBE_TIMEOUT`) — тут її треба лише викликати з `tokio::spawn`
-
-## Промпт для агента
-
-```text
-Нічого не змінюй — лише обговорення. Не редагуй файли, не створюй комітів, не запускай команд, що щось змінюють. Відповідай у чаті.
-
-Що обговорюємо: Перевірка потоку при додаванні з Browser (add_station_from_browser probe)
-
-Це сира ідея без зобов'язань. Мета розмови — розкрити її й зрозуміти, чи варта вона роботи, а не одразу планувати реалізацію.
-
-Спершу швидко звірся з контекстом: цей запис беклогу, пов'язаний код і документи — щоб говорити предметно, а не абстрактно.
-
-Далі допоможи розвинути ідею:
-- сформулюй проблему/потребу, яку вона розв'язує, і для кого;
-- запропонуй 2–3 способи втілення з плюсами й мінусами кожного;
-- зваж цінність проти складності, познач ризики й де воно зачіпає доступність/NVDA;
-- чесно скажи, чи це взагалі варто робити, і яка була б простіша альтернатива.
-
-Уточнювальні питання став по одному: дай контекст, запропонуй варіанти відповіді й познач рекомендований. Дочекайся відповіді перед наступним питанням.
-
-Наприкінці — підсумок у 3–5 рядках і рекомендований наступний крок: відкинути, лишити як ідею, перевести в «дослідити» чи одразу в «заплановано».
-```
+- Пов'язано: [add-stream-probe](p2-add-stream-probe.md) — ✅ done; спільна IPC `probe_stream(url) -> { ok, error }` уже існує в `src-tauri/src/commands/stream_io_commands.rs` (5-с `SINGLE_PROBE_TIMEOUT`) — тут її треба лише викликати з `tokio::spawn`

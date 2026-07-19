@@ -1,15 +1,25 @@
+---
+slug: crash-recovery
+title: "Crash Recovery — відновлення записів після аварійного завершення"
+priority: P1
+type: planned
+status: done
+effort: M
+kind: feature
+target: 0.2.0
+updated: 2026-07-18
+completed: 2026-07-18
+a11y: true
+depends_on: []
+blocks: [resume-last-playback]
+touches: [src-tauri/src/app_state.rs, src-tauri/src/profile.rs, src-tauri/src/portable.rs, src-tauri/src/stream/manager.rs, src-tauri/src/lib.rs, src-tauri/src/scheduler/timer.rs, src-tauri/src/commands/profile_commands.rs]
+gates: [cargo test, cargo clippy, pnpm test, pnpm vite:build]
+notes: ["реалізовано у feature/phase-3k-crash-recovery; чекає ручного NVDA-прогону — [[phase-3k-crash-recovery-status]]"]
+---
+
 # Crash Recovery — відновлення записів після аварійного завершення
 
-- **Слаг:** `crash-recovery`
-- **Тип:** заплановано
-- **Стан:** done (реалізовано у `feature/phase-3k-crash-recovery`)
-- **Зусилля:** M
-- **Оновлено:** 2026-07-18
-- **Залежності:** Phase 1 (✅) — `graceful_shutdown` та чистий фільтр resume
-  (`manual_resume_urls`, адаптувати → `manual_resume_stream_ids`) уже в коді;
-  scheduler (`scheduler-owned` пари для виключення планових записів); LiveAnnouncer
-  (`data-live-announcer`, [[live-region-inside-modals]]). Фаза **прибирає**
-  `Profile.active_recording_urls`.
+> **Контекст:** виконано, реалізовано у `feature/phase-3k-crash-recovery`. Усі автоматизовані критерії закриті; ручний NVDA-прогін очікує ([[phase-3k-crash-recovery-status]]).
 
 ## Опис
 
@@ -173,20 +183,6 @@ ignorelist. Незіставлений `stream_id` (потік видалили 
 | Планові записи при збої? | **Scheduler-owned потоки не входять у resume.** Снапшот їх виключає через `manual_resume_stream_ids`; їх catch-up лежить у `ScheduleManager`. |
 | Атомарний write `state.json`? | **Так, `write temp → rename`.** Той самий підхід, що у `profile.rs`. |
 
-## Відкриті питання (рівень реалізації)
-
-Усі закриті (2026-06-25) — рішення в таблиці «Прийняті рішення» вище:
-
-- ✅ **Снапшот за URL чи за `stream_id`?** → **`stream_id`.** Стабільний унікальний ключ;
-  однозначний розв'язок у `StreamInfo` (точні credentials / ignorelist); стійкий до
-  правки URL; чистий «N з M». `manual_resume_urls` → `manual_resume_stream_ids` (повертає
-  id замість url). `url` лишається в снапшоті лише як діагностичне поле.
-- ✅ **Розміщення періодичної задачі?** → **окрема виділена tokio-задача** (за зразком
-  `SchedulerShared`), **spawn у setup-хуку** `lib.rs` — не піггібек на scheduler-тіку
-  (його ~60 с каданс не дає ≤ 30 с + подієвість), не `frontend_ready` (писар не емітить
-  UI-подій). Тригер: `Notify` на зміну складу + `interval` ≤ 30 с. Деталі — розділ
-  «Хто пише снапшот».
-
 ## Документи
 
 - [implementation-phases.md §3K](../../implementation-phases.md)
@@ -207,12 +203,7 @@ ignorelist. Незіставлений `stream_id` (потік видалили 
   - `src/stores/announcer.ts`
   - `src/hooks/useAnnounce.ts`
 - [accessibility.md — §11 live-regions, §1.4 modal-hacks](../../accessibility.md)
-- Суміжний беклог: [p2-resume-last-playback.md](../p2-resume-last-playback.md) — стан відтворення
+- Суміжний беклог: [resume-last-playback](../p2-resume-last-playback.md) — стан відтворення
   живе в `PlayerSession` профілю (після A1 окремого `last_playback.json` немає); `state.json`
   (crash recovery) — інше сховище. Два чітко різні стани, звіряти нема чого.
-- Пам'ять: [[live-region-inside-modals]], [[branch-model-main-stale]]
-
-## Промпт для агента
-
-Каталог промптів за типом: [README — Каталог промптів](../README.md#каталог-промптів-за-типом).
-Тип `заплановано`.
+- Пам'ять: [[live-region-inside-modals]], [[branch-model-main-stale]], [[phase-3k-crash-recovery-status]]

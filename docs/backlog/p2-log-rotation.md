@@ -1,11 +1,23 @@
+---
+slug: log-rotation
+title: "Log Rotation (Фаза 3I-3)"
+priority: P2
+type: planned
+status: ready
+effort: S
+kind: chore
+target: 0.2.0
+updated: 2026-07-19
+a11y: true
+depends_on: []
+blocks: []
+touches: [src-tauri/src/settings.rs, src-tauri/src/lib.rs, src/lib/tauri.ts, src/components/settings/GeneralTab.tsx, docs/data-models.md]
+gates: [cargo test, cargo clippy, pnpm test, pnpm vite:build]
+---
+
 # Log Rotation (Фаза 3I-3)
 
-- **Слаг:** `log-rotation`
-- **Тип:** ідея
-- **Стан:** ready
-- **Зусилля:** S
-- **Оновлено:** 2026-07-19
-- **Залежності:** немає (незалежна)
+> **Контекст:** базова ротація вже в коді; цей запис — реконсиляція з правильною стратегією (`KeepSome(1)` замість `KeepOne`) + усунення виявлених при ревʼю дефектів (футган `KeepAll`, інвертована NVDA-семантика).
 
 ## Контекст стану
 
@@ -226,56 +238,3 @@ settings. Стратегія фіксована (`KeepSome(1)`), кількіс�
 - Single-instance (порядок реєстрації): `src-tauri/src/single_instance.rs:12-16`
 - UI Advanced settings: `src/components/settings/GeneralTab.tsx:280-358`
 - Сорс плагіна (перевірено): `tauri-plugin-log` 2.8.0, `RotatingFile::{new,rotate,flush}`
-
-## Промпт для агента
-
-```text
-Реалізуй реконсиляцію фічі Log Rotation (Фаза 3I-3) згідно з записом
-docs/backlog/p2-log-rotation.md (стан: ready). Базова ротація вже в коді —
-потрібно змінити стратегію, усунути виявлені під час ревʼю дефекти й узгодити
-документи.
-
-Конкретні кроки:
-
-Код (Rust):
-1. src-tauri/src/settings.rs — прибрати поле `log_rotation: bool` зі структури
-   GlobalSettings (рядок ~41) та з Default (~208). Лишити `log_max_size_mb`.
-2. src-tauri/src/lib.rs — прибрати функцію `rotation_strategy_for` (~33-42),
-   замінити її виклик у конфігурації плагіна (~105) на пряме
-   `.rotation_strategy(RotationStrategy::KeepSome(1))`.
-   Прибрати тести `rotation_strategy_for(true/false)` у модулі tests (~347-349).
-
-Frontend:
-3. src/lib/tauri.ts — прибрати `logRotation: boolean` з інтерфейсу налаштувань (~95).
-4. src/components/settings/GeneralTab.tsx — прибрати блок «Keep full history»
-   (чекбокс, що інвертував logRotation, ~330-340).
-5. src/i18n/messages/uk.json та en.json — прибрати ключ `settings_log_keep_history`
-   (paraglide регенерується vite-плагіном).
-6. Прибрати `logRotation` з тестових фікстур: PlayerPanel.test.tsx,
-   HotkeysTab.test.tsx, GeneralTab.test.tsx, AudioTab.test.tsx,
-   StreamList.test.tsx, transportControl.test.ts.
-
-Документи:
-7. docs/data-models.md — прибрати `log_rotation`/`logRotation` (5 місць:
-   ~62, 86, 122, 1048, 1120).
-8. docs/implementation-phases.md §3I-3 — відмітити чекбокс виконання, уточнити
-   опис: «макс. розмір налаштовуваний; стратегія KeepSome(1) фіксована».
-9. docs/implementation-phases.md §3E (рядок ~412) — НЕ прибирати твердження про
-   ротацію: воно коректне (ротація спрацьовує і при запуску). Можна замінити
-   «KeepOne» на «стратегія ротації».
-
-Перевірка:
-- pnpm test — проходить (фікстури оновлені).
-- pnpm vite:build — без помилок.
-- just build-fast (або cargo check + cargo test) — без помилок/попереджень;
-  тести settings.rs проходять.
-- just dev — застосунок стартує, у data/logs/tapir.log іде запис.
-- Бекворт-компат: старий settings.json з logRotation завантажується без помилки.
-
-Після виконання — перенести docs/backlog/p2-log-rotation.md у docs/backlog/done/
-(патерн попередніх виконаних записів).
-
-Не впроваджуй маркер ротації `=== log rotated ===` — відкладене рішення
-(плагін не підтримує). Не роби кількість архівів налаштовуваною — KeepSome(N>1)
-зарезервоване розширення.
-```

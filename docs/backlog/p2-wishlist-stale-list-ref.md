@@ -1,11 +1,24 @@
+---
+slug: wishlist-stale-list-ref
+title: "Застарілий patternListRef після перемикання вкладки Wishlist/Ignorelist"
+priority: P2
+type: research
+status: ready
+effort: S
+kind: bug
+target: 0.2.0
+updated: 2026-07-19
+a11y: true
+depends_on: [wishlist-example-patterns]
+blocks: []
+touches: [src/components/wishlist/WishlistPanel.tsx, src/components/wishlist/PatternList.tsx]
+gates: [pnpm test, pnpm vite:build]
+notes: ["якщо відтвориться в реальному застосунку з NVDA — кандидат на підняття до P1"]
+---
+
 # Застарілий patternListRef після перемикання вкладки Wishlist/Ignorelist
 
-- **Слаг:** `wishlist-stale-list-ref`
-- **Тип:** дослідити
-- **Стан:** ready
-- **Зусилля:** S
-- **Оновлено:** 2026-07-19
-- **Залежності:** немає (знахідка з follow-up-хвилі [wishlist-example-patterns](done/p2-wishlist-example-patterns.md))
+> **Контекст:** дослідження — знахідка з follow-up-хвилі [wishlist-example-patterns](done/p2-wishlist-example-patterns.md). Спершу відтворити (реальний застосунок з NVDA або падаючий тест), потім обрати варіант фікса.
 
 ## Опис
 
@@ -50,15 +63,3 @@ Callback-ref стабільний (`useCallback([])`), повторного atta
 - Споріднений механізм: memory-нотатка про стабільні проксі зон;
   [done/p2-wishlist-example-patterns.md](done/p2-wishlist-example-patterns.md) —
   follow-up-хвиля, в якій знахідку зроблено.
-
-## Промпт для агента
-
-Каталог промптів за типом: [README — Каталог промптів](README.md#каталог-промптів-за-типом).
-
-```text
-Дослідь цей запис. Спершу відтвори (реальний застосунок або падаючий тест на
-перемкнутій вкладці), потім обери варіант фікса з розділу «Що з'ясувати» і
-реалізуй з тестом. Не чіпай спільний composite-list — проблема у wiring
-WishlistPanel. Гейти: `pnpm test` і `pnpm vite:build`; NVDA-перевірка тулбарного
-bulk-delete і F6 після перемикання вкладки.
-```

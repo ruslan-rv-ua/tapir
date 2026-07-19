@@ -1,12 +1,25 @@
+---
+slug: volume-nan-validation
+title: "Volume NaN Validation у set_volume()"
+priority: P2
+type: planned
+status: done
+effort: S
+kind: bug
+target: 0.2.0
+updated: 2026-07-19
+completed: 2026-07-19
+a11y: false
+depends_on: []
+blocks: []
+touches: [src-tauri/src/player/engine.rs]
+gates: [pnpm test, pnpm vite:build]
+depends_on_external: ["Phase 2A (PlayerEngine, ✅)"]
+---
+
 # Volume NaN Validation у set_volume()
 
-- **Слаг:** `p2-volume-nan-validation`
-- **Тип:** заплановано
-- **Пріоритет:** P2
-- **Стан:** done (реалізовано на `develop`)
-- **Зусилля:** S
-- **Оновлено:** 2026-07-19
-- **Залежності:** Phase 2A (PlayerEngine ✅)
+> **Контекст:** виконано, реалізовано на `develop`. OWASP A03 — граничну валідацію на IPC-межі додано через хелпер `sanitize_volume()`.
 
 ## Опис
 
@@ -51,21 +64,3 @@ let volume = if volume.is_finite() { volume.clamp(0.0, 1.0) } else { 0.0 };
 - [architecture.md](../../architecture.md) — межі системи та IPC
 - Код: [src-tauri/src/player/engine.rs](../../../src-tauri/src/player/engine.rs) — `sanitize_volume()`, `set_volume()`, `PlayerEngine::new()`
 - [OWASP A03: Injection / Input Validation](https://owasp.org/Top10/A03_2021-Injection/)
-
-## Промпт для агента
-
-```text
-Реалізуй цей запис. Рішення вже прийняте — мета довести до робочого, протестованого коду.
-
-Що реалізуємо: Volume NaN Validation у set_volume()
-
-Почни зі скіла `superpowers:brainstorming` — пройди його, щоб узгодити вимоги й дизайн перед кодом, а далі веди роботу за процесом superpowers: план → реалізація через TDD → перевірка.
-
-Перед стартом звірся з контекстом: цей запис беклогу, його критерії готовності та залежності, пов'язаний код і документи (AGENTS.md, implementation-phases.md та ін.).
-
-Дотримуйся конвенцій проєкту з AGENTS.md. Де доречно — закладай доступність/NVDA від початку, не як доробку.
-
-Питання, якщо виникають, став по одному: контекст, варіанти відповіді, рекомендований. Дочекайся відповіді перед наступним.
-
-Гейти перед завершенням: `pnpm test` і `pnpm vite:build` мають проходити. Онови критерії готовності в записі; коли все зроблено — запис можна видаляти (історія лишається в git).
-```

@@ -74,6 +74,7 @@ All project documentation lives in `docs/`. Key files:
 - [tech-stack.md](docs/tech-stack.md) — technology choices and rationale
 - [accessibility.md](docs/accessibility.md) — a11y requirements
 - [implementation-phases.md](docs/implementation-phases.md) — roadmap і scope кожної фази
+- [backlog/README.md](docs/backlog/README.md) — беклог; алгоритм роботи для агентів і нормований формат записів (front-matter)
 
 **Manual testing** (`docs/testing/`):
 - [test-streams.md](docs/testing/test-streams.md) — тестові URL радіо-потоків

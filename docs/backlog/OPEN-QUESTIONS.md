@@ -2,7 +2,7 @@
 
 Зведення **усіх** питань, які треба вирішити перед/під час реалізації записів беклогу.
 Зібрано з секцій «Відкриті питання» кожного запису + перехресні рішення, виявлені при
-складанні [IMPLEMENTATION-ORDER.md](IMPLEMENTATION-ORDER.md). Станом на **2026-06-25**.
+складанні [ROADMAP.md](ROADMAP.md). Станом на **2026-07-20**.
 
 > Це навігаційний документ (без `p<рівень>-`-префікса), не запис беклогу. Першоджерело
 > кожного питання — однойменний файл; тут лише агрегація для одного перегляду.
@@ -21,7 +21,7 @@
 
 | # | Питання | Тип | Зачіпає | Рекомендація |
 |---|---------|-----|---------|--------------|
-| A4 | **mpv закриває he-aac + hls?** Якщо PoC mpv проходить — `he-aac-mf` і `hls` стають непотрібні (mpv декодує обидва). Не вести MF-шлях і mpv паралельно. | 🟨 дослідження | [mpv](p3-mpv-playback-engine.md), [he-aac-mf](p3-he-aac-mf-playback.md), [hls](p3-hls-stream-support.md) | Спершу PoC-gate mpv; за `go` — видалити обидва записи |
+| A4 | **mpv закриває he-aac + hls?** Якщо PoC mpv проходить — `he-aac-mf-playback` і `hls-stream-support` стають непотрібні (mpv декодує обидва). Не вести MF-шлях і mpv паралельно. | 🟨 дослідження | [mpv-playback-engine](p3-mpv-playback-engine.md), [he-aac-mf-playback](p3-he-aac-mf-playback.md), [hls-stream-support](p3-hls-stream-support.md) | Спершу PoC-gate mpv; за `go` — видалити обидва записи |
 
 ---
 
@@ -33,16 +33,16 @@
 - 🟨 **(тригер, лишається відкритим)** ADR §9.2: якщо порожнього стану як єдиного місця навчання замало — повернутись до `aria-keyshortcuts` (S4). Окремий тригер, не частина запису.
 
 ### [resume-last-playback](p2-resume-last-playback.md) (ready, рішення фіналізовано 2026-07-19)
-- ✅ **Спадщина #1 закрита кодом:** `last_active`, seek, `resume_last`, `resume_file_from` — усе вже в `develop`.
+- ✅ **Спадщина закрита кодом:** `last_active`, seek, `resume_last`, `resume_file_from` — усе вже в `develop` (з [playback-toggle-stop-pause](done/p1-playback-toggle-stop-pause.md), [resume-file-from-setting](done/p2-resume-file-from-setting.md)).
 - ✅ **`always_paused` викинуто** (дублює cold-start `Ctrl+Shift+K`) → політика = `autoplay_on_startup: bool`; тригер — `frontend_ready` (не setup); CLI `--play`/`--stop-playback` скасовує авто-гру; протухлий таргет → анонс «недоступно» (реюз `resume_last`).
 - 🟨 **Рівень реалізації:** вбудувати перевірку `StartupPlan` у `frontend_ready` без зламу ідемпотентності; стандартний NVDA-прогін нового діалогу (Select-портал-ризик знято — чекбокс).
 
-### [log-rotation](p2-log-rotation.md) (draft, рішення прийняті)
+### [log-rotation](p2-log-rotation.md) (ready, рішення прийняті)
 - 🟦 **Portable-шлях:** чи `tauri_plugin_log` поважає `portable::log_dir()` (пише в `data/logs/`, не `%APPDATA%`)? Якщо ні — додати в `portable.rs`.
 
-### [open-song-with-default-app](p2-open-song-with-default-app.md) (draft)
-- 🟦 **Чи `tauri-plugin-opener` вже у `Cargo.toml`?**
-- 🟥 **Назва пункту меню:** «Відкрити у програмі» / «Відтворити зовнішнім плеєром» / просто «Відкрити»?
+### [open-song-with-default-app](p2-open-song-with-default-app.md) (ready)
+- 🟦 **Чи `tauri-plugin-opener` вже у `Cargo.toml`?** — Звірено 2026-07-19: **ні**, немає; обрано `ShellExecuteW`.
+- ✅ **Назва пункту меню:** «Відкрити у програмі» — вирішено 2026-07-19.
 
 ### [import-duplicate-metadata-update](p2-import-duplicate-metadata-update.md) (draft)
 - 🟥 **Що оновлювати:** лише `name`, чи також `codec`/`bitrate`? (Оновлення кодека/бітрейту може затерти ручні правки.)
@@ -51,20 +51,20 @@
 - 🟥 **Undo** оновлення метаданих окремо від скасування всього імпорту?
 - 🟨 **Нормалізація назви** перед порівнянням (`icy_name` у верхньому регістрі / зайві пробіли)?
 
-### [full-edit-stream](p2-full-edit-stream.md) (ідея — ескіз НЕ узгоджено)
+### [full-edit-stream](p2-full-edit-stream.md) (draft — ескіз НЕ узгоджено)
 - 🟥 **Зміна URL під час активного запису/відтворення:** блокувати vs зупинити-й-попередити?
 - 🟥 **Скоуп полів у 1-й ітерації:** лише URL, чи одразу URL+auth+ignorelist? _Менший крок — лише URL._
 - 🟥 **Збереження позиції/статусу потоку** при зміні URL (id незмінний → так, але re-resolve може змінити метадані)?
 
 ### [command-palette-phase-3](p2-command-palette-phase-3.md) (draft)
-- 🟥 **Ліміт результатів:** показувати перші N (15–20) / «показати ще» / лише за query? _Рекоменд.: порожній query → лише дії+навігація; query ≥ 2 → підмішувати станції/пісні (до 10 кожного типу)._
+- 🟥 **Ліміт результатів:** показувати перші N (15–20) / «показати ще» / лише за query? _Рекоменд.: порожній query → лише дії+навігація; query ≥ 2 → підмішувати станції й пісні (до 10 кожного типу)._
 - 🟨 **Сортування:** підіймати «нещодавні»? _Recency-ранжування — у Phase 4._
 - 🟦 **Пошук пісень:** filename vs metadata (artist/title) — залежить, чи backend повертає теги.
 - 🟥 **Навігаційні команди при порожньому рядку:** показувати одразу всі чи за keyword «перейти»? _Рекоменд.: показувати одразу._
 - 🟨 **Взаємодія з Phase 4:** не закладати жорсткий порядок — лишити місце для ранжування.
 - 🟥 **Кнопка «Команди» в шапці (DA5):** прибрати в цій же задачі чи окремо?
 
-### [bug-profile-switch-orphaned-tasks](p2-bug-profile-switch-orphaned-tasks.md) (draft)
+### [profile-switch-orphaned-tasks](p2-profile-switch-orphaned-tasks.md) (draft, умовний)
 - 🟨 **Наскільки реальний сценарій**, де task не завершується за 2с? _(Тригер узяти в роботу взагалі.)_
 - 🟥 **Track-level shutdown (CancellationToken)** замість process-level kill? (Вибір між 3 варіантами фіксу: ↑timeout / CancellationToken / детект+лог+NVDA.)
 
@@ -72,22 +72,22 @@
 
 ## D. Питання P3
 
-### [mpv-playback-engine](p3-mpv-playback-engine.md) (дослідити) — **gate go/no-go**
+### [mpv-playback-engine](p3-mpv-playback-engine.md) (research) — **gate go/no-go**
 - 🟥 **In-process (`libmpv2`) чи окремий процес (`tauri-plugin-mpv` + JSON-IPC)?**
 - 🟨 **Перший ICY-тайтл:** чи дає mpv надійний **перший** `StreamTitle`? (Ключове go/no-go — від нього залежить track-changed/SMTC/нотифікації.) Якщо ні — лишити власний ICY-pump лише для метаданих?
 - 🟦/🟨 **Бандлінг `libmpv-2.dll`** для portable-EXE (звідки бінарник, оновлення, антивірус-false-positive).
 - 🟨 **Non-destructive probe** на подіях mpv — чи зберігається модель «старий потік грає, поки новий не підтверджений»?
 - 🟥 **Цінність проти ризику:** скільки станцій саме HE-AAC/HLS без MP3/AAC-LC-альтернативи?
-- 🟥 **Видалити he-aac/hls** записи, якщо mpv заходить? _(= A4.)_
+- 🟥 **Видалити he-aac-mf-playback/hls-stream-support** записи, якщо mpv заходить? _(= A4.)_
 
-### [he-aac-mf-playback](p3-he-aac-mf-playback.md) (дослідити — вторинний до mpv)
+### [he-aac-mf-playback](p3-he-aac-mf-playback.md) (research — вторинний до mpv-playback-engine)
 - 🟨 **Реальна першопричина** поломки: невірний spec у `LiveSource` ↔ ресемплінг rodio, чи інше у виводі MF→rodio?
 - 🟥 **Тримати MF-шлях** чи прийняти graceful-degradation (HE-AAC просто показує помилку)?
 - 🟨 **Перемаршрутизація лише HE-AAC** у MF (LC лишити symphonia) — як надійно відрізнити LC від HE-AAC на live-потоці до декоду (sniff/rewind на нерозмотуваному rtrb)?
 - 🟥 **Патчити лише вихідний шлях** на `he-aac-mf` чи переробити маршрутизацію з нуля?
 - 🟥 **Реальна цінність:** скільки станцій у користувача саме HE-AAC без LC/MP3-альтернативи?
 
-### [hls-stream-support](p3-hls-stream-support.md) (ідея — вторинний до mpv)
+### [hls-stream-support](p3-hls-stream-support.md) (idea — вторинний до mpv-playback-engine)
 - 🟨 **Скільки % станцій виключно HLS** (без ICY-альтернативи)? _Перевірити перед роботою._
 - 🟥 **DRM (`#EXT-X-KEY`)** підтримувати? _Найімовірніше ні (комерційні потоки)._
 - 🟥 **Варіативний бітрейт (`#EXT-X-STREAM-INF`)** — підтримувати? Який обирати автоматично?
@@ -96,7 +96,7 @@
 - 🟦 **Зрілість HLS-крейтів** (`m3u8-rs`, `hls_m3u8`) для production — перевірити.
 - 🟨 **(тригер повернення):** конкретні запити користувачів або >20% популярних станцій виключно HLS.
 
-### [command-palette-phase-4](p3-command-palette-phase-4.md) (blocked — чекає phase-3)
+### [command-palette-phase-4](p3-command-palette-phase-4.md) (blocked — чекає command-palette-phase-3)
 - 🟥 **Mode-prefixes (`>`/`@`) взагалі потрібні?** Ризик: незрозумілі наосліп для NVDA. _Альтернатива: лише context-boost без prefixes._
 - 🟨 **NVDA + динамічний reranking:** чи `aria-live="polite"` з дебаунсом достатньо, чи потрібен `aria-relevant="additions"`?
 - 🟨 **Поріг бусту:** перекривати хороший fuzzy-збіг іншого типу чи лише при рівних score? _Визначити ручним тестом після Phase 3._
@@ -108,7 +108,7 @@
 - 🟥 **Друге Tauri-вікно vs нативний Win32** — з урахуванням «portable single EXE»? _Рекоменд.: друге Tauri-вікно (правильна a11y)._
 - 🟥 **Toggle vs відкрити заново** при кожному виклику?
 
-### [screen-reader-direct-speech](p3-screen-reader-direct-speech.md) (відкладено)
+### [screen-reader-direct-speech](p3-screen-reader-direct-speech.md) (blocked)
 - 🟨 **(тригер повернення):** лише якщо balloon tips виявляться недостатніми для швидкого фідбеку на глобальні хоткеї (типово — гучність). Тоді scope — **тільки** озвучення глобальних хоткеїв, не заміна `LiveAnnouncer`.
 
 ---
@@ -116,5 +116,5 @@
 ## Зведення для дій
 
 - **Лишився відкритим (блокує код):** **A4** (mpv-gate).
-- **Чисті перевірки коду** (не «рішення», звірити grep'ом): C-log (portable-шлях), C-open-song (opener у Cargo), C-phase3 (теги пісень), D-hls (зрілість крейтів).
+- **Чисті перевірки коду** (не «рішення», звірити grep'ом): C-log-rotation (portable-шлях), D-hls (зрілість крейтів).
 - **Дослідницькі gate'и** (відповідь — під час spike): A4, D-mpv (перший ICY-тайтл — go/no-go), D-he-aac (першопричина), D-hls (% станцій).

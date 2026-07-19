@@ -1,11 +1,25 @@
+---
+slug: add-stream-probe
+title: "Перевірка потоку при ручному додаванні (AddStreamDialog probe)"
+priority: P2
+type: idea
+status: done
+effort: S
+kind: feature
+target: 0.2.0
+updated: 2026-07-19
+completed: 2026-07-19
+a11y: true
+depends_on: []
+blocks: [browser-add-probe]
+touches: [src/components/streams/AddStreamDialog.tsx, src-tauri/src/commands/stream_io_commands.rs, src-tauri/src/stream/probe.rs]
+gates: [cargo test, pnpm test]
+notes: ["гілка feature/add-stream-probe"]
+---
+
 # Перевірка потоку при ручному додаванні (AddStreamDialog probe)
 
-- **Слаг:** `add-stream-probe`
-- **Тип:** ідея
-- **Стан:** done (гілка `feature/add-stream-probe`)
-- **Зусилля:** S
-- **Оновлено:** 2026-07-19
-- **Залежності:** Phase 3J (stream::probe ✅ — вже реалізований для імпорту)
+> **Контекст:** виконано, гілка `feature/add-stream-probe`. Спільна IPC `probe_stream` стала базою для [browser-add-probe](p2-browser-add-probe.md).
 
 ## Опис
 
@@ -68,26 +82,4 @@ _Закрито 2026-06-25 (аудит коду + рішення)._
 - Код: `src-tauri/src/commands/stream_commands.rs` — `add_stream`
 - Код: `src-tauri/src/stream/probe.rs` — `probe()` (вже є)
 - Код: `src-tauri/src/commands/stream_io_commands.rs` — `validate_import_candidates` (зразок)
-- Пов'язано: [p2-browser-add-probe.md](p2-browser-add-probe.md) — аналогічний probe для Stream Browser (async тост замість sync spinner)
-
-## Промпт для агента
-
-```text
-Нічого не змінюй — лише обговорення. Не редагуй файли, не створюй комітів, не запускай команд, що щось змінюють. Відповідай у чаті.
-
-Що обговорюємо: Перевірка потоку при ручному додаванні (AddStreamDialog probe)
-
-Це сира ідея без зобов'язань. Мета розмови — розкрити її й зрозуміти, чи варта вона роботи, а не одразу планувати реалізацію.
-
-Спершу швидко звірся з контекстом: цей запис беклогу, пов'язаний код і документи — щоб говорити предметно, а не абстрактно.
-
-Далі допоможи розвинути ідею:
-- сформулюй проблему/потребу, яку вона розв'язує, і для кого;
-- запропонуй 2–3 способи втілення з плюсами й мінусами кожного;
-- зваж цінність проти складності, познач ризики й де воно зачіпає доступність/NVDA;
-- чесно скажи, чи це взагалі варто робити, і яка була б простіша альтернатива.
-
-Уточнювальні питання став по одному: дай контекст, запропонуй варіанти відповіді й познач рекомендований. Дочекайся відповіді перед наступним питанням.
-
-Наприкінці — підсумок у 3–5 рядках і рекомендований наступний крок: відкинути, лишити як ідею, перевести в «дослідити» чи одразу в «заплановано».
-```
+- Пов'язано: [browser-add-probe](p2-browser-add-probe.md) — аналогічний probe для Stream Browser (async тост замість sync spinner)

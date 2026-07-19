@@ -1,11 +1,23 @@
+---
+slug: open-song-with-default-app
+title: "Відкрити файл у асоційованій програмі (Open With)"
+priority: P2
+type: planned
+status: ready
+effort: M
+kind: feature
+target: 0.2.0
+updated: 2026-07-19
+a11y: true
+depends_on: []
+blocks: []
+touches: [src-tauri/src/commands/songs_commands.rs, src/components/songs/SongContextMenu.tsx, src/components/songs/SongsList.tsx, src/components/songs/SongItem.tsx]
+gates: [cargo test, cargo clippy, pnpm test, pnpm vite:build]
+---
+
 # Відкрити файл у асоційованій програмі (Open With)
 
-- **Слаг:** `open-song-with-default-app`
-- **Тип:** ідея
-- **Стан:** ready (рішення фіналізовано 2026-07-19)
-- **Зусилля:** M
-- **Оновлено:** 2026-07-19
-- **Залежності:** Phase 3C (Saved Songs Manager ✅)
+> **Контекст:** рішення фіналізовано 2026-07-19 — готовий до реалізації. Технічний підхід (`ShellExecuteW`), UI-розміщення і клавіатурна семантика вже узгоджені.
 
 ## Опис
 

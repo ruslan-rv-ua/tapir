@@ -1,11 +1,24 @@
+---
+slug: wishlist-example-patterns
+title: "Приклади-патерни у порожньому стані Wishlist / Ignorelist"
+priority: P2
+type: planned
+status: done
+effort: S
+kind: feature
+target: 0.2.0
+updated: 2026-07-19
+completed: 2026-07-19
+a11y: true
+depends_on: [streams-ctrlk-empty-hint]
+blocks: [streams-empty-focus-audit, wishlist-stale-list-ref]
+touches: [src/components/wishlist/examplePatterns.ts, src/components/wishlist/WishlistPanel.tsx, src/components/wishlist/PatternList.tsx]
+gates: [pnpm test, pnpm vite:build]
+---
+
 # Приклади-патерни у порожньому стані Wishlist / Ignorelist
 
-- **Слаг:** `wishlist-example-patterns`
-- **Тип:** заплановано
-- **Стан:** done
-- **Зусилля:** S
-- **Оновлено:** 2026-07-19 (виконано)
-- **Залежності:** немає
+> **Контекст:** виконано. Реалізація вийшла за рамки первинного плану (rev R1) — CTA переїхав з `PatternList`'s `emptyExtra` у власну зону `wishlist-empty` (keyboard-reachability). Дало дві дослідницькі знахідки — [streams-empty-focus-audit](../p2-streams-empty-focus-audit.md) і [wishlist-stale-list-ref](../p2-wishlist-stale-list-ref.md).
 
 ## Опис
 
@@ -20,7 +33,7 @@
 **Чому це не буквальний клон Streams.** Приклад-потік (Промінь, SomaFM, FIP) має власну
 цінність — це робоча станція для будь-кого. Патерн вішліста **персональний**: загального
 «бажаного треку» не існує, тож пачка прикладів-артистів — це сміття на видалення. Тому
-обрана **асиметрична, локаль-залежна** курація (рішення 2026-06-24):
+обрана **асиметрична, локаль-незалежна** курація (рішення 2026-06-24):
 
 - **Ignorelist** — кілька напівуніверсальних патернів сміття одразу для **всіх локалей**:
   `*реклама*`, `*джингл*`, `*advert*`, `*jingle*`, `*promo*`.
@@ -56,7 +69,7 @@
 - **CTA:** «Додати приклад» (нейтральне, пасує і до вішліста, і до ignorelist).
 - **Бейдж синтаксису:** приглушений текст-рядок «`*` — будь-які символи, `?` — один символ»
   поряд із CTA (не Tab-стоп, у природному порядку читання, NVDA читає). Той самий патерн,
-  що вже реалізований для Streams ([done/p2-streams-ctrlk-empty-hint](p2-streams-ctrlk-empty-hint.md)) —
+  що вже реалізований для Streams ([streams-ctrlk-empty-hint](p2-streams-ctrlk-empty-hint.md)) —
   див. бейдж у порожньому стані [StreamsPanel.tsx](../../../src/components/streams/StreamsPanel.tsx).
 - **A11y / NVDA:** повторити патерн зі StreamsPanel
   ([`handleAddExamples`](../../../src/components/streams/StreamsPanel.tsx#L306-L322)): `aria-busy`
@@ -90,10 +103,10 @@
 - Тести: `src/components/wishlist/examplePatterns.test.ts` (seed-масиви, обгортка `*…*`),
   `src/components/wishlist/WishlistPanel.test.tsx` (`describe("empty-state example seeding")`
   + regression-тести на keyboard-reachability з R1).
-
-## Відкриті питання
-
-_Усі питання закриті в сесії 2026-06-24._
+- Виявлені під час фінального ревʼю (223fadb-фікс, follow-up-хвиля) — окремі дослідницькі
+  записи: [streams-empty-focus-audit](../p2-streams-empty-focus-audit.md) (латентна версія
+  фокус-вади в StreamsPanel), [wishlist-stale-list-ref](../p2-wishlist-stale-list-ref.md)
+  (застарілий callback-ref після перемикання вкладки).
 
 ## Документи
 
@@ -105,24 +118,4 @@ _Усі питання закриті в сесії 2026-06-24._
   [wishlist_commands.rs](../../../src-tauri/src/commands/wishlist_commands.rs),
   [matcher.rs](../../../src-tauri/src/wishlist/matcher.rs)
 - i18n: [uk.json](../../../src/i18n/messages/uk.json), [en.json](../../../src/i18n/messages/en.json)
-- Сусідній (уже реалізований) патерн порожнього стану: [done/p2-streams-ctrlk-empty-hint.md](p2-streams-ctrlk-empty-hint.md)
-
-## Промпт для агента
-
-Каталог промптів за типом: [README — Каталог промптів](../README.md#каталог-промптів-за-типом).
-
-```text
-Реалізуй цей запис. Рішення вже прийняте — мета довести до робочого, протестованого коду.
-
-Що реалізуємо: Приклади-патерни у порожньому стані Wishlist / Ignorelist
-
-Почни зі скіла `superpowers:brainstorming` — пройди його, щоб узгодити дизайн перед кодом, а далі веди роботу за процесом superpowers: план → реалізація через TDD → перевірка.
-
-Перед стартом звірся з контекстом: цей запис беклогу, його критерії готовності, пов'язаний код (WishlistPanel, PatternList, wishlist_commands, matcher) і зразок зі StreamsPanel (handleAddExamples, empty-зона). Документи: AGENTS.md та ін.
-
-Дотримуйся конвенцій проєкту з AGENTS.md. Доступність/NVDA — від початку: кнопка з aria-busy, бейдж синтаксису не Tab-стоп, фокус після seed переходить у список.
-
-Питання, якщо виникають, став по одному: контекст, варіанти відповіді, рекомендований. Дочекайся відповіді перед наступним.
-
-Гейти перед завершенням: `pnpm test` і `pnpm vite:build` мають проходити. Онови критерії готовності в записі; коли все зроблено — запис можна видаляти (історія лишається в git).
-```
+- Сусідній (уже реалізований) патерн порожнього стану: [streams-ctrlk-empty-hint](p2-streams-ctrlk-empty-hint.md)

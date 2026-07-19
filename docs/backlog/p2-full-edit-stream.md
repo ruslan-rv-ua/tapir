@@ -1,11 +1,24 @@
+---
+slug: full-edit-stream
+title: "Повне редагування потоку (URL / auth / ignorelist)"
+priority: P2
+type: planned
+status: draft
+effort: M
+kind: feature
+target: 0.2.0
+updated: 2026-06-23
+a11y: true
+depends_on: []
+blocks: []
+touches: [src-tauri/src/commands/stream_commands.rs, src/lib/tauri.ts, src/components/streams/AddStreamDialog.tsx]
+gates: [cargo test, cargo clippy, pnpm test, pnpm vite:build]
+notes: ["Винесено з rename-only F2-беклога (2026-06-23); той реалізовано в ee9a704 — F2/edit-режим AddStreamDialog вже в продакшені"]
+---
+
 # Повне редагування потоку (URL / auth / ignorelist)
 
-- **Слаг:** `full-edit-stream`
-- **Тип:** покращення
-- **Пріоритет:** P2
-- **Стан:** ідея (винесено з rename-only F2-беклога, 2026-06-23; той реалізовано в `ee9a704`)
-- **Зусилля:** M (Rust `update_stream` + UI-поля в edit-режимі + re-resolve PLS/M3U + guard для активного запису/відтворення + i18n + тести)
-- **Залежності:** F2 / edit-режим `AddStreamDialog` — ✅ у продакшені (`ee9a704`)
+> **Контекст:** ескіз рішення НЕ узгоджено — потребує grooming (обговорити скоуп полів і guard активного запису) перед переходом у ready.
 
 ## Опис
 
@@ -19,7 +32,7 @@
 
 ## Чому окремий запис, а не частина P1
 
-P1 (`F2`) — чисто провід клавіші до **наявного** rename-режиму, нульовий backend-ризик. Редагування URL — це:
+P1 (`F2`) — чисто провід клавіші до **наявного** rename-режиму, нульовий backend-ризик (уже реалізовано, `ee9a704`). Редагування URL — це:
 - зміна сигнатури Rust-команди + серіалізація (back-compat);
 - re-resolve PLS/M3U при зміні URL (як `add_stream`);
 - guard на активний запис/відтворення (міняти URL «під» live-задачею небезпечно).

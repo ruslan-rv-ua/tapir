@@ -1,11 +1,25 @@
+---
+slug: he-aac-mf-playback
+title: "HE-AAC / HE-AACv2 відтворення (через Media Foundation)"
+priority: P3
+type: research
+status: draft
+effort: M
+kind: feature
+target: unscheduled
+updated: 2026-06-19
+a11y: true
+depends_on: []
+blocks: []
+touches: [src-tauri/src/player/engine.rs]
+gates: [cargo test, cargo clippy]
+depends_on_external: ["player::engine (LiveSource)", "Windows Media Foundation (windows crate)", "#2-фікс PROBE_TIMEOUT (вже в develop)"]
+notes: ["Реалізація збережена на гілці he-aac-mf @ 74c2d90 (НЕ видаляти); архів рішень @ 64d2843 — див. [[he-aac-mf-parked]]"]
+---
+
 # HE-AAC / HE-AACv2 відтворення (через Media Foundation)
 
-- **Слаг:** `he-aac-mf-playback`
-- **Тип:** дослідити
-- **Стан:** draft
-- **Зусилля:** M (декодер уже написаний на гілці `he-aac-mf`; лишилось діагностувати реальний баг відтворення + перемаршрутизувати + ретельно протестувати руками — може вирости до L)
-- **Оновлено:** 2026-06-19
-- **Залежності:** `player::engine` (`LiveSource`), Windows Media Foundation (`windows` crate); будує поверх #2-фіксу (`PROBE_TIMEOUT`, вже в `develop`)
+> **Контекст:** дослідження — попередня спроба реалізації зламала ВСЕ AAC-відтворення і була відкочена; робота збережена на гілці `he-aac-mf`, не видаляти. Вторинний до [mpv-playback-engine](p3-mpv-playback-engine.md) (може закрити цей запис).
 
 ## Опис
 
@@ -55,24 +69,3 @@
 - `docs/superpowers/plans/2026-06-15-he-aac-playback.md` (на `he-aac-mf`) — повний план + розділ «Spike Outcome» з точним робочим MF-setup
 - `src-tauri/src/player/engine.rs` — `LiveSource` (`Source::sample_rate()`/`channels()`), `play_live` (`PROBE_TIMEOUT`)
 - [docs/architecture.md](../architecture.md), [docs/tech-stack.md](../tech-stack.md) — оновлені описи MF-шляху лежать на `he-aac-mf`
-
-## Промпт для агента
-
-```text
-Нічого не змінюй на старті — спершу дослідження. Не редагуй файли й не створюй коммітів, поки не узгодимо підхід. Відповідай у чаті.
-
-Що дослідити: HE-AAC / HE-AACv2 відтворення через Media Foundation — чому попередня спроба зламала ВСІ AAC у реальному відтворенні, і як її довести до робочого стану.
-
-Контекст (звірся спершу): уся реалізація збережена на гілці `he-aac-mf` @ 74c2d90 (НЕ видаляй її); журнал усіх рішень і фікс-пасів — `docs/superpowers/sdd/2026-06-15-he-aac/progress.md`; план — `docs/superpowers/plans/2026-06-15-he-aac-playback.md` (обидва на тій гілці, архів-комміт `64d2843`). Цей запис беклогу описує симптом і гіпотезу. Захоплені семпли для офлайн-тесту — `src-tauri/tests/fixtures/he-aac/{gs16,lc}.aac` (на тій гілці).
-
-Гіпотеза (підтвердь або спростуй): усі AAC, включно з AAC-LC, маршрутизувалися в `MfAacDecoder`, чий вихідний spec (32 kHz/stereo) подається в rodio через `LiveSource::sample_rate()`/`channels()`; неправильний spec/ресемплінг → не та швидкість/тон для всього MF-AAC. Офлайн-тест давав коректний PCM, але не проганяв реальний вихід rodio→пристрій.
-
-Завдання:
-- з'ясуй реальну першопричину на РЕАЛЬНОМУ пристрої (залогуй negotiated spec MF, реальний sample_rate/channels, що бачить rodio; перевір ресемплінг);
-- оціни ризики й суперечності з архітектурою; зваж, чи MF-шлях узагалі вартий складності проти простої graceful-degradation (HE-AAC показує помилку через наявний PROBE_TIMEOUT);
-- запропонуй маршрутизацію, що НЕ зачіпає AAC-LC (LC лишається на symphonia) — врахуй sniff/rewind проблему live-rtrb з плану.
-
-Питання став по одному: контекст, варіанти відповіді, рекомендований; чекай відповіді перед наступним.
-
-Наприкінці — оцінка готовності до реалізації, список того, що вирішити перед стартом, і чесна рекомендація: лагодити на `he-aac-mf`, переробити, чи відкинути MF-підхід на користь graceful-degradation. Обов'язковий ручний gate перед завершенням (реальний пристрій + NVDA): HE-AAC грає правильно; AAC-LC і MP3 без регресії; перемикання; record+play.
-```

@@ -1,11 +1,23 @@
+---
+slug: streams-empty-focus-audit
+title: "Аудит фокуса при спорожненні списку Streams"
+priority: P2
+type: research
+status: ready
+effort: S
+kind: bug
+target: 0.2.0
+updated: 2026-07-19
+a11y: true
+depends_on: [wishlist-example-patterns]
+blocks: []
+touches: [src/components/streams/StreamsPanel.tsx, src/hooks/useCompositeList.ts]
+gates: [pnpm test, pnpm vite:build]
+---
+
 # Аудит фокуса при спорожненні списку Streams
 
-- **Слаг:** `streams-empty-focus-audit`
-- **Тип:** дослідити
-- **Стан:** ready
-- **Зусилля:** S
-- **Оновлено:** 2026-07-19
-- **Залежності:** немає (спадок [wishlist-example-patterns](done/p2-wishlist-example-patterns.md))
+> **Контекст:** дослідження — підтвердити чи спростувати гіпотезу (спадок фіксу [wishlist-example-patterns](done/p2-wishlist-example-patterns.md)), не одразу кодити.
 
 ## Опис
 
@@ -50,22 +62,3 @@ clears the visible list» біля `pendingFocusEmptyZone` у StreamsPanel і е
   (секція «Спадщина»), фікс-коміт `223fadb` на гілці `feature/wishlist-example-patterns`.
 - Код: [StreamsPanel.tsx](../../src/components/streams/StreamsPanel.tsx),
   [useCompositeList.ts](../../src/hooks/useCompositeList.ts).
-
-## Промпт для агента
-
-Каталог промптів за типом: [README — Каталог промптів](README.md#каталог-промптів-за-типом).
-
-```text
-Дослідь цей запис. Мета — підтвердити або спростувати гіпотезу, а не одразу кодити.
-
-Що досліджуємо: чи орфанить фокус видалення останнього (видимого) потоку в Streams —
-латентна версія вади, виправленої у Wishlist комітом 223fadb.
-
-Спершу трейс по коду (StreamsPanel, useCompositeList): одиничне видалення останнього
-рядка і filter-empty перехід. Потім — падаючий тест як доказ, якщо вада реальна.
-Якщо реальна — виправлення за зразком 223fadb (pendingFocusEmptyZone) + тест; якщо
-ні — задокументувати механізм, чому шлях живий, і закрити запис.
-
-Гейти: `pnpm test` і `pnpm vite:build`. Доступність/NVDA — критична: фокус у <body>
-означає, що NVDA мовчить.
-```

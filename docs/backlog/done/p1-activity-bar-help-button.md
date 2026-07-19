@@ -1,11 +1,25 @@
+---
+slug: activity-bar-help-button
+title: "Кнопка довідки в ActivityBar"
+priority: P1
+type: planned
+status: done
+effort: S
+kind: feature
+target: 0.2.0
+updated: 2026-07-19
+completed: 2026-07-19
+a11y: true
+depends_on: []
+blocks: []
+touches: [src/components/layout/ActivityBar.tsx, src/stores/navigation.ts, src/components/common/HelpDialog.tsx]
+gates: [pnpm test, pnpm vite:build]
+notes: ["реалізовано у feature/activity-bar-help-button"]
+---
+
 # Кнопка довідки в ActivityBar
 
-- **Слаг:** `activity-bar-help-button`
-- **Тип:** заплановано
-- **Стан:** done (реалізовано у `feature/activity-bar-help-button`)
-- **Зусилля:** S
-- **Оновлено:** 2026-07-19
-- **Залежності:** Phase 1 (ActivityBar ✅), HelpDialog (✅ реалізовано)
+> **Контекст:** виконано, реалізовано у `feature/activity-bar-help-button`. Один пункт лишається без ручного NVDA-прогону.
 
 ## Опис
 
@@ -54,21 +68,3 @@
 - Код: `src/components/layout/ActivityBar.tsx`
 - Код: `src/stores/navigation.ts` — `$helpOpen`
 - Код: `src/components/common/HelpDialog.tsx`
-
-## Промпт для агента
-
-```text
-Реалізуй цей запис. Рішення вже прийняте — мета довести до робочого, протестованого коду.
-
-Що реалізуємо: Кнопка довідки в ActivityBar
-
-Почни зі скіла `superpowers:brainstorming` — пройди його, щоб узгодити вимоги й дизайн перед кодом, а далі веди роботу за процесом superpowers: план → реалізація через TDD → перевірка.
-
-Перед стартом звірся з контекстом: цей запис беклогу, його критерії готовності та залежності, пов'язаний код і документи (AGENTS.md, implementation-phases.md та ін.).
-
-Дотримуйся конвенцій проєкту з AGENTS.md. Де доречно — закладай доступність/NVDA від початку, не як доробку.
-
-Питання, якщо виникають, став по одному: контекст, варіанти відповіді, рекомендований. Дочекайся відповіді перед наступним.
-
-Гейти перед завершенням: `pnpm test` і `pnpm vite:build` мають проходити. Онови критерії готовності в записі; коли все зроблено — запис можна видаляти (історія лишається в git).
-```
