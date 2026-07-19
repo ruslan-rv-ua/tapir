@@ -1,6 +1,7 @@
 // src/components/wishlist/WishlistPanel.test.tsx
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent, waitFor, screen, act } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { useEffect, useRef, useState } from "react";
 import * as m from "../../i18n/paraglide/messages";
 import { $wishlist, $ignorelist, $patternSelection, $showAddPatternDialog } from "../../stores/wishlist";
@@ -158,10 +159,13 @@ describe("controls zone — roving toolbar", () => {
     expect(document.activeElement?.getAttribute("data-item-id")).toBe("*ad*");
   });
 
-  it("Tab from a toolbar button lands on the EMPTY list region, not the status bar", async () => {
-    // The reported bug: with no patterns, Tab from the toolbar skipped the
-    // row-less list zone and jumped to the status bar. The empty list region is
-    // now a focusable zone anchor, so focus lands there and NVDA reads it.
+  it("Tab from a toolbar button lands on the EMPTY zone's CTA button, not the status bar", async () => {
+    // The reported bug (R1): with no patterns, Tab from the toolbar landed inside
+    // CompositeList's own empty-state slot, whose onKeyDownCapture treats ANY Tab
+    // (no active row) as an exit — so a CTA button placed there was unreachable.
+    // The empty zone is now a plain hand-rolled region with no keydown capture
+    // (mirrors StreamsPanel), and its ZoneEntry.focus targets the CTA directly.
+    const user = userEvent.setup();
     $wishlist.set([]);
     vi.mocked(tauri.getWishlist).mockResolvedValueOnce([]);
     render(<ZoneHarness />);
@@ -170,13 +174,47 @@ describe("controls zone — roving toolbar", () => {
     act(() => addBtn.focus());
     fireEvent.keyDown(addBtn, { key: "Tab" });
     const ae = document.activeElement;
-    expect(ae?.closest("[data-zone-id]")?.getAttribute("data-zone-id")).toBe("wishlist-list");
-    expect(ae?.getAttribute("aria-label")).toBe(m.empty_wishlist());
+    expect(ae?.closest("[data-zone-id]")?.getAttribute("data-zone-id")).toBe("wishlist-empty");
+    expect(ae?.tagName).toBe("BUTTON");
+    expect(ae).toHaveAccessibleName(m.wishlist_add_example());
 
-    // Not a focus trap: Tab forward out of the empty region advances to the next
-    // zone (player declines → status bar in this harness).
-    fireEvent.keyDown(ae!, { key: "Tab" });
+    // Not a focus trap: the CTA has no Tab handler of its own, so a real Tab key
+    // (user-event, which computes native tab order — fireEvent.keyDown alone
+    // cannot, since there is deliberately no app-level interception here)
+    // advances to the next zone (player declines → status bar in this harness).
+    await user.tab();
     expect(document.activeElement?.closest("[data-zone-id]")?.getAttribute("data-zone-id")).toBe("status-bar");
+  });
+
+  it("the CTA is reachable by real Tab from the toolbar and activatable by Enter (R1 regression guard)", async () => {
+    // This is the test the whole redesign exists for: prove the CTA can be
+    // reached AND activated without a mouse. fireEvent.click alone would not
+    // catch the original bug (the button was clickable, just unreachable by Tab).
+    const user = userEvent.setup();
+    $wishlist.set([]);
+    vi.mocked(tauri.getWishlist).mockResolvedValueOnce([]);
+    vi.mocked(tauri.addToWishlist).mockClear();
+    render(<ZoneHarness />);
+    await waitFor(() => screen.getByText(m.select_all()));
+
+    const deleteBtn = screen.getByText(m.delete_selected({ count: 0 }));
+    act(() => deleteBtn.focus());
+    expect(deleteBtn).toHaveFocus();
+
+    // Real Tab from the toolbar — traverses composite-exit → cycleZone →
+    // wishlist-empty's ZoneEntry.focus, exactly as a screen-reader user would.
+    await user.tab();
+    const cta = document.activeElement as HTMLElement;
+    expect(cta.tagName).toBe("BUTTON");
+    expect(cta).toHaveAccessibleName(m.wishlist_add_example());
+
+    // Activate with the keyboard, not fireEvent.click.
+    await user.keyboard("{Enter}");
+
+    await waitFor(() =>
+      expect(vi.mocked(tauri.addToWishlist).mock.calls.map((c) => c[0]))
+        .toEqual([...EXAMPLE_WISHLIST_PATTERNS]),
+    );
   });
 });
 

@@ -182,6 +182,13 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   const addPatternBtnRef = useRef<HTMLButtonElement | null>(null);
   const selectAllBtnRef = useRef<HTMLButtonElement | null>(null);
   const deleteSelectedBtnRef = useRef<HTMLButtonElement | null>(null);
+  // Empty-state zone (no patterns in the active tab). A plain hand-rolled
+  // region with NO keydown capture — mirrors StreamsPanel's streams-empty zone
+  // (StreamsPanel.tsx:676+). Unlike the reverted emptyExtra slot, this is never
+  // inside CompositeList, so there is no onKeyDownCapture to trap Tab before it
+  // reaches the CTA button.
+  const emptyZoneRef = useRef<HTMLDivElement | null>(null);
+  const addExampleBtnRef = useRef<HTMLButtonElement | null>(null);
 
   // Focus the currently-selected Wishlist/Ignorelist tab (react-aria marks it
   // aria-selected="true" + tabindex="0"). Used as the toolbar's backward exit
@@ -313,18 +320,38 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
       focus: (dir) => (dir === "forward" ? focusActiveTab() : toolbarRestore("backward")),
     };
     const zones: ZoneEntry[] = [controlsZone];
-    if (patternListRef.current) zones.push(patternListProxyRef.current);
+    if (activeItems.length === 0) {
+      // Replaces the list zone while the active list is empty — the CTA button
+      // is the focus target directly (mirrors StreamsPanel.tsx:342-347), which
+      // is what makes it keyboard-reachable via F6/Tab.
+      zones.push({
+        id: "wishlist-empty",
+        get el() { return emptyZoneRef.current!; },
+        focus: () => addExampleBtnRef.current?.focus(),
+      });
+    } else if (patternListRef.current) {
+      zones.push(patternListProxyRef.current);
+    }
     onZonesChange(zones);
     // onZonesChange intentionally omitted — callers must pass a stable (useCallback-wrapped) reference.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, toolbarRestore, focusActiveTab]);
+  }, [activeTab, toolbarRestore, focusActiveTab, activeItems.length]);
 
-  // Shared empty-state CTA. Both tabs render the same node; handleAddExamples
-  // branches on activeTab, and only the active tab's PatternList is mounted
-  // empty at any one time.
-  const emptyExtra = (
-    <div className="mt-3 flex flex-col items-center gap-2">
+  // Shared empty-state zone. Both tabs render the same shape via this helper;
+  // handleAddExamples branches on activeTab, and only the active tab's empty
+  // zone or PatternList is mounted at any one time (never both — StreamsPanel
+  // parity, StreamsPanel.tsx:676+).
+  const renderEmptyZone = (emptyMessage: string) => (
+    <div
+      ref={emptyZoneRef}
+      data-zone-id="wishlist-empty"
+      role="region"
+      aria-label={emptyMessage}
+      className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-10 text-center text-slate-400"
+    >
+      <p className="text-sm">{emptyMessage}</p>
       <button
+        ref={addExampleBtnRef}
         aria-disabled={seeding || undefined}
         aria-busy={seeding || undefined}
         onClick={handleAddExamples}
@@ -416,36 +443,38 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
         {/* Pattern list zones */}
         <TabPanel id="wishlist" className="flex flex-1 flex-col overflow-hidden">
           <ListCard>
-            <PatternList
-              ref={patternListCallbackRef}
-              items={wishlistItems}
-              ariaLabel={m.wishlist_section_title()}
-              showDate={true}
-              emptyMessage={m.empty_wishlist()}
-              emptyExtra={emptyExtra}
-              exitZone={(forward) => exitZone("wishlist-list", forward)}
-              onEmpty={() => addPatternBtnRef.current?.focus()}
-              onEdit={(pattern) => setDialog({ mode: "edit", listType: "wishlist", pattern })}
-              onRemove={handleRemoveWishlist}
-              onBulkRemove={handleBulkRemove}
-            />
+            {wishlistItems.length === 0 ? renderEmptyZone(m.empty_wishlist()) : (
+              <PatternList
+                ref={patternListCallbackRef}
+                items={wishlistItems}
+                ariaLabel={m.wishlist_section_title()}
+                showDate={true}
+                emptyMessage={m.empty_wishlist()}
+                exitZone={(forward) => exitZone("wishlist-list", forward)}
+                onEmpty={() => addPatternBtnRef.current?.focus()}
+                onEdit={(pattern) => setDialog({ mode: "edit", listType: "wishlist", pattern })}
+                onRemove={handleRemoveWishlist}
+                onBulkRemove={handleBulkRemove}
+              />
+            )}
           </ListCard>
         </TabPanel>
         <TabPanel id="ignorelist" className="flex flex-1 flex-col overflow-hidden">
           <ListCard>
-            <PatternList
-              ref={patternListCallbackRef}
-              items={ignorelistItems}
-              ariaLabel={m.ignorelist_section_title()}
-              showDate={false}
-              emptyMessage={m.empty_ignorelist()}
-              emptyExtra={emptyExtra}
-              exitZone={(forward) => exitZone("wishlist-list", forward)}
-              onEmpty={() => addPatternBtnRef.current?.focus()}
-              onEdit={(pattern) => setDialog({ mode: "edit", listType: "ignorelist", pattern })}
-              onRemove={handleRemoveIgnorelist}
-              onBulkRemove={handleBulkRemove}
-            />
+            {ignorelistItems.length === 0 ? renderEmptyZone(m.empty_ignorelist()) : (
+              <PatternList
+                ref={patternListCallbackRef}
+                items={ignorelistItems}
+                ariaLabel={m.ignorelist_section_title()}
+                showDate={false}
+                emptyMessage={m.empty_ignorelist()}
+                exitZone={(forward) => exitZone("wishlist-list", forward)}
+                onEmpty={() => addPatternBtnRef.current?.focus()}
+                onEdit={(pattern) => setDialog({ mode: "edit", listType: "ignorelist", pattern })}
+                onRemove={handleRemoveIgnorelist}
+                onBulkRemove={handleBulkRemove}
+              />
+            )}
           </ListCard>
         </TabPanel>
       </div>
