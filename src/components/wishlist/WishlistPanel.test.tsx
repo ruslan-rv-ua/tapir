@@ -87,6 +87,31 @@ it("deleting the last remaining pattern moves focus to the empty-state CTA (R1: 
   });
 });
 
+it("bulk-deleting all remaining patterns moves focus to the empty-state CTA (bulk-remove path, distinct from the single-delete flag-set)", async () => {
+  // Same drive as "routes the cluster delete..." above, but this test's whole
+  // point is the focus assertion at the end: WishlistPanel.handleBulkRemove
+  // sets pendingFocusEmptyZone.current directly (synchronously with its
+  // $wishlist.set() call) — a different code site from the single-row delete
+  // handlers' `if (next.length === 0) pendingFocusEmptyZone.current = true;`,
+  // and one that has to win a real microtask race against React's own
+  // automatic-batching flush (see WishlistPanel.tsx handleBulkRemove for the
+  // full account of why the naive "set it in PatternList's onEmpty()" shape
+  // loses that race).
+  const { getByText, getByRole } = render(<WishlistPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
+  await waitFor(() => getByText(m.select_all()));
+  fireEvent.click(getByText(m.select_all()));
+  expect($patternSelection.get().size).toBe(1);
+  fireEvent.click(getByText(m.delete_selected({ count: 1 })));
+  fireEvent.click(getByRole("button", { name: m.remove_pattern() })); // confirm (explicit confirmLabel === title)
+  await waitFor(() => expect(tauri.removeFromWishlistBulk).toHaveBeenCalledWith(["*ad*"]));
+  await waitFor(() => expect($wishlist.get()).toEqual([]));
+  await waitFor(() => {
+    const cta = document.activeElement as HTMLElement;
+    expect(cta.tagName).toBe("BUTTON");
+    expect(cta).toHaveAccessibleName(m.wishlist_add_example());
+  });
+});
+
 it("deleting the last pattern on the ignorelist tab moves focus to the empty-state CTA (active-tab-specific, not union of both lists)", async () => {
   // Seed BOTH lists — wishlist keeps its default non-empty seed from beforeEach
   // ("*ad*") and ignorelist gets one pattern of its own. If the focus effect

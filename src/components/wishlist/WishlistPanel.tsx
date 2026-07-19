@@ -323,7 +323,18 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
       try {
         if (activeTab === "wishlist") {
           const n = await tauri.removeFromWishlistBulk(patterns);
-          $wishlist.set($wishlist.get().filter((e) => !drop.has(e.pattern)));
+          const next = $wishlist.get().filter((e) => !drop.has(e.pattern));
+          // Set BEFORE $wishlist.set() (same synchronous block), mirroring
+          // handleRemoveWishlist above. PatternList.handleConfirmBulkRemove also
+          // calls onEmpty() for this case, but only AFTER awaiting this whole
+          // function — react's automatic-batching flush for the $wishlist.set()
+          // below can (and in practice does) commit a render with
+          // activeItems.length === 0 in the microtask BEFORE that later onEmpty()
+          // call runs, so the CTA-focus effect sees the flag still false on the
+          // one render that matters and never gets a second chance (focus falls
+          // through to <body> — R1, bulk-remove variant).
+          if (next.length === 0) pendingFocusEmptyZone.current = true;
+          $wishlist.set(next);
           return n;
         }
         const n = await tauri.removeFromIgnorelistBulk(patterns);
@@ -506,7 +517,15 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
                 showDate={true}
                 emptyMessage={m.empty_wishlist()}
                 exitZone={(forward) => exitZone("wishlist-list", forward)}
-                onEmpty={() => { pendingFocusEmptyZone.current = true; }}
+                // No-op, not removed (PatternList requires the prop): handleRemoveWishlist
+                // and handleBulkRemove above now both set pendingFocusEmptyZone.current
+                // directly, synchronously with their store writes. PatternList's own
+                // firing of this callback (both CompositeList's internal [items] effect
+                // and the bulk-confirm's explicit call) is dead for this same-render-
+                // unmount shape (R1) — routing it through here too would just re-set an
+                // already-consumed flag late, risking a stale true value stealing focus
+                // on some later, unrelated activeItems.length transition to 0.
+                onEmpty={() => {}}
                 onEdit={(pattern) => setDialog({ mode: "edit", listType: "wishlist", pattern })}
                 onRemove={handleRemoveWishlist}
                 onBulkRemove={handleBulkRemove}
