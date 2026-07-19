@@ -392,6 +392,7 @@
   "command_palette_label": "Command palette",
   "streams_empty_hint": "Stream list is empty.",
   "streams_empty_add_examples": "Add example streams",
+  "streams_empty_palette_hint": "Commands —",
   "streams_examples_loading": "Adding examples…",
   "streams_examples_added_zero": "No examples added.",
   "streams_examples_added_one": "Added {count} example: {names}. List updated.",

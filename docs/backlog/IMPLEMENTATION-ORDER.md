@@ -21,6 +21,7 @@
 
 | Запис | Коли | Що лишилось у спадок |
 |-------|------|----------------------|
+| [streams-ctrlk-empty-hint](done/p2-streams-ctrlk-empty-hint.md) | 2026-07-19 | бейдж «Команди — Ctrl+K» у порожньому стані `StreamsPanel` (не Tab-стоп); константа `PALETTE_COMBO` читає комбінацію з `SHORTCUTS`, тож бейдж не розходиться з F1-довідкою; ключ `streams_empty_palette_hint`. Завершує ADR 2026-05-31 §6 (S3) — патерн для #2 |
 | [browser-add-probe](done/p2-browser-add-probe.md) | 2026-07-19 | подія `browser-station-probe-result` + `useBrowserProbeFeedback` (App-wide, озвучує лише невдачі/підсумок); `spawn_probe_added()` у `browser_commands.rs` — detached probe після збереження, `buffer_unordered(5)` |
 | [add-stream-probe](done/p2-add-stream-probe.md) | 2026-07-19 | IPC `probe_stream(url) -> { ok, error }` + `probe_once()` у `stream_io_commands.rs` (спільний 5-с `SINGLE_PROBE_TIMEOUT`); sync-spinner + «Все одно додати» в `AddStreamDialog` |
 | [volume-nan-validation](done/p2-bug-volume-nan-validation.md) | 2026-07-19 | хелпер `sanitize_volume()` у `player/engine.rs` — єдина точка санітизації гучності на межах IPC (`set_volume`) і профілю (`PlayerEngine::new`); non-finite → `0.0` |
@@ -36,7 +37,7 @@
 
 | # | Запис | P | Тип | Стан | Зусилля | Залежить від | Розблоковує / зв'язок |
 |---|-------|---|-----|------|---------|--------------|----------------------|
-| 1 | [streams-ctrlk-empty-hint](p2-streams-ctrlk-empty-hint.md) | P2 | заплановано | ready | S | — | завершує ADR 2026-05-31 §6 |
+| 1 | [streams-ctrlk-empty-hint](done/p2-streams-ctrlk-empty-hint.md) | P2 | заплановано | ✅ виконано 2026-07-19 | S | — | завершило ADR 2026-05-31 §6 |
 | 2 | [wishlist-example-patterns](p2-wishlist-example-patterns.md) | P2 | заплановано | ready | S | — | патерн порожн. стану як у #1 |
 | 3 | [resume-last-playback](p2-resume-last-playback.md) | P2 | покращення | draft (модель ✅) | M | **надбудова над** playback-toggle ✅ (`PlayerSession`) | autostart ✅ |
 | 4 | [log-rotation](p2-log-rotation.md) | P2 | ідея | draft* | S | — | — |
@@ -65,13 +66,14 @@
 Ці записи майже не перетинаються по коду — їх можна вести **паралельно** або
 вклинювати між M-задачами.
 
-**1. [streams-ctrlk-empty-hint](p2-streams-ctrlk-empty-hint.md)** (P2, S, ready) — добудовує
-**вже наполовину виконане** рішення ADR 2026-05-31 §6 (кнопку прибрали — компенсуючий
+**1. [streams-ctrlk-empty-hint](done/p2-streams-ctrlk-empty-hint.md)** ✅ виконано 2026-07-19 —
+добудувало **наполовину виконане** рішення ADR 2026-05-31 §6 (кнопку прибрали — компенсуючий
 бейдж `Ctrl+K` не додали).
 
 **2. [wishlist-example-patterns](p2-wishlist-example-patterns.md)** (P2, S, ready) — onboarding
 для порожнього Wishlist/Ignorelist; усі питання закриті 2026-06-24. Той самий патерн
-порожнього стану, що й #1 — робити поряд для консистентності.
+порожнього стану, що й #1 — тепер є реалізований зразок у
+[StreamsPanel.tsx](../../src/components/streams/StreamsPanel.tsx) (порожній стан).
 
 **15. [unwrap-in-tests](p3-unwrap-in-tests.md)** (P3, S, ready) — попри мітку P3, це
 тривіальна **гігієна тестів** без залежностей; підтягнути будь-коли як housekeeping.

@@ -53,7 +53,8 @@
 - **CTA:** «Додати приклад» (нейтральне, пасує і до вішліста, і до ignorelist).
 - **Бейдж синтаксису:** приглушений текст-рядок «`*` — будь-які символи, `?` — один символ»
   поряд із CTA (не Tab-стоп, у природному порядку читання, NVDA читає). Той самий патерн,
-  що запланований для Streams ([p2-streams-ctrlk-empty-hint](p2-streams-ctrlk-empty-hint.md)).
+  що вже реалізований для Streams ([done/p2-streams-ctrlk-empty-hint](done/p2-streams-ctrlk-empty-hint.md)) —
+  див. бейдж у порожньому стані [StreamsPanel.tsx](../../src/components/streams/StreamsPanel.tsx).
 - **A11y / NVDA:** повторити патерн зі StreamsPanel
   ([`handleAddExamples`](../../src/components/streams/StreamsPanel.tsx#L306-L322)): `aria-busy`
   на кнопці, після додавання — оголосити кількість/назви та перевести фокус на перший рядок.
@@ -85,7 +86,7 @@ _Усі питання закриті в сесії 2026-06-24._
   [wishlist_commands.rs](../../src-tauri/src/commands/wishlist_commands.rs),
   [matcher.rs](../../src-tauri/src/wishlist/matcher.rs)
 - i18n: [uk.json](../../src/i18n/messages/uk.json), [en.json](../../src/i18n/messages/en.json)
-- Сусідня ідея порожнього стану: [p2-streams-ctrlk-empty-hint.md](p2-streams-ctrlk-empty-hint.md)
+- Сусідній (уже реалізований) патерн порожнього стану: [done/p2-streams-ctrlk-empty-hint.md](done/p2-streams-ctrlk-empty-hint.md)
 
 ## Промпт для агента
 

@@ -71,6 +71,11 @@ function renderPanel() {
   return render(<StreamsPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
 }
 
+// Asserted literally rather than re-derived from SHORTCUTS: the point of the
+// badge test is that the rendered combo really is Ctrl+K, so reading it from
+// the same source the component reads would make the test vacuous.
+const PALETTE_COMBO_EXPECTED = "Ctrl+K";
+
 // The chip group is the one role="group" whose buttons carry aria-pressed
 // (StreamItem cells are also role="group" but contain no pressed buttons).
 function chipButtons(container: HTMLElement) {
@@ -288,6 +293,52 @@ describe("StreamsPanel — empty profile example-streams CTA", () => {
       name: /додати приклади потоків|add example streams/i,
     });
     expect(document.activeElement).toBe(btn);
+  });
+});
+
+describe("StreamsPanel — Ctrl+K palette hint badge (ADR 2026-05-31 §6 S3)", () => {
+  it("renders the badge with the palette combo in the empty state", () => {
+    $streams.set([]);
+    renderPanel();
+    const kbd = screen.getByText(PALETTE_COMBO_EXPECTED);
+    expect(kbd.tagName).toBe("KBD");
+    expect(screen.getByText(/команди —|commands —/i)).toBeTruthy();
+  });
+
+  it("the badge is not a Tab stop", () => {
+    $streams.set([]);
+    renderPanel();
+    const kbd = screen.getByText(PALETTE_COMBO_EXPECTED);
+    expect(kbd.getAttribute("tabindex")).toBeNull();
+    expect(kbd.getAttribute("role")).toBeNull();
+    expect(kbd.closest("button")).toBeNull();
+    // The empty zone exposes exactly one focusable control: the CTA.
+    const zone = document.querySelector('[data-zone-id="streams-empty"]')!;
+    expect(zone.querySelectorAll("button, [tabindex]").length).toBe(1);
+  });
+
+  it("keeps the streams-empty zone focusing the add-examples button", () => {
+    $streams.set([]);
+    const onZonesChange = vi.fn();
+    render(<StreamsPanel onZonesChange={onZonesChange} exitZone={vi.fn()} />);
+    const zones = onZonesChange.mock.calls.at(-1)![0] as {
+      id: string;
+      focus: (d: "forward" | "backward") => void;
+    }[];
+    zones.find((z) => z.id === "streams-empty")!.focus("forward");
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", {
+        name: /додати приклади потоків|add example streams/i,
+      }),
+    );
+  });
+
+  it("does not render the badge in the filter-empty state", () => {
+    // The default fixture stream is idle; filtering to "recording" hides it all.
+    $streamFilter.set("recording");
+    renderPanel();
+    expect(screen.getByText(m.streams_filter_empty())).toBeTruthy();
+    expect(screen.queryByText(PALETTE_COMBO_EXPECTED)).toBeNull();
   });
 });
 

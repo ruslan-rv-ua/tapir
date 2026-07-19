@@ -392,6 +392,7 @@
   "command_palette_label": "Командна палітра",
   "streams_empty_hint": "Список потоків порожній.",
   "streams_empty_add_examples": "Додати приклади потоків",
+  "streams_empty_palette_hint": "Команди —",
   "streams_examples_loading": "Додаю приклади…",
   "streams_examples_added_zero": "Приклади не додано.",
   "streams_examples_added_one": "Додано {count} приклад: {names}. Список оновлено.",

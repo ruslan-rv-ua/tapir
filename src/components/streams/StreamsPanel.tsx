@@ -18,6 +18,7 @@ import { useRovingFocus } from "../../hooks/useRovingFocus";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as tauri from "../../lib/tauri";
+import { SHORTCUTS } from "../../lib/shortcuts";
 import { addToast } from "../../stores/toasts";
 import * as m from "../../i18n/paraglide/messages";
 
@@ -29,6 +30,12 @@ interface Props {
 // Backend `is_active` (recording_control.rs): a stream with an in-flight
 // recording task. startable = !IS_ACTIVE, stoppable = IS_ACTIVE (R6).
 const IS_ACTIVE = new Set(["recording", "connecting", "reconnecting"]);
+
+// Empty-state discoverability badge (ADR 2026-05-31 §6, S3). The combo is read
+// from SHORTCUTS — the same source the F1 help renders — so the badge cannot
+// drift from the real accelerator. The fallback keeps the empty state rendering
+// if the entry is ever renamed.
+const PALETTE_COMBO = SHORTCUTS.find((s) => s.id === "command-palette")?.combo ?? "Ctrl+K";
 
 // Partial-success announcements: skipped = requested − done (R5). Pure of
 // component state, so they live at module scope.
@@ -684,6 +691,14 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
               >
                 {loadingExamples ? m.streams_examples_loading() : m.streams_empty_add_examples()}
               </button>
+              {/* Not a Tab stop by design (S3/S4): plain inline nodes, so NVDA
+                  reads the hint in document order without adding a focus stop. */}
+              <p className="text-xs text-slate-500 forced-colors:text-[ButtonText]">
+                {m.streams_empty_palette_hint()}{" "}
+                <kbd className="rounded border border-slate-600 bg-slate-900 px-1.5 py-0.5 font-mono text-slate-300 forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]">
+                  {PALETTE_COMBO}
+                </kbd>
+              </p>
             </div>
           ) : filterHidesAll ? (
             <div
