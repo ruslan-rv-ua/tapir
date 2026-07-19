@@ -575,3 +575,81 @@ open Wishlist with an empty profile, Tab into the empty region, confirm NVDA rea
 the empty message, the "Додати приклад" button and the syntax hint in that order;
 activate the button and confirm the announcement lands and focus moves into the
 list. Repeat on the Ignorelist tab.
+
+---
+
+## Revision R1 (2026-07-19, during execution)
+
+**Tasks 3 and 4 as originally written are withdrawn and replaced by Task 4R below.**
+
+Task 4's implementer discovered — and the controller confirmed by reading the
+source — that routing the CTA through `PatternList`'s `emptyExtra` slot makes it
+**keyboard-unreachable**, which kills the feature for a screen-reader user:
+
+- `useCompositeList.ts:409-415` — when the list has no rows (`!activeItemId`),
+  ANY Tab calls `consume()` (preventDefault) then `onTabOut`, exiting the zone.
+- That handler is an `onKeyDownCapture` on the empty region
+  (`CompositeList.tsx:133`), so it captures Tab from descendants too — including
+  a button rendered inside the region.
+- `restoreFocus` on an empty list focuses the wrapper `<div>` anchor, never its
+  contents.
+
+Net effect: focus lands on the wrapper, Tab immediately leaves the zone, and the
+button can only be activated with a mouse.
+
+`StreamsPanel` does not have this problem because its empty state is a
+hand-rolled zone `<div data-zone-id="streams-empty">` with no keydown capture,
+whose `ZoneEntry.focus` targets the CTA button directly
+(`StreamsPanel.tsx:342-347`).
+
+**Decision (user, 2026-07-19):** mirror the StreamsPanel pattern — `WishlistPanel`
+renders its own empty zone containing the CTA. Rejected alternatives: making
+`CompositeList`'s empty-region Tab capture focus-aware (risks regressions in
+Streams/Songs/Schedule, which share it), and moving the CTA into the roving
+toolbar (loses the empty-state context and has no natural home for the badge).
+
+---
+
+### Task 4R: Own empty zone with CTA and syntax badge
+
+**Files:**
+- Modify: `src/components/wishlist/WishlistPanel.tsx`
+- Modify: `src/components/wishlist/PatternList.tsx` (revert the `emptyExtra` slot)
+- Test: `src/components/wishlist/WishlistPanel.test.tsx`
+- Test: `src/components/wishlist/PatternList.test.tsx` (drop the two `emptyExtra` tests)
+
+**Interfaces:**
+- Consumes: `EXAMPLE_WISHLIST_PATTERNS` / `EXAMPLE_IGNORELIST_PATTERNS` (Task 1);
+  `m.wishlist_add_example`, `m.wishlist_examples_adding`,
+  `m.wishlist_examples_added({ patterns })`, `m.wishlist_examples_failed`,
+  and the pre-existing `m.pattern_hint` (Task 2).
+- Produces: the finished feature.
+
+Step-by-step detail lives in the dispatch brief
+`.superpowers/sdd/task-4R-brief.md`, derived from this section.
+
+**Required behavior:**
+
+1. Revert Task 3 entirely: `PatternList` goes back to its pre-Task-3 state (no
+   `emptyExtra` prop, no `ReactNode` import), and its two `emptyExtra` tests are
+   removed. The slot is dead code under this design.
+2. `WishlistPanel` renders, per tab, either the empty zone or `PatternList` —
+   never both — exactly as `StreamsPanel` does at lines 676+.
+3. The empty zone is
+   `<div ref={emptyZoneRef} data-zone-id="wishlist-empty" role="region" aria-label={emptyMessage}>`
+   containing, in this order: the empty message `<p>`, the CTA `<button>`, and
+   the syntax badge `<p>{m.pattern_hint()}</p>`. The badge must NOT be a Tab stop
+   (no tabIndex, not a control).
+4. Zone registration replaces the list zone with the empty zone while the active
+   list is empty. The empty zone's `ZoneEntry.focus` must target the CTA button
+   directly — `focus: () => addExampleBtnRef.current?.focus()` — mirroring
+   `StreamsPanel.tsx:342-347`. This is what makes the CTA reachable.
+5. The seed handler, the `aria-disabled`/`aria-busy` treatment and the
+   post-seed focus move into the first row are unchanged from the original
+   Task 4 (see `.superpowers/sdd/task-4-brief.md` for that code).
+6. The pre-existing test "Tab from a toolbar button lands on the EMPTY list
+   region, not the status bar" must be updated: the zone id it asserts becomes
+   `wishlist-empty`, and focus now lands on the CTA button rather than a wrapper
+   div. Its Tab-out assertion must still hold.
+7. New coverage required: the CTA is reachable and activatable by keyboard from
+   the toolbar (this is the regression that motivated R1).
