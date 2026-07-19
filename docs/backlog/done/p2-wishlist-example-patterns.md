@@ -2,9 +2,9 @@
 
 - **Слаг:** `wishlist-example-patterns`
 - **Тип:** заплановано
-- **Стан:** ready
+- **Стан:** done
 - **Зусилля:** S
-- **Оновлено:** 2026-06-24 (rev 2)
+- **Оновлено:** 2026-07-19 (виконано)
 - **Залежності:** немає
 
 ## Опис
@@ -61,16 +61,32 @@
 
 ## Критерії готовності
 
-- [ ] Порожня вкладка Wishlist показує CTA «Додати приклад», що додає `*новин*` + `*news*`
-- [ ] Порожня вкладка Ignorelist показує CTA «Додати приклад», що додає `*реклама*`, `*джингл*`, `*advert*`, `*jingle*`, `*promo*`
-- [ ] Поряд із CTA — приглушений бейдж синтаксису «`*` — будь-які символи, `?` — один символ» (не Tab-стоп)
-- [ ] Патерни — фіксований масив у коді (не i18n); нові i18n-ключі лише для рядків UI
-- [ ] Усі патерни мають обгортку `*…*` і реально матчаться у `wildcard_match`
-- [ ] Повторний клік не дублює (дедуплікація наявних команд)
-- [ ] Після додавання фокус переходить на перший рядок списку; NVDA оголошує результат
-- [ ] Нові i18n-ключі для рядків UI (кнопка, оголошення) у `uk.json` і `en.json`; згенеровано через vite-плагін paraglide (не вручну)
-- [ ] Тести `WishlistPanel.test.tsx` / `PatternList.test.tsx` покривають seed + порожній стан
-- [ ] `pnpm test` + `pnpm vite:build` зелені
+- [x] Порожня вкладка Wishlist показує CTA «Додати приклад», що додає `*новин*` + `*news*`
+- [x] Порожня вкладка Ignorelist показує CTA «Додати приклад», що додає `*реклама*`, `*джингл*`, `*advert*`, `*jingle*`, `*promo*`
+- [x] Поряд із CTA — приглушений бейдж синтаксису «`*` — будь-які символи, `?` — один символ» (не Tab-стоп)
+- [x] Патерни — фіксований масив у коді (не i18n); нові i18n-ключі лише для рядків UI
+- [x] Усі патерни мають обгортку `*…*` і реально матчаться у `wildcard_match`
+- [x] Повторний клік не дублює (дедуплікація наявних команд)
+- [x] Після додавання фокус переходить на перший рядок списку; NVDA оголошує результат
+- [x] Нові i18n-ключі для рядків UI (кнопка, оголошення) у `uk.json` і `en.json`; згенеровано через vite-плагін paraglide (не вручну)
+- [x] Тести `WishlistPanel.test.tsx` / `PatternList.test.tsx` покривають seed + порожній стан
+- [x] `pnpm test` + `pnpm vite:build` зелені
+
+## Спадщина (реалізація)
+
+- Реалізація вийшла за рамки первинного плану (rev R1, 2026-07-19): CTA спершу планували
+  через `PatternList`'s `emptyExtra` slot — виявилось keyboard-unreachable (Tab з порожнього
+  списку виходив із зони раніше, ніж досягав кнопки). Рішення: власна hand-rolled зона
+  `wishlist-empty` у `WishlistPanel.tsx`, за зразком `streams-empty` у `StreamsPanel.tsx`
+  (без `onKeyDownCapture`, `ZoneEntry.focus` веде прямо на кнопку).
+- Код: `src/components/wishlist/examplePatterns.ts` (фіксований масив),
+  `src/components/wishlist/WishlistPanel.tsx` (`handleAddExamples`, зона `wishlist-empty`),
+  i18n-ключі `wishlist_add_example`, `wishlist_examples_adding`, `wishlist_examples_added`,
+  `wishlist_examples_failed` у `uk.json`/`en.json` (бейдж перевикористовує вже наявний
+  `pattern_hint`).
+- Тести: `src/components/wishlist/examplePatterns.test.ts` (seed-масиви, обгортка `*…*`),
+  `src/components/wishlist/WishlistPanel.test.tsx` (`describe("empty-state example seeding")`
+  + regression-тести на keyboard-reachability з R1).
 
 ## Відкриті питання
 
