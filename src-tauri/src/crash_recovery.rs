@@ -58,11 +58,19 @@ impl SessionState {
         self.save_to(&crate::portable::state_path())
     }
 
-    /// Атомарний запис (temp → rename) — той самий підхід, що `Profile::save`.
+    /// Атомарний запис (temp → rename) — той самий підхід, що `Profile::save`,
+    /// плюс fsync перед rename: без нього при втраті живлення NTFS може
+    /// зафіксувати rename раніше за дані tmp-файлу → обрізаний state.json →
+    /// «битий» файл і порожній снапшот саме в сценарії, заради якого фіча існує.
     pub fn save_to(&self, path: &Path) -> Result<(), std::io::Error> {
         let tmp = path.with_extension("json.tmp");
         let json = serde_json::to_string_pretty(self)?;
-        std::fs::write(&tmp, &json)?;
+        {
+            use std::io::Write;
+            let mut f = std::fs::File::create(&tmp)?;
+            f.write_all(json.as_bytes())?;
+            f.sync_all()?;
+        }
         std::fs::rename(&tmp, path)?;
         Ok(())
     }
