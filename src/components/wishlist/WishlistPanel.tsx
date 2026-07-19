@@ -398,13 +398,13 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
       aria-label={emptyMessage}
       className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-10 text-center text-slate-400"
     >
-      {/* role="status" only wraps this static message — not the button, whose
-          own text mutates during seeding ("Add example" ↔ "Adding..."). Scoping
-          it this tightly means a re-render that just flips seeding state can't
-          get read twice: once by this live region and once by the seed
-          handler's own explicit announce() calls (mirrors the scoping
-          StreamsPanel keeps between its live regions and mutating widgets). */}
-      <p role="status" className="text-sm">{emptyMessage}</p>
+      {/* No role="status" here: the region wrapper's aria-label already carries
+          this text, and pendingFocusEmptyZone moves focus into the region
+          whenever the active list flips empty (single/bulk delete, both
+          tabs). A live region on top of that focus move would announce the
+          same sentence twice. Mirrors StreamsPanel.tsx, which uses a bare
+          <p> for the identical reason. */}
+      <p className="text-sm">{emptyMessage}</p>
       <button
         ref={addExampleBtnRef}
         aria-disabled={seeding || undefined}
