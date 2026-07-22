@@ -53,7 +53,12 @@ export function HelpDialog() {
               <Tab id="profiles" className={TAB_CLS}>{m.help_section_profiles()}</Tab>
             </TabList>
             <div className="flex-1 overflow-y-auto px-6 py-4">
-              <TabPanel id="overview"><HelpContent html={getHelpHtml(locale, "overview")} /></TabPanel>
+              <TabPanel id="overview">
+                <div className="mb-6 flex justify-center">
+                  <img src="/logo.svg" alt="Tapir" className="h-24 w-auto" />
+                </div>
+                <HelpContent html={getHelpHtml(locale, "overview")} />
+              </TabPanel>
               <TabPanel id="shortcuts"><ShortcutsHelp /></TabPanel>
               <TabPanel id="recording"><HelpContent html={getHelpHtml(locale, "recording")} /></TabPanel>
               <TabPanel id="wishlist"><HelpContent html={getHelpHtml(locale, "wishlist")} /></TabPanel>
