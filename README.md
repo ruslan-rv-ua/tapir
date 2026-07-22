@@ -1,146 +1,95 @@
 # Tapir
 
+<p align="center">
+  <img src="public/logo.svg" alt="Tapir" width="600">
+</p>
+
 > **Status: Early development — not yet ready for end users.**
 
-A Windows desktop application for recording internet radio streams. Supports ICY/Icecast/SHOUTcast, automatic track splitting, and ID3 tag writing. Portable — runs from a single `.exe` file, no installation required.
+Tapir is a friendly, easy-to-use Windows app for listening to and recording internet radio. Not only can you record your favorite broadcasts, but Tapir also recognizes when a new song starts—automatically splitting the recording into individual tracks with the correct artist and title tags. No installation is required; just download and run!
 
 **Platform:** Windows 11+ · Portable EXE  
 **Screen readers:** NVDA · JAWS · Narrator
 
 ---
 
-## Features
+## What can Tapir do?
 
-### Available now
+- **Listen and Record** — Enter the link to your favorite station and listen live. You can adjust the volume or mute it while it records in the background.
+- **Automatic track splitting** — Tapir automatically "slices" the recording into individual songs and adds the artist and title information based on the radio station's data.
+- **Wishlist & Ignorelist** — Build a list of your favorite artists, and Tapir will let you know when they play on the radio. Or, add keywords to the Ignorelist to stop recording annoying ads or unwanted songs.
+- **Stream Browser** — Find and add new radio stations in a single click using the community-driven Radio Browser directory.
+- **Saved Songs Manager** — All your recorded tracks are kept in one place. You can listen to them, delete them, or edit their information.
+- **Scheduler** — Want to record a Saturday night show? Set a timer, and Tapir will do it automatically—either once or every week.
+- **Profiles** — Create different settings profiles, like "Relax Radio" or "News," and switch between them easily.
+- **System Tray** — Hide the app so it doesn't get in your way. A small tray menu lets you control recording and playback.
+- **Global Hotkeys** — Control music and recordings from your keyboard, even while working in other apps!
 
-- **Record internet radio streams** — supports ICY/Icecast/SHOUTcast (MP3, AAC)
-- **Automatic track splitting** — splits recordings into individual tracks based on stream metadata
-- **ID3 / M4A tags** — automatically written to each recorded file
-- **Live playback** — listen to a stream while recording, with volume control and audio device selection
-- **Wishlist & Ignorelist** — automatically save only the tracks you want
-- **Stream Browser** — search and add stations from the Radio Browser community directory
-- **Saved Songs Manager** — browse, play, and edit tags of your recorded files
-- **System Tray** — minimize to tray, balloon notifications, tray menu
-- **Settings** — recording folder, file naming templates, reconnection policy, global hotkeys, audio output device
-- **Profile Manager** — create, switch, rename, duplicate, delete profiles; import/export `.tapirprofile` files
+### Coming soon
 
-### Planned
-
-| Feature | Status |
-|---------|--------|
-| Scheduler — timed and recurring recordings | Planned |
-| CLI arguments | Planned |
-| Post-processing — run external tools after recording | Planned |
-| High Contrast theme, autostart, log rotation | Planned |
-
----
-
-## Requirements
-
-- Windows 11 (x64)
-- No additional software needed — WebView2 runtime is bundled
+- **Post-processing** — Ability to send recorded files to other apps for further editing.
+- **New settings** — High Contrast theme and run on Windows startup.
 
 ---
 
 ## Getting Started
 
-1. Download `tapir.exe` from the [Releases](../../releases) page *(not yet available — in development)*
-2. Place it in any folder (e.g. `C:\Tools\Tapir\`)
-3. Run `tapir.exe`
+1. Download `tapir.exe` from the [Releases](../../releases) page *(not yet available — in development)*.
+2. Place it in any folder you like (e.g., your Desktop or a USB drive).
+3. Run `tapir.exe`.
 
-All data (settings, profiles, recordings) is stored in a `data\` subfolder next to the executable. The app never writes to `AppData`, the registry, or any system-wide location.
-
----
-
-## Recording a Stream
-
-1. Open the **Streams** section
-2. Use the *Add Stream* button to add a radio station URL
-3. Select the stream in the list and press **Space** or **Enter** to start recording
-3. Recorded files appear in `data\recordings\<Station Name>\` by default
-
-Track splits happen automatically whenever the stream metadata changes — each song becomes a separate file with artist/title tags.
+All your recordings will go into a `recordings\` folder, and your settings will be saved in `data\`. Both folders appear right next to the app. Your system (AppData, registry) stays completely clean!
 
 ---
 
-## Wishlist & Ignorelist
+## How to Listen and Record
 
-### Wishlist — record only the tracks you want
-
-Add patterns to your wishlist and Tapir will alert you (and your screen reader will announce) whenever a matching track starts playing. The track is recorded normally — you don't miss it even if you're not watching.
-
-**Example:** add `Tycho*` to your wishlist → next time the stream plays any Tycho track, your screen reader announces *"Desired track found: Tycho - Dive"*.
-
-### Ignorelist — skip tracks you don't want
-
-Add patterns to the ignorelist and Tapir will not start a new file for those tracks. The previous track finishes cleanly; the unwanted track is simply not recorded.
-
-**Example:** add `*jingle*` → "Station Jingle 3", "Promo Jingle" and similar tracks are silently skipped.
-
-Each stream also has its own per-stream ignorelist (right-click → Edit), useful for station-specific intros, ads, or news breaks.
-
-### Pattern syntax
-
-| Pattern | Matches |
-|---------|---------|
-| `Tycho*` | "Tycho - Dive", "Tycho - Awake", "Tycho Live" |
-| `*jingle*` | "Station Jingle 3", "Intro Jingle", "daily jingle" |
-| `T?cho - *` | "Tycho - Dive", "Ticho - Anything" |
-| `Portishead - Glory Box` | Exactly this track |
-
-- `*` — any number of characters (including none)
-- `?` — exactly one character
-- Matching is **case-insensitive**
-
-### Priority
-
-When a track matches multiple rules, the order is:
-
-1. Per-stream ignorelist — track is skipped
-2. Global ignorelist — track is skipped
-3. Wishlist — track is recorded, screen reader announces
-4. No match — track is recorded normally
+1. Open the **Streams** section.
+2. Click the *Add Stream* button and paste the radio link.
+3. Select the station from the list and press **Space** or **Enter** to start recording or listening.
+4. Find your music in `recordings\<Station Name>\`.
 
 ---
 
-## Keyboard Navigation
+## Keyboard Navigation ⌨
 
-Tapir is fully keyboard-operable.
+Tapir works perfectly without a mouse!
 
 **In-app shortcuts:**
 
 | Action | Shortcut |
 |--------|----------|
-| Activate focused item (start/stop recording, play, etc.) | Space or Enter |
+| Activate focused item (play / record) | Space or Enter |
 | Open settings | Ctrl+, |
 | Command palette | Ctrl+K |
-| Move between UI zones (Activity Bar ↔ Content) | Tab / Shift+Tab |
-| Navigate between sections in Activity Bar | ↑ / ↓ arrows |
-| Close a dialog | Escape |
+| Move between UI zones | Tab / Shift+Tab |
+| Navigate menus on the left | ↑ / ↓ arrows |
+| Close dialog | Escape |
 
-**Global hotkeys** (active system-wide, configurable in Settings → Hotkeys):
+**Global hotkeys** (works anywhere in Windows, change in Settings):
 
 | Action | Default |
 |--------|---------|
-| Toggle recording (active profile) | Ctrl+Shift+R |
-| Toggle playback | Ctrl+Shift+K |
+| Start/Stop recording | Ctrl+Shift+R |
+| Play/Pause radio | Ctrl+Shift+K |
 | Volume up | Ctrl+Alt+↑ |
 | Volume down | Ctrl+Alt+↓ |
 | Show / hide window | Ctrl+Shift+H |
 | Stop all recordings | Ctrl+Shift+S |
-| Previous track / stream | Ctrl+Alt+← |
-| Next track / stream | Ctrl+Alt+→ |
+| Previous track / radio | Ctrl+Alt+← |
+| Next track / radio | Ctrl+Alt+→ |
 
 ---
 
 ## Accessibility
 
-Tapir is tested with NVDA, JAWS, and Windows Narrator. All interactive elements have proper ARIA roles, names, and states. Live regions announce track changes, recording status, and errors. Dialogs implement focus traps, and destructive actions require confirmation.
+Tapir is built from the ground up for NVDA, JAWS, and Windows Narrator. 
+Your screen reader will always announce what button you are on, if recording started, what song is playing, or if an error occurred. It will also ask for confirmation before you delete any music.
 
-If you encounter an accessibility issue, please [open an issue](../../issues).
+We care deeply about making Tapir accessible for everyone! If you find any issues, please [open an issue](../../issues).
 
 ---
 
-## For Developers
+## For Developers & Advanced Users
 
-See [AGENTS.md](AGENTS.md) for architecture overview, build instructions, and coding conventions.
+If you are looking for technical details, such as supported protocols, CLI arguments, advanced Wishlist syntax, or build instructions, please read **[DEVELOPERS.md](DEVELOPERS.md)**.
