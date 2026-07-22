@@ -17,6 +17,7 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
+| [command-palette-taxonomy](p1-command-palette-taxonomy.md) | P1 | idea | draft | S | — | [command-palette-phase-3](p2-command-palette-phase-3.md) |
 | [resume-last-playback](p2-resume-last-playback.md) | P2 | planned | ready | M | [playback-toggle-stop-pause](done/p1-playback-toggle-stop-pause.md) ✅, [resume-file-from-setting](done/p2-resume-file-from-setting.md) ✅, [autostart](done/p2-autostart.md) ✅, [crash-recovery](done/p1-crash-recovery.md) ✅ | — |
 | [log-rotation](p2-log-rotation.md) | P2 | planned | ready | S | — | — |
 | [open-song-with-default-app](p2-open-song-with-default-app.md) | P2 | planned | ready | M | — | — |
@@ -47,6 +48,11 @@ semver; `unscheduled` — наприкінці.
 | [profile-switch-orphaned-tasks](p2-profile-switch-orphaned-tasks.md) | P2 | idea | draft | M | — | **умовний** — брати лише за реальним тригером |
 | [quick-controls-overlay](p3-quick-controls-overlay.md) | P3 | idea | draft | L | — | — |
 | [screen-reader-direct-speech](p3-screen-reader-direct-speech.md) | P3 | idea | **blocked** | S | — | тригер-gated, не планувати |
+| [lastfm-scrobbling](p2-lastfm-scrobbling.md) | P2 | idea | draft | M | — | — |
+| [sleep-timer](p2-sleep-timer.md) | P2 | idea | draft | S | — | — |
+| [recording-stats](p2-recording-stats.md) | P2 | idea | draft | M | — | — |
+| [pause-recording](p2-pause-recording.md) | P2 | idea | draft | M | — | — |
+| [stream-manual-reorder](p2-stream-manual-reorder.md) | P2 | idea | draft | M | — | — |
 
 ---
 
