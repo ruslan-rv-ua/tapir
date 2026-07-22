@@ -20,10 +20,14 @@ semver; `unscheduled` — наприкінці.
 | [resume-last-playback](p2-resume-last-playback.md) | P2 | planned | ready | M | [playback-toggle-stop-pause](done/p1-playback-toggle-stop-pause.md) ✅, [resume-file-from-setting](done/p2-resume-file-from-setting.md) ✅, [autostart](done/p2-autostart.md) ✅, [crash-recovery](done/p1-crash-recovery.md) ✅ | — |
 | [log-rotation](p2-log-rotation.md) | P2 | planned | ready | S | — | — |
 | [open-song-with-default-app](p2-open-song-with-default-app.md) | P2 | planned | ready | M | — | — |
+| [open-stream-with-default-app](p2-open-stream-with-default-app.md) | P2 | planned | ready | S | — | — |
 | [unwrap-in-tests](p3-unwrap-in-tests.md) | P3 | planned | ready | S | — | — (housekeeping, будь-коли) |
 | [wishlist-stale-list-ref](p2-wishlist-stale-list-ref.md) | P2 | research | ready | S | [wishlist-example-patterns](done/p2-wishlist-example-patterns.md) ✅ | — |
 | [import-duplicate-metadata-update](p2-import-duplicate-metadata-update.md) | P2 | idea | draft | S | — | — |
 | [full-edit-stream](p2-full-edit-stream.md) | P2 | planned | draft | M | — | — |
+| [settings-sidebar-tabs](p2-settings-sidebar-tabs.md) | P2 | research | draft | S | — | — |
+| [keyboard-shortcuts-audit](p2-keyboard-shortcuts-audit.md) | P2 | research | draft | M | — | — |
+| [help-content-polish](p2-help-content-polish.md) | P2 | planned | ready | M | — | — |
 
 ## v0.2.0
 
