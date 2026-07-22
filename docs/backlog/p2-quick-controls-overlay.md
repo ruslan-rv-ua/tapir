@@ -1,13 +1,13 @@
 ---
 slug: quick-controls-overlay
 title: "Quick Controls Overlay — швидке меню у фоні"
-priority: P3
+priority: P2
 type: idea
 status: draft
 effort: L
 kind: feature
 target: unscheduled
-updated: 2026-06-15
+updated: 2026-07-22
 a11y: true
 depends_on: []
 blocks: []

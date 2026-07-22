@@ -1,13 +1,13 @@
 ---
 slug: profile-switch-orphaned-tasks
 title: "Баг: orphaned recording tasks при profile switch timeout"
-priority: P2
+priority: P3
 type: idea
 status: draft
 effort: M
 kind: bug
 target: unscheduled
-updated: 2026-06-15
+updated: 2026-07-22
 a11y: true
 depends_on: []
 blocks: []
