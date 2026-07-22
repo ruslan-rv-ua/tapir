@@ -124,7 +124,7 @@ pub async fn add_stream(
         .await
         .map_err(|e| e.to_string())?;
 
-    let stream_name = name.unwrap_or_else(|| resolved_url.clone());
+    let stream_name = name.map(|n| n.trim().to_string()).filter(|n| !n.is_empty()).unwrap_or_else(|| resolved_url.clone());
 
     let new_stream = StreamInfo {
         id: nanoid::nanoid!(),
@@ -245,7 +245,7 @@ pub async fn update_stream(
             .iter_mut()
             .find(|s| s.id == stream_id)
             .ok_or_else(|| format!("Stream {} not found", stream_id))?;
-        stream.name = name;
+        stream.name = name.trim().to_string();
         let updated = stream.clone();
         let snapshot = profile.clone();
         (updated, snapshot)
