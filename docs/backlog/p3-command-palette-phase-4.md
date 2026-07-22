@@ -6,7 +6,7 @@ type: idea
 status: blocked
 effort: M
 kind: feature
-target: 0.3.0
+target: 0.2.0
 updated: 2026-06-15
 a11y: true
 depends_on: [command-palette-phase-3]

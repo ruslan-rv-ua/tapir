@@ -13,7 +13,7 @@ semver; `unscheduled` — наприкінці.
 
 ---
 
-## v0.2.0
+## v0.1.0
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
@@ -25,7 +25,7 @@ semver; `unscheduled` — наприкінці.
 | [import-duplicate-metadata-update](p2-import-duplicate-metadata-update.md) | P2 | idea | draft | S | — | — |
 | [full-edit-stream](p2-full-edit-stream.md) | P2 | planned | draft | M | — | — |
 
-## v0.3.0
+## v0.2.0
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|

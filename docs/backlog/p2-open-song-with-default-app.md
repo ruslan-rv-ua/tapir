@@ -6,7 +6,7 @@ type: planned
 status: ready
 effort: M
 kind: feature
-target: 0.2.0
+target: 0.1.0
 updated: 2026-07-19
 a11y: true
 depends_on: []

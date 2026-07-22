@@ -6,7 +6,7 @@ type: planned
 status: ready
 effort: S
 kind: chore
-target: 0.2.0
+target: 0.1.0
 updated: 2026-06-15
 a11y: false
 depends_on: []

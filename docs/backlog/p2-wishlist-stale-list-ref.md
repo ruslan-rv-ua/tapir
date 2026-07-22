@@ -6,7 +6,7 @@ type: research
 status: ready
 effort: S
 kind: bug
-target: 0.2.0
+target: 0.1.0
 updated: 2026-07-19
 a11y: true
 depends_on: [wishlist-example-patterns]
