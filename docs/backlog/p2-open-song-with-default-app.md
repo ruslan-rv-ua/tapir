@@ -7,7 +7,7 @@ status: ready
 effort: M
 kind: feature
 target: 0.1.0
-updated: 2026-07-19
+updated: 2026-07-22
 a11y: true
 depends_on: []
 blocks: []
@@ -81,24 +81,24 @@ export type SongAction = "play" | "open" | "explorer" | "rename" | "tags" | "del
 
 Шорткати диспетчеризуються в `SongsList.tsx` через колбек `onAction` інфраструктури `CompositeList` (4-й параметр `modifiers`, який зараз ігнорується — паралель до `StationList.tsx:131`). `SongItem` лишиться презентаційним: він лише прокидає `keyshortcuts` у `CompositeRow` (проп існує, див. `StationItem.tsx:125`).
 
-Паралельно до конвенції Streams/Station (Shift = "інша дія прослухання"). Без опції налаштувань "Enter → внутр/зовн" (зайва конфігурабельність без запиту).
+Без опції налаштувань "Enter → внутр/зовн" (зайва конфігурабельність без запиту).
 
 | Комбінація | Дія | Примітка |
 |------------|-----|----------|
 | `Enter` / `Space` | Внутрішній плеєр (`play`) | Поточна поведінка, без змін |
-| `Shift+Enter` | Відкрити у зовнішній програмі (`open`) | Нова команда `open_song_in_app` |
+| `Alt+Enter` | Відкрити у зовнішній програмі (`open`) | Нова команда `open_song_in_app` |
 | `Ctrl+Enter` | Відкрити у провіднику (`explorer`) | **Новий шорткат** — досі explorer був лише через меню |
 
 **Дія на фокусованому рядку, не на виділенні.** Shift/Ctrl+Enter оперують `itemId` фокусованого рядка, тоді як `Delete` діє на множинне виділення — це різні механізми, не плутати.
 
-**Модифікатори лише на Enter (`primary`).** `Space` приходить у `onAction` як `toggle` теж із модифікаторами — їх **ігноруємо**: Space завжди = play, `Shift+Space` не дублює `Shift+Enter` (збігається з aria-анонсом і зі `StationList`, який Space не обробляє взагалі). `Ctrl+Space` до `onAction` не долітає — його перехоплює selection-toggle на рівні `useCompositeList` (`resolveKeyAction`).
+**Модифікатори лише на Enter (`primary`).** `Space` приходить у `onAction` як `toggle` теж із модифікаторами — їх **ігноруємо**: Space завжди = play, `Alt+Space` не дублює `Alt+Enter` (збігається з aria-анонсом і зі `StationList`, який Space не обробляє взагалі). `Ctrl+Space` до `onAction` не долітає — його перехоплює selection-toggle на рівні `useCompositeList` (`resolveKeyAction`).
 
-**aria-keyshortcuts:** на `SongItem` (через `CompositeRow`) оголосити `aria-keyshortcuts="Shift+Enter Control+Enter"` (дзеркало `StationItem.tsx:125`), щоб NVDA виголошував доступні комбінації.
+**aria-keyshortcuts:** на `SongItem` (через `CompositeRow`) оголосити `aria-keyshortcuts="Alt+Enter Control+Enter"` (дзеркало `StationItem.tsx:125`), щоб NVDA виголошував доступні комбінації.
 
-**Обґрунтування семантики модифікаторів** (чому саме так, узгоджено 2026-07-19):
-- Жива конвенція «**Shift = почути**»: у Streams `Shift+Enter` = play/toggle, у Station browser `Shift+Enter` = preview. Відкриття у зовнішньому плеєрі — це теж «інший спосіб послухати», тож воно сідає на Shift без винятків у м'язовій пам'яті.
+**Обґрунтування семантики модифікаторів** (оновлено):
+- `Alt+Enter` — «відкрити інакше»: Alt не перетинається з Shift-конвенцією Streams/Station browser, залишає Shift вільним для майбутньої уніфікації, і є стандартним системним патерном Windows (Alt+Enter = властивості/деталі в Explorer).
 - `Ctrl+Enter` у Streams = record; Songs аналога запису не мають, тож Ctrl вільний і віддається допоміжній навігаційній дії — «показати файл у провіднику».
-- Відкинуто дзеркальний варіант (Shift=explorer, Ctrl=open, «Ctrl = важливіша дія»): він ламає асоціацію Shift↔прослуховування, вже усталену у двох інших списках.
+- Shift+Enter для Songs навмисно не використовується: у Streams `Shift+Enter` = play/toggle, у Station browser `Shift+Enter` = preview — різні семантики, плутанина.
 
 ## Обробка помилок
 
@@ -133,12 +133,12 @@ export type SongAction = "play" | "open" | "explorer" | "rename" | "tags" | "del
 - [ ] `"open"` додано до типу `SongAction`
 - [ ] Клік → файл відкривається у плеєрі за замовчуванням
 - [ ] `SongsList.onAction` опрацьовує 4-й параметр `modifiers` лише для `primary` (паралель до `StationList.tsx:131`); Space (`toggle`) ігнорує модифікатори
-- [ ] Шорткати: `Enter`=play, `Shift+Enter`=open, `Ctrl+Enter`=explorer (на фокусованому рядку)
-- [ ] `aria-keyshortcuts="Shift+Enter Control+Enter"` на `SongItem` (через `CompositeRow`)
+- [ ] Шорткати: `Enter`=play, `Alt+Enter`=open, `Ctrl+Enter`=explorer (на фокусованому рядку)
+- [ ] `aria-keyshortcuts="Alt+Enter Control+Enter"` на `SongItem` (через `CompositeRow`)
 - [ ] При помилці → toast з локалізованим повідомленням (not found / no assoc / generic)
 - [ ] NVDA: пункт меню та шорткати озвучуються коректно; **успішне відкриття зовнішнього плеєра — мануальний NVDA-прогін** (автотесту на реальний запуск немає свідомо)
 - [ ] i18n: ключі `songs_action_open`, `songs_open_failed`, `songs_open_not_found`, `songs_open_no_assoc` (uk/en)
-- [ ] Тест `SongsList.test.tsx`: dispatch `Shift+Enter`/`Ctrl+Enter` + `Shift+Space` не тригерить open (паралель до `StreamList.test.tsx:179-220`)
+- [ ] Тест `SongsList.test.tsx`: dispatch `Alt+Enter`/`Ctrl+Enter` + `Alt+Space` не тригерить open (паралель до `StreamList.test.tsx:179-220`)
 - [ ] Тест `SongsList.test.tsx`: aria-keyshortcuts на рядку (паралель до `StationList.test.tsx:106-109`)
 - [ ] Юніт-тест Rust: `map_shell_error` (2→not_found, 31→no_assoc, інше→generic); реальний запуск НЕ тестуємо — побічний ефект
 
