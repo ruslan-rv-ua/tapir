@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Tapir Logo Preview</title>
+  <style>
+    body { margin: 0; font-family: sans-serif; }
+    .row { display: flex; align-items: center; gap: 16px; padding: 24px; }
+    .label { font-size: 13px; min-width: 180px; }
+    .box { padding: 16px; border-radius: 8px; }
+    .box img { height: 96px; width: auto; max-width: 100%; display: block; }
+    .dark  { background: #1e293b; color: #fff; }
+    .light { background: #f0f0f0; color: #333; }
+    .white { background: #ffffff; color: #333; }
+    .transparent {
+      background-image: repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%);
+      background-size: 20px 20px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="row">
+    <span class="label dark" style="padding:8px;border-radius:4px">Slate-800 (діалог)</span>
+    <div class="box dark"><img src="logo.svg" alt="logo"></div>
+  </div>
+  <div class="row">
+    <span class="label">Білий фон</span>
+    <div class="box white"><img src="logo.svg" alt="logo"></div>
+  </div>
+  <div class="row">
+    <span class="label">Світлий фон</span>
+    <div class="box light"><img src="logo.svg" alt="logo"></div>
+  </div>
+  <div class="row">
+    <span class="label">Прозорий (шахівниця)</span>
+    <div class="box transparent"><img src="logo.svg" alt="logo"></div>
+  </div>
+</body>
+</html>
