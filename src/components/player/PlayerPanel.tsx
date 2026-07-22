@@ -99,7 +99,7 @@ export const PlayerPanel = forwardRef<
   const trackDisplay = source?.type === "stream"
     ? (currentTrack ? `${currentTrack.artist} — ${currentTrack.title}` : "—")
     : "";
-  const bitrateDisplay = currentStream ? formatBitrate(currentStream.bitrate) : "—";
+  const bitrateDisplay = currentStream ? formatBitrate(currentStream.bitrate, currentStream.format) : "—";
   const durationMs = playerStatus.durationMs;
   const hasTrackName = source?.type === 'stream' && !!currentTrack;
   const isStream = source?.type === 'stream';

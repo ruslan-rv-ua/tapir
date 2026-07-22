@@ -7,9 +7,13 @@ export function formatDuration(ms: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-export function formatBitrate(kbps: number | null): string {
-  if (kbps == null) return "—";
-  return `${kbps} kbps`;
+export function formatBitrate(kbps: number | null, format?: "mp3" | "aac" | null): string {
+  const bitrateStr = kbps != null ? `${kbps} kbps` : null;
+  const formatStr = format ? format.toUpperCase() : null;
+  if (bitrateStr && formatStr) return `${bitrateStr} · ${formatStr}`;
+  if (bitrateStr) return bitrateStr;
+  if (formatStr) return formatStr;
+  return "—";
 }
 
 export function formatBytes(bytes: number): string {

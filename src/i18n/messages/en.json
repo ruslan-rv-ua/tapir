@@ -368,7 +368,7 @@
   "segment_track": "Track",
   "segment_track_last": "Last played: {track}",
   "segment_track_none": "Track unknown",
-  "segment_tech": "bitrate",
+  "segment_tech": "codec & bitrate",
   "segment_status_duration": "Recording duration",
   "segment_playing": "Playing",
   "segment_actions": "Actions",

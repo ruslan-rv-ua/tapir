@@ -156,7 +156,7 @@ export function StreamItem({
       : m.segment_track_none();
   const trackTextClass = showAsLastTrack ? "text-slate-500 italic" : "text-slate-400";
 
-  const techValue = formatBitrate(stream.bitrate);
+  const techValue = formatBitrate(stream.bitrate, stream.format);
 
   const retryAttempt = status?.reconnectAttempt ?? null;
   const retryLabel =
@@ -196,7 +196,7 @@ export function StreamItem({
       roleDescription={m.item_role_stream()}
       selected={isSelected}
       className={`grid border-b border-slate-800 forced-colors:border-[ButtonText] ${rowBg} data-[selected=true]:bg-sky-900/40 data-[selected=true]:ring-1 data-[selected=true]:ring-inset data-[selected=true]:ring-sky-400/40 forced-colors:data-[selected=true]:bg-[Highlight] forced-colors:data-[selected=true]:text-[HighlightText]`}
-      style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1.5fr) 90px 90px auto" }}
+      style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1.5fr) 130px 90px auto" }}
       onActivate={onActivate}
     >
       {/* Stream name with inline status slots — visual only; the row's accessible name is on the <li>. */}
