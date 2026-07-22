@@ -371,6 +371,11 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
       // is empty, so focus lands on the first row (summary).
       streamListRef.current?.focus("forward");
     }
+    // loadingExamples is intentionally left true after a successful add (avoids a
+    // flash of the normal button label before the list mounts). But if all streams
+    // are later deleted isEmpty flips back to true and the empty-state zone
+    // re-mounts — reset here so the button is not stuck in the loading state.
+    if (isEmpty) setLoadingExamples(false);
   }, [isEmpty]);
 
   // After a bulk delete empties the visible list, StreamList.onEmpty set a flag;
