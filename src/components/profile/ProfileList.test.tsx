@@ -22,6 +22,7 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   profile_rename: () => "Перейменувати",
   profile_delete: () => "Видалити",
   profile_export: () => "Експортувати",
+  profile_settings: () => "Налаштування профілю…",
   profile_switch_named: ({ name }: { name: string }) => `Перемкнутися на ${name}`,
   profile_duplicate_named: ({ name }: { name: string }) => `Дублювати ${name}`,
   profile_rename_named: ({ name }: { name: string }) => `Перейменувати ${name}`,
@@ -49,16 +50,16 @@ vi.mock("../../lib/tauri", () => ({
 }));
 
 const profiles: ProfileMeta[] = [
-  { name: "Default", streamCount: 2, isActive: true },
-  { name: "Jazz", streamCount: 5, isActive: false },
-  { name: "Rock", streamCount: 3, isActive: false },
+  { name: "Default", streamCount: 2, isActive: true, autoplayOnStartup: false },
+  { name: "Jazz", streamCount: 5, isActive: false, autoplayOnStartup: false },
+  { name: "Rock", streamCount: 3, isActive: false, autoplayOnStartup: false },
 ];
 
 function renderList(activeProfile = "Default", handlers = {}) {
   const ref = createRef<ProfileListHandle>();
   const h = {
     onSwitch: vi.fn(), onDuplicate: vi.fn(), onRename: vi.fn(),
-    onDelete: vi.fn(), onExport: vi.fn(), exitZone: vi.fn(), ...handlers,
+    onDelete: vi.fn(), onExport: vi.fn(), onSettings: vi.fn(), exitZone: vi.fn(), ...handlers,
   };
   const utils = render(
     <ProfileList ref={ref} profiles={profiles} activeProfile={activeProfile} {...h} />,

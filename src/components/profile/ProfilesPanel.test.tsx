@@ -23,6 +23,7 @@ vi.mock("../../lib/tauri", () => ({
   exportProfile: vi.fn(async () => {}),
   renameProfile: vi.fn(async (_old: string, name: string) => ({ name, streamCount: 0, isActive: false })),
   duplicateProfile: vi.fn(async (_src: string, name: string) => ({ name, streamCount: 0, isActive: false })),
+  setProfileAutoplay: vi.fn(async () => {}),
   getActiveScheduled: vi.fn(async () => []),
 }));
 
@@ -43,6 +44,12 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   profile_delete: () => "Delete",
   profile_duplicate: () => "Duplicate",
   profile_export: () => "Export",
+  profile_settings: () => "Profile settings…",
+  profile_settings_title: ({ name }: { name: string }) => `Profile settings: ${name}`,
+  profile_settings_named: ({ name }: { name: string }) => `Settings for ${name}`,
+  profile_autoplay_label: () => "Resume last playback on startup",
+  profile_autoplay_hint: () => "Sound plays over NVDA speech.",
+  profile_settings_saved: ({ name }: { name: string }) => `Settings saved: ${name}`,
   profile_import: () => "Import",
   profile_create: () => "New profile",
   profile_new_name_label: () => "New name",
@@ -226,5 +233,18 @@ describe("ProfilesPanel — selection cluster", () => {
     await user.click(screen.getByRole("button", { name: "Select all" }));
     await user.click(screen.getByRole("button", { name: "Delete selected (2)" }));
     await screen.findByText(m.confirm_delete_selected_profiles({ count: 2 }));
+  });
+
+  it("opens Profile settings from the context menu and saves the toggled autoplay value", async () => {
+    const user = userEvent.setup();
+    renderPanel();
+    await screen.findByText("Jazz");
+    await user.click(screen.getByRole("button", { name: "Actions for Jazz" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Profile settings…" }));
+    const checkbox = await screen.findByRole("checkbox", { name: /Resume last playback/ });
+    expect(checkbox).not.toBeChecked();
+    await user.click(checkbox);
+    await user.click(screen.getByRole("button", { name: /^OK$/ }));
+    await waitFor(() => expect(tauri.setProfileAutoplay).toHaveBeenCalledWith("Jazz", true));
   });
 });

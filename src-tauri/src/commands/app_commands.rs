@@ -13,11 +13,36 @@ pub async fn frontend_ready(
 ) -> Result<(), String> {
     state.scheduler.start(app.clone());
 
+    // Capture whether the startup CLI plan explicitly drives playback BEFORE the
+    // plan is drained — an explicit --play/--stop-playback overrides the saved
+    // autoplay policy (below), so we must know it before deciding to autoplay.
+    let mut cli_controls_playback = false;
     if let Some(startup) = app.try_state::<crate::cli::StartupPlan>() {
         if let Some(plan) = startup.take() {
+            cli_controls_playback = crate::cli::plan_controls_playback(&plan.actions);
             let app = app.clone();
             tauri::async_runtime::spawn(async move {
                 crate::cli::execute(&app, plan).await;
+            });
+        }
+    }
+
+    // Startup autoplay (resume-last-playback): reuse `resume_last` — the same path
+    // Ctrl+Shift+K drives (stream reconnect / file resume + `player-announce`).
+    // Deferred here (not `lib.rs` setup) so announces land after the webview
+    // subscribes and the ≤15 s blocking connect never hangs setup. `take()` gates
+    // it to one attempt per launch (a webview reload calls `frontend_ready`
+    // again); it is consumed even when the CLI cancels autoplay, so a later reload
+    // cannot revive it.
+    if let Some(guard) = app.try_state::<crate::playback_control::AutoplayGuard>()
+        && guard.take()
+        && !cli_controls_playback
+    {
+        let should_autoplay = state.active_profile.read().await.player_session.autoplay_on_startup;
+        if should_autoplay {
+            let app = app.clone();
+            tauri::async_runtime::spawn(async move {
+                crate::playback_control::resume_last(&app).await;
             });
         }
     }

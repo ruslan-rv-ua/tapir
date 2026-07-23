@@ -224,10 +224,33 @@ pub async fn toggle_playback(app: &AppHandle) {
     }
 }
 
+/// One-shot latch so startup autoplay fires at most once per app launch.
+/// `frontend_ready` is idempotent (a webview reload calls it again); without this
+/// a reload after a manual stop would restart playback. Held as managed state,
+/// like `StartupNotice`.
+pub struct AutoplayGuard(std::sync::atomic::AtomicBool);
+
+impl Default for AutoplayGuard {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl AutoplayGuard {
+    pub fn new() -> Self {
+        Self(std::sync::atomic::AtomicBool::new(true))
+    }
+    /// Returns `true` exactly once — on the first call — and `false` thereafter.
+    pub fn take(&self) -> bool {
+        self.0.swap(false, std::sync::atomic::Ordering::SeqCst)
+    }
+}
+
 /// Cold-start: resume the newest saved source (impl "найновіше джерело" —
 /// `last_active` is the single marker). Stale target → announce + clear;
-/// dangling/empty → silent + clear.
-async fn resume_last(app: &AppHandle) {
+/// dangling/empty → silent + clear. `pub(crate)` so `frontend_ready` can drive
+/// the same resume path used by Ctrl+Shift+K.
+pub(crate) async fn resume_last(app: &AppHandle) {
     let state = app.state::<AppState>();
 
     // Read everything needed under one short read-lock.
@@ -330,6 +353,14 @@ mod tests {
             position_ms,
             duration_ms: None,
         }
+    }
+
+    #[test]
+    fn autoplay_guard_fires_exactly_once() {
+        let g = AutoplayGuard::new();
+        assert!(g.take(), "first take arms autoplay");
+        assert!(!g.take(), "reload must not re-fire autoplay");
+        assert!(!g.take());
     }
 
     #[test]

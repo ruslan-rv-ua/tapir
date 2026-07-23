@@ -16,6 +16,7 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   profile_rename: () => "Перейменувати",
   profile_delete: () => "Видалити",
   profile_export: () => "Експортувати",
+  profile_settings: () => "Налаштування профілю…",
   profile_switch_named: ({ name }: { name: string }) => `Перемкнутися на ${name}`,
   profile_duplicate_named: ({ name }: { name: string }) => `Дублювати ${name}`,
   profile_rename_named: ({ name }: { name: string }) => `Перейменувати ${name}`,
@@ -29,7 +30,7 @@ vi.mock("../../i18n/paraglide/messages", () => ({
 }));
 
 const mk = (over: Partial<ProfileMeta> = {}): ProfileMeta => ({
-  name: "Jazz", streamCount: 5, isActive: false, ...over,
+  name: "Jazz", streamCount: 5, isActive: false, autoplayOnStartup: false, ...over,
 });
 
 function renderItem(
@@ -40,7 +41,7 @@ function renderItem(
 ) {
   const h = {
     onSwitch: vi.fn(), onDuplicate: vi.fn(), onRename: vi.fn(),
-    onDelete: vi.fn(), onExport: vi.fn(), ...handlers,
+    onDelete: vi.fn(), onExport: vi.fn(), onSettings: vi.fn(), ...handlers,
   };
   const utils = render(
     <ul>

@@ -32,10 +32,11 @@ interface Props {
   onRename: (name: string) => void;
   onDelete: (name: string) => void;
   onExport: (name: string) => void;
+  onSettings: (name: string) => void;
 }
 
 export const ProfileList = forwardRef<ProfileListHandle, Props>(function ProfileList(
-  { profiles, activeProfile, exitZone, onSwitch, onDuplicate, onRename, onDelete, onExport },
+  { profiles, activeProfile, exitZone, onSwitch, onDuplicate, onRename, onDelete, onExport, onSettings },
   ref,
 ) {
   const selectedSet = useStore($profilesSelection);
@@ -145,6 +146,7 @@ export const ProfileList = forwardRef<ProfileListHandle, Props>(function Profile
                 else { replaceSelection($profilesSelection, new Set([name])); onDelete(name); }
               }}
               onExport={onExport}
+              onSettings={onSettings}
             />
           );
         }}

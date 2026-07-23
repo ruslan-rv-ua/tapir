@@ -19,6 +19,7 @@ pub async fn create_profile(name: String) -> Result<ProfileMeta, String> {
         name: p.name,
         stream_count: p.streams.len(),
         is_active: false,
+        autoplay_on_startup: p.player_session.autoplay_on_startup,
     }).map_err(|e| e.to_string())
 }
 
@@ -96,6 +97,45 @@ pub async fn begin_import(app: AppHandle) -> Result<Option<ImportPreview>, Strin
 #[tauri::command]
 pub async fn commit_import(profile_json: String, name: String) -> Result<ProfileMeta, String> {
     Profile::save_imported(&profile_json, &name).map_err(|e| e.to_string())
+}
+
+/// Set the per-profile autoplay-on-startup policy (resume-last-playback).
+#[tauri::command]
+pub async fn set_profile_autoplay(
+    name: String,
+    enabled: bool,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let active_name = {
+        let profile = state.active_profile.read().await;
+        profile.name.clone()
+    };
+
+    if name == active_name {
+        // Active profile: mutate the in-memory source of truth, then persist a
+        // clone off-thread (the `persist_session_snapshot` pattern). Loading from
+        // disk and saving would clobber fresher in-memory state written since the
+        // last save (resume fields, volume).
+        let snapshot = {
+            let mut profile = state.active_profile.write().await;
+            profile.player_session.autoplay_on_startup = enabled;
+            profile.clone()
+        };
+        tokio::task::spawn_blocking(move || snapshot.save())
+            .await
+            .map_err(|e| e.to_string())?
+            .map_err(|e| e.to_string())
+    } else {
+        // Inactive profile: load → modify → save, off the async executor.
+        tokio::task::spawn_blocking(move || {
+            let mut profile = Profile::load(&name)?;
+            profile.player_session.autoplay_on_startup = enabled;
+            profile.save()
+        })
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+    }
 }
 
 #[derive(Clone, serde::Serialize)]

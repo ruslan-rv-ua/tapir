@@ -7,6 +7,7 @@ import { $settings } from "../../stores/settings";
 import { ProfileList, type ProfileListHandle } from "./ProfileList";
 import { SelectionToolbar } from "../common/SelectionToolbar";
 import { ProfileNameDialog } from "./ProfileNameDialog";
+import { ProfileSettingsDialog } from "./ProfileSettingsDialog";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { ListCard } from "../common/ListCard";
 import { ScreenZone } from "../layout/ScreenZone";
@@ -26,6 +27,7 @@ type SubDialog =
   | { type: "rename" }
   | { type: "duplicate" }
   | { type: "delete" }
+  | { type: "settings" }
   | { type: "switch-confirm" }
   | { type: "switch-confirm-scheduled"; active: ActiveScheduled[] }
   | { type: "import"; preview: ImportPreview };
@@ -163,6 +165,17 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
     } catch (e) { addToast(String(e), "error"); } finally { setBusy(false); }
   };
 
+  const handleSaveSettings = async (enabled: boolean) => {
+    setBusy(true);
+    try {
+      await tauri.setProfileAutoplay(target, enabled);
+      await refreshList();
+      announce(m.profile_settings_saved({ name: target }));
+      setSubDialog(null);
+      refocusProfile(target);
+    } catch (e) { addToast(String(e), "error"); } finally { setBusy(false); }
+  };
+
   const handleExport = async (name: string) => {
     setBusy(true);
     try {
@@ -296,6 +309,7 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
           onRename={(name) => { setTarget(name); setNameInput(name); setNameError(null); setSubDialog({ type: "rename" }); }}
           onDelete={(name) => { setTarget(name); setSubDialog({ type: "delete" }); }}
           onExport={handleExport}
+          onSettings={(name) => { setTarget(name); setSubDialog({ type: "settings" }); }}
         />
       </ListCard>
 
@@ -330,6 +344,17 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
           message={m.profile_delete_confirm({ name: target })}
           confirmLabel={m.profile_delete()}
           onConfirm={handleDelete}
+          onCancel={() => setSubDialog(null)}
+        />,
+        document.body,
+      )}
+
+      {subDialog?.type === "settings" && createPortal(
+        <ProfileSettingsDialog
+          name={target}
+          initialEnabled={profiles.find((p) => p.name === target)?.autoplayOnStartup ?? false}
+          busy={busy}
+          onConfirm={handleSaveSettings}
           onCancel={() => setSubDialog(null)}
         />,
         document.body,

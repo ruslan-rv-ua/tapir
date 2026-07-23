@@ -256,6 +256,10 @@ pub struct PlayerSession {
     pub last_file_position: Option<FilePosition>,
     #[serde(default)]
     pub last_active: Option<LastActive>,
+    /// Per-profile policy: on the next app startup, resume whatever was last
+    /// playing in this profile. Opt-in; legacy JSON without the field is `false`.
+    #[serde(default)]
+    pub autoplay_on_startup: bool,
 }
 
 fn default_volume() -> f32 { 0.75 }
@@ -268,7 +272,23 @@ impl Default for PlayerSession {
             last_stream_id: None,
             last_file_position: None,
             last_active: None,
+            autoplay_on_startup: false,
         }
+    }
+}
+
+impl PlayerSession {
+    /// Reset the fields that must not travel to a duplicate or an export: the
+    /// per-profile autoplay policy and the whole resume triple (what/where
+    /// playback last was). The resume triple is cleared in full — leaving only
+    /// `last_file_position` would strand a dangling `last_active` discriminator,
+    /// and the absolute file path is both a privacy leak and stale on another
+    /// machine. `volume` is intentionally preserved.
+    pub fn reset_for_share(&mut self) {
+        self.autoplay_on_startup = false;
+        self.last_active = None;
+        self.last_stream_id = None;
+        self.last_file_position = None;
     }
 }
 
@@ -324,6 +344,9 @@ pub struct ProfileMeta {
     pub name: String,
     pub stream_count: usize,
     pub is_active: bool,
+    /// Mirror of `player_session.autoplay_on_startup` so the profile-settings
+    /// dialog shows the current value without a second round-trip.
+    pub autoplay_on_startup: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -432,6 +455,7 @@ impl Profile {
                 name: "Default".to_string(),
                 stream_count: 0,
                 is_active: active == "Default",
+                autoplay_on_startup: false,
             }]);
         }
         let mut metas: Vec<ProfileMeta> = std::fs::read_dir(&dir)?
@@ -450,6 +474,7 @@ impl Profile {
                                 name: name.clone(),
                                 stream_count: p.streams.len(),
                                 is_active: name == active,
+                                autoplay_on_startup: p.player_session.autoplay_on_startup,
                             }),
                             Err(e) => {
                                 log::warn!("Skipping corrupt profile '{name}': {e}");
@@ -507,6 +532,8 @@ impl Profile {
             name: new_name.to_string(),
             stream_count: profile.streams.len(),
             is_active: false, // caller must check
+            // Rename is the same profile under a new name — policy is preserved.
+            autoplay_on_startup: profile.player_session.autoplay_on_startup,
         })
     }
 
@@ -527,11 +554,16 @@ impl Profile {
         validate_profile_name(new_name, &existing)?;
         let mut profile = Self::load(src_name)?;
         profile.name = new_name.to_string();
+        // A duplicate is a fresh start: it must not inherit the source's autoplay
+        // policy nor its last-playback record (which would make the copy "resume"
+        // someone else's session). Volume carries over.
+        profile.player_session.reset_for_share();
         profile.save()?;
         Ok(ProfileMeta {
             name: new_name.to_string(),
             stream_count: profile.streams.len(),
             is_active: false,
+            autoplay_on_startup: false,
         })
     }
 
@@ -541,6 +573,10 @@ impl Profile {
         for stream in &mut copy.streams {
             stream.password = None;
         }
+        // Strip the autoplay policy and the whole resume triple: the record is
+        // machine-local (absolute file path — privacy + staleness) and importing
+        // someone else's "resume this" is never desired.
+        copy.player_session.reset_for_share();
         serde_json::to_string_pretty(&copy).unwrap_or_default()
     }
 
@@ -573,12 +609,16 @@ impl Profile {
         for stream in &mut profile.streams {
             stream.password = None;
         }
+        // Defense-in-depth: even a hand-crafted import file cannot smuggle in an
+        // enabled autoplay policy (export already strips it).
+        profile.player_session.autoplay_on_startup = false;
         profile.name = name.to_string();
         profile.save()?;
         Ok(ProfileMeta {
             name: name.to_string(),
             stream_count: profile.streams.len(),
             is_active: false,
+            autoplay_on_startup: false,
         })
     }
 
@@ -595,7 +635,7 @@ mod tests {
 
     #[test]
     fn profile_meta_serializes() {
-        let m = ProfileMeta { name: "Test".into(), stream_count: 3, is_active: true };
+        let m = ProfileMeta { name: "Test".into(), stream_count: 3, is_active: true, autoplay_on_startup: false };
         let json = serde_json::to_string(&m).unwrap();
         assert!(json.contains("\"streamCount\":3"));
         assert!(json.contains("\"isActive\":true"));
@@ -624,6 +664,58 @@ mod tests {
     fn validate_name_rejects_too_long() {
         let long = "a".repeat(65);
         assert!(validate_profile_name(&long, &[]).is_err());
+    }
+
+    #[test]
+    fn player_session_autoplay_defaults_to_false() {
+        // Legacy profile JSON without the field must deserialize to opt-out.
+        let s: PlayerSession = serde_json::from_str("{}").unwrap();
+        assert!(!s.autoplay_on_startup);
+    }
+
+    #[test]
+    fn reset_for_share_clears_autoplay_and_resume_keeps_volume() {
+        let mut s = PlayerSession {
+            volume: 0.42,
+            last_stream_id: Some("s1".into()),
+            last_file_position: Some(FilePosition { path: "a.mp3".into(), position_ms: 5 }),
+            last_active: Some(LastActive::File),
+            autoplay_on_startup: true,
+        };
+        s.reset_for_share();
+        assert!(!s.autoplay_on_startup);
+        assert!(s.last_active.is_none());
+        assert!(s.last_stream_id.is_none());
+        assert!(s.last_file_position.is_none());
+        assert_eq!(s.volume, 0.42, "volume must survive a share/duplicate");
+    }
+
+    #[test]
+    fn export_strips_autoplay_and_full_resume_triple() {
+        let mut p = Profile::create_default();
+        p.player_session.autoplay_on_startup = true;
+        p.player_session.last_active = Some(LastActive::Stream);
+        p.player_session.last_stream_id = Some("s1".into());
+        p.player_session.last_file_position =
+            Some(FilePosition { path: "C:/secret/a.mp3".into(), position_ms: 5 });
+        let json = p.export_json_str();
+        let back: Profile = serde_json::from_str(&json).unwrap();
+        assert!(!back.player_session.autoplay_on_startup);
+        assert!(back.player_session.last_active.is_none());
+        assert!(back.player_session.last_stream_id.is_none());
+        assert!(back.player_session.last_file_position.is_none());
+    }
+
+    #[test]
+    fn profile_meta_serializes_autoplay_camel_case() {
+        let m = ProfileMeta {
+            name: "Test".into(),
+            stream_count: 1,
+            is_active: false,
+            autoplay_on_startup: true,
+        };
+        let json = serde_json::to_string(&m).unwrap();
+        assert!(json.contains("\"autoplayOnStartup\":true"), "got: {json}");
     }
 
     #[test]
@@ -674,9 +766,9 @@ mod tests {
     fn list_sort_puts_default_first() {
         // Test the sort algorithm used by Profile::list()
         let mut metas = vec![
-            ProfileMeta { name: "Zebra".into(), stream_count: 0, is_active: false },
-            ProfileMeta { name: "Default".into(), stream_count: 0, is_active: true },
-            ProfileMeta { name: "Alpha".into(), stream_count: 0, is_active: false },
+            ProfileMeta { name: "Zebra".into(), stream_count: 0, is_active: false, autoplay_on_startup: false },
+            ProfileMeta { name: "Default".into(), stream_count: 0, is_active: true, autoplay_on_startup: false },
+            ProfileMeta { name: "Alpha".into(), stream_count: 0, is_active: false, autoplay_on_startup: false },
         ];
         metas.sort_by(|a, b| {
             if a.name == "Default" { return std::cmp::Ordering::Less; }

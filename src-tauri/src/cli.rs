@@ -138,6 +138,16 @@ pub fn plan(cli: Cli, ctx: CliContext) -> Plan {
     Plan { actions, ignored }
 }
 
+/// True if the startup plan explicitly drives playback (`--play` or
+/// `--stop-playback`). Such an explicit command overrides the saved per-profile
+/// autoplay policy, so startup autoplay is skipped entirely — no double start,
+/// no race. `--record` and other actions leave autoplay untouched.
+pub fn plan_controls_playback(actions: &[Action]) -> bool {
+    actions
+        .iter()
+        .any(|a| matches!(a, Action::Play(_) | Action::StopPlayback))
+}
+
 /// Pure: resolve a needle to a stream by exact `name`, else exact `url`.
 /// Name takes priority over url.
 pub fn find_stream<'a>(streams: &'a [StreamInfo], needle: &str) -> Option<&'a StreamInfo> {
@@ -328,6 +338,21 @@ mod tests {
             .chain(args.iter().copied())
             .map(String::from)
             .collect()
+    }
+
+    #[test]
+    fn plan_controls_playback_detects_play_and_stop() {
+        assert!(plan_controls_playback(&[Action::Play("x".into())]));
+        assert!(plan_controls_playback(&[Action::StopPlayback]));
+        assert!(plan_controls_playback(&[Action::Record("x".into()), Action::StopPlayback]));
+    }
+
+    #[test]
+    fn plan_controls_playback_ignores_record_and_wishlist() {
+        assert!(!plan_controls_playback(&[Action::Record("x".into())]));
+        assert!(!plan_controls_playback(&[Action::WishAdd("p".into())]));
+        assert!(!plan_controls_playback(&[Action::StopRecording]));
+        assert!(!plan_controls_playback(&[]));
     }
 
     #[test]

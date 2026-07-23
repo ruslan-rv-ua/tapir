@@ -11,16 +11,17 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   profile_rename: () => "Перейменувати",
   profile_delete: () => "Видалити",
   profile_export: () => "Експортувати",
+  profile_settings: () => "Налаштування профілю…",
 }));
 
 const mk = (over: Partial<ProfileMeta> = {}): ProfileMeta => ({
-  name: "Jazz", streamCount: 5, isActive: false, ...over,
+  name: "Jazz", streamCount: 5, isActive: false, autoplayOnStartup: false, ...over,
 });
 
 function renderMenu(profile: ProfileMeta, isActive: boolean, isDefault: boolean) {
   const h = {
     onSwitch: vi.fn(), onDuplicate: vi.fn(), onRename: vi.fn(),
-    onDelete: vi.fn(), onExport: vi.fn(),
+    onDelete: vi.fn(), onExport: vi.fn(), onSettings: vi.fn(),
   };
   const utils = render(
     <ProfileContextMenu profile={profile} isActive={isActive} isDefault={isDefault} menuFocused selectionCount={0} {...h} />,
@@ -36,13 +37,20 @@ describe("ProfileContextMenu", () => {
     expect(trigger.hasAttribute("data-context-menu-trigger")).toBe(true);
   });
 
-  it("opens to show all five actions; clicking one calls its handler", async () => {
+  it("opens to show all six actions; clicking one calls its handler", async () => {
     const { container, onRename } = renderMenu(mk(), false, false);
     fireEvent.click(container.querySelector('button[data-segment="action-menu"]')!);
     const items = await screen.findAllByRole("menuitem");
-    expect(items).toHaveLength(5);
+    expect(items).toHaveLength(6);
     fireEvent.click(screen.getByRole("menuitem", { name: "Перейменувати" }));
     expect(onRename).toHaveBeenCalled();
+  });
+
+  it("invokes onSettings from the settings item", async () => {
+    const { container, onSettings } = renderMenu(mk(), false, false);
+    fireEvent.click(container.querySelector('button[data-segment="action-menu"]')!);
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Налаштування профілю…" }));
+    expect(onSettings).toHaveBeenCalled();
   });
 
   it("disables switch on the active profile", async () => {

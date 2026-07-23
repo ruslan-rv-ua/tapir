@@ -1,6 +1,6 @@
 import type React from "react";
 import { Menu, MenuItem, MenuTrigger, Popover, Button, Separator } from "react-aria-components";
-import { ArrowRightLeft, Copy, Pencil, Trash2, Upload } from "lucide-react";
+import { ArrowRightLeft, Copy, Pencil, Settings, Trash2, Upload } from "lucide-react";
 import type { ProfileMeta } from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 
@@ -16,11 +16,12 @@ interface Props {
   onRename: () => void;
   onDelete: () => void;
   onExport: () => void;
+  onSettings: () => void;
 }
 
 export function ProfileContextMenu({
   profile, isActive, isDefault, menuFocused, selectionCount,
-  onSwitch, onDuplicate, onRename, onDelete, onExport,
+  onSwitch, onDuplicate, onRename, onDelete, onExport, onSettings,
 }: Props) {
   const handleAction = (key: React.Key) => {
     switch (key) {
@@ -29,6 +30,7 @@ export function ProfileContextMenu({
       case "rename": onRename(); break;
       case "delete": onDelete(); break;
       case "export": onExport(); break;
+      case "settings": onSettings(); break;
     }
   };
 
@@ -66,6 +68,9 @@ export function ProfileContextMenu({
           </MenuItem>
           <MenuItem id="delete" isDisabled={isDefault || isActive} className={`${itemClass} text-red-400 forced-colors:text-[CanvasText]`}>
             <span aria-hidden="true" className="mr-2 inline-flex"><Trash2 size={14} /></span>{selectionCount > 0 ? m.delete_selected({ count: selectionCount }) : m.profile_delete()}
+          </MenuItem>
+          <MenuItem id="settings" className={itemClass}>
+            <span aria-hidden="true" className="mr-2 inline-flex"><Settings size={14} /></span>{m.profile_settings()}
           </MenuItem>
           <Separator className="my-1 border-t border-slate-700" />
           <MenuItem id="export" className={itemClass}>

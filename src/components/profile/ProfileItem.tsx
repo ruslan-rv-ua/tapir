@@ -62,6 +62,7 @@ interface Props {
   onRename: (name: string) => void;
   onDelete: (name: string) => void;
   onExport: (name: string) => void;
+  onSettings: (name: string) => void;
 }
 
 export function ProfileItem({
@@ -76,6 +77,7 @@ export function ProfileItem({
   onRename,
   onDelete,
   onExport,
+  onSettings,
 }: Props) {
   const isActive = profile.name === activeProfile;
   const isDefault = profile.name === "Default";
@@ -168,6 +170,7 @@ export function ProfileItem({
           onRename={() => onRename(profile.name)}
           onDelete={() => onDelete(profile.name)}
           onExport={() => onExport(profile.name)}
+          onSettings={() => onSettings(profile.name)}
         />
       </div>
     </CompositeRow>

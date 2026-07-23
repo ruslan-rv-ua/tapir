@@ -219,6 +219,10 @@ pub fn run() {
             let startup_plan = cli::plan(cli, cli::CliContext::Startup);
             app.manage(cli::StartupPlan::new(startup_plan));
 
+            // Startup autoplay one-shot latch (resume-last-playback). Drained in
+            // frontend_ready; managed unconditionally so the gate always exists.
+            app.manage(playback_control::AutoplayGuard::new());
+
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -321,6 +325,7 @@ pub fn run() {
             commands::profile_commands::begin_import,
             commands::profile_commands::commit_import,
             commands::profile_commands::switch_profile,
+            commands::profile_commands::set_profile_autoplay,
             commands::stream_io_commands::begin_stream_import,
             commands::stream_io_commands::validate_import_candidates,
             commands::stream_io_commands::probe_stream,

@@ -516,6 +516,8 @@ export interface ProfileMeta {
   name: string;
   streamCount: number;
   isActive: boolean;
+  /** Per-profile policy: resume last playback on next app startup. */
+  autoplayOnStartup: boolean;
 }
 
 export interface ImportPreview {
@@ -629,6 +631,7 @@ export interface Profile {
     volume: number;
     lastStreamId: string | null;
     lastFilePosition: { path: string; positionMs: number } | null;
+    autoplayOnStartup: boolean;
   };
   savedTracks: unknown[];
 }
@@ -659,6 +662,9 @@ export async function deleteProfiles(names: string[]): Promise<{ deleted: string
 }
 export async function duplicateProfile(sourceName: string, newName: string): Promise<ProfileMeta> {
   return invoke("duplicate_profile", { sourceName, newName });
+}
+export async function setProfileAutoplay(name: string, enabled: boolean): Promise<void> {
+  return invoke("set_profile_autoplay", { name, enabled });
 }
 export async function exportProfile(name: string): Promise<void> {
   return invoke("export_profile", { name });

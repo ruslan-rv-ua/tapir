@@ -267,7 +267,8 @@ pub struct HotkeyMap {
     "volume": 0.75,
     "lastActive": null,
     "lastStreamId": null,
-    "lastFilePosition": null
+    "lastFilePosition": null,
+    "autoplayOnStartup": false
   },
 
   // Збережені треки (lightweight metadata, не файли)
@@ -634,8 +635,11 @@ pub struct SavedTrack {
 ### 3.7. PlayerSession
 
 Зберігається у профілі (`data/profiles/<name>.tapirprofile`, поле
-`playerSession`), **не** у `settings.json`. При дублюванні профілю поле
-скидається (не копіюється).
+`playerSession`), **не** у `settings.json`. При дублюванні профілю resume-поля
+(`lastActive`/`lastStreamId`/`lastFilePosition`) та `autoplayOnStartup`
+скидаються (не копіюються); `volume` переноситься. На експорті ті самі поля
+стрипаються (приватність + машинно-локальний абсолютний шлях), на імпорті
+`autoplayOnStartup` клампиться в `false`.
 
 ```typescript
 interface PlayerSession {
@@ -655,6 +659,10 @@ interface PlayerSession {
     path: string;
     positionMs: number;
   };
+
+  // Per-profile політика: при наступному запуску застосунку відновити останнє
+  // відтворення (resume_last). Opt-in; відсутнє поле = false (зворотна сумісність).
+  autoplayOnStartup: boolean;
 }
 ```
 
@@ -667,6 +675,8 @@ pub struct PlayerSession {
     pub last_active: Option<LastActive>,
     pub last_stream_id: Option<String>,
     pub last_file_position: Option<FilePosition>,
+    /// Per-profile autoplay-on-startup (resume-last-playback). `#[serde(default)]` = false.
+    pub autoplay_on_startup: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -1091,7 +1101,8 @@ interface PostprocessErrorPayload {
     "volume": 0.75,
     "lastActive": null,
     "lastStreamId": null,
-    "lastFilePosition": null
+    "lastFilePosition": null,
+    "autoplayOnStartup": false
   },
   "savedTracks": []
 }
