@@ -35,7 +35,7 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [command-palette-phase-3](p2-command-palette-phase-3.md) | P2 | idea | draft | M | — | [command-palette-phase-4](p3-command-palette-phase-4.md) |
+| [command-palette-phase-3](p2-command-palette-phase-3.md) | P2 | planned | ready | S | — | [command-palette-phase-4](p3-command-palette-phase-4.md) |
 | [command-palette-phase-4](p3-command-palette-phase-4.md) | P3 | idea | **blocked** | M | [command-palette-phase-3](p2-command-palette-phase-3.md) | — |
 
 ## unscheduled
