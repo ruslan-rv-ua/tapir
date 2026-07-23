@@ -7,9 +7,9 @@ status: draft
 effort: M
 kind: feature
 target: 0.2.0
-updated: 2026-06-15
+updated: 2026-07-23
 a11y: true
-depends_on: [command-palette-taxonomy]
+depends_on: []
 blocks: [command-palette-phase-4]
 touches: [src/components/common/CommandPalette.tsx, src/stores/navigation.ts, src/stores/streams.ts]
 gates: [pnpm test, pnpm vite:build]
@@ -42,8 +42,11 @@ depends_on_external: ["Phase 3C (Saved Songs Manager, вже завершено)
 
 #### 1. Станції (потоки поточного профілю)
 
-> **Оновлено 2026-07-22** відповідно до рішень у `command-palette-taxonomy`:
-> per-stream пункти змінені з «Відтворити/Записати: <назва>» на пункти-навігатори.
+> **Розчеплено 2026-07-23:** `command-palette-taxonomy` більше **не** блокує цю фазу.
+> Форма пунктів-станцій нижче (пункт-навігатор замість дії) — **провізорна**, взята з тієї
+> спірної ідеї й **не остаточна**. Якщо phase-3 реалізується раніше за рішення по taxonomy —
+> будувати на **поточній** моделі (per-stream «Записати/Зупинити»), а міграцію на
+> пункти-навігацію лишити на taxonomy. Ядро цієї фази (пісні + навігація) від форми не залежить.
 
 Джерело: стор `$streams`.
 
@@ -55,8 +58,10 @@ depends_on_external: ["Phase 3C (Saved Songs Manager, вже завершено)
 
 Пошук: по `name` (не по URL, не по sublabel).
 
-> **Прибрано:** per-stream «Відтворити: <назва>» / «Записати: <назва>» як окремі дії.
-> Загальні дії «Записати все» / «Зупинити все» залишаються у категорії `control`.
+> **Провізорно (за taxonomy):** прибрати per-stream «Відтворити/Записати: <назва>» як окремі
+> дії. Це залежить від рішення по [command-palette-taxonomy](p2-command-palette-taxonomy.md)
+> (перевідкрите питання) — доки воно не закрите, per-stream дії лишаються.
+> Загальні «Записати все» / «Зупинити все» залишаються незалежно.
 
 Пошук: fuzzy по `name`. Підказка (`sublabel`): категорія (`palette_kind_stream`).
 
@@ -96,6 +101,10 @@ NVDA navigates by Tab order; deep pages require many keystrokes to reach an item
 ## Критерії готовності
 
 ### Станції
+> _Провізорно — застосовне лише якщо рішення по [command-palette-taxonomy](p2-command-palette-taxonomy.md)
+> ухвалено «за». Інакше станції лишаються в поточній моделі (per-stream «Записати/Зупинити»),
+> а ця фаза додає тільки пісні + навігацію._
+
 - [ ] У результатах палітри є пункт-потік для кожного потоку профілю: `label = stream.name`, `sublabel = "потік"`, `kind = "stream"`
 - [ ] Пошуковий рядок фільтрує пункти-потоки тільки по `name`
 - [ ] Активація пункту-потоку → закрити палітру + перейти в секцію Потоки + фокус на рядку

@@ -17,7 +17,7 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [command-palette-taxonomy](p1-command-palette-taxonomy.md) | P1 | idea | draft | S | — | [command-palette-phase-3](p2-command-palette-phase-3.md) |
+| [command-palette-results-a11y](p1-command-palette-results-a11y.md) | P1 | planned | ready | S | — | — |
 | [resume-last-playback](p2-resume-last-playback.md) | P2 | planned | ready | M | [playback-toggle-stop-pause](done/p1-playback-toggle-stop-pause.md) ✅, [resume-file-from-setting](done/p2-resume-file-from-setting.md) ✅, [autostart](done/p2-autostart.md) ✅, [crash-recovery](done/p1-crash-recovery.md) ✅ | — |
 | [log-rotation](p2-log-rotation.md) | P2 | planned | ready | S | — | — |
 | [open-song-with-default-app](p2-open-song-with-default-app.md) | P2 | planned | ready | M | — | — |
@@ -50,6 +50,7 @@ semver; `unscheduled` — наприкінці.
 | [pause-recording](p2-pause-recording.md) | P2 | idea | draft | M | — | — |
 | [focus-on-screen-open-option](p2-focus-on-screen-open-option.md) | P2 | idea | draft | S | — | — |
 | [command-palette-fuzzy-search](p2-command-palette-fuzzy-search.md) | P2 | idea | draft | S | — | — |
+| [command-palette-taxonomy](p2-command-palette-taxonomy.md) | P2 | idea | draft | M | — | — (спірна — див. «Відкриті питання»; розчеплено з phase-3) |
 | [post-processing](p2-post-processing.md) | P2 | idea | draft | M | — | — |
 | [command-palette-dual-language-search](p2-command-palette-dual-language-search.md) | P2 | idea | draft | S | — | — |
 | [wishlist-separate-folder](p2-wishlist-separate-folder.md) | P2 | idea | draft | S | — | — |
