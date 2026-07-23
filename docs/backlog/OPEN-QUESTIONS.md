@@ -32,10 +32,11 @@
 - ✅ **filter-empty:** бейджа там немає — ADR §7 відкинув «завжди видимий бейдж»; покрито негативним тестом.
 - 🟨 **(тригер, лишається відкритим)** ADR §9.2: якщо порожнього стану як єдиного місця навчання замало — повернутись до `aria-keyshortcuts` (S4). Окремий тригер, не частина запису.
 
-### [resume-last-playback](p2-resume-last-playback.md) (ready, рішення фіналізовано 2026-07-19)
+### [resume-last-playback](done/p1-resume-last-playback.md) (✅ реалізовано й злито 2026-07-23)
 - ✅ **Спадщина закрита кодом:** `last_active`, seek, `resume_last`, `resume_file_from` — усе вже в `develop` (з [playback-toggle-stop-pause](done/p1-playback-toggle-stop-pause.md), [resume-file-from-setting](done/p2-resume-file-from-setting.md)).
 - ✅ **`always_paused` викинуто** (дублює cold-start `Ctrl+Shift+K`) → політика = `autoplay_on_startup: bool`; тригер — `frontend_ready` (не setup); CLI `--play`/`--stop-playback` скасовує авто-гру; протухлий таргет → анонс «недоступно» (реюз `resume_last`).
-- 🟨 **Рівень реалізації:** вбудувати перевірку `StartupPlan` у `frontend_ready` без зламу ідемпотентності; стандартний NVDA-прогін нового діалогу (Select-портал-ризик знято — чекбокс).
+- ✅ **Порядок у `frontend_ready`:** `plan_controls_playback` рахується до дренажу плану; `AutoplayGuard` — одноразовий, споживається навіть коли CLI скасовує авто-гру.
+- 🟨 **(лишається)** стандартний NVDA-прогін нового діалогу (фокус-трап, анонс заголовка, Escape) та авто-старту — не проведено, рекомендовано перед релізом.
 
 ### [log-rotation](p2-log-rotation.md) (ready, рішення прийняті)
 - 🟦 **Portable-шлях:** чи `tauri_plugin_log` поважає `portable::log_dir()` (пише в `data/logs/`, не `%APPDATA%`)? Якщо ні — додати в `portable.rs`.

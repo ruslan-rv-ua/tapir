@@ -19,7 +19,7 @@ notes: ["злито в develop 2026-07-18, merge 4189826; перевірено �
 
 # Контекстний playback-toggle: stop для потоку, pause для файлу + resume останнього
 
-> **Контекст:** виконано й перевірено з NVDA, злито в `develop`. База для [resume-file-from-setting](p2-resume-file-from-setting.md) і [resume-last-playback](../p2-resume-last-playback.md).
+> **Контекст:** виконано й перевірено з NVDA, злито в `develop`. База для [resume-file-from-setting](p2-resume-file-from-setting.md) і [resume-last-playback](p1-resume-last-playback.md).
 
 ## Опис
 
@@ -83,7 +83,7 @@ pub struct PlayerSession {
 - **Stopped/cold-гілка** читає `active_profile.player_session` і за дискримінатором запускає `play_live` або `play_file(seek)`. Це **єдиний** механізм — in-session reconnect і cold-start resume зливаються; окремий in-memory last-source не потрібен (джерело правди — персистнутий `PlayerSession`).
 - **Потрібен метод stop** на player (у поточному match лише pause/resume). Узгодити з трей-кнопкою `MENU_ID_TOGGLE_PLAYBACK` ([tray/handlers.rs](../../../src-tauri/src/tray/handlers.rs), [tray/menu.rs](../../../src-tauri/src/tray/menu.rs)).
 - **Дискримінатор:** додати у `PlayerSession` маркер останнього активного — окреме поле `last_active: Option<"stream"|"file">`, що виставляється на кожному play-start.
-- **Координація з [resume-last-playback](../p2-resume-last-playback.md):** додає в **ту саму** `PlayerSession` per-profile поле `autoplay_on_startup` — надбудова над цими полями (єдине джерело правди); цей запис закладає поля й резюм-функцію, resume-last-playback викликає її на старті. Жодного окремого `last_playback.json`.
+- **Координація з [resume-last-playback](p1-resume-last-playback.md):** додає в **ту саму** `PlayerSession` per-profile поле `autoplay_on_startup` — надбудова над цими полями (єдине джерело правди); цей запис закладає поля й резюм-функцію, resume-last-playback викликає її на старті. Жодного окремого `last_playback.json`.
 - **Запис позиції** — лише на переходах (pause/stop/track-change/quit); не на кожен progress-tick (запис у профіль-JSON важчий за крихітний state-файл; уникнути рейсів з іншими записами профілю).
 - **Дефолт клавіші:** `default_hk_toggle_playback()` [settings.rs:138](../../../src-tauri/src/settings.rs#L138) → `"Ctrl+Shift+K"` + супутні тести [settings.rs:291](../../../src-tauri/src/settings.rs#L291).
 - **NVDA-анонс:** Rust емітить статус+назву, webview озвучує через LiveAnnouncer; на cold-start вікно вже OS-foreground ([[nvda-startup-foreground]]). Лейбл дії у Settings/F1 (`settings_hotkey_toggle_playback` = «Відтворення (toggle)») лишається **загальним**.
@@ -101,7 +101,7 @@ pub struct PlayerSession {
 - [x] Недоступний таргет → анонс «недоступно» + no-op + очищення запису
 - [x] NVDA озвучує статус+назву для кожного переходу (пауза/відновлено/зупинено/підключення/недоступно)
 - [x] Трей-кнопка Play/Pause узгоджена з новою семантикою; debounce спільний
-- [x] Autostart не авто-грає в межах цього запису — гра через K; per-profile авто-гра з'являється лише з [resume-last-playback](../p2-resume-last-playback.md)
+- [x] Autostart не авто-грає в межах цього запису — гра через K; per-profile авто-гра з'являється лише з [resume-last-playback](p1-resume-last-playback.md)
 - [x] Оновлені доки; `cargo test` + `cargo clippy` зелені; `pnpm test` + `pnpm vite:build` зелені; ручний gate з NVDA на потоці й файлі
 
 ## Рішення (рівень реалізації) — закрито 2026-06-25 (звірено з кодом)

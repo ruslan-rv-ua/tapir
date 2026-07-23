@@ -18,7 +18,6 @@ semver; `unscheduled` — наприкінці.
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
 | [command-palette-results-a11y](p1-command-palette-results-a11y.md) | P1 | planned | ready | S | — | — |
-| [resume-last-playback](p2-resume-last-playback.md) | P2 | planned | ready | M | [playback-toggle-stop-pause](done/p1-playback-toggle-stop-pause.md) ✅, [resume-file-from-setting](done/p2-resume-file-from-setting.md) ✅, [autostart](done/p2-autostart.md) ✅, [crash-recovery](done/p1-crash-recovery.md) ✅ | — |
 | [log-rotation](p2-log-rotation.md) | P2 | planned | ready | S | — | — |
 | [open-song-with-default-app](p2-open-song-with-default-app.md) | P2 | planned | ready | M | — | — |
 | [open-stream-with-default-app](p2-open-stream-with-default-app.md) | P2 | planned | ready | S | — | — |
@@ -73,6 +72,7 @@ semver; `unscheduled` — наприкінці.
 
 | Запис | Коли | Що лишилось у спадок |
 |-------|------|----------------------|
+| [resume-last-playback](done/p1-resume-last-playback.md) | 2026-07-23 | `PlayerSession.autoplay_on_startup` (per-profile opt-in) + `AutoplayGuard` one-shot + `set_profile_autoplay` IPC + `ProfileSettingsDialog`; злито fast-forward у develop (`26b7f1e`), локально, не запушено. **NVDA-прогін нового діалогу та авто-старту не проведено** — рекомендовано перед релізом |
 | [stream-name-trim](done/p0-stream-name-trim.md) | 2026-07-22 | `.trim()` у `add_stream` і `update_stream` (`stream_commands.rs`) — назва потоку більше не зберігається з провідними/завершальними пробілами |
 | [streams-empty-focus-audit](done/p2-streams-empty-focus-audit.md) | 2026-07-20 | гіпотеза підтверджена + третій мертвий шлях (одиничне move-to-profile); імперативний `onEmpty()` у `handleConfirmDelete`/`doTransfer` (`StreamList.tsx`) за зразком `223fadb`; 3 регресійні тести «SINGLE-op empty transitions» у `StreamsPanel.test.tsx` |
 | [wishlist-example-patterns](done/p2-wishlist-example-patterns.md) | 2026-07-19 | CTA «Додати приклад» у власній зоні `wishlist-empty` (`WishlistPanel.tsx`) — не в `PatternList`'s `emptyExtra` (той варіант виявився keyboard-unreachable, rev R1); фіксований масив `examplePatterns.ts`; ключі `wishlist_add_example`/`wishlist_examples_adding`/`wishlist_examples_added`/`wishlist_examples_failed`. Застосувало патерн `streams-ctrlk-empty-hint` |
@@ -91,15 +91,16 @@ semver; `unscheduled` — наприкінці.
 ## Перехресні рішення
 
 1. ✅ **resume-last-playback vs playback-toggle-stop-pause** — _вирішено 2026-06-25 (A1), базу
-   реалізовано 2026-07-18; політику фіналізовано 2026-07-19._ `resume-last-playback` — надбудова над
+   реалізовано 2026-07-18; політику фіналізовано 2026-07-19; **код реалізовано й злито
+   2026-07-23** (`26b7f1e`, NVDA-прогін ще не проведено)._ `resume-last-playback` — надбудова над
    `PlayerSession`; **окремого `last_playback.json` немає.** Політика —
    `autoplay_on_startup: bool` (без `always_paused` — дублює cold-start `Ctrl+Shift+K`;
    без `restore`) — нове поле **в `PlayerSession`** → per-profile. Авто-гра — явний opt-in.
 2. ✅ **state.json (crash-recovery, done) vs стан відтворення (resume-last-playback)** — _знято (A1)._ Стан
    відтворення живе в `PlayerSession` (профіль), crash — у `data/state.json`; два чітко
    різні сховища, звіряти нема чого.
-3. ✅ **autostart ↔ відтворення** — _вирішено (A3 через A1), обидві сторони реалізовано._
+3. ✅ **autostart ↔ відтворення** — _вирішено (A3 через A1), обидві сторони реалізовано й злито._
    Autostart сам **не** грає; авто-гра ⇔ активний профіль має `autoplay_on_startup = true`
-   (поле вводить `resume-last-playback`).
+   (поле вводить [resume-last-playback](done/p1-resume-last-playback.md)).
 4. **mpv-playback-engine ↔ he-aac-mf-playback / hls-stream-support.** Якщо mpv проходить PoC — винести
    обидва записи в `done/` як зняті. _(A4 — відкрите.)_

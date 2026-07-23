@@ -203,7 +203,7 @@ ignorelist. Незіставлений `stream_id` (потік видалили 
   - `src/stores/announcer.ts`
   - `src/hooks/useAnnounce.ts`
 - [accessibility.md — §11 live-regions, §1.4 modal-hacks](../../accessibility.md)
-- Суміжний беклог: [resume-last-playback](../p2-resume-last-playback.md) — стан відтворення
+- Суміжний беклог: [resume-last-playback](p1-resume-last-playback.md) — стан відтворення
   живе в `PlayerSession` профілю (після A1 окремого `last_playback.json` немає); `state.json`
   (crash recovery) — інше сховище. Два чітко різні стани, звіряти нема чого.
 - Пам'ять: [[live-region-inside-modals]], [[branch-model-main-stale]], [[phase-3k-crash-recovery-status]]
