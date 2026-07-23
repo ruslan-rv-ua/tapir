@@ -7,13 +7,15 @@ status: draft
 effort: S
 kind: feature
 target: unscheduled
-updated: 2026-07-22
+updated: 2026-07-23
 a11y: false
 depends_on: []
 blocks: []
 touches:
   - src/components/common/
 gates: []
+notes:
+  - "2026-07-23: з command-palette-phase-4 сюди переїхало питання порогу context-бусту: якщо на момент реалізації fuzzy phase-4 вже злито — вирішити, чи contextBoost перекриває кращий збіг іншого типу, чи діє лише тай-брейкером при близьких score."
 ---
 
 # Нечіткий пошук у палітрі команд
@@ -41,3 +43,4 @@ gates: []
 ## Документи
 
 - шляхи коду: `src/components/common/`
+- [command-palette-phase-4](p3-command-palette-phase-4.md) — context-буст поверх score (див. notes)

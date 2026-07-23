@@ -35,8 +35,8 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [command-palette-phase-3](p2-command-palette-phase-3.md) | P2 | planned | ready | S | — | [command-palette-phase-4](p3-command-palette-phase-4.md) |
-| [command-palette-phase-4](p3-command-palette-phase-4.md) | P3 | idea | **blocked** | M | [command-palette-phase-3](p2-command-palette-phase-3.md) | — |
+| [command-palette-phase-3](p2-command-palette-phase-3.md) | P2 | planned | ready | S | — | [command-palette-phase-4](p3-command-palette-phase-4.md), [command-palette-mode-prefixes](p3-command-palette-mode-prefixes.md) |
+| [command-palette-phase-4](p3-command-palette-phase-4.md) | P3 | planned | **blocked** | S | [command-palette-phase-3](p2-command-palette-phase-3.md) | — |
 
 ## unscheduled
 
@@ -59,6 +59,7 @@ semver; `unscheduled` — наприкінці.
 | [stream-manual-reorder](p2-stream-manual-reorder.md) | P2 | idea | draft | M | — | — |
 | [track-log-only-mode](p2-track-log-only-mode.md) | P2 | idea | draft | M | — | — |
 | [quick-controls-overlay](p2-quick-controls-overlay.md) | P2 | idea | draft | L | — | — |
+| [command-palette-mode-prefixes](p3-command-palette-mode-prefixes.md) | P3 | idea | draft | S | [command-palette-phase-3](p2-command-palette-phase-3.md) | — (спірна — укр. розкладка без `>`/`@`; вирізано з phase-4) |
 | [mpv-playback-engine](p3-mpv-playback-engine.md) | P3 | research | draft | L | — | [he-aac-mf-playback](p3-he-aac-mf-playback.md), [hls-stream-support](p3-hls-stream-support.md) (розвилка — може закрити обидва) |
 | [he-aac-mf-playback](p3-he-aac-mf-playback.md) | P3 | research | draft | M | — | залежить від рішення mpv-playback-engine |
 | [hls-stream-support](p3-hls-stream-support.md) | P3 | idea | draft | L | — | залежить від рішення mpv-playback-engine |

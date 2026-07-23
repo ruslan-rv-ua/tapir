@@ -113,11 +113,16 @@
 - 🟦 **Зрілість HLS-крейтів** (`m3u8-rs`, `hls_m3u8`) для production — перевірити.
 - 🟨 **(тригер повернення):** конкретні запити користувачів або >20% популярних станцій виключно HLS.
 
-### [command-palette-phase-4](p3-command-palette-phase-4.md) (blocked — чекає command-palette-phase-3)
-- 🟥 **Mode-prefixes (`>`/`@`) взагалі потрібні?** Ризик: незрозумілі наосліп для NVDA. _Альтернатива: лише context-boost без prefixes._
-- 🟨 **NVDA + динамічний reranking:** чи `aria-live="polite"` з дебаунсом достатньо, чи потрібен `aria-relevant="additions"`?
-- 🟨 **Поріг бусту:** актуально лише з fuzzy-score (`command-palette-fuzzy-search`); для substring-пошуку phase-3 буст = стабільне групування типів. _Визначити ручним тестом після Phase 3._
-- 🟥 **Wishlist/Schedule пріоритизація:** буст `station` для Wishlist? Schedule без бусту?
+### [command-palette-phase-4](p3-command-palette-phase-4.md) (✅ фіналізовано 2026-07-23 → planned/**blocked**; чекає phase-3)
+- ✅ **Mode-prefixes (`>`/`@`):** вирізано в окремий запис [command-palette-mode-prefixes](p3-command-palette-mode-prefixes.md); phase-4 = лише context-ранжування (обсяг звужено до єдиного правила Songs→пісні, effort M→S).
+- ✅ **NVDA + reranking:** знято з коду — список не live-region (listbox + `aria-activedescendant`), єдиний live-канал — дебаунсований анонс кількості; «перечитування всього списку» неможливе. Лишається стандартний NVDA-прогін.
+- ✅ **Поріг бусту:** перенесено в [command-palette-fuzzy-search](p2-command-palette-fuzzy-search.md) — актуальне лише зі score.
+- ✅ **Wishlist/Schedule:** без бусту — відповідного вмісту в палітрі немає; мапінг «browser→станції» прибрано як такий, що суперечив DA4.
+
+### [command-palette-mode-prefixes](p3-command-palette-mode-prefixes.md) (draft — вирізано з phase-4 2026-07-23)
+- 🟥 **Розкладка (головний блокер):** на укр. розкладці `>`/`@` не набрати без перемикання (Shift+2 = `"`, клавіша `>` = `Ю`). Прийняти / укр. відповідники клавіш / інший механізм перемикання типів / відмовитись.
+- 🟥 **Чи потрібні взагалі** при одному NVDA-користувачі та ~15–25 пунктах палітри? _Повернутись після fuzzy/taxonomy/росту `$songs`, якщо context-бусту забракне._
+- 🟨 **Навчання синтаксису для NVDA:** плейсхолдер/aria-label чи ще й пункт у F1-довідці.
 
 ### [screen-reader-direct-speech](p3-screen-reader-direct-speech.md) (blocked)
 - 🟨 **(тригер повернення):** лише якщо balloon tips виявляться недостатніми для швидкого фідбеку на глобальні хоткеї (типово — гучність). Тоді scope — **тільки** озвучення глобальних хоткеїв, не заміна `LiveAnnouncer`.

@@ -10,7 +10,7 @@ target: 0.2.0
 updated: 2026-07-23
 a11y: true
 depends_on: []
-blocks: [command-palette-phase-4]
+blocks: [command-palette-phase-4, command-palette-mode-prefixes]
 touches: [src/components/common/CommandPalette.tsx, src/components/common/CommandPalette.test.tsx, src/i18n/messages/uk.json, src/i18n/messages/en.json]
 gates: [pnpm test, pnpm vite:build]
 notes:
@@ -147,4 +147,4 @@ NVDA-навігація по глибоких екранах — багато н
 - [implementation-phases.md](../implementation-phases.md) — roadmap (пункт про CommandPalette)
 - Код: `src/components/common/CommandPalette.tsx`; тести: `src/components/common/CommandPalette.test.tsx`
 - Стори/реєстри: `src/stores/navigation.ts` (`$activeSection`, `$commandPaletteOpen`), `src/stores/songs.ts` (`$songs`), `src/stores/settings.ts` (`$settingsDialogOpen`), `src/lib/sections.ts` (`SECTIONS`)
-- Суміжні записи: [command-palette-taxonomy](p2-command-palette-taxonomy.md) (станції/форма пунктів), [command-palette-phase-4](p3-command-palette-phase-4.md) (ранжування), [command-palette-fuzzy-search](p2-command-palette-fuzzy-search.md), [command-palette-dual-language-search](p2-command-palette-dual-language-search.md)
+- Суміжні записи: [command-palette-taxonomy](p2-command-palette-taxonomy.md) (станції/форма пунктів), [command-palette-phase-4](p3-command-palette-phase-4.md) (ранжування), [command-palette-mode-prefixes](p3-command-palette-mode-prefixes.md) (фільтри `>`/`@`), [command-palette-fuzzy-search](p2-command-palette-fuzzy-search.md), [command-palette-dual-language-search](p2-command-palette-dual-language-search.md)
