@@ -25,12 +25,7 @@
 
 ---
 
-## C. Питання P2
-
-### [streams-ctrlk-empty-hint](done/p2-streams-ctrlk-empty-hint.md) (✅ виконано 2026-07-19)
-- ✅ **Текст бейджа:** «Команди — Ctrl+K» (підпис + комбінація) — лише комбінація не пояснювала б NVDA-користувачу, що вона відкриває.
-- ✅ **filter-empty:** бейджа там немає — ADR §7 відкинув «завжди видимий бейдж»; покрито негативним тестом.
-- 🟨 **(тригер, лишається відкритим)** ADR §9.2: якщо порожнього стану як єдиного місця навчання замало — повернутись до `aria-keyshortcuts` (S4). Окремий тригер, не частина запису.
+## B. Питання P1
 
 ### [resume-last-playback](done/p1-resume-last-playback.md) (✅ реалізовано й злито 2026-07-23)
 - ✅ **Спадщина закрита кодом:** `last_active`, seek, `resume_last`, `resume_file_from` — усе вже в `develop` (з [playback-toggle-stop-pause](done/p1-playback-toggle-stop-pause.md), [resume-file-from-setting](done/p2-resume-file-from-setting.md)).
@@ -38,24 +33,26 @@
 - ✅ **Порядок у `frontend_ready`:** `plan_controls_playback` рахується до дренажу плану; `AutoplayGuard` — одноразовий, споживається навіть коли CLI скасовує авто-гру.
 - 🟨 **(лишається)** стандартний NVDA-прогін нового діалогу (фокус-трап, анонс заголовка, Escape) та авто-старту — не проведено, рекомендовано перед релізом.
 
-### [log-rotation](p2-log-rotation.md) (ready, рішення прийняті)
+### [log-rotation](p1-log-rotation.md) (ready, рішення прийняті)
 - 🟦 **Portable-шлях:** чи `tauri_plugin_log` поважає `portable::log_dir()` (пише в `data/logs/`, не `%APPDATA%`)? Якщо ні — додати в `portable.rs`.
 
-### [open-song-with-default-app](p2-open-song-with-default-app.md) (ready)
+### [open-song-with-default-app](p1-open-song-with-default-app.md) (ready)
 - 🟦 **Чи `tauri-plugin-opener` вже у `Cargo.toml`?** — Звірено 2026-07-19: **ні**, немає; обрано `ShellExecuteW`.
 - ✅ **Назва пункту меню:** «Відкрити у програмі» — вирішено 2026-07-19.
 
-### [import-duplicate-metadata-update](p2-import-duplicate-metadata-update.md) (draft)
-- 🟥 **Що оновлювати:** лише `name`, чи також `codec`/`bitrate`? (Оновлення кодека/бітрейту може затерти ручні правки.)
-- 🟥 **Коли показувати опцію:** лише якщо probe вже виконано (стан `Probed`), чи запускати probe спеціально для дублікатів?
-- 🟥 **Чи показувати всі змінені поля** (напр. `icy_name` збігається, але `bitrate` різний) — окремими чекбоксами чи загальним?
-- 🟥 **Undo** оновлення метаданих окремо від скасування всього імпорту?
-- 🟨 **Нормалізація назви** перед порівнянням (`icy_name` у верхньому регістрі / зайві пробіли)?
-
-### [full-edit-stream](p2-full-edit-stream.md) (draft — ескіз НЕ узгоджено)
+### [full-edit-stream](p1-full-edit-stream.md) (draft — ескіз НЕ узгоджено)
 - 🟥 **Зміна URL під час активного запису/відтворення:** блокувати vs зупинити-й-попередити?
 - 🟥 **Скоуп полів у 1-й ітерації:** лише URL, чи одразу URL+auth+ignorelist? _Менший крок — лише URL._
 - 🟥 **Збереження позиції/статусу потоку** при зміні URL (id незмінний → так, але re-resolve може змінити метадані)?
+
+---
+
+## C. Питання P2
+
+### [streams-ctrlk-empty-hint](done/p2-streams-ctrlk-empty-hint.md) (✅ виконано 2026-07-19)
+- ✅ **Текст бейджа:** «Команди — Ctrl+K» (підпис + комбінація) — лише комбінація не пояснювала б NVDA-користувачу, що вона відкриває.
+- ✅ **filter-empty:** бейджа там немає — ADR §7 відкинув «завжди видимий бейдж»; покрито негативним тестом.
+- 🟨 **(тригер, лишається відкритим)** ADR §9.2: якщо порожнього стану як єдиного місця навчання замало — повернутись до `aria-keyshortcuts` (S4). Окремий тригер, не частина запису.
 
 ### [command-palette-taxonomy](p2-command-palette-taxonomy.md) (idea, спірна — перевідкрито 2026-07-23)
 - 🟥 **Категорія-як-`sublabel` — сигнал чи шум?** Заміна контекстного підпису (яка станція) на родовий тег типу («потік») → для NVDA надлишок у кінці кожного рядка. _Схил.: не робити._
@@ -72,13 +69,26 @@
 - 🟨 **Взаємодія з Phase 4:** не закладати жорсткий порядок — лишити місце для ранжування.
 - 🟥 **Кнопка «Команди» в шапці (DA5):** прибрати в цій же задачі чи окремо?
 
-### [profile-switch-orphaned-tasks](p2-profile-switch-orphaned-tasks.md) (draft, умовний)
-- 🟨 **Наскільки реальний сценарій**, де task не завершується за 2с? _(Тригер узяти в роботу взагалі.)_
-- 🟥 **Track-level shutdown (CancellationToken)** замість process-level kill? (Вибір між 3 варіантами фіксу: ↑timeout / CancellationToken / детект+лог+NVDA.)
+### [quick-controls-overlay](p2-quick-controls-overlay.md) (draft, L)
+- 🟥 **Яку глобальну клавішу** призначити (без конфлікту з T1-шорткатами)?
+- 🟥 **Конфігурованість overlay** (вибір пунктів)?
+- 🟥 **Друге Tauri-вікно vs нативний Win32** — з урахуванням «portable single EXE»? _Рекоменд.: друге Tauri-вікно (правильна a11y)._
+- 🟥 **Toggle vs відкрити заново** при кожному виклику?
 
 ---
 
 ## D. Питання P3
+
+### [import-duplicate-metadata-update](p3-import-duplicate-metadata-update.md) (draft)
+- 🟥 **Що оновлювати:** лише `name`, чи також `codec`/`bitrate`? (Оновлення кодека/бітрейту може затерти ручні правки.)
+- 🟥 **Коли показувати опцію:** лише якщо probe вже виконано (стан `Probed`), чи запускати probe спеціально для дублікатів?
+- 🟥 **Чи показувати всі змінені поля** (напр. `icy_name` збігається, але `bitrate` різний) — окремими чекбоксами чи загальним?
+- 🟥 **Undo** оновлення метаданих окремо від скасування всього імпорту?
+- 🟨 **Нормалізація назви** перед порівнянням (`icy_name` у верхньому регістрі / зайві пробіли)?
+
+### [profile-switch-orphaned-tasks](p3-profile-switch-orphaned-tasks.md) (draft, умовний)
+- 🟨 **Наскільки реальний сценарій**, де task не завершується за 2с? _(Тригер узяти в роботу взагалі.)_
+- 🟥 **Track-level shutdown (CancellationToken)** замість process-level kill? (Вибір між 3 варіантами фіксу: ↑timeout / CancellationToken / детект+лог+NVDA.)
 
 ### [mpv-playback-engine](p3-mpv-playback-engine.md) (research) — **gate go/no-go**
 - 🟥 **In-process (`libmpv2`) чи окремий процес (`tauri-plugin-mpv` + JSON-IPC)?**
@@ -110,12 +120,6 @@
 - 🟨 **Поріг бусту:** перекривати хороший fuzzy-збіг іншого типу чи лише при рівних score? _Визначити ручним тестом після Phase 3._
 - 🟥 **Wishlist/Schedule пріоритизація:** буст `station` для Wishlist? Schedule без бусту?
 
-### [quick-controls-overlay](p3-quick-controls-overlay.md) (draft, L)
-- 🟥 **Яку глобальну клавішу** призначити (без конфлікту з T1-шорткатами)?
-- 🟥 **Конфігурованість overlay** (вибір пунктів)?
-- 🟥 **Друге Tauri-вікно vs нативний Win32** — з урахуванням «portable single EXE»? _Рекоменд.: друге Tauri-вікно (правильна a11y)._
-- 🟥 **Toggle vs відкрити заново** при кожному виклику?
-
 ### [screen-reader-direct-speech](p3-screen-reader-direct-speech.md) (blocked)
 - 🟨 **(тригер повернення):** лише якщо balloon tips виявляться недостатніми для швидкого фідбеку на глобальні хоткеї (типово — гучність). Тоді scope — **тільки** озвучення глобальних хоткеїв, не заміна `LiveAnnouncer`.
 
@@ -124,5 +128,5 @@
 ## Зведення для дій
 
 - **Лишився відкритим (блокує код):** **A4** (mpv-gate).
-- **Чисті перевірки коду** (не «рішення», звірити grep'ом): C-log-rotation (portable-шлях), D-hls (зрілість крейтів).
+- **Чисті перевірки коду** (не «рішення», звірити grep'ом): B-log-rotation (portable-шлях), D-hls (зрілість крейтів).
 - **Дослідницькі gate'и** (відповідь — під час spike): A4, D-mpv (перший ICY-тайтл — go/no-go), D-he-aac (першопричина), D-hls (% станцій).

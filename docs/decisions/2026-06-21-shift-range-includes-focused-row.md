@@ -4,7 +4,7 @@
 - **Дата:** 2026-06-21
 - **Тип:** ADR — поведінка виділення в спільному хуку композитних списків (`useCompositeList`).
 - **Область дії:** усі композитні списки (streams / browser / profiles / schedule / songs), бо guard живе у **спільному** хуку (узагальнено у віхі D).
-- **Пов'язане:** [accessibility.md](../accessibility.md), [keyboard-shortcuts.md](../keyboard-shortcuts.md), парасолька масових операцій [p1-bulk-stream-operations.md](../backlog/p1-bulk-stream-operations.md).
+- **Пов'язане:** [accessibility.md](../accessibility.md), [keyboard-shortcuts.md](../keyboard-shortcuts.md), парасолька масових операцій `p1-bulk-stream-operations` (реалізовано; запис видалено до появи `done/`).
 
 ## Проблема
 

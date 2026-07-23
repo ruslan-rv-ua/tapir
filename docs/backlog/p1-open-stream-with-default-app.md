@@ -137,7 +137,7 @@ pub async fn open_stream_in_app(
 
 ## Документи
 
-- Зразок реалізації: [p2-open-song-with-default-app.md](p2-open-song-with-default-app.md)
+- Зразок реалізації: [p1-open-song-with-default-app.md](p1-open-song-with-default-app.md)
 - Код: `src-tauri/src/commands/stream_commands.rs`, `src/components/streams/StreamContextMenu.tsx`, `StreamList.tsx`
 - Модифікатори: `src/hooks/useCompositeList.ts` — `ActionModifiers`, `resolveKeyAction`
 - ShellExecuteW: https://learn.microsoft.com/windows/win32/api/shellapi/nf-shellapi-shellexecutew

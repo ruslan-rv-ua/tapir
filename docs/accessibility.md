@@ -179,7 +179,7 @@ Shift+F6: зворотній напрямок
 > комірки `P`/`R`/`Space=toggle selection`/`Ctrl+F`-пошук із §3.2 — застарілі.
 >
 > **Модель виділення (multi-select)** проєктується окремо — джерело правди:
-> [беклог `p1-bulk-stream-operations`](backlog/p1-bulk-stream-operations.md) +
+> беклог `p1-bulk-stream-operations` (реалізовано; запис видалено до появи `done/`) +
 > [spec віхи A](superpowers/specs/2026-06-14-bulk-stream-operations-A-design.md).
 > Коротко з її §A6:
 > - **Єдиний канал оголошень виділення** — усі повідомлення (одиничний toggle,

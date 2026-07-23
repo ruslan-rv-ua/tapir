@@ -474,7 +474,7 @@ app.global_shortcut().on_shortcut("Ctrl+Shift+R", |app, _shortcut, event| {
 | `get_streams` | — | `Vec<StreamInfo>` | Список усіх потоків з поточного профілю |
 | `add_stream` | `{url, name?}` | `StreamInfo` | Додати потік (resolve PLS/M3U) |
 | `remove_stream` | `{streamId}` | `()` | Видалити потік з профілю |
-| `update_stream` | `{streamId, name}` | `StreamInfo` | Перейменувати потік (поки лише назва; повне редагування URL/auth/ignorelist — беклог `p2-full-edit-stream.md`) |
+| `update_stream` | `{streamId, name}` | `StreamInfo` | Перейменувати потік (поки лише назва; повне редагування URL/auth/ignorelist — беклог `p1-full-edit-stream.md`) |
 | `start_recording` | `{streamId}` | `()` | Почати запис потоку |
 | `stop_recording` | `{streamId}` | `()` | Зупинити запис потоку |
 | `stop_all_recordings` | — | `()` | Зупинити всі записи |

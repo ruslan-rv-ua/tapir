@@ -17,16 +17,17 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [log-rotation](p2-log-rotation.md) | P2 | planned | ready | S | — | — |
-| [open-song-with-default-app](p2-open-song-with-default-app.md) | P2 | planned | ready | M | — | — |
-| [open-stream-with-default-app](p2-open-stream-with-default-app.md) | P2 | planned | ready | S | — | — |
-| [unwrap-in-tests](p3-unwrap-in-tests.md) | P3 | planned | ready | S | — | — (housekeeping, будь-коли) |
-| [wishlist-stale-list-ref](p2-wishlist-stale-list-ref.md) | P2 | research | ready | S | [wishlist-example-patterns](done/p2-wishlist-example-patterns.md) ✅ | — |
-| [import-duplicate-metadata-update](p2-import-duplicate-metadata-update.md) | P2 | idea | draft | S | — | — |
-| [full-edit-stream](p2-full-edit-stream.md) | P2 | planned | draft | M | — | — |
-| [settings-sidebar-tabs](p2-settings-sidebar-tabs.md) | P2 | research | draft | S | — | — |
+| [stream-name-disambiguation](p0-stream-name-disambiguation.md) | P0 | planned | ready | M | — | — |
+| [wishlist-stale-list-ref](p1-wishlist-stale-list-ref.md) | P1 | planned | ready | S | [wishlist-example-patterns](done/p2-wishlist-example-patterns.md) ✅ | — |
+| [log-rotation](p1-log-rotation.md) | P1 | planned | ready | S | — | — |
+| [open-song-with-default-app](p1-open-song-with-default-app.md) | P1 | planned | ready | M | — | — |
+| [open-stream-with-default-app](p1-open-stream-with-default-app.md) | P1 | planned | ready | S | — | — |
+| [help-content-polish](p1-help-content-polish.md) | P1 | planned | ready | M | — | — |
+| [full-edit-stream](p1-full-edit-stream.md) | P1 | planned | draft | M | — | — |
 | [keyboard-shortcuts-audit](p2-keyboard-shortcuts-audit.md) | P2 | research | draft | M | — | — |
-| [help-content-polish](p2-help-content-polish.md) | P2 | planned | ready | M | — | — |
+| [settings-sidebar-tabs](p2-settings-sidebar-tabs.md) | P2 | research | draft | S | — | — |
+| [unwrap-in-tests](p3-unwrap-in-tests.md) | P3 | planned | ready | S | — | — (housekeeping, будь-коли) |
+| [import-duplicate-metadata-update](p3-import-duplicate-metadata-update.md) | P3 | idea | draft | S | — | — |
 
 ## v0.2.0
 
@@ -42,8 +43,9 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [focus-active-item-on-playback-start](p2-focus-active-item-on-playback-start.md) | P1 | idea | draft | S | — | — |
-| [wishlist-conditions](p2-wishlist-conditions.md) | P1 | idea | draft | L | — | — |
+| [focus-active-item-on-playback-start](p1-focus-active-item-on-playback-start.md) | P1 | idea | draft | S | — | — |
+| [wishlist-conditions](p1-wishlist-conditions.md) | P1 | idea | draft | L | — | — |
+| [browser-filter-cursor-reset](p2-browser-filter-cursor-reset.md) | P2 | planned | ready | S | — | — |
 | [sleep-timer](p2-sleep-timer.md) | P2 | idea | draft | S | — | — |
 | [pause-recording](p2-pause-recording.md) | P2 | idea | draft | M | — | — |
 | [focus-on-screen-open-option](p2-focus-on-screen-open-option.md) | P2 | idea | draft | S | — | — |
@@ -54,16 +56,16 @@ semver; `unscheduled` — наприкінці.
 | [wishlist-separate-folder](p2-wishlist-separate-folder.md) | P2 | idea | draft | S | — | — |
 | [stream-manual-reorder](p2-stream-manual-reorder.md) | P2 | idea | draft | M | — | — |
 | [track-log-only-mode](p2-track-log-only-mode.md) | P2 | idea | draft | M | — | — |
+| [quick-controls-overlay](p2-quick-controls-overlay.md) | P2 | idea | draft | L | — | — |
 | [mpv-playback-engine](p3-mpv-playback-engine.md) | P3 | research | draft | L | — | [he-aac-mf-playback](p3-he-aac-mf-playback.md), [hls-stream-support](p3-hls-stream-support.md) (розвилка — може закрити обидва) |
 | [he-aac-mf-playback](p3-he-aac-mf-playback.md) | P3 | research | draft | M | — | залежить від рішення mpv-playback-engine |
-| [lastfm-scrobbling](p2-lastfm-scrobbling.md) | P3 | idea | draft | M | — | — |
-| [recording-stats](p2-recording-stats.md) | P3 | idea | draft | S | — | — |
-| [quick-controls-overlay](p3-quick-controls-overlay.md) | P3 | idea | draft | L | — | — |
 | [hls-stream-support](p3-hls-stream-support.md) | P3 | idea | draft | L | — | залежить від рішення mpv-playback-engine |
-| [context-menu-at-cursor](p2-context-menu-at-cursor.md) | P3 | idea | draft | S | — | — |
-| [profile-switch-orphaned-tasks](p2-profile-switch-orphaned-tasks.md) | P3 | idea | draft | M | — | **умовний** — брати лише за реальним тригером |
+| [lastfm-scrobbling](p3-lastfm-scrobbling.md) | P3 | idea | draft | M | — | — |
+| [recording-stats](p3-recording-stats.md) | P3 | idea | draft | S | — | — |
+| [context-menu-at-cursor](p3-context-menu-at-cursor.md) | P3 | idea | draft | S | — | — |
+| [profile-switch-orphaned-tasks](p3-profile-switch-orphaned-tasks.md) | P3 | idea | draft | M | — | **умовний** — брати лише за реальним тригером |
 | [screen-reader-direct-speech](p3-screen-reader-direct-speech.md) | P3 | idea | **blocked** | S | — | тригер-gated, не планувати |
-| [player-station-image](p2-player-station-image.md) | P3 | idea | draft | S | — | — |
+| [player-station-image](p3-player-station-image.md) | P3 | idea | draft | S | — | — |
 
 ---
 
