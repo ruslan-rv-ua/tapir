@@ -29,7 +29,7 @@ semver; `unscheduled` — наприкінці.
 | [hotkeys-expansion](p2-hotkeys-expansion.md) | P2 | planned | ready | M | — | — |
 | [settings-sidebar-tabs](p2-settings-sidebar-tabs.md) | P2 | planned | ready | S | — | — |
 | [unwrap-in-tests](p3-unwrap-in-tests.md) | P3 | planned | ready | S | — | — (housekeeping, будь-коли) |
-| [import-duplicate-metadata-update](p3-import-duplicate-metadata-update.md) | P3 | idea | draft | S | — | — |
+| [import-duplicate-metadata-update](p3-import-duplicate-metadata-update.md) | P3 | planned | ready | M | — | — |
 
 ## v0.2.0
 
