@@ -3,11 +3,12 @@ slug: command-palette-results-a11y
 title: "Командна палітра — i18n порожнього стану + оголошення кількості результатів (NVDA)"
 priority: P1
 type: planned
-status: ready
+status: done
 effort: S
 kind: feature
 target: 0.1.0
 updated: 2026-07-23
+completed: 2026-07-23
 a11y: true
 depends_on: []
 blocks: []
@@ -16,6 +17,8 @@ gates: [pnpm test, pnpm vite:build]
 notes:
   - "Виділено з command-palette-taxonomy: дешеві, модель-незалежні покращення, що стоять окремо від спірної таксономії категорій."
   - "Частково закриває a11y-критерій phase-3 «кількість результатів оголошена aria-live» — але тут без будь-яких змін до моделі пунктів."
+  - "Реалізовано на гілці feature/command-palette-results-a11y (TDD, 9edb595). Оголошення кількості — через глобальний LiveAnnouncer (useAnnounce, priority polite, дебаунс 300 мс), а не окремий регіон усередині палітри: його регіони мають data-live-announcer, тож react-aria не заглушує їх. Гейти зелені (pnpm test 693/693, pnpm vite:build)."
+  - "NVDA-прогін фактичного озвучення (кількість результатів + порожній стан при відкритій палітрі) ще не проведено — рекомендовано перед релізом."
 ---
 
 # Командна палітра — i18n порожнього стану + оголошення кількості результатів (NVDA)

@@ -17,7 +17,6 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [command-palette-results-a11y](p1-command-palette-results-a11y.md) | P1 | planned | ready | S | — | — |
 | [log-rotation](p2-log-rotation.md) | P2 | planned | ready | S | — | — |
 | [open-song-with-default-app](p2-open-song-with-default-app.md) | P2 | planned | ready | M | — | — |
 | [open-stream-with-default-app](p2-open-stream-with-default-app.md) | P2 | planned | ready | S | — | — |
@@ -72,6 +71,7 @@ semver; `unscheduled` — наприкінці.
 
 | Запис | Коли | Що лишилось у спадок |
 |-------|------|----------------------|
+| [command-palette-results-a11y](done/p1-command-palette-results-a11y.md) | 2026-07-23 | `palette_no_results` замість хардкоду; оголошення кількості результатів (у т.ч. «0») через глобальний `LiveAnnouncer`/`useAnnounce` (polite, дебаунс 300 мс) — без окремого регіону в модалці й без змін моделі пунктів. Гілка `feature/command-palette-results-a11y`, TDD. **NVDA-прогін оголошення не проведено** — рекомендовано перед релізом |
 | [resume-last-playback](done/p1-resume-last-playback.md) | 2026-07-23 | `PlayerSession.autoplay_on_startup` (per-profile opt-in) + `AutoplayGuard` one-shot + `set_profile_autoplay` IPC + `ProfileSettingsDialog`; злито fast-forward у develop (`26b7f1e`), локально, не запушено. **NVDA-прогін нового діалогу та авто-старту не проведено** — рекомендовано перед релізом |
 | [stream-name-trim](done/p0-stream-name-trim.md) | 2026-07-22 | `.trim()` у `add_stream` і `update_stream` (`stream_commands.rs`) — назва потоку більше не зберігається з провідними/завершальними пробілами |
 | [streams-empty-focus-audit](done/p2-streams-empty-focus-audit.md) | 2026-07-20 | гіпотеза підтверджена + третій мертвий шлях (одиничне move-to-profile); імперативний `onEmpty()` у `handleConfirmDelete`/`doTransfer` (`StreamList.tsx`) за зразком `223fadb`; 3 регресійні тести «SINGLE-op empty transitions» у `StreamsPanel.test.tsx` |
