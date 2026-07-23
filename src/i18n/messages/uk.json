@@ -394,6 +394,8 @@
   "item_role_song": "запис",
   "empty_conditions": "без умов",
   "command_palette_label": "Командна палітра",
+  "palette_no_results": "Нічого не знайдено",
+  "palette_results_count": "Результатів: {count}",
   "streams_empty_hint": "Список потоків порожній.",
   "streams_empty_add_examples": "Додати приклади потоків",
   "streams_empty_palette_hint": "Команди —",

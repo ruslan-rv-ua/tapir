@@ -3,6 +3,8 @@ import { render, act, screen, fireEvent } from "@testing-library/react";
 import * as tauri from "../../lib/tauri";
 import { $commandPaletteOpen } from "../../stores/navigation";
 import { $streams, $statuses, $streamSelection, replaceSelection, $exportStreamsRequest } from "../../stores/streams";
+import { $announcer } from "../../stores/announcer";
+import * as m from "../../i18n/paraglide/messages";
 import { CommandPalette } from "./CommandPalette";
 
 // No backend in jsdom — stub the Tauri IPC layer.
@@ -18,6 +20,7 @@ beforeEach(() => {
   $streams.set([]);
   $statuses.set({});
   $commandPaletteOpen.set(true);
+  $announcer.set(null);
   replaceSelection(new Set());
 });
 
@@ -54,5 +57,52 @@ describe("CommandPalette — whole-profile regardless of selection (R7)", () => 
     // Command label is `streams_export_action`: "Експортувати потоки…" / "Export streams…".
     fireEvent.click(screen.getByText(/експортувати потоки|export streams/i));
     expect($exportStreamsRequest.get()).toEqual({ ids: null });
+  });
+});
+
+describe("CommandPalette — a11y: empty state & results count", () => {
+  it("renders the localized empty-state string (not a hardcoded literal)", () => {
+    render(<CommandPalette />);
+    const input = screen.getByRole("combobox");
+    fireEvent.change(input, { target: { value: "zzzzznomatch" } });
+    // Tests run under the `uk` base locale, so this is "Нічого не знайдено".
+    expect(screen.getByText(m.palette_no_results())).toBeTruthy();
+  });
+
+  it("announces the result count after a 300ms debounce", () => {
+    vi.useFakeTimers();
+    try {
+      render(<CommandPalette />);
+      const input = screen.getByRole("combobox");
+      act(() => {
+        fireEvent.change(input, { target: { value: "record" } });
+      });
+      // Nothing announced before the debounce elapses.
+      expect($announcer.get()).toBeNull();
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
+      const msg = $announcer.get();
+      expect(msg?.priority).toBe("polite");
+      // Polite announcement carries the current match count (a number).
+      expect(msg?.message).toMatch(/\d+/);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("announces zero for the empty result set", () => {
+    vi.useFakeTimers();
+    try {
+      render(<CommandPalette />);
+      const input = screen.getByRole("combobox");
+      act(() => {
+        fireEvent.change(input, { target: { value: "zzzzznomatch" } });
+        vi.advanceTimersByTime(300);
+      });
+      expect($announcer.get()?.message).toMatch(/\b0\b/);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

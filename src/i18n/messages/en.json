@@ -394,6 +394,8 @@
   "item_role_song": "recording",
   "empty_conditions": "no conditions",
   "command_palette_label": "Command palette",
+  "palette_no_results": "No results",
+  "palette_results_count": "Results: {count}",
   "streams_empty_hint": "Stream list is empty.",
   "streams_empty_add_examples": "Add example streams",
   "streams_empty_palette_hint": "Commands —",

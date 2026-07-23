@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { $streams, $statuses, $showAddStreamDialog, $importCandidates, $exportStreamsRequest } from "../../stores/streams";
 import { $commandPaletteOpen } from "../../stores/navigation";
 import { addToast } from "../../stores/toasts";
+import { useAnnounce } from "../../hooks/useAnnounce";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 
@@ -25,6 +26,7 @@ export function CommandPalette() {
   const inputRef = useRef<HTMLInputElement>(null);
   const openerRef = useRef<Element | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const announce = useAnnounce();
 
   // Reset on open
   useEffect(() => {
@@ -138,6 +140,22 @@ export function CommandPalette() {
   // Clamp selectedIndex
   const clampedIndex = Math.min(selectedIndex, Math.max(0, filtered.length - 1));
   const activeItemId = filtered[clampedIndex]?.id;
+  const resultCount = filtered.length;
+
+  // Tell a screen-reader user how many commands remain after they filter — they
+  // type blind and can't see the list shrink. Debounced so a fast typist doesn't
+  // get an announcement per keystroke. Announced via the global LiveAnnouncer
+  // (useAnnounce), whose regions carry data-live-announcer so react-aria's
+  // ariaHideOutside doesn't mute them while this dialog is open
+  // ([[live-region-inside-modals]]). Empty query = the full list is shown on
+  // open and NVDA already reads the dialog, so we stay silent there.
+  useEffect(() => {
+    if (!isOpen || query.trim() === "") return;
+    const id = setTimeout(() => {
+      announce(m.palette_results_count({ count: resultCount }), "polite");
+    }, 300);
+    return () => clearTimeout(id);
+  }, [isOpen, query, resultCount, announce]);
 
   // Keep the active option scrolled into view. With aria-activedescendant the
   // browser does not move DOM focus, so it won't auto-scroll — we do it here.
@@ -227,7 +245,7 @@ export function CommandPalette() {
         >
           {filtered.length === 0 ? (
             <li className="px-4 py-3 text-sm text-slate-500">
-              No results
+              {m.palette_no_results()}
             </li>
           ) : (
             filtered.map((item, index) => (
