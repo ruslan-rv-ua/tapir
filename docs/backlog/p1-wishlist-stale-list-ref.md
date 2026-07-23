@@ -1,13 +1,13 @@
 ---
 slug: wishlist-stale-list-ref
 title: "Застарілий patternListRef після перемикання вкладки Wishlist/Ignorelist"
-priority: P2
+priority: P1
 type: research
 status: ready
 effort: S
 kind: bug
 target: 0.1.0
-updated: 2026-07-19
+updated: 2026-07-22
 a11y: true
 depends_on: [wishlist-example-patterns]
 blocks: []

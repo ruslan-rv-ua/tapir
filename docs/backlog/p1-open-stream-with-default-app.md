@@ -1,7 +1,7 @@
 ---
 slug: open-stream-with-default-app
 title: "Відкрити потік у асоційованій програмі (Open With)"
-priority: P2
+priority: P1
 type: planned
 status: ready
 effort: S

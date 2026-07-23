@@ -1,7 +1,7 @@
 ---
 slug: lastfm-scrobbling
 title: "Last.fm скробблінг — автоматична відправка прослуханих треків"
-priority: P2
+priority: P3
 type: idea
 status: draft
 effort: M

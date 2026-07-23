@@ -1,7 +1,7 @@
 ---
 slug: help-content-polish
 title: "Довести до ума вбудовану довідку (F1)"
-priority: P2
+priority: P1
 type: planned
 status: ready
 effort: M

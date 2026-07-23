@@ -1,7 +1,7 @@
 ---
 slug: resume-last-playback
 title: "Відновлення останнього відтворення при запуску"
-priority: P2
+priority: P1
 type: planned
 status: ready
 effort: M

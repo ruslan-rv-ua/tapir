@@ -1,13 +1,13 @@
 ---
 slug: log-rotation
 title: "Log Rotation (Фаза 3I-3)"
-priority: P2
+priority: P1
 type: planned
 status: ready
 effort: S
 kind: chore
 target: 0.1.0
-updated: 2026-07-19
+updated: 2026-07-22
 a11y: true
 depends_on: []
 blocks: []

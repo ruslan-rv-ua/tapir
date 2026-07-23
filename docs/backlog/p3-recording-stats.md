@@ -1,10 +1,10 @@
 ---
 slug: recording-stats
 title: "Статистика запису — скільки записано, топ станцій"
-priority: P2
+priority: P3
 type: idea
 status: draft
-effort: M
+effort: S
 kind: feature
 target: unscheduled
 updated: 2026-07-22
