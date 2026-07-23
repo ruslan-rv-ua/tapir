@@ -1,7 +1,7 @@
 ---
 slug: full-edit-stream
 title: "Повне редагування потоку (URL / auth / ignorelist)"
-priority: P2
+priority: P1
 type: planned
 status: draft
 effort: M
