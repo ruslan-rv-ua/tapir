@@ -26,6 +26,7 @@ semver; `unscheduled` — наприкінці.
 | [full-edit-stream](p1-full-edit-stream.md) | P1 | planned | draft | M | — | — |
 | [webview-reload-guard](p2-webview-reload-guard.md) | P2 | planned | ready | S | — | [keyboard-shortcuts-audit](p2-keyboard-shortcuts-audit.md) |
 | [keyboard-shortcuts-audit](p2-keyboard-shortcuts-audit.md) | P2 | planned | ready | S | [webview-reload-guard](p2-webview-reload-guard.md) | — |
+| [hotkeys-expansion](p2-hotkeys-expansion.md) | P2 | planned | ready | M | — | — |
 | [settings-sidebar-tabs](p2-settings-sidebar-tabs.md) | P2 | planned | ready | S | — | — |
 | [unwrap-in-tests](p3-unwrap-in-tests.md) | P3 | planned | ready | S | — | — (housekeeping, будь-коли) |
 | [import-duplicate-metadata-update](p3-import-duplicate-metadata-update.md) | P3 | idea | draft | S | — | — |
