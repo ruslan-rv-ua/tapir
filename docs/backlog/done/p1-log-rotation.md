@@ -3,11 +3,12 @@ slug: log-rotation
 title: "Log Rotation (Фаза 3I-3)"
 priority: P1
 type: planned
-status: ready
+status: done
 effort: S
 kind: chore
 target: 0.1.0
 updated: 2026-08-06
+completed: 2026-08-06
 a11y: true
 depends_on: []
 blocks: []
@@ -19,9 +20,9 @@ gates: [cargo test, cargo clippy, pnpm test, pnpm vite:build]
 
 > **Контекст:** базова ротація вже в коді; цей запис — реконсиляція з правильною стратегією (`KeepSome(1)` замість `KeepOne`) + усунення виявлених при ревʼю дефектів (футган `KeepAll`, інвертована NVDA-семантика).
 >
-> **Статус (2026-08-06):** реконсиляцію реалізовано на гілці `chore/log-rotation-keepsome`,
-> усі гейти зелені. Лишився NVDA-прогін — [docs/testing/nvda-log-rotation.md](../testing/nvda-log-rotation.md);
-> після чистого прогону запис переїжджає в `done/`, а чекліст видаляється.
+> **Виконано 2026-08-06** на гілці `chore/log-rotation-keepsome`: усі гейти зелені,
+> NVDA-прогін пройдено без зауважень (чекліст `docs/testing/nvda-log-rotation.md`
+> видалено при прийманні, як велить процес).
 
 ## Контекст стану
 
@@ -213,9 +214,9 @@ settings. Стратегія фіксована (`KeepSome(1)`), кількіс�
 - [x] Макс. розмір налаштовуваний (дефолт 10 МБ, діапазон 1–100)
 - [x] Галочка «Keep full history» (`KeepAll`) прибрана — футган усунуто
 - [x] Поле `log_rotation` видалено наскрізь (Rust, TS-тип `tauri.ts`, фікстури, `data-models.md`)
-- [ ] Загальний обсяг логів ≤ ~2× max_size (1× актив + 1× датований архів) при будь-якому часі роботи — перевіряється прогоном (сценарії 3–4)
-- [ ] NVDA-прогін пройдено — [docs/testing/nvda-log-rotation.md](../testing/nvda-log-rotation.md)
-- [ ] Запис перенесено у `docs/backlog/done/`
+- [x] Загальний обсяг логів ≤ ~2× max_size (1× актив + 1× датований архів) при будь-якому часі роботи
+- [x] NVDA-прогін пройдено (2026-08-06, 6 сценаріїв, зауважень немає)
+- [x] Запис перенесено у `docs/backlog/done/`
 
 ## Прийняті рішення
 
@@ -233,8 +234,8 @@ settings. Стратегія фіксована (`KeepSome(1)`), кількіс�
 
 ## Документи
 
-- [implementation-phases.md §3I-3](../implementation-phases.md#3i-3-log-rotation)
-- [implementation-phases.md §3E](../implementation-phases.md) — взаємодія з single-instance (захист порядком реєстрації, лишити)
+- [implementation-phases.md §3I-3](../../implementation-phases.md#3i-3-log-rotation)
+- [implementation-phases.md §3E](../../implementation-phases.md) — взаємодія з single-instance (захист порядком реєстрації, лишити)
 - Конфігурація логера: `src-tauri/src/lib.rs:101-113`
 - `rotation_strategy_for` (буде прибрано): `src-tauri/src/lib.rs:33-42`
 - Схема `GlobalSettings`: `src-tauri/src/settings.rs:41-43`
