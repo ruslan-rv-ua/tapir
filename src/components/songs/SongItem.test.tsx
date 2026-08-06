@@ -11,6 +11,7 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   songs_action_play: () => "Відтворити",
   songs_action_stop: () => "Зупинити",
   songs_action_menu: () => "Меню",
+  songs_action_open: () => "Відкрити у програмі",
   songs_action_explorer: () => "Провідник",
   songs_action_rename: () => "Перейменувати",
   songs_action_tags: () => "Теги",

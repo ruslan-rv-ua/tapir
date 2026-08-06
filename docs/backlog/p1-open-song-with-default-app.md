@@ -7,7 +7,7 @@ status: ready
 effort: M
 kind: feature
 target: 0.1.0
-updated: 2026-07-22
+updated: 2026-08-06
 a11y: true
 depends_on: []
 blocks: []
@@ -18,6 +18,10 @@ gates: [cargo test, cargo clippy, pnpm test, pnpm vite:build]
 # Відкрити файл у асоційованій програмі (Open With)
 
 > **Контекст:** рішення фіналізовано 2026-07-19 — готовий до реалізації. Технічний підхід (`ShellExecuteW`), UI-розміщення і клавіатурна семантика вже узгоджені.
+>
+> **Статус (2026-08-06):** реалізовано на гілці `feature/open-song-with-default-app`,
+> усі гейти зелені. Лишився NVDA-прогін — [docs/testing/nvda-open-song-with-default-app.md](../testing/nvda-open-song-with-default-app.md);
+> після чистого прогону запис переїжджає в `done/`, а чекліст видаляється.
 
 ## Опис
 
@@ -126,21 +130,35 @@ export type SongAction = "play" | "open" | "explorer" | "rename" | "tags" | "del
 
 ## Критерії готовності
 
-- [ ] Команда `open_song_in_app` через `ShellExecuteW` у `commands/songs_commands.rs` (`spawn_blocking` + `CoInitializeEx` STA)
-- [ ] Feature `Win32_System_Com` додано в `Cargo.toml`
-- [ ] Реєстрація команди в `lib.rs` (поруч із `open_song_in_explorer`, рядок 309)
-- [ ] Пункт "Відкрити у програмі" у `SongContextMenu` (під `play`, над `explorer`); діє на один рядок, виділення ігнорується
-- [ ] `"open"` додано до типу `SongAction`
-- [ ] Клік → файл відкривається у плеєрі за замовчуванням
-- [ ] `SongsList.onAction` опрацьовує 4-й параметр `modifiers` лише для `primary` (паралель до `StationList.tsx:131`); Space (`toggle`) ігнорує модифікатори
-- [ ] Шорткати: `Enter`=play, `Alt+Enter`=open, `Ctrl+Enter`=explorer (на фокусованому рядку)
-- [ ] `aria-keyshortcuts="Alt+Enter Control+Enter"` на `SongItem` (через `CompositeRow`)
-- [ ] При помилці → toast з локалізованим повідомленням (not found / no assoc / generic)
-- [ ] NVDA: пункт меню та шорткати озвучуються коректно; **успішне відкриття зовнішнього плеєра — мануальний NVDA-прогін** (автотесту на реальний запуск немає свідомо)
-- [ ] i18n: ключі `songs_action_open`, `songs_open_failed`, `songs_open_not_found`, `songs_open_no_assoc` (uk/en)
-- [ ] Тест `SongsList.test.tsx`: dispatch `Alt+Enter`/`Ctrl+Enter` + `Alt+Space` не тригерить open (паралель до `StreamList.test.tsx:179-220`)
-- [ ] Тест `SongsList.test.tsx`: aria-keyshortcuts на рядку (паралель до `StationList.test.tsx:106-109`)
-- [ ] Юніт-тест Rust: `map_shell_error` (2→not_found, 31→no_assoc, інше→generic); реальний запуск НЕ тестуємо — побічний ефект
+- [x] Команда `open_song_in_app` через `ShellExecuteW` у `commands/songs_commands.rs` (`spawn_blocking` + `CoInitializeEx` STA)
+- [x] Feature `Win32_System_Com` додано в `Cargo.toml`
+- [x] Реєстрація команди в `lib.rs` (поруч із `open_song_in_explorer`)
+- [x] Пункт "Відкрити у програмі" у `SongContextMenu` (під `play`, над `explorer`); діє на один рядок, виділення ігнорується
+- [x] `"open"` додано до типу `SongAction`
+- [ ] Клік → файл відкривається у плеєрі за замовчуванням (сценарій 3 NVDA-прогону)
+- [x] `SongsList.onAction` опрацьовує 4-й параметр `modifiers` лише для `primary` (паралель до `StationList.tsx:131`); Space (`toggle`) ігнорує модифікатори
+- [x] Шорткати: `Enter`=play, `Alt+Enter`=open, `Ctrl+Enter`=explorer (на фокусованому рядку)
+- [x] `aria-keyshortcuts="Alt+Enter Control+Enter"` на `SongItem` (через `CompositeRow`)
+- [x] При помилці → toast з локалізованим повідомленням (not found / no assoc / generic)
+- [ ] NVDA: пункт меню та шорткати озвучуються коректно; **успішне відкриття зовнішнього плеєра — мануальний NVDA-прогін** (автотесту на реальний запуск немає свідомо) — [docs/testing/nvda-open-song-with-default-app.md](../testing/nvda-open-song-with-default-app.md)
+- [x] i18n: ключі `songs_action_open`, `songs_open_failed`, `songs_open_not_found`, `songs_open_no_assoc` (uk/en)
+- [x] Тест `SongsList.test.tsx`: dispatch `Alt+Enter`/`Ctrl+Enter` + `Alt+Space` не тригерить open (паралель до `StreamList.test.tsx:179-220`)
+- [x] Тест `SongsList.test.tsx`: aria-keyshortcuts на рядку (паралель до `StationList.test.tsx:106-109`)
+- [x] Юніт-тест Rust: `map_shell_error` (2→not_found, 31→no_assoc, інше→generic); реальний запуск НЕ тестуємо — побічний ефект
+
+**Понад план** (виявлено при реалізації, зафіксовано тут, щоб не загубилось):
+
+- [x] `ActionModifiers` отримав поле `alt` (`useCompositeList.ts`) — його там не було;
+      `CompositeRow.onActivate` теж прокидає `altKey`, щоб миша дзеркалила клавіатуру.
+      Це закриває однойменний пункт у [p1-open-stream-with-default-app](p1-open-stream-with-default-app.md).
+- [x] `Alt+Enter` зареєстровано в `src/lib/shortcuts.ts` (group `list`, `reserved: true`):
+      інакше комбінацію можна було б призначити глобальним хоткеєм і перекрити нею дію
+      рядка. Разом з тим — новий ключ `settings_hotkey_action_row_open_external` і
+      уточнений лейбл `..._row_record` (Ctrl+Enter тепер має сенс і на Songs).
+- [x] Мапінг кодів помилок винесено у `src/lib/shellOpenError.ts` (чиста функція + тест),
+      бо той самий контракт знадобиться запису для потоків.
+- [x] `docs/keyboard-shortcuts.md` — рядок `Alt+Enter`, уточнений `Ctrl+Enter` і абзац
+      про те, що модифікатори діють лише на `Enter`.
 
 ## Документи
 

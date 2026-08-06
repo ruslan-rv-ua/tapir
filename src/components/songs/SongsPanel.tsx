@@ -23,6 +23,7 @@ import * as tauri from "../../lib/tauri";
 import type { Song, SongDeletedPayload, SongRenamedPayload } from "../../types/song";
 import { useTauriEvent } from "../../hooks/useTauriEvent";
 import { addToast } from "../../stores/toasts";
+import { shellOpenErrorMessage } from "../../lib/shellOpenError";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import * as m from "../../i18n/paraglide/messages";
 
@@ -171,6 +172,12 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
       switch (action) {
         case "play":
           handlePlay(path);
+          break;
+        case "open":
+          // The external app is launched fire-and-forget; the only thing we can
+          // report is that the launch itself failed (file gone / no association).
+          try { await tauri.openSongInApp(path); }
+          catch (e) { addToast(shellOpenErrorMessage(e), "error"); }
           break;
         case "explorer":
           try { await tauri.openSongInExplorer(path); }

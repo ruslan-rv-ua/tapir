@@ -114,7 +114,7 @@ export const SongsList = forwardRef<SongsListHandle, Props>(
           onEmpty={onEmpty}
           selection={selectionAdapter}
           onSelectionChange={onSelectionChange}
-          onAction={(type, itemId, segment) => {
+          onAction={(type, itemId, segment, mods) => {
             if (type === "delete") {
               // Keyboard Delete: whole selection if any, else single (the D4 gap —
               // songs had no delete branch before). Single is delegated to the panel.
@@ -122,7 +122,13 @@ export const SongsList = forwardRef<SongsListHandle, Props>(
               else onAction(itemId, "delete");
               return;
             }
-            if ((type === "primary" || type === "toggle") && segment === "summary") onPlay(itemId);
+            if (segment !== "summary") return;
+            // Modifiers ride on Enter only, and always target the FOCUSED row —
+            // unlike Delete, which fans out to the selection. Space (toggle)
+            // deliberately ignores them, so Alt+Space stays plain play.
+            if (type === "primary" && mods.alt) { onAction(itemId, "open"); return; }
+            if (type === "primary" && mods.ctrl) { onAction(itemId, "explorer"); return; }
+            if (type === "primary" || type === "toggle") onPlay(itemId);
           }}
           renderRow={({ id, isActive, isFocused }) => {
             const song = songs.find((s) => s.path === id)!;

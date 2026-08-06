@@ -70,6 +70,7 @@ export function SongItem({ song, isActiveRow, isPlaying, isSelected = false, sel
       label={summaryLabel}
       selected={isSelected}
       roleDescription={m.item_role_song()}
+      keyshortcuts="Alt+Enter Control+Enter"
       className="border-b border-slate-800 px-3 py-2 data-[selected=true]:bg-sky-900/40 data-[selected=true]:ring-1 data-[selected=true]:ring-inset data-[selected=true]:ring-sky-400/40 forced-colors:data-[selected=true]:bg-[Highlight] forced-colors:data-[selected=true]:text-[HighlightText]"
       activeClassName="bg-slate-800/40"
     >

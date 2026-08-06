@@ -66,7 +66,7 @@ export function CompositeRow({
         ((e) => {
           // Let the row's own controls handle their own activation.
           if ((e.target as HTMLElement).closest("button, a, input, select, textarea")) return;
-          onActivate({ shift: e.shiftKey, ctrl: e.ctrlKey });
+          onActivate({ shift: e.shiftKey, ctrl: e.ctrlKey, alt: e.altKey });
         })
       }
     >

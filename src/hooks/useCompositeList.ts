@@ -37,11 +37,13 @@ export type ActionType = 'primary' | 'toggle' | 'delete' | 'copy' | 'edit';
  * Modifier keys held during an activation key (Enter/Space) or Delete.
  * Lists map these to fixed alternate actions — by app-wide convention
  * Shift+Enter = listen (play/preview), Ctrl+Enter = record (where recording
- * exists) — regardless of what the plain-Enter primary action is configured to.
+ * exists), Alt+Enter = hand the item to an external app — regardless of what
+ * the plain-Enter primary action is configured to.
  */
 export interface ActionModifiers {
   shift: boolean;
   ctrl: boolean;
+  alt: boolean;
 }
 
 /**
@@ -51,7 +53,7 @@ export interface ActionModifiers {
  * synthesize an onAction call, letting the browser activate the control.
  */
 function modifiers(e: React.KeyboardEvent): ActionModifiers {
-  return { shift: e.shiftKey, ctrl: e.ctrlKey };
+  return { shift: e.shiftKey, ctrl: e.ctrlKey, alt: e.altKey };
 }
 
 function isNativeControl(el: Element | null): boolean {

@@ -3,7 +3,7 @@ import type { Key } from "react";
 import type { Song } from "../../types/song";
 import * as m from "../../i18n/paraglide/messages";
 
-export type SongAction = "play" | "explorer" | "rename" | "tags" | "delete";
+export type SongAction = "play" | "open" | "explorer" | "rename" | "tags" | "delete";
 
 interface Props {
   song: Song;
@@ -38,6 +38,12 @@ export function SongContextMenu({ song, menuFocused, selectionCount, onAction }:
         >
           <MenuItem id="play" className="cursor-pointer px-3 py-1.5 text-sm text-slate-200 outline-none data-[focused]:bg-slate-700 forced-colors:text-[ButtonText] forced-colors:data-[focused]:bg-[Highlight] forced-colors:data-[focused]:text-[HighlightText]">
             {m.songs_action_play()}
+          </MenuItem>
+          {/* "play/open" group: internal player, then the external app, then the
+              folder — one sweep for a screen reader, no rename/delete in between.
+              Acts on this row only; the selection is ignored (unlike delete). */}
+          <MenuItem id="open" className="cursor-pointer px-3 py-1.5 text-sm text-slate-200 outline-none data-[focused]:bg-slate-700 forced-colors:text-[ButtonText] forced-colors:data-[focused]:bg-[Highlight] forced-colors:data-[focused]:text-[HighlightText]">
+            {m.songs_action_open()}
           </MenuItem>
           <MenuItem id="explorer" className="cursor-pointer px-3 py-1.5 text-sm text-slate-200 outline-none data-[focused]:bg-slate-700 forced-colors:text-[ButtonText] forced-colors:data-[focused]:bg-[Highlight] forced-colors:data-[focused]:text-[HighlightText]">
             {m.songs_action_explorer()}

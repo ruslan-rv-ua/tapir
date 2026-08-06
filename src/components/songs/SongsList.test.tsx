@@ -33,10 +33,11 @@ function renderList() {
   const ref = createRef<SongsListHandle>();
   const onAction = vi.fn();
   const onEmpty = vi.fn();
+  const onPlay = vi.fn();
   const utils = render(
-    <SongsList ref={ref} exitZone={vi.fn()} onEmpty={onEmpty} onPlay={vi.fn()} onAction={onAction} />,
+    <SongsList ref={ref} exitZone={vi.fn()} onEmpty={onEmpty} onPlay={onPlay} onAction={onAction} />,
   );
-  return { ref, onAction, onEmpty, ...utils };
+  return { ref, onAction, onEmpty, onPlay, ...utils };
 }
 
 describe("SongsList — bulk delete", () => {
@@ -57,5 +58,57 @@ describe("SongsList — bulk delete", () => {
     act(() => ref.current!.focus("forward"));
     fireEvent.keyDown(document.activeElement!, { key: "Delete" });
     expect(onAction).toHaveBeenCalledWith("a.mp3", "delete");
+  });
+});
+
+describe("SongsList — Enter modifiers act on the focused row", () => {
+  const focusFirstRow = (ref: React.RefObject<SongsListHandle | null>) =>
+    act(() => ref.current!.focus("forward"));
+
+  it("plain Enter plays in the internal player", () => {
+    const { ref, onPlay, onAction } = renderList();
+    focusFirstRow(ref);
+    fireEvent.keyDown(document.activeElement!, { key: "Enter" });
+    expect(onPlay).toHaveBeenCalledWith("a.mp3");
+    expect(onAction).not.toHaveBeenCalled();
+  });
+
+  it("Alt+Enter opens the row in the external app", () => {
+    const { ref, onPlay, onAction } = renderList();
+    focusFirstRow(ref);
+    fireEvent.keyDown(document.activeElement!, { key: "Enter", altKey: true });
+    expect(onAction).toHaveBeenCalledWith("a.mp3", "open");
+    expect(onPlay).not.toHaveBeenCalled();
+  });
+
+  it("Ctrl+Enter reveals the row in Explorer", () => {
+    const { ref, onPlay, onAction } = renderList();
+    focusFirstRow(ref);
+    fireEvent.keyDown(document.activeElement!, { key: "Enter", ctrlKey: true });
+    expect(onAction).toHaveBeenCalledWith("a.mp3", "explorer");
+    expect(onPlay).not.toHaveBeenCalled();
+  });
+
+  it("acts on the FOCUSED row, not on the selection", () => {
+    replaceSelection($songsSelection, new Set(["b.mp3", "c.mp3"]));
+    const { ref, onAction } = renderList();
+    focusFirstRow(ref);
+    fireEvent.keyDown(document.activeElement!, { key: "Enter", altKey: true });
+    expect(onAction).toHaveBeenCalledTimes(1);
+    expect(onAction).toHaveBeenCalledWith("a.mp3", "open");
+  });
+
+  it("Alt+Space still plays — modifiers apply to Enter only", () => {
+    const { ref, onPlay, onAction } = renderList();
+    focusFirstRow(ref);
+    fireEvent.keyDown(document.activeElement!, { key: " ", altKey: true });
+    expect(onPlay).toHaveBeenCalledWith("a.mp3");
+    expect(onAction).not.toHaveBeenCalled();
+  });
+
+  it("advertises Alt+Enter and Control+Enter on the row via aria-keyshortcuts", () => {
+    const { container } = renderList();
+    const li = container.querySelector('li[data-segment="summary"]')!;
+    expect(li.getAttribute("aria-keyshortcuts")).toBe("Alt+Enter Control+Enter");
   });
 });

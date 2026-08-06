@@ -10,10 +10,14 @@ describe("RESERVED_WEBVIEW_COMBOS", () => {
       "Alt+0", "Alt+1", "Alt+2", "Alt+3", "Alt+4", "Alt+5",
       "Ctrl+N",
       "F6", "Shift+F6", "Shift+F10",
-      "Shift+Enter", "Ctrl+Enter",
+      "Shift+Enter", "Ctrl+Enter", "Alt+Enter",
       "Ctrl+C",
       "F2",
     ]);
+  });
+
+  it("reserves Alt+Enter so a global hotkey cannot shadow the external-open row action", () => {
+    expect(findReservedConflict("Alt+Enter")).not.toBeNull();
   });
 });
 

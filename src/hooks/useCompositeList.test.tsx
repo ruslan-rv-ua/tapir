@@ -141,7 +141,7 @@ function expectActive(id: string | null, seg: string | null) {
   expect(ae?.getAttribute("data-segment") ?? null).toBe(seg);
 }
 
-const noMods: ActionModifiers = { shift: false, ctrl: false };
+const noMods: ActionModifiers = { shift: false, ctrl: false, alt: false };
 
 const makeItems = (): CompositeListItem[] => [
   { id: "a", segments: ["track", "tech", "action-play", "action-record", "action-menu"] },
@@ -272,18 +272,21 @@ describe("activation keys", () => {
     expect(onAction).toHaveBeenLastCalledWith("primary", "a", "summary", {
       shift: true,
       ctrl: false,
+      alt: false,
     });
 
     press("Enter", { ctrlKey: true });
     expect(onAction).toHaveBeenLastCalledWith("primary", "a", "summary", {
       shift: false,
       ctrl: true,
+      alt: false,
     });
 
     press(" ", { shiftKey: true });
     expect(onAction).toHaveBeenLastCalledWith("toggle", "a", "summary", {
       shift: true,
       ctrl: false,
+      alt: false,
     });
   });
 
@@ -322,7 +325,17 @@ describe("activation keys", () => {
     render(<Harness items={makeItems()} onAction={onAction} />);
     focusStart("a");
     press("c", { code: "KeyC", ctrlKey: true });
-    expect(onAction).toHaveBeenCalledWith("copy", "a", "summary", { shift: false, ctrl: true });
+    expect(onAction).toHaveBeenCalledWith("copy", "a", "summary", { shift: false, ctrl: true, alt: false });
+  });
+
+  it("Alt+Enter fires primary with the alt modifier set", () => {
+    const onAction = vi.fn();
+    render(<Harness items={makeItems()} onAction={onAction} />);
+    focusStart("a");
+    press("Enter", { altKey: true });
+    expect(onAction).toHaveBeenCalledWith("primary", "a", "summary", {
+      shift: false, ctrl: false, alt: true,
+    });
   });
 
   it("Ctrl+C with no active item does nothing", () => {

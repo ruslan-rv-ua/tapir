@@ -171,7 +171,8 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 | `Shift+F10` / `ContextMenu` | меню рядка (еквівалент ПКМ) | фокус на рядку списку | [useCompositeList.ts:342-367](../src/hooks/useCompositeList.ts#L342-L367) · [accessibility.md §3.6](accessibility.md#L333) | ✅ |
 | `Enter` | активувати рядок (Streams: record/play за `doubleClickAction` · Browser: додати · Songs: play · Profiles: switch · Wishlist: edit) | фокус на рядку списку | [useCompositeList.ts Enter-case](../src/hooks/useCompositeList.ts) → `onAction` списку | ✅ |
 | `Shift+Enter` | **прослухати** рядок незалежно від налаштування (Streams: toggle відтворення · Browser: toggle прев'ю) | фокус на рядку Streams/Browser | модифікатори в `onAction` ([useCompositeList.ts](../src/hooks/useCompositeList.ts)); гілки: [StreamList.tsx](../src/components/streams/StreamList.tsx), [StationList.tsx](../src/components/browser/StationList.tsx) | ✅ |
-| `Ctrl+Enter` | **записати** рядок незалежно від налаштування (лише Streams: toggle запису) | фокус на рядку Streams | ↑ | ✅ |
+| `Ctrl+Enter` | **записати** рядок незалежно від налаштування (Streams: toggle запису · Songs: показати файл у провіднику) | фокус на рядку Streams/Songs | ↑; гілка Songs: [SongsList.tsx](../src/components/songs/SongsList.tsx) | ✅ |
+| `Alt+Enter` | **відкрити** рядок у зовнішній програмі за замовчуванням (лише Songs) | фокус на рядку Songs | ↑ → `open_song_in_app` ([songs_commands.rs](../src-tauri/src/commands/songs_commands.rs)) | ✅ |
 | `Ctrl+C` | копіювати щодо рядка (generic `copy`; Streams: URL потоку) | фокус на рядку списку | [useCompositeList.ts:274](../src/hooks/useCompositeList.ts#L274) (`e.code === "KeyC"`) → `onAction("copy")` списку | ✅ |
 | `Ctrl+Space` | перемкнути виділення активного рядка (+ ставить якір) — у **всіх** композитних списках (streams, songs, profiles, schedule, patterns, browser) | фокус у списку з multi-select | [useCompositeList.ts](../src/hooks/useCompositeList.ts) `resolveKeyAction` → `selectToggle` | ✅ |
 | `Ctrl+A` | виділити всі видимі / зняти (toggle) — у **всіх** композитних списках | фокус у списку з multi-select | ↑ (`selectAll` / `clearSelection`) | ✅ |
@@ -213,14 +214,21 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 > **тільки** в меню рядка (`Shift+F10`): для нього окремий list-scoped гард не писали,
 > а голий section-scope Ctrl-letter саме й ризикований у browse mode.
 >
-> `Shift+Enter`/`Ctrl+Enter` — **фіксована** семантика (Shift = слухати,
-> Ctrl = записати), вона не інвертується разом із `doubleClickAction`: стабільна
-> м'язова пам'ять важливіша за симетрію «протилежної дії». Миша дзеркалить
-> клавіатуру: `Shift+`/`Ctrl+`подвійний клік — те саме ([CompositeRow.tsx](../src/components/common/composite-list/CompositeRow.tsx)).
-> Рядки анонсують комбо через `aria-keyshortcuts`; обидва є в F1-довіднику
-> (група «Списки») і зарезервовані проти KeyRecorder. На Songs `Shift+Enter`
-> збігається з голим `Enter` (play) — окремої гілки нема; на Profiles/Wishlist
-> модифікатори свідомо не мають дії (немає «слухати»/«записати»).
+> `Shift+Enter`/`Ctrl+Enter`/`Alt+Enter` — **фіксована** семантика (Shift = слухати,
+> Ctrl = записати, Alt = віддати зовнішній програмі), вона не інвертується разом із
+> `doubleClickAction`: стабільна м'язова пам'ять важливіша за симетрію «протилежної
+> дії». Миша дзеркалить клавіатуру: `Shift+`/`Ctrl+`подвійний клік — те саме
+> ([CompositeRow.tsx](../src/components/common/composite-list/CompositeRow.tsx)).
+> Рядки анонсують комбо через `aria-keyshortcuts`; усі три є в F1-довіднику
+> (група «Списки») і зарезервовані проти KeyRecorder. На Songs запису немає, тож
+> `Ctrl` вільний і віддається допоміжній навігації (провідник), а `Alt+Enter` —
+> зовнішньому плеєру; `Shift+Enter` там збігається з голим `Enter` (play) —
+> окремої гілки нема. На Profiles/Wishlist модифікатори свідомо не мають дії.
+>
+> Модифікатори діють **лише на `Enter`** (`primary`). `Space` (`toggle`) приходить
+> у `onAction` з тими самими модифікаторами, але списки їх ігнорують: `Alt+Space`
+> не дублює `Alt+Enter` (а `Ctrl+Space` узагалі не долітає — його забирає
+> selection-toggle у `resolveKeyAction`).
 
 ## Tier 3 — віджетні / ARIA (не named-шорткати)
 

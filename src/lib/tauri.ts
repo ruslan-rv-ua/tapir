@@ -534,6 +534,10 @@ export async function playSavedSong(path: string): Promise<void> {
 export async function openSongInExplorer(path: string): Promise<void> {
   return invoke("open_song_in_explorer", { path });
 }
+/** Rejects with a stable code — map it via `shellOpenErrorMessage`. */
+export async function openSongInApp(path: string): Promise<void> {
+  return invoke("open_song_in_app", { path });
+}
 export async function renameSong(oldPath: string, newBasename: string): Promise<Song> {
   return invoke("rename_song", { oldPath, newBasename });
 }

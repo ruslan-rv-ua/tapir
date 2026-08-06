@@ -156,8 +156,9 @@ export const SHORTCUTS: readonly Shortcut[] = [
     group: "list",
     reserved: true,
   },
-  // Fixed list-activation combos (useCompositeList): Shift = listen, Ctrl = record —
-  // they override the configurable plain-Enter action on rows that support them.
+  // Fixed list-activation combos (useCompositeList): Shift = listen, Ctrl = record,
+  // Alt = hand off to an external app — they override the configurable plain-Enter
+  // action on rows that support them.
   {
     id: "row-listen",
     combo: "Shift+Enter",
@@ -169,6 +170,13 @@ export const SHORTCUTS: readonly Shortcut[] = [
     id: "row-record",
     combo: "Ctrl+Enter",
     label: m.settings_hotkey_action_row_record,
+    group: "list",
+    reserved: true,
+  },
+  {
+    id: "row-open-external",
+    combo: "Alt+Enter",
+    label: m.settings_hotkey_action_row_open_external,
     group: "list",
     reserved: true,
   },
