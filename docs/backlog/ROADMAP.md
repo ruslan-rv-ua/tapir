@@ -17,7 +17,7 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [open-stream-with-default-app](p1-open-stream-with-default-app.md) | P1 | planned | ready | S | — | — |
+| [open-stream-with-default-app](p1-open-stream-with-default-app.md) | P1 | planned | ready | M | — | — |
 | [help-content-polish](p1-help-content-polish.md) | P1 | planned | ready | M | — | — |
 | [full-edit-stream](p1-full-edit-stream.md) | P1 | planned | draft | M | — | — |
 | [webview-reload-guard](p2-webview-reload-guard.md) | P2 | planned | ready | S | — | [keyboard-shortcuts-audit](p2-keyboard-shortcuts-audit.md) |

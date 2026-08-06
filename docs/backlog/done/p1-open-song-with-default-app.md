@@ -151,7 +151,7 @@ export type SongAction = "play" | "open" | "explorer" | "rename" | "tags" | "del
 
 - [x] `ActionModifiers` отримав поле `alt` (`useCompositeList.ts`) — його там не було;
       `CompositeRow.onActivate` теж прокидає `altKey`, щоб миша дзеркалила клавіатуру.
-      Це закриває однойменний пункт у [p1-open-stream-with-default-app](p1-open-stream-with-default-app.md).
+      Це закриває однойменний пункт у [p1-open-stream-with-default-app](../p1-open-stream-with-default-app.md).
 - [x] `Alt+Enter` зареєстровано в `src/lib/shortcuts.ts` (group `list`, `reserved: true`):
       інакше комбінацію можна було б призначити глобальним хоткеєм і перекрити нею дію
       рядка. Разом з тим — новий ключ `settings_hotkey_action_row_open_external` і
