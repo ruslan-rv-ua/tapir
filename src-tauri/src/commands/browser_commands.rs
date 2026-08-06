@@ -168,16 +168,30 @@ pub async fn get_browser_filters(
     client.get_filters().await.map_err(|e| e.to_string())
 }
 
+/// Everything `append_streams_to_active_profile` decides while holding the
+/// profile lock: drop urls already present (and duplicates inside the batch),
+/// then name the survivors apart from the profile AND from each other. Radio
+/// Browser lists every mountpoint of a station under one identical name, so a
+/// bulk add is the likeliest source of same-name pairs. Pure over the profile —
+/// unit-testable without Tauri state.
+fn plan_appended(existing: &[StreamInfo], incoming: Vec<StreamInfo>) -> Vec<StreamInfo> {
+    let mut added = dedup_new_streams(existing, incoming);
+    let mut taken = crate::naming::taken_keys(existing.iter(), None);
+    crate::naming::disambiguate_batch(&mut added, &mut taken);
+    added
+}
+
 /// Append new streams to the active profile in one atomic save+emit.
-/// Skips urls already present (dedup_new_streams). Returns only the streams
-/// actually added. If nothing is added, skips the save/emit and returns empty.
+/// `plan_appended` does the url-dedup and the naming. Returns only the streams
+/// actually added, with their final names. If nothing is added, skips the
+/// save/emit and returns empty.
 async fn append_streams_to_active_profile(
     state: &AppState,
     app: &tauri::AppHandle,
     streams: Vec<StreamInfo>,
 ) -> Result<Vec<StreamInfo>, String> {
     let mut profile = state.active_profile.write().await;
-    let added = dedup_new_streams(&profile.streams, streams);
+    let added = plan_appended(&profile.streams, streams);
     if added.is_empty() {
         return Ok(added);
     }
@@ -449,6 +463,59 @@ mod tests {
     fn dedup_collapses_internal_duplicates() {
         let added = dedup_new_streams(&[], vec![stream("https://x"), stream("https://x")]);
         assert_eq!(added.len(), 1);
+    }
+
+    fn named_stream(url: &str, name: &str, codec: &str, bitrate: u32) -> StreamInfo {
+        StreamInfo {
+            name: name.into(),
+            format: codec_to_format(codec),
+            bitrate: if bitrate > 0 { Some(bitrate) } else { None },
+            ..stream(url)
+        }
+    }
+
+    #[test]
+    fn browser_add_suffixes_against_the_profile() {
+        let existing = vec![named_stream("https://old", "BBC 6", "MP3", 128)];
+        let added = plan_appended(&existing, vec![named_stream("https://new", "BBC 6", "AAC", 48)]);
+        assert_eq!(added[0].name, "BBC 6 (AAC 48k)");
+    }
+
+    #[test]
+    fn browser_bulk_add_distinguishes_mountpoints_within_one_batch() {
+        // The Radio Browser case: six identically named variants of one station.
+        let incoming = vec![
+            named_stream("https://a", "BBC 6", "AAC", 48),
+            named_stream("https://b", "BBC 6", "MP3", 128),
+            named_stream("https://c", "BBC 6", "AAC", 48), // identical metadata
+        ];
+        let added = plan_appended(&[], incoming);
+        assert_eq!(added[0].name, "BBC 6");
+        assert_eq!(added[1].name, "BBC 6 (MP3 128k)");
+        assert_eq!(added[2].name, "BBC 6 (AAC 48k)");
+    }
+
+    #[test]
+    fn browser_add_leaves_a_distinct_name_alone() {
+        let existing = vec![named_stream("https://old", "Groove Salad", "MP3", 128)];
+        let added = plan_appended(&existing, vec![named_stream("https://new", "FIP", "AAC", 192)]);
+        assert_eq!(added[0].name, "FIP");
+    }
+
+    #[test]
+    fn browser_add_does_not_burn_a_name_on_a_url_that_is_dropped() {
+        // https://old is already in the profile, so it never reaches the naming
+        // step and must not push the fresh entry to a suffix.
+        let existing = vec![named_stream("https://old", "Other", "MP3", 128)];
+        let added = plan_appended(
+            &existing,
+            vec![
+                named_stream("https://old", "Dropped", "MP3", 128),
+                named_stream("https://new", "FIP", "AAC", 192),
+            ],
+        );
+        assert_eq!(added.len(), 1);
+        assert_eq!(added[0].name, "FIP");
     }
 
     #[test]
