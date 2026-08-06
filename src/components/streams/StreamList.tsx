@@ -12,6 +12,7 @@ import { StreamTransferDialog } from "./StreamTransferDialog";
 import { ProfileNameDialog } from "../profile/ProfileNameDialog";
 import * as tauri from "../../lib/tauri";
 import { addToast } from "../../stores/toasts";
+import { streamOpenErrorMessage } from "../../lib/shellOpenError";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import { createPortal } from "react-dom";
 import { ConfirmDialog } from "../common/ConfirmDialog";
@@ -307,6 +308,17 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
     setBulkConfirmOpen(false);
   };
 
+  // Success is deliberately silent: the media player taking the foreground is
+  // the feedback, and a toast fired mid-switch would be cut off unread. A
+  // failure leaves Tapir in front, so its toast is heard.
+  const openStreamInPlayer = async (streamId: string) => {
+    try {
+      await tauri.openStreamInApp(streamId);
+    } catch (err) {
+      addToast(streamOpenErrorMessage(err), "error");
+    }
+  };
+
   const copyStreamUrl = async (stream: StreamInfo) => {
     try {
       await navigator.clipboard.writeText(stream.url);
@@ -352,6 +364,13 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
             else setPendingDeleteId(itemId);
             return;
           }
+          // Alt+Enter rides on the FOCUSED row only (like edit, unlike delete).
+          // Space deliberately ignores modifiers, so Alt+Space stays a plain
+          // play/record — mirrors SongsList.
+          if (type === "primary" && segment === "summary" && mods?.alt) {
+            openStreamInPlayer(itemId);
+            return;
+          }
           // Action buttons self-activate; only Enter/Space on the whole-row
           // summary triggers the row's primary action.
           if ((type === "primary" || type === "toggle") && segment === "summary") {
@@ -390,6 +409,7 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
                 else { replaceSelection(new Set([id])); openTransfer("move", { kind: "single", streamId: id }); }
               }}
               onCopyUrl={() => copyStreamUrl(streams.find((s) => s.id === id)!)}
+              onOpenInPlayer={() => openStreamInPlayer(id)}
               onActivate={(mods) => activateStream(id, mods)}
             />
           );

@@ -1,12 +1,13 @@
 import * as m from "../i18n/paraglide/messages";
 
 /**
- * Turn the backend's shell-open error code into a localized toast message.
- *
- * `open_song_in_app` rejects with one of the stable codes from
- * `map_shell_error` (src-tauri/src/commands/songs_commands.rs). Anything else —
- * a tokio join error, an unexpected throw — falls back to the generic wording,
- * so the user always gets a spoken reason instead of silence.
+ * Localized toast messages for the two commands that hand something to the
+ * Windows shell. Both reject with a stable code from
+ * `src-tauri/src/commands/shell_open.rs`, but they can't share one mapping: the
+ * code SETS differ, and `no_assoc` means different things (a song has no app for
+ * its audio format; a stream has no app for playlists at all). Anything
+ * unrecognized — a tokio join error, an unexpected throw — falls back to the
+ * generic wording, so the user always gets a spoken reason instead of silence.
  */
 export function shellOpenErrorMessage(err: unknown): string {
   switch (String(err)) {
@@ -16,5 +17,22 @@ export function shellOpenErrorMessage(err: unknown): string {
       return m.songs_open_no_assoc();
     default:
       return m.songs_open_failed();
+  }
+}
+
+/**
+ * The stream variant (`open_stream_in_app`). `not_found` is unreachable here —
+ * the playlist was just written — while `write_failed` is new: keeping it apart
+ * from `no_assoc` is the whole point, since one says "install VLC" and the other
+ * says "check the disk".
+ */
+export function streamOpenErrorMessage(err: unknown): string {
+  switch (String(err)) {
+    case "no_assoc":
+      return m.stream_open_no_assoc();
+    case "write_failed":
+      return m.stream_open_write_failed();
+    default:
+      return m.stream_open_failed();
   }
 }

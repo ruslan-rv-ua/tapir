@@ -32,6 +32,7 @@ vi.mock("../../lib/tauri", () => ({
   copyStreamsToProfile: vi.fn().mockResolvedValue({ transferred: [], skippedRecording: 0, skippedConflict: 0 }),
   moveStreamsToProfile: vi.fn().mockResolvedValue({ transferred: [], skippedRecording: 0, skippedConflict: 0 }),
   createProfile: vi.fn().mockResolvedValue({ name: "Fresh", streamCount: 0, isActive: false }),
+  openStreamInApp: vi.fn().mockResolvedValue(undefined),
 }));
 
 const mkStream = (id: string, name: string): StreamInfo => ({
@@ -363,6 +364,47 @@ describe("StreamList — copy stream URL", () => {
     );
     fireEvent.click(await screen.findByRole("menuitem", { name: m.copy_url() }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("http://x/b"));
+  });
+});
+
+describe("StreamList — open in a media player", () => {
+  it("Alt+Enter on the focused row opens that stream in the external player", () => {
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: "Enter", altKey: true });
+    expect(tauri.openStreamInApp).toHaveBeenCalledWith("a");
+    expect(tauri.startRecording).not.toHaveBeenCalled();
+    expect(tauri.playStream).not.toHaveBeenCalled();
+  });
+
+  it("the ⋯ menu item opens the row it was invoked from, ignoring the selection", async () => {
+    replaceSelection(new Set(["a", "c"]));
+    const { container } = renderList();
+    fireEvent.click(
+      container.querySelector<HTMLElement>('li[data-item-id="b"] button[data-segment="action-menu"]')!,
+    );
+    fireEvent.click(await screen.findByRole("menuitem", { name: m.stream_action_open_player() }));
+    await waitFor(() => expect(tauri.openStreamInApp).toHaveBeenCalledWith("b"));
+    expect(tauri.openStreamInApp).toHaveBeenCalledTimes(1);
+  });
+
+  it("toasts a localized reason when no app is registered for playlists", async () => {
+    vi.mocked(tauri.openStreamInApp).mockRejectedValueOnce("no_assoc");
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: "Enter", altKey: true });
+    await waitFor(() =>
+      expect($toasts.get().some((t) => t.message === m.stream_open_no_assoc())).toBe(true),
+    );
+  });
+
+  it("Alt+Space still performs the row's primary action — modifiers ride on Enter only", () => {
+    $settings.set({ ...baseSettings, doubleClickAction: "record" });
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: " ", code: "Space", altKey: true });
+    expect(tauri.startRecording).toHaveBeenCalledWith("a");
+    expect(tauri.openStreamInApp).not.toHaveBeenCalled();
   });
 });
 

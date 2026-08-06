@@ -21,6 +21,7 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   move_to_profile: () => "Перемістити в профіль…",
   move_disabled_reason: () => "Не можна перемістити активний потік",
   copy_url: () => "Копіювати URL",
+  stream_action_open_player: () => "Відкрити у медіаплеєрі",
   move_selected: ({ count }: { count: number }) => `Перемістити виділені (${count})`,
   copy_selected: ({ count }: { count: number }) => `Копіювати виділені (${count})`,
 }));
@@ -41,6 +42,7 @@ function renderMenu(status?: StreamStatus) {
   const h = {
     onAddToWishlist: vi.fn(), onAddToIgnorelist: vi.fn(), onDelete: vi.fn(),
     onCopyToProfile: vi.fn(), onMoveToProfile: vi.fn(), onCopyUrl: vi.fn(),
+    onOpenInPlayer: vi.fn(),
   };
   const utils = render(
     <StreamContextMenu stream={mkStream()} status={status} menuFocused {...h} />,
@@ -98,6 +100,17 @@ describe("StreamContextMenu — copy/move to profile", () => {
     open(container);
     fireEvent.click(await screen.findByRole("menuitem", { name: "Копіювати URL" }));
     expect(onCopyUrl).toHaveBeenCalled();
+  });
+
+  it("calls onOpenInPlayer when the media-player item is clicked, even while recording", async () => {
+    // A second connection to the station is allowed on purpose (see the record's
+    // "Одночасний запис"): the item is never disabled.
+    const { container, onOpenInPlayer } = renderMenu(mkStatus("recording"));
+    open(container);
+    const item = await screen.findByRole("menuitem", { name: "Відкрити у медіаплеєрі" });
+    expect(item.getAttribute("aria-disabled")).not.toBe("true");
+    fireEvent.click(item);
+    expect(onOpenInPlayer).toHaveBeenCalled();
   });
 });
 

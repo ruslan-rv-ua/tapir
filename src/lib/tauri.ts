@@ -538,6 +538,13 @@ export async function openSongInExplorer(path: string): Promise<void> {
 export async function openSongInApp(path: string): Promise<void> {
   return invoke("open_song_in_app", { path });
 }
+/**
+ * Open the stream in the system's playlist app (a temp .m3u8 is written for it).
+ * Rejects with a stable code — map it via `streamOpenErrorMessage`.
+ */
+export async function openStreamInApp(streamId: string): Promise<void> {
+  return invoke("open_stream_in_app", { streamId });
+}
 export async function renameSong(oldPath: string, newBasename: string): Promise<Song> {
   return invoke("rename_song", { oldPath, newBasename });
 }

@@ -43,6 +43,7 @@ interface Props {
   onCopyToProfile: () => void;
   onMoveToProfile: () => void;
   onCopyUrl: () => void;
+  onOpenInPlayer: () => void;
   /** Primary action on a mouse double-click of the row (record/play per setting; Shift/Ctrl force play/record). */
   onActivate?: (modifiers: ActionModifiers) => void;
   /** This row is part of the multi-selection (name suffix + highlight). */
@@ -59,6 +60,7 @@ export function StreamItem({
   onCopyToProfile,
   onMoveToProfile,
   onCopyUrl,
+  onOpenInPlayer,
   onActivate,
   isSelected,
 }: Props) {
@@ -311,6 +313,7 @@ export function StreamItem({
           onCopyToProfile={onCopyToProfile}
           onMoveToProfile={onMoveToProfile}
           onCopyUrl={onCopyUrl}
+          onOpenInPlayer={onOpenInPlayer}
           onDelete={onDelete}
         />
       </div>

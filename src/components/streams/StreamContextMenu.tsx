@@ -18,10 +18,12 @@ interface Props {
   onCopyToProfile: () => void;
   onMoveToProfile: () => void;
   onCopyUrl: () => void;
+  /** Hand this one stream to the system's playlist app. Ignores the selection. */
+  onOpenInPlayer: () => void;
   onDelete: () => void;
 }
 
-export function StreamContextMenu({ stream, status, menuFocused, onAddToWishlist, onAddToIgnorelist, onCopyToProfile, onMoveToProfile, onCopyUrl, onDelete }: Props) {
+export function StreamContextMenu({ stream, status, menuFocused, onAddToWishlist, onAddToIgnorelist, onCopyToProfile, onMoveToProfile, onCopyUrl, onOpenInPlayer, onDelete }: Props) {
   const playerStatus = useStore($playerStatus);
   const selection = useStore($streamSelection);
   const isSelected = selection.has(stream.id);
@@ -49,6 +51,9 @@ export function StreamContextMenu({ stream, status, menuFocused, onAddToWishlist
         case "record":
           if (isRecording) await tauri.stopRecording(stream.id);
           else await tauri.startRecording(stream.id);
+          break;
+        case "open-player":
+          onOpenInPlayer();
           break;
         case "edit":
           $editStream.set(stream);
@@ -112,6 +117,12 @@ export function StreamContextMenu({ stream, status, menuFocused, onAddToWishlist
             {isRecording
               ? <><span aria-hidden="true">⏹ </span>{m.stop_recording()}</>
               : <><span aria-hidden="true">⏺ </span>{m.start_recording()}</>}
+          </MenuItem>
+          <MenuItem
+            id="open-player"
+            className="cursor-pointer px-3 py-1.5 text-sm text-slate-200 outline-none hover:bg-slate-700 focus:bg-slate-700"
+          >
+            <span aria-hidden="true">→ </span>{m.stream_action_open_player()}
           </MenuItem>
           <MenuItem
             id="edit"
