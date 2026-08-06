@@ -3,6 +3,7 @@ mod autostart;
 mod commands;
 mod crash_recovery;
 mod errors;
+mod naming;
 mod player;
 mod playback_control;
 mod portable;
