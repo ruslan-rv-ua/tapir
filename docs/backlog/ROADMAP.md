@@ -17,7 +17,6 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [stream-name-disambiguation](p0-stream-name-disambiguation.md) | P0 | planned | ready | M | — | — |
 | [wishlist-stale-list-ref](p1-wishlist-stale-list-ref.md) | P1 | planned | ready | S | [wishlist-example-patterns](done/p2-wishlist-example-patterns.md) ✅ | — |
 | [log-rotation](p1-log-rotation.md) | P1 | planned | ready | S | — | — |
 | [open-song-with-default-app](p1-open-song-with-default-app.md) | P1 | planned | ready | M | — | — |
@@ -76,6 +75,7 @@ semver; `unscheduled` — наприкінці.
 
 | Запис | Коли | Що лишилось у спадок |
 |-------|------|----------------------|
+| [stream-name-disambiguation](done/p0-stream-name-disambiguation.md) | 2026-08-06 | чистий модуль `src-tauri/src/naming.rs` — єдине місце, де вирішується ім'я потоку (`collision_key` = санітизоване ім'я без регістру, суфікс `(AAC 64k)`/`(AAC)`/`(2)`, присвоюється **один раз** при додаванні); викликається з `build_added_stream`, `plan_appended` (браузер), `plan_import`, `recording_task` (ICY). IPC `check_stream_conflicts` дає діалогу попередження про дубль URL і про колізію імені; `ProbeVerdict` тепер несе `bitrate`/`format` і вони зберігаються в потік. `%s` більше ніколи не бере сире ICY-ім'я. Гілка `feature/stream-name-disambiguation`, TDD. **NVDA-прогін не проведено** — чекліст у самому записі, рекомендовано перед релізом |
 | [command-palette-results-a11y](done/p1-command-palette-results-a11y.md) | 2026-07-23 | `palette_no_results` замість хардкоду; оголошення кількості результатів (у т.ч. «0») через глобальний `LiveAnnouncer`/`useAnnounce` (polite, дебаунс 300 мс) — без окремого регіону в модалці й без змін моделі пунктів. Гілка `feature/command-palette-results-a11y`, TDD. **NVDA-прогін оголошення не проведено** — рекомендовано перед релізом |
 | [resume-last-playback](done/p1-resume-last-playback.md) | 2026-07-23 | `PlayerSession.autoplay_on_startup` (per-profile opt-in) + `AutoplayGuard` one-shot + `set_profile_autoplay` IPC + `ProfileSettingsDialog`; злито fast-forward у develop (`26b7f1e`), локально, не запушено. **NVDA-прогін нового діалогу та авто-старту не проведено** — рекомендовано перед релізом |
 | [stream-name-trim](done/p0-stream-name-trim.md) | 2026-07-22 | `.trim()` у `add_stream` і `update_stream` (`stream_commands.rs`) — назва потоку більше не зберігається з провідними/завершальними пробілами |
