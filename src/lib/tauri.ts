@@ -92,7 +92,6 @@ export interface GlobalSettings {
   volumeStepPercent: number;
   smtcEnabled: boolean;
   hotkeys: HotkeyMap;
-  logRotation: boolean;
   logMaxSizeMb: number;
   logLevel: LogLevel;
 }

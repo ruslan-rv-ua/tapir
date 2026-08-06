@@ -13,7 +13,9 @@
 //! It detects a duplicate inside its setup hook and calls
 //! `cleanup_before_exit()` + `std::process::exit(0)`, so any plugin registered
 //! after it never initializes in the dying second instance — keeping the shared
-//! `tapir.log` (KeepOne rotation) untouched.
+//! `tapir.log` untouched. This matters because the log plugin rotates at
+//! initialization too, not only on write: a second instance that reached it
+//! could rotate the shared file out from under the first.
 
 use tauri::plugin::TauriPlugin;
 use tauri::{AppHandle, Manager, Wry};

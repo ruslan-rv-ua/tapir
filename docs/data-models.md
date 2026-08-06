@@ -59,7 +59,6 @@
   },
 
   // Logging
-  "logRotation": true,
   "logLevel": "info",
   "logMaxSizeMb": 10
 }
@@ -83,7 +82,6 @@ interface GlobalSettings {
   autostart: boolean;
   autostartMinimized: boolean;
   hotkeys: HotkeyMap;
-  logRotation: boolean;
   logLevel: "error" | "warn" | "info" | "debug";
   logMaxSizeMb: number;
   resumeFileFrom: "position" | "start"; // тільки cold-start Ctrl+Shift+K; pause→resume завжди з позиції
@@ -119,7 +117,6 @@ pub struct GlobalSettings {
     pub autostart: bool,
     pub autostart_minimized: bool,
     pub hotkeys: HotkeyMap,
-    pub log_rotation: bool,
     pub log_level: LogLevel,
     pub log_max_size_mb: u32,
     #[serde(default)]
@@ -1095,7 +1092,6 @@ interface PostprocessErrorPayload {
     "prevTrack": "Ctrl+Alt+Left",
     "nextTrack": "Ctrl+Alt+Right"
   },
-  "logRotation": true,
   "logLevel": "info",
   "logMaxSizeMb": 10
 }
@@ -1167,8 +1163,6 @@ pub struct GlobalSettings {
     #[serde(default = "default_language")]
     pub language: String,
     
-    #[serde(default)]
-    pub log_rotation: bool,
     #[serde(default)]
     pub log_level: LogLevel,
     

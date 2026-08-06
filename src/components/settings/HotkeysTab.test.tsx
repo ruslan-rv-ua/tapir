@@ -50,7 +50,6 @@ const baseSettings: GlobalSettings = {
     prevTrack: "",
     nextTrack: "",
   },
-  logRotation: true,
   logMaxSizeMb: 10,
   logLevel: "info",
 };

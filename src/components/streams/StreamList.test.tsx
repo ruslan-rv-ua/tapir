@@ -55,7 +55,7 @@ const baseSettings: GlobalSettings = {
   diskSpaceThresholdGb: 0, doubleClickAction: "record", sortBy: "name", bandwidthLimitKbps: 0,
   autostart: false, autostartMinimized: true, autoAdvance: false, prevRestartThresholdMs: 0, resumeFileFrom: "position",
   hotkeys: { toggleRecording: "", togglePlayback: "", volumeUp: "", volumeDown: "", toggleWindow: "", stopAll: "", prevTrack: "", nextTrack: "" },
-  logRotation: false, logMaxSizeMb: 10, logLevel: "info",
+  logMaxSizeMb: 10, logLevel: "info",
 };
 
 beforeEach(() => {

@@ -31,17 +31,6 @@ use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_log::{Target, TargetKind, RotationStrategy};
 
-/// Maps the user's `log_rotation` toggle to a plugin rotation strategy.
-/// `true` (default) keeps disk bounded (KeepOne, == previous behavior);
-/// `false` keeps the full timestamped history (KeepAll).
-fn rotation_strategy_for(keep_recycling: bool) -> RotationStrategy {
-    if keep_recycling {
-        RotationStrategy::KeepOne
-    } else {
-        RotationStrategy::KeepAll
-    }
-}
-
 pub fn run() {
     // Phase 3E: relax the foreground lock as early as possible. In a second
     // instance this hands the foreground grant to the first instance before the
@@ -103,7 +92,11 @@ pub fn run() {
                 .level(dep_filter)
                 .level_for("tapir_lib", app_filter)
                 .max_file_size(initial_settings.log_max_size_mb as u128 * 1_048_576)
-                .rotation_strategy(rotation_strategy_for(initial_settings.log_rotation))
+                // Active file + one timestamped archive (<= ~2x max_file_size).
+                // KeepOne would *delete* the previous log on rotation, dropping
+                // the diagnostic context exactly when it is needed; KeepAll is
+                // unbounded, which is the problem rotation exists to solve.
+                .rotation_strategy(RotationStrategy::KeepSome(1))
                 .targets([
                     Target::new(TargetKind::Folder {
                         path: portable::logs_dir(),
@@ -343,16 +336,4 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn rotation_true_keeps_one_false_keeps_all() {
-        // log_rotation == true preserves the current bounded-disk behavior (KeepOne).
-        assert!(matches!(rotation_strategy_for(true), RotationStrategy::KeepOne));
-        assert!(matches!(rotation_strategy_for(false), RotationStrategy::KeepAll));
-    }
 }

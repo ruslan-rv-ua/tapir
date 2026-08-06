@@ -290,7 +290,6 @@
   "settings_log_level_warn": "Warning",
   "settings_log_level_info": "Info",
   "settings_log_level_debug": "Debug",
-  "settings_log_keep_history": "Keep full log history",
   "settings_log_max_size": "Max log file size (MB)",
   "settings_output_dir": "Recording folder",
   "settings_output_dir_browse": "Browse",

@@ -327,18 +327,6 @@ export function GeneralTab() {
               </Popover>
             </Select>
 
-            {/* Keep full history (inverted log_rotation) */}
-            <Checkbox
-              isSelected={!settings.logRotation}
-              onChange={(val) => update({ logRotation: !val })}
-              className="flex items-center gap-2 text-sm text-slate-300"
-            >
-              <div className="flex h-5 w-5 items-center justify-center rounded border border-slate-600 bg-slate-700">
-                {!settings.logRotation && <span>✓</span>}
-              </div>
-              <Label>{m.settings_log_keep_history()}</Label>
-            </Checkbox>
-
             {/* Max file size */}
             <NumberField
               value={settings.logMaxSizeMb}

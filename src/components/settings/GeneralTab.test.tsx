@@ -34,7 +34,6 @@ const baseSettings: GlobalSettings = {
     toggleRecording: "", togglePlayback: "", volumeUp: "", volumeDown: "",
     toggleWindow: "", stopAll: "", prevTrack: "", nextTrack: "",
   },
-  logRotation: true,
   logMaxSizeMb: 10,
   logLevel: "info",
 };

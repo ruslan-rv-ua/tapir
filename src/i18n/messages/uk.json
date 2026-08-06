@@ -290,7 +290,6 @@
   "settings_log_level_warn": "Попередження",
   "settings_log_level_info": "Інформація",
   "settings_log_level_debug": "Зневадження",
-  "settings_log_keep_history": "Зберігати всю історію логів",
   "settings_log_max_size": "Макс. розмір файлу логу (МБ)",
   "settings_output_dir": "Папка для записів",
   "settings_output_dir_browse": "Огляд",

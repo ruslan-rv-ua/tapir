@@ -37,8 +37,6 @@ pub struct GlobalSettings {
     pub autostart_minimized: bool,
     #[serde(default)]
     pub hotkeys: HotkeyMap,
-    #[serde(default = "default_true")]
-    pub log_rotation: bool,
     #[serde(default = "default_log_max_size_mb")]
     pub log_max_size_mb: u32,
     #[serde(default, deserialize_with = "deserialize_log_level")]
@@ -205,7 +203,6 @@ impl Default for GlobalSettings {
             autostart: false,
             autostart_minimized: true,
             hotkeys: HotkeyMap::default(),
-            log_rotation: true,
             log_max_size_mb: 10,
             log_level: LogLevel::Info,
             auto_advance: true,
