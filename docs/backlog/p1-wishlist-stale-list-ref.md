@@ -7,7 +7,7 @@ status: ready
 effort: S
 kind: bug
 target: 0.1.0
-updated: 2026-07-23
+updated: 2026-08-06
 a11y: true
 depends_on: [wishlist-example-patterns]
 blocks: []
@@ -21,9 +21,9 @@ notes:
 
 # Застарілий patternListRef після перемикання вкладки Wishlist/Ignorelist
 
-> **Контекст:** дослідження завершено 2026-07-23 — корінь підтверджено на рівні
-> вихідного коду react-aria (див. «Прийняті рішення»). Обраний фікс — **(б)**:
-> cleanup-функція callback-ref (React 19). Реалізація за TDD: спершу падаючий тест.
+> **Контекст:** реалізовано 2026-08-06 у гілці `fix/wishlist-stale-list-ref`
+> (фікс **(б)** — cleanup-функція callback-ref, React 19). Код і гейти готові;
+> лишився **NVDA-прогін** перед прийманням. Дослідження — див. «Прийняті рішення».
 
 ## Опис
 
@@ -86,13 +86,17 @@ handle — і не затирає. Перемикання на порожню в
 
 ## Критерії готовності
 
-- [ ] Регресійний тест (спершу падає): обидва списки непорожні → перемкнутись
+- [x] Регресійний тест (спершу падає): обидва списки непорожні → перемкнутись
       на Ignorelist → select-all → **тулбарна** «Видалити вибрані» → відкрився
       bulk-confirm, після підтвердження викликано `removeFromIgnorelistBulk`.
       (Наявний `routes the cluster delete…` покриває лише стартову вкладку.)
-- [ ] Фікс (б) у `WishlistPanel.tsx`: `patternListCallbackRef` повертає cleanup
-      із guard `patternListRef.current === zone`; тест зеленіє.
-- [ ] Гейти: `pnpm test`, `pnpm vite:build`.
+      — `the TOOLBAR delete still reaches the list after switching tabs`.
+- [x] Додатково покрито другий симптом: `F6 still reaches the pattern list after
+      switching tabs` — через `ZoneHarness`, реальний шлях Tab → composite-exit →
+      `cycleZone` (до фікса фокус ішов у status-bar, бо зона відхиляла focus).
+- [x] Фікс (б) у `WishlistPanel.tsx`: `patternListCallbackRef` повертає cleanup
+      із guard `patternListRef.current === zone`; тести зеленіють.
+- [x] Гейти: `pnpm test` (708 тестів, 77 файлів), `pnpm vite:build`.
 - [ ] NVDA-прогін: після перемикання вкладки «Видалити вибрані» відкриває
       confirm (озвучується), F6 доходить до списку.
 

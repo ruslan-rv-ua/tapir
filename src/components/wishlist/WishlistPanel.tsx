@@ -356,9 +356,24 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   // Lifecycle: clear selection on unmount.
   useEffect(() => () => { replaceSelection($patternSelection, new Set()); }, []);
 
-  // Stable callback ref — only sets the ref, useEffect handles zone registration
-  const patternListCallbackRef = useCallback((zone: PatternListHandle | null) => {
+  // Stable callback ref — only sets the ref, useEffect handles zone registration.
+  //
+  // Returns a cleanup (React 19): with one, React never calls the ref with `null`
+  // on unmount, and the cleanup is bound to the instance that attached. That
+  // matters because both TabPanels share this one ref and RAC keeps the
+  // DESELECTED panel mounted for one extra commit (useExitAnimation), so a tab
+  // switch runs attach(new) BEFORE detach(old). A plain `ref(null)` on detach
+  // would therefore wipe the ref while pointing at the LIVE list — leaving the
+  // toolbar's "Delete selected" a silent no-op and making the wishlist-list proxy
+  // zone decline focus (F6 skips the list). The guard keeps the old panel from
+  // clearing a ref that already moved on; switching to an empty tab has no new
+  // attach, so it still nulls correctly. Braces are required — a concise arrow
+  // body would return the assignment, which TS rejects for a ref callback.
+  const patternListCallbackRef = useCallback((zone: PatternListHandle) => {
     patternListRef.current = zone;
+    return () => {
+      if (patternListRef.current === zone) patternListRef.current = null;
+    };
   }, []);
 
   // Stable proxy for the list zone. PatternList's ZoneEntry is recreated when its

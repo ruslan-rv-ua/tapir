@@ -163,6 +163,53 @@ it("bulk-deleting all remaining patterns on the ignorelist tab moves focus to th
   });
 });
 
+it("the TOOLBAR delete still reaches the list after switching tabs (stale patternListRef)", async () => {
+  // Both lists non-empty on purpose: switching tabs then leaves RAC's deselected
+  // TabPanel mounted for one extra commit (useExitAnimation), so the ref order is
+  // attach(new list) → detach(old list). Without a cleanup-returning callback ref,
+  // the old panel's `null` lands AFTER the new attach and wipes patternListRef —
+  // the toolbar's "Delete selected" then silently no-ops
+  // (patternListRef.current?.requestBulkRemove()) with no feedback for NVDA.
+  // The existing ignorelist-bulk test deliberately drives the ROW ✕ instead, so
+  // this is the only coverage of the toolbar path on a switched-to tab.
+  $ignorelist.set(["blocked*"]);
+  vi.mocked(tauri.getIgnorelist).mockResolvedValueOnce(["blocked*"]);
+  vi.mocked(tauri.removeFromIgnorelistBulk).mockResolvedValueOnce(1);
+  render(<WishlistPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
+  await waitFor(() => screen.getByText(m.select_all()));
+  fireEvent.click(screen.getByText(m.ignorelist_section_title()));
+  await screen.findByRole("button", { name: `${m.remove_pattern()}: blocked*` });
+
+  fireEvent.click(screen.getByText(m.select_all()));
+  expect($patternSelection.get().size).toBe(1);
+  fireEvent.click(screen.getByText(m.delete_selected({ count: 1 })));
+
+  // The bulk confirm must actually open — that is the part that silently died.
+  const confirm = await screen.findByRole("button", { name: m.remove_pattern() });
+  fireEvent.click(confirm);
+  await waitFor(() => expect(tauri.removeFromIgnorelistBulk).toHaveBeenCalledWith(["blocked*"]));
+});
+
+it("F6 still reaches the pattern list after switching tabs (stale patternListRef)", async () => {
+  // Second symptom of the same stale ref: the wishlist-list proxy zone delegates
+  // to patternListRef.current, so a wiped ref makes the zone decline focus and
+  // cycleZone skips the list entirely (it is contractually allowed to skip zones
+  // that decline). Drive the real Tab → composite-exit → cycleZone path.
+  $ignorelist.set(["blocked*"]);
+  vi.mocked(tauri.getIgnorelist).mockResolvedValueOnce(["blocked*"]);
+  render(<ZoneHarness />);
+  await waitFor(() => screen.getByText(m.select_all()));
+  fireEvent.click(screen.getByText(m.ignorelist_section_title()));
+  await screen.findByRole("button", { name: `${m.remove_pattern()}: blocked*` });
+
+  const addBtn = screen.getByText(m.add_pattern());
+  act(() => addBtn.focus());
+  fireEvent.keyDown(addBtn, { key: "Tab" });
+  // Expected: the ignorelist row, NOT the status bar (which is where a declined
+  // list zone would dump focus).
+  expect(document.activeElement?.getAttribute("data-item-id")).toBe("blocked*");
+});
+
 it("clears the selection when the tab changes", async () => {
   const { getByText } = render(<WishlistPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
   await waitFor(() => getByText(m.select_all()));
