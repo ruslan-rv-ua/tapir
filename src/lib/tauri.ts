@@ -129,10 +129,25 @@ export interface RecordingCompletedPayload {
   durationMs: number;
 }
 
-/** Verdict of a single interactive probe (`probe_stream`). */
+/** Verdict of a single interactive probe (`probe_stream`). `bitrate`/`format`
+ *  are fed back into `addStream` so a colliding name gets an informative
+ *  suffix (`Radio X (AAC 64k)`) instead of a bare ordinal. */
 export interface ProbeVerdict {
   ok: boolean;
   error: string | null;
+  bitrate: number | null;
+  format: "mp3" | "aac" | null;
+}
+
+/** What the stream is known to be at add time — drives the name suffix. */
+export type StreamMeta = { bitrate: number | null; format: "mp3" | "aac" | null };
+
+/** Warnings (never bans) the add/edit dialog raises before saving. */
+export interface StreamConflicts {
+  /** Name of the stream already holding this URL. */
+  duplicateUrlOf: string | null;
+  /** Name of the stream whose recording folder this name would share. */
+  nameCollidesWith: string | null;
 }
 
 // --- Typed invoke wrappers ---
@@ -140,8 +155,26 @@ export interface ProbeVerdict {
 export async function getStreams(): Promise<StreamInfo[]> {
   return invoke("get_streams");
 }
-export async function addStream(url: string, name?: string): Promise<StreamInfo> {
-  return invoke("add_stream", { url, name });
+export async function addStream(url: string, name?: string, meta?: StreamMeta): Promise<StreamInfo> {
+  return invoke("add_stream", {
+    url,
+    name,
+    bitrate: meta?.bitrate ?? null,
+    format: meta?.format ?? null,
+  });
+}
+/** Pre-flight for the add/edit dialog: pass `url` when adding, `name` +
+ *  `excludeId` when renaming. Both results are warnings, not refusals. */
+export async function checkStreamConflicts(args: {
+  url?: string;
+  name?: string;
+  excludeId?: string;
+}): Promise<StreamConflicts> {
+  return invoke("check_stream_conflicts", {
+    url: args.url ?? null,
+    name: args.name ?? null,
+    excludeId: args.excludeId ?? null,
+  });
 }
 /** Reachability check for a single URL (5s budget backend-side). Never rejects
  *  on an unreachable stream — the failure comes back as `{ ok: false, error }`. */
@@ -726,7 +759,7 @@ export async function validateImportCandidates(urls: string[]): Promise<void> {
   return invoke("validate_import_candidates", { urls });
 }
 export async function commitStreamImport(
-  selected: { url: string; name: string }[],
+  selected: ({ url: string; name: string } & Partial<StreamMeta>)[],
 ): Promise<StreamImportResult> {
   return invoke("commit_stream_import", { selected });
 }
