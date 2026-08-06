@@ -78,3 +78,4 @@ All project documentation lives in `docs/`. Key files:
 
 **Manual testing** (`docs/testing/`):
 - [test-streams.md](docs/testing/test-streams.md) — тестові URL радіо-потоків
+- [nvda-wishlist-stale-list-ref.md](docs/testing/nvda-wishlist-stale-list-ref.md) — чекліст NVDA-прогону для списку бажаних після перемикання вкладки

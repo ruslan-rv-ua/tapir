@@ -98,7 +98,9 @@ handle — і не затирає. Перемикання на порожню в
       із guard `patternListRef.current === zone`; тести зеленіють.
 - [x] Гейти: `pnpm test` (708 тестів, 77 файлів), `pnpm vite:build`.
 - [ ] NVDA-прогін: після перемикання вкладки «Видалити вибрані» відкриває
-      confirm (озвучується), F6 доходить до списку.
+      confirm (озвучується), F6 доходить до списку. Чекліст —
+      [nvda-wishlist-stale-list-ref.md](../testing/nvda-wishlist-stale-list-ref.md)
+      (7 сценаріїв; суть фікса — сценарії 1–3).
 
 ## Документи
 
