@@ -3,11 +3,12 @@ slug: open-stream-with-default-app
 title: "Відкрити потік у медіаплеєрі (тимчасовий .m3u8)"
 priority: P1
 type: planned
-status: ready
+status: done
 effort: M
 kind: feature
 target: 0.1.0
 updated: 2026-08-07
+completed: 2026-08-07
 a11y: true
 depends_on: []
 blocks: []
@@ -26,8 +27,6 @@ touches:
   - src/i18n/messages/uk.json
   - src/i18n/messages/en.json
 gates: [cargo test, cargo clippy, pnpm test, pnpm vite:build]
-depends_on_external:
-  - open-song-with-default-app (спільний `shell_open`/`map_shell_error` — виносяться цим записом)
 ---
 
 # Відкрити потік у медіаплеєрі (тимчасовий .m3u8)
@@ -333,9 +332,9 @@ not be advertised on individual rows», і рішення залоковане �
 - [x] Тести: `StreamList.test.tsx` (`Alt+Enter`, `Alt+Space`, пункт меню, тост
       `no_assoc`), `shellOpenError.test.ts` (три коди + що текст не збігається з
       Songs), тест на `aria-keyshortcuts === null` лишився зеленим без правок
-- [ ] NVDA-прогін за
-      [чеклістом](../testing/nvda-open-stream-with-default-app.md) (8 сценаріїв;
-      `no_assoc` у підсумку позначено як неперевірений вручну)
+- [x] NVDA-прогін проведено 2026-08-07, усі 8 сценаріїв пройдено, зауважень
+      немає; `no_assoc` не перевірявся вручну (немає машини без медіаплеєра) —
+      покритий лише юніт-тестом тексту
 
 Попутно, поза початковим списком:
 
@@ -344,8 +343,7 @@ not be advertised on individual rows», і рішення залоковане �
 
 ## Документи
 
-- Чекліст NVDA-прогону: [nvda-open-stream-with-default-app.md](../testing/nvda-open-stream-with-default-app.md)
-- Зразок реалізації: [p1-open-song-with-default-app.md](done/p1-open-song-with-default-app.md)
+- Зразок реалізації: [p1-open-song-with-default-app.md](p1-open-song-with-default-app.md)
 - Спільна інфраструктура, уже готова: `src/hooks/useCompositeList.ts`
   (`ActionModifiers.alt`); `src/lib/shortcuts.ts` (`row-open-external`, reserved);
   `src-tauri/src/sanitize.rs` (`sanitize_component`);
