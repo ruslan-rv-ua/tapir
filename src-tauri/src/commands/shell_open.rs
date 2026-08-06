@@ -8,6 +8,9 @@
 /// fail to write, streams never open a file that is already gone.
 pub(crate) const SHELL_ERR_NOT_FOUND: &str = "not_found";
 pub(crate) const SHELL_ERR_NO_ASSOC: &str = "no_assoc";
+/// Streams only: the scratch playlist could not be written (no permission, full
+/// disk, the drive was pulled). Never comes out of `ShellExecuteW`.
+pub(crate) const SHELL_ERR_WRITE_FAILED: &str = "write_failed";
 pub(crate) const SHELL_ERR_GENERIC: &str = "generic";
 
 /// `ShellExecuteW` returns an HINSTANCE that is really a status code when <= 32.

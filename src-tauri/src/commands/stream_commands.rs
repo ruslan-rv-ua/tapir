@@ -1,4 +1,5 @@
 use crate::app_state::AppState;
+use crate::commands::shell_open::{shell_open, SHELL_ERR_GENERIC, SHELL_ERR_WRITE_FAILED};
 use crate::errors::RadioError;
 use crate::portable;
 use crate::profile::{AudioFormat, Profile, StreamInfo};
@@ -74,6 +75,15 @@ pub fn insert_transfers(
     Ok((transferred, skipped_conflict))
 }
 
+/// Where the throwaway playlist for `name` is written: `data/tmp/<name>.m3u8`.
+/// The name is stable per stream and the file is rewritten before every open, so
+/// there is neither a race with a cold-starting player nor anything to delete
+/// afterwards (startup clears `data/tmp/`). Two streams colliding on a sanitized
+/// name is harmless — the contents are regenerated for whichever one is opened.
+fn stream_playlist_path(name: &str) -> std::path::PathBuf {
+    portable::tmp_dir().join(format!("{}.m3u8", crate::sanitize::sanitize_component(name)))
+}
+
 fn below_threshold(free_bytes: u64, threshold_gb: u32) -> bool {
     // cast to u64 first — u32::MAX × 1 GiB < u64::MAX, no overflow
     threshold_gb > 0 && free_bytes < (threshold_gb as u64) * 1_073_741_824
@@ -106,6 +116,45 @@ pub(crate) async fn check_disk_space(state: &AppState) -> Result<(), RadioError>
         )));
     }
     Ok(())
+}
+
+/// Open the stream in whatever app Windows associates with playlists — VLC, WMP,
+/// foobar. The URL itself cannot be handed to the shell: profiles store the
+/// resolved audio URL (`add_stream` unwraps .pls/.m3u/.m3u8), and the only
+/// association for `http(s)://…/live` is the default browser. A one-entry
+/// `.m3u8` restores the playlist association, and `#EXTINF` carries the station
+/// name into the player's title bar, where the screen reader reads it.
+///
+/// Takes a `stream_id` rather than a ready URL so the renderer never dictates
+/// what goes into the playlist: the entry comes from the profile, where the
+/// http(s)-only invariant is enforced on the way in (`add_stream` via
+/// `resolve_playlist_url`, import via `validate_stream_url`).
+#[tauri::command]
+pub async fn open_stream_in_app(
+    stream_id: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), String> {
+    let stream = {
+        let profile = state.active_profile.read().await;
+        profile
+            .streams
+            .iter()
+            .find(|s| s.id == stream_id)
+            .cloned()
+            // An unknown id from our own UI is our bug, not a user situation —
+            // no dedicated code for it.
+            .ok_or_else(|| SHELL_ERR_GENERIC.to_string())?
+    };
+    tokio::task::spawn_blocking(move || {
+        let path = stream_playlist_path(&stream.name);
+        std::fs::write(&path, playlist::to_m3u8(std::slice::from_ref(&stream))).map_err(|e| {
+            warn!("Could not write {}: {e}", path.display());
+            SHELL_ERR_WRITE_FAILED.to_string()
+        })?;
+        shell_open(&path.to_string_lossy())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -969,5 +1018,36 @@ mod tests {
     fn find_conflicts_ignores_a_blank_name() {
         let streams = vec![named("a", "Radio X")];
         assert_eq!(find_conflicts(&streams, None, Some("   "), None).name_collides_with, None);
+    }
+
+    /// Only the file name is asserted — the parent depends on where the EXE sits.
+    fn playlist_file_name(stream_name: &str) -> String {
+        stream_playlist_path(stream_name)
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .into_owned()
+    }
+
+    #[test]
+    fn playlist_file_name_replaces_path_separators_in_the_stream_name() {
+        assert_eq!(playlist_file_name("Radio/X"), "Radio_X.m3u8");
+    }
+
+    #[test]
+    fn playlist_file_name_guards_reserved_device_names() {
+        assert_eq!(playlist_file_name("CON"), "_CON.m3u8");
+    }
+
+    #[test]
+    fn playlist_file_name_keeps_cyrillic_intact() {
+        // The .m3u8 extension is what makes this safe: a plain .m3u would be read
+        // back in the machine's code page and mangle the header the player shows.
+        assert_eq!(playlist_file_name("Радіо Промінь"), "Радіо Промінь.m3u8");
+    }
+
+    #[test]
+    fn playlist_lives_under_the_portable_data_dir_not_the_system_temp() {
+        assert!(stream_playlist_path("Radio X").starts_with(portable::data_dir()));
     }
 }

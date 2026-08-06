@@ -36,6 +36,29 @@ pub fn logs_dir() -> PathBuf {
     data_dir().join("logs")
 }
 
+/// Scratch files handed to other applications — currently the one-entry `.m3u8`
+/// a stream is opened with. Lives under `data/`, never in `%TEMP%`: Tapir runs
+/// off a flash drive on someone else's machine and leaves nothing behind.
+pub fn tmp_dir() -> PathBuf {
+    data_dir().join("tmp")
+}
+
+/// Delete everything inside `dir`, keeping `dir` itself. A missing directory and
+/// an entry that refuses to go are both fine: a leftover playlist may still be
+/// held open by a player left running from the previous session, and no scratch
+/// file is worth failing startup over.
+fn clear_dir_contents(dir: &Path) {
+    let Ok(entries) = std::fs::read_dir(dir) else { return };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let _ = if path.is_dir() {
+            std::fs::remove_dir_all(&path)
+        } else {
+            std::fs::remove_file(&path)
+        };
+    }
+}
+
 /// Resolve a possibly-relative path to an absolute path.
 /// Relative paths are joined onto `base_dir()` (поряд з EXE).
 pub fn resolve_output_dir(rel: &str) -> PathBuf {
@@ -63,13 +86,16 @@ pub fn nearest_existing_dir(path: &Path) -> Option<PathBuf> {
 
 /// Creates all required data directories if they don't exist.
 pub fn ensure_data_dirs() -> Result<(), std::io::Error> {
-    let dirs = [data_dir(), profiles_dir(), recordings_dir(), logs_dir()];
+    let dirs = [data_dir(), profiles_dir(), recordings_dir(), logs_dir(), tmp_dir()];
     for dir in &dirs {
         if !dir.exists() {
             std::fs::create_dir_all(dir)?;
             info!("Created directory: {}", dir.display());
         }
     }
+    // Scratch files are never deleted at the point of use (that would race a
+    // cold-starting player still reading them), so startup is where they go.
+    clear_dir_contents(&tmp_dir());
     Ok(())
 }
 
@@ -134,6 +160,25 @@ mod tests {
             nearest_existing_dir(&missing),
             Some(tmp.path().to_path_buf())
         );
+    }
+
+    #[test]
+    fn clear_dir_contents_empties_the_dir_but_keeps_it() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("Radio.m3u8"), "#EXTM3U\n").unwrap();
+        std::fs::create_dir(tmp.path().join("sub")).unwrap();
+        std::fs::write(tmp.path().join("sub").join("nested"), "x").unwrap();
+
+        clear_dir_contents(tmp.path());
+
+        assert!(tmp.path().is_dir(), "the directory itself must survive");
+        assert_eq!(std::fs::read_dir(tmp.path()).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn clear_dir_contents_tolerates_a_missing_dir() {
+        let tmp = tempfile::tempdir().unwrap();
+        clear_dir_contents(&tmp.path().join("never-created"));
     }
 
     #[test]
