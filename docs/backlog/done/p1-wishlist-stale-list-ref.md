@@ -3,11 +3,12 @@ slug: wishlist-stale-list-ref
 title: "Застарілий patternListRef після перемикання вкладки Wishlist/Ignorelist"
 priority: P1
 type: planned
-status: ready
+status: done
 effort: S
 kind: bug
 target: 0.1.0
 updated: 2026-08-06
+completed: 2026-08-06
 a11y: true
 depends_on: [wishlist-example-patterns]
 blocks: []
@@ -21,9 +22,9 @@ notes:
 
 # Застарілий patternListRef після перемикання вкладки Wishlist/Ignorelist
 
-> **Контекст:** реалізовано 2026-08-06 у гілці `fix/wishlist-stale-list-ref`
-> (фікс **(б)** — cleanup-функція callback-ref, React 19). Код і гейти готові;
-> лишився **NVDA-прогін** перед прийманням. Дослідження — див. «Прийняті рішення».
+> **Контекст:** готово й **прийнято** 2026-08-06 — фікс **(б)** (cleanup-функція
+> callback-ref, React 19) у гілці `fix/wishlist-stale-list-ref`, гейти зелені,
+> NVDA-прогін пройдено без зауважень. Дослідження — див. «Прийняті рішення».
 
 ## Опис
 
@@ -97,10 +98,11 @@ handle — і не затирає. Перемикання на порожню в
 - [x] Фікс (б) у `WishlistPanel.tsx`: `patternListCallbackRef` повертає cleanup
       із guard `patternListRef.current === zone`; тести зеленіють.
 - [x] Гейти: `pnpm test` (708 тестів, 77 файлів), `pnpm vite:build`.
-- [ ] NVDA-прогін: після перемикання вкладки «Видалити вибрані» відкриває
-      confirm (озвучується), F6 доходить до списку. Чекліст —
-      [nvda-wishlist-stale-list-ref.md](../testing/nvda-wishlist-stale-list-ref.md)
-      (7 сценаріїв; суть фікса — сценарії 1–3).
+- [x] NVDA-прогін: після перемикання вкладки «Видалити вибрані» відкриває
+      confirm (озвучується), F6 доходить до списку. Проведено 2026-08-06 за
+      чеклістом `docs/testing/nvda-wishlist-stale-list-ref.md` — **усі 7
+      сценаріїв пройдено, зауважень немає**. Чекліст видалено на прийманні
+      (метод і шаблон — скіл `.claude/skills/writing-nvda-checklists/`).
 
 ## Документи
 
