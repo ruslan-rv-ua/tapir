@@ -1,4 +1,5 @@
 pub mod app_commands;
+pub mod shell_open;
 pub mod stream_commands;
 pub mod settings_commands;
 pub mod player_commands;
