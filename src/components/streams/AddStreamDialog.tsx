@@ -1,5 +1,5 @@
 import { Dialog, Modal, ModalOverlay, Heading } from "react-aria-components";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStore } from "@nanostores/react";
 import * as tauri from "../../lib/tauri";
 import type { StreamMeta } from "../../lib/tauri";
@@ -45,6 +45,16 @@ export function AddStreamDialog() {
 
   // Probing and saving both lock the form; only the label distinguishes them.
   const busy = loading || probing;
+
+  // Locking the form disables whatever the user submitted from — the button, or
+  // a field when they pressed Enter — and the browser drops that focus onto
+  // <body>. A warning leaves the dialog open, so without this the screen reader
+  // is left on nothing and says nothing. Land on the button that now carries
+  // the way forward: its label has just become "…anyway".
+  const submitRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (warning && !busy) submitRef.current?.focus();
+  }, [warning, busy]);
 
   // A new URL invalidates the reachability verdict AND the duplicate check.
   const changeUrl = (next: string) => {
@@ -225,6 +235,7 @@ export function AddStreamDialog() {
               </button>
               <button
                 type="submit"
+                ref={submitRef}
                 disabled={busy}
                 aria-busy={busy || undefined}
                 className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"

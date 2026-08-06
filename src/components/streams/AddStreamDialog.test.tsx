@@ -241,6 +241,42 @@ describe("AddStreamDialog conflicts", () => {
     expect(screen.queryByRole("button", { name: "Use the official name" })).not.toBeInTheDocument();
   });
 
+  it("puts focus on the confirm button when a warning stops the save", async () => {
+    // Probing disables the whole form, so the control the user submitted from
+    // loses focus to <body> and the screen reader says nothing at all. Submit
+    // from the URL field (Enter) so the assertion fails if focus is merely left
+    // where it started.
+    checkStreamConflicts.mockResolvedValue({ duplicateUrlOf: "Промінь", nameCollidesWith: null });
+    render(<AddStreamDialog />);
+
+    await userEvent.type(screen.getByLabelText("URL"), "http://a{Enter}");
+
+    const confirm = await screen.findByRole("button", { name: "Add anyway" });
+    await waitFor(() => expect(confirm).toHaveFocus());
+  });
+
+  it("puts focus on the confirm button when the probe warning stops the save", async () => {
+    probeStream.mockResolvedValue({ ok: false, error: "nope", ...NO_META });
+    render(<AddStreamDialog />);
+
+    await userEvent.type(screen.getByLabelText("URL"), "http://a{Enter}");
+
+    const confirm = await screen.findByRole("button", { name: "Add anyway" });
+    await waitFor(() => expect(confirm).toHaveFocus());
+  });
+
+  it("puts focus on the confirm button when a rename warning stops the save", async () => {
+    $showAddStreamDialog.set(false);
+    $editStream.set({ id: "s1", url: "http://a", name: "A", icyName: null } as never);
+    checkStreamConflicts.mockResolvedValue({ duplicateUrlOf: null, nameCollidesWith: "Radio X" });
+    render(<AddStreamDialog />);
+
+    await userEvent.type(screen.getByLabelText("Name"), "{Enter}");
+
+    const confirm = await screen.findByRole("button", { name: "Save anyway" });
+    await waitFor(() => expect(confirm).toHaveFocus());
+  });
+
   it("re-checks the name after the official name is applied", async () => {
     $showAddStreamDialog.set(false);
     $editStream.set({ id: "s1", url: "http://a", name: "My Name", icyName: "Radio X" } as never);
