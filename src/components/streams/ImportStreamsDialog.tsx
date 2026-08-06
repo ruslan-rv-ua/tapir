@@ -129,7 +129,17 @@ export function ImportStreamsDialog() {
         });
 
   const handleImport = async () => {
-    const selected = selectable.filter((r) => r.checked).map((r) => ({ url: r.url, name: r.name }));
+    // bitrate/format come from this dialog's own batch probe — the backend uses
+    // them to suffix a name that collides (one playlist often lists several
+    // mountpoints of one station) and persists them on the stream.
+    const selected = selectable
+      .filter((r) => r.checked)
+      .map((r) => ({
+        url: r.url,
+        name: r.name,
+        bitrate: r.bitrate,
+        format: r.format as "mp3" | "aac" | null,
+      }));
     if (selected.length === 0) return;
     setCommitting(true);
     try {

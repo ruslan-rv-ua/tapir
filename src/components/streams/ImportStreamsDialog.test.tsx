@@ -116,10 +116,28 @@ describe("ImportStreamsDialog", () => {
     await user.click(screen.getByRole("button", { name: "Import selected (2)" }));
     await waitFor(() =>
       expect(tauri.commitStreamImport).toHaveBeenCalledWith([
-        { url: "https://a/1", name: "Alpha" },
-        { url: "https://b/2", name: "Beta" },
+        { url: "https://a/1", name: "Alpha", bitrate: null, format: null },
+        { url: "https://b/2", name: "Beta", bitrate: null, format: null },
       ]),
     );
     expect(tauri.getStreams).toHaveBeenCalled();
+  });
+
+  it("sends the probed bitrate and codec so the backend can suffix a duplicate name", async () => {
+    const user = userEvent.setup();
+    $importCandidates.set([{ url: "https://a/1", name: "Radio X", alreadyInProfile: false }]);
+    render(<ImportStreamsDialog />);
+    await screen.findByText("Radio X");
+    act(() => {
+      progressHandler?.({ url: "https://a/1", status: "ok", icyName: null, bitrate: 64, format: "aac", error: null });
+    });
+
+    await user.click(screen.getByRole("button", { name: "Import selected (1)" }));
+
+    await waitFor(() =>
+      expect(tauri.commitStreamImport).toHaveBeenCalledWith([
+        { url: "https://a/1", name: "Radio X", bitrate: 64, format: "aac" },
+      ]),
+    );
   });
 });

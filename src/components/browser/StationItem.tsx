@@ -85,8 +85,18 @@ export function StationItem({
     }
   };
 
-  // Down-scan summary: name + country + genre, with a state prefix when relevant.
-  const summaryMeta = [station.country, station.tags].filter(Boolean).join(", ");
+  // Down-scan summary: name + the metadata that tells same-named variants apart
+  // (one station commonly appears once per mountpoint), with a state prefix when
+  // relevant. Codec and bitrate are here on purpose — read aloud, the name alone
+  // is identical across all six BBC 6 Music entries.
+  const summaryMeta = [
+    station.country,
+    station.codec,
+    station.bitrate ? `${station.bitrate} kbps` : "",
+    station.tags,
+  ]
+    .filter(Boolean)
+    .join(", ");
   const summaryName = summaryMeta ? `${station.name}, ${summaryMeta}` : station.name;
   const summaryLabel = isPreviewing
     ? m.station_summary_previewing({ name: summaryName })

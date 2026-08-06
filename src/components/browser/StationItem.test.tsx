@@ -167,6 +167,26 @@ describe("StationItem — add button + liveness", () => {
   });
 });
 
+describe("StationItem — same-name variants", () => {
+  it("puts codec and bitrate in the row's accessible name", () => {
+    // Six identically named BBC 6 Music variants must be told apart by ear
+    // BEFORE they are added, so codec/bitrate belong in the row name itself.
+    const { container } = renderItem({
+      station: mkStation({ name: "BBC 6", country: "United Kingdom", codec: "AAC", bitrate: 48, tags: "pop" }),
+    });
+    const li = container.querySelector<HTMLElement>('li[data-segment="summary"]')!;
+    expect(li.getAttribute("aria-label")).toBe("BBC 6, United Kingdom, AAC, 48 kbps, pop");
+  });
+
+  it("omits metadata the directory does not report", () => {
+    const { container } = renderItem({
+      station: mkStation({ name: "BBC 6", country: "", codec: "MP3", bitrate: 0, tags: "" }),
+    });
+    const li = container.querySelector<HTMLElement>('li[data-segment="summary"]')!;
+    expect(li.getAttribute("aria-label")).toBe("BBC 6, MP3");
+  });
+});
+
 describe("StationItem — selection", () => {
   it("appends the selected suffix and marks the row selected", () => {
     const { container } = renderItem({ isSelected: true });

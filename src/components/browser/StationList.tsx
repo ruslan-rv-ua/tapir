@@ -58,7 +58,12 @@ export const StationList = forwardRef<StationListHandle, Props>(
 
     const handleAdd = useCallback(
       async (station: StationResult) => {
-        if (isAlreadyAdded(station)) return;
+        if (isAlreadyAdded(station)) {
+          // Say so rather than no-op: the row already reads "Added" visually, but
+          // a keyboard user activating it heard nothing at all.
+          announce(m.browser_station_already_added({ name: station.name }), "polite");
+          return;
+        }
         try {
           await addStation(station);
           announce(m.browser_station_added({ name: station.name }), "polite");
