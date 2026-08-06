@@ -49,12 +49,18 @@ pub struct ProbeVerdict {
     pub format: Option<AudioFormat>,
 }
 
-/// One user-selected stream to add on commit.
+/// One user-selected stream to add on commit. `bitrate`/`format` come from the
+/// import dialog's batch probe — they are persisted AND drive the name suffix
+/// when the playlist lists several mountpoints of one station.
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SelectedStream {
     pub url: String,
     pub name: String,
+    #[serde(default)]
+    pub bitrate: Option<u32>,
+    #[serde(default)]
+    pub format: Option<AudioFormat>,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -169,38 +175,61 @@ pub async fn probe_stream(url: String) -> Result<ProbeVerdict, String> {
     Ok(probe_once(&url).await)
 }
 
+/// Turn the user's selection into the streams to insert: drop URLs the profile
+/// already holds (and duplicates inside the selection), then name the survivors
+/// apart from the profile and from each other. A dropped URL must not burn a
+/// name, so the taken-set only grows for entries that survive. Pure over the
+/// profile — unit-testable without Tauri state.
+pub fn plan_import(streams: &[StreamInfo], selected: Vec<SelectedStream>, now: &str) -> Vec<StreamInfo> {
+    let mut urls: std::collections::HashSet<String> =
+        streams.iter().map(|s| s.url.clone()).collect();
+    let mut taken = crate::naming::taken_keys(streams.iter(), None);
+    let mut planned = Vec::new();
+
+    for sel in selected {
+        if !urls.insert(sel.url.clone()) {
+            continue; // already in the profile, or repeated in this selection
+        }
+        let meta = crate::naming::NameMeta { format: sel.format.clone(), bitrate: sel.bitrate };
+        let name = crate::naming::disambiguate(&sel.name, &meta, &taken);
+        taken.insert(crate::naming::collision_key(&name));
+        planned.push(StreamInfo {
+            id: nanoid::nanoid!(),
+            url: sel.url,
+            name,
+            format: sel.format,
+            bitrate: sel.bitrate,
+            icy_name: None,
+            icy_genre: None,
+            icy_url: None,
+            ignorelist: Vec::new(),
+            username: None,
+            password: None,
+            added_at: now.to_string(),
+        });
+    }
+    planned
+}
+
 /// Add the selected streams to the active profile (URL-dedup via
 /// `add_stream_checked`), saving once. Returns how many were added vs skipped.
+/// Names are disambiguated in `plan_import` before insertion.
 #[tauri::command]
 pub async fn commit_stream_import(
     selected: Vec<SelectedStream>,
     state: State<'_, AppState>,
 ) -> Result<ImportResult, String> {
+    let requested = selected.len();
     let (added, skipped, snapshot) = {
         let mut profile = state.active_profile.write().await;
+        let planned = plan_import(&profile.streams, selected, &chrono::Local::now().to_rfc3339());
         let mut added = 0usize;
-        let mut skipped = 0usize;
-        for sel in selected {
-            let stream = StreamInfo {
-                id: nanoid::nanoid!(),
-                url: sel.url,
-                name: sel.name,
-                format: None,
-                bitrate: None,
-                icy_name: None,
-                icy_genre: None,
-                icy_url: None,
-                ignorelist: Vec::new(),
-                username: None,
-                password: None,
-                added_at: chrono::Local::now().to_rfc3339(),
-            };
-            match profile.add_stream_checked(stream) {
-                Ok(()) => added += 1,
-                Err(_) => skipped += 1,
+        for stream in planned {
+            if profile.add_stream_checked(stream).is_ok() {
+                added += 1;
             }
         }
-        (added, skipped, profile.clone())
+        (added, requested - added, profile.clone())
     };
     tokio::task::spawn_blocking(move || snapshot.save())
         .await
@@ -307,6 +336,63 @@ mod tests {
         assert_eq!(got[0].name, "Alpha");
         assert_eq!(got[1].already_in_profile, false);
         assert_eq!(got[1].name, "https://b/2", "name falls back to URL when no title");
+    }
+
+    fn sel(url: &str, name: &str, bitrate: Option<u32>, format: Option<AudioFormat>) -> SelectedStream {
+        SelectedStream { url: url.into(), name: name.into(), bitrate, format }
+    }
+
+    fn existing(id: &str, url: &str, name: &str) -> StreamInfo {
+        StreamInfo {
+            id: id.into(), url: url.into(), name: name.into(),
+            format: None, bitrate: None, icy_name: None, icy_genre: None,
+            icy_url: None, ignorelist: vec![], username: None, password: None,
+            added_at: "2026-01-01".into(),
+        }
+    }
+
+    #[test]
+    fn import_suffixes_against_the_profile() {
+        let profile = vec![existing("a", "https://old", "Radio X")];
+        let planned = plan_import(
+            &profile,
+            vec![sel("https://new", "Radio X", Some(64), Some(AudioFormat::Aac))],
+            "NOW",
+        );
+        assert_eq!(planned[0].name, "Radio X (AAC 64k)");
+        assert_eq!(planned[0].bitrate, Some(64), "probe metadata is persisted, not just used for the suffix");
+        assert_eq!(planned[0].added_at, "NOW");
+    }
+
+    #[test]
+    fn import_suffixes_within_the_batch() {
+        let planned = plan_import(
+            &[],
+            vec![
+                sel("https://a", "Radio X", Some(128), Some(AudioFormat::Mp3)),
+                sel("https://b", "Radio X", Some(64), Some(AudioFormat::Aac)),
+                sel("https://c", "Radio X", None, None),
+            ],
+            "NOW",
+        );
+        assert_eq!(planned[0].name, "Radio X");
+        assert_eq!(planned[1].name, "Radio X (AAC 64k)");
+        assert_eq!(planned[2].name, "Radio X (2)");
+    }
+
+    #[test]
+    fn import_does_not_burn_a_name_on_a_url_that_will_be_skipped() {
+        // https://dup is already in the profile, so it is dropped before naming
+        // and must not push the fresh entry to "Radio X (2)".
+        let profile = vec![existing("a", "https://dup", "Whatever")];
+        let planned = plan_import(
+            &profile,
+            vec![sel("https://dup", "Radio X", None, None), sel("https://new", "Radio X", None, None)],
+            "NOW",
+        );
+        assert_eq!(planned.len(), 1);
+        assert_eq!(planned[0].url, "https://new");
+        assert_eq!(planned[0].name, "Radio X");
     }
 
     #[test]
