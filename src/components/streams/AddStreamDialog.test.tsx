@@ -8,6 +8,7 @@ vi.mock("../../lib/tauri", () => ({
   probeStream: vi.fn(),
   addStream: vi.fn(),
   updateStream: vi.fn(),
+  checkStreamConflicts: vi.fn(),
 }));
 
 vi.mock("../../i18n/paraglide/messages", () => ({
@@ -21,6 +22,11 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   stream_probe_checking: () => "Checking stream…",
   stream_probe_failed: () => "The stream did not respond",
   stream_probe_add_anyway: () => "Add anyway",
+  stream_save_anyway: () => "Save anyway",
+  stream_duplicate_url_warning: ({ name }: { name: string }) => `URL already in profile as ${name}`,
+  stream_name_collision_warning: ({ name }: { name: string }) => `Name already used by ${name}`,
+  stream_official_name: ({ name }: { name: string }) => `Station name: ${name}`,
+  stream_use_official_name: () => "Use the official name",
   stream_added: ({ name }: { name: string }) => `Stream added: ${name}`,
   stream_updated: ({ name }: { name: string }) => `Stream updated: ${name}`,
 }));
@@ -29,6 +35,10 @@ import * as tauri from "../../lib/tauri";
 
 const probeStream = vi.mocked(tauri.probeStream);
 const addStream = vi.mocked(tauri.addStream);
+const checkStreamConflicts = vi.mocked(tauri.checkStreamConflicts);
+
+const NO_CONFLICTS = { duplicateUrlOf: null, nameCollidesWith: null };
+const NO_META = { bitrate: null, format: null };
 
 const newStream = { id: "s1", url: "http://a", name: "A" } as never;
 
@@ -44,21 +54,22 @@ describe("AddStreamDialog probe", () => {
     $editStream.set(null);
     $showAddStreamDialog.set(true);
     addStream.mockResolvedValue(newStream);
+    checkStreamConflicts.mockResolvedValue(NO_CONFLICTS);
   });
 
   it("probes before saving and saves when the stream responds", async () => {
-    probeStream.mockResolvedValue({ ok: true, error: null });
+    probeStream.mockResolvedValue({ ok: true, error: null, ...NO_META });
     render(<AddStreamDialog />);
 
     await fillUrlAndSubmit();
 
-    await waitFor(() => expect(addStream).toHaveBeenCalledWith("http://a", undefined));
+    await waitFor(() => expect(addStream).toHaveBeenCalledWith("http://a", undefined, NO_META));
     expect(probeStream).toHaveBeenCalledWith("http://a");
     expect($showAddStreamDialog.get()).toBe(false); // closed on success
   });
 
   it("warns instead of saving when the probe fails, then saves on the second submit", async () => {
-    probeStream.mockResolvedValue({ ok: false, error: "connection refused" });
+    probeStream.mockResolvedValue({ ok: false, error: "connection refused", ...NO_META });
     render(<AddStreamDialog />);
 
     await fillUrlAndSubmit();
@@ -68,7 +79,7 @@ describe("AddStreamDialog probe", () => {
 
     // Second submit skips the probe and adds anyway.
     await userEvent.click(screen.getByRole("button", { name: "Add anyway" }));
-    await waitFor(() => expect(addStream).toHaveBeenCalledWith("http://a", undefined));
+    await waitFor(() => expect(addStream).toHaveBeenCalledWith("http://a", undefined, NO_META));
     expect(probeStream).toHaveBeenCalledTimes(1);
   });
 
@@ -83,7 +94,7 @@ describe("AddStreamDialog probe", () => {
   });
 
   it("re-probes after the URL is edited", async () => {
-    probeStream.mockResolvedValue({ ok: false, error: "nope" });
+    probeStream.mockResolvedValue({ ok: false, error: "nope", ...NO_META });
     render(<AddStreamDialog />);
 
     await fillUrlAndSubmit();
@@ -92,7 +103,7 @@ describe("AddStreamDialog probe", () => {
     await userEvent.type(screen.getByLabelText("URL"), "b");
     expect(screen.queryByText("The stream did not respond")).not.toBeInTheDocument();
 
-    probeStream.mockResolvedValue({ ok: true, error: null });
+    probeStream.mockResolvedValue({ ok: true, error: null, ...NO_META });
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(probeStream).toHaveBeenCalledTimes(2));
@@ -100,7 +111,7 @@ describe("AddStreamDialog probe", () => {
   });
 
   it("marks the form busy and announces progress while probing", async () => {
-    let release!: (v: { ok: boolean; error: string | null }) => void;
+    let release!: (v: tauri.ProbeVerdict) => void;
     probeStream.mockReturnValue(new Promise((r) => { release = r; }));
     render(<AddStreamDialog />);
 
@@ -110,7 +121,7 @@ describe("AddStreamDialog probe", () => {
     expect(status).toHaveAttribute("aria-live", "polite");
     expect(screen.getByRole("button", { name: "Checking stream…" })).toBeDisabled();
 
-    release({ ok: true, error: null });
+    release({ ok: true, error: null, ...NO_META });
     await waitFor(() => expect(addStream).toHaveBeenCalled());
   });
 
@@ -124,5 +135,98 @@ describe("AddStreamDialog probe", () => {
 
     await waitFor(() => expect(tauri.updateStream).toHaveBeenCalled());
     expect(probeStream).not.toHaveBeenCalled();
+  });
+});
+
+describe("AddStreamDialog conflicts", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    $streams.set([]);
+    $editStream.set(null);
+    $showAddStreamDialog.set(true);
+    addStream.mockResolvedValue(newStream);
+    probeStream.mockResolvedValue({ ok: true, error: null, ...NO_META });
+    checkStreamConflicts.mockResolvedValue(NO_CONFLICTS);
+  });
+
+  it("passes the probed bitrate and codec to addStream so the name can be suffixed", async () => {
+    probeStream.mockResolvedValue({ ok: true, error: null, bitrate: 64, format: "aac" });
+    render(<AddStreamDialog />);
+
+    await userEvent.type(screen.getByLabelText("URL"), "http://a");
+    await userEvent.type(screen.getByLabelText("Name"), "Radio X");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(addStream).toHaveBeenCalledWith("http://a", "Radio X", { bitrate: 64, format: "aac" }),
+    );
+  });
+
+  it("warns about a duplicate URL, then adds anyway on the second submit", async () => {
+    checkStreamConflicts.mockResolvedValue({ duplicateUrlOf: "Radio X", nameCollidesWith: null });
+    render(<AddStreamDialog />);
+
+    await fillUrlAndSubmit();
+
+    expect(await screen.findByText("URL already in profile as Radio X")).toBeInTheDocument();
+    expect(addStream).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Add anyway" }));
+    await waitFor(() => expect(addStream).toHaveBeenCalled());
+    expect(probeStream).toHaveBeenCalledTimes(1); // neither check re-runs
+    expect(checkStreamConflicts).toHaveBeenCalledTimes(1);
+  });
+
+  it("warns about a name that would share a recording folder, then saves anyway", async () => {
+    $showAddStreamDialog.set(false);
+    $editStream.set({ id: "s1", url: "http://a", name: "A", icyName: null } as never);
+    checkStreamConflicts.mockResolvedValue({ duplicateUrlOf: null, nameCollidesWith: "Radio X" });
+    vi.mocked(tauri.updateStream).mockResolvedValue({ id: "s1", url: "http://a", name: "Radio X" } as never);
+    render(<AddStreamDialog />);
+
+    await userEvent.clear(screen.getByLabelText("Name"));
+    await userEvent.type(screen.getByLabelText("Name"), "Radio X");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByText("Name already used by Radio X")).toBeInTheDocument();
+    expect(tauri.updateStream).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Save anyway" }));
+    await waitFor(() => expect(tauri.updateStream).toHaveBeenCalledWith("s1", "Radio X"));
+    expect(checkStreamConflicts).toHaveBeenCalledWith({ name: "Radio X", excludeId: "s1" });
+    expect(probeStream).not.toHaveBeenCalled(); // editing never probes
+  });
+
+  it("offers the station-reported name in edit mode and copies it into the field", async () => {
+    $showAddStreamDialog.set(false);
+    $editStream.set({ id: "s1", url: "http://a", name: "My Name", icyName: "Radio X" } as never);
+    render(<AddStreamDialog />);
+
+    expect(screen.getByText("Station name: Radio X")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Use the official name" }));
+
+    expect(screen.getByLabelText("Name")).toHaveValue("Radio X");
+    // Copying the name makes the block redundant — it must disappear.
+    expect(screen.queryByRole("button", { name: "Use the official name" })).not.toBeInTheDocument();
+  });
+
+  it("hides the official-name block when the stream has never connected", async () => {
+    $showAddStreamDialog.set(false);
+    $editStream.set({ id: "s1", url: "http://a", name: "My Name", icyName: null } as never);
+    render(<AddStreamDialog />);
+
+    expect(screen.queryByRole("button", { name: "Use the official name" })).not.toBeInTheDocument();
+  });
+
+  it("re-checks the name after the official name is applied", async () => {
+    $showAddStreamDialog.set(false);
+    $editStream.set({ id: "s1", url: "http://a", name: "My Name", icyName: "Radio X" } as never);
+    checkStreamConflicts.mockResolvedValue({ duplicateUrlOf: null, nameCollidesWith: "Radio X" });
+    render(<AddStreamDialog />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Use the official name" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByText("Name already used by Radio X")).toBeInTheDocument();
   });
 });
