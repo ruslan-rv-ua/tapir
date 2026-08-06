@@ -3,11 +3,12 @@ slug: open-song-with-default-app
 title: "Відкрити файл у асоційованій програмі (Open With)"
 priority: P1
 type: planned
-status: ready
+status: done
 effort: M
 kind: feature
 target: 0.1.0
 updated: 2026-08-06
+completed: 2026-08-06
 a11y: true
 depends_on: []
 blocks: []
@@ -19,9 +20,9 @@ gates: [cargo test, cargo clippy, pnpm test, pnpm vite:build]
 
 > **Контекст:** рішення фіналізовано 2026-07-19 — готовий до реалізації. Технічний підхід (`ShellExecuteW`), UI-розміщення і клавіатурна семантика вже узгоджені.
 >
-> **Статус (2026-08-06):** реалізовано на гілці `feature/open-song-with-default-app`,
-> усі гейти зелені. Лишився NVDA-прогін — [docs/testing/nvda-open-song-with-default-app.md](../testing/nvda-open-song-with-default-app.md);
-> після чистого прогону запис переїжджає в `done/`, а чекліст видаляється.
+> **Виконано 2026-08-06** на гілці `feature/open-song-with-default-app`: усі гейти
+> зелені, NVDA-прогін пройдено без зауважень (чекліст
+> `docs/testing/nvda-open-song-with-default-app.md` видалено при прийманні, як велить процес).
 
 ## Опис
 
@@ -135,12 +136,12 @@ export type SongAction = "play" | "open" | "explorer" | "rename" | "tags" | "del
 - [x] Реєстрація команди в `lib.rs` (поруч із `open_song_in_explorer`)
 - [x] Пункт "Відкрити у програмі" у `SongContextMenu` (під `play`, над `explorer`); діє на один рядок, виділення ігнорується
 - [x] `"open"` додано до типу `SongAction`
-- [ ] Клік → файл відкривається у плеєрі за замовчуванням (сценарій 3 NVDA-прогону)
+- [x] Клік → файл відкривається у плеєрі за замовчуванням
 - [x] `SongsList.onAction` опрацьовує 4-й параметр `modifiers` лише для `primary` (паралель до `StationList.tsx:131`); Space (`toggle`) ігнорує модифікатори
 - [x] Шорткати: `Enter`=play, `Alt+Enter`=open, `Ctrl+Enter`=explorer (на фокусованому рядку)
 - [x] `aria-keyshortcuts="Alt+Enter Control+Enter"` на `SongItem` (через `CompositeRow`)
 - [x] При помилці → toast з локалізованим повідомленням (not found / no assoc / generic)
-- [ ] NVDA: пункт меню та шорткати озвучуються коректно; **успішне відкриття зовнішнього плеєра — мануальний NVDA-прогін** (автотесту на реальний запуск немає свідомо) — [docs/testing/nvda-open-song-with-default-app.md](../testing/nvda-open-song-with-default-app.md)
+- [x] NVDA: пункт меню та шорткати озвучуються коректно; **успішне відкриття зовнішнього плеєра — мануальний NVDA-прогін** (автотесту на реальний запуск немає свідомо) — прогін 2026-08-06, усі 8 сценаріїв пройдено, зауважень немає
 - [x] i18n: ключі `songs_action_open`, `songs_open_failed`, `songs_open_not_found`, `songs_open_no_assoc` (uk/en)
 - [x] Тест `SongsList.test.tsx`: dispatch `Alt+Enter`/`Ctrl+Enter` + `Alt+Space` не тригерить open (паралель до `StreamList.test.tsx:179-220`)
 - [x] Тест `SongsList.test.tsx`: aria-keyshortcuts на рядку (паралель до `StationList.test.tsx:106-109`)
