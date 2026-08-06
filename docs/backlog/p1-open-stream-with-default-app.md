@@ -312,29 +312,39 @@ not be advertised on individual rows», і рішення залоковане �
 
 Робота цього запису:
 
-- [ ] `commands/shell_open.rs`: `shell_open`, `map_shell_error`, константи кодів
+- [x] `commands/shell_open.rs`: `shell_open`, `map_shell_error`, константи кодів
       (+ новий `write_failed`), перенесені тести; `open_song_in_app` переключено
       на модуль, копій у `songs_commands.rs` не лишилось
-- [ ] `portable::tmp_dir()` → `data/tmp/`; створення й очищення в
-      `ensure_data_dirs()`, помилка очищення ігнорується
-- [ ] Чиста `stream_playlist_path(name)` + тести на санітизацію
-- [ ] Команда `open_stream_in_app(stream_id)`: пошук у профілі, `to_m3u8`,
+- [x] `portable::tmp_dir()` → `data/tmp/`; створення й очищення в
+      `ensure_data_dirs()`, помилка очищення ігнорується (`clear_dir_contents`
+      мовчки пропускає і відсутню теку, і файл, який тримає плеєр)
+- [x] Чиста `stream_playlist_path(name)` + тести на санітизацію
+- [x] Команда `open_stream_in_app(stream_id)`: пошук у профілі, `to_m3u8`,
       `fs::write` → `write_failed`, `shell_open` файлу
-- [ ] Реєстрація в `lib.rs` + `openStreamInApp` у `src/lib/tauri.ts`
-- [ ] Пункт «Відкрити у медіаплеєрі» у `StreamContextMenu` (після record, перед
+- [x] Реєстрація в `lib.rs` + `openStreamInApp` у `src/lib/tauri.ts`
+- [x] Пункт «Відкрити у медіаплеєрі» у `StreamContextMenu` (після record, перед
       edit); діє на один рядок
-- [ ] `Alt+Enter` у `StreamList.onAction` через `mods.alt`
-- [ ] `streamOpenErrorMessage` у `shellOpenError.ts` (три коди) + оновлений
+- [x] `Alt+Enter` у `StreamList.onAction` через `mods.alt`
+- [x] `streamOpenErrorMessage` у `shellOpenError.ts` (три коди) + оновлений
       коментар файлу; `SongsPanel.tsx` не чіпано
-- [ ] Помилка → тост через `addToast` у `StreamList.tsx`; успіх мовчазний
-- [ ] i18n: `stream_action_open_player`, `stream_open_no_assoc`,
+- [x] Помилка → тост через `addToast` у `StreamList.tsx`; успіх мовчазний
+- [x] i18n: `stream_action_open_player`, `stream_open_no_assoc`,
       `stream_open_write_failed`, `stream_open_failed` (uk/en)
-- [ ] Тести: `StreamList.test.tsx` (`Alt+Enter`, `Alt+Space`), тест на
-      `aria-keyshortcuts === null` лишився зеленим без правок
-- [ ] NVDA-чеклист за трьома сценаріями вище, з чесною позначкою про `no_assoc`
+- [x] Тести: `StreamList.test.tsx` (`Alt+Enter`, `Alt+Space`, пункт меню, тост
+      `no_assoc`), `shellOpenError.test.ts` (три коди + що текст не збігається з
+      Songs), тест на `aria-keyshortcuts === null` лишився зеленим без правок
+- [ ] NVDA-прогін за
+      [чеклістом](../testing/nvda-open-stream-with-default-app.md) (8 сценаріїв;
+      `no_assoc` у підсумку позначено як неперевірений вручну)
+
+Попутно, поза початковим списком:
+
+- [x] `settings_hotkey_action_row_open_external` більше не каже «(записи)» —
+      `Alt+Enter` тепер і про потоки: «(записи, потоки)» / «(recordings, streams)»
 
 ## Документи
 
+- Чекліст NVDA-прогону: [nvda-open-stream-with-default-app.md](../testing/nvda-open-stream-with-default-app.md)
 - Зразок реалізації: [p1-open-song-with-default-app.md](done/p1-open-song-with-default-app.md)
 - Спільна інфраструктура, уже готова: `src/hooks/useCompositeList.ts`
   (`ActionModifiers.alt`); `src/lib/shortcuts.ts` (`row-open-external`, reserved);
