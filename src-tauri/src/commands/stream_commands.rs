@@ -154,6 +154,69 @@ pub fn build_added_stream(
     }
 }
 
+/// What the Add/Edit-stream dialog warns about before saving. Both are
+/// warnings, never bans: the URL is the stream's identity, but a user may
+/// legitimately want the same URL twice (different credentials, different
+/// ignorelist), and an explicit rename onto an existing name is the user's
+/// call — we only say the recordings will share a folder.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StreamConflicts {
+    /// Name of the stream already holding this URL.
+    pub duplicate_url_of: Option<String>,
+    /// Name of the stream whose `%s` recording folder this name would share.
+    pub name_collides_with: Option<String>,
+}
+
+/// Pure core of `check_stream_conflicts`. `exclude_id` is the stream being
+/// edited, so it never conflicts with itself.
+pub fn find_conflicts(
+    streams: &[StreamInfo],
+    url: Option<&str>,
+    name: Option<&str>,
+    exclude_id: Option<&str>,
+) -> StreamConflicts {
+    let others = || streams.iter().filter(|s| Some(s.id.as_str()) != exclude_id);
+
+    let duplicate_url_of = url.and_then(|u| others().find(|s| s.url == u).map(|s| s.name.clone()));
+
+    let name_collides_with = name
+        .map(str::trim)
+        .filter(|n| !n.is_empty())
+        .and_then(|n| {
+            let key = crate::naming::collision_key(n);
+            others()
+                .find(|s| crate::naming::collision_key(&s.name) == key)
+                .map(|s| s.name.clone())
+        });
+
+    StreamConflicts { duplicate_url_of, name_collides_with }
+}
+
+/// Pre-flight for the Add/Edit-stream dialog. `url` is checked in add mode
+/// (resolved first, so a `.pls` that points at an already-known stream is
+/// caught); `name` + `exclude_id` in edit mode. A URL that fails to resolve is
+/// compared as typed — the add itself will surface the real error.
+#[tauri::command]
+pub async fn check_stream_conflicts(
+    url: Option<String>,
+    name: Option<String>,
+    exclude_id: Option<String>,
+    state: tauri::State<'_, AppState>,
+) -> Result<StreamConflicts, String> {
+    let resolved = match url {
+        Some(u) => Some(playlist::resolve_playlist_url(&u).await.unwrap_or(u)),
+        None => None,
+    };
+    let profile = state.active_profile.read().await;
+    Ok(find_conflicts(
+        &profile.streams,
+        resolved.as_deref(),
+        name.as_deref(),
+        exclude_id.as_deref(),
+    ))
+}
+
 #[tauri::command]
 pub async fn add_stream(
     url: String,
@@ -779,5 +842,56 @@ mod tests {
         let got =
             build_added_stream(&[], "http://new".into(), Some("   ".into()), None, None, "NOW".into());
         assert_eq!(got.name, "http://new");
+    }
+
+    #[test]
+    fn find_conflicts_reports_the_stream_already_holding_the_url() {
+        let streams = vec![StreamInfo {
+            id: "a".into(),
+            url: "http://dup".into(),
+            name: "Radio X".into(),
+            ..sample()
+        }];
+        let got = find_conflicts(&streams, Some("http://dup"), None, None);
+        assert_eq!(got.duplicate_url_of.as_deref(), Some("Radio X"));
+        assert_eq!(got.name_collides_with, None);
+    }
+
+    #[test]
+    fn find_conflicts_is_silent_for_a_new_url() {
+        let streams = vec![StreamInfo { id: "a".into(), url: "http://a".into(), ..sample() }];
+        assert_eq!(find_conflicts(&streams, Some("http://new"), None, None).duplicate_url_of, None);
+    }
+
+    #[test]
+    fn find_conflicts_reports_a_folder_level_name_clash() {
+        let streams = vec![named("a", "Radio X")];
+        // Case-only difference: NTFS still gives both recordings one folder.
+        let got = find_conflicts(&streams, None, Some("radio x"), None);
+        assert_eq!(got.name_collides_with.as_deref(), Some("Radio X"));
+        // So does a character that sanitizes away into the same folder name.
+        let slashed = vec![named("a", "Radio_X")];
+        assert_eq!(
+            find_conflicts(&slashed, None, Some("Radio/X"), None).name_collides_with.as_deref(),
+            Some("Radio_X")
+        );
+    }
+
+    #[test]
+    fn find_conflicts_excludes_the_stream_being_edited() {
+        let streams = vec![named("a", "Radio X"), named("b", "Radio Y")];
+        // Renaming "a" to its own name is not a conflict...
+        assert_eq!(find_conflicts(&streams, None, Some("Radio X"), Some("a")).name_collides_with, None);
+        // ...but renaming it onto "b" is.
+        assert_eq!(
+            find_conflicts(&streams, None, Some("Radio Y"), Some("a")).name_collides_with.as_deref(),
+            Some("Radio Y")
+        );
+    }
+
+    #[test]
+    fn find_conflicts_ignores_a_blank_name() {
+        let streams = vec![named("a", "Radio X")];
+        assert_eq!(find_conflicts(&streams, None, Some("   "), None).name_collides_with, None);
     }
 }

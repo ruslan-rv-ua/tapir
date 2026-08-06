@@ -263,6 +263,7 @@ pub fn run() {
             commands::app_commands::frontend_ready,
             commands::stream_commands::get_streams,
             commands::stream_commands::add_stream,
+            commands::stream_commands::check_stream_conflicts,
             commands::stream_commands::remove_stream,
             commands::stream_commands::remove_streams,
             commands::stream_commands::transfer_stream_to_profile,
