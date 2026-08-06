@@ -648,41 +648,64 @@ pub async fn recording_task(
         let detected_format = format::detect_from_content_type(content_type)
             .unwrap_or(AudioFormat::Mp3);
 
-        {
+        // `%s` is ALWAYS the profile's name. Two mountpoints of one station send
+        // the SAME icy-name, so using it here would merge their folders and undo
+        // the suffix their profile entries carry.
+        let station_name = {
             let state = app_handle.state::<crate::app_state::AppState>();
             let (updated_stream, snapshot) = {
                 let mut profile = state.active_profile.write().await;
-                if let Some(s) = profile.streams.iter_mut().find(|s| s.id == stream_id) {
-                    if let Some(br) = icy_bitrate {
-                        s.bitrate = Some(br as u32);
-                    }
-                    if icy_name_val.is_some() {
-                        let name = icy_name_val.as_ref().unwrap();
-                        if s.name == s.url {
-                            s.name = name.clone();
+                match profile.streams.iter().position(|s| s.id == stream_id) {
+                    Some(i) => {
+                        // Naming an unnamed stream picks its recording folder, so
+                        // it has to dodge the folders the other streams own.
+                        let taken: std::collections::HashSet<String> = profile
+                            .streams
+                            .iter()
+                            .enumerate()
+                            .filter(|(j, _)| *j != i)
+                            .map(|(_, s)| crate::naming::collision_key(&s.name))
+                            .collect();
+                        let s = &mut profile.streams[i];
+                        if let Some(br) = icy_bitrate {
+                            s.bitrate = Some(br as u32);
                         }
-                        s.icy_name = icy_name_val.clone();
+                        if let Some(icy) = icy_name_val.as_ref() {
+                            let meta = crate::naming::NameMeta {
+                                format: Some(detected_format.clone()),
+                                bitrate: icy_bitrate.map(|b| b as u32),
+                            };
+                            if let Some(renamed) =
+                                crate::naming::icy_rename(&s.name, &s.url, icy, &meta, &taken)
+                            {
+                                s.name = renamed;
+                            }
+                            s.icy_name = Some(icy.clone());
+                        }
+                        if icy_genre_val.is_some() {
+                            s.icy_genre = icy_genre_val.clone();
+                        }
+                        if icy_url_val.is_some() {
+                            s.icy_url = icy_url_val.clone();
+                        }
+                        s.format = Some(detected_format.clone());
+                        (Some(s.clone()), Some(profile.clone()))
                     }
-                    if icy_genre_val.is_some() {
-                        s.icy_genre = icy_genre_val.clone();
-                    }
-                    if icy_url_val.is_some() {
-                        s.icy_url = icy_url_val.clone();
-                    }
-                    s.format = Some(detected_format.clone());
-                    (Some(s.clone()), Some(profile.clone()))
-                } else {
-                    (None, None)
+                    None => (None, None),
                 }
             };
-            if let (Some(updated), Some(snap)) = (updated_stream, snapshot) {
-                let _ = tokio::task::spawn_blocking(move || -> Result<(), crate::errors::RadioError> { snap.save() }).await;
-                app_handle.emit("stream-info-updated", updated).ok();
+            match (updated_stream, snapshot) {
+                (Some(updated), Some(snap)) => {
+                    let _ = tokio::task::spawn_blocking(move || -> Result<(), crate::errors::RadioError> { snap.save() }).await;
+                    let name = updated.name.clone();
+                    app_handle.emit("stream-info-updated", updated).ok();
+                    name
+                }
+                // Stream was removed from the profile mid-recording — keep the
+                // name the task started with.
+                _ => station_name.clone(),
             }
-        }
-
-        // Use ICY name for recording paths if discovered
-        let station_name = icy_name_val.unwrap_or_else(|| station_name.clone());
+        };
 
         // --- Set up recorder ---
         let output_dir = portable::resolve_output_dir(&recording_settings.output_dir);
