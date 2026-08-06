@@ -1,7 +1,7 @@
 use crate::app_state::AppState;
 use crate::errors::RadioError;
 use crate::portable;
-use crate::profile::{Profile, StreamInfo};
+use crate::profile::{AudioFormat, Profile, StreamInfo};
 use crate::stream::manager::{StreamState, StreamStatus};
 use crate::stream::playlist;
 use log::warn;
@@ -114,37 +114,70 @@ pub async fn get_streams(state: tauri::State<'_, AppState>) -> Result<Vec<Stream
     Ok(profile.streams.clone())
 }
 
-#[tauri::command]
-pub async fn add_stream(
-    url: String,
+/// Build the `StreamInfo` a manual add inserts. An explicit name that collides
+/// with a stream already in the profile is suffixed once, here, using whatever
+/// the Add-stream dialog's probe learned (`Radio X (AAC 64k)`, or `Radio X (2)`
+/// when the probe failed and the user added anyway). No name at all means the
+/// URL is stored as a placeholder — unique by construction, and replaced by the
+/// ICY auto-naming on the first connection. Pure over the profile —
+/// unit-testable without Tauri state.
+pub fn build_added_stream(
+    streams: &[StreamInfo],
+    resolved_url: String,
     name: Option<String>,
-    state: tauri::State<'_, AppState>,
-) -> Result<StreamInfo, String> {
-    let resolved_url = playlist::resolve_playlist_url(&url)
-        .await
-        .map_err(|e| e.to_string())?;
+    bitrate: Option<u32>,
+    format: Option<AudioFormat>,
+    now: String,
+) -> StreamInfo {
+    let requested = name.map(|n| n.trim().to_string()).filter(|n| !n.is_empty());
+    let stream_name = match requested {
+        Some(n) => {
+            let meta = crate::naming::NameMeta { format: format.clone(), bitrate };
+            crate::naming::disambiguate(&n, &meta, &crate::naming::taken_keys(streams, None))
+        }
+        None => resolved_url.clone(),
+    };
 
-    let stream_name = name.map(|n| n.trim().to_string()).filter(|n| !n.is_empty()).unwrap_or_else(|| resolved_url.clone());
-
-    let new_stream = StreamInfo {
+    StreamInfo {
         id: nanoid::nanoid!(),
         url: resolved_url,
         name: stream_name,
-        format: None,
-        bitrate: None,
+        format,
+        bitrate,
         icy_name: None,
         icy_genre: None,
         icy_url: None,
         ignorelist: Vec::new(),
         username: None,
         password: None,
-        added_at: chrono::Local::now().to_rfc3339(),
-    };
+        added_at: now,
+    }
+}
 
-    let snapshot = {
+#[tauri::command]
+pub async fn add_stream(
+    url: String,
+    name: Option<String>,
+    bitrate: Option<u32>,
+    format: Option<AudioFormat>,
+    state: tauri::State<'_, AppState>,
+) -> Result<StreamInfo, String> {
+    let resolved_url = playlist::resolve_playlist_url(&url)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let (new_stream, snapshot) = {
         let mut profile = state.active_profile.write().await;
+        let new_stream = build_added_stream(
+            &profile.streams,
+            resolved_url,
+            name,
+            bitrate,
+            format,
+            chrono::Local::now().to_rfc3339(),
+        );
         profile.streams.push(new_stream.clone());
-        profile.clone()
+        (new_stream, profile.clone())
     };
     tokio::task::spawn_blocking(move || snapshot.save())
         .await
@@ -680,5 +713,71 @@ mod tests {
     fn select_by_ids_empty_ids_yields_empty() {
         let all = vec![with_id("a")];
         assert!(select_by_ids(&all, &[]).is_empty());
+    }
+
+    fn named(id: &str, name: &str) -> StreamInfo {
+        StreamInfo { id: id.into(), name: name.into(), url: format!("http://{id}"), ..sample() }
+    }
+
+    #[test]
+    fn added_stream_keeps_a_free_name_and_persists_probe_metadata() {
+        let existing = vec![named("a", "Other")];
+        let got = build_added_stream(
+            &existing,
+            "http://new".into(),
+            Some("  Radio X  ".into()),
+            Some(64),
+            Some(AudioFormat::Aac),
+            "NOW".into(),
+        );
+        assert_eq!(got.name, "Radio X"); // trimmed, unsuffixed
+        assert_eq!(got.url, "http://new");
+        assert_eq!(got.bitrate, Some(64));
+        assert_eq!(got.format, Some(AudioFormat::Aac));
+        assert_eq!(got.added_at, "NOW");
+    }
+
+    #[test]
+    fn added_stream_suffixes_a_colliding_name_from_probe_metadata() {
+        let existing = vec![named("a", "Radio X")];
+        let got = build_added_stream(
+            &existing,
+            "http://new".into(),
+            Some("Radio X".into()),
+            Some(64),
+            Some(AudioFormat::Aac),
+            "NOW".into(),
+        );
+        assert_eq!(got.name, "Radio X (AAC 64k)");
+    }
+
+    #[test]
+    fn added_stream_falls_back_to_an_ordinal_when_the_probe_failed() {
+        let existing = vec![named("a", "Radio X")];
+        let got = build_added_stream(
+            &existing,
+            "http://new".into(),
+            Some("Radio X".into()),
+            None,
+            None,
+            "NOW".into(),
+        );
+        assert_eq!(got.name, "Radio X (2)");
+    }
+
+    #[test]
+    fn added_stream_without_a_name_stores_the_url_and_is_never_suffixed() {
+        // No name -> the URL is the placeholder; ICY auto-naming replaces it on
+        // the first connection. A URL is unique already, so no suffix.
+        let existing = vec![named("a", "Radio X")];
+        let got = build_added_stream(&existing, "http://new".into(), None, None, None, "NOW".into());
+        assert_eq!(got.name, "http://new");
+    }
+
+    #[test]
+    fn added_stream_treats_a_blank_name_as_no_name() {
+        let got =
+            build_added_stream(&[], "http://new".into(), Some("   ".into()), None, None, "NOW".into());
+        assert_eq!(got.name, "http://new");
     }
 }
