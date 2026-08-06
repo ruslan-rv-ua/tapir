@@ -36,15 +36,16 @@ pub struct ImportProgress {
     pub error: Option<String>,
 }
 
-/// Verdict of a single interactive probe (`probe_stream`). `bitrate`/`format`
-/// are what the Add-stream dialog feeds back into `add_stream` so a colliding
-/// name can be suffixed informatively (`Radio X (AAC 64k)`) instead of getting
-/// a bare ordinal.
+/// Verdict of a single interactive probe (`probe_stream`). Everything but `ok`
+/// is fed back into `add_stream`: `icy_name` becomes the stream's name when the
+/// user typed none, and `bitrate`/`format` let a colliding name be suffixed
+/// informatively (`Radio X (AAC 64k)`) instead of getting a bare ordinal.
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProbeVerdict {
     pub ok: bool,
     pub error: Option<String>,
+    pub icy_name: Option<String>,
     pub bitrate: Option<u32>,
     pub format: Option<AudioFormat>,
 }
@@ -157,10 +158,17 @@ pub async fn validate_import_candidates(urls: Vec<String>, app: AppHandle) -> Re
 /// both get the same timeout semantics.
 pub(crate) async fn probe_once(url: &str) -> ProbeVerdict {
     match tokio::time::timeout(SINGLE_PROBE_TIMEOUT, probe::probe(url)).await {
-        Ok(r) => ProbeVerdict { ok: r.ok, error: r.error, bitrate: r.bitrate, format: r.format },
+        Ok(r) => ProbeVerdict {
+            ok: r.ok,
+            error: r.error,
+            icy_name: r.icy_name,
+            bitrate: r.bitrate,
+            format: r.format,
+        },
         Err(_) => ProbeVerdict {
             ok: false,
             error: Some(format!("Timed out after {}s", SINGLE_PROBE_TIMEOUT.as_secs())),
+            icy_name: None,
             bitrate: None,
             format: None,
         },

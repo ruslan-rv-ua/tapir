@@ -7,7 +7,7 @@ import { $streams, $showAddStreamDialog, $editStream } from "../../stores/stream
 import { addToast } from "../../stores/toasts";
 import * as m from "../../i18n/paraglide/messages";
 
-const NO_META: StreamMeta = { bitrate: null, format: null };
+const NO_META: StreamMeta = { icyName: null, bitrate: null, format: null };
 
 export function AddStreamDialog() {
   const showAddDialog = useStore($showAddStreamDialog);
@@ -92,7 +92,9 @@ export function AddStreamDialog() {
         setWarning(m.stream_probe_failed());
         return;
       }
-      meta = { bitrate: verdict.bitrate, format: verdict.format };
+      // icyName rides along so the backend can name a stream the user left
+      // unnamed, instead of parking a URL in the list until the first recording.
+      meta = { icyName: verdict.icyName, bitrate: verdict.bitrate, format: verdict.format };
       setProbeMeta(meta);
     }
 

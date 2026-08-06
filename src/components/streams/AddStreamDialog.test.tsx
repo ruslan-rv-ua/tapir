@@ -38,7 +38,7 @@ const addStream = vi.mocked(tauri.addStream);
 const checkStreamConflicts = vi.mocked(tauri.checkStreamConflicts);
 
 const NO_CONFLICTS = { duplicateUrlOf: null, nameCollidesWith: null };
-const NO_META = { bitrate: null, format: null };
+const NO_META = { icyName: null, bitrate: null, format: null };
 
 const newStream = { id: "s1", url: "http://a", name: "A" } as never;
 
@@ -150,7 +150,7 @@ describe("AddStreamDialog conflicts", () => {
   });
 
   it("passes the probed bitrate and codec to addStream so the name can be suffixed", async () => {
-    probeStream.mockResolvedValue({ ok: true, error: null, bitrate: 64, format: "aac" });
+    probeStream.mockResolvedValue({ ok: true, error: null, icyName: null, bitrate: 64, format: "aac" });
     render(<AddStreamDialog />);
 
     await userEvent.type(screen.getByLabelText("URL"), "http://a");
@@ -158,7 +158,30 @@ describe("AddStreamDialog conflicts", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() =>
-      expect(addStream).toHaveBeenCalledWith("http://a", "Radio X", { bitrate: 64, format: "aac" }),
+      expect(addStream).toHaveBeenCalledWith("http://a", "Radio X", {
+        icyName: null,
+        bitrate: 64,
+        format: "aac",
+      }),
+    );
+  });
+
+  it("hands the probed station name to the backend when the user typed none", async () => {
+    // Without this the stream would sit in the list under its URL until the
+    // first recording renamed it — a URL is what NVDA would read out.
+    probeStream.mockResolvedValue({
+      ok: true, error: null, icyName: "Groove Salad", bitrate: 128, format: "mp3",
+    });
+    render(<AddStreamDialog />);
+
+    await fillUrlAndSubmit();
+
+    await waitFor(() =>
+      expect(addStream).toHaveBeenCalledWith("http://a", undefined, {
+        icyName: "Groove Salad",
+        bitrate: 128,
+        format: "mp3",
+      }),
     );
   });
 

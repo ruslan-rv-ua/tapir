@@ -114,23 +114,35 @@ pub async fn get_streams(state: tauri::State<'_, AppState>) -> Result<Vec<Stream
     Ok(profile.streams.clone())
 }
 
-/// Build the `StreamInfo` a manual add inserts. An explicit name that collides
-/// with a stream already in the profile is suffixed once, here, using whatever
-/// the Add-stream dialog's probe learned (`Radio X (AAC 64k)`, or `Radio X (2)`
-/// when the probe failed and the user added anyway). No name at all means the
-/// URL is stored as a placeholder — unique by construction, and replaced by the
-/// ICY auto-naming on the first connection. Pure over the profile —
-/// unit-testable without Tauri state.
+fn non_blank(value: Option<String>) -> Option<String> {
+    value.map(|v| v.trim().to_string()).filter(|v| !v.is_empty())
+}
+
+/// Build the `StreamInfo` a manual add inserts, from what the Add-stream
+/// dialog's probe learned about the URL.
+///
+/// The name is, in order of preference: what the user typed, the station's own
+/// `icy_name`, or the URL as a last-resort placeholder. Auto-naming happens
+/// here rather than on the first connection so the list never holds a row that
+/// reads out as a URL. Either way the chosen name is disambiguated once, now
+/// (`Radio X (AAC 64k)`, or `Radio X (2)` when the probe failed and the user
+/// added anyway); a URL placeholder needs no suffix, being unique already.
+///
+/// `icy_name` is stored whenever the probe reported one, even when the user
+/// typed their own name — that is what makes "use the official name" available
+/// before the stream has ever connected. Pure over the profile — unit-testable
+/// without Tauri state.
 pub fn build_added_stream(
     streams: &[StreamInfo],
     resolved_url: String,
     name: Option<String>,
+    icy_name: Option<String>,
     bitrate: Option<u32>,
     format: Option<AudioFormat>,
     now: String,
 ) -> StreamInfo {
-    let requested = name.map(|n| n.trim().to_string()).filter(|n| !n.is_empty());
-    let stream_name = match requested {
+    let icy_name = non_blank(icy_name);
+    let stream_name = match non_blank(name).or_else(|| icy_name.clone()) {
         Some(n) => {
             let meta = crate::naming::NameMeta { format: format.clone(), bitrate };
             crate::naming::disambiguate(&n, &meta, &crate::naming::taken_keys(streams, None))
@@ -144,7 +156,7 @@ pub fn build_added_stream(
         name: stream_name,
         format,
         bitrate,
-        icy_name: None,
+        icy_name,
         icy_genre: None,
         icy_url: None,
         ignorelist: Vec::new(),
@@ -221,6 +233,7 @@ pub async fn check_stream_conflicts(
 pub async fn add_stream(
     url: String,
     name: Option<String>,
+    icy_name: Option<String>,
     bitrate: Option<u32>,
     format: Option<AudioFormat>,
     state: tauri::State<'_, AppState>,
@@ -235,6 +248,7 @@ pub async fn add_stream(
             &profile.streams,
             resolved_url,
             name,
+            icy_name,
             bitrate,
             format,
             chrono::Local::now().to_rfc3339(),
@@ -789,6 +803,7 @@ mod tests {
             &existing,
             "http://new".into(),
             Some("  Radio X  ".into()),
+            None,
             Some(64),
             Some(AudioFormat::Aac),
             "NOW".into(),
@@ -807,6 +822,7 @@ mod tests {
             &existing,
             "http://new".into(),
             Some("Radio X".into()),
+            None,
             Some(64),
             Some(AudioFormat::Aac),
             "NOW".into(),
@@ -823,25 +839,85 @@ mod tests {
             Some("Radio X".into()),
             None,
             None,
+            None,
             "NOW".into(),
         );
         assert_eq!(got.name, "Radio X (2)");
     }
 
     #[test]
-    fn added_stream_without_a_name_stores_the_url_and_is_never_suffixed() {
-        // No name -> the URL is the placeholder; ICY auto-naming replaces it on
-        // the first connection. A URL is unique already, so no suffix.
-        let existing = vec![named("a", "Radio X")];
-        let got = build_added_stream(&existing, "http://new".into(), None, None, None, "NOW".into());
-        assert_eq!(got.name, "http://new");
+    fn added_stream_without_a_name_takes_the_probed_station_name() {
+        // The probe already told us who this is — waiting for the first recording
+        // to give the stream a human name would leave a URL in the list (and be
+        // read out as a URL) for no reason.
+        let got = build_added_stream(
+            &[],
+            "http://new".into(),
+            None,
+            Some("Groove Salad".into()),
+            None,
+            None,
+            "NOW".into(),
+        );
+        assert_eq!(got.name, "Groove Salad");
     }
 
     #[test]
-    fn added_stream_treats_a_blank_name_as_no_name() {
+    fn auto_named_stream_is_suffixed_like_any_other() {
+        let existing = vec![named("a", "Groove Salad")];
+        let got = build_added_stream(
+            &existing,
+            "http://new".into(),
+            None,
+            Some("Groove Salad".into()),
+            Some(128),
+            Some(AudioFormat::Mp3),
+            "NOW".into(),
+        );
+        assert_eq!(got.name, "Groove Salad (MP3 128k)");
+    }
+
+    #[test]
+    fn a_typed_name_beats_the_probed_one_but_the_official_name_is_still_kept() {
+        // icy_name is stored regardless, so "use the official name" works before
+        // the stream has ever connected.
+        let got = build_added_stream(
+            &[],
+            "http://new".into(),
+            Some("My Name".into()),
+            Some("Groove Salad".into()),
+            None,
+            None,
+            "NOW".into(),
+        );
+        assert_eq!(got.name, "My Name");
+        assert_eq!(got.icy_name.as_deref(), Some("Groove Salad"));
+    }
+
+    #[test]
+    fn added_stream_falls_back_to_the_url_when_the_probe_knew_nothing() {
+        // Probe failed / station sends no icy-name: the URL is the placeholder,
+        // and the ICY auto-naming replaces it on the first connection instead.
+        let existing = vec![named("a", "Radio X")];
         let got =
-            build_added_stream(&[], "http://new".into(), Some("   ".into()), None, None, "NOW".into());
+            build_added_stream(&existing, "http://new".into(), None, None, None, None, "NOW".into());
         assert_eq!(got.name, "http://new");
+        assert_eq!(got.icy_name, None);
+    }
+
+    #[test]
+    fn added_stream_treats_blank_names_as_absent() {
+        let got = build_added_stream(
+            &[],
+            "http://new".into(),
+            Some("   ".into()),
+            Some("  ".into()),
+            None,
+            None,
+            "NOW".into(),
+        );
+        assert_eq!(got.name, "http://new");
+        assert_eq!(got.icy_name, None);
     }
 
     #[test]

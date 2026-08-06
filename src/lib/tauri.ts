@@ -129,18 +129,24 @@ export interface RecordingCompletedPayload {
   durationMs: number;
 }
 
-/** Verdict of a single interactive probe (`probe_stream`). `bitrate`/`format`
- *  are fed back into `addStream` so a colliding name gets an informative
- *  suffix (`Radio X (AAC 64k)`) instead of a bare ordinal. */
+/** Verdict of a single interactive probe (`probe_stream`). Everything but `ok`
+ *  is fed back into `addStream`: `icyName` names a stream the user left
+ *  unnamed, and `bitrate`/`format` give a colliding name an informative suffix
+ *  (`Radio X (AAC 64k)`) instead of a bare ordinal. */
 export interface ProbeVerdict {
   ok: boolean;
   error: string | null;
+  icyName: string | null;
   bitrate: number | null;
   format: "mp3" | "aac" | null;
 }
 
-/** What the stream is known to be at add time — drives the name suffix. */
-export type StreamMeta = { bitrate: number | null; format: "mp3" | "aac" | null };
+/** What the stream is known to be at add time — names it and drives the suffix. */
+export type StreamMeta = {
+  icyName: string | null;
+  bitrate: number | null;
+  format: "mp3" | "aac" | null;
+};
 
 /** Warnings (never bans) the add/edit dialog raises before saving. */
 export interface StreamConflicts {
@@ -159,6 +165,7 @@ export async function addStream(url: string, name?: string, meta?: StreamMeta): 
   return invoke("add_stream", {
     url,
     name,
+    icyName: meta?.icyName ?? null,
     bitrate: meta?.bitrate ?? null,
     format: meta?.format ?? null,
   });
@@ -759,7 +766,7 @@ export async function validateImportCandidates(urls: string[]): Promise<void> {
   return invoke("validate_import_candidates", { urls });
 }
 export async function commitStreamImport(
-  selected: ({ url: string; name: string } & Partial<StreamMeta>)[],
+  selected: { url: string; name: string; bitrate: number | null; format: "mp3" | "aac" | null }[],
 ): Promise<StreamImportResult> {
   return invoke("commit_stream_import", { selected });
 }
