@@ -3,16 +3,20 @@ slug: settings-sidebar-tabs
 title: "Налаштування — вертикальні вкладки в бічній панелі (як у HelpDialog)"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: S
 kind: feature
 target: 0.1.0
-updated: 2026-07-23
+updated: 2026-08-07
+completed: 2026-08-07
 a11y: true
 depends_on: []
 blocks: []
 touches:
   - src/components/settings/SettingsDialog.tsx
+  - src/components/settings/SettingsDialog.test.tsx
+  - src/i18n/messages/uk.json
+  - src/i18n/messages/en.json
 gates: [pnpm test, pnpm vite:build]
 notes:
   - "NVDA НЕ озвучує aria-orientation (JAWS — так; NVDA/VoiceOver — ні; w3c/aria-practices#2281) — користувач не дізнається, що таблист вертикальний"
@@ -37,7 +41,7 @@ ModalOverlay/Modal 80vh/max-w-3xl) з різною орієнтацією вкл
 ментальні моделі для користувача NVDA без видимої причини. Уніфікуємо за
 зразком HelpDialog.
 
-Обсяг змін — лише [SettingsDialog.tsx](../../src/components/settings/SettingsDialog.tsx) (~10 рядків, без змін логіки):
+Обсяг змін — лише [SettingsDialog.tsx](../../../src/components/settings/SettingsDialog.tsx) (~10 рядків, без змін логіки):
 
 1. `<Tabs>`: додати `orientation="vertical"`, у className `flex-col` → рядковий
    flex (`flex flex-1 overflow-hidden`).
@@ -45,18 +49,29 @@ ModalOverlay/Modal 80vh/max-w-3xl) з різною орієнтацією вкл
    border-r border-slate-700 px-2 py-4`.
 3. `TAB_CLS`: `border-b-2` → `rounded border-l-2` + `text-left` (як у
    HelpDialog).
+4. `TabList` дістає власну мітку `settings_sections_label` («Розділи
+   налаштувань» / «Settings sections») замість повторного `settings_title` —
+   симетрично до `help_sections_label` у HelpDialog. У бічній панелі таблист
+   стає окремою зоною, і мітка, тотожна заголовку діалогу, змушує NVDA двічі
+   поспіль вимовити «Налаштування».
 
 ## Критерії готовності
 
-- [ ] `SettingsDialog` використовує `orientation="vertical"` у React Aria `Tabs`
-- [ ] Вертикальна бічна панель стилізована аналогічно `HelpDialog`
-- [ ] Навігація ↑/↓ між вкладками (автоматично від RAC)
-- [ ] ←/→ на вертикальному таблисті теж переходять між вкладками — страхування
+- [x] `SettingsDialog` використовує `orientation="vertical"` у React Aria `Tabs`
+- [x] Вертикальна бічна панель стилізована аналогічно `HelpDialog`
+- [x] Навігація ↑/↓ між вкладками (автоматично від RAC)
+- [x] ←/→ на вертикальному таблисті теж переходять між вкладками — страхування
       для NVDA, який не озвучує орієнтацію (поведінка вбудована в RAC,
       перевірити прогоном)
-- [ ] NVDA: вкладки озвучуються коректно («вкладка, N з 4»); активна вкладка =
+- [x] `TabList` має власну мітку `settings_sections_label`, відмінну від
+      `settings_title`
+- [x] `SettingsDialog.test.tsx` фіксує `aria-orientation="vertical"`, окрему
+      мітку таблиста і рух вибору всіма чотирма стрілками
+- [x] NVDA: вкладки озвучуються коректно («вкладка, N з 4»); активна вкладка =
       `aria-selected="true"`
-- [ ] `pnpm test` без регресій
+- [x] NVDA-прогін проведено 2026-08-07, усі 5 сценаріїв пройдено, зауважень
+      немає (чекліст видалено при прийманні)
+- [x] `pnpm test` без регресій
 
 ## Результат дослідження (2026-07-23)
 
@@ -73,10 +88,24 @@ ModalOverlay/Modal 80vh/max-w-3xl) з різною орієнтацією вкл
    краще — HelpDialog уже тримає 7.
 3. **Реалізація в RAC:** `orientation="vertical"` + CSS; `aria-orientation`
    виставляється автоматично (`useTabList`). Обсяг — див. «Опис».
-4. **Прецедент:** [HelpDialog.tsx:42-54](../../src/components/common/HelpDialog.tsx#L42-L54)
+4. **Прецедент:** [HelpDialog.tsx:42-54](../../../src/components/common/HelpDialog.tsx#L42-L54)
    — робочий вертикальний патерн (7 вкладок).
 5. **Консистентність:** головний аргумент «за» — одна ментальна модель для
    обох діалогів; сильніший за сам напрямок стрілок.
+
+## Підтвердження при реалізації (2026-08-07)
+
+Заявку про «всі чотири стрілки» перевірено двічі й незалежно:
+
+1. У сорсах встановленого `@react-aria/tabs@3.11.1`:
+   `TabsKeyboardDelegate.getKeyLeftOf/getKeyRightOf` не мають orientation-guard
+   (лише rtl-flip), `getKeyAbove/getKeyBelow` повертають `null` при
+   `orientation === "horizontal"`; `useTabList` передає делегат у
+   `useSelectableCollection` **без** `orientation`, тож обробник стрілок нічим
+   не звужений.
+2. Негативним контролем: із тимчасово знятим `orientation="vertical"` усі три
+   нові тести падають, причому `{ArrowDown}` не рухає вибір узагалі — тобто
+   тест справді стереже саме цю властивість, а не проходить випадково.
 
 ## Документи
 
