@@ -7,7 +7,7 @@ status: ready
 effort: M
 kind: feature
 target: 0.1.0
-updated: 2026-07-23
+updated: 2026-08-07
 a11y: true
 depends_on: []
 blocks: []
@@ -25,6 +25,7 @@ gates: [pnpm test, pnpm vite:build]
 notes:
   - "Модель — TapinRadio (еталонний доступний радіо-рекордер, розсилка pc-audio): голі F-клавіші + Ctrl+літери; F9-анонс — запозичення TapinRadio F11 (Announce currently playing song), F11 у WebView2 зайнятий fullscreen"
   - "Вільні голі F-клавіші у webview: F4, F8, F9 (F3=find next, F7=caret browsing, F11=fullscreen, F12=DevTools — акселератори WebView2; F10 — семантика меню; NVDA голі F-клавіші не біндить)"
+  - "Пул F3/F7 не заміряний: ролі взято зі списку акселераторів Chromium, а WebView2 — не Edge (панелі пошуку немає, caret browsing може бути не реалізований). Прогін webview-reload-guard заміряє їх фактично; якщо інертні — пул розширюється до п'яти клавіш"
   - "Ctrl+F матчиться ГЛОБАЛЬНО (no-op на секціях без пошуку) — щоб дефолтний Find bar WebView2 ніколи не відкривався; find-in-page — скасовуваний акселератор Chromium"
   - "Ctrl+M НЕ закриває відкладений Tier-1 toggle_mute (Ctrl+Shift+U, OS-global): той потребує міст Rust→webview і лишається окремою задачею; Ctrl+M — webview-scoped, працює лише з фокусом у вікні"
 ---
@@ -32,7 +33,7 @@ notes:
 # Нові гарячі клавіші: Ctrl+F (пошук), Ctrl+M (mute), F9 (що грає), F4 (теги)
 
 > **Контекст:** друга хвиля аудиту шорткатів, рішення 2026-07-23 (перша —
-> [keyboard-shortcuts-audit](p2-keyboard-shortcuts-audit.md): F5/Shift+F5).
+> [streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md): F5/Shift+F5).
 > Прийнято чотири комбінації; відхилені кандидати і причини — у «Свідомо не
 > додано» нижче.
 
@@ -117,7 +118,10 @@ F6-ходити в зону плеєра і назад. Зміст повідо�
   browse mode; заборонено інваріантом реєстру.
 - **F3/F7/F11/F12** — акселератори WebView2 (find next / caret browsing /
   fullscreen / DevTools); подавлення F3/F7/F11 — скоуп
-  [webview-reload-guard](p2-webview-reload-guard.md).
+  [webview-reload-guard](p2-webview-reload-guard.md). Ролі F3/F7 узято зі списку
+  Chromium і **не заміряні** в самому WebView2 — прогін того запису має
+  повернути сюди факт; якщо котрась інертна, вона повертається у пул вільних
+  голих F-клавіш (§ нотатки front-matter).
 
 ## Документи
 

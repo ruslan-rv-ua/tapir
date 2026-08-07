@@ -18,9 +18,10 @@ semver; `unscheduled` — наприкінці.
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
 | [help-content-polish](p1-help-content-polish.md) | P1 | planned | ready | M | — | — |
-| [full-edit-stream](p1-full-edit-stream.md) | P1 | planned | draft | M | — | — |
-| [webview-reload-guard](p2-webview-reload-guard.md) | P2 | planned | ready | S | — | [keyboard-shortcuts-audit](p2-keyboard-shortcuts-audit.md) |
-| [keyboard-shortcuts-audit](p2-keyboard-shortcuts-audit.md) | P2 | planned | ready | S | [webview-reload-guard](p2-webview-reload-guard.md) | — |
+| [full-edit-stream](p1-full-edit-stream.md) | P1 | planned | ready | M | — | — |
+| [webview-reload-guard](p2-webview-reload-guard.md) | P2 | planned | ready | M | — | [streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md), [window-fullscreen-f11](p3-window-fullscreen-f11.md) |
+| [webview-zoom-hotkeys](p2-webview-zoom-hotkeys.md) | P2 | planned | ready | S | — | — (відгалуження webview-reload-guard: зуму в застосунку зараз немає) |
+| [streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md) | P2 | planned | ready | M | [webview-reload-guard](p2-webview-reload-guard.md) | [list-key-modifier-guards](p3-list-key-modifier-guards.md) |
 | [hotkeys-expansion](p2-hotkeys-expansion.md) | P2 | planned | ready | M | — | — |
 | [settings-sidebar-tabs](p2-settings-sidebar-tabs.md) | P2 | planned | ready | S | — | — |
 | [unwrap-in-tests](p3-unwrap-in-tests.md) | P3 | planned | ready | S | — | — (housekeeping, будь-коли) |
@@ -54,6 +55,9 @@ semver; `unscheduled` — наприкінці.
 | [stream-manual-reorder](p2-stream-manual-reorder.md) | P2 | idea | draft | M | — | — |
 | [track-log-only-mode](p2-track-log-only-mode.md) | P2 | idea | draft | M | — | — |
 | [quick-controls-overlay](p2-quick-controls-overlay.md) | P2 | idea | draft | L | — | — |
+| [per-stream-ignorelist-ui](p2-per-stream-ignorelist-ui.md) | P2 | planned | draft | M | — | — (логіка вже жива, бракує редактора; винесено з [full-edit-stream](p1-full-edit-stream.md)) |
+| [stream-auth](p2-stream-auth.md) | P2 | research | draft | L | — | — (username/password мертві; DPAPI в docs є, у коді немає; винесено з [full-edit-stream](p1-full-edit-stream.md)) |
+| [list-key-modifier-guards](p3-list-key-modifier-guards.md) | P3 | planned | draft | S | [streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md) | — (знахідка ревізії streams-transfer-hotkeys: switch по e.key не перевіряє модифікатори) |
 | [command-palette-mode-prefixes](p3-command-palette-mode-prefixes.md) | P3 | idea | draft | S | [command-palette-phase-3](p2-command-palette-phase-3.md) | — (спірна — укр. розкладка без `>`/`@`; вирізано з phase-4) |
 | [mpv-playback-engine](p3-mpv-playback-engine.md) | P3 | research | draft | L | — | [he-aac-mf-playback](p3-he-aac-mf-playback.md), [hls-stream-support](p3-hls-stream-support.md) (розвилка — може закрити обидва) |
 | [he-aac-mf-playback](p3-he-aac-mf-playback.md) | P3 | research | draft | M | — | залежить від рішення mpv-playback-engine |
@@ -61,6 +65,7 @@ semver; `unscheduled` — наприкінці.
 | [lastfm-scrobbling](p3-lastfm-scrobbling.md) | P3 | idea | draft | M | — | — |
 | [recording-stats](p3-recording-stats.md) | P3 | idea | draft | S | — | — |
 | [context-menu-at-cursor](p3-context-menu-at-cursor.md) | P3 | idea | draft | S | — | — |
+| [window-fullscreen-f11](p3-window-fullscreen-f11.md) | P3 | idea | draft | S | [webview-reload-guard](p2-webview-reload-guard.md) | — (брати лише за явним запитом — див. «Відкриті питання») |
 | [profile-switch-orphaned-tasks](p3-profile-switch-orphaned-tasks.md) | P3 | idea | draft | M | — | **умовний** — брати лише за реальним тригером |
 | [screen-reader-direct-speech](p3-screen-reader-direct-speech.md) | P3 | idea | **blocked** | S | — | тригер-gated, не планувати |
 | [player-station-image](p3-player-station-image.md) | P3 | idea | draft | S | — | — |
