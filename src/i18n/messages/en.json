@@ -250,6 +250,7 @@
   "wishlist_examples_failed": "Could not add examples",
   "confirm_remove_pattern": "Remove pattern \"{pattern}\"?",
   "settings_title": "Settings",
+  "settings_sections_label": "Settings sections",
   "settings_close": "Close settings",
   "settings_tab_general": "General",
   "settings_tab_recording": "Recording",

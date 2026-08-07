@@ -250,6 +250,7 @@
   "wishlist_examples_failed": "Не вдалося додати приклади",
   "confirm_remove_pattern": "Видалити патерн \"{pattern}\"?",
   "settings_title": "Налаштування",
+  "settings_sections_label": "Розділи налаштувань",
   "settings_close": "Закрити налаштування",
   "settings_tab_general": "Загальні",
   "settings_tab_recording": "Запис",

@@ -12,7 +12,7 @@ import { HotkeysTab } from "./HotkeysTab";
 import { AudioTab } from "./AudioTab";
 
 const TAB_CLS =
-  "cursor-pointer border-b-2 border-transparent px-3 py-2 text-sm text-slate-400 outline-none hover:text-slate-200 selected:border-blue-400 selected:text-slate-100 focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:text-[ButtonText] forced-colors:selected:border-[Highlight] forced-colors:selected:text-[HighlightText]";
+  "cursor-pointer rounded border-l-2 border-transparent px-3 py-2 text-left text-sm text-slate-400 outline-none hover:text-slate-200 selected:border-blue-400 selected:text-slate-100 focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:text-[ButtonText] forced-colors:selected:border-[Highlight] forced-colors:selected:text-[HighlightText]";
 
 export function SettingsDialog() {
   const isOpen = useStore($settingsDialogOpen);
@@ -57,10 +57,10 @@ export function SettingsDialog() {
               ✖
             </button>
           </div>
-          <Tabs className="flex flex-1 flex-col overflow-hidden">
+          <Tabs orientation="vertical" className="flex flex-1 overflow-hidden">
             <TabList
-              aria-label={m.settings_title()}
-              className="flex gap-1 border-b border-slate-700 px-6"
+              aria-label={m.settings_sections_label()}
+              className="flex w-48 flex-col gap-1 overflow-y-auto border-r border-slate-700 px-2 py-4"
             >
               <Tab id="general" autoFocus className={TAB_CLS}>
                 {m.settings_tab_general()}
