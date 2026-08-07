@@ -63,6 +63,7 @@ Output binary: `src-tauri/target/release-fast/tapir.exe` (build-fast) or `src-ta
 - **Frontend state**: Nanostores (`src/stores/`), not React state, for anything shared across components.
 - **Error types**: `RadioError` enum via `thiserror` (`src-tauri/src/errors.rs`).
 - **No over-engineering**: only implement what the current phase requires.
+- **Test panics**: `.unwrap()` inside `#[cfg(test)]` is fine — the panic already names the test, `file:line` and the underlying error (`serde_json` even reports the JSON line/column). Reach for `.expect()` only where the panic alone would not identify what broke. A backlog record proposing a blanket `.unwrap()` → `.expect()` sweep was **declined** on 2026-08-07: it bought no diagnostics that the test runner does not already print, and clippy's own `allow-unwrap-in-tests` / `allow-expect-in-tests` knobs treat both forms as idiomatic in tests.
 
 ## Documentation
 

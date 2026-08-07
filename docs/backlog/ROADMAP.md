@@ -22,7 +22,6 @@ semver; `unscheduled` — наприкінці.
 | [webview-zoom-hotkeys](p2-webview-zoom-hotkeys.md) | P2 | planned | ready | S | — | — (відгалуження webview-reload-guard: зуму в застосунку зараз немає) |
 | [streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md) | P2 | planned | ready | M | [webview-reload-guard](p2-webview-reload-guard.md) | [list-key-modifier-guards](p3-list-key-modifier-guards.md) |
 | [hotkeys-expansion](p2-hotkeys-expansion.md) | P2 | planned | ready | M | — | — |
-| [unwrap-in-tests](p3-unwrap-in-tests.md) | P3 | planned | ready | S | — | — (housekeeping, будь-коли) |
 | [import-duplicate-metadata-update](p3-import-duplicate-metadata-update.md) | P3 | planned | ready | M | — | — |
 
 ## v0.2.0
