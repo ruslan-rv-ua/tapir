@@ -215,6 +215,75 @@ pub fn build_added_stream(
     }
 }
 
+/// Apply an edit from the Add/Edit-stream dialog to an existing stream. The
+/// mirror image of [`build_added_stream`]: same argument shape, pure over the
+/// profile so it is unit-testable without Tauri state. One difference, and it is
+/// deliberate — a name the user typed is stored as typed, never disambiguated.
+/// The dialog already warned about the collision and the user confirmed; a
+/// silent suffix on top of that would overrule them.
+///
+/// `resolved_url` is the whole switch:
+///
+/// * `None` — a plain rename. Only `name.trim()` lands; `format` / `bitrate` /
+///   `icy_name` stay exactly as they were.
+/// * `Some` — the address moved. All three derived fields are overwritten with
+///   what the probe reported, **including `None`**: they describe the URL, not
+///   the row, so after a move the old "AAC 64k" and the old station name are
+///   lies a screen reader would read out. `None` is an honest interim value the
+///   first connection refills from the ICY headers.
+///
+/// The name is never rewritten behind the user's back — except for the stream
+/// that has no human name yet. `add_stream` marks that case by storing the URL
+/// as the name, and `naming::icy_rename` recognises it by exactly that equality;
+/// leaving a stale URL there would freeze the name as a dead address forever,
+/// because auto-renaming on connect could never fire again. So an unnamed
+/// stream takes the same step `build_added_stream` takes: the probed station
+/// name, disambiguated against its siblings, or else the new URL.
+pub fn build_edited_stream(
+    streams: &[StreamInfo],
+    current: &StreamInfo,
+    name: String,
+    resolved_url: Option<String>,
+    icy_name: Option<String>,
+    bitrate: Option<u32>,
+    format: Option<AudioFormat>,
+) -> StreamInfo {
+    let mut out = current.clone();
+
+    let Some(resolved_url) = resolved_url else {
+        out.name = name.trim().to_string();
+        return out;
+    };
+
+    let icy_name = non_blank(icy_name);
+    // Blank, or still equal to the address it was standing in for: either way
+    // the user has not named this stream. Blank is folded in deliberately —
+    // storing an empty name would leave a row a screen reader reads as nothing,
+    // and a `%s` folder with no name; the ladder below always ends somewhere.
+    let typed = non_blank(Some(name)).filter(|n| *n != current.url);
+    out.name = match typed {
+        Some(n) => n,
+        // Auto-naming from the probe — disambiguated, exactly as on add.
+        None => match icy_name.clone() {
+            Some(n) => {
+                let meta = crate::naming::NameMeta { format: format.clone(), bitrate };
+                crate::naming::disambiguate(
+                    &n,
+                    &meta,
+                    &crate::naming::taken_keys(streams, Some(&current.id)),
+                )
+            }
+            None => resolved_url.clone(),
+        },
+    };
+
+    out.url = resolved_url;
+    out.icy_name = icy_name;
+    out.bitrate = bitrate;
+    out.format = format;
+    out
+}
+
 /// What the Add/Edit-stream dialog warns about before saving. Both are
 /// warnings, never bans: the URL is the stream's identity, but a user may
 /// legitimately want the same URL twice (different credentials, different
@@ -254,10 +323,12 @@ pub fn find_conflicts(
     StreamConflicts { duplicate_url_of, name_collides_with }
 }
 
-/// Pre-flight for the Add/Edit-stream dialog. `url` is checked in add mode
-/// (resolved first, so a `.pls` that points at an already-known stream is
-/// caught); `name` + `exclude_id` in edit mode. A URL that fails to resolve is
-/// compared as typed — the add itself will surface the real error.
+/// Pre-flight for the Add/Edit-stream dialog. Every argument is optional and
+/// the dialog sends whichever apply: `url` whenever the address is new (resolved
+/// first, so a `.pls` pointing at an already-known stream is caught), `name` +
+/// `exclude_id` whenever an existing stream is being edited — an address move
+/// that also renames sends all three. A URL that fails to resolve is compared as
+/// typed; the save itself will surface the real error.
 #[tauri::command]
 pub async fn check_stream_conflicts(
     url: Option<String>,
@@ -391,21 +462,55 @@ pub async fn remove_streams(
     Ok(removed)
 }
 
+/// Save the Add/Edit-stream dialog's edit of an existing stream. Argument shape
+/// mirrors `add_stream`; `url` is what decides between a plain rename and a full
+/// move (see [`build_edited_stream`]). Name and address travel in one call
+/// deliberately: two commands would mean two saves with a half-applied edit
+/// possible in between.
+///
+/// Recording state is not checked here — the dialog greys the URL field out
+/// while the stream is active, but that is a UX affordance, not a safety net:
+/// `recording_task` copies url and name once at start, so the whole reconnect
+/// cycle lives on the old address regardless of what the profile says.
 #[tauri::command]
 pub async fn update_stream(
     stream_id: String,
     name: String,
+    url: Option<String>,
+    icy_name: Option<String>,
+    bitrate: Option<u32>,
+    format: Option<AudioFormat>,
     state: tauri::State<'_, AppState>,
 ) -> Result<StreamInfo, String> {
+    let resolved_url = match url {
+        Some(u) => Some(
+            playlist::resolve_playlist_url(&u)
+                .await
+                .map_err(|e| e.to_string())?,
+        ),
+        None => None,
+    };
+
     let (updated, snapshot) = {
         let mut profile = state.active_profile.write().await;
-        let stream = profile
+        let current = profile
             .streams
-            .iter_mut()
+            .iter()
             .find(|s| s.id == stream_id)
+            .cloned()
             .ok_or_else(|| format!("Stream {} not found", stream_id))?;
-        stream.name = name.trim().to_string();
-        let updated = stream.clone();
+        let updated = build_edited_stream(
+            &profile.streams,
+            &current,
+            name,
+            resolved_url,
+            icy_name,
+            bitrate,
+            format,
+        );
+        if let Some(slot) = profile.streams.iter_mut().find(|s| s.id == stream_id) {
+            *slot = updated.clone();
+        }
         let snapshot = profile.clone();
         (updated, snapshot)
     };
@@ -967,6 +1072,163 @@ mod tests {
         );
         assert_eq!(got.name, "http://new");
         assert_eq!(got.icy_name, None);
+    }
+
+    /// A stream that already carries probe metadata, so a test can prove the
+    /// derived fields are either kept or overwritten on purpose.
+    fn described(id: &str, url: &str, name: &str) -> StreamInfo {
+        StreamInfo {
+            id: id.into(),
+            url: url.into(),
+            name: name.into(),
+            format: Some(AudioFormat::Aac),
+            bitrate: Some(64),
+            icy_name: Some("Old Station".into()),
+            ..sample()
+        }
+    }
+
+    #[test]
+    fn edited_stream_without_a_url_is_a_plain_rename() {
+        // Regression guard on today's F2 behaviour: derived fields belong to the
+        // address, and the address did not move.
+        let current = described("s1", "http://old", "Radio X");
+        let got = build_edited_stream(
+            std::slice::from_ref(&current),
+            &current,
+            "  Radio Y  ".into(),
+            None,
+            None,
+            None,
+            None,
+        );
+        assert_eq!(got.name, "Radio Y"); // trimmed
+        assert_eq!(got.url, "http://old");
+        assert_eq!(got.format, Some(AudioFormat::Aac));
+        assert_eq!(got.bitrate, Some(64));
+        assert_eq!(got.icy_name.as_deref(), Some("Old Station"));
+    }
+
+    #[test]
+    fn edited_stream_with_a_new_url_takes_the_fresh_probe_metadata() {
+        let current = described("s1", "http://old", "Radio X");
+        let got = build_edited_stream(
+            std::slice::from_ref(&current),
+            &current,
+            "Radio X".into(),
+            Some("http://new".into()),
+            Some("New Station".into()),
+            Some(128),
+            Some(AudioFormat::Mp3),
+        );
+        assert_eq!(got.url, "http://new");
+        assert_eq!(got.name, "Radio X"); // a name the user chose is never touched
+        assert_eq!(got.icy_name.as_deref(), Some("New Station"));
+        assert_eq!(got.bitrate, Some(128));
+        assert_eq!(got.format, Some(AudioFormat::Mp3));
+        assert_eq!(got.id, "s1"); // identity, position and history survive the move
+        assert_eq!(got.added_at, "2026-01-01");
+    }
+
+    #[test]
+    fn edited_stream_with_a_failed_probe_clears_the_stale_metadata() {
+        // Saving "anyway" after an unreachable probe: `None` beats a stale
+        // "AAC 64k" that NVDA would read out as fact.
+        let current = described("s1", "http://old", "Radio X");
+        let got = build_edited_stream(
+            std::slice::from_ref(&current),
+            &current,
+            "Radio X".into(),
+            Some("http://new".into()),
+            None,
+            None,
+            None,
+        );
+        assert_eq!(got.format, None);
+        assert_eq!(got.bitrate, None);
+        assert_eq!(got.icy_name, None);
+    }
+
+    #[test]
+    fn edited_stream_keeps_an_unnamed_stream_unnamed_so_icy_rename_still_fires() {
+        // name == url is exactly how `naming::icy_rename` recognises "no human
+        // name yet". Leaving the old URL there would freeze it forever.
+        let current = described("s1", "http://old", "http://old");
+        let got = build_edited_stream(
+            std::slice::from_ref(&current),
+            &current,
+            "http://old".into(), // the field still holds the placeholder
+            Some("http://new".into()),
+            None,
+            None,
+            None,
+        );
+        assert_eq!(got.name, "http://new");
+        assert_eq!(got.name, got.url, "icy_rename must still recognise this stream");
+    }
+
+    #[test]
+    fn edited_stream_names_an_unnamed_stream_from_the_probe() {
+        let current = described("s1", "http://old", "http://old");
+        let got = build_edited_stream(
+            std::slice::from_ref(&current),
+            &current,
+            "http://old".into(),
+            Some("http://new".into()),
+            Some("Groove Salad".into()),
+            None,
+            None,
+        );
+        assert_eq!(got.name, "Groove Salad");
+    }
+
+    #[test]
+    fn edited_stream_disambiguates_the_probed_name_against_its_siblings() {
+        let current = described("s1", "http://old", "http://old");
+        let sibling = named("other", "Groove Salad");
+        let got = build_edited_stream(
+            &[current.clone(), sibling],
+            &current,
+            "http://old".into(),
+            Some("http://new".into()),
+            Some("Groove Salad".into()),
+            Some(64),
+            Some(AudioFormat::Aac),
+        );
+        assert_eq!(got.name, "Groove Salad (AAC 64k)");
+    }
+
+    #[test]
+    fn edited_stream_treats_a_blank_name_as_never_named() {
+        let current = described("s1", "http://old", "Radio X");
+        let got = build_edited_stream(
+            std::slice::from_ref(&current),
+            &current,
+            "   ".into(),
+            Some("http://new".into()),
+            None,
+            None,
+            None,
+        );
+        assert_eq!(got.name, "http://new");
+    }
+
+    #[test]
+    fn edited_stream_trims_a_user_typed_name_but_leaves_it_otherwise_alone() {
+        // Even onto a name a sibling already holds: the dialog warns, the user
+        // confirmed, and no silent suffix rewrites their choice.
+        let current = described("s1", "http://old", "Radio X");
+        let sibling = named("other", "Taken");
+        let got = build_edited_stream(
+            &[current.clone(), sibling],
+            &current,
+            "  Taken  ".into(),
+            Some("http://new".into()),
+            None,
+            None,
+            None,
+        );
+        assert_eq!(got.name, "Taken");
     }
 
     #[test]

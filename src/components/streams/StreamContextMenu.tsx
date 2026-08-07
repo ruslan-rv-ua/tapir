@@ -2,6 +2,7 @@ import { Menu, MenuItem, MenuTrigger, Popover, Button, Separator } from "react-a
 import { Copy, FolderInput, Link } from "lucide-react";
 import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import * as tauri from "../../lib/tauri";
+import { isRecordingLike } from "../../lib/streamState";
 import { $editStream, $streamSelection } from "../../stores/streams";
 import { $playerStatus } from "../../stores/player";
 import { addToast } from "../../stores/toasts";
@@ -34,8 +35,9 @@ export function StreamContextMenu({ stream, status, menuFocused, onAddToWishlist
     playerStatus.source?.type === "stream" &&
     playerStatus.source.streamId === stream.id;
 
-  const moveDisabled =
-    state === "recording" || state === "connecting" || state === "reconnecting" || isThisStreamPlaying;
+  // Playback is not a recording state (R4), but a stream the user is
+  // listening to must not be moved out from under the player either.
+  const moveDisabled = isRecordingLike(state) || isThisStreamPlaying;
 
   const currentTrack = status?.currentTrack
     ? `${status.currentTrack.artist} - ${status.currentTrack.title}`.replace(/^ - | - $/g, "").trim()

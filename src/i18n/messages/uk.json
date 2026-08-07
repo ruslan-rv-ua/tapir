@@ -368,6 +368,7 @@
   "stream_name_collision_warning": "Це ім'я вже використовує потік «{name}» — записи підуть в одну теку.",
   "stream_official_name": "Отримана від станції назва: {name}",
   "stream_use_official_name": "Використати офіційну назву",
+  "stream_url_locked": "Адресу не можна змінити, поки потік записується — зупиніть запис, і поле стане доступним.",
   "playback_error": "Помилка відтворення",
   "zone_activity_bar": "Бокова панель",
   "zone_streams_actions": "Дії потоку",

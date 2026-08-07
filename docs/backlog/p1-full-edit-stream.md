@@ -24,6 +24,7 @@ notes:
   - "Grooming 2026-08-07: скоуп звужено з «URL / auth / ignorelist» до самого URL; auth → stream-auth, per-stream ignorelist → per-stream-ignorelist-ui. Slug і ім'я файлу стабільні (README), звузився лише title"
   - "Вимогу «back-compat серіалізації update_stream» із чернетки знято: AGENTS.md — «Breaking changes are expected at any time — no migrations, no backward-compatibility guarantees»"
   - "Блокування поля URL під час запису — UX-рішення, не захист від збою: recording_task копіює url і name один раз на старті (manager.rs:583-584), тож весь 'reconnect-цикл живе на старій адресі й зміна в профілі йому нічим не загрожує"
+  - "Реалізація 2026-08-07: замість нативного `disabled` поле замикається через `readOnly` + `aria-disabled` — нативний disabled випадає з обходу по Tab, і NVDA ніколи б не дійшов ні до поля, ні до його `aria-describedby`. Це домашній патерн репо (SelectionToolbar, ActivityBar: «aria-disabled (NOT native disabled)»). Критерій «поле URL disabled» читати як «недоступне для правки»"
 ---
 
 # Редагування URL потоку
@@ -141,42 +142,43 @@ recording state», і другого, ширшого визначення «ак
 
 **Backend**
 
-- [ ] `update_stream(stream_id, name, url?, icy_name?, bitrate?, format?)` —
+- [x] `update_stream(stream_id, name, url?, icy_name?, bitrate?, format?)` —
       форма аргументів дзеркалить `add_stream`
-- [ ] `url: None` → лише `name.trim()`; `format`/`bitrate`/`icy_name` недоторкані
+- [x] `url: None` → лише `name.trim()`; `format`/`bitrate`/`icy_name` недоторкані
       (регресійний тест на наявну поведінку перейменування)
-- [ ] `url: Some` → `resolve_playlist_url`, збережений URL = резолвлений;
+- [x] `url: Some` → `resolve_playlist_url`, збережений URL = резолвлений;
       всі три похідні поля перезаписані переданим, включно з `None`
-- [ ] Вся логіка рішення — у чистій функції над `&[StreamInfo]` за зразком
+- [x] Вся логіка рішення — у чистій функції над `&[StreamInfo]` за зразком
       `build_added_stream`, з юніт-тестами без Tauri-стану
-- [ ] Ім'я = старий URL → `icy_name` із probe через `naming::disambiguate`,
+- [x] Ім'я = старий URL → `icy_name` із probe через `naming::disambiguate`,
       інакше новий URL; будь-яке інше ім'я не змінюється, крім `trim`
-- [ ] Тест: після зміни URL у безіменного потоку рівність `name == url`
+- [x] Тест: після зміни URL у безіменного потоку рівність `name == url`
       збережена, тобто `icy_rename` при наступному підключенні досі спрацює
 
 **Frontend**
 
-- [ ] У edit-режимі поле URL видиме, першим у формі; `autoFocus` лишається
+- [x] У edit-режимі поле URL видиме, першим у формі; `autoFocus` лишається
       на полі імені
-- [ ] Поле URL `disabled` + пояснення, коли статус потоку `Recording` /
+- [x] Поле URL `disabled` + пояснення, коли статус потоку `Recording` /
       `Connecting` / `Reconnecting`; `Idle`, `Error` і відтворення не блокують
-- [ ] Пояснення до заблокованого поля доступне NVDA — прив'язане до поля
+- [x] Пояснення до заблокованого поля доступне NVDA — прив'язане до поля
       (`aria-describedby`), не самотній `title`-атрибут
-- [ ] URL змінено → `probeStream` (невдача = попередження, другий сабміт
+- [x] URL змінено → `probeStream` (невдача = попередження, другий сабміт
       зберігає) і `checkStreamConflicts({ url, name, excludeId })`
-- [ ] URL не змінено → жодного probe й жодної нової перевірки; перейменування
+- [x] URL не змінено → жодного probe й жодної нової перевірки; перейменування
       зберігається одним сабмітом
-- [ ] Правка поля URL скидає `probed`/`conflictsChecked` (наявний `changeUrl`
+- [x] Правка поля URL скидає `probed`/`conflictsChecked` (наявний `changeUrl`
       це вже робить — не зламати)
-- [ ] Нові ключі в `uk.json` і `en.json`
+- [x] Нові ключі в `uk.json` і `en.json`
 
 **Документи й гейти**
 
-- [ ] [architecture.md](../architecture.md) — таблиця Streams-команд звірена
+- [x] [architecture.md](../architecture.md) — таблиця Streams-команд звірена
       з новою сигнатурою `update_stream`
-- [ ] Чекліст `docs/testing/nvda-full-edit-stream.md` створено за скілем
-      `writing-nvda-checklists`; прогін пройдено
-- [ ] `cargo test`, `cargo clippy`, `pnpm test`, `pnpm vite:build`
+- [x] Чекліст [`docs/testing/nvda-full-edit-stream.md`](../testing/nvda-full-edit-stream.md)
+      створено за скілем `writing-nvda-checklists`
+- [ ] NVDA-прогін пройдено
+- [x] `cargo test`, `cargo clippy`, `pnpm test`, `pnpm vite:build`
 
 ## Документи
 

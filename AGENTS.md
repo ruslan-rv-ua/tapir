@@ -78,6 +78,7 @@ All project documentation lives in `docs/`. Key files:
 
 **Manual testing** (`docs/testing/`):
 - [test-streams.md](docs/testing/test-streams.md) — тестові URL радіо-потоків
+- [nvda-full-edit-stream.md](docs/testing/nvda-full-edit-stream.md) — прогін для `p1-full-edit-stream` (редагування URL потоку)
 Чеклісти NVDA-прогону (`docs/testing/nvda-<slug>.md`) створюються для записів беклогу
 з `a11y: true` і видаляються на прийманні — метод і шаблон живуть у скілі
 `.claude/skills/writing-nvda-checklists/`.

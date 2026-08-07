@@ -6,6 +6,7 @@ import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import type { ActionModifiers, SegmentKind } from "../../hooks/useCompositeList";
 import { CompositeRow, CompositeSegment, CompositeAction } from "../common/composite-list";
 import { formatBitrate, formatDuration } from "../../lib/formatters";
+import { isRecordingLike } from "../../lib/streamState";
 import { StreamContextMenu } from "./StreamContextMenu";
 import { AddPatternDialog } from "../wishlist/AddPatternDialog";
 import { $playerStatus } from "../../stores/player";
@@ -26,8 +27,7 @@ export interface StreamItemData {
  * appears only while the stream is active.
  */
 export function getStreamSegments(status: StreamStatus | undefined): StreamItemData["segments"] {
-  const state = status?.state ?? "idle";
-  const active = state === "recording" || state === "connecting" || state === "reconnecting";
+  const active = isRecordingLike(status?.state);
   const actions: StreamItemData["segments"] = ["action-play", "action-record", "action-menu"];
   return active ? ["track", "tech", "status", ...actions] : ["track", "tech", ...actions];
 }
@@ -144,8 +144,7 @@ export function StreamItem({
   // When the stream is neither recording/connecting nor playing through us, any
   // known currentTrack is the *last* one we saw — show it dimmed + italic and
   // re-label it for screen readers.
-  const isStreamActive =
-    isRecording || isThisStreamPlaying || state === "connecting" || state === "reconnecting";
+  const isStreamActive = isRecordingLike(state) || isThisStreamPlaying;
   const hasTrack = !!status?.currentTrack;
   const showAsLastTrack = !isStreamActive && hasTrack;
   const trackValue = status?.currentTrack

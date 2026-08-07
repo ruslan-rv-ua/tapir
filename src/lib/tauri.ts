@@ -193,8 +193,24 @@ export async function removeStream(streamId: string): Promise<void> {
 export async function removeStreams(streamIds: string[]): Promise<number> {
   return invoke("remove_streams", { streamIds });
 }
-export async function updateStream(streamId: string, name: string): Promise<StreamInfo> {
-  return invoke("update_stream", { streamId, name });
+/** Save an edit of an existing stream. Omit `url` for a plain rename — passing
+ *  it is what tells the backend the address moved, and moving the address
+ *  overwrites `icyName`/`bitrate`/`format` with `meta`, blanks included (they
+ *  describe the URL, not the row). */
+export async function updateStream(
+  streamId: string,
+  name: string,
+  url?: string,
+  meta?: StreamMeta,
+): Promise<StreamInfo> {
+  return invoke("update_stream", {
+    streamId,
+    name,
+    url: url ?? null,
+    icyName: meta?.icyName ?? null,
+    bitrate: meta?.bitrate ?? null,
+    format: meta?.format ?? null,
+  });
 }
 export async function startRecording(streamId: string): Promise<void> {
   return invoke("start_recording", { streamId });

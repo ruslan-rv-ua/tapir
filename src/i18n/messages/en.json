@@ -368,6 +368,7 @@
   "stream_name_collision_warning": "The stream \"{name}\" already uses this name — both will record into one folder.",
   "stream_official_name": "Name reported by the station: {name}",
   "stream_use_official_name": "Use the official name",
+  "stream_url_locked": "The address cannot be changed while the stream is recording — stop the recording and the field becomes editable.",
   "playback_error": "Playback error",
   "zone_activity_bar": "Sidebar",
   "zone_streams_actions": "Stream actions",

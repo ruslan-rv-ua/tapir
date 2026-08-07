@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AddStreamDialog } from "./AddStreamDialog";
-import { $streams, $showAddStreamDialog, $editStream } from "../../stores/streams";
+import { $streams, $showAddStreamDialog, $editStream, $statuses } from "../../stores/streams";
 
 vi.mock("../../lib/tauri", () => ({
   probeStream: vi.fn(),
@@ -25,6 +25,7 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   stream_save_anyway: () => "Save anyway",
   stream_duplicate_url_warning: ({ name }: { name: string }) => `URL already in profile as ${name}`,
   stream_name_collision_warning: ({ name }: { name: string }) => `Name already used by ${name}`,
+  stream_url_locked: () => "Stop the recording to edit the address",
   stream_official_name: ({ name }: { name: string }) => `Station name: ${name}`,
   stream_use_official_name: () => "Use the official name",
   stream_added: ({ name }: { name: string }) => `Stream added: ${name}`,
@@ -51,6 +52,7 @@ describe("AddStreamDialog probe", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     $streams.set([]);
+    $statuses.set({});
     $editStream.set(null);
     $showAddStreamDialog.set(true);
     addStream.mockResolvedValue(newStream);
@@ -125,7 +127,7 @@ describe("AddStreamDialog probe", () => {
     await waitFor(() => expect(addStream).toHaveBeenCalled());
   });
 
-  it("does not probe when editing (URL is not editable)", async () => {
+  it("does not probe when editing leaves the address alone", async () => {
     $showAddStreamDialog.set(false);
     $editStream.set({ id: "s1", url: "http://a", name: "A" } as never);
     vi.mocked(tauri.updateStream).mockResolvedValue({ id: "s1", url: "http://a", name: "B" } as never);
@@ -138,10 +140,236 @@ describe("AddStreamDialog probe", () => {
   });
 });
 
+describe("AddStreamDialog edit mode — URL", () => {
+  const updateStream = vi.mocked(tauri.updateStream);
+  const editing = { id: "s1", url: "http://old", name: "Radio X", icyName: null };
+
+  const openEdit = (patch: Partial<typeof editing> = {}) => {
+    $showAddStreamDialog.set(false);
+    $editStream.set({ ...editing, ...patch } as never);
+  };
+
+  const retypeUrl = async (next: string) => {
+    await userEvent.clear(screen.getByLabelText("URL"));
+    await userEvent.type(screen.getByLabelText("URL"), next);
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    $streams.set([]);
+    $statuses.set({});
+    checkStreamConflicts.mockResolvedValue(NO_CONFLICTS);
+    probeStream.mockResolvedValue({ ok: true, error: null, ...NO_META });
+    updateStream.mockResolvedValue({ ...editing, url: "http://new" } as never);
+  });
+
+  it("shows the address first but still opens with focus on the name", async () => {
+    // One layout to remember; F2 stays muscle memory for renaming.
+    openEdit();
+    render(<AddStreamDialog />);
+
+    const [first, second] = screen.getAllByRole("textbox");
+    expect(first).toBe(screen.getByLabelText("URL"));
+    expect(second).toBe(screen.getByLabelText("Name"));
+    expect(screen.getByLabelText("URL")).toHaveValue("http://old");
+    expect(screen.getByLabelText("Name")).toHaveFocus();
+  });
+
+  it("keeps a plain rename a single submit — no probe, no duplicate check", async () => {
+    openEdit();
+    render(<AddStreamDialog />);
+
+    await userEvent.clear(screen.getByLabelText("Name"));
+    await userEvent.type(screen.getByLabelText("Name"), "Radio Y");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(updateStream).toHaveBeenCalledWith("s1", "Radio Y"));
+    expect(probeStream).not.toHaveBeenCalled();
+    expect(checkStreamConflicts).toHaveBeenCalledWith({
+      url: undefined,
+      name: "Radio Y",
+      excludeId: "s1",
+    });
+  });
+
+  it("probes the new address and saves it with the fresh metadata", async () => {
+    probeStream.mockResolvedValue({
+      ok: true, error: null, icyName: "Groove Salad", bitrate: 128, format: "mp3",
+    });
+    openEdit();
+    render(<AddStreamDialog />);
+
+    await retypeUrl("http://new");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(updateStream).toHaveBeenCalledWith("s1", "Radio X", "http://new", {
+        icyName: "Groove Salad",
+        bitrate: 128,
+        format: "mp3",
+      }),
+    );
+    expect(probeStream).toHaveBeenCalledWith("http://new");
+    // Both halves in one round trip — the name may now collide too.
+    expect(checkStreamConflicts).toHaveBeenCalledWith({
+      url: "http://new",
+      name: "Radio X",
+      excludeId: "s1",
+    });
+  });
+
+  it("saves blank metadata when the new address does not respond", async () => {
+    // The stored codec/bitrate/station name described the address that just
+    // left; keeping them would have NVDA read out a lie.
+    probeStream.mockResolvedValue({ ok: false, error: "nope", ...NO_META });
+    openEdit();
+    render(<AddStreamDialog />);
+
+    await retypeUrl("http://new");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByText("The stream did not respond")).toBeInTheDocument();
+    expect(updateStream).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Save anyway" }));
+    await waitFor(() =>
+      expect(updateStream).toHaveBeenCalledWith("s1", "Radio X", "http://new", NO_META),
+    );
+    expect(probeStream).toHaveBeenCalledTimes(1); // the verdict stands down
+  });
+
+  it("warns about an address the profile already holds, then saves anyway", async () => {
+    checkStreamConflicts.mockResolvedValue({ duplicateUrlOf: "Radio Y", nameCollidesWith: null });
+    openEdit();
+    render(<AddStreamDialog />);
+
+    await retypeUrl("http://new");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByText("URL already in profile as Radio Y")).toBeInTheDocument();
+    expect(updateStream).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Save anyway" }));
+    await waitFor(() => expect(updateStream).toHaveBeenCalled());
+    expect(checkStreamConflicts).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-probes after the address is edited again", async () => {
+    probeStream.mockResolvedValue({ ok: false, error: "nope", ...NO_META });
+    openEdit();
+    render(<AddStreamDialog />);
+
+    await retypeUrl("http://new");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("The stream did not respond")).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText("URL"), "er");
+    expect(screen.queryByText("The stream did not respond")).not.toBeInTheDocument();
+
+    probeStream.mockResolvedValue({ ok: true, error: null, ...NO_META });
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(probeStream).toHaveBeenCalledTimes(2));
+    expect(probeStream).toHaveBeenLastCalledWith("http://newer");
+  });
+
+  it("treats an address typed back to the stored one as unchanged", async () => {
+    openEdit();
+    render(<AddStreamDialog />);
+
+    await retypeUrl("http://old");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(updateStream).toHaveBeenCalledWith("s1", "Radio X"));
+    expect(probeStream).not.toHaveBeenCalled();
+  });
+
+  it.each(["recording", "connecting", "reconnecting"] as const)(
+    "locks the address while the stream is %s and says why",
+    async (state) => {
+      openEdit();
+      $statuses.setKey("s1", { streamId: "s1", state } as never);
+      render(<AddStreamDialog />);
+
+      const field = screen.getByLabelText("URL");
+      expect(field).toHaveAttribute("readonly");
+      expect(field).toHaveAttribute("aria-disabled", "true");
+      // Never natively disabled: that would drop the field out of the tab order,
+      // so the screen reader could never reach it — nor the description below.
+      expect(field).toBeEnabled();
+      const hint = screen.getByText("Stop the recording to edit the address");
+      expect(field).toHaveAttribute("aria-describedby", hint.id);
+    },
+  );
+
+  it("keeps the locked address reachable from the keyboard", async () => {
+    openEdit();
+    $statuses.setKey("s1", { streamId: "s1", state: "recording" } as never);
+    render(<AddStreamDialog />);
+
+    // Focus opens on the name; one Shift+Tab must still land on the address,
+    // which is where the explanation is announced.
+    await userEvent.tab({ shift: true });
+    expect(screen.getByLabelText("URL")).toHaveFocus();
+  });
+
+  it.each(["idle", "error", "stopped"] as const)(
+    "leaves the address editable while the stream is %s",
+    async (state) => {
+      // An errored stream in a reconnect loop is exactly the one whose address
+      // most needs fixing.
+      openEdit();
+      $statuses.setKey("s1", { streamId: "s1", state } as never);
+      render(<AddStreamDialog />);
+
+      const field = screen.getByLabelText("URL");
+      expect(field).not.toHaveAttribute("readonly");
+      expect(field).not.toHaveAttribute("aria-disabled");
+      expect(
+        screen.queryByText("Stop the recording to edit the address"),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it("announces both warnings when a move collides on address and name at once", async () => {
+    // The check stands down after this submit — a warning held back here is a
+    // warning the user never hears.
+    checkStreamConflicts.mockResolvedValue({
+      duplicateUrlOf: "Radio Y",
+      nameCollidesWith: "Radio Z",
+    });
+    openEdit();
+    render(<AddStreamDialog />);
+
+    await retypeUrl("http://new");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const region = await screen.findByText(/URL already in profile as Radio Y/);
+    expect(region).toHaveTextContent("Name already used by Radio Z");
+  });
+
+  it("trims the address before probing, checking and saving", async () => {
+    openEdit();
+    render(<AddStreamDialog />);
+
+    await retypeUrl("  http://new  ");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(probeStream).toHaveBeenCalledWith("http://new"));
+    expect(checkStreamConflicts).toHaveBeenCalledWith({
+      url: "http://new",
+      name: "Radio X",
+      excludeId: "s1",
+    });
+    expect(updateStream).toHaveBeenCalledWith("s1", "Radio X", "http://new", NO_META);
+  });
+});
+
 describe("AddStreamDialog conflicts", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     $streams.set([]);
+    $statuses.set({});
     $editStream.set(null);
     $showAddStreamDialog.set(true);
     addStream.mockResolvedValue(newStream);

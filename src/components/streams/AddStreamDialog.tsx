@@ -3,18 +3,30 @@ import { useEffect, useRef, useState } from "react";
 import { useStore } from "@nanostores/react";
 import * as tauri from "../../lib/tauri";
 import type { StreamMeta } from "../../lib/tauri";
-import { $streams, $showAddStreamDialog, $editStream } from "../../stores/streams";
+import { $streams, $showAddStreamDialog, $editStream, $statuses } from "../../stores/streams";
 import { addToast } from "../../stores/toasts";
+import { isRecordingLike } from "../../lib/streamState";
 import * as m from "../../i18n/paraglide/messages";
 
 const NO_META: StreamMeta = { icyName: null, bitrate: null, format: null };
 
+/** Id of the explanation tied to a locked URL field. The dialog is a singleton,
+ *  so a constant is unambiguous. */
+const URL_LOCKED_HINT_ID = "add-stream-url-locked";
+
 export function AddStreamDialog() {
   const showAddDialog = useStore($showAddStreamDialog);
   const editStream = useStore($editStream);
+  const statuses = useStore($statuses);
 
   const isOpen = showAddDialog || editStream !== null;
   const isEdit = editStream !== null;
+
+  // Editing the address of a stream that is mid-recording is pointless rather
+  // than dangerous: `recording_task` copied the URL once at start, so the whole
+  // reconnect cycle stays on the old address no matter what the profile says.
+  // Lock the field and say so, instead of silently doing nothing.
+  const urlLocked = isEdit && isRecordingLike(statuses[editStream.id]?.state);
 
   const [url, setUrl] = useState("");
   const [name, setName] = useState("");
@@ -45,6 +57,16 @@ export function AddStreamDialog() {
 
   // Probing and saving both lock the form; only the label distinguishes them.
   const busy = loading || probing;
+
+  // One normalised address for the probe, the conflict check and the save
+  // alike — deciding "changed?" on the trimmed value while storing the raw one
+  // would let a stray space through every check.
+  const trimmedUrl = url.trim();
+
+  // Whether the pre-flight checks have an address to apply to. Adding always
+  // does; editing only when the field differs from what is stored, so a plain
+  // rename stays what it is today — one submit, no probe, no duplicate check.
+  const urlIsNew = !isEdit || trimmedUrl !== editStream.url;
 
   // Locking the form disables whatever the user submitted from — the button, or
   // a field when they pressed Enter — and the browser drops that focus onto
@@ -81,17 +103,18 @@ export function AddStreamDialog() {
     e.preventDefault();
     setError(null);
 
-    // Adding: check reachability first, once per URL. A failed probe is only a
-    // warning — the second submit goes through so a temporarily-down stream can
-    // still be added. Edit never probes (the URL is not editable there).
+    // A new address gets checked for reachability first, once. A failed probe is
+    // only a warning — the second submit goes through so a temporarily-down
+    // stream can still be saved, and `meta` then stays blank on purpose: the
+    // stored codec/bitrate/station name describe the address that just left.
     // `meta` is a local because a `setProbeMeta` in this closure would not be
     // visible to the `addStream` call further down the same submit.
     let meta = probeMeta;
-    if (!isEdit && !probed) {
+    if (urlIsNew && !probed) {
       setProbing(true);
       let verdict: tauri.ProbeVerdict = { ok: false, error: null, ...NO_META };
       try {
-        verdict = await tauri.probeStream(url);
+        verdict = await tauri.probeStream(trimmedUrl);
       } catch {
         // treat an IPC failure like an unreachable stream
       } finally {
@@ -108,25 +131,32 @@ export function AddStreamDialog() {
       setProbeMeta(meta);
     }
 
-    // Then the profile-level conflicts, also once. Adding warns about a URL the
-    // profile already holds; renaming warns about a name that would send two
-    // streams into one recording folder. Neither refuses — an explicit second
-    // submit is respected.
+    // Then the profile-level conflicts, also once. A new address is checked
+    // against the URLs the profile already holds; a name is checked against the
+    // names that would send two streams into one recording folder. Neither
+    // refuses — an explicit second submit is respected. The URL speaks first
+    // when both do: it is the stream's identity.
     if (!conflictsChecked) {
       let conflicts: tauri.StreamConflicts = { duplicateUrlOf: null, nameCollidesWith: null };
       try {
-        conflicts = isEdit
-          ? await tauri.checkStreamConflicts({ name, excludeId: editStream.id })
-          : await tauri.checkStreamConflicts({ url });
+        conflicts = await tauri.checkStreamConflicts({
+          url: urlIsNew ? trimmedUrl : undefined,
+          name: isEdit ? name : undefined,
+          excludeId: isEdit ? editStream.id : undefined,
+        });
       } catch {
         // A pre-flight that cannot run must not block the save.
       }
       setConflictsChecked(true);
-      const clash = isEdit
-        ? conflicts.nameCollidesWith && m.stream_name_collision_warning({ name: conflicts.nameCollidesWith })
-        : conflicts.duplicateUrlOf && m.stream_duplicate_url_warning({ name: conflicts.duplicateUrlOf });
-      if (clash) {
-        setWarning(clash);
+      // Both, when both fire: the check stands down after this submit, so a
+      // warning held back now is a warning never heard. URL first — it is the
+      // stream's identity.
+      const clashes = [
+        conflicts.duplicateUrlOf && m.stream_duplicate_url_warning({ name: conflicts.duplicateUrlOf }),
+        conflicts.nameCollidesWith && m.stream_name_collision_warning({ name: conflicts.nameCollidesWith }),
+      ].filter((c): c is string => !!c);
+      if (clashes.length > 0) {
+        setWarning(clashes.join(" "));
         return;
       }
     }
@@ -134,11 +164,15 @@ export function AddStreamDialog() {
     setLoading(true);
     try {
       if (isEdit && editStream) {
-        const updated = await tauri.updateStream(editStream.id, name);
+        // Two call shapes, not one with holes: passing `url` is what tells the
+        // backend to re-resolve the address and replace the probe metadata.
+        const updated = urlIsNew
+          ? await tauri.updateStream(editStream.id, name, trimmedUrl, meta)
+          : await tauri.updateStream(editStream.id, name);
         $streams.set($streams.get().map((s) => s.id === updated.id ? updated : s));
         addToast(m.stream_updated({ name: updated.name }), "success");
       } else {
-        const newStream = await tauri.addStream(url, name || undefined, meta);
+        const newStream = await tauri.addStream(trimmedUrl, name || undefined, meta);
         $streams.set([...$streams.get(), newStream]);
         addToast(m.stream_added({ name: newStream.name }), "success");
       }
@@ -177,20 +211,38 @@ export function AddStreamDialog() {
             {isEdit ? m.edit_stream() : m.add_stream()}
           </Heading>
           <form onSubmit={handleSubmit} aria-busy={busy || undefined} className="flex flex-col gap-3">
-            {!isEdit && (
-              <label className="flex flex-col gap-1 text-sm text-slate-300">
-                {m.stream_url()}
-                <input
-                  type="url"
-                  value={url}
-                  onChange={(e) => changeUrl(e.target.value)}
-                  required
-                  autoFocus
-                  disabled={busy}
-                  className="rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-slate-100 outline-none focus:border-blue-500 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText] forced-colors:text-[CanvasText] forced-colors:focus:border-[Highlight]"
-                  placeholder="https://..."
-                />
-              </label>
+            {/* URL first in both modes — one layout to remember. The initial
+                focus still lands on the name when editing: F2 is muscle memory
+                for "rename", and moving it here would cost the commonest action
+                a Tab and one extra field read out. */}
+            <label className="flex flex-col gap-1 text-sm text-slate-300">
+              {m.stream_url()}
+              <input
+                type="url"
+                value={url}
+                onChange={(e) => changeUrl(e.target.value)}
+                required
+                autoFocus={!isEdit}
+                disabled={busy}
+                readOnly={urlLocked}
+                aria-disabled={urlLocked || undefined}
+                aria-describedby={urlLocked ? URL_LOCKED_HINT_ID : undefined}
+                className="rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-slate-100 outline-none focus:border-blue-500 disabled:opacity-60 aria-disabled:opacity-60 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText] forced-colors:text-[CanvasText] forced-colors:focus:border-[Highlight]"
+                placeholder="https://..."
+              />
+            </label>
+            {/* `readOnly` + `aria-disabled`, never native `disabled` — the house
+                pattern (SelectionToolbar, ActivityBar). A natively disabled field
+                leaves the tab order, so the screen reader would never reach it,
+                never read the description, and the address would simply seem to
+                have vanished from the dialog. */}
+            {urlLocked && (
+              <p
+                id={URL_LOCKED_HINT_ID}
+                className="text-xs text-slate-400 forced-colors:text-[CanvasText]"
+              >
+                {m.stream_url_locked()}
+              </p>
             )}
             <label className="flex flex-col gap-1 text-sm text-slate-300">
               {m.stream_name()}

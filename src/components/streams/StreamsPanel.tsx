@@ -18,6 +18,7 @@ import { useRovingFocus } from "../../hooks/useRovingFocus";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as tauri from "../../lib/tauri";
+import { isRecordingLike } from "../../lib/streamState";
 import { SHORTCUTS } from "../../lib/shortcuts";
 import { addToast } from "../../stores/toasts";
 import * as m from "../../i18n/paraglide/messages";
@@ -26,10 +27,6 @@ interface Props {
   onZonesChange: (zones: ZoneEntry[]) => void;
   exitZone: (fromId: string, forward: boolean) => void;
 }
-
-// Backend `is_active` (recording_control.rs): a stream with an in-flight
-// recording task. startable = !IS_ACTIVE, stoppable = IS_ACTIVE (R6).
-const IS_ACTIVE = new Set(["recording", "connecting", "reconnecting"]);
 
 // Empty-state discoverability badge (ADR 2026-05-31 §6, S3). The combo is read
 // from SHORTCUTS — the same source the F1 help renders — so the badge cannot
@@ -83,7 +80,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   // never-started) — these are what "Записати все" will start. Backend skips any
   // already-active stream, so this only drives the button's disabled state.
   const startableCount = useMemo(
-    () => streams.filter((s) => !IS_ACTIVE.has(statuses[s.id]?.state ?? "idle")).length,
+    () => streams.filter((s) => !isRecordingLike(statuses[s.id]?.state)).length,
     [streams, statuses],
   );
 
@@ -163,15 +160,15 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const selCount = selection.size;
 
   const selectedStartableCount = useMemo(
-    () => [...selection].filter((id) => streamIds.has(id) && !IS_ACTIVE.has(statuses[id]?.state ?? "idle")).length,
+    () => [...selection].filter((id) => streamIds.has(id) && !isRecordingLike(statuses[id]?.state)).length,
     [selection, statuses, streamIds],
   );
   const selectedStoppableCount = useMemo(
-    () => [...selection].filter((id) => streamIds.has(id) && IS_ACTIVE.has(statuses[id]?.state ?? "idle")).length,
+    () => [...selection].filter((id) => streamIds.has(id) && isRecordingLike(statuses[id]?.state)).length,
     [selection, statuses, streamIds],
   );
   const stoppableCount = useMemo(
-    () => streams.filter((s) => IS_ACTIVE.has(statuses[s.id]?.state ?? "idle")).length,
+    () => streams.filter((s) => isRecordingLike(statuses[s.id]?.state)).length,
     [streams, statuses],
   );
   const recordDisabled = selCount > 0 ? selectedStartableCount === 0 : startableCount === 0;
