@@ -1,5 +1,6 @@
 node_modules/
 .superpowers/
+.scratch/
 dist/
 src-tauri/target/
 src/i18n/paraglide/

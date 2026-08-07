@@ -81,3 +81,24 @@ All project documentation lives in `docs/`. Key files:
 Чеклісти NVDA-прогону (`docs/testing/nvda-<slug>.md`) створюються для записів беклогу
 з `a11y: true` і видаляються на прийманні — метод і шаблон живуть у скілі
 `.claude/skills/writing-nvda-checklists/`.
+
+## Agent skills
+
+Конфігурація для інженерних скілів живе в [docs/agents/](docs/agents/).
+
+### Issue tracker
+
+Задачі живуть локальними markdown-файлами в [docs/backlog/](docs/backlog/), не в
+GitHub Issues. Див. [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md).
+
+### Triage labels
+
+Міток немає — п'ять канонічних ролей triage мапляться на поля front-matter
+(`status` / `type` / `a11y` / `priority`). Див.
+[docs/agents/triage-labels.md](docs/agents/triage-labels.md).
+
+### Domain docs
+
+Single-context: `CONTEXT.md` у корені (створюється лінькаво) + ADR-и в
+[docs/decisions/](docs/decisions/) з іменами `YYYY-MM-DD-<slug>.md`. Див.
+[docs/agents/domain.md](docs/agents/domain.md).
