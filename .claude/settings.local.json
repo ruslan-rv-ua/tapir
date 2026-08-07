@@ -8,7 +8,8 @@
       "Read(//c/Users/Руслан/.cargo/registry/**)",
       "Read(//c//**)",
       "PowerShell(pnpm test 2>&1)",
-      "PowerShell(pnpm vite:build 2>&1)"
+      "PowerShell(pnpm vite:build 2>&1)",
+      "Bash(ls -R \"C:/Users/Руслан/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/engineering/grill-with-docs\")"
     ]
   }
 }
