@@ -8,6 +8,7 @@ mod player;
 mod playback_control;
 mod portable;
 mod profile;
+mod profile_store;
 mod recording_control;
 mod sanitize;
 mod scheduler;

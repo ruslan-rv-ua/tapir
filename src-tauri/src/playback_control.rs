@@ -163,15 +163,14 @@ pub async fn persist_session_snapshot(app: &AppHandle) {
     ) {
         return;
     }
-    let snapshot = {
-        let mut profile = state.active_profile.write().await;
-        apply_session_snapshot(&mut profile.player_session, &status);
-        profile.clone()
-    };
-    match tokio::task::spawn_blocking(move || snapshot.save()).await {
-        Ok(Ok(())) => {}
-        Ok(Err(e)) => log::warn!("playback: failed to save session snapshot: {e}"),
-        Err(e) => log::warn!("playback: session snapshot save task panicked: {e}"),
+    let committed = state
+        .commit_profile(|profile| {
+            apply_session_snapshot(&mut profile.player_session, &status);
+            crate::profile_store::Commit::Save(())
+        })
+        .await;
+    if let Err(e) = committed {
+        log::warn!("playback: failed to save session snapshot: {e}");
     }
 }
 
@@ -179,17 +178,16 @@ pub async fn persist_session_snapshot(app: &AppHandle) {
 /// clone-then-blocking-save pattern.
 async fn clear_last_session(app: &AppHandle) {
     let state = app.state::<AppState>();
-    let snapshot = {
-        let mut profile = state.active_profile.write().await;
-        profile.player_session.last_active = None;
-        profile.player_session.last_stream_id = None;
-        profile.player_session.last_file_position = None;
-        profile.clone()
-    };
-    match tokio::task::spawn_blocking(move || snapshot.save()).await {
-        Ok(Ok(())) => {}
-        Ok(Err(e)) => log::warn!("playback: failed to clear session record: {e}"),
-        Err(e) => log::warn!("playback: clear session task panicked: {e}"),
+    let committed = state
+        .commit_profile(|profile| {
+            profile.player_session.last_active = None;
+            profile.player_session.last_stream_id = None;
+            profile.player_session.last_file_position = None;
+            crate::profile_store::Commit::Save(())
+        })
+        .await;
+    if let Err(e) = committed {
+        log::warn!("playback: failed to clear session record: {e}");
     }
 }
 

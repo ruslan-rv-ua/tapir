@@ -83,16 +83,12 @@ pub async fn set_volume(
     state: State<'_, AppState>,
     app: AppHandle,
 ) -> Result<(), String> {
-    state.player.set_volume(volume, &app).await.map_err(|e| e.to_string())?;
-    let snapshot = {
-        let mut profile = state.active_profile.write().await;
-        profile.player_session.volume = state.player.current_volume().await;
-        profile.clone()
-    }; // write lock released before blocking save
-    tokio::task::spawn_blocking(move || snapshot.save())
-        .await
-        .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())
+    // Гучність — сесійне поле: у пам'яті вона живе в PlayerEngine, а на диск
+    // потрапляє на переходах (persist_session_snapshot, graceful_shutdown), не
+    // на кожну зміну. Слайдер шле цю команду на кожну стрілку, тож запис профілю
+    // тут був у гарячому шляху; глобальний хоткей (shortcuts.rs) не писав його
+    // й до цього — тепер обидва шляхи поводяться однаково.
+    state.player.set_volume(volume, &app).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]

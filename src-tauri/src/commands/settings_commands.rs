@@ -1,5 +1,6 @@
 use crate::app_state::AppState;
 use crate::profile::RecordingSettings;
+use crate::profile_store::Commit;
 use crate::settings::{GlobalSettings, HotkeyMap};
 use crate::shortcuts;
 
@@ -46,15 +47,17 @@ pub async fn save_recording_settings(
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
     recording.clamp_schedule_padding();
-    let mut snapshot = state.active_profile.read().await.clone();
-    snapshot.recording = recording.clone();
-    tokio::task::spawn_blocking(move || snapshot.save())
+    // Пам'ять першою, як і в решті комітів. Раніше цей сайт писав диск перед
+    // мутацією — єдиний із такою інверсією; вона купувала узгодженість при збої
+    // лише до наступної мутації, а коштувала окремої форми, яку доводилося
+    // пояснювати кожному читачеві.
+    state
+        .commit_profile(|profile| {
+            profile.recording = recording;
+            Commit::Save(())
+        })
         .await
-        .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())?;
-    let mut profile = state.active_profile.write().await;
-    profile.recording = recording;
-    Ok(())
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

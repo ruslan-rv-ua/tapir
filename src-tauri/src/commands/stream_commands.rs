@@ -3,6 +3,7 @@ use crate::commands::shell_open::{shell_open, SHELL_ERR_GENERIC, SHELL_ERR_WRITE
 use crate::errors::RadioError;
 use crate::portable;
 use crate::profile::{AudioFormat, Profile, StreamInfo};
+use crate::profile_store::{save_detached, Commit};
 use crate::stream::manager::{StreamState, StreamStatus};
 use crate::stream::playlist;
 use log::warn;
@@ -362,26 +363,22 @@ pub async fn add_stream(
         .await
         .map_err(|e| e.to_string())?;
 
-    let (new_stream, snapshot) = {
-        let mut profile = state.active_profile.write().await;
-        let new_stream = build_added_stream(
-            &profile.streams,
-            resolved_url,
-            name,
-            icy_name,
-            bitrate,
-            format,
-            chrono::Local::now().to_rfc3339(),
-        );
-        profile.streams.push(new_stream.clone());
-        (new_stream, profile.clone())
-    };
-    tokio::task::spawn_blocking(move || snapshot.save())
+    state
+        .commit_profile(|profile| {
+            let new_stream = build_added_stream(
+                &profile.streams,
+                resolved_url,
+                name,
+                icy_name,
+                bitrate,
+                format,
+                chrono::Local::now().to_rfc3339(),
+            );
+            profile.streams.push(new_stream.clone());
+            Commit::Save(new_stream)
+        })
         .await
-        .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())?;
-
-    Ok(new_stream)
+        .map_err(|e| e.to_string())
 }
 
 /// Keep only the streams whose id is in `ids`, in `streams` order (profile
@@ -413,17 +410,13 @@ pub async fn remove_stream(
         let _ = manager.stop_recording(&stream_id);
     }
 
-    // 2. Remove from profile (snapshot while write lock is held)
-    let snapshot = {
-        let mut profile = state.active_profile.write().await;
-        profile.streams.retain(|s| s.id != stream_id);
-        profile.clone()
-    };
-
-    // 3. Save on a blocking thread to avoid starving the async worker
-    tokio::task::spawn_blocking(move || snapshot.save())
+    // 2. Remove from profile and persist
+    state
+        .commit_profile(|profile| {
+            profile.streams.retain(|s| s.id != stream_id);
+            Commit::Save(())
+        })
         .await
-        .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
 }
 
@@ -447,16 +440,10 @@ pub async fn remove_streams(
     }
 
     // 2. Retain survivors + count removed, snapshot while the write lock is held.
-    let (removed, snapshot) = {
-        let mut profile = state.active_profile.write().await;
-        let removed = retain_streams(&mut profile.streams, &ids);
-        (removed, profile.clone())
-    };
-
-    // 3. One save on a blocking thread (don't starve the async worker).
-    tokio::task::spawn_blocking(move || snapshot.save())
+    // 3. One commit for the whole batch.
+    let removed = state
+        .commit_profile(|profile| Commit::Save(retain_streams(&mut profile.streams, &ids)))
         .await
-        .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())?;
 
     Ok(removed)
@@ -491,34 +478,27 @@ pub async fn update_stream(
         None => None,
     };
 
-    let (updated, snapshot) = {
-        let mut profile = state.active_profile.write().await;
-        let current = profile
-            .streams
-            .iter()
-            .find(|s| s.id == stream_id)
-            .cloned()
-            .ok_or_else(|| format!("Stream {} not found", stream_id))?;
-        let updated = build_edited_stream(
-            &profile.streams,
-            &current,
-            name,
-            resolved_url,
-            icy_name,
-            bitrate,
-            format,
-        );
-        if let Some(slot) = profile.streams.iter_mut().find(|s| s.id == stream_id) {
-            *slot = updated.clone();
-        }
-        let snapshot = profile.clone();
-        (updated, snapshot)
-    };
-    tokio::task::spawn_blocking(move || snapshot.save())
+    state
+        .commit_profile(|profile| {
+            let Some(current) = profile.streams.iter().find(|s| s.id == stream_id).cloned() else {
+                return Commit::Skip(Err(format!("Stream {} not found", stream_id)));
+            };
+            let updated = build_edited_stream(
+                &profile.streams,
+                &current,
+                name,
+                resolved_url,
+                icy_name,
+                bitrate,
+                format,
+            );
+            if let Some(slot) = profile.streams.iter_mut().find(|s| s.id == stream_id) {
+                *slot = updated.clone();
+            }
+            Commit::Save(Ok(updated))
+        })
         .await
         .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())?;
-    Ok(updated)
 }
 
 #[tauri::command]
@@ -678,7 +658,7 @@ pub async fn transfer_stream_to_profile(
     target.add_stream_checked(inserted).map_err(|e| e.to_string())?;
 
     // 6. Save the target.
-    tokio::task::spawn_blocking(move || target.save())
+    tokio::task::spawn_blocking(move || save_detached(&target))
         .await
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())?;
@@ -690,14 +670,12 @@ pub async fn transfer_stream_to_profile(
             let mut manager = state.stream_manager.write().await;
             let _ = manager.stop_recording(&stream_id);
         }
-        let snapshot = {
-            let mut profile = state.active_profile.write().await;
-            profile.streams.retain(|s| s.id != stream_id);
-            profile.clone()
-        };
-        tokio::task::spawn_blocking(move || snapshot.save())
+        state
+            .commit_profile(|profile| {
+                profile.streams.retain(|s| s.id != stream_id);
+                Commit::Save(())
+            })
             .await
-            .map_err(|e| e.to_string())?
             .map_err(|e| e.to_string())?;
     }
 
@@ -782,7 +760,7 @@ pub async fn transfer_streams_to_profile(
         insert_transfers(&mut target, &eligible, &mode, &now).map_err(|e| e.to_string())?;
 
     // 6. One save to the target.
-    tokio::task::spawn_blocking(move || target.save())
+    tokio::task::spawn_blocking(move || save_detached(&target))
         .await
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())?;
@@ -796,14 +774,12 @@ pub async fn transfer_streams_to_profile(
                 let _ = manager.stop_recording(id);
             }
         }
-        let snapshot = {
-            let mut profile = state.active_profile.write().await;
-            profile.streams.retain(|s| !removed.contains(&s.id));
-            profile.clone()
-        };
-        tokio::task::spawn_blocking(move || snapshot.save())
+        state
+            .commit_profile(|profile| {
+                profile.streams.retain(|s| !removed.contains(&s.id));
+                Commit::Save(())
+            })
             .await
-            .map_err(|e| e.to_string())?
             .map_err(|e| e.to_string())?;
     }
 

@@ -3,6 +3,8 @@ use tauri::{AppHandle, Manager};
 use tokio::sync::RwLock;
 use crate::settings::GlobalSettings;
 use crate::profile::Profile;
+use crate::profile_store::{Commit, FileProfileStore, ProfileWriter};
+use crate::errors::RadioError;
 use crate::stream::manager::{StreamManager, StreamState, StreamStatus};
 use crate::player::engine::PlayerEngine;
 use crate::browser::api::RadioBrowserClient;
@@ -12,6 +14,8 @@ pub struct AppState {
     pub stream_manager: Arc<RwLock<StreamManager>>,
     pub settings: Arc<RwLock<GlobalSettings>>,
     pub active_profile: Arc<RwLock<Profile>>,
+    /// Єдиний шлях запису активного профілю — див. [`AppState::commit_profile`].
+    profile_writer: Arc<ProfileWriter>,
     // PlayerEngine is internally synchronized via Arc<Mutex<>> fields — no outer RwLock needed.
     pub player: Arc<PlayerEngine>,
     pub browser_client: Arc<tokio::sync::OnceCell<RadioBrowserClient>>,
@@ -36,11 +40,35 @@ impl AppState {
             stream_manager: Arc::new(RwLock::new(StreamManager::new(app_handle, wake_lock))),
             settings: Arc::new(RwLock::new(settings)),
             active_profile: Arc::new(RwLock::new(profile)),
+            profile_writer: Arc::new(ProfileWriter::new(Arc::new(FileProfileStore))),
             player: Arc::new(player),
             browser_client,
             scheduler: crate::scheduler::timer::SchedulerShared::new(),
             snapshot: crate::crash_recovery::SnapshotShared::new(),
         })
+    }
+
+    /// Змінити активний профіль і записати його — єдиний спосіб це зробити.
+    ///
+    /// Замикання синхронне й повертає [`Commit::Save`] або [`Commit::Skip`];
+    /// впорядкованість записів і роботу зі сховищем тримає
+    /// [`ProfileWriter`](crate::profile_store::ProfileWriter).
+    ///
+    /// ```ignore
+    /// let entry = state.commit_profile(|p| {
+    ///     if p.wishlist.iter().any(|e| e.pattern == pattern) {
+    ///         return Commit::Skip(existing);
+    ///     }
+    ///     p.wishlist.push(entry.clone());
+    ///     Commit::Save(entry)
+    /// }).await?;
+    /// ```
+    pub async fn commit_profile<T, F>(&self, mutate: F) -> Result<T, RadioError>
+    where
+        F: FnOnce(&mut Profile) -> Commit<T> + Send,
+        T: Send,
+    {
+        self.profile_writer.commit(&self.active_profile, mutate).await
     }
 }
 
@@ -67,13 +95,21 @@ pub async fn graceful_shutdown(app: &AppHandle) {
 
     state.player.stop_session_public().await;
     let volume = state.player.current_volume().await;
-    let mut profile = state.active_profile.write().await;
-    profile.player_session.volume = volume;
-    crate::playback_control::apply_session_snapshot(&mut profile.player_session, &player_status);
-    if let Err(e) = profile.save() {
+    // `commit_profile` дочікується запису перед поверненням, тож окремого
+    // «синхронного» шляху для виходу не потрібно.
+    let committed = state
+        .commit_profile(|profile| {
+            profile.player_session.volume = volume;
+            crate::playback_control::apply_session_snapshot(
+                &mut profile.player_session,
+                &player_status,
+            );
+            Commit::Save(())
+        })
+        .await;
+    if let Err(e) = committed {
         log::error!("Failed to save profile session on shutdown: {e}");
     }
-    drop(profile);
 
     tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 

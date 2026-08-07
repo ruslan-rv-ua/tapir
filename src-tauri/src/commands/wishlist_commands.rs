@@ -1,5 +1,6 @@
 use crate::app_state::AppState;
 use crate::profile::WishlistEntry;
+use crate::profile_store::Commit;
 
 #[tauri::command]
 pub async fn get_wishlist(state: tauri::State<'_, AppState>) -> Result<Vec<WishlistEntry>, String> {
@@ -12,28 +13,25 @@ pub async fn add_to_wishlist(
     pattern: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<WishlistEntry, String> {
-    let (entry, snapshot) = {
-        let mut profile = state.active_profile.write().await;
-        if let Some(existing) = profile.wishlist.iter().find(|e| e.pattern == pattern) {
-            return Ok(existing.clone());
-        }
-        let entry = WishlistEntry {
-            pattern: pattern.clone(),
-            min_bitrate: None,
-            format: None,
-            remove_after_record: false,
-            add_to_ignorelist_after_record: false,
-            added_at: chrono::Local::now().to_rfc3339(),
-        };
-        profile.wishlist.push(entry.clone());
-        (entry, profile.clone())
-    };
-    tokio::task::spawn_blocking(move || snapshot.save())
+    state
+        .commit_profile(|profile| {
+            // Патерн уже є — повертаємо наявний запис і не пишемо нічого.
+            if let Some(existing) = profile.wishlist.iter().find(|e| e.pattern == pattern) {
+                return Commit::Skip(existing.clone());
+            }
+            let entry = WishlistEntry {
+                pattern: pattern.clone(),
+                min_bitrate: None,
+                format: None,
+                remove_after_record: false,
+                add_to_ignorelist_after_record: false,
+                added_at: chrono::Local::now().to_rfc3339(),
+            };
+            profile.wishlist.push(entry.clone());
+            Commit::Save(entry)
+        })
         .await
-        .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())?;
-
-    Ok(entry)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -41,14 +39,12 @@ pub async fn remove_from_wishlist(
     pattern: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
-    let snapshot = {
-        let mut profile = state.active_profile.write().await;
-        profile.wishlist.retain(|e| e.pattern != pattern);
-        profile.clone()
-    };
-    tokio::task::spawn_blocking(move || snapshot.save())
+    state
+        .commit_profile(|profile| {
+            profile.wishlist.retain(|e| e.pattern != pattern);
+            Commit::Save(())
+        })
         .await
-        .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
 }
 
@@ -65,23 +61,21 @@ pub async fn update_wishlist_pattern(
             .cloned()
             .ok_or_else(|| format!("Pattern '{}' not found", old_pattern));
     }
-    let (entry, snapshot) = {
-        let mut profile = state.active_profile.write().await;
-        if profile.wishlist.iter().any(|e| e.pattern == new_pattern) {
-            return Err(format!("Pattern '{}' already exists", new_pattern));
-        }
-        let e = profile.wishlist.iter_mut()
-            .find(|e| e.pattern == old_pattern)
-            .ok_or_else(|| format!("Pattern '{}' not found", old_pattern))?;
-        e.pattern = new_pattern;
-        let entry = e.clone();
-        (entry, profile.clone())
-    };
-    tokio::task::spawn_blocking(move || snapshot.save())
+    // Відмова мутації їде значенням, а не раннім поверненням: замикання не може
+    // вийти з команди, і саме тому воно й не пише нічого при відмові.
+    state
+        .commit_profile(|profile| {
+            if profile.wishlist.iter().any(|e| e.pattern == new_pattern) {
+                return Commit::Skip(Err(format!("Pattern '{}' already exists", new_pattern)));
+            }
+            let Some(e) = profile.wishlist.iter_mut().find(|e| e.pattern == old_pattern) else {
+                return Commit::Skip(Err(format!("Pattern '{}' not found", old_pattern)));
+            };
+            e.pattern = new_pattern;
+            Commit::Save(Ok(e.clone()))
+        })
         .await
         .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())?;
-    Ok(entry)
 }
 
 #[tauri::command]
@@ -95,17 +89,15 @@ pub async fn add_to_ignorelist(
     pattern: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
-    let snapshot = {
-        let mut profile = state.active_profile.write().await;
-        if profile.ignorelist.contains(&pattern) {
-            return Ok(());
-        }
-        profile.ignorelist.push(pattern);
-        profile.clone()
-    };
-    tokio::task::spawn_blocking(move || snapshot.save())
+    state
+        .commit_profile(|profile| {
+            if profile.ignorelist.contains(&pattern) {
+                return Commit::Skip(());
+            }
+            profile.ignorelist.push(pattern);
+            Commit::Save(())
+        })
         .await
-        .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
 }
 
@@ -114,14 +106,12 @@ pub async fn remove_from_ignorelist(
     pattern: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
-    let snapshot = {
-        let mut profile = state.active_profile.write().await;
-        profile.ignorelist.retain(|p| p != &pattern);
-        profile.clone()
-    };
-    tokio::task::spawn_blocking(move || snapshot.save())
+    state
+        .commit_profile(|profile| {
+            profile.ignorelist.retain(|p| p != &pattern);
+            Commit::Save(())
+        })
         .await
-        .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
 }
 
@@ -136,21 +126,19 @@ pub async fn update_ignorelist_pattern(
         if profile.ignorelist.contains(&old_pattern) { return Ok(()); }
         return Err(format!("Pattern '{}' not found", old_pattern));
     }
-    let snapshot = {
-        let mut profile = state.active_profile.write().await;
-        if profile.ignorelist.contains(&new_pattern) {
-            return Err(format!("Pattern '{}' already exists", new_pattern));
-        }
-        let p = profile.ignorelist.iter_mut()
-            .find(|p| **p == old_pattern)
-            .ok_or_else(|| format!("Pattern '{}' not found", old_pattern))?;
-        *p = new_pattern;
-        profile.clone()
-    };
-    tokio::task::spawn_blocking(move || snapshot.save())
+    state
+        .commit_profile(|profile| {
+            if profile.ignorelist.contains(&new_pattern) {
+                return Commit::Skip(Err(format!("Pattern '{}' already exists", new_pattern)));
+            }
+            let Some(p) = profile.ignorelist.iter_mut().find(|p| **p == old_pattern) else {
+                return Commit::Skip(Err(format!("Pattern '{}' not found", old_pattern)));
+            };
+            *p = new_pattern;
+            Commit::Save(Ok(()))
+        })
         .await
         .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())
 }
 
 /// Remove every string equal to one in `ids`; returns how many were removed.
@@ -167,16 +155,13 @@ pub async fn remove_from_wishlist_bulk(
     state: tauri::State<'_, AppState>,
 ) -> Result<u32, String> {
     let ids: std::collections::HashSet<String> = patterns.into_iter().collect();
-    let (removed, snapshot) = {
-        let mut profile = state.active_profile.write().await;
-        let before = profile.wishlist.len();
-        profile.wishlist.retain(|e| !ids.contains(&e.pattern));
-        let removed = before - profile.wishlist.len();
-        (removed, profile.clone())
-    };
-    tokio::task::spawn_blocking(move || snapshot.save())
+    let removed = state
+        .commit_profile(|profile| {
+            let before = profile.wishlist.len();
+            profile.wishlist.retain(|e| !ids.contains(&e.pattern));
+            Commit::Save(before - profile.wishlist.len())
+        })
         .await
-        .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())?;
     Ok(removed as u32)
 }
@@ -187,14 +172,9 @@ pub async fn remove_from_ignorelist_bulk(
     state: tauri::State<'_, AppState>,
 ) -> Result<u32, String> {
     let ids: std::collections::HashSet<String> = patterns.into_iter().collect();
-    let (removed, snapshot) = {
-        let mut profile = state.active_profile.write().await;
-        let removed = retain_patterns(&mut profile.ignorelist, &ids);
-        (removed, profile.clone())
-    };
-    tokio::task::spawn_blocking(move || snapshot.save())
+    let removed = state
+        .commit_profile(|profile| Commit::Save(retain_patterns(&mut profile.ignorelist, &ids)))
         .await
-        .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())?;
     Ok(removed as u32)
 }

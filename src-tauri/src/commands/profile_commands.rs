@@ -4,6 +4,7 @@ use tokio::time::Duration;
 use crate::app_state::AppState;
 use crate::errors::RadioError;
 use crate::profile::{Profile, ProfileMeta, ImportPreview};
+use crate::profile_store::Commit;
 
 #[tauri::command]
 pub async fn list_profiles(state: State<'_, AppState>) -> Result<Vec<ProfileMeta>, String> {
@@ -112,25 +113,22 @@ pub async fn set_profile_autoplay(
     };
 
     if name == active_name {
-        // Active profile: mutate the in-memory source of truth, then persist a
-        // clone off-thread (the `persist_session_snapshot` pattern). Loading from
-        // disk and saving would clobber fresher in-memory state written since the
-        // last save (resume fields, volume).
-        let snapshot = {
-            let mut profile = state.active_profile.write().await;
-            profile.player_session.autoplay_on_startup = enabled;
-            profile.clone()
-        };
-        tokio::task::spawn_blocking(move || snapshot.save())
+        // Active profile: mutate the in-memory source of truth and commit.
+        // Loading from disk and saving would clobber fresher in-memory state
+        // written since the last save (resume fields, volume).
+        state
+            .commit_profile(|profile| {
+                profile.player_session.autoplay_on_startup = enabled;
+                Commit::Save(())
+            })
             .await
-            .map_err(|e| e.to_string())?
             .map_err(|e| e.to_string())
     } else {
         // Inactive profile: load → modify → save, off the async executor.
         tokio::task::spawn_blocking(move || {
             let mut profile = Profile::load(&name)?;
             profile.player_session.autoplay_on_startup = enabled;
-            profile.save()
+            crate::profile_store::save_detached(&profile)
         })
         .await
         .map_err(|e| e.to_string())?
@@ -174,12 +172,16 @@ pub async fn switch_profile(
         futures::future::join_all(handles),
     ).await;
 
-    // Step 6-7: save volume to old profile
+    // Step 6-7: save volume to old profile (still the active one at this point)
     {
         let volume = state.player.current_volume().await;
-        let mut profile = state.active_profile.write().await;
-        profile.player_session.volume = volume;
-        if let Err(e) = profile.save() {
+        let committed = state
+            .commit_profile(|profile| {
+                profile.player_session.volume = volume;
+                Commit::Save(())
+            })
+            .await;
+        if let Err(e) = committed {
             log::warn!("Could not save old profile on switch: {e}");
         }
     }

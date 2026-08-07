@@ -653,10 +653,17 @@ pub async fn recording_task(
         // the suffix their profile entries carry.
         let station_name = {
             let state = app_handle.state::<crate::app_state::AppState>();
-            let (updated_stream, snapshot) = {
-                let mut profile = state.active_profile.write().await;
-                match profile.streams.iter().position(|s| s.id == stream_id) {
-                    Some(i) => {
+            // Оновлений потік виноситься з мутації окремо, а не значенням коміту:
+            // подія `stream-info-updated` має піти й тоді, коли запис на диск не
+            // вдався — у пам'яті ім'я вже нове, і UI мусить його показати.
+            let mut updated_stream: Option<StreamInfo> = None;
+            let committed = state
+                .commit_profile(|profile| {
+                    let Some(i) = profile.streams.iter().position(|s| s.id == stream_id) else {
+                        // Потік прибрали з профілю посеред запису — писати нічого.
+                        return crate::profile_store::Commit::Skip(());
+                    };
+                    {
                         // Naming an unnamed stream picks its recording folder, so
                         // it has to dodge the folders the other streams own.
                         let taken: std::collections::HashSet<String> = profile
@@ -689,21 +696,23 @@ pub async fn recording_task(
                             s.icy_url = icy_url_val.clone();
                         }
                         s.format = Some(detected_format.clone());
-                        (Some(s.clone()), Some(profile.clone()))
+                        updated_stream = Some(s.clone());
+                        crate::profile_store::Commit::Save(())
                     }
-                    None => (None, None),
-                }
-            };
-            match (updated_stream, snapshot) {
-                (Some(updated), Some(snap)) => {
-                    let _ = tokio::task::spawn_blocking(move || -> Result<(), crate::errors::RadioError> { snap.save() }).await;
+                })
+                .await;
+            if let Err(e) = committed {
+                log::warn!("recorder: failed to save profile after ICY headers: {e}");
+            }
+            match updated_stream {
+                Some(updated) => {
                     let name = updated.name.clone();
                     app_handle.emit("stream-info-updated", updated).ok();
                     name
                 }
                 // Stream was removed from the profile mid-recording — keep the
                 // name the task started with.
-                _ => station_name.clone(),
+                None => station_name.clone(),
             }
         };
 

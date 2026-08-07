@@ -4,6 +4,7 @@ use tauri_plugin_dialog::{DialogExt, FilePath};
 
 use crate::app_state::AppState;
 use crate::profile::{AudioFormat, StreamInfo};
+use crate::profile_store::Commit;
 use crate::stream::{playlist, probe};
 
 /// How many streams to probe at once during import validation and the browser's
@@ -228,22 +229,25 @@ pub async fn commit_stream_import(
     state: State<'_, AppState>,
 ) -> Result<ImportResult, String> {
     let requested = selected.len();
-    let (added, skipped, snapshot) = {
-        let mut profile = state.active_profile.write().await;
-        let planned = plan_import(&profile.streams, selected, &chrono::Local::now().to_rfc3339());
-        let mut added = 0usize;
-        for stream in planned {
-            if profile.add_stream_checked(stream).is_ok() {
-                added += 1;
+    let added = state
+        .commit_profile(|profile| {
+            let planned =
+                plan_import(&profile.streams, selected, &chrono::Local::now().to_rfc3339());
+            let mut added = 0usize;
+            for stream in planned {
+                if profile.add_stream_checked(stream).is_ok() {
+                    added += 1;
+                }
             }
-        }
-        (added, requested - added, profile.clone())
-    };
-    tokio::task::spawn_blocking(move || snapshot.save())
+            // Усі кандидати виявилися дублікатами — профіль не змінився.
+            if added == 0 {
+                return Commit::Skip(0);
+            }
+            Commit::Save(added)
+        })
         .await
-        .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())?;
-    Ok(ImportResult { added, skipped })
+    Ok(ImportResult { added, skipped: requested - added })
 }
 
 /// Default file name proposed in the Save dialog. Selected exports carry the

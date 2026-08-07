@@ -401,7 +401,7 @@ impl Profile {
         if !path.exists() {
             if name == "Default" {
                 let profile = Self::create_default();
-                profile.save()?;
+                crate::profile_store::save_detached(&profile)?;
                 return Ok(profile);
             }
             return Err(RadioError::NotFound(format!("Profile '{}' not found", name)));
@@ -411,15 +411,6 @@ impl Profile {
         let mut profile: Self = serde_json::from_str(content)?;
         crate::scheduler::validation::sanitize_on_load(&mut profile);
         Ok(profile)
-    }
-
-    pub fn save(&self) -> Result<(), RadioError> {
-        let path = portable::profiles_dir().join(format!("{}.tapirprofile", self.name));
-        let tmp_path = path.with_extension("tapirprofile.tmp");
-        let json = serde_json::to_string_pretty(self)?;
-        std::fs::write(&tmp_path, &json)?;
-        std::fs::rename(&tmp_path, &path)?;
-        Ok(())
     }
 
     /// Append `stream` unless this profile already holds a stream with the same
@@ -503,7 +494,7 @@ impl Profile {
         validate_profile_name(name, &existing)?;
         let mut profile = Self::create_default();
         profile.name = name.to_string();
-        profile.save()?;
+        crate::profile_store::save_detached(&profile)?;
         Ok(profile)
     }
 
@@ -558,7 +549,7 @@ impl Profile {
         // policy nor its last-playback record (which would make the copy "resume"
         // someone else's session). Volume carries over.
         profile.player_session.reset_for_share();
-        profile.save()?;
+        crate::profile_store::save_detached(&profile)?;
         Ok(ProfileMeta {
             name: new_name.to_string(),
             stream_count: profile.streams.len(),
@@ -613,7 +604,7 @@ impl Profile {
         // enabled autoplay policy (export already strips it).
         profile.player_session.autoplay_on_startup = false;
         profile.name = name.to_string();
-        profile.save()?;
+        crate::profile_store::save_detached(&profile)?;
         Ok(ProfileMeta {
             name: name.to_string(),
             stream_count: profile.streams.len(),

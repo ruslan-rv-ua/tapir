@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::app_state::AppState;
 use crate::errors::RadioError;
 use crate::profile::{Profile, ScheduleType, ScheduledRecording};
+use crate::profile_store::Commit;
 use crate::scheduler::validation;
 
 /// Відповідь get_schedules: розклад + обчислюване nextRun
@@ -188,16 +189,13 @@ pub async fn add_schedule(
     input: ScheduledRecordingInput,
     state: tauri::State<'_, AppState>,
 ) -> Result<ScheduledRecording, String> {
-    let (entry, snapshot) = {
-        let mut profile = state.active_profile.write().await;
-        let entry = add_schedule_impl(&mut profile, input).map_err(|e| e.to_string())?;
-        (entry, profile.clone())
-    };
-    tokio::task::spawn_blocking(move || snapshot.save())
+    state
+        .commit_profile(|profile| match add_schedule_impl(profile, input) {
+            Ok(entry) => Commit::Save(Ok(entry)),
+            Err(e) => Commit::Skip(Err(e.to_string())),
+        })
         .await
         .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())?;
-    Ok(entry)
 }
 
 #[tauri::command]
@@ -206,16 +204,16 @@ pub async fn update_schedule(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) -> Result<ScheduledRecording, String> {
-    let (entry, old, snapshot) = {
-        let mut profile = state.active_profile.write().await;
-        let old = profile.scheduled_recordings.iter().find(|s| s.id == schedule.id).cloned();
-        let entry = update_schedule_impl(&mut profile, schedule).map_err(|e| e.to_string())?;
-        (entry, old, profile.clone())
-    };
-    tokio::task::spawn_blocking(move || snapshot.save())
+    let (entry, old) = state
+        .commit_profile(|profile| {
+            let old = profile.scheduled_recordings.iter().find(|s| s.id == schedule.id).cloned();
+            match update_schedule_impl(profile, schedule) {
+                Ok(entry) => Commit::Save(Ok((entry, old))),
+                Err(e) => Commit::Skip(Err(e.to_string())),
+            }
+        })
         .await
-        .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())??;
     // §3.5: зміна назви запис не перериває; суттєві поля — зупинка
     // з фіксацією StoppedByUser(ScheduleEdited)
     if let Some(old) = old {
@@ -232,14 +230,12 @@ pub async fn delete_schedule(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
-    let snapshot = {
-        let mut profile = state.active_profile.write().await;
-        delete_schedule_impl(&mut profile, &id);
-        profile.clone()
-    };
-    tokio::task::spawn_blocking(move || snapshot.save())
+    state
+        .commit_profile(|profile| {
+            delete_schedule_impl(profile, &id);
+            Commit::Save(())
+        })
         .await
-        .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())?;
     // §3.5: видалення під час запису — просто зупинка (фіксувати нікуди)
     crate::scheduler::timer::notify_schedule_deleted(&app, &id).await;
@@ -253,14 +249,9 @@ pub async fn delete_schedules(
     state: tauri::State<'_, AppState>,
 ) -> Result<u32, String> {
     let id_set: std::collections::HashSet<String> = ids.iter().cloned().collect();
-    let (removed, snapshot) = {
-        let mut profile = state.active_profile.write().await;
-        let removed = retain_schedules(&mut profile, &id_set);
-        (removed, profile.clone())
-    };
-    tokio::task::spawn_blocking(move || snapshot.save())
+    let removed = state
+        .commit_profile(|profile| Commit::Save(retain_schedules(profile, &id_set)))
         .await
-        .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())?;
     // §3.5: stop any in-progress recording for each deleted id (nothing to record).
     for id in &ids {
@@ -276,16 +267,13 @@ pub async fn toggle_schedule(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) -> Result<ScheduledRecording, String> {
-    let (entry, snapshot) = {
-        let mut profile = state.active_profile.write().await;
-        let entry =
-            toggle_schedule_impl(&mut profile, &id, enabled).map_err(|e| e.to_string())?;
-        (entry, profile.clone())
-    };
-    tokio::task::spawn_blocking(move || snapshot.save())
+    let entry = state
+        .commit_profile(|profile| match toggle_schedule_impl(profile, &id, enabled) {
+            Ok(entry) => Commit::Save(Ok(entry)),
+            Err(e) => Commit::Skip(Err(e.to_string())),
+        })
         .await
-        .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())??;
     // §3.5: вимкнення під час запису — та сама фіксація (ScheduleEdited) +
     // ledger: повторне увімкнення в тому ж вікні не рестартує
     if !enabled {

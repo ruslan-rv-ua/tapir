@@ -176,22 +176,23 @@ pub async fn apply_fixations(app: &AppHandle, fixes: Vec<Fixation>) {
         return;
     }
     let state = app.state::<AppState>();
-    let snapshot = {
-        let mut profile = state.active_profile.write().await;
-        for f in &fixes {
-            if let Some(s) = profile.scheduled_recordings.iter_mut().find(|s| s.id == f.schedule_id) {
-                s.last_result = Some(f.result.clone());
-                if f.disable_schedule {
-                    s.enabled = false;
+    let committed = state
+        .commit_profile(|profile| {
+            for f in &fixes {
+                if let Some(s) =
+                    profile.scheduled_recordings.iter_mut().find(|s| s.id == f.schedule_id)
+                {
+                    s.last_result = Some(f.result.clone());
+                    if f.disable_schedule {
+                        s.enabled = false;
+                    }
                 }
             }
-        }
-        profile.clone()
-    };
-    match tokio::task::spawn_blocking(move || snapshot.save()).await {
-        Ok(Ok(())) => {}
-        Ok(Err(e)) => log::error!("Scheduler: failed to save profile after fixation: {e}"),
-        Err(e) => log::error!("Scheduler: profile save task panicked: {e}"),
+            crate::profile_store::Commit::Save(())
+        })
+        .await;
+    if let Err(e) = committed {
+        log::error!("Scheduler: failed to save profile after fixation: {e}");
     }
     for f in &fixes {
         emit_result(app, f);

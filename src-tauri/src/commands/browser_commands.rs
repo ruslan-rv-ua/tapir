@@ -7,6 +7,7 @@ use crate::browser::api::RadioBrowserClient;
 use crate::browser::types::*;
 use crate::errors::RadioError;
 use crate::profile::{AudioFormat, StreamInfo};
+use crate::profile_store::Commit;
 
 /// Helper: get or init the RadioBrowserClient from OnceCell.
 async fn get_client(state: &AppState) -> &RadioBrowserClient {
@@ -190,22 +191,24 @@ async fn append_streams_to_active_profile(
     app: &tauri::AppHandle,
     streams: Vec<StreamInfo>,
 ) -> Result<Vec<StreamInfo>, String> {
-    let mut profile = state.active_profile.write().await;
-    let added = plan_appended(&profile.streams, streams);
+    let added = state
+        .commit_profile(|profile| {
+            let added = plan_appended(&profile.streams, streams);
+            // Усі URL — дублікати: додавати нема чого, писати теж.
+            if added.is_empty() {
+                return Commit::Skip(added);
+            }
+            for s in &added {
+                profile.streams.push(s.clone());
+            }
+            Commit::Save(added)
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+
     if added.is_empty() {
         return Ok(added);
     }
-    for s in &added {
-        profile.streams.push(s.clone());
-    }
-    let profile_clone = profile.clone();
-    drop(profile);
-
-    tokio::task::spawn_blocking(move || profile_clone.save())
-        .await
-        .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())?;
-
     app.emit("streams-changed", ()).ok();
     Ok(added)
 }
