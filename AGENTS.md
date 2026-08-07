@@ -79,6 +79,7 @@ All project documentation lives in `docs/`. Key files:
 
 **Manual testing** (`docs/testing/`):
 - [test-streams.md](docs/testing/test-streams.md) — тестові URL радіо-потоків
+- [nvda-webview-reload-guard.md](docs/testing/nvda-webview-reload-guard.md) — прогін для `p2-webview-reload-guard` (подавлення акселераторів WebView2)
 Чеклісти NVDA-прогону (`docs/testing/nvda-<slug>.md`) створюються для записів беклогу
 з `a11y: true` і видаляються на прийманні — метод і шаблон живуть у скілі
 `.claude/skills/writing-nvda-checklists/`.

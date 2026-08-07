@@ -43,6 +43,7 @@ import { selectPlaybackAnnouncement, suppressesStarted, type PendingConnect } fr
 import { formatTimeParts } from "./lib/time";
 import { windowTitleLabel } from "./lib/windowTitle";
 import { useGlobalShortcuts } from "./hooks/useGlobalShortcuts";
+import { useWebviewGuard } from "./hooks/useWebviewGuard";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import * as m from "./i18n/paraglide/messages";
 
@@ -170,6 +171,10 @@ function AppContent() {
   // Global Tier-2 webview shortcuts (Alt+digit, Ctrl+K, Ctrl+,, Ctrl+N, F1).
   // Capture-phase window listener extracted to a hook — see useGlobalShortcuts.
   useGlobalShortcuts();
+
+  // Neutralises WebView2's own accelerators (F5/Ctrl+R reload, F3/F7/F11) and the
+  // native context menu outside text fields — see useWebviewGuard.
+  useWebviewGuard();
 
   // Subscribe to Tauri events
   const handleRecordingStatus = useCallback((payload: RecordingStatusPayload) => {

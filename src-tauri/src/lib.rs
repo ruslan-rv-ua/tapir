@@ -137,6 +137,16 @@ pub fn run() {
             // which NVDA requires to attach to the document and announce focus.
             if let Some(main_window) = app.get_webview_window("main") {
                 let _ = main_window.show();
+                // The webview guard (useWebviewGuard.ts) kills F5 and the native
+                // context menu, so a debug build opens devtools itself. Placed
+                // BETWEEN show() and set_focus(): devtools steal foreground, and
+                // the main window must be the last to take it back — otherwise the
+                // webview initializes unfocused and NVDA stays silent at startup.
+                // Skipped under --minimize: that window is deliberately hidden below.
+                #[cfg(debug_assertions)]
+                if !cli.minimize {
+                    main_window.open_devtools();
+                }
                 let _ = main_window.set_focus(); // webview inits in foreground (NVDA)
                 if cli.minimize {
                     // --minimize = start in the tray. hide(), NOT minimize() (that
