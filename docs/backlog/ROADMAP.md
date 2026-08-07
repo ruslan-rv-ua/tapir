@@ -17,6 +17,7 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
+| [profile-commit-seam](p0-profile-commit-seam.md) | P0 | planned | ready | L | — | — (розблоковує той самий шов для `GlobalSettings`) |
 | [streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md) | P2 | planned | ready | M | — (webview-reload-guard виконано) | [list-key-modifier-guards](p3-list-key-modifier-guards.md) |
 | [hotkeys-expansion](p2-hotkeys-expansion.md) | P2 | planned | ready | M | — | — |
 | [import-duplicate-metadata-update](p3-import-duplicate-metadata-update.md) | P3 | planned | ready | M | — | — |
