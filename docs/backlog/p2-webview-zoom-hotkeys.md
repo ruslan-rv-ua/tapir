@@ -23,7 +23,7 @@ notes:
 
 # Масштаб інтерфейсу: увімкнути Ctrl+Plus/Minus/0 у вікні WebView2
 
-> **Контекст:** відгалуження [webview-reload-guard](p2-webview-reload-guard.md)
+> **Контекст:** відгалуження [webview-reload-guard](done/p2-webview-reload-guard.md)
 > (grilling 2026-08-07). Той запис відхиляв системний вимикач акселераторів
 > аргументом «він вбиває зум, важливий для слабозорих» — під час звірки
 > виявилося, що зуму в застосунку немає взагалі. Прогалина доступності більша
@@ -67,7 +67,7 @@ Tauri v2; локально підтвердити не вдалося (реєс�
 - [ ] `docs/keyboard-shortcuts.md`: рядок про масштаб (клавіші + те, що рівень
       не зберігається між запусками)
 - [ ] Виправлено хибну нотатку про зум у
-      [webview-reload-guard](p2-webview-reload-guard.md), якщо результат
+      [webview-reload-guard](done/p2-webview-reload-guard.md), якщо результат
       вимірювання розійдеться з припущенням
 - [ ] **NVDA-прогін** за чеклістом `docs/testing/nvda-webview-zoom-hotkeys.md`:
       масштаб не ламає фокус, F6-зони й оголошення; NVDA нічого не втрачає з
@@ -76,7 +76,7 @@ Tauri v2; локально підтвердити не вдалося (реєс�
 
 ## Документи
 
-- Джерело: [p2-webview-reload-guard.md](p2-webview-reload-guard.md) («Прийняті
+- Джерело: [p2-webview-reload-guard.md](done/p2-webview-reload-guard.md) («Прийняті
   рішення» §2 — чому аргумент про зум виявився хибним)
 - Конфігурація вікна: `src-tauri/tauri.conf.json`
 - [Tauri v2 WindowConfig](https://v2.tauri.app/reference/config/#windowconfig)

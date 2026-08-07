@@ -9,7 +9,7 @@ kind: feature
 target: 0.1.0
 updated: 2026-08-07
 a11y: true
-depends_on: [webview-reload-guard]
+depends_on: []
 blocks: [list-key-modifier-guards]
 touches:
   - src/hooks/useCompositeList.ts
@@ -37,7 +37,7 @@ notes:
 > **Контекст:** дослідження проведено 2026-07-23, рішення прийнято:
 > **`F5` = «Копіювати в профіль…», `Shift+F5` = «Перенести в профіль…»** у
 > списку потоків. Подавлення webview-reload винесено в
-> [webview-reload-guard](p2-webview-reload-guard.md) (залежність цього запису).
+> [webview-reload-guard](done/p2-webview-reload-guard.md) (залежність цього запису).
 > Ширший аудит закрито без нових шорткатів (див. «Результат дослідження» §5).
 >
 > **Ревізія 2026-08-07 (grilling).** Запис перейменовано під фактичний зміст;
@@ -162,7 +162,7 @@ generic-інтенти `transfer-copy` / `transfer-move` → `onAction` спис
   - [ ] **шов із гардом:** з фокусом на рядку потоку `F5` відкриває діалог
         **І** webview не перезавантажується — одна дія, обидва інваріанти
         (A15). Свідомо дублює зону відповідальності
-        [webview-reload-guard](p2-webview-reload-guard.md): якщо гард колись
+        [webview-reload-guard](done/p2-webview-reload-guard.md): якщо гард колись
         додасть `stopPropagation`, жоден з двох чеклистів поодинці цього не
         спіймає
 - [ ] `pnpm test` без регресій
@@ -192,7 +192,7 @@ generic-інтенти `transfer-copy` / `transfer-move` → `onAction` спис
 4. **Конфлікт F5 у Tauri — підтверджений:** WebView2 за замовчуванням
    перезавантажує webview на F5/Ctrl+R (Tauri v2 опції вимкнути це не має;
    рішення — JS `preventDefault`, підтверджено мейнтейнером у tauri#3844).
-   Винесено в окремий запис [webview-reload-guard](p2-webview-reload-guard.md)
+   Винесено в окремий запис [webview-reload-guard](done/p2-webview-reload-guard.md)
    (`depends_on`): без нього F5 поза списком скидає стан UI.
 5. **Ширший аудит — закрито без нових шорткатів.** Таблиці первинного запису
    були частково застарілі: «Додати потік» уже має `Ctrl+N`
@@ -212,7 +212,7 @@ generic-інтенти `transfer-copy` / `transfer-move` → `onAction` спис
   `src/components/common/composite-list/CompositeRow.tsx` (`keyshortcuts`),
   `src/components/streams/StreamTransferDialog.tsx` (лічильник — уже є, A11)
 - Реєстр: [docs/keyboard-shortcuts.md](../keyboard-shortcuts.md) (Tier 2′)
-- Залежність: [p2-webview-reload-guard.md](p2-webview-reload-guard.md)
+- Залежність: [p2-webview-reload-guard.md](done/p2-webview-reload-guard.md)
 - Відгалуження: [p3-list-key-modifier-guards.md](p3-list-key-modifier-guards.md) (A4)
 - [Total Commander: F5 (Copy) / F6 (Move)](https://ghisler.ch/board/viewtopic.php?t=18963) ·
   [Norton Commander shortcuts](https://www.winnc.com/norton_commander_keyboard_shortcuts/)

@@ -3,11 +3,12 @@ slug: webview-reload-guard
 title: "Подавити акселератори webview: reload (F5/Ctrl+R), F3/F7/F11, контекстне меню"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: M
 kind: bug
 target: 0.1.0
 updated: 2026-08-07
+completed: 2026-08-07
 a11y: true
 depends_on: []
 blocks: [streams-transfer-hotkeys, window-fullscreen-f11]
@@ -32,11 +33,12 @@ notes:
   - "Зумом Ctrl+Plus/Minus системний вимикач більше не аргументується: zoomHotkeysEnabled у tauri.conf.json відсутній (дефолт false), тобто зуму зараз немає взагалі — це окремий запис webview-zoom-hotkeys"
   - "Спека 2026-08-07 (/to-spec): шов тестування — ОДИН, хук useWebviewGuard (RTL-харнес + справжні події). webviewAccelerators.ts власного .test.ts не має: предикат покривається наскрізь через хук, і тільки хуковий шов доводить capture-фазу, відсутність stopPropagation і carve-out для editable"
   - "Реалізація 2026-08-07: keepsNativeContextMenu піднімається по `parentElement` і на кожному кроці питає наявний isTextEntryTarget — не `closest()` по власному селектору. Причина: у jsdom `isContentEditable` не виводиться з атрибута (див. shortcutGuard.test.ts), тож селекторний варіант неможливо було б перевірити тим самим шляхом, яким він працює в браузері. Наслідок для переліку: `Ctrl+Alt+R` (AltGr на кількох розкладках) свідомо НЕ гаситься — звідси `&& !e.altKey` у §8"
+  - "NVDA-прогін 2026-08-07: усі 16 сценаріїв пройдено, зауважень немає. Замір сценарію 15 (Microsoft Edge, той самий рушій, що й WebView2): F3 і F7 підтверджено інертні — повернуто в пул вільних голих F-клавіш у hotkeys-expansion; F11 підтверджено зайнятий (fullscreen спрацьовує) — лишається виключеним"
 ---
 
 # Подавити акселератори webview: reload (F5/Ctrl+R), F3/F7/F11, контекстне меню
 
-> **Контекст:** знахідка дослідження [streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md)
+> **Контекст:** знахідка дослідження [streams-transfer-hotkeys](../p2-streams-transfer-hotkeys.md)
 > (2026-07-23). F5 у коді ніде не обробляється → сьогодні F5 **мовчки
 > перезавантажує webview** (дефолт WebView2): скидається стан UI, фокус, зони —
 > для NVDA-користувача це дезорієнтація без жодного оголошення. Запис у Rust
@@ -83,7 +85,7 @@ Reload (тобто ще один вхід у ту саму пастку) і кр
 Наслідок для користувача:
 
 - `F5` та вся reload-родина більше нічого не роблять — інтерфейс лишається на
-  місці. Пізніше `F5` стане «Копіювати в профіль» ([streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md)),
+  місці. Пізніше `F5` стане «Копіювати в профіль» ([streams-transfer-hotkeys](../p2-streams-transfer-hotkeys.md)),
   і гард цьому не заважає;
 - `F3`/`F7`/`F11` інертні — жодного тихого перемикання режиму чи повноекранки;
 - контекстне меню поза списками (миша, клавіша Applications, `Shift+F10`) —
@@ -150,13 +152,13 @@ Reload (тобто ще один вхід у ту саму пастку) і кр
     автотестом, а не лише ручним прогоном.
 24. Як розробник, я хочу заміряти на прогоні **фактичну** поведінку `F3`/`F7`/`F11`
     у WebView2, щоб знати, чи вони справді зайняті — і повернути висновок у
-    пул вільних F-клавіш [hotkeys-expansion](p2-hotkeys-expansion.md).
+    пул вільних F-клавіш [hotkeys-expansion](../p2-hotkeys-expansion.md).
 
 ## Прийняті рішення (grilling 2026-08-07)
 
 ### 1. `preventDefault()` — так, `stopPropagation()` — ніколи
 
-Сусідній [useGlobalShortcuts.ts](../../src/hooks/useGlobalShortcuts.ts) робить
+Сусідній [useGlobalShortcuts.ts](../../../src/hooks/useGlobalShortcuts.ts) робить
 обидва виклики; скопіювати це сюди — тиха катастрофа. Слухач висить на `window`
 у capture-фазі, тобто раніше за все інше: `stopPropagation()` там означає, що
 подія не дійде ні до React-дерева, ні до `KeyRecorder`. Наслідок — майбутній
@@ -170,10 +172,10 @@ Reload (тобто ще один вхід у ту саму пастку) і кр
 
 Попередня редакція відхиляла `AreBrowserAcceleratorKeysEnabled = false` тим, що
 той «вбиває Ctrl+Plus/Minus зум — важливий для слабозорих». Аргумент хибний:
-у [tauri.conf.json](../../src-tauri/tauri.conf.json) опції `zoomHotkeysEnabled`
+у [tauri.conf.json](../../../src-tauri/tauri.conf.json) опції `zoomHotkeysEnabled`
 немає, а її дефолт у Tauri v2 — `false`, тобто зуму в застосунку зараз немає
 взагалі. Захищати нічого. Вимикач відхилено з інших причин (див. §7), а сам
-зум винесено в [webview-zoom-hotkeys](p2-webview-zoom-hotkeys.md).
+зум винесено в [webview-zoom-hotkeys](../p2-webview-zoom-hotkeys.md).
 
 Практичний наслідок для гарду: `Ctrl+Plus`/`Ctrl+Minus`/`Ctrl+0` у перелік
 **не** додавати — щоб після вмикання зуму цей гард не довелося переробляти.
@@ -209,7 +211,7 @@ F5, ні контекстного меню: їх відкриває Rust (§9).
 
 Справжній повноекранний режим — це не рядок у гарді, а свій стан, оголошення,
 повернення фокуса й пункт у F1-довідці. Винесено в
-[window-fullscreen-f11](p3-window-fullscreen-f11.md) (P3, unscheduled).
+[window-fullscreen-f11](../p3-window-fullscreen-f11.md) (P3, unscheduled).
 
 ### 6. Контекстне меню зникає й з клавіатури — це задокументувати
 
@@ -217,7 +219,7 @@ F5, ні контекстного меню: їх відкриває Rust (§9).
 `Shift+F10`, тобто основний спосіб незрячого користувача відкрити меню.
 Document-level `preventDefault()` вимикає обидва входи скрізь, де немає власного
 меню рядка (всередині списків усе гаразд —
-[useCompositeList.ts](../../src/hooks/useCompositeList.ts) обробляє всі три
+[useCompositeList.ts](../../../src/hooks/useCompositeList.ts) обробляє всі три
 жести). Подавляємо беззастережно поза editable — це передбачуваніше за гілку
 «є виділення → лишаємо нативне», а копіювання покриває `Ctrl+C`. Натомість
 наслідок фіксуємо в `docs/keyboard-shortcuts.md`, щоб тиша була
@@ -234,7 +236,7 @@ Document-level `preventDefault()` вимикає обидва входи скр�
 
 ### 8. Перелік акселераторів: матч по `e.code`, модифікатори — мінімально суворі
 
-Конвенція №1 [keyboard-shortcuts.md](../keyboard-shortcuts.md): метчити фізичну
+Конвенція №1 [keyboard-shortcuts.md](../../keyboard-shortcuts.md): метчити фізичну
 клавішу через `e.code`, бо на кирилічній розкладці `e.key` для `R` повертає «к».
 
 | Що гасимо | `e.code` | Модифікатори |
@@ -254,7 +256,7 @@ Document-level `preventDefault()` вимикає обидва входи скр�
 
 **Свідомо поза переліком:** `Ctrl+Plus`/`Ctrl+Minus`/`Ctrl+0` (§2), `Alt+F4`
 (закриття вікна — системна клавіша, не браузерний акселератор), `Ctrl+F`
-(споживає Tier-2 диспетчер, [hotkeys-expansion](p2-hotkeys-expansion.md)),
+(споживає Tier-2 диспетчер, [hotkeys-expansion](../p2-hotkeys-expansion.md)),
 `F12` (у прод-збірці Tauri мертвий без `devtools`-feature), `Ctrl+P`/`Ctrl+S`
 (шкідливого ефекту, як у reload/fullscreen, не мають).
 
@@ -269,14 +271,14 @@ keydown у фазі спливання). Capture тут безпечний **с�
 авто-повтор, щоб toggle не «блимав», а тут кожна повторна подія несе власний
 дефолт, і пропустити її означає перезавантажити webview на утримуваній `F5`.
 
-Гард **не** гейтиться на `isInModal` ([shortcutGuard.ts](../../src/lib/shortcutGuard.ts)) —
+Гард **не** гейтиться на `isInModal` ([shortcutGuard.ts](../../../src/lib/shortcutGuard.ts)) —
 на відміну від Tier-2 диспетчера: reload з відкритого діалогу так само руйнівний.
 
 ### 10. Carve-out контекстного меню — через наявний `isTextEntryTarget`
 
 Нативне меню лишаємо там і тільки там, де в ньому є сенс — у текстовому полі
 (вставка/копіювання). Предикат уже існує: `isTextEntryTarget` у
-[shortcutGuard.ts](../../src/lib/shortcutGuard.ts) (allowlist типів `<input>`,
+[shortcutGuard.ts](../../../src/lib/shortcutGuard.ts) (allowlist типів `<input>`,
 `<textarea>`, `contentEditable`) — переюзати його, а не заводити другий словник.
 Перевіряти треба **ціль події** (`e.target`) з підйомом до найближчого предка
 (усередині `contenteditable` ціль — вкладений елемент), а не `document.activeElement`.
@@ -307,16 +309,16 @@ export function useWebviewGuard(): void;
 
 Хук без аргументів і без повернення — уся конфігурація в предикатах; викликається
 з `AppContent` рядком нижче за `useGlobalShortcuts()`. Реєстр `SHORTCUTS`
-([shortcuts.ts](../../src/lib/shortcuts.ts)) **не змінюється**: погашені клавіші
+([shortcuts.ts](../../../src/lib/shortcuts.ts)) **не змінюється**: погашені клавіші
 не стають `reserved` — інакше KeyRecorder перестав би приймати `F5`/`F3`/`F7`/`F11`
 під OS-хоткей (історія 11), а `F5`/`Shift+F5` заводить у реєстр уже свій запис
-[streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md).
+[streams-transfer-hotkeys](../p2-streams-transfer-hotkeys.md).
 
 ### 12. Devtools у debug відкриваються після `show()`, до `set_focus()`
 
 Контекстне меню й `F12` більше не входи в devtools, тож debug-збірка відкриває
 їх сама — `window.open_devtools()` під `#[cfg(debug_assertions)]` у
-[lib.rs](../../src-tauri/src/lib.rs).
+[lib.rs](../../../src-tauri/src/lib.rs).
 
 Місце виклику критичне: у наявному блоці `setup` порядок `show()` → `set_focus()`
 охороняє інваріант «webview ініціалізується, поки вікно OS-foreground» — без
@@ -336,7 +338,7 @@ export function useWebviewGuard(): void;
 доводячи ні capture-фази, ні відсутності `stopPropagation`, ні carve-out'а —
 тобто рівно тих трьох речей, заради яких запис існує.
 
-**Прецедент** — [useGlobalShortcuts.test.tsx](../../src/hooks/useGlobalShortcuts.test.tsx):
+**Прецедент** — [useGlobalShortcuts.test.tsx](../../../src/hooks/useGlobalShortcuts.test.tsx):
 той самий патерн (компонент-харнес, що викликає хук; `fireEvent` по вузлу в
 дереві; допоміжний компонент, що ковтає bubbling, — для доведення capture-фази).
 
@@ -372,10 +374,10 @@ debug-збірці й перевіряється тим, що debug-запуск
 - **Решта акселераторів** — `Ctrl+P` (друк), `Ctrl+S`, `Ctrl+F`, `F12`: §8.
 - **Системний вимикач WebView2** `AreBrowserAcceleratorKeysEnabled`: §7.
 - **Зум** `Ctrl+Plus`/`Ctrl+Minus`/`Ctrl+0` — окремий запис
-  [webview-zoom-hotkeys](p2-webview-zoom-hotkeys.md) (§2).
+  [webview-zoom-hotkeys](../p2-webview-zoom-hotkeys.md) (§2).
 - **Справжній fullscreen на F11** — окремий запис
-  [window-fullscreen-f11](p3-window-fullscreen-f11.md) (§5).
-- **`F5` = «Копіювати в профіль»** — [streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md);
+  [window-fullscreen-f11](../p3-window-fullscreen-f11.md) (§5).
+- **`F5` = «Копіювати в профіль»** — [streams-transfer-hotkeys](../p2-streams-transfer-hotkeys.md);
   цей запис лише не заважає йому.
 - **Власне контекстне меню поза списками** (застосункова заміна нативного):
   не робимо — поза списками контекстних дій немає.
@@ -404,19 +406,16 @@ debug-збірці й перевіряється тим, що debug-запуск
       **і** про відсутність контекстного меню поза списками — ні мишею, ні
       Applications/Shift+F10 (§6)
 - [x] `pnpm test` без регресій
-- [x] Чекліст [`docs/testing/nvda-webview-reload-guard.md`](../testing/nvda-webview-reload-guard.md)
-      створено за скілем `writing-nvda-checklists`
-- [ ] **NVDA-прогін на прод-збірці** (`pnpm tauri build`, не `dev`) за чеклістом
+- [x] Чекліст `docs/testing/nvda-webview-reload-guard.md` створено за скілем
+      `writing-nvda-checklists`
+- [x] **NVDA-прогін на прод-збірці** (`pnpm tauri build`, не `dev`) за чеклістом
       `docs/testing/nvda-webview-reload-guard.md`: покнопково F5 / Ctrl+R /
       Shift+F5 / Ctrl+F5 / F3 / F7 / F11 + правий клік і Applications/Shift+F10
-      поза списками. Без нього запис не переїжджає в `done/`, а
-      [streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md) не розблоковується.
-      Прогін проводиться однією сесією прод-збірки разом із чеклістом
-      streams-transfer-hotkeys (цей — першим), але приймається **окремим**
-      комітом: якщо той прогін упаде, цей запис не має застрягти разом із ним
-- [ ] Прогін заміряє й **фактичну** поведінку `F3`/`F7`/`F11` у WebView2; якщо
-      котрась інертна — повернути висновок у нотатку про вільні F-клавіші
-      [hotkeys-expansion](p2-hotkeys-expansion.md)
+      поза списками. Проведено 2026-08-07, усі 16 сценаріїв пройдено, зауважень
+      немає
+- [x] Прогін заміряв **фактичну** поведінку `F3`/`F7`/`F11` у WebView2: F3/F7
+      інертні (повернуто в пул вільних F-клавіш —
+      [hotkeys-expansion](../p2-hotkeys-expansion.md)), F11 зайнятий (fullscreen)
 
 ## Додаткові нотатки
 
@@ -425,7 +424,7 @@ debug-збірці й перевіряється тим, що debug-запуск
   проєкті немає). Це усвідомлена вартість одного шва: регресію ловить прогін
   прод-збірки, і саме тому §3 забороняє DEV-гейт, який відклав би виявлення ще далі.
 - **Дублювання зони відповідальності — навмисне.** Крок «шов із гардом» у
-  чеклисті [streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md) (A15)
+  чеклисті [streams-transfer-hotkeys](../p2-streams-transfer-hotkeys.md) (A15)
   перевіряє той самий інваріант `preventDefault`-only з іншого боку: одна дія
   (`F5` на рядку) мусить і відкрити діалог, і не перезавантажити webview.
   Поодинці жоден із двох чеклистів регресію не спіймає.
@@ -439,17 +438,17 @@ debug-збірці й перевіряється тим, що debug-запуск
 
 ## Документи
 
-- Дослідження-джерело: [p2-streams-transfer-hotkeys.md](p2-streams-transfer-hotkeys.md);
-  друга хвиля (F3/F7/F11, Ctrl+F у диспетчері): [p2-hotkeys-expansion.md](p2-hotkeys-expansion.md)
-- Відгалуження цього запису: [p2-webview-zoom-hotkeys.md](p2-webview-zoom-hotkeys.md) (§2),
-  [p3-window-fullscreen-f11.md](p3-window-fullscreen-f11.md) (§5)
+- Дослідження-джерело: [p2-streams-transfer-hotkeys.md](../p2-streams-transfer-hotkeys.md);
+  друга хвиля (F3/F7/F11, Ctrl+F у диспетчері): [p2-hotkeys-expansion.md](../p2-hotkeys-expansion.md)
+- Відгалуження цього запису: [p2-webview-zoom-hotkeys.md](../p2-webview-zoom-hotkeys.md) (§2),
+  [p3-window-fullscreen-f11.md](../p3-window-fullscreen-f11.md) (§5)
 - Код: `src/App.tsx`, `src/hooks/useGlobalShortcuts.ts` (сусідній прецедент
   capture-listener'а, **не редагується**), `src/hooks/useGlobalShortcuts.test.tsx`
   (прецедент тесту-харнеса), `src/lib/shortcutGuard.ts` (`isTextEntryTarget` —
   переюзати, §10; `isInModal` — тут НЕ вживати, §9),
   `src/hooks/useCompositeList.ts` (меню рядка), `src-tauri/src/lib.rs`
   (блок `setup`: `show()` → devtools → `set_focus()`, §12)
-- Реєстр: [docs/keyboard-shortcuts.md](../keyboard-shortcuts.md) (конвенція №1 —
+- Реєстр: [docs/keyboard-shortcuts.md](../../keyboard-shortcuts.md) (конвенція №1 —
   `e.code`; сюди ж іде примітка про подавлені акселератори)
 - [Tauri discussion #3844 — How to disable pressing F5](https://github.com/tauri-apps/tauri/discussions/3844)
   (підтверджено мейнтейнером: `addEventListener` + `preventDefault`; меню — окремо)

@@ -24,8 +24,8 @@ touches:
 gates: [pnpm test, pnpm vite:build]
 notes:
   - "Модель — TapinRadio (еталонний доступний радіо-рекордер, розсилка pc-audio): голі F-клавіші + Ctrl+літери; F9-анонс — запозичення TapinRadio F11 (Announce currently playing song), F11 у WebView2 зайнятий fullscreen"
-  - "Вільні голі F-клавіші у webview: F4, F8, F9 (F3=find next, F7=caret browsing, F11=fullscreen, F12=DevTools — акселератори WebView2; F10 — семантика меню; NVDA голі F-клавіші не біндить)"
-  - "Пул F3/F7 не заміряний: ролі взято зі списку акселераторів Chromium, а WebView2 — не Edge (панелі пошуку немає, caret browsing може бути не реалізований). Прогін webview-reload-guard заміряє їх фактично; якщо інертні — пул розширюється до п'яти клавіш"
+  - "Вільні голі F-клавіші у webview: F3, F4, F7, F8, F9 (F11=fullscreen, F12=DevTools — акселератори WebView2; F10 — семантика меню; NVDA голі F-клавіші не біндить)"
+  - "Пул F3/F7 заміряно 2026-08-07 (NVDA-прогін webview-reload-guard, сценарій 15, Microsoft Edge — той самий рушій, що й WebView2): обидві інертні, приєднані до пулу вище. F11 підтверджено зайнятий (fullscreen спрацьовує) — лишається виключеним"
   - "Ctrl+F матчиться ГЛОБАЛЬНО (no-op на секціях без пошуку) — щоб дефолтний Find bar WebView2 ніколи не відкривався; find-in-page — скасовуваний акселератор Chromium"
   - "Ctrl+M НЕ закриває відкладений Tier-1 toggle_mute (Ctrl+Shift+U, OS-global): той потребує міст Rust→webview і лишається окремою задачею; Ctrl+M — webview-scoped, працює лише з фокусом у вікні"
 ---
@@ -118,10 +118,10 @@ F6-ходити в зону плеєра і назад. Зміст повідо�
   browse mode; заборонено інваріантом реєстру.
 - **F3/F7/F11/F12** — акселератори WebView2 (find next / caret browsing /
   fullscreen / DevTools); подавлення F3/F7/F11 — скоуп
-  [webview-reload-guard](p2-webview-reload-guard.md). Ролі F3/F7 узято зі списку
-  Chromium і **не заміряні** в самому WebView2 — прогін того запису має
-  повернути сюди факт; якщо котрась інертна, вона повертається у пул вільних
-  голих F-клавіш (§ нотатки front-matter).
+  [webview-reload-guard](done/p2-webview-reload-guard.md). NVDA-прогін того
+  запису (2026-08-07, сценарій 15, Edge) підтвердив: F3/F7 інертні — у пулі
+  вільних голих F-клавіш вище; F11 зайнятий (fullscreen спрацьовує) —
+  лишається виключеним.
 
 ## Документи
 
@@ -131,7 +131,7 @@ F6-ходити в зону плеєра і назад. Зміст повідо�
   (`resolveKeyAction`, прецедент F2), `src/stores/player.ts`
   (`$playerStatus`/`$muteState`), `src/components/common/LiveAnnouncer` /
   `useAnnounce` (F9)
-- Суміжні: [p2-webview-reload-guard.md](p2-webview-reload-guard.md) (F3/F7/F11),
+- Суміжні: [p2-webview-reload-guard.md](done/p2-webview-reload-guard.md) (F3/F7/F11),
   [p1-open-song-with-default-app.md](p1-open-song-with-default-app.md)
   (координація aria-keyshortcuts Songs),
   [p3-screen-reader-direct-speech.md](p3-screen-reader-direct-speech.md) (F9 —

@@ -9,7 +9,7 @@ kind: feature
 target: unscheduled
 updated: 2026-08-07
 a11y: true
-depends_on: [webview-reload-guard]
+depends_on: []
 blocks: []
 touches:
   - src/lib/webviewAccelerators.ts
@@ -25,7 +25,7 @@ notes:
 # F11 — справжній повноекранний режим вікна замість подавлення
 
 > **Контекст:** ідея, рішення не прийнято. Відгалуження
-> [webview-reload-guard](p2-webview-reload-guard.md), який поки що просто гасить
+> [webview-reload-guard](done/p2-webview-reload-guard.md), який поки що просто гасить
 > `F11` разом з рештою акселераторів WebView2. Брати лише за явним запитом —
 > потреби від користувача ще не було.
 
@@ -73,7 +73,7 @@ _Формулювати після відповіді на «Відкриті п
 
 ## Документи
 
-- Джерело: [p2-webview-reload-guard.md](p2-webview-reload-guard.md) («Прийняті
+- Джерело: [p2-webview-reload-guard.md](done/p2-webview-reload-guard.md) («Прийняті
   рішення» §5)
 - Суміжний: [p2-webview-zoom-hotkeys.md](p2-webview-zoom-hotkeys.md) (та сама
   аудиторія — слабозорі)
