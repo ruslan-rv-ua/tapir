@@ -3,11 +3,12 @@ slug: full-edit-stream
 title: "Редагування URL потоку"
 priority: P1
 type: planned
-status: ready
+status: done
 effort: M
 kind: feature
 target: 0.1.0
 updated: 2026-08-07
+completed: 2026-08-07
 a11y: true
 depends_on: []
 blocks: []
@@ -37,11 +38,11 @@ notes:
 
 Сьогодні «редагування» потоку = **тільки перейменування**. І UI, і backend
 обмежені назвою: поле URL у edit-режимі приховане
-([AddStreamDialog.tsx:180](../../src/components/streams/AddStreamDialog.tsx#L180)),
+([AddStreamDialog.tsx:180](../../../src/components/streams/AddStreamDialog.tsx#L180)),
 `update_stream` приймає лише `name`
-([stream_commands.rs:394-417](../../src-tauri/src/commands/stream_commands.rs#L394-L417)),
+([stream_commands.rs:394-417](../../../src-tauri/src/commands/stream_commands.rs#L394-L417)),
 і `tauri.updateStream` пробрасує теж лише `name`
-([tauri.ts:196](../../src/lib/tauri.ts#L196)).
+([tauri.ts:196](../../../src/lib/tauri.ts#L196)).
 
 **Реальна потреба:** станція переїхала на новий URL → зараз єдиний шлях це
 видалити потік і додати наново, втративши позицію в списку, `id`, `addedAt` і
@@ -59,8 +60,8 @@ Auth і per-stream ignorelist свідомо тут **не** реалізуют�
 `username`/`password` у `StreamInfo` — мертвий скаффолд: їх ніхто не пише
 (немає UI), ніхто не читає при підключенні (у `src-tauri/src` немає жодного
 `basic_auth`/`Authorization`), а DPAPI-шифрування з
-[data-models.md](../data-models.md) у коді відсутнє. Per-stream `ignorelist`
-навпаки живий — [manager.rs:911-919](../../src-tauri/src/stream/manager.rs#L911-L919)
+[data-models.md](../../data-models.md) у коді відсутнє. Per-stream `ignorelist`
+навпаки живий — [manager.rs:911-919](../../../src-tauri/src/stream/manager.rs#L911-L919)
 зливає його з профільним у `matcher::check_track` — але наповнити його нічим,
 бо всі IPC-обгортки (`addToIgnorelist` тощо) працюють із **профільним** списком.
 Обидва — окремі фічі в інших шарах, не «ще одне поле в діалозі».
@@ -68,7 +69,7 @@ Auth і per-stream ignorelist свідомо тут **не** реалізуют�
 ### 2. Guard — поле URL блокується під час запису
 
 Реюз наявного предиката
-[`move_blocked_by_state`](../../src-tauri/src/commands/stream_commands.rs#L35-L40)
+[`move_blocked_by_state`](../../../src-tauri/src/commands/stream_commands.rs#L35-L40)
 (`Recording` / `Connecting` / `Reconnecting`; `Error` **не** блокує — потік у
 циклі реконектів саме той, кому зміна адреси найпотрібніша). Відтворення не
 блокує: у цьому предикаті вже зафіксовано рішення R4 «playback is not a
@@ -80,7 +81,7 @@ recording state», і другого, ширшого визначення «ак
 `probeStream` (недосяжність → попередження, другий сабміт зберігає) →
 `checkStreamConflicts` одразу на `url` **і** `name` з `excludeId` →
 `resolve_playlist_url` на бекенді. Бекенд для дубль-перевірки міняти не треба:
-[`find_conflicts`](../../src-tauri/src/commands/stream_commands.rs#L234-L255)
+[`find_conflicts`](../../../src-tauri/src/commands/stream_commands.rs#L234-L255)
 уже приймає url + name + exclude_id разом.
 
 Якщо URL **не** змінювали — жодної нової перевірки: просте перейменування
@@ -93,19 +94,19 @@ recording state», і другого, ширшого визначення «ак
 не рядок у списку: після переїзду старе «AAC 64k» і стара офіційна назва
 брешуть, і NVDA читає брехню. `None` — чесний проміжний стан, який перше ж
 підключення заповнить
-([manager.rs:640-689](../../src-tauri/src/stream/manager.rs#L640-L689)
+([manager.rs:640-689](../../../src-tauri/src/stream/manager.rs#L640-L689)
 перезаписує ці поля з ICY-заголовків).
 
 ### 5. Потік, чиє ім'я дорівнює URL
 
-[`icy_rename`](../../src-tauri/src/naming.rs#L120-L129) вважає «людського імені
+[`icy_rename`](../../../src-tauri/src/naming.rs#L120-L129) вважає «людського імені
 ще нема» саме за рівністю `current == url` — так `add_stream` позначає потік,
 який користувач не назвав і probe не впізнав. Змінити URL такому потоку,
 не чіпаючи ім'я, означало б **назавжди** зламати цю рівність: ім'я застигло б
 мертвою адресою, бо автоперейменування при підключенні вже ніколи не спрацює.
 
 Тому: коли ім'я дорівнює старому URL, застосовуємо ту саму сходинку, що й
-[`build_added_stream`](../../src-tauri/src/commands/stream_commands.rs#L184-L216)
+[`build_added_stream`](../../../src-tauri/src/commands/stream_commands.rs#L184-L216)
 — `icyName` із probe через `naming::disambiguate`, інакше новий URL. Ім'я,
 вписане користувачем, не чіпається ніколи (крім `trim`).
 
@@ -135,8 +136,8 @@ recording state», і другого, ширшого визначення «ак
 
 | Куди | Чому окремо |
 |---|---|
-| [stream-auth](p2-stream-auth.md) | Потрібні DPAPI + передача кредів у HTTP-клієнт запису й плеєра; поля в UI без цього нічого не роблять |
-| [per-stream-ignorelist-ui](p2-per-stream-ignorelist-ui.md) | Логіка вже жива, бракує редактора списку — це UI-компонент, а не текстове поле |
+| [stream-auth](../p2-stream-auth.md) | Потрібні DPAPI + передача кредів у HTTP-клієнт запису й плеєра; поля в UI без цього нічого не роблять |
+| [per-stream-ignorelist-ui](../p2-per-stream-ignorelist-ui.md) | Логіка вже жива, бракує редактора списку — це UI-компонент, а не текстове поле |
 
 ## Критерії готовності
 
@@ -173,22 +174,22 @@ recording state», і другого, ширшого визначення «ак
 
 **Документи й гейти**
 
-- [x] [architecture.md](../architecture.md) — таблиця Streams-команд звірена
+- [x] [architecture.md](../../architecture.md) — таблиця Streams-команд звірена
       з новою сигнатурою `update_stream`
-- [x] Чекліст [`docs/testing/nvda-full-edit-stream.md`](../testing/nvda-full-edit-stream.md)
-      створено за скілем `writing-nvda-checklists`
-- [ ] NVDA-прогін пройдено
+- [x] Чекліст `docs/testing/nvda-full-edit-stream.md` створено за скілем
+      `writing-nvda-checklists` (видалено на прийманні)
+- [x] NVDA-прогін пройдено (2026-08-07, усі 9 сценаріїв, зауважень немає)
 - [x] `cargo test`, `cargo clippy`, `pnpm test`, `pnpm vite:build`
 
 ## Документи
 
 - Походить із: rename-only F2-беклог (реалізовано в `ee9a704`)
-- Код: [stream_commands.rs](../../src-tauri/src/commands/stream_commands.rs)
+- Код: [stream_commands.rs](../../../src-tauri/src/commands/stream_commands.rs)
   (`update_stream`, `build_added_stream`, `find_conflicts`, `move_blocked_by_state`),
-  [naming.rs](../../src-tauri/src/naming.rs) (`icy_rename`, `disambiguate`),
-  [tauri.ts](../../src/lib/tauri.ts) (`updateStream`),
-  [AddStreamDialog.tsx](../../src/components/streams/AddStreamDialog.tsx)
+  [naming.rs](../../../src-tauri/src/naming.rs) (`icy_rename`, `disambiguate`),
+  [tauri.ts](../../../src/lib/tauri.ts) (`updateStream`),
+  [AddStreamDialog.tsx](../../../src/components/streams/AddStreamDialog.tsx)
 - Прецедент іменування й probe-потоку:
-  [stream-name-disambiguation](done/p0-stream-name-disambiguation.md) —
+  [stream-name-disambiguation](p0-stream-name-disambiguation.md) —
   звідти ж пастка з фокусом після async-попередження (`90dc66e`)
-- [architecture.md](../architecture.md) — таблиця Streams-команд
+- [architecture.md](../../architecture.md) — таблиця Streams-команд

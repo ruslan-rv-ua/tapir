@@ -30,7 +30,7 @@ notes:
 > **Контекст:** `type: research` — підхід не обрано. Поля auth існують у моделі
 > даних, але не робить нічого **жоден** із трьох потрібних шарів. Запис
 > заведено, щоб знання не зникло разом зі звуженням
-> [full-edit-stream](p1-full-edit-stream.md); брати лише за реальною потребою
+> [full-edit-stream](done/p1-full-edit-stream.md); брати лише за реальною потребою
 > (станція з платним/приватним mountpoint).
 
 ## Опис
@@ -58,7 +58,7 @@ notes:
 3. **UI.** Полів немає ні в режимі додавання, ні в режимі редагування
    `AddStreamDialog`.
 
-Через це auth і винесено з [full-edit-stream](p1-full-edit-stream.md): показати
+Через це auth і винесено з [full-edit-stream](done/p1-full-edit-stream.md): показати
 два поля в діалозі — найменша частина роботи, і без інших двох шарів вони були б
 декорацією.
 
@@ -92,7 +92,7 @@ notes:
 
 ## Документи
 
-- Джерело: grooming [full-edit-stream](p1-full-edit-stream.md), 2026-08-07
+- Джерело: grooming [full-edit-stream](done/p1-full-edit-stream.md), 2026-08-07
 - Код: [profile.rs](../../src-tauri/src/profile.rs) (`StreamInfo`, `export_json`),
   [connection.rs](../../src-tauri/src/stream/connection.rs) (`connect`),
   [stream_io_commands.rs](../../src-tauri/src/commands/stream_io_commands.rs) (`probe_once`),

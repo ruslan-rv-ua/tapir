@@ -43,7 +43,7 @@ per-stream список і передає його в `matcher::check_track` **�
 — адресують **профільний** `Profile.ignorelist`. Єдиний спосіб покласти щось у
 per-stream список сьогодні — редагувати `profile.json` руками.
 
-Це і є причина винесення з [full-edit-stream](p1-full-edit-stream.md): робота
+Це і є причина винесення з [full-edit-stream](done/p1-full-edit-stream.md): робота
 тут не «показати поле», а «зробити редактор списку» — окремий компонент із
 власною клавіатурною моделлю й власним NVDA-прогоном.
 
@@ -60,7 +60,7 @@ per-stream список сьогодні — редагувати `profile.json`
   чи дублювати? Виносити — якщо (б)/(в); при (а) форма інша.
 - **Форма IPC.** Окремі `add_to_stream_ignorelist` / `remove_from_...` за
   зразком профільних, чи один запис усього списку через розширений
-  `update_stream` (той після [full-edit-stream](p1-full-edit-stream.md) уже
+  `update_stream` (той після [full-edit-stream](done/p1-full-edit-stream.md) уже
   прийматиме опційні поля)? Другий шлях дешевший, але робить збереження
   списку атомарним лише разом із рештою форми.
 - **Видимість.** Чи показувати в рядку потоку, що в нього є власний ігнор-лист
@@ -80,7 +80,7 @@ per-stream список сьогодні — редагувати `profile.json`
 
 ## Документи
 
-- Джерело: grooming [full-edit-stream](p1-full-edit-stream.md), 2026-08-07
+- Джерело: grooming [full-edit-stream](done/p1-full-edit-stream.md), 2026-08-07
 - Код: [manager.rs](../../src-tauri/src/stream/manager.rs) (споживач списку),
   [tauri.ts](../../src/lib/tauri.ts) (профільні ignorelist-обгортки — взірець),
   [WishlistPanel.tsx](../../src/components/wishlist/WishlistPanel.tsx) (`PatternList`)
