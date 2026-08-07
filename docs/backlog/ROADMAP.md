@@ -17,12 +17,11 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [help-content-polish](p1-help-content-polish.md) | P1 | planned | ready | M | — | — |
 | [webview-reload-guard](p2-webview-reload-guard.md) | P2 | planned | ready | M | — | [streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md), [window-fullscreen-f11](p3-window-fullscreen-f11.md) |
-| [webview-zoom-hotkeys](p2-webview-zoom-hotkeys.md) | P2 | planned | ready | S | — | — (відгалуження webview-reload-guard: зуму в застосунку зараз немає) |
 | [streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md) | P2 | planned | ready | M | [webview-reload-guard](p2-webview-reload-guard.md) | [list-key-modifier-guards](p3-list-key-modifier-guards.md) |
 | [hotkeys-expansion](p2-hotkeys-expansion.md) | P2 | planned | ready | M | — | — |
 | [import-duplicate-metadata-update](p3-import-duplicate-metadata-update.md) | P3 | planned | ready | M | — | — |
+| [help-content-polish](p1-help-content-polish.md) | P1 | planned | ready | M | — | — |
 
 ## v0.2.0
 
@@ -41,6 +40,7 @@ semver; `unscheduled` — наприкінці.
 | [focus-active-item-on-playback-start](p1-focus-active-item-on-playback-start.md) | P1 | idea | draft | S | — | — |
 | [wishlist-conditions](p1-wishlist-conditions.md) | P1 | idea | draft | L | — | — |
 | [browser-filter-cursor-reset](p2-browser-filter-cursor-reset.md) | P2 | planned | ready | S | — | — |
+| [webview-zoom-hotkeys](p2-webview-zoom-hotkeys.md) | P2 | planned | ready | S | — | — (відгалуження webview-reload-guard: зуму в застосунку зараз немає) |
 | [sleep-timer](p2-sleep-timer.md) | P2 | idea | draft | S | — | — |
 | [pause-recording](p2-pause-recording.md) | P2 | idea | draft | M | — | — |
 | [focus-on-screen-open-option](p2-focus-on-screen-open-option.md) | P2 | idea | draft | S | — | — |
