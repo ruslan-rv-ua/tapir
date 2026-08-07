@@ -87,7 +87,7 @@ export function KeyRecorder({ label, value, onChange, onValidate }: Props) {
   };
 
   return (
-    <div role="group" aria-label={label} className="flex items-center gap-3">
+    <div className="flex items-center gap-3">
       <Label className="w-48 text-sm text-slate-300">{label}</Label>
       <Button
         aria-label={

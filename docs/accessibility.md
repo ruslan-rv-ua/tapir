@@ -767,10 +767,15 @@ SettingsDialog (role="dialog", aria-label="Налаштування")
 
 ### 9.2. KeyRecorder (hotkey input)
 
-Кастомний компонент для запису комбінації клавіш:
+Кастомний компонент для запису комбінації клавіш. Рядок — звичайний `<div>`
+без ARIA-семантики: `<Label>` лише візуальний, ім'я дії озвучується один раз —
+як частина `aria-label` кнопки запису. Не обгортайте рядок у
+`role="group" aria-label={actionName}` — тоді NVDA озвучує назву дії двічі
+(і на вході в групу, і на самій кнопці), бо `aria-label` кнопки вже починається
+з `actionName`.
 
 ```tsx
-<div role="group" aria-label={m.hotkeyFor(actionName)}>
+<div>
   <Label>{actionName}</Label>
   <Button
     aria-label={`${actionName}: ${currentHotkey}. ${m.pressToChange()}`}
