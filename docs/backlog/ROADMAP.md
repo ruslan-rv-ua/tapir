@@ -17,11 +17,6 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [profile-settings-silent-numeric-save](p1-profile-settings-silent-numeric-save.md) | P1 | planned | ready | S | [profile-scoped-settings](done/p0-profile-scoped-settings.md) | — (знахідка NVDA-прогону, сценарій 4; причина — спільний `LiveAnnouncer`, чекає прогону) |
-| [profile-sort-state-after-switch](p1-profile-sort-state-after-switch.md) | P1 | research | ready | S | [profile-scoped-settings](done/p0-profile-scoped-settings.md) | — (знахідка NVDA-прогону, сценарій 8 — спершу відтворити) |
-| [profile-force-close-unreachable](p2-profile-force-close-unreachable.md) | P2 | planned | **draft** | S | [profile-scoped-settings](done/p0-profile-scoped-settings.md) | [nvda-checklist-profile-settings-fixes](p2-nvda-checklist-profile-settings-fixes.md) |
-| [nvda-checklist-profile-settings-fixes](p2-nvda-checklist-profile-settings-fixes.md) | P2 | planned | ready | S | [profile-force-close-unreachable](p2-profile-force-close-unreachable.md) | — (два дефекти самого чеклістa) |
-| [bandwidth-limit-dead-setting](p1-bandwidth-limit-dead-setting.md) | P1 | planned | ready | S | — | — (знахідка profile-scoped-settings: налаштування без реалізації) |
 | [streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md) | P2 | planned | ready | M | — (webview-reload-guard виконано) | [list-key-modifier-guards](p3-list-key-modifier-guards.md) |
 | [hotkeys-expansion](p2-hotkeys-expansion.md) | P2 | planned | ready | M | — | — |
 | [import-duplicate-metadata-update](p3-import-duplicate-metadata-update.md) | P3 | planned | ready | M | — | — |
@@ -42,6 +37,7 @@ semver; `unscheduled` — наприкінці.
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
 | [post-processing](p1-post-processing.md) | P1 | planned | ready | M | [profile-scoped-settings](done/p0-profile-scoped-settings.md) | — (оживляє вкладку-заглушку в діалозі профілю) |
+| [bandwidth-limit-dead-setting](p1-bandwidth-limit-dead-setting.md) | P1 | planned | ready | S | — | — (знахідка profile-scoped-settings: налаштування без реалізації) |
 | [focus-active-item-on-playback-start](p1-focus-active-item-on-playback-start.md) | P1 | idea | draft | S | — | — |
 | [wishlist-conditions](p1-wishlist-conditions.md) | P1 | idea | draft | L | — | — |
 | [browser-filter-cursor-reset](p2-browser-filter-cursor-reset.md) | P2 | planned | ready | S | — | — |
