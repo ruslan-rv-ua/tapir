@@ -215,6 +215,10 @@ impl RecordingSettings {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UiSettings {
+    /// `String`, не enum, свідомо: невідоме значення в enum завалило б розбір
+    /// **усього** профілю, а не одного поля. Фронт звужує його до
+    /// `"name" | "added"` і має фолбек на `"name"` — та сама терпимість, що й у
+    /// `deserialize_log_level`, лише дешевша.
     #[serde(default = "default_stream_sort")]
     pub stream_sort: String,
     #[serde(default = "default_true")]
@@ -920,6 +924,16 @@ mod tests {
         });
         assert_eq!(p.recording.schedule_pad_before_min, 30);
         assert_eq!(p.recording.schedule_pad_after_min, 60);
+    }
+
+    #[test]
+    fn load_nonexistent_is_not_found() {
+        // Це і є правило «команда не створює профіль, якого немає»:
+        // `update_profile_settings` не має власної перевірки — воно успадковує
+        // її від `Profile::load`. Дебаунс автозбереження 300 мс робить вікно
+        // «видалив профіль → відкладений патч дописався на диск» реальним.
+        let err = Profile::load("__nonexistent_profile_xyz__").unwrap_err();
+        assert!(matches!(err, RadioError::NotFound(_)), "got: {err}");
     }
 
     #[test]

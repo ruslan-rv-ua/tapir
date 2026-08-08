@@ -74,7 +74,7 @@ describe("SettingsDialog — вертикальна бічна панель вк
     expect(selected()).toBe(m.settings_tab_general());
 
     await userEvent.keyboard("{ArrowDown}");
-    expect(selected()).toBe(m.settings_tab_playback());
+    expect(selected()).toBe(m.settings_tab_audio());
 
     await userEvent.keyboard("{ArrowUp}");
     expect(selected()).toBe(m.settings_tab_general());
@@ -83,7 +83,7 @@ describe("SettingsDialog — вертикальна бічна панель вк
     // orientation-guard у getKeyLeftOf/getKeyRightOf). Це страховка для NVDA,
     // який не озвучує aria-orientation — див. p2-settings-sidebar-tabs.
     await userEvent.keyboard("{ArrowRight}");
-    expect(selected()).toBe(m.settings_tab_playback());
+    expect(selected()).toBe(m.settings_tab_audio());
 
     await userEvent.keyboard("{ArrowLeft}");
     expect(selected()).toBe(m.settings_tab_general());
@@ -92,7 +92,7 @@ describe("SettingsDialog — вертикальна бічна панель вк
   it("показує панель обраної вкладки", async () => {
     await openDialog();
     await userEvent.keyboard("{ArrowDown}");
-    expect(screen.getByRole("tab", { name: m.settings_tab_playback(), selected: true })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: m.settings_tab_audio(), selected: true })).toBeTruthy();
     expect(screen.getByRole("tabpanel")).toBeTruthy();
   });
 });
@@ -102,7 +102,7 @@ describe("SettingsDialog — межа глобальне/профільне", ()
     await openDialog();
     expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual([
       m.settings_tab_general(),
-      m.settings_tab_playback(),
+      m.settings_tab_audio(),
       m.settings_tab_hotkeys(),
     ]);
   });

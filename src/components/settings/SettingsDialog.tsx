@@ -6,9 +6,7 @@ import * as m from "../../i18n/paraglide/messages";
 import { GeneralTab } from "./GeneralTab";
 import { HotkeysTab } from "./HotkeysTab";
 import { AudioTab } from "./AudioTab";
-
-const TAB_CLS =
-  "cursor-pointer rounded border-l-2 border-transparent px-3 py-2 text-left text-sm text-slate-400 outline-none hover:text-slate-200 selected:border-blue-400 selected:text-slate-100 focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:text-[ButtonText] forced-colors:selected:border-[Highlight] forced-colors:selected:text-[HighlightText]";
+import { SETTINGS_TAB_CLS } from "./settingsTabStyle";
 
 /**
  * Application settings — **global only** (ADR 2026-08-08). Everything
@@ -56,13 +54,13 @@ export function SettingsDialog() {
               aria-label={m.settings_sections_label()}
               className="flex w-48 flex-col gap-1 overflow-y-auto border-r border-slate-700 px-2 py-4"
             >
-              <Tab id="general" autoFocus className={TAB_CLS}>
+              <Tab id="general" autoFocus className={SETTINGS_TAB_CLS}>
                 {m.settings_tab_general()}
               </Tab>
-              <Tab id="audio" className={TAB_CLS}>
-                {m.settings_tab_playback()}
+              <Tab id="audio" className={SETTINGS_TAB_CLS}>
+                {m.settings_tab_audio()}
               </Tab>
-              <Tab id="hotkeys" className={TAB_CLS}>
+              <Tab id="hotkeys" className={SETTINGS_TAB_CLS}>
                 {m.settings_tab_hotkeys()}
               </Tab>
             </TabList>

@@ -24,12 +24,10 @@ import type {
   UiSettings,
 } from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
+import { SETTINGS_TAB_CLS } from "../settings/settingsTabStyle";
 import { ProfileRecordingTab } from "./ProfileRecordingTab";
 import { ProfilePlaybackTab, type PlaybackSettings } from "./ProfilePlaybackTab";
 import { ProfileInterfaceTab } from "./ProfileInterfaceTab";
-
-const TAB_CLS =
-  "cursor-pointer rounded border-l-2 border-transparent px-3 py-2 text-left text-sm text-slate-400 outline-none hover:text-slate-200 selected:border-blue-400 selected:text-slate-100 focus-visible:ring-2 focus-visible:ring-blue-400 aria-disabled:text-slate-600 forced-colors:text-[ButtonText] forced-colors:selected:border-[Highlight] forced-colors:selected:text-[HighlightText] forced-colors:aria-disabled:text-[GrayText]";
 
 interface Props {
   /** Profile the settings apply to — may be the inactive one. */
@@ -97,43 +95,51 @@ export function ProfileSettingsDialog({
   settingsRef.current = settings;
 
   const save = useAutoSave(async () => {
-    const patch = pendingRef.current;
-    if (Object.keys(patch).length === 0) return;
+    const sending = pendingRef.current;
+    if (Object.keys(sending).length === 0) return;
     pendingRef.current = {};
-    await tauri.updateProfileSettings(name, patch);
+    try {
+      await tauri.updateProfileSettings(name, sending);
+    } catch (e) {
+      // Put the sections back so the next edit retries them — dropping them
+      // here would leave the dialog showing values the disk never got. Newer
+      // edits made during the await win. Rethrow: useAutoSave toasts the error.
+      pendingRef.current = { ...sending, ...pendingRef.current };
+      throw e;
+    }
     // The dialog gives no visual feedback, so autosave must be audible.
     announce(m.profile_settings_saved({ name }), "polite");
     const current = settingsRef.current;
     if (current && name === activeProfile) $profileSettings.set(current);
   });
 
-  function patch(next: ProfileSettingsPatch, apply: (s: ProfileSettings) => ProfileSettings) {
+  /** Apply a patch to the local copy and queue exactly those sections. */
+  function patch(next: ProfileSettingsPatch) {
     const current = settingsRef.current;
     if (!current) return;
-    const updated = apply(current);
+    const updated = { ...current, ...next };
     settingsRef.current = updated;
     setSettings(updated);
     pendingRef.current = { ...pendingRef.current, ...next };
     save();
   }
 
+  // `recording` and `ui` travel as whole sections — neither holds a
+  // backend-written field. Merge into the current section first: the tabs send
+  // only the field they changed.
   const updateRecording = (p: Partial<RecordingSettings>) => {
     const current = settingsRef.current;
-    if (!current) return;
-    const recording = { ...current.recording, ...p };
-    patch({ recording }, (s) => ({ ...s, recording }));
+    if (current) patch({ recording: { ...current.recording, ...p } });
   };
 
   const updateUi = (p: Partial<UiSettings>) => {
     const current = settingsRef.current;
-    if (!current) return;
-    const ui = { ...current.ui, ...p };
-    patch({ ui }, (s) => ({ ...s, ui }));
+    if (current) patch({ ui: { ...current.ui, ...p } });
   };
 
   // player_session travels field by field: the section also holds fields the
   // backend owns, so it can never be sent whole.
-  const updatePlayback = (p: Partial<PlaybackSettings>) => patch(p, (s) => ({ ...s, ...p }));
+  const updatePlayback = (p: Partial<PlaybackSettings>) => patch(p);
 
   // The target vanished from a refreshed list — deleted, or renamed (new name
   // present, old one gone). Both read the same way. Only possible for an
@@ -176,13 +182,13 @@ export function ProfileSettingsDialog({
               aria-label={m.settings_sections_label()}
               className="flex w-48 flex-col gap-1 overflow-y-auto border-r border-slate-700 px-2 py-4"
             >
-              <Tab id="recording" autoFocus className={TAB_CLS}>
+              <Tab id="recording" autoFocus className={SETTINGS_TAB_CLS}>
                 {m.settings_tab_recording()}
               </Tab>
-              <Tab id="playback" className={TAB_CLS}>
+              <Tab id="playback" className={SETTINGS_TAB_CLS}>
                 {m.settings_tab_playback()}
               </Tab>
-              <Tab id="interface" className={TAB_CLS}>
+              <Tab id="interface" className={SETTINGS_TAB_CLS}>
                 {m.profile_settings_tab_interface()}
               </Tab>
               {/* APG "disabled but focusable": `aria-disabled`, NOT `isDisabled` —
@@ -190,7 +196,7 @@ export function ProfileSettingsDialog({
                   reader user would never meet it. It stays in the count (4 of 4).
                   Set through a ref because RAC's `filterDOMProps` does not pass
                   `aria-disabled` through to the rendered tab. */}
-              <Tab id="postprocess" ref={markPostprocessDisabled} className={TAB_CLS}>
+              <Tab id="postprocess" ref={markPostprocessDisabled} className={SETTINGS_TAB_CLS}>
                 {m.profile_settings_tab_postprocess()}
               </Tab>
             </TabList>

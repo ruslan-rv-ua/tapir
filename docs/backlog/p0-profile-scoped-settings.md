@@ -3,12 +3,13 @@ slug: profile-scoped-settings
 title: "Профільні налаштування: межа глобальне/профіль + власний діалог профілю"
 priority: P0
 type: planned
-status: in-progress
+status: blocked
 effort: L
 kind: feature
 target: 0.1.0
 updated: 2026-08-08
 a11y: true
+blocked_reason: "реалізовано на feature/profile-scoped-settings; чекає на ручний NVDA-прогін за docs/testing/nvda-profile-scoped-settings.md"
 depends_on: [profile-commit-seam, settings-commit-seam]
 blocks: [post-processing]
 touches:
@@ -396,7 +397,7 @@ padding не мають залежати від того, через яку гі
 - [x] П'ять полів прибрано з `GlobalSettings`, додано в `Profile` (новий блок `UiSettings`); `ResumeFileFrom` переїхав у `profile.rs`.
 - [x] `Profile::apply_settings_patch` реалізовано; тести на «лише присутні секції», збереження `volume`/resume-трійки/`last_result`, клампінг padding.
 - [x] `get_profile_settings(name)` / `update_profile_settings(name, patch)` реалізовано; активний → `commit_profile`, неактивний → read-patch-write.
-- [x] Команда відхиляє патч для неіснуючого профілю (успадковано від `Profile::load`; покрито `delete_nonexistent_is_not_found`).
+- [x] Команда відхиляє патч для неіснуючого профілю (тест).
 - [x] `get_recording_settings`, `save_recording_settings`, `set_profile_autoplay` прибрано разом із їхніми обгортками у `lib/tauri.ts` і реєстрацією в `lib.rs`.
 - [x] Усі точки споживання читають з активного профілю (`stream_commands`, `notify` ×2, `playback_control`); `cargo clippy` чистий.
 - [x] `$profileSettings` наповнюється на старті в `App.tsx` і перезавантажується в `useProfileSync`; `StatusBar`, `StreamsPanel`, `stores/streams.ts`, `App.tsx` читають звідти.

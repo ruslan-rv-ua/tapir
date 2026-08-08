@@ -91,6 +91,9 @@ export const SHORTCUTS: readonly Shortcut[] = [
     // не треба: `ctrlOrMeta` уже вимагає `!e.shiftKey`.
     id: "profile-settings",
     combo: "Ctrl+Shift+,",
+    // Toggle у тому ж сенсі, що й `Ctrl+,`: повторне натискання закриває, поки
+    // фокус поза модалкою. Усередині відкритого діалогу глобальні комбінації
+    // глушить `isInModal()`, і закриває Escape.
     label: m.profile_settings,
     group: "global",
     reserved: true,

@@ -113,7 +113,10 @@ describe("useGlobalShortcuts", () => {
     expect($profileSettingsTarget.get()).toBeNull();
   });
 
-  it("Ctrl+Shift+, toggles the profile dialog shut again", () => {
+  // Toggle-скидання стора. У застосунку його дає Escape: щойно діалог
+  // відкрито, фокус усередині модалки, а `isInModal()` глушить глобальні
+  // комбінації — те саме обмеження, що й у наявного `Ctrl+,`.
+  it("a second Ctrl+Shift+, from outside a modal clears the target", () => {
     render(
       <Harness>
         <input data-testid="field" />
