@@ -1,3 +1,12 @@
+<!--
+  AUDIENCE: developers and advanced users.
+  This is where technical detail goes so it does not clutter README.md:
+  formats and protocols, CLI flags, pattern syntax, system internals, pointers
+  into docs/. Anything an end user needs in order to download, run and use
+  Tapir belongs in README.md instead.
+  Agent/contributor guidelines live in AGENTS.md.
+-->
+
 # Tapir: Technical Overview and Developer Guide
 
 This file contains advanced technical details about the Tapir application.

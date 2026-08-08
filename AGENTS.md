@@ -67,6 +67,17 @@ Output binary: `src-tauri/target/release-fast/tapir.exe` (build-fast) or `src-ta
 
 ## Documentation
 
+Два markdown-файли в корені мають **розділені аудиторії** — тримай межу:
+
+- [README.md](README.md) — **для кінцевих користувачів**: що застосунок робить, як
+  його завантажити й користуватись, простою мовою. Без протоколів, CLI-прапорців,
+  синтаксису патернів, інструкцій збірки й структури репозиторію.
+- [DEVELOPERS.md](DEVELOPERS.md) — **для розробників і просунутих користувачів**:
+  саме ті технічні деталі, які захаращували б README.
+
+Межу продубльовано HTML-коментарем на початку кожного з цих файлів. Цей файл
+(AGENTS.md) — третя аудиторія: агенти й контриб'ютори.
+
 All project documentation lives in `docs/`. Key files:
 
 - [PRD.md](docs/PRD.md) — product requirements

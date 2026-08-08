@@ -1,3 +1,11 @@
+<!--
+  AUDIENCE: end users.
+  Keep this file in plain language, focused on what Tapir does for the person
+  using it. Technical detail — protocols, CLI flags, pattern syntax, build
+  instructions, repo layout — belongs in DEVELOPERS.md.
+  Agent/contributor guidelines live in AGENTS.md.
+-->
+
 # Tapir
 
 <p align="center">

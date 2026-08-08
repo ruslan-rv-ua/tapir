@@ -1,0 +1,75 @@
+---
+slug: help-listening
+title: "Довідка: Прослуховування, Записи, Браузер станцій"
+priority: P1
+type: planned
+status: ready
+effort: M
+kind: chore
+target: 0.1.0
+updated: 2026-08-08
+a11y: false
+depends_on: [help-content-polish, help-intro]
+blocks: [help-troubleshooting]
+touches:
+  - docs/help/uk/player.md
+  - docs/help/en/player.md
+  - docs/help/uk/songs.md
+  - docs/help/en/songs.md
+  - docs/help/uk/browser.md
+  - docs/help/en/browser.md
+  - src/components/common/HelpDialog.tsx
+  - src/i18n/messages/uk.json
+  - src/i18n/messages/en.json
+gates: [pnpm test, pnpm vite:build]
+---
+
+# Довідка: Прослуховування, Записи, Браузер станцій
+
+> **Контекст:** третій із шести записів, що наповнюють вбудовану довідку (F1).
+> Специфікація — [help-content-polish](done/p1-help-content-polish.md). Три розділи разом,
+> бо всі троє про «слухати»: ефір, збережений файл і прев'ю станції з каталогу — це
+> один плеєр, і різницю між ними треба пояснити в одному місці.
+
+## Опис
+
+- **`player.md`** — новий: ефір і файл, різниця між паузою й зупинкою, гучність і
+  вимкнення звуку, позиція, попередній/наступний, автоперехід, продовження з позиції,
+  пристрій виводу, слухати одне під час запису іншого.
+- **`songs.md`** — новий: список збережених треків, пошук і сортування, відтворення,
+  відкриття у зовнішній програмі й у Провіднику, перейменування, редагування тегів,
+  видалення в кошик, позначка «неповний трек».
+- **`browser.md`** — новий: пошук по спільнотному каталозі, фільтри, популярні, прев'ю,
+  додавання одиничне й масове, дублікати, недоступність каталогу.
+
+Перелік обов'язкових позицій — у розділі «Мапа покриття» специфікації.
+
+## Технічні кроки
+
+- Три нові вкладки в `HelpDialog.tsx`: `browser` (після `streams`), `songs` (після
+  `scheduling`), `player` (після `recording`) — згідно з порядком зі специфікації.
+- Три нові ключі: `help_section_browser` («Браузер станцій» / "Station Browser"),
+  `help_section_songs` («Записи» / "Recordings"), `help_section_player`
+  («Прослуховування» / "Listening"). Перші два — дослівно як `browser_section` і
+  `songs_section`.
+- `songs.md` і `browser.md` завершуються блоком «Клавіші на цьому екрані»; `player.md` —
+  ні, це не список, а панель.
+
+## Критерії готовності
+
+- [ ] `player.md`, `songs.md`, `browser.md` написані (uk + en) за мапою покриття
+- [ ] Різниця «ефір зупиняється / файл стає на паузу з позицією» пояснена явно
+- [ ] `Alt+Enter` (відкрити у зовнішній програмі) і `Ctrl+Enter` (показати в Провіднику)
+      названі саме в `songs.md`, у блоці «Клавіші на цьому екрані»
+- [ ] У `browser.md` сказано, що каталог зовнішній і буває недоступний
+- [ ] Пороги й кроки (крок гучності, поріг «попередній трек») звірено **з кодом**
+- [ ] Вкладки «Браузер станцій», «Записи», «Прослуховування» на своїх місцях
+- [ ] `pnpm test`, `pnpm vite:build` — без помилок
+
+## Документи
+
+- [help-content-polish](done/p1-help-content-polish.md) — специфікація (мапа, стиль, розмітка)
+- `src-tauri/src/player/` — рушій відтворення
+- `src-tauri/src/playback_control.rs` — пауза/зупинка, продовження з позиції
+- `src/components/player/`, `src/components/songs/`, `src/components/browser/`
+- `src/components/settings/AudioTab.tsx` — пристрій виводу, крок гучності, поріг «попередній»
