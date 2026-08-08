@@ -17,6 +17,8 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
+| [profile-scoped-settings](p0-profile-scoped-settings.md) | P0 | planned | ready | L | — (profile-commit-seam, settings-commit-seam виконані) | [post-processing](p1-post-processing.md) |
+| [bandwidth-limit-dead-setting](p1-bandwidth-limit-dead-setting.md) | P1 | planned | ready | S | — | — (знахідка profile-scoped-settings: налаштування без реалізації) |
 | [streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md) | P2 | planned | ready | M | — (webview-reload-guard виконано) | [list-key-modifier-guards](p3-list-key-modifier-guards.md) |
 | [hotkeys-expansion](p2-hotkeys-expansion.md) | P2 | planned | ready | M | — | — |
 | [import-duplicate-metadata-update](p3-import-duplicate-metadata-update.md) | P3 | planned | ready | M | — | — |
@@ -36,6 +38,7 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
+| [post-processing](p1-post-processing.md) | P1 | planned | ready | M | [profile-scoped-settings](p0-profile-scoped-settings.md) | — (оживляє вкладку-заглушку в діалозі профілю) |
 | [focus-active-item-on-playback-start](p1-focus-active-item-on-playback-start.md) | P1 | idea | draft | S | — | — |
 | [wishlist-conditions](p1-wishlist-conditions.md) | P1 | idea | draft | L | — | — |
 | [browser-filter-cursor-reset](p2-browser-filter-cursor-reset.md) | P2 | planned | ready | S | — | — |
@@ -45,7 +48,6 @@ semver; `unscheduled` — наприкінці.
 | [focus-on-screen-open-option](p2-focus-on-screen-open-option.md) | P2 | idea | draft | S | — | — |
 | [command-palette-fuzzy-search](p2-command-palette-fuzzy-search.md) | P2 | idea | draft | S | — | — |
 | [command-palette-taxonomy](p2-command-palette-taxonomy.md) | P2 | idea | draft | M | — | — (спірна — див. «Відкриті питання»; розчеплено з phase-3) |
-| [post-processing](p2-post-processing.md) | P2 | idea | draft | M | — | — |
 | [command-palette-dual-language-search](p2-command-palette-dual-language-search.md) | P2 | idea | draft | S | — | — |
 | [wishlist-separate-folder](p2-wishlist-separate-folder.md) | P2 | idea | draft | S | — | — |
 | [stream-manual-reorder](p2-stream-manual-reorder.md) | P2 | idea | draft | M | — | — |

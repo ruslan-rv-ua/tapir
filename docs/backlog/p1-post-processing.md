@@ -1,24 +1,29 @@
 ---
 slug: post-processing
 title: "Постпроцесинг: запуск зовнішніх програм після запису"
-priority: P2
-type: idea
-status: draft
+priority: P1
+type: planned
+status: ready
 effort: M
 kind: feature
 target: unscheduled
-updated: 2026-06-15
+updated: 2026-08-08
 a11y: true
-depends_on: []
+depends_on: [profile-scoped-settings]
 blocks: []
-touches: [src-tauri/src/postprocess/runner.rs, src-tauri/src/commands/postprocess_commands.rs, src/components/settings/PostprocessSettings.tsx]
+touches: [src-tauri/src/postprocess/runner.rs, src-tauri/src/commands/postprocess_commands.rs, src/components/profile/ProfileSettingsDialog.tsx]
 gates: [pnpm test, pnpm vite:build, cargo test, cargo clippy]
 depends_on_external: ["Phase 1 — Core Recording (✅ реалізовано)"]
+notes:
+  - "P2 → P1 (2026-08-08): після profile-scoped-settings у діалозі профілю з'явиться готова, але вимкнена вкладка «Постобробка» — тобто це вже видима користувачу заглушка, а не просто відсутня фіча"
 ---
 
 # Постпроцесинг: запуск зовнішніх програм після запису
 
-> **Контекст:** сира ідея, об'ємна (M), нижча цінність — навмисно unscheduled. Дизайн уже досить деталізований (backend/frontend/безпека/a11y).
+> **Контекст:** дизайн деталізований (backend/frontend/безпека/a11y). Після
+> [profile-scoped-settings](p0-profile-scoped-settings.md) у діалозі налаштувань
+> профілю існує вкладка «Постобробка» з `aria-disabled` і панеллю-поясненням —
+> цей запис її оживляє.
 
 ## Опис
 
@@ -46,9 +51,11 @@ depends_on_external: ["Phase 1 — Core Recording (✅ реалізовано)"]
 - Токен скасування (`CancellationToken` з `tokio_util::sync`) — для чистого shutdown при закритті застосунку.
 - `stdout`/`stderr` пишуться у файловий лог (через `tracing`), **не** в пам'ять і не в UI.
 
-**Команди IPC (`commands/postprocess_commands.rs`):**
-- `get_postprocess_config` → повертає поточну конфігурацію.
-- `save_postprocess_config` → зберігає; валідує шлях до виконуваного файлу (файл існує й має біт execute або `.exe`).
+**Команди IPC:** окремих команд читання/запису конфігу **не потрібно** — блок
+`postprocess` їде разом із рештою профільних налаштувань через
+`update_profile_settings(name, patch)`. Валідація шляху до виконуваного файлу (існує,
+абсолютний або в `PATH`, без `..`) робиться на бекенді при накладанні патча — так само
+для активного й неактивного профілю.
 
 **Тригери запуску:**
 - `OnTrackComplete` — трек завершено коректно (отримано метадані або розмір > мінімального порогу).
@@ -57,7 +64,14 @@ depends_on_external: ["Phase 1 — Core Recording (✅ реалізовано)"]
 
 ### Frontend (React 19)
 
-**`PostprocessSettings.tsx`** у розділі налаштувань:
+Вкладка **«Постобробка»** в діалозі налаштувань профілю
+([profile-scoped-settings](p0-profile-scoped-settings.md)): знімається `aria-disabled`,
+панель-пояснення замінюється на форму. Збереження — тією ж патч-командою
+`update_profile_settings`, що й решта вкладок (автозбереження, без кнопки
+«Зберегти»), тож окремі `get_postprocess_config` / `save_postprocess_config` більше
+не потрібні — конфіг їде в патчі як блок `postprocess`.
+
+Поля форми:
 - Поле «Шлях до програми» з кнопкою «Огляд» (`open` dialog через Tauri).
 - Поле «Аргументи» з підказкою про доступні placeholders (`%file`, `%artist`, `%title`, …).
 - Числове поле «Timeout (сек)».
@@ -99,8 +113,9 @@ depends_on_external: ["Phase 1 — Core Recording (✅ реалізовано)"]
 - [ ] Timeout з примусовим завершенням процесу (дефолт 120 с, конфігурується).
 - [ ] Вибір тригеру: завершений / незавершений трек / завжди.
 - [ ] Черга: не більше N одночасних процесів (N конфігурується).
-- [ ] IPC-команди `get_postprocess_config` і `save_postprocess_config` реалізовано.
-- [ ] `PostprocessSettings.tsx` реалізовано зі всіма полями.
+- [ ] Блок `postprocess` зберігається через `update_profile_settings`; валідація шляху на бекенді.
+- [ ] Вкладка «Постобробка» в діалозі профілю: `aria-disabled` знято, форма зі всіма полями.
+- [ ] Вкладка працює й для **неактивного** профілю (як решта вкладок діалогу).
 - [ ] Безпечна передача аргументів (Vec<String>, без shell injection).
 - [ ] Підтвердження перед першим виконанням нової команди.
 - [ ] `aria-live` анонси початку та кінця обробки для NVDA.
@@ -122,9 +137,9 @@ depends_on_external: ["Phase 1 — Core Recording (✅ реалізовано)"]
 ## Документи
 
 - [implementation-phases.md §3H](../implementation-phases.md)
+- [profile-scoped-settings](p0-profile-scoped-settings.md) — створює вкладку-заглушку
 - Шляхи коду (майбутні):
   - `src-tauri/src/postprocess/runner.rs`
-  - `src-tauri/src/commands/postprocess_commands.rs`
-  - `src/components/settings/PostprocessSettings.tsx`
+  - `src/components/profile/ProfileSettingsDialog.tsx` (вкладка «Постобробка»)
   - `src/i18n/messages/uk.json` (ключі `postprocess.*`)
   - `src/i18n/messages/en.json` (ключі `postprocess.*`)
