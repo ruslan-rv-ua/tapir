@@ -166,7 +166,7 @@ pub async fn persist_session_snapshot(app: &AppHandle) {
     let committed = state
         .commit_profile(|profile| {
             apply_session_snapshot(&mut profile.player_session, &status);
-            crate::profile_store::Commit::Save(())
+            crate::store::Commit::Save(())
         })
         .await;
     if let Err(e) = committed {
@@ -183,7 +183,7 @@ async fn clear_last_session(app: &AppHandle) {
             profile.player_session.last_active = None;
             profile.player_session.last_stream_id = None;
             profile.player_session.last_file_position = None;
-            crate::profile_store::Commit::Save(())
+            crate::store::Commit::Save(())
         })
         .await;
     if let Err(e) = committed {

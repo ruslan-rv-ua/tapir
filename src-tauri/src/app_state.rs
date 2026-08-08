@@ -3,7 +3,9 @@ use tauri::{AppHandle, Manager};
 use tokio::sync::RwLock;
 use crate::settings::GlobalSettings;
 use crate::profile::Profile;
-use crate::profile_store::{Commit, FileProfileStore, ProfileWriter};
+use crate::profile_store::FileProfileStore;
+use crate::settings_store::FileSettingsStore;
+use crate::store::{Commit, Writer};
 use crate::errors::RadioError;
 use crate::stream::manager::{StreamManager, StreamState, StreamStatus};
 use crate::player::engine::PlayerEngine;
@@ -15,7 +17,9 @@ pub struct AppState {
     pub settings: Arc<RwLock<GlobalSettings>>,
     pub active_profile: Arc<RwLock<Profile>>,
     /// Єдиний шлях запису активного профілю — див. [`AppState::commit_profile`].
-    profile_writer: Arc<ProfileWriter>,
+    profile_writer: Arc<Writer<Profile>>,
+    /// Те саме для глобальних налаштувань — див. [`AppState::commit_settings`].
+    settings_writer: Arc<Writer<GlobalSettings>>,
     // PlayerEngine is internally synchronized via Arc<Mutex<>> fields — no outer RwLock needed.
     pub player: Arc<PlayerEngine>,
     pub browser_client: Arc<tokio::sync::OnceCell<RadioBrowserClient>>,
@@ -40,7 +44,8 @@ impl AppState {
             stream_manager: Arc::new(RwLock::new(StreamManager::new(app_handle, wake_lock))),
             settings: Arc::new(RwLock::new(settings)),
             active_profile: Arc::new(RwLock::new(profile)),
-            profile_writer: Arc::new(ProfileWriter::new(Arc::new(FileProfileStore))),
+            profile_writer: Arc::new(Writer::new(Arc::new(FileProfileStore))),
+            settings_writer: Arc::new(Writer::new(Arc::new(FileSettingsStore))),
             player: Arc::new(player),
             browser_client,
             scheduler: crate::scheduler::timer::SchedulerShared::new(),
@@ -52,7 +57,7 @@ impl AppState {
     ///
     /// Замикання синхронне й повертає [`Commit::Save`] або [`Commit::Skip`];
     /// впорядкованість записів і роботу зі сховищем тримає
-    /// [`ProfileWriter`](crate::profile_store::ProfileWriter).
+    /// [`Writer`](crate::store::Writer).
     ///
     /// ```ignore
     /// let entry = state.commit_profile(|p| {
@@ -69,6 +74,19 @@ impl AppState {
         T: Send,
     {
         self.profile_writer.commit(&self.active_profile, mutate).await
+    }
+
+    /// Змінити глобальні налаштування і записати їх — єдиний спосіб це зробити
+    /// після старту застосунку (до `AppState` — `settings_store::save_detached`).
+    ///
+    /// Дзеркало [`AppState::commit_profile`], з тими самими правилами:
+    /// синхронне замикання, помилка запису лишає пам'ять зміненою.
+    pub async fn commit_settings<T, F>(&self, mutate: F) -> Result<T, RadioError>
+    where
+        F: FnOnce(&mut GlobalSettings) -> Commit<T> + Send,
+        T: Send,
+    {
+        self.settings_writer.commit(&self.settings, mutate).await
     }
 }
 

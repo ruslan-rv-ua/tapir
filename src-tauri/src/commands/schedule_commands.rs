@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::app_state::AppState;
 use crate::errors::RadioError;
 use crate::profile::{Profile, ScheduleType, ScheduledRecording};
-use crate::profile_store::Commit;
+use crate::store::Commit;
 use crate::scheduler::validation;
 
 /// Відповідь get_schedules: розклад + обчислюване nextRun

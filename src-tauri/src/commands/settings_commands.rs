@@ -1,7 +1,7 @@
 use crate::app_state::AppState;
 use crate::profile::RecordingSettings;
-use crate::profile_store::Commit;
 use crate::settings::{GlobalSettings, HotkeyMap};
+use crate::store::Commit;
 use crate::shortcuts;
 
 #[tauri::command]
@@ -15,16 +15,17 @@ pub async fn save_settings(
     settings: GlobalSettings,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
-    let to_save = settings.clone();
-    tokio::task::spawn_blocking(move || to_save.save())
-        .await
-        .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())?;
-    let mut current = state.settings.write().await;
-    let smtc_changed = current.smtc_enabled != settings.smtc_enabled;
+    // Пам'ять першою, як і в решті комітів — цей сайт мав ту саму інверсію, що
+    // й save_recording_settings.
     let smtc_enabled = settings.smtc_enabled;
-    *current = settings;
-    drop(current);
+    let smtc_changed = state
+        .commit_settings(|current| {
+            let changed = current.smtc_enabled != smtc_enabled;
+            *current = settings;
+            Commit::Save(changed)
+        })
+        .await
+        .map_err(|e| e.to_string())?;
     // No separate command needed (unlike register_hotkeys): there is no
     // error list for the UI here, the toggle applies silently.
     if smtc_changed {

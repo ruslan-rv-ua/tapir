@@ -3,7 +3,8 @@ use crate::commands::shell_open::{shell_open, SHELL_ERR_GENERIC, SHELL_ERR_WRITE
 use crate::errors::RadioError;
 use crate::portable;
 use crate::profile::{AudioFormat, Profile, StreamInfo};
-use crate::profile_store::{save_detached, Commit};
+use crate::profile_store::save_detached;
+use crate::store::Commit;
 use crate::stream::manager::{StreamState, StreamStatus};
 use crate::stream::playlist;
 use log::warn;

@@ -1,6 +1,6 @@
 use crate::app_state::AppState;
 use crate::profile::WishlistEntry;
-use crate::profile_store::Commit;
+use crate::store::Commit;
 
 #[tauri::command]
 pub async fn get_wishlist(state: tauri::State<'_, AppState>) -> Result<Vec<WishlistEntry>, String> {

@@ -4,7 +4,7 @@ use tokio::time::Duration;
 use crate::app_state::AppState;
 use crate::errors::RadioError;
 use crate::profile::{Profile, ProfileMeta, ImportPreview};
-use crate::profile_store::Commit;
+use crate::store::Commit;
 
 #[tauri::command]
 pub async fn list_profiles(state: State<'_, AppState>) -> Result<Vec<ProfileMeta>, String> {
@@ -190,16 +190,30 @@ pub async fn switch_profile(
     let new_profile = Profile::load(&name).map_err(|e| e.to_string())?;
 
     // Step 9: save settings with rollback on failure.
-    // IMPORTANT: capture old_active BEFORE mutating; drop the lock BEFORE step 10.
+    // IMPORTANT: capture old_active BEFORE mutating.
     {
-        let mut settings = state.settings.write().await;
-        let old_active = settings.active_profile.clone(); // for rollback
-        settings.active_profile = name.clone();
-        if let Err(e) = settings.save() {
-            settings.active_profile = old_active; // revert — keeps disk+memory consistent
+        let old_active = state.settings.read().await.active_profile.clone();
+        let committed = state
+            .commit_settings(|settings| {
+                settings.active_profile = name.clone();
+                Commit::Save(())
+            })
+            .await;
+        if let Err(e) = committed {
+            // Відкат — на відміну від решти комітів, де розбіжність лікує
+            // наступний успішний запис. Тут чекати нема на що: `active_profile`
+            // читається лише при старті, а розійшовшись, відправив би застосунок
+            // у профіль, якого користувач не вибирав. Запис невдалий, тож на
+            // диску вже старе значення — `Skip` повертає пам'ять до нього, не
+            // намагаючись писати вдруге.
+            let _ = state
+                .commit_settings(|settings| {
+                    settings.active_profile = old_active;
+                    Commit::Skip(())
+                })
+                .await;
             return Err(e.to_string());
         }
-        drop(settings); // must release lock before step 10 to avoid deadlock
     }
 
     // Step 10: apply new volume

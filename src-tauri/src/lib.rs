@@ -14,6 +14,8 @@ mod sanitize;
 mod scheduler;
 mod shortcuts;
 mod settings;
+mod settings_store;
+mod store;
 mod smtc;
 mod songs;
 mod stream;
@@ -168,7 +170,7 @@ pub fn run() {
             );
             if moved {
                 settings.autostart = false;
-                if let Err(e) = settings.save() {
+                if let Err(e) = settings_store::save_detached(&settings) {
                     log::warn!("autostart: failed to persist autostart=false after EXE move: {e}");
                 }
                 app.manage(autostart::StartupNotice::moved());

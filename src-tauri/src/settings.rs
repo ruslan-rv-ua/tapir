@@ -220,7 +220,7 @@ impl GlobalSettings {
         let path = portable::settings_path();
         if !path.exists() {
             let settings = Self::default();
-            settings.save()?;
+            crate::settings_store::save_detached(&settings)?;
             info!("Created default settings at {}", path.display());
             return Ok(settings);
         }
@@ -230,14 +230,6 @@ impl GlobalSettings {
         Ok(settings)
     }
 
-    pub fn save(&self) -> Result<(), RadioError> {
-        let path = portable::settings_path();
-        let tmp_path = path.with_extension("json.tmp");
-        let json = serde_json::to_string_pretty(self)?;
-        std::fs::write(&tmp_path, &json)?;
-        std::fs::rename(&tmp_path, &path)?;
-        Ok(())
-    }
 }
 
 #[cfg(test)]

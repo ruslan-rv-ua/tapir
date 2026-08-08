@@ -112,13 +112,11 @@ pub async fn set_output_device(
     app: AppHandle,
 ) -> Result<(), String> {
     state.player.set_output_device(name.clone(), &app).await.map_err(|e| e.to_string())?;
-    let snapshot = {
-        let mut settings = state.settings.write().await;
-        settings.output_device = name;
-        settings.clone()
-    }; // write lock released before blocking save
-    tokio::task::spawn_blocking(move || snapshot.save())
+    state
+        .commit_settings(|settings| {
+            settings.output_device = name;
+            crate::store::Commit::Save(())
+        })
         .await
-        .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
 }

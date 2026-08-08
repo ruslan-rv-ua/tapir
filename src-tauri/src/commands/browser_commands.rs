@@ -7,7 +7,7 @@ use crate::browser::api::RadioBrowserClient;
 use crate::browser::types::*;
 use crate::errors::RadioError;
 use crate::profile::{AudioFormat, StreamInfo};
-use crate::profile_store::Commit;
+use crate::store::Commit;
 
 /// Helper: get or init the RadioBrowserClient from OnceCell.
 async fn get_client(state: &AppState) -> &RadioBrowserClient {

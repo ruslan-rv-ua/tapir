@@ -661,7 +661,7 @@ pub async fn recording_task(
                 .commit_profile(|profile| {
                     let Some(i) = profile.streams.iter().position(|s| s.id == stream_id) else {
                         // Потік прибрали з профілю посеред запису — писати нічого.
-                        return crate::profile_store::Commit::Skip(());
+                        return crate::store::Commit::Skip(());
                     };
                     {
                         // Naming an unnamed stream picks its recording folder, so
@@ -697,7 +697,7 @@ pub async fn recording_task(
                         }
                         s.format = Some(detected_format.clone());
                         updated_stream = Some(s.clone());
-                        crate::profile_store::Commit::Save(())
+                        crate::store::Commit::Save(())
                     }
                 })
                 .await;

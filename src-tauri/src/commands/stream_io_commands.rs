@@ -4,7 +4,7 @@ use tauri_plugin_dialog::{DialogExt, FilePath};
 
 use crate::app_state::AppState;
 use crate::profile::{AudioFormat, StreamInfo};
-use crate::profile_store::Commit;
+use crate::store::Commit;
 use crate::stream::{playlist, probe};
 
 /// How many streams to probe at once during import validation and the browser's

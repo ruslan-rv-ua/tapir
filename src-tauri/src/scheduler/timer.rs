@@ -188,7 +188,7 @@ pub async fn apply_fixations(app: &AppHandle, fixes: Vec<Fixation>) {
                     }
                 }
             }
-            crate::profile_store::Commit::Save(())
+            crate::store::Commit::Save(())
         })
         .await;
     if let Err(e) = committed {
