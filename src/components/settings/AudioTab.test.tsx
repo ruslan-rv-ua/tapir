@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, fireEvent } from "@testing-library/react";
+import { render, fireEvent, waitFor } from "@testing-library/react";
 import * as m from "../../i18n/paraglide/messages";
 import { AudioTab } from "./AudioTab";
 import { $settings } from "../../stores/settings";
+import { $announcer } from "../../stores/announcer";
+import * as tauri from "../../lib/tauri";
 import type { GlobalSettings } from "../../lib/tauri";
 
 vi.mock("../../lib/tauri", () => ({
@@ -41,6 +43,7 @@ const baseSettings: GlobalSettings = {
 beforeEach(() => {
   vi.clearAllMocks();
   $settings.set(baseSettings);
+  $announcer.set(null);
 });
 
 afterEach(() => {
@@ -74,5 +77,21 @@ describe("AudioTab — SMTC toggle (FR-7)", () => {
       getByRole("checkbox", { name: new RegExp(m.settings_smtc_enabled()) }),
     );
     expect($settings.get()?.smtcEnabled).toBe(false);
+  });
+});
+
+// Той самий шов, що в GeneralTab: у діалозі немає жодного візуального
+// підтвердження запису, тож автозбереження мусить бути чутним.
+describe("AudioTab — автозбереження чути", () => {
+  it("оголошує збереження після зміни налаштування", async () => {
+    const { getByRole } = render(<AudioTab />);
+    fireEvent.click(
+      getByRole("checkbox", { name: new RegExp(m.settings_smtc_enabled()) }),
+    );
+
+    await waitFor(() => {
+      expect(tauri.saveSettings).toHaveBeenCalled();
+      expect($announcer.get()).toEqual({ message: m.settings_saved(), priority: "polite" });
+    });
   });
 });

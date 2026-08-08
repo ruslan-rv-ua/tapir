@@ -13,7 +13,7 @@ import {
   Group,
 } from "react-aria-components";
 import { $settings } from "../../stores/settings";
-import { useAutoSave } from "../../hooks/useAutoSave";
+import { useSettingsAutoSave } from "../../hooks/useSettingsAutoSave";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 // @ts-expect-error — paraglide runtime has no .d.ts
@@ -26,10 +26,7 @@ import { addToast } from "../../stores/toasts";
 export function GeneralTab() {
   const settings = useStore($settings);
   const announce = useAnnounce();
-  const save = useAutoSave(async () => {
-    const current = $settings.get();
-    if (current) await tauri.saveSettings(current);
-  });
+  const save = useSettingsAutoSave();
   if (!settings) return null;
 
   function update(patch: Partial<GlobalSettings>) {

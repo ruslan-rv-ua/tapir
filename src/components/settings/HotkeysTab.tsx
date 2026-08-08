@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { $settings } from "../../stores/settings";
 import { useAutoSave } from "../../hooks/useAutoSave";
@@ -25,12 +25,31 @@ export function HotkeysTab() {
   const announce = useAnnounce();
   const [registrationErrors, setRegistrationErrors] = useState<string[]>([]);
 
+  // Combos the user touched since the last flush. The failure is announced only
+  // for these: `registerHotkeys` reports everything currently failing, so
+  // without the filter one permanently unavailable combo would shout again
+  // after every unrelated edit.
+  const touchedRef = useRef<string[]>([]);
+
   const save = useAutoSave(async () => {
     const current = $settings.get();
     if (!current) return;
+    const touched = touchedRef.current;
+    touchedRef.current = [];
     await tauri.saveSettings(current);
     const failed = await tauri.registerHotkeys();
     setRegistrationErrors(failed);
+    // The block below is plain text, not role="alert": an alert stays silent
+    // when the same combo fails twice in a row — nothing in the DOM changes,
+    // so there is no insertion to report. The central channel announces every
+    // time, including the repeat.
+    const justFailed = failed.filter((combo) => touched.includes(combo));
+    if (justFailed.length > 0) {
+      announce(
+        justFailed.map((combo) => m.settings_hotkey_registration_failed({ combo })).join(" "),
+        "assertive",
+      );
+    }
   });
 
   if (!settings) return null;
@@ -42,6 +61,7 @@ export function HotkeysTab() {
       ...current,
       hotkeys: { ...current.hotkeys, [key]: combo },
     });
+    if (combo) touchedRef.current = [...touchedRef.current, combo];
     save();
     if (combo) {
       announce(m.settings_hotkey_changed({ combo }), "polite");
@@ -56,6 +76,7 @@ export function HotkeysTab() {
     const current = $settings.get();
     if (!current) return;
     $settings.set({ ...current, hotkeys: defaults });
+    touchedRef.current = Object.values(defaults).filter(Boolean);
     save();
     announce(m.settings_hotkeys_reset_done(), "polite");
   }
@@ -99,10 +120,7 @@ export function HotkeysTab() {
       </button>
 
       {registrationErrors.length > 0 && (
-        <div
-          role="alert"
-          className="mt-4 rounded border border-red-700 bg-red-900/30 p-3"
-        >
+        <div className="mt-4 rounded border border-red-700 bg-red-900/30 p-3">
           {registrationErrors.map((combo) => (
             <p key={combo} className="text-sm text-red-300 forced-colors:text-[CanvasText]">
               {m.settings_hotkey_registration_failed({ combo })}

@@ -259,6 +259,7 @@
   "settings_tab_audio": "Audio",
   "settings_tab_playback": "Playback",
   "settings_autosave_notice": "Changes are saved automatically",
+  "settings_saved": "App settings saved",
   "settings_section_interface": "Interface",
   "settings_section_tray": "Tray",
   "settings_section_behavior": "Behaviour",

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import type { Mock } from "vitest";
 import { render, fireEvent, waitFor } from "@testing-library/react";
 import * as m from "../../i18n/paraglide/messages";
 import { HotkeysTab } from "./HotkeysTab";
@@ -124,6 +125,74 @@ describe("HotkeysTab — clear hotkey", () => {
 
     expect($settings.get()?.hotkeys.toggleRecording).toBe("");
     expect($announcer.get()?.message).toBe(m.settings_hotkey_cleared());
+  });
+});
+
+// Провал реєстрації показувався блоком role="alert". Той мовчить, коли та сама
+// комбінація провалюється вдруге: DOM не змінюється, отже вставки, про яку
+// можна повідомити, немає. Тепер про це каже центральний канал.
+describe("HotkeysTab — провал реєстрації комбінації", () => {
+  function announcements() {
+    const seen: { message: string; priority: string }[] = [];
+    const unsub = $announcer.listen((a) => { if (a) seen.push({ ...a }); });
+    return { seen, unsub };
+  }
+
+  function record(getByRole: ReturnType<typeof render>["getByRole"]) {
+    const button = recordButton(getByRole);
+    fireEvent.click(button); // arm the recorder
+    fireEvent.keyDown(button, { code: "KeyJ", key: "j", ctrlKey: true, shiftKey: true });
+  }
+
+  it("оголошує наполегливо, що щойно призначена комбінація не зареєструвалась", async () => {
+    (tauri.registerHotkeys as Mock).mockResolvedValue(["Ctrl+Shift+J"]);
+    const { getByRole } = render(<HotkeysTab />);
+    record(getByRole);
+
+    await waitFor(() =>
+      expect($announcer.get()).toEqual({
+        message: m.settings_hotkey_registration_failed({ combo: "Ctrl+Shift+J" }),
+        priority: "assertive",
+      }),
+    );
+  });
+
+  it("той самий провал удруге звучить удруге", async () => {
+    (tauri.registerHotkeys as Mock).mockResolvedValue(["Ctrl+Shift+J"]);
+    const { getByRole } = render(<HotkeysTab />);
+    const { seen, unsub } = announcements();
+    const failure = m.settings_hotkey_registration_failed({ combo: "Ctrl+Shift+J" });
+
+    record(getByRole);
+    await waitFor(() => expect(seen.filter((a) => a.message === failure)).toHaveLength(1));
+    record(getByRole); // та сама комбінація тій самій дії
+    await waitFor(() => expect(seen.filter((a) => a.message === failure)).toHaveLength(2));
+
+    unsub();
+  });
+
+  it("мовчить про чужий давній провал, коли користувач змінює іншу комбінацію", async () => {
+    (tauri.registerHotkeys as Mock).mockResolvedValue(["Ctrl+Shift+J"]);
+    const { getByRole } = render(<HotkeysTab />);
+    const { seen, unsub } = announcements();
+    const failure = m.settings_hotkey_registration_failed({ combo: "Ctrl+Shift+J" });
+
+    record(getByRole);
+    await waitFor(() => expect(seen.filter((a) => a.message === failure)).toHaveLength(1));
+
+    // Інша дія, вільна комбінація: вона зареєструвалась, а Ctrl+Shift+J як
+    // провалювався, так і провалюється — але кричати про нього знову нема за що.
+    const playback = getByRole("button", {
+      name: (name: string) => name.startsWith(m.settings_hotkey_toggle_playback()),
+    });
+    fireEvent.click(playback);
+    fireEvent.keyDown(playback, { code: "KeyU", key: "u", ctrlKey: true, altKey: true });
+
+    await waitFor(() => expect(tauri.registerHotkeys).toHaveBeenCalledTimes(2));
+    expect(seen.filter((a) => a.message === failure)).toHaveLength(1);
+    expect(seen.at(-1)?.message).toBe(m.settings_hotkey_changed({ combo: "Ctrl+Alt+U" }));
+
+    unsub();
   });
 });
 

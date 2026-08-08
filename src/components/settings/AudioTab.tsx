@@ -15,7 +15,7 @@ import {
 import { useStore } from "@nanostores/react";
 import { $settings } from "../../stores/settings";
 import { addToast } from "../../stores/toasts";
-import { useAutoSave } from "../../hooks/useAutoSave";
+import { useSettingsAutoSave } from "../../hooks/useSettingsAutoSave";
 import * as tauri from "../../lib/tauri";
 import type { AudioDevice, GlobalSettings } from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
@@ -37,10 +37,7 @@ export function AudioTab() {
     loadDevices();
   }, []);
 
-  const save = useAutoSave(async () => {
-    const current = $settings.get();
-    if (current) await tauri.saveSettings(current);
-  });
+  const save = useSettingsAutoSave();
 
   function update(patch: Partial<GlobalSettings>) {
     const current = $settings.get();

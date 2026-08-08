@@ -6,6 +6,7 @@ import { GeneralTab } from "./GeneralTab";
 import { $settings } from "../../stores/settings";
 import type { GlobalSettings } from "../../lib/tauri";
 import * as tauri from "../../lib/tauri";
+import { $announcer } from "../../stores/announcer";
 
 vi.mock("../../lib/tauri", () => ({
   saveSettings: vi.fn().mockResolvedValue(undefined),
@@ -36,6 +37,7 @@ const baseSettings: GlobalSettings = {
 beforeEach(() => {
   vi.clearAllMocks();
   $settings.set(baseSettings);
+  $announcer.set(null);
 });
 
 afterEach(() => {
@@ -76,6 +78,21 @@ describe("GeneralTab — Autostart", () => {
     expect($settings.get()?.autostart).toBe(true);
     // …then the rejected promise reverts it.
     await waitFor(() => expect($settings.get()?.autostart).toBe(false));
+  });
+});
+
+// Діалог налаштувань програми не має жодного візуального фідбеку про
+// збереження — «Зміни зберігаються автоматично» це статичний рядок, а не
+// підтвердження. Та сама обіцянка, що в діалозі профілю.
+describe("GeneralTab — автозбереження чути", () => {
+  it("оголошує збереження після зміни налаштування", async () => {
+    const { getByRole } = render(<GeneralTab />);
+    fireEvent.click(getByRole("checkbox", { name: new RegExp(m.settings_minimize_to_tray()) }));
+
+    await waitFor(() => {
+      expect(tauri.saveSettings).toHaveBeenCalled();
+      expect($announcer.get()).toEqual({ message: m.settings_saved(), priority: "polite" });
+    });
   });
 });
 
