@@ -13,6 +13,7 @@ export interface ShortcutActions {
   setSection: (s: Section) => void;
   toggleCommandPalette: () => void;
   toggleSettings: () => void;
+  toggleProfileSettings: () => void;
   openAddStream: () => void;
   openHelp: () => void;
   openCreateProfile: () => void;
@@ -83,6 +84,19 @@ export const SHORTCUTS: readonly Shortcut[] = [
     reserved: true,
     match: (e) => ctrlOrMeta(e) && e.code === "Comma",
     run: (a) => a.toggleSettings(),
+  },
+  {
+    // Матчинг по фізичній позиції (`e.code === "Comma"`), тож українська
+    // розкладка, де кома вимагає Shift, нічого не ламає. `Ctrl+,` вище правити
+    // не треба: `ctrlOrMeta` уже вимагає `!e.shiftKey`.
+    id: "profile-settings",
+    combo: "Ctrl+Shift+,",
+    label: m.profile_settings,
+    group: "global",
+    reserved: true,
+    match: (e) =>
+      (e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.code === "Comma",
+    run: (a) => a.toggleProfileSettings(),
   },
   {
     id: "help",

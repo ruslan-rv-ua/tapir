@@ -30,7 +30,7 @@ vi.mock("../../i18n/paraglide/messages", () => ({
 }));
 
 const mk = (over: Partial<ProfileMeta> = {}): ProfileMeta => ({
-  name: "Jazz", streamCount: 5, isActive: false, autoplayOnStartup: false, ...over,
+  name: "Jazz", streamCount: 5, isActive: false, ...over,
 });
 
 function renderItem(

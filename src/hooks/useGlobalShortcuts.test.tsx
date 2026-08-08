@@ -7,6 +7,7 @@ import { $showAddStreamDialog } from "../stores/streams";
 import { $showCreateProfileDialog } from "../stores/profileManager";
 import { $showAddPatternDialog } from "../stores/wishlist";
 import { $showAddScheduleDialog } from "../stores/schedule";
+import { $settings, $settingsDialogOpen, $profileSettingsTarget } from "../stores/settings";
 
 function Harness({ children }: { children?: ReactNode }) {
   useGlobalShortcuts();
@@ -35,6 +36,9 @@ beforeEach(() => {
   $showCreateProfileDialog.set(false);
   $showAddPatternDialog.set(false);
   $showAddScheduleDialog.set(false);
+  $settingsDialogOpen.set(false);
+  $profileSettingsTarget.set(null);
+  $settings.set({ activeProfile: "Jazz" } as never);
 });
 
 describe("useGlobalShortcuts", () => {
@@ -82,6 +86,43 @@ describe("useGlobalShortcuts", () => {
     act(() => screen.getByTestId("field").focus());
     fireEvent.keyDown(screen.getByTestId("field"), { code: "Digit1", altKey: true, repeat: true });
     expect($activeSection.get()).toBe("browser");
+  });
+
+  // Дві комбінації на одній фізичній клавіші — регресія межі глобальне/профільне.
+  it("opens the profile-settings dialog on Ctrl+Shift+, and leaves app settings shut", () => {
+    render(
+      <Harness>
+        <input data-testid="field" />
+      </Harness>,
+    );
+    act(() => screen.getByTestId("field").focus());
+    fireEvent.keyDown(screen.getByTestId("field"), { code: "Comma", ctrlKey: true, shiftKey: true });
+    expect($profileSettingsTarget.get()).toBe("Jazz");
+    expect($settingsDialogOpen.get()).toBe(false);
+  });
+
+  it("opens app settings on Ctrl+, and leaves the profile dialog shut", () => {
+    render(
+      <Harness>
+        <input data-testid="field" />
+      </Harness>,
+    );
+    act(() => screen.getByTestId("field").focus());
+    fireEvent.keyDown(screen.getByTestId("field"), { code: "Comma", ctrlKey: true });
+    expect($settingsDialogOpen.get()).toBe(true);
+    expect($profileSettingsTarget.get()).toBeNull();
+  });
+
+  it("Ctrl+Shift+, toggles the profile dialog shut again", () => {
+    render(
+      <Harness>
+        <input data-testid="field" />
+      </Harness>,
+    );
+    act(() => screen.getByTestId("field").focus());
+    fireEvent.keyDown(screen.getByTestId("field"), { code: "Comma", ctrlKey: true, shiftKey: true });
+    fireEvent.keyDown(screen.getByTestId("field"), { code: "Comma", ctrlKey: true, shiftKey: true });
+    expect($profileSettingsTarget.get()).toBeNull();
   });
 
   it("opens Add Stream on Ctrl+N only on the streams section", () => {

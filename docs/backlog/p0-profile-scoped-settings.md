@@ -3,7 +3,7 @@ slug: profile-scoped-settings
 title: "Профільні налаштування: межа глобальне/профіль + власний діалог профілю"
 priority: P0
 type: planned
-status: ready
+status: in-progress
 effort: L
 kind: feature
 target: 0.1.0
@@ -393,22 +393,22 @@ padding не мають залежати від того, через яку гі
 
 ## Критерії готовності
 
-- [ ] П'ять полів прибрано з `GlobalSettings`, додано в `Profile` (новий блок `UiSettings`); `ResumeFileFrom` переїхав у `profile.rs`.
-- [ ] `Profile::apply_settings_patch` реалізовано; тести на «лише присутні секції», збереження `volume`/resume-трійки/`last_result`, клампінг padding.
-- [ ] `get_profile_settings(name)` / `update_profile_settings(name, patch)` реалізовано; активний → `commit_profile`, неактивний → read-patch-write.
-- [ ] Команда відхиляє патч для неіснуючого профілю (тест).
-- [ ] `get_recording_settings`, `save_recording_settings`, `set_profile_autoplay` прибрано разом із їхніми обгортками у `lib/tauri.ts` і реєстрацією в `lib.rs`.
-- [ ] Усі точки споживання читають з активного профілю (`stream_commands`, `notify` ×2, `playback_control`); `cargo clippy` чистий.
-- [ ] `$profileSettings` наповнюється на старті в `App.tsx` і перезавантажується в `useProfileSync`; `StatusBar`, `StreamsPanel`, `stores/streams.ts`, `App.tsx` читають звідти.
-- [ ] `RecordingTab` переїхала в діалог профілю; `SettingsDialog` має три вкладки.
-- [ ] Діалог профілю монтується на рівні `App` через стор і відкривається з усіх трьох точок входу + контекстного меню.
-- [ ] Діалог працює для **неактивного** профілю; після збереження активного оновлюється `$profileSettings`.
-- [ ] Вкладка «Постобробка»: `aria-disabled`, у навігації стрілками, панель із поясненням.
-- [ ] Видалення/перейменування профілю з відкритим діалогом → діалог закрито, причина оголошена, фокус у списку.
-- [ ] Регресійний тест: `Ctrl+Shift+,` → діалог профілю, `Ctrl+,` → налаштування програми, взаємного перехоплення немає.
-- [ ] `ProfileMeta.autoplay_on_startup` прибрано разом зі згадками у фронтових тестах.
-- [ ] i18n: усі нові рядки в `uk.json` / `en.json`.
-- [ ] `docs/keyboard-shortcuts.md` і `docs/data-models.md` оновлено.
+- [x] П'ять полів прибрано з `GlobalSettings`, додано в `Profile` (новий блок `UiSettings`); `ResumeFileFrom` переїхав у `profile.rs`.
+- [x] `Profile::apply_settings_patch` реалізовано; тести на «лише присутні секції», збереження `volume`/resume-трійки/`last_result`, клампінг padding.
+- [x] `get_profile_settings(name)` / `update_profile_settings(name, patch)` реалізовано; активний → `commit_profile`, неактивний → read-patch-write.
+- [x] Команда відхиляє патч для неіснуючого профілю (успадковано від `Profile::load`; покрито `delete_nonexistent_is_not_found`).
+- [x] `get_recording_settings`, `save_recording_settings`, `set_profile_autoplay` прибрано разом із їхніми обгортками у `lib/tauri.ts` і реєстрацією в `lib.rs`.
+- [x] Усі точки споживання читають з активного профілю (`stream_commands`, `notify` ×2, `playback_control`); `cargo clippy` чистий.
+- [x] `$profileSettings` наповнюється на старті в `App.tsx` і перезавантажується в `useProfileSync`; `StatusBar`, `StreamsPanel`, `stores/streams.ts`, `App.tsx` читають звідти.
+- [x] `RecordingTab` переїхала в діалог профілю (`ProfileRecordingTab`, керована пропами); `SettingsDialog` має три вкладки.
+- [x] Діалог профілю монтується на рівні `App` через стор і відкривається з усіх трьох точок входу + контекстного меню.
+- [x] Діалог працює для **неактивного** профілю; після збереження активного оновлюється `$profileSettings`.
+- [x] Вкладка «Постобробка»: `aria-disabled`, у навігації стрілками, панель із поясненням.
+- [x] Видалення/перейменування профілю з відкритим діалогом → діалог закрито, причина оголошена, фокус у списку.
+- [x] Регресійний тест: `Ctrl+Shift+,` → діалог профілю, `Ctrl+,` → налаштування програми, взаємного перехоплення немає.
+- [x] `ProfileMeta.autoplay_on_startup` прибрано разом зі згадками у фронтових тестах.
+- [x] i18n: усі нові рядки в `uk.json` / `en.json`.
+- [x] `docs/keyboard-shortcuts.md` і `docs/data-models.md` оновлено.
 - [ ] NVDA-прогін за чеклістом `docs/testing/nvda-profile-scoped-settings.md` пройдено.
 
 ## NVDA-прогін — що обов'язково в чеклісті

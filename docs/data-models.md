@@ -7,6 +7,12 @@
 
 ## 1. Глобальні налаштування (`data/settings.json`)
 
+> **Межа глобальне/профільне** проведена правилом трьох фільтрів —
+> [ADR 2026-08-08](decisions/2026-08-08-global-vs-profile-settings-boundary.md).
+> Коротко: машинозалежне, зареєстроване в ОС і «що робить натискання» —
+> глобальне; «яким є набір даних і як він показаний» — профільне. Класифікуючи
+> нове поле, спершу прогнати його через фільтри, а не через зручність читання.
+
 ```jsonc
 {
   // Мова: "uk-UA" | "en-US". Auto-detect при першому запуску через sys-locale
@@ -25,20 +31,11 @@
   // Згортати до tray замість закриття
   "minimizeToTray": true,
 
-  // Показувати сповіщення при зміні треку (balloon tip)
-  "showTrayNotifications": true,
-
   // Показувати назву треку в заголовку вікна
   "showTrackInTitle": true,
 
-  // Зупинити запис при низькому місці на диску (ГБ). 0 = вимкнено
-  "diskSpaceThresholdGb": 1,
-
   // Дія при активації потоку (Enter / подвійний клік): "record" | "play"
   "doubleClickAction": "record",
-
-  // Порядок списку потоків
-  "sortBy": "name",
 
   // Ліміт пропускної здатності (кБ/с). 0 = без ліміту
   "bandwidthLimitKbps": 0,
@@ -73,18 +70,14 @@ interface GlobalSettings {
   activeProfile: string;
   outputDevice: string | null;  // null або unavailable device => system default
   minimizeToTray: boolean;
-  showTrayNotifications: boolean;
   showTrackInTitle: boolean;
-  diskSpaceThresholdGb: number;
   doubleClickAction: "record" | "play";
-  sortBy: "name" | "added";        // порядок списку потоків
   bandwidthLimitKbps: number;
   autostart: boolean;
   autostartMinimized: boolean;
   hotkeys: HotkeyMap;
   logLevel: "error" | "warn" | "info" | "debug";
   logMaxSizeMb: number;
-  resumeFileFrom: "position" | "start"; // тільки cold-start Ctrl+Shift+K; pause→resume завжди з позиції
 }
 
 interface HotkeyMap {
@@ -107,20 +100,14 @@ pub struct GlobalSettings {
     pub active_profile: String,
     pub output_device: Option<String>,
     pub minimize_to_tray: bool,
-    pub show_tray_notifications: bool,
     pub show_track_in_title: bool,
-    pub disk_space_threshold_gb: u32,
     pub double_click_action: DoubleClickAction,
-    #[serde(default = "default_sort_by")]
-    pub sort_by: String, // "name" | "added"
     pub bandwidth_limit_kbps: u32,
     pub autostart: bool,
     pub autostart_minimized: bool,
     pub hotkeys: HotkeyMap,
     pub log_level: LogLevel,
     pub log_max_size_mb: u32,
-    #[serde(default)]
-    pub resume_file_from: ResumeFileFrom,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -136,16 +123,6 @@ pub enum Theme {
 pub enum DoubleClickAction {
     Record,
     Play,
-}
-
-/// Тільки cold-start `Ctrl+Shift+K` резюме файлу. `pause→resume` у межах
-/// сесії завжди з позиції — це поле його не чіпає.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum ResumeFileFrom {
-    #[default]
-    Position,
-    Start,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -232,6 +209,9 @@ pub struct HotkeyMap {
   // Налаштування запису
   "recording": {
     "outputDir": "recordings",
+    // Зупинити запис при низькому місці на диску (ГБ). 0 = вимкнено.
+    // Профільний: охороняє профільний outputDir.
+    "diskSpaceThresholdGb": 1,
     "fileNameTemplate": "%s\\%a - %t",
     "incompleteFileNameTemplate": "%s\\%a - %t_incomplete",
     "streamFileNameTemplate": "%s\\stream_%d_%time",
@@ -265,7 +245,15 @@ pub struct HotkeyMap {
     "lastActive": null,
     "lastStreamId": null,
     "lastFilePosition": null,
-    "autoplayOnStartup": false
+    "autoplayOnStartup": false,
+    "autoAdvance": true,
+    "resumeFileFrom": "position"
+  },
+
+  // Інтерфейс — профільний (ADR 2026-08-08, фільтр 4)
+  "ui": {
+    "streamSort": "name",
+    "trayNotifications": true
   },
 
   // Збережені треки (lightweight metadata, не файли)
@@ -302,6 +290,7 @@ interface Profile {
   scheduledRecordings: ScheduledRecording[];
   recording: RecordingSettings;
   postprocess: PostprocessConfig;
+  ui: UiSettings;
   playerSession: PlayerSession;
   savedTracks: SavedTrack[];
 }
@@ -321,6 +310,7 @@ pub struct Profile {
     pub scheduled_recordings: Vec<ScheduledRecording>,
     pub recording: RecordingSettings,
     pub postprocess: PostprocessConfig,
+    pub ui: UiSettings,
     pub player_session: PlayerSession,
     pub saved_tracks: Vec<SavedTrack>,
 }
@@ -544,6 +534,7 @@ pub enum ScheduleResultReason {
 ```typescript
 interface RecordingSettings {
   outputDir: string;                     // відносний (до data/) або абсолютний
+  diskSpaceThresholdGb: number;          // 0 = перевірку вимкнено; охороняє outputDir
   fileNameTemplate: string;              // "%s\\%a - %t"
   incompleteFileNameTemplate: string;
   streamFileNameTemplate: string;
@@ -700,8 +691,30 @@ interface PlayerSession {
   // Per-profile політика: при наступному запуску застосунку відновити останнє
   // відтворення (resume_last). Opt-in; відсутнє поле = false (зворотна сумісність).
   autoplayOnStartup: boolean;
+
+  // Грати наступний трек, коли поточний файл дограв. Дефолт true.
+  autoAdvance: boolean;
+
+  // Звідки cold-start Ctrl+Shift+K відновлює файл. Дефолт "position".
+  // Лежить поруч із autoplayOnStartup: «чи відновлювати» і «звідки» — одна фіча.
+  resumeFileFrom: "position" | "start";
 }
 ```
+
+### UiSettings (`profile.ui`)
+
+```typescript
+interface UiSettings {
+  streamSort: "name" | "added";  // порядок списку потоків цього профілю
+  trayNotifications: boolean;    // сповіщення про зміну треку в треї
+}
+```
+
+`trayNotifications` — **свідомий виняток** із фільтра «зареєстроване в ОС»:
+«нічний сценарій — тихо» є сценарною потребою. Виняток задокументовано в ADR
+саме щоб він лишався винятком і не почав розмивати фільтр за прецедентом.
+Глобальні тости `notify_recording_toggle` / `notify_stop_all` цей гейт **не**
+читають: вони — єдиний фідбек фонового хоткея.
 
 ```rust
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -745,7 +758,7 @@ pub struct FilePosition {
 превью не відновлює попередній стан превью.
 
 `lastFilePosition.positionMs` персиститься **завжди**, незалежно від
-`GlobalSettings.resumeFileFrom`. Це поле лише вибирає, чи cold-start
+`playerSession.resumeFileFrom`. Це поле лише вибирає, чи cold-start
 `Ctrl+Shift+K` виконує `seek(positionMs)` (`position`, дефолт) чи стартує
 файл з 0 (`start`) — рішення читається один раз у `resume_last`, `pause→resume`
 у межах сесії його не бачить.
@@ -943,6 +956,40 @@ pub struct ProfileMeta {
 }
 ```
 
+### 4.6. ProfileSettingsView / ProfileSettingsPatch
+
+Редагований зріз профілю — те, що читає й пише діалог профілю
+(`get_profile_settings` / `update_profile_settings`), для активного профілю і для
+неактивного однаково.
+
+```typescript
+interface ProfileSettings {          // = ProfileSettingsView на бекенді
+  recording: RecordingSettings;
+  ui: UiSettings;
+  autoplayOnStartup: boolean;
+  autoAdvance: boolean;
+  resumeFileFrom: "position" | "start";
+}
+
+interface ProfileSettingsPatch {     // усі поля опційні
+  recording?: RecordingSettings;
+  ui?: UiSettings;
+  autoplayOnStartup?: boolean;
+  autoAdvance?: boolean;
+  resumeFileFrom?: "position" | "start";
+}
+```
+
+Чому патч, а не копія профілю: `save_detached` пише профіль цілком, тож запис
+своєї копії затер би паралельні зміни — `lastResult` від планувальника, `volume`,
+слід останнього відтворення. `recording` і `ui` їдуть секціями саме тому, що в
+них немає жодного бекендового поля; `playerSession` — не може, тому три його поля
+йдуть поокремо.
+
+Застосування — чиста функція `Profile::apply_settings_patch`; вона ж клампить
+`schedulePad*`, щоб межі не залежали від того, через яку гілку прийшов патч.
+Команда **не створює** неіснуючий профіль: `Profile::load` віддає `NotFound`.
+
 ---
 
 ## 5. IPC Event Payloads
@@ -1075,9 +1122,7 @@ interface PostprocessErrorPayload {
   "activeProfile": "Default",
   "outputDevice": null,
   "minimizeToTray": true,
-  "showTrayNotifications": true,
   "showTrackInTitle": true,
-  "diskSpaceThresholdGb": 1,
   "doubleClickAction": "record",
   "bandwidthLimitKbps": 0,
   "autostart": false,
@@ -1138,7 +1183,13 @@ interface PostprocessErrorPayload {
     "lastActive": null,
     "lastStreamId": null,
     "lastFilePosition": null,
-    "autoplayOnStartup": false
+    "autoplayOnStartup": false,
+    "autoAdvance": true,
+    "resumeFileFrom": "position"
+  },
+  "ui": {
+    "streamSort": "name",
+    "trayNotifications": true
   },
   "savedTracks": []
 }

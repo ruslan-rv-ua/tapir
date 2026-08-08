@@ -6,7 +6,7 @@ import { matchShortcut } from "./shortcuts";
 describe("RESERVED_WEBVIEW_COMBOS", () => {
   it("reserves exactly the registry's reserved combos, in registry order", () => {
     expect(RESERVED_WEBVIEW_COMBOS.map((r) => r.combo)).toEqual([
-      "Ctrl+K", "Ctrl+,", "F1",
+      "Ctrl+K", "Ctrl+,", "Ctrl+Shift+,", "F1",
       "Alt+0", "Alt+1", "Alt+2", "Alt+3", "Alt+4", "Alt+5",
       "Ctrl+N",
       "F6", "Shift+F6", "Shift+F10",

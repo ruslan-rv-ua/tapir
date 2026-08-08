@@ -1,7 +1,22 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { $streamSelection, replaceSelection, pruneSelection } from "./streams";
+import { $streamSelection, $streams, $visibleStreams, replaceSelection, pruneSelection } from "./streams";
+import { $settings, $profileSettings } from "./settings";
+import type { GlobalSettings, ProfileSettings, StreamInfo } from "../lib/tauri";
 
-beforeEach(() => $streamSelection.set(new Set()));
+beforeEach(() => {
+  $streamSelection.set(new Set());
+  $streams.set([]);
+  $settings.set(null);
+  $profileSettings.set(null);
+});
+
+const mkStream = (id: string, name: string, addedAt: string): StreamInfo =>
+  ({ id, name, url: `http://${id}`, addedAt, ignorelist: [] } as StreamInfo);
+
+const setSort = (streamSort: "name" | "added") => {
+  $settings.set({ language: "uk" } as GlobalSettings);
+  $profileSettings.set({ ui: { streamSort, trayNotifications: true } } as ProfileSettings);
+};
 
 describe("$streamSelection + replaceSelection", () => {
   it("defaults to an empty set", () => {
@@ -29,5 +44,31 @@ describe("pruneSelection", () => {
     const before = $streamSelection.get();
     pruneSelection(new Set(["a", "b", "x"])); // all selected ids still exist
     expect($streamSelection.get()).toBe(before);
+  });
+});
+
+describe("$visibleStreams — sort order is profile-scoped", () => {
+  const streams = [
+    mkStream("mid", "Bravo", "2026-02-01T00:00:00Z"),
+    mkStream("new", "Charlie", "2026-03-01T00:00:00Z"),
+    mkStream("old", "Alpha", "2026-01-01T00:00:00Z"),
+  ];
+
+  it("falls back to name order while the profile slice is still null", () => {
+    $streams.set(streams);
+    expect($visibleStreams.get().map((s) => s.id)).toEqual(["old", "mid", "new"]);
+  });
+
+  it("reads the order from the profile, not from global settings", () => {
+    setSort("added");
+    $streams.set(streams);
+    expect($visibleStreams.get().map((s) => s.id)).toEqual(["new", "mid", "old"]);
+  });
+
+  it("switching the profile slice re-sorts without touching $streams", () => {
+    setSort("added");
+    $streams.set(streams);
+    setSort("name");
+    expect($visibleStreams.get().map((s) => s.id)).toEqual(["old", "mid", "new"]);
   });
 });

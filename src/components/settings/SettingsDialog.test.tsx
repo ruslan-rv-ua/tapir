@@ -1,30 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, act, waitFor } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as m from "../../i18n/paraglide/messages";
 import { SettingsDialog } from "./SettingsDialog";
-import { $settings, $settingsDialogOpen, $recordingSettings } from "../../stores/settings";
-import type { GlobalSettings, RecordingSettings } from "../../lib/tauri";
+import { $settings, $settingsDialogOpen, $profileSettingsTarget } from "../../stores/settings";
+import type { GlobalSettings } from "../../lib/tauri";
 
 // Every tab panel this dialog can mount reaches for tauri, so the module mock
-// has to cover all four tabs, not just the dialog itself.
+// has to cover all three tabs, not just the dialog itself.
 vi.mock("../../lib/tauri", () => ({
-  getRecordingSettings: vi.fn().mockResolvedValue({
-    outputDir: "recordings",
-    fileNameTemplate: "%artist% - %title%",
-    incompleteFileNameTemplate: "incomplete/%artist% - %title%",
-    streamFileNameTemplate: "%station%/stream",
-    saveStreamFile: false,
-    skipFirstIncompleteTrack: true,
-    skipShortTracksMs: 30000,
-    autoCorrectCase: true,
-    schedulePadBeforeMin: 0,
-    schedulePadAfterMin: 0,
-    reconnect: {
-      maxRetries: 10, retryIntervalSecs: 5, backoffMultiplier: 1.5, maxIntervalSecs: 60,
-    },
-  } as RecordingSettings),
-  saveRecordingSettings: vi.fn().mockResolvedValue(undefined),
   saveSettings: vi.fn().mockResolvedValue(undefined),
   syncAutostart: vi.fn().mockResolvedValue(undefined),
   openDirectoryPicker: vi.fn().mockResolvedValue(null),
@@ -40,17 +24,12 @@ const baseSettings: GlobalSettings = {
   activeProfile: "Default",
   outputDevice: null,
   minimizeToTray: false,
-  showTrayNotifications: true,
   showTrackInTitle: true,
-  diskSpaceThresholdGb: 1,
   doubleClickAction: "play",
-  sortBy: "name",
   bandwidthLimitKbps: 0,
   autostart: false,
   autostartMinimized: true,
-  autoAdvance: true,
   prevRestartThresholdMs: 0,
-  resumeFileFrom: "position",
   smtcEnabled: true,
   hotkeys: {
     toggleRecording: "", togglePlayback: "", volumeUp: "", volumeDown: "",
@@ -60,15 +39,11 @@ const baseSettings: GlobalSettings = {
   logLevel: "info",
 } as GlobalSettings;
 
-/** Opens the dialog and waits out the getRecordingSettings effect. */
 async function openDialog() {
   $settings.set(baseSettings);
   act(() => $settingsDialogOpen.set(true));
   render(<SettingsDialog />);
   await screen.findByRole("tablist");
-  // Дочекатися ефекту getRecordingSettings, інакше стор наповниться поза act()
-  // і RecordingTab насмітить попередженнями при переході на свою вкладку.
-  await waitFor(() => expect($recordingSettings.get()).not.toBeNull());
 }
 
 beforeEach(() => {
@@ -78,7 +53,7 @@ beforeEach(() => {
 afterEach(() => {
   $settingsDialogOpen.set(false);
   $settings.set(null);
-  $recordingSettings.set(null);
+  $profileSettingsTarget.set(null);
 });
 
 describe("SettingsDialog — вертикальна бічна панель вкладок", () => {
@@ -99,7 +74,7 @@ describe("SettingsDialog — вертикальна бічна панель вк
     expect(selected()).toBe(m.settings_tab_general());
 
     await userEvent.keyboard("{ArrowDown}");
-    expect(selected()).toBe(m.settings_tab_recording());
+    expect(selected()).toBe(m.settings_tab_playback());
 
     await userEvent.keyboard("{ArrowUp}");
     expect(selected()).toBe(m.settings_tab_general());
@@ -108,7 +83,7 @@ describe("SettingsDialog — вертикальна бічна панель вк
     // orientation-guard у getKeyLeftOf/getKeyRightOf). Це страховка для NVDA,
     // який не озвучує aria-orientation — див. p2-settings-sidebar-tabs.
     await userEvent.keyboard("{ArrowRight}");
-    expect(selected()).toBe(m.settings_tab_recording());
+    expect(selected()).toBe(m.settings_tab_playback());
 
     await userEvent.keyboard("{ArrowLeft}");
     expect(selected()).toBe(m.settings_tab_general());
@@ -117,7 +92,34 @@ describe("SettingsDialog — вертикальна бічна панель вк
   it("показує панель обраної вкладки", async () => {
     await openDialog();
     await userEvent.keyboard("{ArrowDown}");
-    expect(screen.getByRole("tab", { name: m.settings_tab_recording(), selected: true })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: m.settings_tab_playback(), selected: true })).toBeTruthy();
     expect(screen.getByRole("tabpanel")).toBeTruthy();
+  });
+});
+
+describe("SettingsDialog — межа глобальне/профільне", () => {
+  it("має рівно три вкладки: Загальні, Аудіо, Хоткеї", async () => {
+    await openDialog();
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual([
+      m.settings_tab_general(),
+      m.settings_tab_playback(),
+      m.settings_tab_hotkeys(),
+    ]);
+  });
+
+  it("не показує вкладку «Запис» — вона переїхала в діалог профілю", async () => {
+    await openDialog();
+    expect(screen.queryByRole("tab", { name: m.settings_tab_recording() })).toBeNull();
+  });
+
+  it("кнопка налаштувань профілю закриває цей діалог і відкриває профільний", async () => {
+    await openDialog();
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: m.profile_settings_open_action({ name: "Default" }),
+      }),
+    );
+    expect($settingsDialogOpen.get()).toBe(false);
+    expect($profileSettingsTarget.get()).toBe("Default");
   });
 });

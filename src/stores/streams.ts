@@ -1,7 +1,7 @@
 import { atom, computed, map } from "nanostores";
 import type { StreamInfo, StreamStatus, ImportCandidate } from "../lib/tauri";
 import { replaceSelection as replaceSel, pruneSelection as pruneSel } from "./selection";
-import { $settings } from "./settings";
+import { $settings, $profileSettings } from "./settings";
 
 export const $streams = atom<StreamInfo[]>([]);
 export const $statuses = map<Record<string, StreamStatus>>({});
@@ -33,23 +33,27 @@ export const $streamFilter = atom<StreamFilter>("all");
 export type StreamSort = "name" | "added";
 
 /**
- * Streams in the active sort order (settings.sortBy). Depends only on $streams and
- * $settings, so its reference stays stable across live $statuses updates — that's
- * what lets $visibleStreams pass it straight through under the default "all" filter
- * without re-notifying $playbackNeighbors (and re-rendering the player) on every
- * recording tick.
+ * Streams in the active sort order (profile `ui.streamSort` — the order is a
+ * property of the profile's data set, ADR 2026-08-08; the collation locale stays
+ * global). Depends only on $streams and the two settings stores, so its reference
+ * stays stable across live $statuses updates — that's what lets $visibleStreams
+ * pass it straight through under the default "all" filter without re-notifying
+ * $playbackNeighbors (and re-rendering the player) on every recording tick.
  */
-const $sortedStreams = computed([$streams, $settings], (streams, settings) => {
-  const sortBy: StreamSort = settings?.sortBy ?? "name";
-  if (sortBy === "added") {
-    return [...streams].sort((a, b) => b.addedAt.localeCompare(a.addedAt));
-  }
-  const collator = new Intl.Collator(settings?.language || "uk", {
-    numeric: true,
-    sensitivity: "base",
-  });
-  return [...streams].sort((a, b) => collator.compare(a.name, b.name));
-});
+const $sortedStreams = computed(
+  [$streams, $settings, $profileSettings],
+  (streams, settings, profileSettings) => {
+    const sortBy: StreamSort = profileSettings?.ui.streamSort ?? "name";
+    if (sortBy === "added") {
+      return [...streams].sort((a, b) => b.addedAt.localeCompare(a.addedAt));
+    }
+    const collator = new Intl.Collator(settings?.language || "uk", {
+      numeric: true,
+      sensitivity: "base",
+    });
+    return [...streams].sort((a, b) => collator.compare(a.name, b.name));
+  },
+);
 
 /**
  * The exact list StreamsPanel renders: the active filter chip applied to the sort

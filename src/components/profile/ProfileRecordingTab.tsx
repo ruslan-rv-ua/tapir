@@ -1,4 +1,3 @@
-import { useStore } from "@nanostores/react";
 import {
   TextField,
   Label,
@@ -7,57 +6,37 @@ import {
   NumberField,
   Group,
 } from "react-aria-components";
-import { $settings, $recordingSettings } from "../../stores/settings";
-import { useAutoSave } from "../../hooks/useAutoSave";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 import { addToast } from "../../stores/toasts";
-import type { RecordingSettings, GlobalSettings, ReconnectConfig } from "../../lib/tauri";
+import type { RecordingSettings, ReconnectConfig } from "../../lib/tauri";
 
-export function RecordingTab() {
-  const recording = useStore($recordingSettings);
-  const settings = useStore($settings);
+interface Props {
+  recording: RecordingSettings;
+  onChange: (patch: Partial<RecordingSettings>) => void;
+}
 
-  const save = useAutoSave(async () => {
-    const current = $recordingSettings.get();
-    if (current) await tauri.saveRecordingSettings(current);
-  });
-
-  const saveGlobal = useAutoSave(async () => {
-    const current = $settings.get();
-    if (current) await tauri.saveSettings(current);
-  });
-
-  if (!recording)
-    return <div className="text-sm text-slate-500">Loading...</div>;
-
+/**
+ * «Запис» — перша вкладка діалогу профілю. Керована: власного стану немає,
+ * значення і запис належать діалогу, який дебаунсить збереження.
+ *
+ * Вибір теки викликає `open_directory_picker` → `blocking_pick_folder`, тобто
+ * нативний системний діалог, а не webview-модалку. Саме тому рендерити його
+ * всередині `TabPanel` безпечно: небезпечний бік відомої проблеми — модалка
+ * через портал усередині колекції (`WishlistPanel`, фікс ba87641).
+ */
+export function ProfileRecordingTab({ recording, onChange }: Props) {
   function update(patch: Partial<RecordingSettings>) {
-    const current = $recordingSettings.get();
-    if (!current) return;
-    $recordingSettings.set({ ...current, ...patch });
-    save();
-  }
-
-  function updateGlobal(patch: Partial<GlobalSettings>) {
-    const current = $settings.get();
-    if (!current) return;
-    $settings.set({ ...current, ...patch });
-    saveGlobal();
+    onChange(patch);
   }
 
   function updateReconnect(patch: Partial<ReconnectConfig>) {
-    const current = $recordingSettings.get();
-    if (!current) return;
-    $recordingSettings.set({
-      ...current,
-      reconnect: { ...current.reconnect, ...patch },
-    });
-    save();
+    onChange({ reconnect: { ...recording.reconnect, ...patch } });
   }
 
   async function handleBrowse() {
     try {
-      const dir = await tauri.openDirectoryPicker(recording?.outputDir);
+      const dir = await tauri.openDirectoryPicker(recording.outputDir);
       if (dir) update({ outputDir: dir });
     } catch (err) {
       console.error("Failed to open directory picker:", err);
@@ -184,24 +163,22 @@ export function RecordingTab() {
         <Label>{m.settings_auto_correct_case()}</Label>
       </Checkbox>
 
-      {/* Disk threshold */}
-      {settings && (
-        <NumberField
-          value={settings.diskSpaceThresholdGb}
-          onChange={(val) => { if (!Number.isNaN(val)) updateGlobal({ diskSpaceThresholdGb: val }); }}
-          minValue={0}
-          maxValue={100}
-          step={1}
-        >
-          <Label className="block text-sm font-medium text-slate-300">
-            {m.settings_disk_threshold()}
-          </Label>
-          <Group className="mt-1 flex w-32">
-            <Input className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText]" />
-          </Group>
-          <p className="mt-1 text-xs text-slate-500">{m.settings_disk_threshold_desc()}</p>
-        </NumberField>
-      )}
+      {/* Disk threshold — профільний: охороняє профільну теку запису */}
+      <NumberField
+        value={recording.diskSpaceThresholdGb}
+        onChange={(val) => { if (!Number.isNaN(val)) update({ diskSpaceThresholdGb: val }); }}
+        minValue={0}
+        maxValue={100}
+        step={1}
+      >
+        <Label className="block text-sm font-medium text-slate-300">
+          {m.settings_disk_threshold()}
+        </Label>
+        <Group className="mt-1 flex w-32">
+          <Input className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText]" />
+        </Group>
+        <p className="mt-1 text-xs text-slate-500">{m.settings_disk_threshold_desc()}</p>
+      </NumberField>
       </div>
 
       {/* Section: Scheduler padding (Phase 3D §5.4); межі клампить і backend */}

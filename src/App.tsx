@@ -9,6 +9,7 @@ import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import { SettingsDialog } from "./components/settings/SettingsDialog";
 import { HelpDialog } from "./components/common/HelpDialog";
 import { ProfilesPanel } from "./components/profile/ProfilesPanel";
+import { ProfileSettingsDialogHost } from "./components/profile/ProfileSettingsDialog";
 import { StreamsPanel } from "./components/streams/StreamsPanel";
 import { WishlistPanel } from "./components/wishlist/WishlistPanel";
 import { BrowserPanel } from "./components/browser/BrowserPanel";
@@ -26,7 +27,7 @@ import { useBrowserProbeFeedback } from "./hooks/useBrowserProbeFeedback";
 import { useScheduleEvents } from "./hooks/useScheduleEvents";
 import { useAnnounce } from "./hooks/useAnnounce";
 import { $streams, $statuses, updateStreamStatus } from "./stores/streams";
-import { $settings } from "./stores/settings";
+import { $settings, $profileSettings } from "./stores/settings";
 import { $playerStatus } from "./stores/player";
 import { $wishlist } from "./stores/wishlist";
 import { $activeSection } from "./stores/navigation";
@@ -135,12 +136,16 @@ function AppContent() {
       tauri.getAllStatuses().then((statuses) => {
         statuses.forEach((s) => updateStreamStatus(s.streamId, s));
       }),
-      tauri.getSettings().then((settings) => {
+      tauri.getSettings().then(async (settings) => {
         $settings.set(settings);
         document.documentElement.lang = settings.language === "uk-UA" ? "uk" : "en";
         if (settings.theme !== "auto") {
           document.documentElement.setAttribute("data-theme", settings.theme);
         }
+        // Профільні налаштування потрібні вже в першому кадрі: з них читають
+        // StatusBar (поріг диску) і stores/streams (сортування). Наповнити їх
+        // лише при відкритті діалогу означало б показати дефолти й смикнутися.
+        $profileSettings.set(await tauri.getProfileSettings(settings.activeProfile));
       }),
       tauri.getPlayerStatus().then((status) => {
         $playerStatus.set(status);
@@ -275,7 +280,7 @@ function AppContent() {
   }, []);
 
   const handlePlayerEnded = useCallback(async (payload: PlayerEndedPayload) => {
-    const autoAdvance = $settings.get()?.autoAdvance ?? true;
+    const autoAdvance = $profileSettings.get()?.autoAdvance ?? true;
     const neighbors = computePlaybackNeighbors(
       { type: "file", path: payload.path },
       $streams.get(),
@@ -399,6 +404,7 @@ function App() {
       <AppContent />
       <CommandPalette />
       <SettingsDialog />
+      <ProfileSettingsDialogHost />
       <HelpDialog />
       <LiveAnnouncer />
       <ToastContainer />

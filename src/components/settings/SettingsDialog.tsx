@@ -1,30 +1,24 @@
-import { useEffect } from "react";
 import { Dialog, Modal, ModalOverlay, Heading } from "react-aria-components";
 import { Tab, TabList, TabPanel, Tabs } from "react-aria-components";
 import { useStore } from "@nanostores/react";
-import { $settings, $settingsDialogOpen, $recordingSettings } from "../../stores/settings";
-import * as tauri from "../../lib/tauri";
+import { $settings, $settingsDialogOpen, $profileSettingsTarget } from "../../stores/settings";
 import * as m from "../../i18n/paraglide/messages";
-import { addToast } from "../../stores/toasts";
 import { GeneralTab } from "./GeneralTab";
-import { RecordingTab } from "./RecordingTab";
 import { HotkeysTab } from "./HotkeysTab";
 import { AudioTab } from "./AudioTab";
 
 const TAB_CLS =
   "cursor-pointer rounded border-l-2 border-transparent px-3 py-2 text-left text-sm text-slate-400 outline-none hover:text-slate-200 selected:border-blue-400 selected:text-slate-100 focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:text-[ButtonText] forced-colors:selected:border-[Highlight] forced-colors:selected:text-[HighlightText]";
 
+/**
+ * Application settings — **global only** (ADR 2026-08-08). Everything
+ * profile-scoped lives in the profile dialog (`Ctrl+Shift+,`); the boundary is
+ * physical, not labelled, because a label would have to be repeated on every
+ * control and is not announced until the group is entered.
+ */
 export function SettingsDialog() {
   const isOpen = useStore($settingsDialogOpen);
   const settings = useStore($settings);
-
-  useEffect(() => {
-    if (isOpen) {
-      tauri.getRecordingSettings().then((rec) => {
-        $recordingSettings.set(rec);
-      }).catch((e) => { console.error(e); addToast(m.settings_load_error(), "error"); });
-    }
-  }, [isOpen]);
 
   if (!isOpen || !settings) return null;
 
@@ -65,9 +59,6 @@ export function SettingsDialog() {
               <Tab id="general" autoFocus className={TAB_CLS}>
                 {m.settings_tab_general()}
               </Tab>
-              <Tab id="recording" className={TAB_CLS}>
-                {m.settings_tab_recording()}
-              </Tab>
               <Tab id="audio" className={TAB_CLS}>
                 {m.settings_tab_playback()}
               </Tab>
@@ -79,9 +70,6 @@ export function SettingsDialog() {
               <TabPanel id="general">
                 <GeneralTab />
               </TabPanel>
-              <TabPanel id="recording">
-                <RecordingTab />
-              </TabPanel>
               <TabPanel id="audio">
                 <AudioTab />
               </TabPanel>
@@ -90,8 +78,19 @@ export function SettingsDialog() {
               </TabPanel>
             </div>
           </Tabs>
-          <div className="flex items-center border-t border-slate-700 px-6 py-3">
+          <div className="flex items-center justify-between gap-4 border-t border-slate-700 px-6 py-3">
             <p className="text-xs text-slate-500">{m.settings_autosave_notice()}</p>
+            {/* Ctrl+, → «Запис» — та звичка, яку ламає переїзд вкладки; вказівник
+                на її місці дешевший за будь-яке навчання. */}
+            <button
+              onClick={() => {
+                $settingsDialogOpen.set(false);
+                $profileSettingsTarget.set(settings.activeProfile);
+              }}
+              className="shrink-0 rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-600 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
+            >
+              {m.profile_settings_open_action({ name: settings.activeProfile })}
+            </button>
           </div>
         </Dialog>
       </Modal>

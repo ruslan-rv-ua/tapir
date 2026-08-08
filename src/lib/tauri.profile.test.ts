@@ -5,7 +5,10 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 import { invoke } from "@tauri-apps/api/core";
-import { listProfiles, switchProfile, createProfile, deleteProfile, commitImport } from "./tauri";
+import {
+  listProfiles, switchProfile, createProfile, deleteProfile, commitImport,
+  getProfileSettings, updateProfileSettings,
+} from "./tauri";
 
 beforeEach(() => { vi.clearAllMocks(); });
 
@@ -38,5 +41,26 @@ describe("Profile IPC wrappers", () => {
     vi.mocked(invoke).mockResolvedValueOnce({ name: "Imported", streamCount: 0, isActive: false });
     await commitImport("{}", "Imported");
     expect(invoke).toHaveBeenCalledWith("commit_import", { profileJson: "{}", name: "Imported" });
+  });
+
+  it("getProfileSettings calls get_profile_settings with name arg", async () => {
+    vi.mocked(invoke).mockResolvedValueOnce({});
+    await getProfileSettings("Jazz");
+    expect(invoke).toHaveBeenCalledWith("get_profile_settings", { name: "Jazz" });
+  });
+
+  it("updateProfileSettings passes the patch through untouched", async () => {
+    vi.mocked(invoke).mockResolvedValueOnce(undefined);
+    await updateProfileSettings("Jazz", { autoplayOnStartup: true });
+    expect(invoke).toHaveBeenCalledWith("update_profile_settings", {
+      name: "Jazz",
+      patch: { autoplayOnStartup: true },
+    });
+  });
+
+  it("an empty patch stays empty — the backend must not receive absent sections", async () => {
+    vi.mocked(invoke).mockResolvedValueOnce(undefined);
+    await updateProfileSettings("Jazz", {});
+    expect(invoke).toHaveBeenCalledWith("update_profile_settings", { name: "Jazz", patch: {} });
   });
 });

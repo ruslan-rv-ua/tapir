@@ -4,7 +4,7 @@ import type { ProfileChangedPayload } from "../lib/tauri";
 import * as tauri from "../lib/tauri";
 import { $profile } from "../stores/profile";
 import { $streams, $statuses, replaceSelection } from "../stores/streams";
-import { $settings, $recordingSettings } from "../stores/settings";
+import { $settings, $profileSettings } from "../stores/settings";
 import { $wishlist, $ignorelist } from "../stores/wishlist";
 import { loadSongs } from "../stores/songs";
 import { loadSchedules } from "../stores/schedule";
@@ -63,13 +63,14 @@ export function useProfileSync(): void {
         // Schedules — розклади нового активного профілю (Phase 3D)
         if (!cancelled) loadSchedules();
 
-        // RecordingSettings — re-fetch for new profile's recording config
+        // Профільні налаштування — поріг диску, сортування, автоперехід і
+        // сповіщення мусять діяти за новим профілем одразу, без перезапуску.
         try {
-          const rec = await tauri.getRecordingSettings();
+          const ps = await tauri.getProfileSettings(profile.name);
           if (cancelled) return;
-          $recordingSettings.set(rec);
+          $profileSettings.set(ps);
         } catch (e) {
-          console.error("useProfileSync: failed to refresh recording settings", e);
+          console.error("useProfileSync: failed to refresh profile settings", e);
           addToast(m.profile_sync_error(), "error");
         }
       }

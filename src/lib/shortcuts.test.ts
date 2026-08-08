@@ -15,6 +15,7 @@ const makeActions = (): ShortcutActions => ({
   setSection: vi.fn(),
   toggleCommandPalette: vi.fn(),
   toggleSettings: vi.fn(),
+  toggleProfileSettings: vi.fn(),
   openAddStream: vi.fn(),
   openHelp: vi.fn(),
 });
@@ -30,6 +31,28 @@ describe("matchShortcut — matching", () => {
 
   it("matches Ctrl+, → settings", () => {
     expect(matchShortcut(ev("Comma", { ctrlKey: true }), ctx("streams"))?.id).toBe("settings");
+  });
+
+  // Регресія межі глобальне/профільне: дві комбінації на одній фізичній клавіші
+  // не мають перехоплювати одна одну.
+  it("matches Ctrl+Shift+, → profile-settings, not settings", () => {
+    expect(matchShortcut(ev("Comma", { ctrlKey: true, shiftKey: true }), ctx("streams"))?.id)
+      .toBe("profile-settings");
+  });
+
+  it("Ctrl+, never reaches profile-settings", () => {
+    expect(matchShortcut(ev("Comma", { ctrlKey: true }), ctx("streams"))?.id).toBe("settings");
+  });
+
+  it("matches Meta+Shift+, too (macOS-style)", () => {
+    expect(matchShortcut(ev("Comma", { metaKey: true, shiftKey: true }), ctx("streams"))?.id)
+      .toBe("profile-settings");
+  });
+
+  it("Ctrl+Alt+, matches neither", () => {
+    expect(matchShortcut(ev("Comma", { ctrlKey: true, altKey: true }), ctx("streams"))).toBeNull();
+    expect(matchShortcut(ev("Comma", { ctrlKey: true, altKey: true, shiftKey: true }), ctx("streams")))
+      .toBeNull();
   });
 
   it("matches F1 → help", () => {

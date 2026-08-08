@@ -134,51 +134,6 @@ export function AudioTab() {
           {m.player_controls()}
         </h3>
 
-        {/* Auto-advance */}
-        <Checkbox
-          isSelected={settings.autoAdvance}
-          onChange={(val) => update({ autoAdvance: val })}
-          className="flex items-center gap-2 text-sm text-slate-300"
-        >
-          <div className="flex h-5 w-5 items-center justify-center rounded border border-slate-600 bg-slate-700">
-            {settings.autoAdvance && <span>✓</span>}
-          </div>
-          <Label>{m.settings_auto_advance()}</Label>
-        </Checkbox>
-
-        {/* Resume file: from last position vs from the beginning.
-            Cold-start Ctrl+Shift+K only — in-session pause/resume is untouched. */}
-        <Select
-          selectedKey={settings.resumeFileFrom}
-          onSelectionChange={(key) =>
-            update({ resumeFileFrom: key as GlobalSettings["resumeFileFrom"] })
-          }
-        >
-          <Label className="block text-sm font-medium text-slate-300">
-            {m.settings_resume_file_from()}
-          </Label>
-          <Button className="mt-1 flex w-48 items-center justify-between rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400">
-            <SelectValue />
-            <span aria-hidden="true">▼</span>
-          </Button>
-          <Popover className="w-48 rounded border border-slate-600 bg-slate-700 shadow-lg">
-            <ListBox className="outline-none">
-              <ListBoxItem
-                id="position"
-                className="cursor-pointer px-3 py-2 text-sm text-slate-100 outline-none hover:bg-slate-600 focus:bg-slate-600"
-              >
-                {m.settings_resume_from_position()}
-              </ListBoxItem>
-              <ListBoxItem
-                id="start"
-                className="cursor-pointer px-3 py-2 text-sm text-slate-100 outline-none hover:bg-slate-600 focus:bg-slate-600"
-              >
-                {m.settings_resume_from_start()}
-              </ListBoxItem>
-            </ListBox>
-          </Popover>
-        </Select>
-
         {/* Prev-restart threshold (shown in seconds; stored as ms) */}
         <NumberField
           value={Math.round((settings.prevRestartThresholdMs ?? 0) / 1000)}

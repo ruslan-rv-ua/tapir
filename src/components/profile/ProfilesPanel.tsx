@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { createPortal } from "react-dom";
-import { $profileList, $profilesSelection, $showCreateProfileDialog } from "../../stores/profileManager";
+import { $focusProfileList, $profileList, $profilesSelection, $showCreateProfileDialog } from "../../stores/profileManager";
 import { replaceSelection } from "../../stores/selection";
-import { $settings } from "../../stores/settings";
+import { $profileSettingsTarget, $settings } from "../../stores/settings";
 import { ProfileList, type ProfileListHandle } from "./ProfileList";
 import { SelectionToolbar } from "../common/SelectionToolbar";
 import { ProfileNameDialog } from "./ProfileNameDialog";
-import { ProfileSettingsDialog } from "./ProfileSettingsDialog";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { ListCard } from "../common/ListCard";
 import { ScreenZone } from "../layout/ScreenZone";
@@ -27,7 +26,6 @@ type SubDialog =
   | { type: "rename" }
   | { type: "duplicate" }
   | { type: "delete" }
-  | { type: "settings" }
   | { type: "switch-confirm" }
   | { type: "switch-confirm-scheduled"; active: ActiveScheduled[] }
   | { type: "import"; preview: ImportPreview };
@@ -75,6 +73,16 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
     const list = await tauri.listProfiles();
     $profileList.set(list);
   };
+
+  // The profile-settings dialog lives at `App` level, so it cannot reach the
+  // list itself: after a force-close it bumps this counter and focus lands here.
+  const focusListSignal = useStore($focusProfileList);
+  const focusListSignalRef = useRef(focusListSignal);
+  useEffect(() => {
+    if (focusListSignal === focusListSignalRef.current) return;
+    focusListSignalRef.current = focusListSignal;
+    requestAnimationFrame(() => listRef.current?.focus("forward"));
+  }, [focusListSignal]);
 
   // Focus helpers — rAF lets the list re-render with refreshed data (and the
   // updated focusProfile closure) before we move focus.
@@ -162,17 +170,6 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
       announce(m.profile_delete() + ": " + target);
       setSubDialog(null);
       refocusList();
-    } catch (e) { addToast(String(e), "error"); } finally { setBusy(false); }
-  };
-
-  const handleSaveSettings = async (enabled: boolean) => {
-    setBusy(true);
-    try {
-      await tauri.setProfileAutoplay(target, enabled);
-      await refreshList();
-      announce(m.profile_settings_saved({ name: target }));
-      setSubDialog(null);
-      refocusProfile(target);
     } catch (e) { addToast(String(e), "error"); } finally { setBusy(false); }
   };
 
@@ -309,7 +306,7 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
           onRename={(name) => { setTarget(name); setNameInput(name); setNameError(null); setSubDialog({ type: "rename" }); }}
           onDelete={(name) => { setTarget(name); setSubDialog({ type: "delete" }); }}
           onExport={handleExport}
-          onSettings={(name) => { setTarget(name); setSubDialog({ type: "settings" }); }}
+          onSettings={(name) => { setTarget(name); $profileSettingsTarget.set(name); }}
         />
       </ListCard>
 
@@ -344,17 +341,6 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
           message={m.profile_delete_confirm({ name: target })}
           confirmLabel={m.profile_delete()}
           onConfirm={handleDelete}
-          onCancel={() => setSubDialog(null)}
-        />,
-        document.body,
-      )}
-
-      {subDialog?.type === "settings" && createPortal(
-        <ProfileSettingsDialog
-          name={target}
-          initialEnabled={profiles.find((p) => p.name === target)?.autoplayOnStartup ?? false}
-          busy={busy}
-          onConfirm={handleSaveSettings}
           onCancel={() => setSubDialog(null)}
         />,
         document.body,

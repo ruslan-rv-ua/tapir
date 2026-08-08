@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { createPortal } from "react-dom";
 import { $streams, $statuses, $visibleStreams, $showAddStreamDialog, $streamFilter, $importCandidates, $exportStreamsRequest, $streamSelection, replaceSelection, type StreamFilter, type StreamSort } from "../../stores/streams";
-import { $settings } from "../../stores/settings";
+import { $settings, $profileSettings } from "../../stores/settings";
 import { $freeSpace } from "../../stores/system";
 import { FreeSpaceMetric } from "./FreeSpaceMetric";
 import { StreamList, type StreamListHandle } from "./StreamList";
@@ -62,6 +62,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const streams = useStore($streams);
   const statuses = useStore($statuses);
   const settings = useStore($settings);
+  const profileSettings = useStore($profileSettings);
   const freeSpace = useStore($freeSpace);
   const isEmpty = streams.length === 0;
 
@@ -154,7 +155,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   // exact same list the user sees — keeping the two in sync was the whole bug.
   const visibleStreams = useStore($visibleStreams);
 
-  const sortBy: StreamSort = settings?.sortBy ?? "name";
+  const sortBy: StreamSort = profileSettings?.ui.streamSort ?? "name";
 
   const selection = useStore($streamSelection);
   const selCount = selection.size;
@@ -196,13 +197,17 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     [],
   );
 
+  // Порядок сортування профільний (ADR 2026-08-08): пишемо секцію `ui` цілком —
+  // у ній немає жодного бекендового поля.
   const handleSortChange = (id: StreamSort) => {
     if (id === sortBy) return;
-    const current = $settings.get();
-    if (!current) return;
-    const updated = { ...current, sortBy: id };
-    $settings.set(updated);
-    tauri.saveSettings(updated).catch((e) => addToast(String(e), "error"));
+    const current = $profileSettings.get();
+    const activeProfile = $settings.get()?.activeProfile;
+    if (!current || !activeProfile) return;
+    const ui = { ...current.ui, streamSort: id };
+    $profileSettings.set({ ...current, ui });
+    tauri.updateProfileSettings(activeProfile, { ui })
+      .catch((e) => addToast(String(e), "error"));
     announce(sortAnnouncement(id), "polite");
   };
 
@@ -487,7 +492,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
         </div>
         <FreeSpaceMetric
           freeBytes={freeSpace}
-          thresholdGb={settings?.diskSpaceThresholdGb ?? 0}
+          thresholdGb={profileSettings?.recording.diskSpaceThresholdGb ?? 0}
         />
       </div>
 

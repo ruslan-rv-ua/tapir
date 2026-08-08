@@ -18,17 +18,12 @@ const baseSettings: GlobalSettings = {
   activeProfile: "Default",
   outputDevice: null,
   minimizeToTray: false,
-  showTrayNotifications: true,
   showTrackInTitle: true,
-  diskSpaceThresholdGb: 1,
   doubleClickAction: "play",
-  sortBy: "name",
   bandwidthLimitKbps: 0,
   autostart: false,
   autostartMinimized: true,
-  autoAdvance: true,
   prevRestartThresholdMs: 0,
-  resumeFileFrom: "position",
   smtcEnabled: true,
   hotkeys: {
     toggleRecording: "", togglePlayback: "", volumeUp: "", volumeDown: "",
@@ -81,5 +76,23 @@ describe("GeneralTab — Autostart", () => {
     expect($settings.get()?.autostart).toBe(true);
     // …then the rejected promise reverts it.
     await waitFor(() => expect($settings.get()?.autostart).toBe(false));
+  });
+});
+
+// Сповіщення в треї — свідомий виняток із ОС-межі: вони профільні
+// (ADR 2026-08-08), тож у налаштуваннях програми їх бути не повинно.
+describe("GeneralTab — межа глобальне/профільне", () => {
+  it("does not show the tray-notifications toggle", () => {
+    const { queryByRole } = render(<GeneralTab />);
+    expect(
+      queryByRole("checkbox", { name: new RegExp(m.settings_show_tray_notifications()) }),
+    ).toBeNull();
+  });
+
+  it("keeps minimize-to-tray, which stays global", () => {
+    const { getByRole } = render(<GeneralTab />);
+    expect(
+      getByRole("checkbox", { name: new RegExp(m.settings_minimize_to_tray()) }),
+    ).toBeTruthy();
   });
 });

@@ -3,7 +3,9 @@ use tauri_plugin_dialog::{DialogExt, FilePath};
 use tokio::time::Duration;
 use crate::app_state::AppState;
 use crate::errors::RadioError;
-use crate::profile::{Profile, ProfileMeta, ImportPreview};
+use crate::profile::{
+    ImportPreview, Profile, ProfileMeta, ProfileSettingsPatch, ProfileSettingsView,
+};
 use crate::store::Commit;
 
 #[tauri::command]
@@ -20,7 +22,6 @@ pub async fn create_profile(name: String) -> Result<ProfileMeta, String> {
         name: p.name,
         stream_count: p.streams.len(),
         is_active: false,
-        autoplay_on_startup: p.player_session.autoplay_on_startup,
     }).map_err(|e| e.to_string())
 }
 
@@ -100,11 +101,38 @@ pub async fn commit_import(profile_json: String, name: String) -> Result<Profile
     Profile::save_imported(&profile_json, &name).map_err(|e| e.to_string())
 }
 
-/// Set the per-profile autoplay-on-startup policy (resume-last-playback).
+/// The editable slice of `name` — the active profile from memory, an inactive
+/// one from disk. `Profile::load` is what refuses an unknown name (`NotFound`
+/// for anything but `Default`).
 #[tauri::command]
-pub async fn set_profile_autoplay(
+pub async fn get_profile_settings(
     name: String,
-    enabled: bool,
+    state: State<'_, AppState>,
+) -> Result<ProfileSettingsView, String> {
+    {
+        let profile = state.active_profile.read().await;
+        if profile.name == name {
+            return Ok(profile.settings_view());
+        }
+    }
+    tokio::task::spawn_blocking(move || Profile::load(&name).map(|p| p.settings_view()))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+}
+
+/// Apply `patch` to `name`. Active profile → `commit_profile` (the in-memory
+/// copy is the source of truth; loading from disk would clobber fresher state).
+/// Inactive → read-patch-write off the async executor.
+///
+/// A profile that does not exist is **not** created: `Profile::load` returns
+/// `NotFound`. Auto-save is debounced 300 ms, so «profile deleted → a pending
+/// patch lands on disk» is a real window, and this rule closes it regardless of
+/// what the UI does.
+#[tauri::command]
+pub async fn update_profile_settings(
+    name: String,
+    patch: ProfileSettingsPatch,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let active_name = {
@@ -113,21 +141,17 @@ pub async fn set_profile_autoplay(
     };
 
     if name == active_name {
-        // Active profile: mutate the in-memory source of truth and commit.
-        // Loading from disk and saving would clobber fresher in-memory state
-        // written since the last save (resume fields, volume).
         state
-            .commit_profile(|profile| {
-                profile.player_session.autoplay_on_startup = enabled;
+            .commit_profile(move |profile| {
+                profile.apply_settings_patch(patch);
                 Commit::Save(())
             })
             .await
             .map_err(|e| e.to_string())
     } else {
-        // Inactive profile: load → modify → save, off the async executor.
         tokio::task::spawn_blocking(move || {
             let mut profile = Profile::load(&name)?;
-            profile.player_session.autoplay_on_startup = enabled;
+            profile.apply_settings_patch(patch);
             crate::profile_store::save_detached(&profile)
         })
         .await

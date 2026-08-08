@@ -6,8 +6,8 @@ import { $toasts } from "../../stores/toasts";
 import { $announcer } from "../../stores/announcer";
 import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import { StreamsPanel } from "./StreamsPanel";
-import { $settings } from "../../stores/settings";
-import type { GlobalSettings } from "../../lib/tauri";
+import { $settings, $profileSettings } from "../../stores/settings";
+import type { GlobalSettings, ProfileSettings } from "../../lib/tauri";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as m from "../../i18n/paraglide/messages";
 
@@ -27,6 +27,7 @@ vi.mock("../../lib/tauri", () => ({
   addExampleStreams: vi.fn().mockResolvedValue([]),
   exportStreams: vi.fn().mockResolvedValue(true),
   saveSettings: vi.fn().mockResolvedValue(undefined),
+  updateProfileSettings: vi.fn().mockResolvedValue(undefined),
   listProfiles: vi.fn().mockResolvedValue([
     { name: "Default", streamCount: 3, isActive: true },
     { name: "Jazz", streamCount: 0, isActive: false },
@@ -117,6 +118,18 @@ async function openSelectionItem(name: string) {
   return screen.findByRole("menuitem", { name });
 }
 
+/** Sort order lives in the profile; the collation locale stays global. */
+function setSort(streamSort: "name" | "added") {
+  $settings.set({ language: "uk", activeProfile: "Default" } as GlobalSettings);
+  $profileSettings.set({
+    recording: {
+      diskSpaceThresholdGb: 0,
+      reconnect: { maxRetries: 0, retryIntervalSecs: 5, backoffMultiplier: 1.5, maxIntervalSecs: 60 },
+    },
+    ui: { streamSort, trayNotifications: true },
+  } as ProfileSettings);
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   $statuses.set({});
@@ -124,6 +137,7 @@ beforeEach(() => {
   $streams.set([mkStream("a", "Alpha")]);
   $toasts.set([]);
   $settings.set(null);
+  $profileSettings.set(null);
   replaceSelection(new Set());
   $exportStreamsRequest.set(null);
 });
@@ -464,8 +478,8 @@ describe("StreamsPanel — stream sorting", () => {
     expect(rowOrder(container)).toEqual(["a", "b"]);
   });
 
-  it("sorts by added date (newest first) when sortBy is 'added'", () => {
-    $settings.set({ sortBy: "added", language: "uk" } as GlobalSettings);
+  it("sorts by added date (newest first) when the profile sorts by 'added'", () => {
+    setSort("added");
     $streams.set([
       { ...mkStream("old", "Old"), addedAt: "2026-01-01T00:00:00Z" },
       { ...mkStream("new", "New"), addedAt: "2026-03-01T00:00:00Z" },
@@ -486,7 +500,7 @@ describe("StreamsPanel — stream sorting", () => {
       listZone = zones.find((z) => z.id === "streams-list");
     };
     // name order: Alpha(a), Bravo(b), Charlie(c). added order (newest first): b, c, a.
-    $settings.set({ sortBy: "name", language: "uk" } as GlobalSettings);
+    setSort("name");
     $streams.set([
       { ...mkStream("a", "Alpha"),   addedAt: "2026-01-01T00:00:00Z" }, // oldest
       { ...mkStream("b", "Bravo"),   addedAt: "2026-03-01T00:00:00Z" }, // newest
@@ -498,7 +512,7 @@ describe("StreamsPanel — stream sorting", () => {
     // The persisted "added" order arrives after mount → rows re-sort to [b, c, a].
     // The zone-registration effect does NOT re-run (its deps are unchanged), so a
     // raw handle here would stay frozen over the name order.
-    act(() => $settings.set({ sortBy: "added", language: "uk" } as GlobalSettings));
+    act(() => setSort("added"));
     expect(rowOrder(container)).toEqual(["b", "c", "a"]);
 
     // Tab into the list zone (cycleZone calls the zone's focus()).
@@ -517,7 +531,7 @@ describe("StreamsPanel — stream sorting", () => {
   });
 
   it("renders a sort group with two toggle buttons, active one pressed", () => {
-    $settings.set({ sortBy: "added", language: "uk" } as GlobalSettings);
+    setSort("added");
     const { container } = renderPanel();
     const btns = sortButtons(container);
     expect(btns).toHaveLength(2);
@@ -526,20 +540,25 @@ describe("StreamsPanel — stream sorting", () => {
     expect(pressed[0].textContent).toMatch(/час|added|date/i);
   });
 
-  it("persists the new sort when a different mode is chosen", () => {
-    $settings.set({ sortBy: "name", language: "uk" } as GlobalSettings);
+  // Порядок профільний (ADR 2026-08-08): пишеться патчем у профіль, не в
+  // глобальні налаштування.
+  it("persists the new sort into the active profile when a different mode is chosen", () => {
+    setSort("name");
     const { container } = renderPanel();
     const added = sortButtons(container).find((b) => /час|added|date/i.test(b.textContent ?? ""))!;
     fireEvent.click(added);
-    expect(tauri.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ sortBy: "added" }));
+    expect(tauri.updateProfileSettings).toHaveBeenCalledWith("Default", {
+      ui: { streamSort: "added", trayNotifications: true },
+    });
+    expect(tauri.saveSettings).not.toHaveBeenCalled();
   });
 
   it("clicking the active sort is a no-op", () => {
-    $settings.set({ sortBy: "name", language: "uk" } as GlobalSettings);
+    setSort("name");
     const { container } = renderPanel();
     const name = sortButtons(container).find((b) => /назв|name/i.test(b.textContent ?? ""))!;
     fireEvent.click(name);
-    expect(tauri.saveSettings).not.toHaveBeenCalled();
+    expect(tauri.updateProfileSettings).not.toHaveBeenCalled();
   });
 });
 

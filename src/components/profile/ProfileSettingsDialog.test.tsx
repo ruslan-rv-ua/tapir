@@ -1,52 +1,205 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import * as m from "../../i18n/paraglide/messages";
 import { ProfileSettingsDialog } from "./ProfileSettingsDialog";
+import { $profileSettings } from "../../stores/settings";
+import type { ProfileMeta, ProfileSettings } from "../../lib/tauri";
 
-vi.mock("../../i18n/paraglide/messages", () => ({
-  profile_settings_title: ({ name }: { name: string }) => `Profile settings: ${name}`,
-  profile_autoplay_label: () => "Resume last playback on startup",
-  profile_autoplay_hint: () => "Sound plays over NVDA speech.",
-  cancel: () => "Cancel",
-  ok: () => "Save",
-}));
-
-const baseProps = {
-  name: "Jazz",
-  initialEnabled: false,
-  busy: false,
-  onConfirm: () => {},
-  onCancel: () => {},
+const profileSettings: ProfileSettings = {
+  recording: {
+    outputDir: "recordings",
+    diskSpaceThresholdGb: 1,
+    fileNameTemplate: "%a - %t",
+    incompleteFileNameTemplate: "%a - %t_incomplete",
+    streamFileNameTemplate: "stream",
+    saveStreamFile: false,
+    skipFirstIncompleteTrack: true,
+    skipShortTracksMs: 30000,
+    autoCorrectCase: true,
+    schedulePadBeforeMin: 0,
+    schedulePadAfterMin: 0,
+    reconnect: {
+      maxRetries: 10, retryIntervalSecs: 5, backoffMultiplier: 1.5, maxIntervalSecs: 60,
+    },
+  },
+  ui: { streamSort: "name", trayNotifications: true },
+  autoplayOnStartup: false,
+  autoAdvance: true,
+  resumeFileFrom: "position",
 };
 
-describe("ProfileSettingsDialog", () => {
-  it("renders the title with the profile name", () => {
-    render(<ProfileSettingsDialog {...baseProps} />);
-    expect(screen.getByText("Profile settings: Jazz")).toBeInTheDocument();
+vi.mock("../../lib/tauri", () => ({
+  getProfileSettings: vi.fn(async () => structuredClone(profileSettings)),
+  updateProfileSettings: vi.fn(async () => {}),
+  openDirectoryPicker: vi.fn(async () => null),
+}));
+
+const announce = vi.fn();
+vi.mock("../../hooks/useAnnounce", () => ({ useAnnounce: () => announce }));
+
+import * as tauri from "../../lib/tauri";
+
+const profiles: ProfileMeta[] = [
+  { name: "Default", streamCount: 2, isActive: true },
+  { name: "Jazz", streamCount: 5, isActive: false },
+];
+
+function renderDialog(over: Partial<React.ComponentProps<typeof ProfileSettingsDialog>> = {}) {
+  const props = {
+    name: "Jazz",
+    profiles,
+    activeProfile: "Default",
+    onClose: vi.fn(),
+    onForceClose: vi.fn(),
+    ...over,
+  };
+  return { props, ...render(<ProfileSettingsDialog {...props} />) };
+}
+
+beforeEach(() => { vi.clearAllMocks(); });
+afterEach(() => { $profileSettings.set(null); });
+
+describe("ProfileSettingsDialog — структура", () => {
+  it("несе ім'я профілю в заголовку", async () => {
+    renderDialog();
+    expect(
+      await screen.findByRole("dialog", { name: m.profile_settings_title({ name: "Jazz" }) }),
+    ).toBeTruthy();
   });
 
-  it("reflects the initial autoplay value on the checkbox", () => {
-    render(<ProfileSettingsDialog {...baseProps} initialEnabled />);
-    expect(screen.getByRole("checkbox", { name: /Resume last playback/ })).toBeChecked();
+  it("має чотири вкладки в порядку Запис / Відтворення / Інтерфейс / Постобробка", async () => {
+    renderDialog();
+    await screen.findByRole("tablist");
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual([
+      m.settings_tab_recording(),
+      m.settings_tab_playback(),
+      m.profile_settings_tab_interface(),
+      m.profile_settings_tab_postprocess(),
+    ]);
   });
 
-  it("shows the NVDA warning hint", () => {
-    render(<ProfileSettingsDialog {...baseProps} />);
-    expect(screen.getByText(/over NVDA speech/)).toBeInTheDocument();
+  it("«Постобробка» оголошується недоступною, але лишається в навігації стрілками", async () => {
+    renderDialog();
+    await screen.findByRole("tablist");
+    const postprocess = screen.getByRole("tab", { name: m.profile_settings_tab_postprocess() });
+    // aria-disabled, НЕ isDisabled: react-aria прибрав би вкладку з навігації
+    // стрілками, і користувач NVDA ніколи б її не зустрів.
+    expect(postprocess.getAttribute("aria-disabled")).toBe("true");
+    // Перша вкладка має autoFocus — три стрілки вниз доводять до четвертої.
+    await userEvent.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
+    expect(screen.getByRole("tab", { selected: true }).textContent)
+      .toBe(m.profile_settings_tab_postprocess());
   });
 
-  it("confirms with the toggled value", async () => {
-    const onConfirm = vi.fn();
-    render(<ProfileSettingsDialog {...baseProps} initialEnabled={false} onConfirm={onConfirm} />);
-    await userEvent.click(screen.getByRole("checkbox", { name: /Resume last playback/ }));
-    await userEvent.click(screen.getByRole("button", { name: /^Save$/ }));
-    expect(onConfirm).toHaveBeenCalledWith(true);
+  it("панель «Постобробка» пояснює, чому вкладка недоступна", async () => {
+    renderDialog();
+    await screen.findByRole("tablist");
+    await userEvent.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
+    expect(screen.getByRole("tabpanel").textContent)
+      .toBe(m.profile_settings_postprocess_unavailable());
   });
 
-  it("calls onCancel when Cancel is clicked", async () => {
-    const onCancel = vi.fn();
-    render(<ProfileSettingsDialog {...baseProps} onCancel={onCancel} />);
-    await userEvent.click(screen.getByRole("button", { name: /Cancel/ }));
-    expect(onCancel).toHaveBeenCalled();
+  it("не має кнопок підтвердження/скасування — збереження автоматичне", async () => {
+    renderDialog();
+    await screen.findByRole("tablist");
+    expect(screen.queryByRole("button", { name: m.ok() })).toBeNull();
+    expect(screen.queryByRole("button", { name: m.cancel() })).toBeNull();
+  });
+});
+
+describe("ProfileSettingsDialog — редагування", () => {
+  it("сіється зрізом названого профілю, навіть якщо той неактивний", async () => {
+    renderDialog({ name: "Jazz" });
+    await screen.findByRole("tablist");
+    expect(tauri.getProfileSettings).toHaveBeenCalledWith("Jazz");
+  });
+
+  it("шле лише змінену секцію, а не копію профілю", async () => {
+    renderDialog();
+    await screen.findByRole("tablist");
+    await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+    await userEvent.click(screen.getByRole("checkbox", { name: m.settings_show_tray_notifications() }));
+
+    await waitFor(() => expect(tauri.updateProfileSettings).toHaveBeenCalled());
+    const [name, patch] = vi.mocked(tauri.updateProfileSettings).mock.calls[0];
+    expect(name).toBe("Jazz");
+    expect(patch).toEqual({ ui: { streamSort: "name", trayNotifications: false } });
+    expect(patch).not.toHaveProperty("recording");
+  });
+
+  it("оголошує збереження — автозбереження без візуального фідбеку має бути чутним", async () => {
+    renderDialog();
+    await screen.findByRole("tablist");
+    await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+    await userEvent.click(screen.getByRole("checkbox", { name: m.settings_show_tray_notifications() }));
+    await waitFor(() =>
+      expect(announce).toHaveBeenCalledWith(m.profile_settings_saved({ name: "Jazz" }), "polite"),
+    );
+  });
+
+  it("оновлює стор активного профілю після збереження, а неактивного — ні", async () => {
+    const { unmount } = renderDialog({ name: "Default", activeProfile: "Default" });
+    await screen.findByRole("tablist");
+    await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+    await userEvent.click(screen.getByRole("checkbox", { name: m.settings_show_tray_notifications() }));
+    await waitFor(() => expect($profileSettings.get()?.ui.trayNotifications).toBe(false));
+
+    unmount();
+    $profileSettings.set(null);
+
+    renderDialog({ name: "Jazz", activeProfile: "Default" });
+    await screen.findByRole("tablist");
+    await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+    await userEvent.click(screen.getByRole("checkbox", { name: m.settings_show_tray_notifications() }));
+    await waitFor(() => expect(tauri.updateProfileSettings).toHaveBeenCalledTimes(2));
+    expect($profileSettings.get()).toBeNull();
+  });
+});
+
+describe("ProfileSettingsDialog — примусове закриття", () => {
+  it("ціль зникла зі списку → закриття з озвученою причиною", async () => {
+    const onForceClose = vi.fn();
+    const { rerender, props } = renderDialog({ onForceClose });
+    await screen.findByRole("tablist");
+    expect(onForceClose).not.toHaveBeenCalled();
+
+    rerender(
+      <ProfileSettingsDialog
+        {...props}
+        profiles={[{ name: "Default", streamCount: 2, isActive: true }]}
+      />,
+    );
+
+    expect(announce).toHaveBeenCalledWith(
+      m.profile_settings_closed_gone({ name: "Jazz" }),
+      "assertive",
+    );
+    expect(onForceClose).toHaveBeenCalled();
+  });
+
+  it("перейменування читається так само: нове ім'я є, старого немає", async () => {
+    const onForceClose = vi.fn();
+    const { rerender, props } = renderDialog({ onForceClose });
+    await screen.findByRole("tablist");
+
+    rerender(
+      <ProfileSettingsDialog
+        {...props}
+        profiles={[
+          { name: "Default", streamCount: 2, isActive: true },
+          { name: "Jazz 2", streamCount: 5, isActive: false },
+        ]}
+      />,
+    );
+
+    expect(onForceClose).toHaveBeenCalled();
+  });
+
+  it("порожній список — це ще не завантажений список, а не зникла ціль", async () => {
+    const onForceClose = vi.fn();
+    renderDialog({ onForceClose, profiles: [] });
+    await screen.findByRole("tablist");
+    expect(onForceClose).not.toHaveBeenCalled();
   });
 });

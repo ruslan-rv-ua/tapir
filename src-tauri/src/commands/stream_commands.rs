@@ -92,15 +92,18 @@ fn below_threshold(free_bytes: u64, threshold_gb: u32) -> bool {
 }
 
 pub(crate) async fn check_disk_space(state: &AppState) -> Result<(), RadioError> {
-    let threshold_gb = state.settings.read().await.disk_space_threshold_gb;
-    if threshold_gb == 0 {
-        return Ok(()); // disabled — skip the profile lock entirely
-    }
-
-    let output_dir = {
+    // Поріг і тека — з одного guard'а активного профілю: обидва профільні, і
+    // читати їх окремо означало б брати лок двічі.
+    let (threshold_gb, output_dir) = {
         let profile = state.active_profile.read().await;
-        portable::resolve_output_dir(&profile.recording.output_dir)
+        (
+            profile.recording.disk_space_threshold_gb,
+            portable::resolve_output_dir(&profile.recording.output_dir),
+        )
     };
+    if threshold_gb == 0 {
+        return Ok(()); // disabled
+    }
 
     let free_bytes = match tokio::task::spawn_blocking(
         move || portable::free_bytes_on_volume(&output_dir)

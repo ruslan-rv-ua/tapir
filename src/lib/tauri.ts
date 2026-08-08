@@ -49,6 +49,8 @@ export interface ReconnectConfig {
 
 export interface RecordingSettings {
   outputDir: string;
+  /** Профільний поріг вільного місця, ГБ; 0 — перевірку вимкнено. */
+  diskSpaceThresholdGb: number;
   fileNameTemplate: string;
   incompleteFileNameTemplate: string;
   streamFileNameTemplate: string;
@@ -78,17 +80,12 @@ export interface GlobalSettings {
   activeProfile: string;
   outputDevice: string | null;
   minimizeToTray: boolean;
-  showTrayNotifications: boolean;
   showTrackInTitle: boolean;
-  diskSpaceThresholdGb: number;
   doubleClickAction: "record" | "play";
-  sortBy: "name" | "added";
   bandwidthLimitKbps: number;
   autostart: boolean;
   autostartMinimized: boolean;
-  autoAdvance: boolean;
   prevRestartThresholdMs: number;
-  resumeFileFrom: "position" | "start";
   volumeStepPercent: number;
   smtcEnabled: boolean;
   hotkeys: HotkeyMap;
@@ -408,16 +405,6 @@ export async function updateIgnorelistPattern(oldPattern: string, newPattern: st
   return invoke("update_ignorelist_pattern", { oldPattern, newPattern });
 }
 
-// ── Settings IPC wrappers ─────────────────────────────────────────────────
-
-export async function getRecordingSettings(): Promise<RecordingSettings> {
-  return invoke("get_recording_settings");
-}
-
-export async function saveRecordingSettings(recording: RecordingSettings): Promise<void> {
-  return invoke("save_recording_settings", { recording });
-}
-
 // --- Scheduler (Phase 3D) ---
 
 export async function getSchedules(): Promise<ScheduleDto[]> {
@@ -582,8 +569,34 @@ export interface ProfileMeta {
   name: string;
   streamCount: number;
   isActive: boolean;
-  /** Per-profile policy: resume last playback on next app startup. */
+}
+
+/** Профільні налаштування інтерфейсу (ADR 2026-08-08, фільтр 4). */
+export interface UiSettings {
+  streamSort: "name" | "added";
+  trayNotifications: boolean;
+}
+
+/**
+ * Редагований зріз профілю — рівно те, що показує діалог профілю, і для
+ * активного, і для неактивного. Решта `playerSession` (гучність, слід
+ * останнього відтворення) сюди не входить: її пише бекенд.
+ */
+export interface ProfileSettings {
+  recording: RecordingSettings;
+  ui: UiSettings;
   autoplayOnStartup: boolean;
+  autoAdvance: boolean;
+  resumeFileFrom: "position" | "start";
+}
+
+/** Патч, а не копія профілю: відсутні поля лишаються недоторканими. */
+export interface ProfileSettingsPatch {
+  recording?: RecordingSettings;
+  ui?: UiSettings;
+  autoplayOnStartup?: boolean;
+  autoAdvance?: boolean;
+  resumeFileFrom?: "position" | "start";
 }
 
 export interface ImportPreview {
@@ -693,11 +706,14 @@ export interface Profile {
     runOnComplete: boolean;
     runOnIncomplete: boolean;
   };
+  ui: UiSettings;
   playerSession: {
     volume: number;
     lastStreamId: string | null;
     lastFilePosition: { path: string; positionMs: number } | null;
     autoplayOnStartup: boolean;
+    autoAdvance: boolean;
+    resumeFileFrom: "position" | "start";
   };
   savedTracks: unknown[];
 }
@@ -729,8 +745,14 @@ export async function deleteProfiles(names: string[]): Promise<{ deleted: string
 export async function duplicateProfile(sourceName: string, newName: string): Promise<ProfileMeta> {
   return invoke("duplicate_profile", { sourceName, newName });
 }
-export async function setProfileAutoplay(name: string, enabled: boolean): Promise<void> {
-  return invoke("set_profile_autoplay", { name, enabled });
+export async function getProfileSettings(name: string): Promise<ProfileSettings> {
+  return invoke("get_profile_settings", { name });
+}
+export async function updateProfileSettings(
+  name: string,
+  patch: ProfileSettingsPatch,
+): Promise<void> {
+  return invoke("update_profile_settings", { name, patch });
 }
 export async function exportProfile(name: string): Promise<void> {
   return invoke("export_profile", { name });

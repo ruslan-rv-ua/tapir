@@ -2,14 +2,14 @@ import { useEffect } from "react";
 import { matchShortcut, type ShortcutActions } from "../lib/shortcuts";
 import { isInModal } from "../lib/shortcutGuard";
 import { $activeSection, $commandPaletteOpen, $helpOpen } from "../stores/navigation";
-import { $settingsDialogOpen } from "../stores/settings";
+import { $settings, $settingsDialogOpen, $profileSettingsTarget } from "../stores/settings";
 import { $showAddStreamDialog } from "../stores/streams";
 import { $showCreateProfileDialog } from "../stores/profileManager";
 import { $showAddPatternDialog } from "../stores/wishlist";
 import { $showAddScheduleDialog } from "../stores/schedule";
 
 /**
- * Global Tier-2 webview shortcuts (Alt+digit, Ctrl+K, Ctrl+,, Ctrl+N, F1),
+ * Global Tier-2 webview shortcuts (Alt+digit, Ctrl+K, Ctrl+,, Ctrl+Shift+,, Ctrl+N, F1),
  * dispatched through the pure `matchShortcut` registry.
  *
  * CAPTURE phase, not bubble: react-aria controls (notably the Browser
@@ -29,6 +29,12 @@ export function useGlobalShortcuts(): void {
       setSection: (s) => $activeSection.set(s),
       toggleCommandPalette: () => $commandPaletteOpen.set(!$commandPaletteOpen.get()),
       toggleSettings: () => $settingsDialogOpen.set(!$settingsDialogOpen.get()),
+      toggleProfileSettings: () => {
+        // Діє на активний профіль; toggle, як і Ctrl+, .
+        if ($profileSettingsTarget.get() !== null) { $profileSettingsTarget.set(null); return; }
+        const active = $settings.get()?.activeProfile;
+        if (active) $profileSettingsTarget.set(active);
+      },
       openAddStream: () => $showAddStreamDialog.set(true),
       openHelp: () => $helpOpen.set(true),
       openCreateProfile: () => $showCreateProfileDialog.set(true),

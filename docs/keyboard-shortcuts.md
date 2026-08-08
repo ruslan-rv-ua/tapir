@@ -122,7 +122,8 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 | Комбо | Дія | Умова | Scope | Стан | Джерело мотивації |
 |---|---|---|---|---|---|
 | `Ctrl+K` | командна палітра (toggle) | — | webview | ✅ | [command-palette ADR](decisions/2026-05-31-command-palette-and-search-ux.md) · [accessibility.md §2.4](accessibility.md) |
-| `Ctrl+,` | діалог налаштувань (toggle) | — | webview | ✅ | — |
+| `Ctrl+,` | налаштування програми — тільки глобальні (toggle) | — | webview | ✅ | — |
+| `Ctrl+Shift+,` | налаштування активного профілю (toggle) | — | webview | ✅ | [global-vs-profile-settings-boundary ADR](decisions/2026-08-08-global-vs-profile-settings-boundary.md) |
 | `Alt+1` | секція Streams | — | webview | ✅ | [section-navigation ADR](decisions/2026-06-02-section-navigation-shortcuts.md) |
 | `Alt+2` | секція Browser | — | webview | ✅ | ↑ |
 | `Alt+3` | секція Wishlist | — | webview | ✅ | ↑ |

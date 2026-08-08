@@ -8,7 +8,7 @@
 use crate::app_state::AppState;
 use crate::player::engine::{PlaybackSource, PlaybackState, PlayerStatus};
 use crate::profile::{FilePosition, LastActive, PlayerSession};
-use crate::settings::ResumeFileFrom;
+use crate::profile::ResumeFileFrom;
 use tauri::{AppHandle, Emitter, Manager};
 
 /// Cold-start hints the webview can't derive from `player-status`. The webview
@@ -293,7 +293,7 @@ pub(crate) async fn resume_last(app: &AppHandle) {
         }
         ColdStart::PlayFile => {
             let fp = last_file.expect("PlayFile implies Some(file)");
-            let mode = state.settings.read().await.resume_file_from;
+            let mode = state.active_profile.read().await.player_session.resume_file_from;
             let plan = plan_file_resume(mode, fp.position_ms);
             if let FileResumePlan::FromPosition { position_ms } = &plan {
                 // Basename must match the webview's `nameOf()` for a file source

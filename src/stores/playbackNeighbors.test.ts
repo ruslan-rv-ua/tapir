@@ -1,10 +1,10 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { computePlaybackNeighbors, $playbackNeighbors } from "./playbackNeighbors";
-import type { StreamInfo, PlaybackSource, GlobalSettings } from "../lib/tauri";
+import type { StreamInfo, PlaybackSource, GlobalSettings, ProfileSettings } from "../lib/tauri";
 import type { Song } from "../types/song";
 import { $playerStatus } from "./player";
 import { $streams, $streamFilter, $statuses, updateStreamStatus } from "./streams";
-import { $settings } from "./settings";
+import { $settings, $profileSettings } from "./settings";
 import { $songs, $songsQuery, $songsStation, $songsSort } from "./songs";
 
 const mkStream = (id: string): StreamInfo => ({
@@ -43,9 +43,13 @@ const songs = [mkSong("a.mp3"), mkSong("b.mp3"), mkSong("c.mp3")];
 const streamSrc = (streamId: string): PlaybackSource => ({ type: "stream", streamId });
 const fileSrc = (path: string): PlaybackSource => ({ type: "file", path });
 
-// Only sortBy/language are read by $sortedStreams; the rest is filler.
-const mkSettings = (sortBy: "name" | "added"): GlobalSettings =>
-  ({ sortBy, language: "uk" } as GlobalSettings);
+// $sortedStreams reads the collation locale globally and the sort order from
+// the profile store (ADR 2026-08-08); the rest of both is filler.
+const mkSettings = (): GlobalSettings => ({ language: "uk" } as GlobalSettings);
+const setSort = (streamSort: "name" | "added") => {
+  $settings.set(mkSettings());
+  $profileSettings.set({ ui: { streamSort } } as ProfileSettings);
+};
 
 const playStream = (streamId: string) =>
   $playerStatus.set({
@@ -186,7 +190,7 @@ describe("$playbackNeighbors — streams follow the on-screen order", () => {
 
   it("walks the alphabetical (sortBy 'name') order, not insertion order", () => {
     // Insertion order: Боря → Аліса → Всеволод. On screen (name sort): Аліса, Боря, Всеволод.
-    $settings.set(mkSettings("name"));
+    setSort("name");
     $streams.set([mkStream("Боря"), mkStream("Аліса"), mkStream("Всеволод")]);
     playStream("Боря");
     // Before the fix this returned prev:null (Боря was first in insertion order).
@@ -197,7 +201,7 @@ describe("$playbackNeighbors — streams follow the on-screen order", () => {
   });
 
   it("walks the addedAt-descending order when sortBy is 'added'", () => {
-    $settings.set(mkSettings("added"));
+    setSort("added");
     // Insertion order is mid → new → old; addedAt-desc order is new, mid, old.
     $streams.set([
       { ...mkStream("mid"), addedAt: "2026-02-01T00:00:00Z" },
@@ -212,7 +216,7 @@ describe("$playbackNeighbors — streams follow the on-screen order", () => {
   });
 
   it("restricts neighbors to the active filter chip", () => {
-    $settings.set(mkSettings("name"));
+    setSort("name");
     $streams.set([mkStream("a"), mkStream("b"), mkStream("c")]);
     // Only a and c are recording; b is idle, so under the "recording" chip b is hidden.
     updateStreamStatus("a", { state: "recording" });
@@ -227,7 +231,7 @@ describe("$playbackNeighbors — streams follow the on-screen order", () => {
   });
 
   it("returns no neighbors when the playing stream is hidden by the filter", () => {
-    $settings.set(mkSettings("name"));
+    setSort("name");
     $streams.set([mkStream("a"), mkStream("b")]);
     updateStreamStatus("a", { state: "recording" });
     $streamFilter.set("recording"); // b is not recording → not visible

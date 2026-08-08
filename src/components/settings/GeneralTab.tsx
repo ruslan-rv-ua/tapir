@@ -138,18 +138,6 @@ export function GeneralTab() {
         </div>
         <Label>{m.settings_minimize_to_tray()}</Label>
       </Checkbox>
-
-      {/* Show tray notifications */}
-      <Checkbox
-        isSelected={settings.showTrayNotifications}
-        onChange={(val) => update({ showTrayNotifications: val })}
-        className="flex items-center gap-2 text-sm text-slate-300"
-      >
-        <div className="flex h-5 w-5 items-center justify-center rounded border border-slate-600 bg-slate-700">
-          {settings.showTrayNotifications && <span>✓</span>}
-        </div>
-        <Label>{m.settings_show_tray_notifications()}</Label>
-      </Checkbox>
       </div>
 
       {/* Section: Behavior */}

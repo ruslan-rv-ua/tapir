@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, within, fireEvent, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ProfilesPanel } from "./ProfilesPanel";
-import { $profileList, $profilesSelection, $showCreateProfileDialog } from "../../stores/profileManager";
+import { $focusProfileList, $profileList, $profilesSelection, $showCreateProfileDialog } from "../../stores/profileManager";
 import { replaceSelection } from "../../stores/selection";
-import { $settings } from "../../stores/settings";
+import { $profileSettingsTarget, $settings } from "../../stores/settings";
 import { $announcer } from "../../stores/announcer";
 import type { ProfileMeta } from "../../lib/tauri";
 import * as tauri from "../../lib/tauri";
@@ -23,7 +23,6 @@ vi.mock("../../lib/tauri", () => ({
   exportProfile: vi.fn(async () => {}),
   renameProfile: vi.fn(async (_old: string, name: string) => ({ name, streamCount: 0, isActive: false })),
   duplicateProfile: vi.fn(async (_src: string, name: string) => ({ name, streamCount: 0, isActive: false })),
-  setProfileAutoplay: vi.fn(async () => {}),
   getActiveScheduled: vi.fn(async () => []),
 }));
 
@@ -107,6 +106,7 @@ describe("ProfilesPanel", () => {
     $announcer.set({ message: "", priority: "polite" });
     replaceSelection($profilesSelection, new Set());
     $showCreateProfileDialog.set(false);
+    $profileSettingsTarget.set(null);
   });
 
   it("registers two zones via onZonesChange (no actions sidebar)", () => {
@@ -235,16 +235,27 @@ describe("ProfilesPanel — selection cluster", () => {
     await screen.findByText(m.confirm_delete_selected_profiles({ count: 2 }));
   });
 
-  it("opens Profile settings from the context menu and saves the toggled autoplay value", async () => {
+  // Діалог налаштувань профілю монтується на рівні App — з контекстного меню
+  // панель лише називає ціль у сторі.
+  it("names the row's profile as the settings target from the context menu", async () => {
     const user = userEvent.setup();
     renderPanel();
     await screen.findByText("Jazz");
     await user.click(screen.getByRole("button", { name: "Actions for Jazz" }));
     await user.click(await screen.findByRole("menuitem", { name: "Profile settings…" }));
-    const checkbox = await screen.findByRole("checkbox", { name: /Resume last playback/ });
-    expect(checkbox).not.toBeChecked();
-    await user.click(checkbox);
-    await user.click(screen.getByRole("button", { name: /^OK$/ }));
-    await waitFor(() => expect(tauri.setProfileAutoplay).toHaveBeenCalledWith("Jazz", true));
+    expect($profileSettingsTarget.get()).toBe("Jazz");
+  });
+
+  it("lands focus back in the list when the settings dialog force-closes", async () => {
+    renderPanel();
+    await screen.findByText("Jazz");
+    (document.activeElement as HTMLElement | null)?.blur();
+
+    act(() => { $focusProfileList.set($focusProfileList.get() + 1); });
+
+    await waitFor(() => {
+      expect(document.activeElement).not.toBe(document.body);
+      expect(document.activeElement?.closest("[data-zone-id='profiles-list']")).toBeTruthy();
+    });
   });
 });

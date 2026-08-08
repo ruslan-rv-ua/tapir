@@ -6,7 +6,7 @@ import type { StreamStatus } from "../../lib/tauri";
 import { StatusBar } from "./StatusBar";
 import { $statuses } from "../../stores/streams";
 import { $freeSpace } from "../../stores/system";
-import { $settings } from "../../stores/settings";
+import { $settings, $profileSettings } from "../../stores/settings";
 
 const GiB = 1024 ** 3;
 
@@ -31,6 +31,7 @@ beforeEach(() => {
   $statuses.set({});
   $freeSpace.set(null);
   $settings.set(null);
+  $profileSettings.set(null);
 });
 
 function renderBar() {
@@ -54,7 +55,7 @@ describe("StatusBar free-space segment", () => {
 
   it("marks the segment low when below threshold", () => {
     $freeSpace.set(2 * GiB);
-    $settings.set({ diskSpaceThresholdGb: 5 } as never);
+    $profileSettings.set({ recording: { diskSpaceThresholdGb: 5 } } as never);
     renderBar();
     const seg = screen.getByText("2.00 GB").closest("div")!;
     expect(seg.getAttribute("aria-label")).toMatch(/low|мало/i);

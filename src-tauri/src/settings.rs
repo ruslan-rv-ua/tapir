@@ -22,11 +22,7 @@ pub struct GlobalSettings {
     #[serde(default = "default_true")]
     pub minimize_to_tray: bool,
     #[serde(default = "default_true")]
-    pub show_tray_notifications: bool,
-    #[serde(default = "default_true")]
     pub show_track_in_title: bool,
-    #[serde(default = "default_disk_space_threshold_gb")]
-    pub disk_space_threshold_gb: u32,
     #[serde(default)]
     pub double_click_action: DoubleClickAction,
     #[serde(default)]
@@ -41,18 +37,12 @@ pub struct GlobalSettings {
     pub log_max_size_mb: u32,
     #[serde(default, deserialize_with = "deserialize_log_level")]
     pub log_level: LogLevel,
-    #[serde(default = "default_true")]
-    pub auto_advance: bool,
     #[serde(default)]
     pub prev_restart_threshold_ms: u32,
-    #[serde(default)]
-    pub resume_file_from: ResumeFileFrom,
     #[serde(default = "default_volume_step_percent")]
     pub volume_step_percent: u8,
     #[serde(default = "default_true")]
     pub smtc_enabled: bool,
-    #[serde(default = "default_sort_by")]
-    pub sort_by: String,
 }
 
 /// Deserialize `log_level` tolerantly: an unknown or legacy value (e.g. the
@@ -87,18 +77,6 @@ pub enum DoubleClickAction {
     #[default]
     Record,
     Play,
-}
-
-/// What position the cold-start `Ctrl+Shift+K` file resume starts from.
-/// ONLY consulted on cold-start — in-session pause→resume always keeps the
-/// position (pause semantics). Enum (not bool) to leave the door open for a
-/// third variant (e.g. Ask), per the backlog decision.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum ResumeFileFrom {
-    #[default]
-    Position,
-    Start,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]
@@ -182,10 +160,8 @@ fn default_language() -> String {
 fn default_theme() -> Theme { Theme::Auto }
 fn default_active_profile() -> String { "Default".to_string() }
 fn default_true() -> bool { true }
-fn default_disk_space_threshold_gb() -> u32 { 1 }
 fn default_log_max_size_mb() -> u32 { 10 }
 fn default_volume_step_percent() -> u8 { 5 }
-fn default_sort_by() -> String { "name".to_string() }
 
 impl Default for GlobalSettings {
     fn default() -> Self {
@@ -195,9 +171,7 @@ impl Default for GlobalSettings {
             active_profile: "Default".to_string(),
             output_device: None,
             minimize_to_tray: true,
-            show_tray_notifications: true,
             show_track_in_title: true,
-            disk_space_threshold_gb: 1,
             double_click_action: DoubleClickAction::Record,
             bandwidth_limit_kbps: 0,
             autostart: false,
@@ -205,12 +179,9 @@ impl Default for GlobalSettings {
             hotkeys: HotkeyMap::default(),
             log_max_size_mb: 10,
             log_level: LogLevel::Info,
-            auto_advance: true,
             prev_restart_threshold_ms: 0,
-            resume_file_from: ResumeFileFrom::Position,
             volume_step_percent: 5,
             smtc_enabled: true,
-            sort_by: "name".to_string(),
         }
     }
 }
@@ -276,9 +247,7 @@ mod tests {
 
     #[test]
     fn playback_settings_defaults() {
-        let s = GlobalSettings::default();
-        assert!(s.auto_advance);
-        assert_eq!(s.prev_restart_threshold_ms, 0);
+        assert_eq!(GlobalSettings::default().prev_restart_threshold_ms, 0);
     }
 
     #[test]
@@ -286,30 +255,24 @@ mod tests {
         // A config saved before these fields existed must still deserialize.
         let json = r#"{"language":"en-US","theme":"auto","activeProfile":"Default"}"#;
         let s: GlobalSettings = serde_json::from_str(json).unwrap();
-        assert!(s.auto_advance);
         assert_eq!(s.prev_restart_threshold_ms, 0);
     }
 
     #[test]
-    fn resume_file_from_defaults_to_position() {
-        assert_eq!(GlobalSettings::default().resume_file_from, ResumeFileFrom::Position);
-    }
-
-    #[test]
-    fn legacy_config_without_resume_file_from_defaults_to_position() {
-        // A settings.json saved before this field existed must still load.
-        let json = r#"{"language":"en-US","theme":"auto","activeProfile":"Default"}"#;
+    fn profile_scoped_fields_are_gone_from_global_settings() {
+        // Дорелізний переїзд без міграції (ADR 2026-08-08): п'ять полів просто
+        // зникають із settings.json, а старий файл, який їх іще має, мусить
+        // завантажитися — зайві ключі serde ігнорує.
+        let json = r#"{"language":"en-US","activeProfile":"Default",
+            "showTrayNotifications":false,"diskSpaceThresholdGb":9,
+            "autoAdvance":false,"resumeFileFrom":"start","sortBy":"added"}"#;
         let s: GlobalSettings = serde_json::from_str(json).unwrap();
-        assert_eq!(s.resume_file_from, ResumeFileFrom::Position);
-    }
-
-    #[test]
-    fn resume_file_from_serde_round_trip() {
-        let s = GlobalSettings { resume_file_from: ResumeFileFrom::Start, ..GlobalSettings::default() };
-        let json = serde_json::to_string(&s).unwrap();
-        assert!(json.contains(r#""resumeFileFrom":"start""#));
-        let back: GlobalSettings = serde_json::from_str(&json).unwrap();
-        assert_eq!(back.resume_file_from, ResumeFileFrom::Start);
+        assert_eq!(s.active_profile, "Default");
+        let out = serde_json::to_string(&s).unwrap();
+        for key in ["showTrayNotifications", "diskSpaceThresholdGb", "autoAdvance",
+                    "resumeFileFrom", "sortBy"] {
+            assert!(!out.contains(key), "{key} must not be written back: {out}");
+        }
     }
 
     #[test]
@@ -414,28 +377,6 @@ mod tests {
         let json = serde_json::to_string(&s).unwrap();
         let back: GlobalSettings = serde_json::from_str(&json).unwrap();
         assert!(!back.smtc_enabled);
-    }
-
-    #[test]
-    fn sort_by_defaults_to_name() {
-        assert_eq!(GlobalSettings::default().sort_by, "name");
-    }
-
-    #[test]
-    fn legacy_config_without_sort_by_defaults_to_name() {
-        // A settings.json written before this field existed must still load.
-        let json = r#"{"language":"en-US","theme":"auto","activeProfile":"Default"}"#;
-        let s: GlobalSettings = serde_json::from_str(json).unwrap();
-        assert_eq!(s.sort_by, "name");
-    }
-
-    #[test]
-    fn sort_by_round_trips() {
-        let mut s = GlobalSettings::default();
-        s.sort_by = "added".to_string();
-        let json = serde_json::to_string(&s).unwrap();
-        let back: GlobalSettings = serde_json::from_str(&json).unwrap();
-        assert_eq!(back.sort_by, "added");
     }
 
     #[test]

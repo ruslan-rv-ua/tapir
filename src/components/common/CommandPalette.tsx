@@ -2,6 +2,7 @@ import { useStore } from "@nanostores/react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { $streams, $statuses, $showAddStreamDialog, $importCandidates, $exportStreamsRequest } from "../../stores/streams";
 import { $commandPaletteOpen } from "../../stores/navigation";
+import { $settings, $profileSettingsTarget } from "../../stores/settings";
 import { addToast } from "../../stores/toasts";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import * as tauri from "../../lib/tauri";
@@ -19,6 +20,7 @@ interface PaletteItem {
 
 export function CommandPalette() {
   const isOpen = useStore($commandPaletteOpen);
+  const settings = useStore($settings);
   const streams = useStore($streams);
   const statuses = useStore($statuses);
   const [query, setQuery] = useState("");
@@ -84,6 +86,19 @@ export function CommandPalette() {
           action: () => {
             close();
             $exportStreamsRequest.set({ ids: null });
+          },
+        }]
+      : []),
+    // Діє на активний профіль — третій вхід у діалог, для тих, хто не тримає
+    // в пам'яті Ctrl+Shift+, .
+    ...(settings?.activeProfile
+      ? [{
+          id: "profile-settings",
+          label: m.profile_settings(),
+          sublabel: settings.activeProfile,
+          action: () => {
+            close();
+            $profileSettingsTarget.set(settings.activeProfile);
           },
         }]
       : []),

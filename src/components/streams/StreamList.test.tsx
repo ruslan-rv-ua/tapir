@@ -52,9 +52,8 @@ const mkStream = (id: string, name: string): StreamInfo => ({
 
 const baseSettings: GlobalSettings = {
   language: "uk", theme: "auto", activeProfile: "Default", outputDevice: null,
-  minimizeToTray: false, showTrayNotifications: false, showTrackInTitle: false,
-  diskSpaceThresholdGb: 0, doubleClickAction: "record", sortBy: "name", bandwidthLimitKbps: 0,
-  autostart: false, autostartMinimized: true, autoAdvance: false, prevRestartThresholdMs: 0, resumeFileFrom: "position",
+  minimizeToTray: false, showTrackInTitle: false, doubleClickAction: "record", bandwidthLimitKbps: 0,
+  autostart: false, autostartMinimized: true, prevRestartThresholdMs: 0,
   hotkeys: { toggleRecording: "", togglePlayback: "", volumeUp: "", volumeDown: "", toggleWindow: "", stopAll: "", prevTrack: "", nextTrack: "" },
   logMaxSizeMb: 10, logLevel: "info",
 };

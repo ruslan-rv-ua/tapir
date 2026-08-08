@@ -5,7 +5,7 @@ import { useAnnounce } from "../../hooks/useAnnounce";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import { $statuses } from "../../stores/streams";
 import { $freeSpace } from "../../stores/system";
-import { $settings } from "../../stores/settings";
+import { $profileSettings } from "../../stores/settings";
 import { formatBytes, formatDuration, isLowDiskSpace } from "../../lib/formatters";
 import * as m from "../../i18n/paraglide/messages";
 
@@ -17,8 +17,11 @@ export const StatusBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
   const announce = useAnnounce();
   const statuses = useStore($statuses);
   const freeSpace = useStore($freeSpace);
-  const settings = useStore($settings);
-  const freeLow = isLowDiskSpace(freeSpace, settings?.diskSpaceThresholdGb ?? 0);
+  const profileSettings = useStore($profileSettings);
+  const freeLow = isLowDiskSpace(
+    freeSpace,
+    profileSettings?.recording.diskSpaceThresholdGb ?? 0,
+  );
   const freeText = freeSpace === null ? "—" : formatBytes(freeSpace);
   const freeAria =
     freeSpace === null

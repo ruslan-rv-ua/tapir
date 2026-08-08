@@ -134,7 +134,7 @@ pub async fn confirm_quit_if_recording(app: &tauri::AppHandle) -> bool {
 static LAST_NOTIFY_MS: AtomicU64 = AtomicU64::new(0);
 const THROTTLE_MS: u64 = 3000;
 
-/// Fire-and-forget: gate on `showTrayNotifications`, resolve the station name
+/// Fire-and-forget: gate on the profile's `ui.trayNotifications`, resolve the station name
 /// from the active profile, throttle to one toast per 3 s, and dispatch through
 /// `tauri-plugin-notification`. Use this from any track-change emitter
 /// (recorder, player) so the rules live in one place.
@@ -145,7 +145,17 @@ pub fn notify_track_change(app: &tauri::AppHandle, stream_id: &str, artist: &str
     let title = title.to_string();
     tauri::async_runtime::spawn(async move {
         let state = tauri::Manager::state::<crate::app_state::AppState>(&app);
-        if !state.settings.read().await.show_tray_notifications { return; }
+
+        // Гейт і назва станції — з одного guard'а активного профілю: обидва
+        // профільні (ADR 2026-08-08), нового лока не з'являється.
+        let station = {
+            let profile = state.active_profile.read().await;
+            if !profile.ui.tray_notifications { return; }
+            profile.streams.iter()
+                .find(|s| s.id == stream_id)
+                .map(|s| s.name.clone())
+                .unwrap_or_else(|| stream_id.clone())
+        };
 
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -154,12 +164,6 @@ pub fn notify_track_change(app: &tauri::AppHandle, stream_id: &str, artist: &str
         let last = LAST_NOTIFY_MS.load(Ordering::Relaxed);
         if now.saturating_sub(last) < THROTTLE_MS { return; }
         LAST_NOTIFY_MS.store(now, Ordering::Relaxed);
-
-        let station = state.active_profile.read().await
-            .streams.iter()
-            .find(|s| s.id == stream_id)
-            .map(|s| s.name.clone())
-            .unwrap_or_else(|| stream_id.clone());
 
         let body = match (artist.is_empty(), title.is_empty()) {
             (false, false) => format!("{artist} — {title}"),
@@ -194,7 +198,7 @@ fn plural_streams(n: usize) -> &'static str {
 
 /// Show the NVDA-readable toast for a global recording toggle.
 ///
-/// Intentionally bypasses `show_tray_notifications`: this is the *only* feedback
+/// Intentionally bypasses `ui.tray_notifications`: this is the *only* feedback
 /// for a backgrounded hotkey, not ambient track chatter, so it must always fire.
 /// Strings are Ukrainian-only, matching the other native surfaces here.
 pub fn notify_recording_toggle(app: &tauri::AppHandle, outcome: ToggleOutcome) {
@@ -231,7 +235,7 @@ fn stop_all_toast_body(stopped: usize) -> String {
 /// Show the NVDA-readable toast for the global stop-all shortcut (KB-12).
 ///
 /// Like `notify_recording_toggle`: intentionally bypasses
-/// `show_tray_notifications` (sole feedback for a backgrounded hotkey) and is
+/// `ui.tray_notifications` (sole feedback for a backgrounded hotkey) and is
 /// synchronous — the shortcut handler calls it from a spawned task.
 pub fn notify_stop_all(app: &tauri::AppHandle, stopped: usize) {
     let body = stop_all_toast_body(stopped);
@@ -277,13 +281,13 @@ pub fn scheduled_skipped_body(name: &str) -> String {
     format!("Плановий запис «{name}» не стартував: потік уже записується")
 }
 
-/// Fire-and-forget balloon для подій планувальника. Гейт showTrayNotifications
+/// Fire-and-forget balloon для подій планувальника. Гейт ui.trayNotifications
 /// («механізм Фази 3A», §5.5); без тротлінгу — події рідкісні.
 pub fn notify_scheduled(app: &tauri::AppHandle, body: String) {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
         let state = tauri::Manager::state::<crate::app_state::AppState>(&app);
-        if !state.settings.read().await.show_tray_notifications { return; }
+        if !state.active_profile.read().await.ui.tray_notifications { return; }
         log::info!("notify_scheduled: {body:?}");
         if let Err(e) = app.notification().builder().title("Tapir").body(&body).show() {
             log::warn!("notify_scheduled: failed to show toast: {e}");

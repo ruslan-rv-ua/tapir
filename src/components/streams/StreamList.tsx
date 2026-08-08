@@ -1,7 +1,7 @@
 import { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { $streams, $statuses, $streamSelection, $editStream, replaceSelection, pruneSelection } from "../../stores/streams";
-import { $recordingSettings, $settings } from "../../stores/settings";
+import { $profileSettings, $settings } from "../../stores/settings";
 import { $playerStatus } from "../../stores/player";
 import { CompositeList } from "../common/composite-list";
 import type { ActionModifiers, CompositeSelection, SelectionChange, SegmentKind } from "../../hooks/useCompositeList";
@@ -35,10 +35,10 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
   const allStreams = useStore($streams);
   const statuses = useStore($statuses);
   const selectedSet = useStore($streamSelection);
-  const recordingSettings = useStore($recordingSettings);
+  const profileSettings = useStore($profileSettings);
   const settings = useStore($settings);
   const playerStatus = useStore($playerStatus);
-  const maxRetries = recordingSettings?.reconnect.maxRetries ?? 0;
+  const maxRetries = profileSettings?.recording.reconnect.maxRetries ?? 0;
   const streams = streamsProp ?? allStreams;
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);

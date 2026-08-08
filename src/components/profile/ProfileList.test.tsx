@@ -50,9 +50,9 @@ vi.mock("../../lib/tauri", () => ({
 }));
 
 const profiles: ProfileMeta[] = [
-  { name: "Default", streamCount: 2, isActive: true, autoplayOnStartup: false },
-  { name: "Jazz", streamCount: 5, isActive: false, autoplayOnStartup: false },
-  { name: "Rock", streamCount: 3, isActive: false, autoplayOnStartup: false },
+  { name: "Default", streamCount: 2, isActive: true },
+  { name: "Jazz", streamCount: 5, isActive: false },
+  { name: "Rock", streamCount: 3, isActive: false },
 ];
 
 function renderList(activeProfile = "Default", handlers = {}) {

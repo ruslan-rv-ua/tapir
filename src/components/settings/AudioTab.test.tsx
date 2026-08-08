@@ -17,18 +17,13 @@ const baseSettings: GlobalSettings = {
   activeProfile: "Default",
   outputDevice: null,
   minimizeToTray: false,
-  showTrayNotifications: true,
   showTrackInTitle: true,
-  diskSpaceThresholdGb: 1,
   doubleClickAction: "play",
-  sortBy: "name",
   smtcEnabled: true,
   bandwidthLimitKbps: 0,
   autostart: false,
   autostartMinimized: true,
-  autoAdvance: true,
   prevRestartThresholdMs: 0,
-  resumeFileFrom: "position",
   hotkeys: {
     toggleRecording: "",
     togglePlayback: "",
@@ -53,17 +48,6 @@ afterEach(() => {
 });
 
 describe("AudioTab — playback settings", () => {
-  it("toggles autoAdvance into the settings store", () => {
-    const { getByRole } = render(<AudioTab />);
-    // react-aria Checkbox renders the visual ✓ inside the label wrapper,
-    // so the accessible name includes the checkmark prefix.
-    // Use a regex to match the label text regardless of prefix.
-    fireEvent.click(
-      getByRole("checkbox", { name: new RegExp(m.settings_auto_advance()) }),
-    );
-    expect($settings.get()?.autoAdvance).toBe(false);
-  });
-
   it("stores the prev-restart threshold as milliseconds", () => {
     const { getByRole } = render(<AudioTab />);
     // react-aria NumberField renders a textbox associated via aria-labelledby.
@@ -74,12 +58,12 @@ describe("AudioTab — playback settings", () => {
     expect($settings.get()?.prevRestartThresholdMs).toBe(3000);
   });
 
-  it("changes resumeFileFrom into the settings store", () => {
-    const { getByRole } = render(<AudioTab />);
-    // react-aria Select trigger's accessible name includes the label.
-    fireEvent.click(getByRole("button", { name: new RegExp(m.settings_resume_file_from()) }));
-    fireEvent.click(getByRole("option", { name: m.settings_resume_from_start() }));
-    expect($settings.get()?.resumeFileFrom).toBe("start");
+  // Автоперехід і «звідки відновлювати» переїхали в діалог профілю
+  // (ADR 2026-08-08): у налаштуваннях програми їх бути не повинно.
+  it("does not show the profile-scoped playback controls", () => {
+    const { queryByRole } = render(<AudioTab />);
+    expect(queryByRole("checkbox", { name: new RegExp(m.settings_auto_advance()) })).toBeNull();
+    expect(queryByRole("button", { name: new RegExp(m.settings_resume_file_from()) })).toBeNull();
   });
 });
 

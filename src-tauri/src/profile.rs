@@ -145,6 +145,10 @@ impl Default for ReconnectConfig {
 pub struct RecordingSettings {
     #[serde(default = "default_output_dir")]
     pub output_dir: String,
+    /// Профільний, бо охороняє профільний `output_dir`: «Архів» на 4-ТБ томі і
+    /// «Ніч» на системному диску не мають ділити один поріг (ADR 2026-08-08).
+    #[serde(default = "default_disk_space_threshold_gb")]
+    pub disk_space_threshold_gb: u32,
     #[serde(default = "default_file_name_template")]
     pub file_name_template: String,
     #[serde(default = "default_incomplete_template")]
@@ -168,6 +172,7 @@ pub struct RecordingSettings {
 }
 
 fn default_output_dir() -> String { "recordings".to_string() }
+fn default_disk_space_threshold_gb() -> u32 { 1 }
 fn default_file_name_template() -> String { "%s\\%a - %t".to_string() }
 fn default_incomplete_template() -> String { "%s\\%a - %t_incomplete".to_string() }
 fn default_stream_template() -> String { "%s\\stream_%d_%time".to_string() }
@@ -178,6 +183,7 @@ impl Default for RecordingSettings {
     fn default() -> Self {
         Self {
             output_dir: default_output_dir(),
+            disk_space_threshold_gb: default_disk_space_threshold_gb(),
             file_name_template: default_file_name_template(),
             incomplete_file_name_template: default_incomplete_template(),
             stream_file_name_template: default_stream_template(),
@@ -198,6 +204,31 @@ impl RecordingSettings {
     pub fn clamp_schedule_padding(&mut self) {
         self.schedule_pad_before_min = self.schedule_pad_before_min.min(30);
         self.schedule_pad_after_min = self.schedule_pad_after_min.min(60);
+    }
+}
+
+// --- UiSettings ---
+/// «Яким є набір даних і як він показаний» — фільтр 4 ADR 2026-08-08.
+/// `tray_notifications` — свідомий виняток із фільтра ОС-межі: «нічний
+/// сценарій — тихо» є сценарною потребою, і виняток задокументовано в ADR
+/// саме щоб він лишався винятком.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiSettings {
+    #[serde(default = "default_stream_sort")]
+    pub stream_sort: String,
+    #[serde(default = "default_true")]
+    pub tray_notifications: bool,
+}
+
+fn default_stream_sort() -> String { "name".to_string() }
+
+impl Default for UiSettings {
+    fn default() -> Self {
+        Self {
+            stream_sort: default_stream_sort(),
+            tray_notifications: true,
+        }
     }
 }
 
@@ -245,6 +276,21 @@ pub struct FilePosition {
     pub position_ms: u64,
 }
 
+/// What position the cold-start `Ctrl+Shift+K` file resume starts from.
+/// ONLY consulted on cold-start — in-session pause→resume always keeps the
+/// position (pause semantics). Enum (not bool) to leave the door open for a
+/// third variant (e.g. Ask), per the backlog decision.
+///
+/// Lives next to `autoplay_on_startup` in `PlayerSession`: «чи відновлювати» і
+/// «звідки відновлювати» — одна фіча холодного старту (ADR 2026-08-08).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ResumeFileFrom {
+    #[default]
+    Position,
+    Start,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlayerSession {
@@ -260,6 +306,13 @@ pub struct PlayerSession {
     /// playing in this profile. Opt-in; legacy JSON without the field is `false`.
     #[serde(default)]
     pub autoplay_on_startup: bool,
+    /// Play the next track in the list when the current file ends.
+    #[serde(default = "default_true")]
+    pub auto_advance: bool,
+    /// Where a cold-start file resume starts from — «звідки відновлювати»,
+    /// впритул до «чи відновлювати» (`autoplay_on_startup`).
+    #[serde(default)]
+    pub resume_file_from: ResumeFileFrom,
 }
 
 fn default_volume() -> f32 { 0.75 }
@@ -273,6 +326,8 @@ impl Default for PlayerSession {
             last_file_position: None,
             last_active: None,
             autoplay_on_startup: false,
+            auto_advance: true,
+            resume_file_from: ResumeFileFrom::Position,
         }
     }
 }
@@ -283,7 +338,8 @@ impl PlayerSession {
     /// playback last was). The resume triple is cleared in full — leaving only
     /// `last_file_position` would strand a dangling `last_active` discriminator,
     /// and the absolute file path is both a privacy leak and stale on another
-    /// machine. `volume` is intentionally preserved.
+    /// machine. `volume` is intentionally preserved — as are `auto_advance` and
+    /// `resume_file_from`: those are preferences, not a trace of this session.
     pub fn reset_for_share(&mut self) {
         self.autoplay_on_startup = false;
         self.last_active = None;
@@ -330,6 +386,8 @@ pub struct Profile {
     #[serde(default)]
     pub postprocess: PostprocessConfig,
     #[serde(default)]
+    pub ui: UiSettings,
+    #[serde(default)]
     pub player_session: PlayerSession,
     // DEPRECATED Phase 3C: not populated. Saved Songs Manager scans the
     // recordings directory on demand instead. Kept for backward compat with
@@ -344,9 +402,41 @@ pub struct ProfileMeta {
     pub name: String,
     pub stream_count: usize,
     pub is_active: bool,
-    /// Mirror of `player_session.autoplay_on_startup` so the profile-settings
-    /// dialog shows the current value without a second round-trip.
+}
+
+/// The editable slice of a profile — exactly what the profile-settings dialog
+/// shows, for the active profile or an inactive one. Three sections: `recording`
+/// and `ui` whole, plus the three `player_session` fields the UI owns (the rest
+/// of `player_session` — `volume`, the resume triple — is written by the backend
+/// and must never travel through the dialog).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProfileSettingsView {
+    pub recording: RecordingSettings,
+    pub ui: UiSettings,
     pub autoplay_on_startup: bool,
+    pub auto_advance: bool,
+    pub resume_file_from: ResumeFileFrom,
+}
+
+/// A patch, not «my copy of the profile»: `save_detached` writes the profile
+/// whole, so writing back a copy would clobber concurrent changes — the
+/// scheduler's `last_result`, `volume`, the last-playback trace. `recording` and
+/// `ui` may travel as whole sections precisely because neither holds a
+/// backend-written field; `player_session` may not.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProfileSettingsPatch {
+    #[serde(default)]
+    pub recording: Option<RecordingSettings>,
+    #[serde(default)]
+    pub ui: Option<UiSettings>,
+    #[serde(default)]
+    pub autoplay_on_startup: Option<bool>,
+    #[serde(default)]
+    pub auto_advance: Option<bool>,
+    #[serde(default)]
+    pub resume_file_from: Option<ResumeFileFrom>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -434,9 +524,46 @@ impl Profile {
             scheduled_recordings: vec![],
             recording: RecordingSettings::default(),
             postprocess: PostprocessConfig::default(),
+            ui: UiSettings::default(),
             player_session: PlayerSession::default(),
             saved_tracks: vec![],
         }
+    }
+
+    /// The editable slice this profile exposes to the profile-settings dialog.
+    pub fn settings_view(&self) -> ProfileSettingsView {
+        ProfileSettingsView {
+            recording: self.recording.clone(),
+            ui: self.ui.clone(),
+            autoplay_on_startup: self.player_session.autoplay_on_startup,
+            auto_advance: self.player_session.auto_advance,
+            resume_file_from: self.player_session.resume_file_from,
+        }
+    }
+
+    /// Apply the sections the patch actually carries; leave every other field —
+    /// including the backend-owned `volume`, the resume triple and each
+    /// schedule's `last_result` — untouched. Pure: the caller decides whether the
+    /// result goes through `commit_profile` (active) or `save_detached`
+    /// (inactive), and padding is clamped here so the limits cannot depend on
+    /// which branch the patch arrived through.
+    pub fn apply_settings_patch(&mut self, patch: ProfileSettingsPatch) {
+        if let Some(recording) = patch.recording {
+            self.recording = recording;
+        }
+        if let Some(ui) = patch.ui {
+            self.ui = ui;
+        }
+        if let Some(v) = patch.autoplay_on_startup {
+            self.player_session.autoplay_on_startup = v;
+        }
+        if let Some(v) = patch.auto_advance {
+            self.player_session.auto_advance = v;
+        }
+        if let Some(v) = patch.resume_file_from {
+            self.player_session.resume_file_from = v;
+        }
+        self.recording.clamp_schedule_padding();
     }
 
     pub fn list(active: &str) -> Result<Vec<ProfileMeta>, RadioError> {
@@ -446,7 +573,6 @@ impl Profile {
                 name: "Default".to_string(),
                 stream_count: 0,
                 is_active: active == "Default",
-                autoplay_on_startup: false,
             }]);
         }
         let mut metas: Vec<ProfileMeta> = std::fs::read_dir(&dir)?
@@ -465,7 +591,6 @@ impl Profile {
                                 name: name.clone(),
                                 stream_count: p.streams.len(),
                                 is_active: name == active,
-                                autoplay_on_startup: p.player_session.autoplay_on_startup,
                             }),
                             Err(e) => {
                                 log::warn!("Skipping corrupt profile '{name}': {e}");
@@ -523,8 +648,6 @@ impl Profile {
             name: new_name.to_string(),
             stream_count: profile.streams.len(),
             is_active: false, // caller must check
-            // Rename is the same profile under a new name — policy is preserved.
-            autoplay_on_startup: profile.player_session.autoplay_on_startup,
         })
     }
 
@@ -554,7 +677,6 @@ impl Profile {
             name: new_name.to_string(),
             stream_count: profile.streams.len(),
             is_active: false,
-            autoplay_on_startup: false,
         })
     }
 
@@ -609,7 +731,6 @@ impl Profile {
             name: name.to_string(),
             stream_count: profile.streams.len(),
             is_active: false,
-            autoplay_on_startup: false,
         })
     }
 
@@ -626,7 +747,7 @@ mod tests {
 
     #[test]
     fn profile_meta_serializes() {
-        let m = ProfileMeta { name: "Test".into(), stream_count: 3, is_active: true, autoplay_on_startup: false };
+        let m = ProfileMeta { name: "Test".into(), stream_count: 3, is_active: true };
         let json = serde_json::to_string(&m).unwrap();
         assert!(json.contains("\"streamCount\":3"));
         assert!(json.contains("\"isActive\":true"));
@@ -657,6 +778,180 @@ mod tests {
         assert!(validate_profile_name(&long, &[]).is_err());
     }
 
+    // --- Profile-scoped settings (profile-scoped-settings) ---
+
+    #[test]
+    fn ui_settings_defaults() {
+        let u = UiSettings::default();
+        assert_eq!(u.stream_sort, "name");
+        assert!(u.tray_notifications);
+    }
+
+    #[test]
+    fn profile_without_ui_block_uses_defaults() {
+        // A profile written before the block existed must still deserialize.
+        let json = r#"{"name":"T"}"#;
+        let p: Profile = serde_json::from_str(json).unwrap();
+        assert_eq!(p.ui.stream_sort, "name");
+        assert!(p.ui.tray_notifications);
+        assert_eq!(p.recording.disk_space_threshold_gb, 1);
+        assert!(p.player_session.auto_advance);
+        assert_eq!(p.player_session.resume_file_from, ResumeFileFrom::Position);
+    }
+
+    #[test]
+    fn ui_settings_serialize_camel_case() {
+        let p = Profile::create_default();
+        let json = serde_json::to_string(&p).unwrap();
+        assert!(json.contains(r#""streamSort":"name""#), "got: {json}");
+        assert!(json.contains(r#""trayNotifications":true"#), "got: {json}");
+        assert!(json.contains(r#""diskSpaceThresholdGb":1"#), "got: {json}");
+        assert!(json.contains(r#""autoAdvance":true"#), "got: {json}");
+        assert!(json.contains(r#""resumeFileFrom":"position""#), "got: {json}");
+    }
+
+    #[test]
+    fn migrated_fields_round_trip() {
+        let mut p = Profile::create_default();
+        p.recording.disk_space_threshold_gb = 25;
+        p.ui.stream_sort = "added".into();
+        p.ui.tray_notifications = false;
+        p.player_session.auto_advance = false;
+        p.player_session.resume_file_from = ResumeFileFrom::Start;
+        let back: Profile = serde_json::from_str(&serde_json::to_string(&p).unwrap()).unwrap();
+        assert_eq!(back.recording.disk_space_threshold_gb, 25);
+        assert_eq!(back.ui.stream_sort, "added");
+        assert!(!back.ui.tray_notifications);
+        assert!(!back.player_session.auto_advance);
+        assert_eq!(back.player_session.resume_file_from, ResumeFileFrom::Start);
+    }
+
+    #[test]
+    fn settings_view_mirrors_the_three_sections() {
+        let mut p = Profile::create_default();
+        p.recording.output_dir = "D:/arc".into();
+        p.ui.tray_notifications = false;
+        p.player_session.autoplay_on_startup = true;
+        let view = p.settings_view();
+        assert_eq!(view.recording.output_dir, "D:/arc");
+        assert!(!view.ui.tray_notifications);
+        assert!(view.autoplay_on_startup);
+        assert!(view.auto_advance);
+    }
+
+    #[test]
+    fn apply_patch_touches_only_present_sections() {
+        let mut p = Profile::create_default();
+        p.recording.output_dir = "D:/arc".into();
+        p.ui.stream_sort = "added".into();
+        p.player_session.autoplay_on_startup = true;
+
+        p.apply_settings_patch(ProfileSettingsPatch {
+            auto_advance: Some(false),
+            ..Default::default()
+        });
+
+        assert!(!p.player_session.auto_advance, "the one present field applied");
+        assert_eq!(p.recording.output_dir, "D:/arc", "absent section untouched");
+        assert_eq!(p.ui.stream_sort, "added", "absent section untouched");
+        assert!(p.player_session.autoplay_on_startup, "absent field untouched");
+    }
+
+    #[test]
+    fn apply_patch_preserves_backend_owned_player_session_fields() {
+        // The dialog owns three fields of player_session; the rest — volume and
+        // the resume triple — is written by the backend and must survive a patch.
+        let mut p = Profile::create_default();
+        p.player_session.volume = 0.42;
+        p.player_session.last_stream_id = Some("s1".into());
+        p.player_session.last_active = Some(LastActive::Stream);
+        p.player_session.last_file_position =
+            Some(FilePosition { path: "a.mp3".into(), position_ms: 5 });
+
+        p.apply_settings_patch(ProfileSettingsPatch {
+            recording: Some(RecordingSettings::default()),
+            ui: Some(UiSettings::default()),
+            autoplay_on_startup: Some(true),
+            auto_advance: Some(false),
+            resume_file_from: Some(ResumeFileFrom::Start),
+        });
+
+        assert_eq!(p.player_session.volume, 0.42);
+        assert_eq!(p.player_session.last_stream_id.as_deref(), Some("s1"));
+        assert_eq!(p.player_session.last_active, Some(LastActive::Stream));
+        assert!(p.player_session.last_file_position.is_some());
+    }
+
+    #[test]
+    fn apply_patch_preserves_schedule_last_result() {
+        let mut p = Profile::create_default();
+        let mut sched = sample_recurring_schedule();
+        sched.last_result = Some(ScheduleResult {
+            occurrence: "2026-06-12T20:00".into(),
+            status: ScheduleResultStatus::Completed,
+            reason: None,
+            recorded_minutes: 120,
+            finished_at: "2026-06-12T22:00:00+03:00".into(),
+        });
+        p.scheduled_recordings.push(sched);
+
+        p.apply_settings_patch(ProfileSettingsPatch {
+            recording: Some(RecordingSettings::default()),
+            ..Default::default()
+        });
+
+        assert_eq!(
+            p.scheduled_recordings[0].last_result.as_ref().unwrap().recorded_minutes,
+            120,
+        );
+    }
+
+    #[test]
+    fn apply_patch_clamps_schedule_padding() {
+        let mut p = Profile::create_default();
+        let recording = RecordingSettings {
+            schedule_pad_before_min: 31,
+            schedule_pad_after_min: 61,
+            ..RecordingSettings::default()
+        };
+        p.apply_settings_patch(ProfileSettingsPatch {
+            recording: Some(recording),
+            ..Default::default()
+        });
+        assert_eq!(p.recording.schedule_pad_before_min, 30);
+        assert_eq!(p.recording.schedule_pad_after_min, 60);
+    }
+
+    #[test]
+    fn patch_deserializes_from_a_partial_camel_case_object() {
+        // The wire form the webview sends: only the fields it actually changed.
+        let patch: ProfileSettingsPatch =
+            serde_json::from_str(r#"{"autoplayOnStartup":true}"#).unwrap();
+        assert_eq!(patch.autoplay_on_startup, Some(true));
+        assert!(patch.recording.is_none());
+        assert!(patch.ui.is_none());
+        assert!(patch.auto_advance.is_none());
+        assert!(patch.resume_file_from.is_none());
+    }
+
+    #[test]
+    fn duplicate_inherits_settings_but_not_autoplay() {
+        // reset_for_share is what a duplicate/export runs: preferences travel,
+        // the session trace does not.
+        let mut p = Profile::create_default();
+        p.recording.disk_space_threshold_gb = 25;
+        p.ui.tray_notifications = false;
+        p.player_session.auto_advance = false;
+        p.player_session.resume_file_from = ResumeFileFrom::Start;
+        p.player_session.autoplay_on_startup = true;
+        p.player_session.reset_for_share();
+        assert_eq!(p.recording.disk_space_threshold_gb, 25);
+        assert!(!p.ui.tray_notifications);
+        assert!(!p.player_session.auto_advance);
+        assert_eq!(p.player_session.resume_file_from, ResumeFileFrom::Start);
+        assert!(!p.player_session.autoplay_on_startup, "autoplay does not travel");
+    }
+
     #[test]
     fn player_session_autoplay_defaults_to_false() {
         // Legacy profile JSON without the field must deserialize to opt-out.
@@ -672,6 +967,7 @@ mod tests {
             last_file_position: Some(FilePosition { path: "a.mp3".into(), position_ms: 5 }),
             last_active: Some(LastActive::File),
             autoplay_on_startup: true,
+            ..PlayerSession::default()
         };
         s.reset_for_share();
         assert!(!s.autoplay_on_startup);
@@ -695,18 +991,6 @@ mod tests {
         assert!(back.player_session.last_active.is_none());
         assert!(back.player_session.last_stream_id.is_none());
         assert!(back.player_session.last_file_position.is_none());
-    }
-
-    #[test]
-    fn profile_meta_serializes_autoplay_camel_case() {
-        let m = ProfileMeta {
-            name: "Test".into(),
-            stream_count: 1,
-            is_active: false,
-            autoplay_on_startup: true,
-        };
-        let json = serde_json::to_string(&m).unwrap();
-        assert!(json.contains("\"autoplayOnStartup\":true"), "got: {json}");
     }
 
     #[test]
@@ -757,9 +1041,9 @@ mod tests {
     fn list_sort_puts_default_first() {
         // Test the sort algorithm used by Profile::list()
         let mut metas = vec![
-            ProfileMeta { name: "Zebra".into(), stream_count: 0, is_active: false, autoplay_on_startup: false },
-            ProfileMeta { name: "Default".into(), stream_count: 0, is_active: true, autoplay_on_startup: false },
-            ProfileMeta { name: "Alpha".into(), stream_count: 0, is_active: false, autoplay_on_startup: false },
+            ProfileMeta { name: "Zebra".into(), stream_count: 0, is_active: false },
+            ProfileMeta { name: "Default".into(), stream_count: 0, is_active: true },
+            ProfileMeta { name: "Alpha".into(), stream_count: 0, is_active: false },
         ];
         metas.sort_by(|a, b| {
             if a.name == "Default" { return std::cmp::Ordering::Less; }
