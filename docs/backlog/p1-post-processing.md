@@ -21,7 +21,7 @@ notes:
 # Постпроцесинг: запуск зовнішніх програм після запису
 
 > **Контекст:** дизайн деталізований (backend/frontend/безпека/a11y). Після
-> [profile-scoped-settings](p0-profile-scoped-settings.md) у діалозі налаштувань
+> [profile-scoped-settings](done/p0-profile-scoped-settings.md) у діалозі налаштувань
 > профілю існує вкладка «Постобробка» з `aria-disabled` і панеллю-поясненням —
 > цей запис її оживляє.
 
@@ -65,7 +65,7 @@ notes:
 ### Frontend (React 19)
 
 Вкладка **«Постобробка»** в діалозі налаштувань профілю
-([profile-scoped-settings](p0-profile-scoped-settings.md)): знімається `aria-disabled`,
+([profile-scoped-settings](done/p0-profile-scoped-settings.md)): знімається `aria-disabled`,
 панель-пояснення замінюється на форму. Збереження — тією ж патч-командою
 `update_profile_settings`, що й решта вкладок (автозбереження, без кнопки
 «Зберегти»), тож окремі `get_postprocess_config` / `save_postprocess_config` більше
@@ -137,7 +137,7 @@ notes:
 ## Документи
 
 - [implementation-phases.md §3H](../implementation-phases.md)
-- [profile-scoped-settings](p0-profile-scoped-settings.md) — створює вкладку-заглушку
+- [profile-scoped-settings](done/p0-profile-scoped-settings.md) — створює вкладку-заглушку
 - Шляхи коду (майбутні):
   - `src-tauri/src/postprocess/runner.rs`
   - `src/components/profile/ProfileSettingsDialog.tsx` (вкладка «Постобробка»)

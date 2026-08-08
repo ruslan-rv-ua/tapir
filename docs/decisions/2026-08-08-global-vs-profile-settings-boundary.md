@@ -3,7 +3,7 @@
 - **Статус:** ПРИЙНЯТО
 - **Дата:** 2026-08-08
 - **Тип:** ADR — правило класифікації налаштувань
-- **Контекст:** реалізація — [profile-scoped-settings](../backlog/p0-profile-scoped-settings.md);
+- **Контекст:** реалізація — [profile-scoped-settings](../backlog/done/p0-profile-scoped-settings.md);
   моделі — [data-models.md](../data-models.md).
 
 ## Проблема

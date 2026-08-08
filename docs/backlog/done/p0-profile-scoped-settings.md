@@ -3,13 +3,13 @@ slug: profile-scoped-settings
 title: "Профільні налаштування: межа глобальне/профіль + власний діалог профілю"
 priority: P0
 type: planned
-status: blocked
+status: done
 effort: L
 kind: feature
 target: 0.1.0
 updated: 2026-08-08
+completed: 2026-08-08
 a11y: true
-blocked_reason: "реалізовано на feature/profile-scoped-settings; чекає на ручний NVDA-прогін за docs/testing/nvda-profile-scoped-settings.md"
 depends_on: [profile-commit-seam, settings-commit-seam]
 blocks: [post-processing]
 touches:
@@ -47,12 +47,13 @@ notes:
   - "Міграції НЕМАЄ свідомо: дорелізна версія, `Profile.version` лишається 1, п'ять полів просто зникають із settings.json"
   - "Матчер `Ctrl+,` правити НЕ треба: `ctrlOrMeta` (shortcuts.ts:45) уже вимагає `!e.shiftKey`. Раніша примітка про shortcuts.ts:84 була помилковою — лишається лише регресійний тест на обидві комбінації"
   - "`get_recording_settings` / `save_recording_settings` зникають — їх заміняє пара `get_profile_settings` / `update_profile_settings` (рішення 2026-08-08: один шов запису профільних налаштувань)"
+  - "NVDA-прогін 2026-08-08 прийнято з розбіжностями; чотири хвости винесено в окремі записи — див. «Підсумок NVDA-прогону»"
 ---
 
 # Профільні налаштування: межа глобальне/профіль + власний діалог профілю
 
 > **Контекст:** межа «що глобальне, а що профільне» проведена свідомо й
-> зафіксована в [ADR](../decisions/2026-08-08-global-vs-profile-settings-boundary.md) —
+> зафіксована в [ADR](../../decisions/2026-08-08-global-vs-profile-settings-boundary.md) —
 > читати першим. Цей запис — реалізація. Профіль = **сценарій використання**.
 
 ## Проблема
@@ -289,7 +290,7 @@ padding не мають залежати від того, через яку гі
 | **Запис** | нинішня `RecordingTab` цілком + `diskSpaceThresholdGb` |
 | **Відтворення** | `autoplayOnStartup`, `autoAdvance`, `resumeFileFrom` |
 | **Інтерфейс** | `streamSort`, `trayNotifications` |
-| **Постобробка** | `aria-disabled`, панель пояснює стан — див. [post-processing](p1-post-processing.md) |
+| **Постобробка** | `aria-disabled`, панель пояснює стан — див. [post-processing](../p1-post-processing.md) |
 
 Вкладка «Постобробка» — патерн APG «disabled but focusable»: **не** `isDisabled`
 (react-aria прибрав би її з навігації стрілками, і користувач NVDA ніколи б її не
@@ -330,7 +331,7 @@ padding не мають залежати від того, через яку гі
    `SHORTCUTS` з `reserved: true`. Матчинг по `e.code === "Comma"` (фізична позиція),
    тож українська розкладка, де кома вимагає Shift, нічого не ламає.
    Наявний матчер `Ctrl+,` правити **не** треба: `ctrlOrMeta` уже вимагає `!e.shiftKey`
-   ([shortcuts.ts:45](../../src/lib/shortcuts.ts#L45)). Раніша примітка запису про
+   ([shortcuts.ts:45](../../../src/lib/shortcuts.ts#L45)). Раніша примітка запису про
    `shortcuts.ts:84` була помилковою; лишається регресійний тест на обидві комбінації.
 2. **Командна палітра** (`Ctrl+K`) — команда «Налаштування профілю…» (діє на активний).
 3. **Кнопка в `SettingsDialog`** — «Налаштування профілю «X»…»: закриває один діалог,
@@ -386,9 +387,9 @@ padding не мають залежати від того, через яку гі
 - **Вішліст, ігнор-лист, розклади** — сутності, а не налаштування; лишаються екранами
   з власними зонами F6.
 - **`bandwidth_limit_kbps`** — не переїжджає: у Rust немає жодного споживача, див.
-  [bandwidth-limit-dead-setting](p1-bandwidth-limit-dead-setting.md).
+  [bandwidth-limit-dead-setting](../p1-bandwidth-limit-dead-setting.md).
 - **Реальна постобробка** — вкладка лишається заглушкою; оживляє її
-  [post-processing](p1-post-processing.md).
+  [post-processing](../p1-post-processing.md).
 - **Редагування хоткеїв на профіль** — відхилено в ADR (фільтр 2).
 - **Синхронізація профілів між машинами** — тригер перегляду ADR, не частина запису.
 
@@ -405,12 +406,36 @@ padding не мають залежати від того, через яку гі
 - [x] Діалог профілю монтується на рівні `App` через стор і відкривається з усіх трьох точок входу + контекстного меню.
 - [x] Діалог працює для **неактивного** профілю; після збереження активного оновлюється `$profileSettings`.
 - [x] Вкладка «Постобробка»: `aria-disabled`, у навігації стрілками, панель із поясненням.
-- [x] Видалення/перейменування профілю з відкритим діалогом → діалог закрито, причина оголошена, фокус у списку.
+- [ ] Видалення/перейменування профілю з відкритим діалогом → діалог закрито, причина оголошена, фокус у списку. **Код і RTL-тест є, але шлях недосяжний із UI**: діалог модальний, тож до списку профілів при ньому не дістатися. Доля обіцянки — [profile-force-close-unreachable](../p2-profile-force-close-unreachable.md).
 - [x] Регресійний тест: `Ctrl+Shift+,` → діалог профілю, `Ctrl+,` → налаштування програми, взаємного перехоплення немає.
 - [x] `ProfileMeta.autoplay_on_startup` прибрано разом зі згадками у фронтових тестах.
 - [x] i18n: усі нові рядки в `uk.json` / `en.json`.
 - [x] `docs/keyboard-shortcuts.md` і `docs/data-models.md` оновлено.
-- [ ] NVDA-прогін за чеклістом `docs/testing/nvda-profile-scoped-settings.md` пройдено.
+- [x] NVDA-прогін за чеклістом `docs/testing/nvda-profile-scoped-settings.md` проведено 2026-08-08 і **прийнято з розбіжностями** — див. підсумок нижче.
+
+## Підсумок NVDA-прогону (2026-08-08)
+
+Прогін проведено розробником, запис прийнято попри чотири хвости — усі винесені
+в окремі записи беклога, жоден не блокує решту фічі.
+
+Пройшло чисто: обидві комбінації відкривають рівно свої діалоги (сценарій 1),
+чотири вкладки з правильним підрахунком і порядком (2), `Ctrl+Shift+,` з усіх
+секцій і на українській розкладці (3), «Постобробка» досяжна стрілками й
+пояснює свій стан (5), редагування **неактивного** профілю без зупинки записів
+(6), усі чотири точки входу (11), системний діалог вибору теки з поверненням
+фокуса (12), і регресія «недоторкане лишилося глобальним» (13).
+
+Хвости:
+
+| Що | Куди пішло |
+|---|---|
+| Сценарій 4: автозбереження мовчить на числових полях вкладки «Запис» (значення при цьому зберігається) | [profile-settings-silent-numeric-save](../p1-profile-settings-silent-numeric-save.md) |
+| Сценарій 8: стан кнопок сортування після переключення профілю; спостереження суперечить коду, потрібне відтворення | [profile-sort-state-after-switch](../p1-profile-sort-state-after-switch.md) |
+| Сценарій 7: обіцянка примусового закриття недосяжна з UI — діалог модальний, до списку профілів при ньому не дістатися | [profile-force-close-unreachable](../p2-profile-force-close-unreachable.md) |
+| Два дефекти самого чеклістa: невиконуваний сценарій 7 і хибна навігація до тулбара в сценарії 8 | [nvda-checklist-profile-settings-fixes](../p2-nvda-checklist-profile-settings-fixes.md) |
+
+Сценарії 9 (поріг диску в рядку стану) і 10 (тихий профіль у треї) не
+проганялися — свідоме рішення при прийманні, окремого запису на них немає.
 
 ## NVDA-прогін — що обов'язково в чеклісті
 
@@ -423,7 +448,7 @@ padding не мають залежати від того, через яку гі
 
 ## Документи
 
-- [ADR: межа глобальних і профільних налаштувань](../decisions/2026-08-08-global-vs-profile-settings-boundary.md)
-- [data-models.md](../data-models.md) · [keyboard-shortcuts.md](../keyboard-shortcuts.md)
-- [post-processing](p1-post-processing.md) — оживляє вкладку-заглушку
-- [bandwidth-limit-dead-setting](p1-bandwidth-limit-dead-setting.md) — суміжна знахідка
+- [ADR: межа глобальних і профільних налаштувань](../../decisions/2026-08-08-global-vs-profile-settings-boundary.md)
+- [data-models.md](../../data-models.md) · [keyboard-shortcuts.md](../../keyboard-shortcuts.md)
+- [post-processing](../p1-post-processing.md) — оживляє вкладку-заглушку
+- [bandwidth-limit-dead-setting](../p1-bandwidth-limit-dead-setting.md) — суміжна знахідка

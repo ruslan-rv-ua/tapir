@@ -27,7 +27,7 @@ notes:
 # Обмеження смуги: налаштування є, реалізації немає
 
 > **Контекст:** знахідка на маргінесі
-> [profile-scoped-settings](p0-profile-scoped-settings.md). Поле лишили глобальним
+> [profile-scoped-settings](done/p0-profile-scoped-settings.md). Поле лишили глобальним
 > саме тому, що спершу треба вирішити його долю.
 
 ## Опис
