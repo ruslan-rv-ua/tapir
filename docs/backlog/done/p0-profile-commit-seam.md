@@ -3,11 +3,12 @@ slug: profile-commit-seam
 title: Коміт профілю — один шов замість 31 копії
 priority: P0
 type: planned
-status: ready
+status: done
 effort: L
 kind: chore
 target: 0.1.0
 updated: 2026-08-07
+completed: 2026-08-07
 a11y: false
 depends_on: []
 blocks: []
