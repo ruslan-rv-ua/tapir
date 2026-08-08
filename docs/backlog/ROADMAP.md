@@ -17,7 +17,7 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [profile-settings-silent-numeric-save](p1-profile-settings-silent-numeric-save.md) | P1 | planned | ready | S | [profile-scoped-settings](done/p0-profile-scoped-settings.md) | — (знахідка NVDA-прогону, сценарій 4) |
+| [profile-settings-silent-numeric-save](p1-profile-settings-silent-numeric-save.md) | P1 | planned | ready | S | [profile-scoped-settings](done/p0-profile-scoped-settings.md) | — (знахідка NVDA-прогону, сценарій 4; причина — спільний `LiveAnnouncer`, чекає прогону) |
 | [profile-sort-state-after-switch](p1-profile-sort-state-after-switch.md) | P1 | research | ready | S | [profile-scoped-settings](done/p0-profile-scoped-settings.md) | — (знахідка NVDA-прогону, сценарій 8 — спершу відтворити) |
 | [profile-force-close-unreachable](p2-profile-force-close-unreachable.md) | P2 | planned | **draft** | S | [profile-scoped-settings](done/p0-profile-scoped-settings.md) | [nvda-checklist-profile-settings-fixes](p2-nvda-checklist-profile-settings-fixes.md) |
 | [nvda-checklist-profile-settings-fixes](p2-nvda-checklist-profile-settings-fixes.md) | P2 | planned | ready | S | [profile-force-close-unreachable](p2-profile-force-close-unreachable.md) | — (два дефекти самого чеклістa) |

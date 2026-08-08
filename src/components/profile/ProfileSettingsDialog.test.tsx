@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as m from "../../i18n/paraglide/messages";
 import { ProfileSettingsDialog } from "./ProfileSettingsDialog";
@@ -136,6 +136,58 @@ describe("ProfileSettingsDialog — редагування", () => {
     await waitFor(() =>
       expect(announce).toHaveBeenCalledWith(m.profile_settings_saved({ name: "Jazz" }), "polite"),
     );
+  });
+
+  // Знахідка NVDA-прогону: числові поля вкладки «Запис» зберігали мовчки.
+  // Причина була в LiveAnnouncer (повтор того самого тексту), але шов діалогу
+  // тримаємо під тестом: announce() має спрацювати для будь-якого поля.
+  it("числове поле озвучує збереження нарівні з чекбоксом", async () => {
+    renderDialog();
+    await screen.findByRole("tablist");
+    const field = screen.getByLabelText(m.settings_disk_threshold());
+    await userEvent.clear(field);
+    await userEvent.type(field, "7{Enter}");
+
+    await waitFor(() => expect(tauri.updateProfileSettings).toHaveBeenCalled());
+    const [, patch] = vi.mocked(tauri.updateProfileSettings).mock.calls[0];
+    expect(patch.recording?.diskSpaceThresholdGb).toBe(7);
+    await waitFor(() =>
+      expect(announce).toHaveBeenCalledWith(m.profile_settings_saved({ name: "Jazz" }), "polite"),
+    );
+  });
+
+  it("дві швидкі зміни підряд — один запис і рівно одне оголошення", async () => {
+    renderDialog();
+    await screen.findByRole("tablist");
+    const threshold = screen.getByLabelText(m.settings_disk_threshold());
+    const padBefore = screen.getByLabelText(m.settings_schedule_pad_before());
+
+    // Фейкові таймери — тест саме про вікно дебаунсу: на реальних він залежав
+    // би від того, чи встиг ввід пройти два поля за 300 мс. Вмикаємо їх після
+    // завантаження діалогу, і далі лише fireEvent + vi.*: async-хелпери RTL
+    // (findBy*, userEvent) під фейковими таймерами чекають на setTimeout, який
+    // ніколи не спрацює, і тест зависає.
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(threshold, { target: { value: "7" } });
+      fireEvent.blur(threshold);
+      fireEvent.change(padBefore, { target: { value: "3" } });
+      fireEvent.blur(padBefore);
+      expect(tauri.updateProfileSettings).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(300);
+
+      // Дебаунс злив обидві зміни в один запис — отже й одне оголошення,
+      // а не жодного (стара тиша) і не два.
+      expect(tauri.updateProfileSettings).toHaveBeenCalledTimes(1);
+      await vi.waitFor(() => expect(announce).toHaveBeenCalledTimes(1));
+      expect(announce).toHaveBeenCalledWith(m.profile_settings_saved({ name: "Jazz" }), "polite");
+      const [, patch] = vi.mocked(tauri.updateProfileSettings).mock.calls[0];
+      expect(patch.recording?.diskSpaceThresholdGb).toBe(7);
+      expect(patch.recording?.schedulePadBeforeMin).toBe(3);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("оновлює стор активного профілю після збереження, а неактивного — ні", async () => {
