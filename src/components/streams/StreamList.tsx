@@ -13,6 +13,7 @@ import { ProfileNameDialog } from "../profile/ProfileNameDialog";
 import * as tauri from "../../lib/tauri";
 import { addToast } from "../../stores/toasts";
 import { streamOpenErrorMessage } from "../../lib/shellOpenError";
+import { isRecordingLike } from "../../lib/streamState";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import { createPortal } from "react-dom";
 import { ConfirmDialog } from "../common/ConfirmDialog";
@@ -50,6 +51,26 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
   const focusItemRef = useRef<((id: string, segment?: SegmentKind) => void) | null>(null);
 
   const announce = useAnnounce();
+
+  /** True while OUR player holds this stream (any non-stopped state). */
+  const isPlayingStream = useCallback(
+    (streamId: string) =>
+      playerStatus.state !== "stopped" &&
+      playerStatus.source?.type === "stream" &&
+      playerStatus.source.streamId === streamId,
+    [playerStatus],
+  );
+
+  /**
+   * The ⋯ menu's `moveDisabled` (StreamContextMenu), reused for the keyboard route:
+   * playback is not a recording state (R4), but a stream the user is listening to
+   * must not be moved out from under the player either. Single route only — see the
+   * transfer branch in onAction.
+   */
+  const isMoveBlocked = useCallback(
+    (streamId: string) => isRecordingLike(statuses[streamId]?.state) || isPlayingStream(streamId),
+    [statuses, isPlayingStream],
+  );
 
   const selectionAdapter = useMemo<CompositeSelection>(
     () => ({
@@ -95,6 +116,28 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
     }
   }, []);
 
+  /**
+   * Hand the focus effect below an explicit destination after rows are removed.
+   * Both indices come from the VISIBLE order (the filtered prop, not the full
+   * store) snapshotted BEFORE the removal: the first survivor at/after the top
+   * removed index, clamped to the new tail. `Math.max(0, …)` is the not-found
+   * fallback (findIndex === -1 when no removed row was visible, e.g. under a
+   * filter) → land on the first row. No survivors → null, and the caller's
+   * onEmpty() owns that case.
+   *
+   * Shared by all three removal paths (single/bulk delete, single/bulk move) so
+   * they cannot drift: the seq bump is what makes the effect fire even when
+   * `items` is unchanged because the parent pre-filters `streams`.
+   */
+  const handOffFocusAfterRemoval = (visible: StreamInfo[], removed: ReadonlySet<string>) => {
+    const topRemovedIdx = Math.max(0, visible.findIndex((s) => removed.has(s.id)));
+    const survivors = visible.filter((s) => !removed.has(s.id));
+    pendingBulkFocusRef.current =
+      survivors.length === 0 ? null : survivors[Math.min(topRemovedIdx, survivors.length - 1)].id;
+    setBulkDeleteSeq((n) => n + 1);
+    return survivors;
+  };
+
   const composeSummary = (mode: "copy" | "move", res: tauri.BulkTransferResult): string => {
     const lead =
       mode === "move"
@@ -116,15 +159,10 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
         : await tauri.copyStreamsToProfile(ids, targetProfile);
       if (mode === "move" && res.transferred.length > 0) {
         const moved = new Set(res.transferred);
-        const topRemovedIdx = Math.max(0, visible.findIndex((s) => moved.has(s.id)));
-        const survivors = visible.filter((s) => !moved.has(s.id));
         // Remove only the transferred rows; pruneSelection drops them from the
         // selection, leaving the skipped rows selected (R3). copy: untouched.
         $streams.set($streams.get().filter((s) => !moved.has(s.id)));
-        pendingBulkFocusRef.current =
-          survivors.length === 0 ? null : survivors[Math.min(topRemovedIdx, survivors.length - 1)].id;
-        if (survivors.length === 0) onEmpty();
-        setBulkDeleteSeq((n) => n + 1);
+        if (handOffFocusAfterRemoval(visible, moved).length === 0) onEmpty();
       }
       announce(composeSummary(mode, res), "polite");
       setTransfer(null);
@@ -149,15 +187,21 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
 
   const doTransfer = async (mode: "copy" | "move", streamId: string, targetProfile: string) => {
     const name = $streams.get().find((s) => s.id === streamId)?.name ?? "";
+    const visible = streams; // snapshot before await — for the focus index (A9)
     try {
       if (mode === "copy") await tauri.copyStreamToProfile(streamId, targetProfile);
       else await tauri.moveStreamToProfile(streamId, targetProfile);
 
       if (mode === "move") {
+        // A9: single move gets the same explicit focus hand-off the bulk paths have.
+        // Reached from Shift+F5 the vanishing row IS the focused one and there is no
+        // ⋯ trigger to fall back on, so leaving it to the hook's passive "active row
+        // disappeared" reconciliation would put it in a race with react-aria's rAF
+        // focus restore — the very race the bulk path moved to useLayoutEffect to win.
         $streams.set($streams.get().filter((s) => s.id !== streamId));
         // Same dead-onEmpty issue as handleConfirmDelete: moving the last
         // visible stream away unmounts this list in the same render.
-        if (streams.every((s) => s.id === streamId)) onEmpty();
+        if (handOffFocusAfterRemoval(visible, new Set([streamId])).length === 0) onEmpty();
         addToast(m.stream_moved_to_profile({ name, profile: targetProfile }), "info");
         announce(m.stream_moved_to_profile({ name, profile: targetProfile }), "polite");
       } else {
@@ -241,11 +285,7 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
           ? "record"
           : (settings?.doubleClickAction ?? "record");
       if (action === "play") {
-        const isPlaying =
-          playerStatus.state !== "stopped" &&
-          playerStatus.source?.type === "stream" &&
-          playerStatus.source.streamId === itemId;
-        (isPlaying ? tauri.stopPlayback() : tauri.playStream(itemId)).catch((err) =>
+        (isPlayingStream(itemId) ? tauri.stopPlayback() : tauri.playStream(itemId)).catch((err) =>
           addToast(String(err), "error"),
         );
       } else {
@@ -255,7 +295,7 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
         );
       }
     },
-    [settings, playerStatus, statuses],
+    [settings, isPlayingStream, statuses],
   );
 
   const handleConfirmDelete = async () => {
@@ -287,21 +327,13 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
       return;
     }
     const idSet = new Set(ids);
-    // Focus target computed from the CURRENT visible order, BEFORE deletion (A8):
-    // first survivor at/after the top removed index; tail → new last; none → onEmpty.
-    // Math.max(0, ...) is a not-found fallback (findIndex === -1 when no selected
-    // row is visible, e.g. under a filter) → land on the first row.
-    const topRemovedIdx = Math.max(0, streams.findIndex((s) => idSet.has(s.id)));
-    const survivors = streams.filter((s) => !idSet.has(s.id));
+    const visible = streams; // snapshot before await — for the focus index (A8)
     try {
       const removed = await tauri.removeStreams(ids);
       $streams.set($streams.get().filter((s) => !idSet.has(s.id)));
       replaceSelection(new Set());
       announce(m.streams_removed_bulk({ count: removed }), "polite");
-      pendingBulkFocusRef.current =
-        survivors.length === 0 ? null : survivors[Math.min(topRemovedIdx, survivors.length - 1)].id;
-      if (survivors.length === 0) onEmpty();
-      setBulkDeleteSeq((n) => n + 1);
+      if (handOffFocusAfterRemoval(visible, idSet).length === 0) onEmpty();
     } catch (err) {
       addToast(String(err), "error");
     }
@@ -362,6 +394,31 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
             // ⋯ menu onDelete below, which routes by .has(id) (Explorer model).
             if ($streamSelection.get().size > 0) setBulkConfirmOpen(true);
             else setPendingDeleteId(itemId);
+            return;
+          }
+          if (type === "transfer-copy" || type === "transfer-move") {
+            // F5 / Shift+F5. Selection semantics mirror Delete above one-for-one,
+            // including its divergence from the ⋯ menu (size > 0 here, .has(id)
+            // there): internal keyboard consistency beats keyboard↔menu symmetry.
+            const mode = type === "transfer-copy" ? "copy" : "move";
+            if ($streamSelection.get().size > 0) {
+              openTransfer(mode, { kind: "bulk" });
+              return;
+            }
+            // Single move only: honour the same safeguard the ⋯ menu shows as a
+            // DISABLED "Move to profile". Without it the keyboard would either make
+            // the user pick a profile only to hear a raw backend error (recording), or
+            // silently move a stream out from under the player (playing — the backend
+            // does not know about it). Copy has no guard; neither does the menu.
+            if (mode === "move" && isMoveBlocked(itemId)) {
+              // ToastContainer is role="log" aria-live="polite", so one call serves
+              // both audiences — no separate announce().
+              addToast(m.move_disabled_reason(), "info");
+              return;
+            }
+            // Unlike the ⋯ menu's single route this does NOT collapse the selection
+            // to {itemId} — the selection is already empty, there is nothing to collapse.
+            openTransfer(mode, { kind: "single", streamId: itemId });
             return;
           }
           // Alt+Enter rides on the FOCUSED row only (like edit, unlike delete).

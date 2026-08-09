@@ -22,7 +22,15 @@ interface CompositeRowProps {
    * including the held Shift/Ctrl modifiers.
    */
   onActivate?: (modifiers: ActionModifiers) => void;
-  /** aria-keyshortcuts advertised on the summary stop (e.g. "Shift+Enter Control+Enter"). */
+  /**
+   * aria-keyshortcuts advertised on the summary stop (e.g. "F5 Shift+F5 Alt+Enter").
+   *
+   * Token ORDER is not semantic — assistive tech reads the set, not the sequence.
+   * The rule exists only so the string stays stable from edit to edit:
+   *   1. keys specific to THIS list first, then the app-wide fixed Enter combos;
+   *   2. inside a group, the bare key before its modified variants.
+   * Modifier tokens follow ARIA ("Control", not "Ctrl").
+   */
   keyshortcuts?: string;
   /** Marks the row as selected — sets data-selected for CSS + assistive parity. */
   selected?: boolean;

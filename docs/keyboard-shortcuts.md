@@ -3,7 +3,11 @@
 - **Тип:** живий довідник (reference), **не** ADR. Тут — *що забіндано зараз*;
   *чому* саме так — у відповідних ADR (посилання в рядках).
 - **Оновлювати:** при кожному додаванні/зміні названого шортката (Tier 1–2).
-- **Останнє звірення з кодом:** 2026-08-07 (додано розділ «Подавлені акселератори
+- **Останнє звірення з кодом:** 2026-08-09 (Tier 2′: `F5` / `Shift+F5` —
+  копіювати / перенести в інший профіль у списку потоків; обидві резервуються
+  проти KeyRecorder, тому виправлено твердження в розділі гарду, що він приймає
+  `F5`);
+  2026-08-07 (додано розділ «Подавлені акселератори
   WebView2 (гард)» — `F5`-родина, `F3`/`F7`/`F11` і нативне контекстне меню поза
   текстовими полями; шарів шорткатів це не змінює);
   2026-06-20 (Tier 2′: віха D — модель виділення
@@ -182,6 +186,8 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 | `Ctrl+A` | виділити всі видимі / зняти (toggle) — у **всіх** композитних списках | фокус у списку з multi-select | ↑ (`selectAll` / `clearSelection`) | ✅ |
 | `Shift+↑` / `Shift+↓` | розширити / звузити діапазон виділення від якоря — у **всіх** композитних списках | фокус у списку з multi-select | ↑ (`selectRangeUp` / `selectRangeDown`) | ✅ |
 | `F2` | редагувати / перейменувати рядок (Streams: edit/rename · Songs/Profiles: rename — заплановано) | фокус на рядку (де застосовно) | generic `edit`-інтент [useCompositeList.ts](../src/hooks/useCompositeList.ts) `resolveKeyAction`→`onAction("edit")`; гілка [StreamList.tsx](../src/components/streams/StreamList.tsx)→`$editStream`; reserved у [shortcuts.ts](../src/lib/shortcuts.ts) | Streams ✅ · решта ⬜ |
+| `F5` | копіювати в інший профіль (Streams): за наявності виділення — **усе виділення**, інакше сфокусований рядок; ціль питає `StreamTransferDialog` | фокус на рядку потоків | generic `transfer-copy`-інтент [useCompositeList.ts](../src/hooks/useCompositeList.ts) `resolveKeyAction`→`onAction("transfer-copy")`; гілка [StreamList.tsx](../src/components/streams/StreamList.tsx)→`openTransfer`; reserved у [shortcuts.ts](../src/lib/shortcuts.ts) | Streams ✅ · решта — не заводимо |
+| `Shift+F5` | перенести в інший профіль (Streams), та сама модель виділення; **одиночний** маршрут блокується на активному потоці (запис / грає через наш плеєр) з озвученою причиною — bulk ні (бекенд пропускає активні сам) | ↑ | ↑ (`transfer-move`); гард — `isRecordingLike` ([streamState.ts](../src/lib/streamState.ts)) + `$playerStatus`, та сама умова, що `moveDisabled` у [StreamContextMenu.tsx](../src/components/streams/StreamContextMenu.tsx) | Streams ✅ |
 | `Delete` | видалити рядок (з підтвердженням); за наявності виділення — масове видалення множини (Explorer-модель) — у **всіх** списках, крім browser (там немає Delete; bulk-дія browser — «Додати виділені» через тулбар/кластер, не клавіша) | фокус на рядку списку | [useCompositeList.ts:361](../src/hooks/useCompositeList.ts#L361) → `onAction("delete")` → per-list bulk handler; bulk-видалення: streams/songs/profiles/schedule; bulk-remove: patterns (wishlist/ignorelist) | одинично ✅ · bulk ✅ |
 | `Escape` | закрити палітру / діалог (або скасувати запис хоткея); **у списку з непорожнім виділенням — зняти виділення** (list-scoped, consume) — у **всіх** композитних списках | палітра / модаль / рекордер відкриті · або список із виділенням | палітра [CommandPalette.tsx:150](../src/components/common/CommandPalette.tsx#L150); Settings — react-aria `isDismissable` [SettingsDialog.tsx:35](../src/components/settings/SettingsDialog.tsx#L35); рекордер [KeyRecorder.tsx:51](../src/components/settings/KeyRecorder.tsx#L51); clear-selection — [useCompositeList.ts](../src/hooks/useCompositeList.ts) `clearSelection` | палітра/діалог ✅ · clear-selection ✅ |
 
@@ -206,6 +212,25 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 
 > `F2` / `Delete` — контекстні дії рядка (focus mode), за desktop-list
 > конвенцією.
+>
+> **`F5`/`Shift+F5`: із Total Commander запозичено лише клавішу, не модель.**
+> `F5` = Copy — конвенція Norton Commander, успадкована TC і FAR; серед незрячих
+> користувачів TC — стандарт де-факто, тож м'язова пам'ять клавіші коштує дешево.
+> Але в TC `F5` копіює у **другу видиму панель** (ціль очевидна до натискання) —
+> у Tapir другої панелі немає, ціль питає `StreamTransferDialog`. Не варто
+> очікувати двопанельної семантики.
+>
+> **Чому move — `Shift+F5`, а не `F6` (як у TC).** `F6` недоторканний: він уже
+> зайнятий зонною навігацією (Tier 2′ вище) і це платформна конвенція Microsoft
+> (`F6` = перемикання панелей, `Shift+F6` — назад), a11y-критична. Тому move
+> переїхав на `Shift+F5` — свідоме відхилення від TC (там `Shift+F5` = копіювати
+> з перейменуванням). NVDA не біндить ані голі `F5`/`F6`, ані `Shift+F5`/`F6`
+> (Commands Quick Reference 2026.1.1), тож зі скрінрідером конфлікту немає.
+>
+> **Пастка, яку видно лише в лейблах F1:** `Delete`, `F5` і `Shift+F5` з
+> клавіатури діють на **все виділення**, навіть якщо сфокусований рядок до нього
+> не входить (⋯-меню натомість маршрутизує по `.has(id)`). Розбіжність свідома —
+> внутрішня консистентність клавіатури важливіша за симетрію клавіатура↔меню.
 >
 > **Carve-out для list-scoped Ctrl-комбо.** Інваріант «лише функційні/спец-клавіші»
 > стосується **глобального / section-scope** (де NVDA в browse mode перехоплює голі
@@ -282,11 +307,19 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 > означає перезавантажити webview на утримуваній `F5`.
 >
 > **Гард гасить дефолт, але не забирає клавішу:** лише `preventDefault()`,
-> **ніколи** `stopPropagation()`. Тому подавлені клавіші лишаються вільними —
-> `F5` стане «Копіювати в профіль»
-> ([backlog](backlog/p2-streams-transfer-hotkeys.md)), а KeyRecorder і далі
-> приймає `F5`/`F3`/`F7`/`F11` під OS-хоткей: у `SHORTCUTS` вони **не**
-> резервуються.
+> **ніколи** `stopPropagation()`. Саме тому подавлені клавіші лишаються вільними
+> для застосунку — і `F5`/`Shift+F5` цим уже скористались: у списку потоків це
+> «Копіювати / Перенести в профіль» (Tier 2′ вище). Наслідок для KeyRecorder:
+> `F5` і `Shift+F5` тепер **резервуються** в `SHORTCUTS` (`row-copy-profile` /
+> `row-move-profile`), тож під OS-хоткей їх призначити не можна;
+> `F3`/`F7`/`F11` лишаються вільними — у `SHORTCUTS` їх немає.
+>
+> Порядок трьох шарів на `F5` при діагностиці: `useWebviewGuard` (capture на
+> `window`, лише `preventDefault`) → `onKeyDownCapture` списку (`consume()` =
+> `preventDefault` + `stopPropagation`) → усе інше. Гард завжди встигає першим,
+> тому список робить `stopPropagation` лише на **своєму** матчі: `Ctrl+F5`/`Alt+F5`
+> у `resolveKeyAction` повертають `null` (відмова від матчу), а не «матч із
+> порожньою дією».
 >
 > **Свідомо поза переліком:** `Ctrl+Plus`/`Ctrl+Minus`/`Ctrl+0` (зум — окремий
 > запис [webview-zoom-hotkeys](backlog/p2-webview-zoom-hotkeys.md)), `Alt+F4`

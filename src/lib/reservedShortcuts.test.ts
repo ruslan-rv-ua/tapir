@@ -12,7 +12,7 @@ describe("RESERVED_WEBVIEW_COMBOS", () => {
       "F6", "Shift+F6", "Shift+F10",
       "Shift+Enter", "Ctrl+Enter", "Alt+Enter",
       "Ctrl+C",
-      "F2",
+      "F2", "F5", "Shift+F5",
     ]);
   });
 

@@ -214,6 +214,27 @@ export const SHORTCUTS: readonly Shortcut[] = [
     group: "list",
     reserved: true,
   },
+  // F5 / Shift+F5 — copy / move to another profile (streams). Handled by
+  // useCompositeList → StreamList, so no match/run. `reserved` is load-bearing here,
+  // not cosmetic: KeyRecorder's codeToToken accepts F1–F24 and emits exactly "F5" /
+  // "Shift+F5", so without these entries the user could silently take the app's own
+  // keys for an OS hotkey. The labels name the SELECTION semantics because the F1
+  // help is the only place the "acts on the whole selection, not the row under the
+  // cursor" trap can be explained.
+  {
+    id: "row-copy-profile",
+    combo: "F5",
+    label: m.settings_hotkey_action_row_copy_profile,
+    group: "list",
+    reserved: true,
+  },
+  {
+    id: "row-move-profile",
+    combo: "Shift+F5",
+    label: m.settings_hotkey_action_row_move_profile,
+    group: "list",
+    reserved: true,
+  },
 ];
 
 /**

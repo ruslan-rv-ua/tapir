@@ -31,7 +31,14 @@ export type SegmentKind =
   // Schedule rows
   | 'action-toggle';
 
-export type ActionType = 'primary' | 'toggle' | 'delete' | 'copy' | 'edit';
+export type ActionType =
+  | 'primary'
+  | 'toggle'
+  | 'delete'
+  | 'copy'
+  | 'edit'
+  | 'transfer-copy'
+  | 'transfer-move';
 
 /**
  * Modifier keys held during an activation key (Enter/Space) or Delete.
@@ -140,7 +147,8 @@ type ActionId =
   | "up" | "down" | "left" | "right"
   | "home" | "end" | "pageup" | "pagedown"
   | "enter" | "space" | "delete" | "edit" | "tab" | "copy" | "selectToggle"
-  | "selectRangeUp" | "selectRangeDown" | "selectAll" | "clearSelection";
+  | "selectRangeUp" | "selectRangeDown" | "selectAll" | "clearSelection"
+  | "transfer-copy" | "transfer-move";
 
 /**
  * Map a keyboard event to a single list intent, or null to let it bubble.
@@ -174,6 +182,19 @@ function resolveKeyAction(e: React.KeyboardEvent): ActionId | null {
     // F2 — desktop "rename/edit" row key (Explorer/VS Code/NVDA convention).
     // Generic intent; each list decides what "edit" means (no-op if it doesn't).
     case "F2": return "edit";
+    // F5 — "copy to…" row key, Shift+F5 — "move to…". The KEY is borrowed from
+    // Norton Commander / Total Commander (where blind users learned it); the
+    // two-panel model is NOT — the destination is asked for by a dialog. Move is
+    // Shift+F5, not F6: F6 is zone navigation and a Microsoft platform convention.
+    // Shift is the only modifier that carries meaning here; it selects the intent
+    // rather than riding along in modifiers(e) (the precedent is selectRange*, not
+    // Enter/Space). Ctrl/Alt/Meta DECLINE the match (null) rather than matching an
+    // empty action: null returns before consume(), so a combo the list does not own
+    // — Ctrl+F5 is WebView2's hard reload, suppressed by useWebviewGuard one layer
+    // up — is not additionally swallowed by a stopPropagation() here.
+    case "F5":
+      if (e.ctrlKey || e.altKey || e.metaKey) return null;
+      return e.shiftKey ? "transfer-move" : "transfer-copy";
     case "Tab": return "tab";
   }
   if (e.code === "Space" || e.key === " ") return "space";
@@ -609,6 +630,18 @@ export function useCompositeList<T extends CompositeListItem>({
         case "delete":
           consume();
           onActionRef.current("delete", activeItemId, activeSegment, modifiers(e));
+          break;
+
+        case "transfer-copy":
+        case "transfer-move":
+          // Generic "hand this row somewhere else" intents (Streams: copy/move to
+          // another profile). Like edit/delete they are NOT gated on
+          // isNativeControl — they fire from any segment, action buttons included.
+          // Lists that don't handle them ignore them; the consume() still mutes
+          // the bare key. The intent name is the ActionType name, so it forwards
+          // to onAction untranslated.
+          consume();
+          onActionRef.current(action, activeItemId, activeSegment, modifiers(e));
           break;
       }
     },

@@ -219,10 +219,10 @@ describe("StreamList — row activation honors doubleClickAction", () => {
     expect(tauri.playStream).not.toHaveBeenCalled();
   });
 
-  it("does not advertise keyshortcuts on the row", () => {
+  it("advertises the row's own keys, then the app-wide Enter combo", () => {
     const { container } = renderList();
     const li = container.querySelector('li[data-segment="summary"]')!;
-    expect(li.getAttribute("aria-keyshortcuts")).toBeNull();
+    expect(li.getAttribute("aria-keyshortcuts")).toBe("F5 Shift+F5 Alt+Enter");
   });
 
   it("defaults to recording when settings are not loaded yet", () => {
@@ -596,6 +596,182 @@ describe("StreamList — bulk transfer to profile", () => {
     fireEvent.click(await screen.findByRole("menuitem", { name: m.move_to_profile() }));
     expect(await screen.findByText(m.move_stream_to_profile_title({ name: "Charlie" }))).toBeTruthy();
     expect([...$streamSelection.get()]).toEqual(["c"]); // collapsed to the row
+  });
+});
+
+describe("StreamList — F5 / Shift+F5 transfer hotkeys", () => {
+  it("F5 with an empty selection opens the SINGLE copy dialog for the focused row", async () => {
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward")); // row a
+    fireEvent.keyDown(document.activeElement!, { key: "F5" });
+    expect(await screen.findByText(m.copy_stream_to_profile_title({ name: "Alpha" }))).toBeTruthy();
+  });
+
+  it("Shift+F5 with an empty selection opens the SINGLE move dialog for the same row", async () => {
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward")); // row a
+    fireEvent.keyDown(document.activeElement!, { key: "F5", shiftKey: true });
+    expect(await screen.findByText(m.move_stream_to_profile_title({ name: "Alpha" }))).toBeTruthy();
+  });
+
+  it("F5 with a non-empty selection opens the BULK copy dialog naming the count", async () => {
+    replaceSelection(new Set(["a", "b"]));
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: "F5" });
+    expect(await screen.findByText(m.copy_selected_to_profile_title({ count: 2 }))).toBeTruthy();
+  });
+
+  it("Shift+F5 with a non-empty selection opens the BULK move dialog", async () => {
+    replaceSelection(new Set(["a", "b"]));
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: "F5", shiftKey: true });
+    expect(await screen.findByText(m.move_selected_to_profile_title({ count: 2 }))).toBeTruthy();
+  });
+
+  it("a selection of exactly one still takes the BULK route — '1 stream', not the name", async () => {
+    // A13: the title is chosen by ROUTE, not by count. Deliberate, not a bug — the
+    // NVDA checklist calls it out so it isn't read as one.
+    replaceSelection(new Set(["a"]));
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: "F5" });
+    expect(await screen.findByText(m.copy_selected_to_profile_title({ count: 1 }))).toBeTruthy();
+    expect(screen.queryByText(m.copy_stream_to_profile_title({ name: "Alpha" }))).toBeNull();
+  });
+
+  it("F5 works from an action button inside the row, not just the whole-row stop", async () => {
+    // The intent is deliberately NOT gated on isNativeControl (unlike Enter/Space):
+    // the user should not have to arrow back to "the whole row" first.
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowRight" }); // track
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowRight" }); // tech
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowRight" }); // action-play <button>
+    expect(activeAttrs()).toEqual({ id: "a", seg: "action-play" });
+
+    fireEvent.keyDown(document.activeElement!, { key: "F5" });
+    expect(await screen.findByText(m.copy_stream_to_profile_title({ name: "Alpha" }))).toBeTruthy();
+    expect(tauri.playStream).not.toHaveBeenCalled(); // the button did not self-activate
+  });
+
+  it.each([
+    ["Ctrl", { ctrlKey: true }],
+    ["Alt", { altKey: true }],
+  ])("%s+F5 opens no dialog (modifier guard)", async (_label, mods) => {
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: "F5", ...mods });
+    // openTransfer's very first step is listProfiles — never reached means no dialog.
+    expect(tauri.listProfiles).not.toHaveBeenCalled();
+  });
+
+  it("declines Ctrl+F5 without consuming it, while a matched F5 IS consumed", () => {
+    // The guard must return null, NOT match-then-no-op: consume() calls
+    // stopPropagation(), and the list has no business swallowing a combo it does not
+    // own (Ctrl+F5 is WebView2's hard reload, suppressed a layer up by
+    // useWebviewGuard). Observed where it matters — above the list, on document.
+    const seen: string[] = [];
+    const spy = (e: KeyboardEvent) => seen.push(e.ctrlKey ? "Ctrl+F5" : "F5");
+    document.addEventListener("keydown", spy);
+    try {
+      const { ref } = renderList();
+      act(() => ref.current!.focus("forward"));
+      fireEvent.keyDown(document.activeElement!, { key: "F5", ctrlKey: true });
+      expect(seen).toEqual(["Ctrl+F5"]); // reached document → still propagating
+      fireEvent.keyDown(document.activeElement!, { key: "F5" });
+      expect(seen).toEqual(["Ctrl+F5"]); // matched → consumed, never reached document
+    } finally {
+      document.removeEventListener("keydown", spy);
+    }
+  });
+
+  const recording = (id: string) => ({
+    [id]: {
+      streamId: id, state: "recording" as const, currentTrack: null, recordingStartedAt: null,
+      bytesRecorded: 0, tracksRecorded: 0, error: null, reconnectAttempt: null, sessionId: 0,
+    },
+  });
+  const playing = (id: string) => ({
+    state: "playing" as const, source: { type: "stream" as const, streamId: id },
+    volume: 0.75, positionMs: null, durationMs: null,
+  });
+
+  it("Shift+F5 on a RECORDING row opens no dialog and gives the reason", async () => {
+    $statuses.set(recording("a"));
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward")); // row a
+    fireEvent.keyDown(document.activeElement!, { key: "F5", shiftKey: true });
+    expect(tauri.listProfiles).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect($toasts.get().some((t) => t.message === m.move_disabled_reason())).toBe(true),
+    );
+  });
+
+  it("Shift+F5 on a row our PLAYER is playing opens no dialog either", async () => {
+    // The backend allows this one — it knows nothing about the player — so the
+    // guard is the only thing keeping the stream from moving out from under it.
+    $playerStatus.set(playing("a"));
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: "F5", shiftKey: true });
+    expect(tauri.listProfiles).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect($toasts.get().some((t) => t.message === m.move_disabled_reason())).toBe(true),
+    );
+  });
+
+  it("Shift+F5 DOES open the bulk dialog when the selection contains an active row", async () => {
+    // Bulk has no guard: the backend skips actives itself and composeSummary says so.
+    $statuses.set(recording("a"));
+    replaceSelection(new Set(["a", "b"]));
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: "F5", shiftKey: true });
+    expect(await screen.findByText(m.move_selected_to_profile_title({ count: 2 }))).toBeTruthy();
+  });
+
+  it("F5 on an active row opens the copy dialog — copy has no guard (nor does the menu)", async () => {
+    $statuses.set(recording("a"));
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: "F5" });
+    expect(await screen.findByText(m.copy_stream_to_profile_title({ name: "Alpha" }))).toBeTruthy();
+  });
+
+  it("picking a profile after Shift+F5 moves the row and leaves focus on a survivor", async () => {
+    // A9: with Shift+F5 the focused row itself disappears and there is no ⋯ trigger
+    // to fall back on, so focus must be handed an explicit target. jsdom cannot prove
+    // the race this closes (react-aria's rAF restore) — this is the end-state lock.
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward")); // row a
+    fireEvent.keyDown(document.activeElement!, { key: "F5", shiftKey: true });
+    fireEvent.click(await screen.findByRole("button", { name: "Jazz, 0 потоків" }));
+
+    await waitFor(() => expect(tauri.moveStreamToProfile).toHaveBeenCalledWith("a", "Jazz"));
+    await waitFor(() => expect($streams.get().map((s) => s.id)).toEqual(["b", "c"]));
+    await waitFor(() => expect(activeAttrs().id).toBe("b"));
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
+  it("picking a profile after F5 copies and does not move the cursor", async () => {
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward")); // row a
+    fireEvent.keyDown(document.activeElement!, { key: "F5" });
+    fireEvent.click(await screen.findByRole("button", { name: "Jazz, 0 потоків" }));
+
+    await waitFor(() => expect(tauri.copyStreamToProfile).toHaveBeenCalledWith("a", "Jazz"));
+    expect($streams.get().map((s) => s.id)).toEqual(["a", "b", "c"]);
+    await waitFor(() => expect(activeAttrs()).toEqual({ id: "a", seg: "summary" }));
+  });
+
+  it("F5 on an empty stream list does nothing", () => {
+    const { container } = render(
+      <StreamList exitZone={vi.fn()} onEmpty={vi.fn()} streams={[]} />,
+    );
+    fireEvent.keyDown(container.querySelector("ul")!, { key: "F5" });
+    expect(tauri.listProfiles).not.toHaveBeenCalled();
   });
 });
 

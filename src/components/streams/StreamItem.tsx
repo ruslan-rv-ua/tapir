@@ -195,6 +195,7 @@ export function StreamItem({
       isFocused={isFocused}
       label={summaryLabel}
       roleDescription={m.item_role_stream()}
+      keyshortcuts="F5 Shift+F5 Alt+Enter"
       selected={isSelected}
       className={`grid border-b border-slate-800 forced-colors:border-[ButtonText] ${rowBg} data-[selected=true]:bg-sky-900/40 data-[selected=true]:ring-1 data-[selected=true]:ring-inset data-[selected=true]:ring-sky-400/40 forced-colors:data-[selected=true]:bg-[Highlight] forced-colors:data-[selected=true]:text-[HighlightText]`}
       style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1.5fr) 130px 90px auto" }}

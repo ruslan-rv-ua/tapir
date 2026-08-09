@@ -941,7 +941,14 @@ document.addEventListener("keydown", (e) => {
 });
 ```
 
-Виняток: `Escape`, `Enter`, `Space`, `Tab` — ці клавіші однакові в `event.key` і `event.code`.
+Виняток: `Escape`, `Enter`, `Space`, `Tab`, а також **навігаційні/функційні
+клавіші** — стрілки (`ArrowUp`…), `Home`/`End`, `PageUp`/`PageDown`, `Delete` і
+функційний ряд `F1`–`F24`. Усі вони не несуть символу, тож `event.key` для них не
+залежить від розкладки й дорівнює `event.code`. Саме тому `resolveKeyAction`
+([useCompositeList.ts](../src/hooks/useCompositeList.ts)) метчить `F2`/`F5` і
+стрілки через `event.key`, а `Ctrl+C`/`Ctrl+A`/`Space` у тому самому місці — через
+`event.code`. Правило залишається обов'язковим для **літер і цифр**, де розкладка
+й вирішує.
 
 > React Aria Components вже використовує `event.code` внутрішньо. Це правило стосується кастомних обробників.
 
