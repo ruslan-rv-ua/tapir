@@ -38,7 +38,7 @@ notes:
 
 # Подавити акселератори webview: reload (F5/Ctrl+R), F3/F7/F11, контекстне меню
 
-> **Контекст:** знахідка дослідження [streams-transfer-hotkeys](../p2-streams-transfer-hotkeys.md)
+> **Контекст:** знахідка дослідження [streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md)
 > (2026-07-23). F5 у коді ніде не обробляється → сьогодні F5 **мовчки
 > перезавантажує webview** (дефолт WebView2): скидається стан UI, фокус, зони —
 > для NVDA-користувача це дезорієнтація без жодного оголошення. Запис у Rust
@@ -85,7 +85,7 @@ Reload (тобто ще один вхід у ту саму пастку) і кр
 Наслідок для користувача:
 
 - `F5` та вся reload-родина більше нічого не роблять — інтерфейс лишається на
-  місці. Пізніше `F5` стане «Копіювати в профіль» ([streams-transfer-hotkeys](../p2-streams-transfer-hotkeys.md)),
+  місці. Пізніше `F5` стане «Копіювати в профіль» ([streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md)),
   і гард цьому не заважає;
 - `F3`/`F7`/`F11` інертні — жодного тихого перемикання режиму чи повноекранки;
 - контекстне меню поза списками (миша, клавіша Applications, `Shift+F10`) —
@@ -312,7 +312,7 @@ export function useWebviewGuard(): void;
 ([shortcuts.ts](../../../src/lib/shortcuts.ts)) **не змінюється**: погашені клавіші
 не стають `reserved` — інакше KeyRecorder перестав би приймати `F5`/`F3`/`F7`/`F11`
 під OS-хоткей (історія 11), а `F5`/`Shift+F5` заводить у реєстр уже свій запис
-[streams-transfer-hotkeys](../p2-streams-transfer-hotkeys.md).
+[streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md).
 
 ### 12. Devtools у debug відкриваються після `show()`, до `set_focus()`
 
@@ -377,7 +377,7 @@ debug-збірці й перевіряється тим, що debug-запуск
   [webview-zoom-hotkeys](../p2-webview-zoom-hotkeys.md) (§2).
 - **Справжній fullscreen на F11** — окремий запис
   [window-fullscreen-f11](../p3-window-fullscreen-f11.md) (§5).
-- **`F5` = «Копіювати в профіль»** — [streams-transfer-hotkeys](../p2-streams-transfer-hotkeys.md);
+- **`F5` = «Копіювати в профіль»** — [streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md);
   цей запис лише не заважає йому.
 - **Власне контекстне меню поза списками** (застосункова заміна нативного):
   не робимо — поза списками контекстних дій немає.
@@ -424,7 +424,7 @@ debug-збірці й перевіряється тим, що debug-запуск
   проєкті немає). Це усвідомлена вартість одного шва: регресію ловить прогін
   прод-збірки, і саме тому §3 забороняє DEV-гейт, який відклав би виявлення ще далі.
 - **Дублювання зони відповідальності — навмисне.** Крок «шов із гардом» у
-  чеклисті [streams-transfer-hotkeys](../p2-streams-transfer-hotkeys.md) (A15)
+  чеклисті [streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md) (A15)
   перевіряє той самий інваріант `preventDefault`-only з іншого боку: одна дія
   (`F5` на рядку) мусить і відкрити діалог, і не перезавантажити webview.
   Поодинці жоден із двох чеклистів регресію не спіймає.
@@ -438,7 +438,7 @@ debug-збірці й перевіряється тим, що debug-запуск
 
 ## Документи
 
-- Дослідження-джерело: [p2-streams-transfer-hotkeys.md](../p2-streams-transfer-hotkeys.md);
+- Дослідження-джерело: [p2-streams-transfer-hotkeys.md](p2-streams-transfer-hotkeys.md);
   друга хвиля (F3/F7/F11, Ctrl+F у диспетчері): [p2-hotkeys-expansion.md](../p2-hotkeys-expansion.md)
 - Відгалуження цього запису: [p2-webview-zoom-hotkeys.md](../p2-webview-zoom-hotkeys.md) (§2),
   [p3-window-fullscreen-f11.md](../p3-window-fullscreen-f11.md) (§5)

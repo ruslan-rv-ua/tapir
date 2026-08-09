@@ -3,11 +3,12 @@ slug: streams-transfer-hotkeys
 title: "Потоки: F5 / Shift+F5 — копіювати / перенести в інший профіль"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: M
 kind: feature
 target: 0.1.0
 updated: 2026-08-09
+completed: 2026-08-09
 a11y: true
 depends_on: []
 blocks: [list-key-modifier-guards]
@@ -34,6 +35,11 @@ notes:
   - "Ctrl+F5 (hard reload WebView2) гасить сам webview-reload-guard — його список акселераторів уже включає Shift+F5 і Ctrl+F5. Наш гард модифікаторів лише не дає Ctrl+F5 відкрити діалог; погашення reload — не наша відповідальність"
   - "Ревізія 2026-08-07 (grilling): запис перейменовано з keyboard-shortcuts-audit (аудит закрито в §5, лишилась одна вузька фіча); e.code → e.key за конвенцією хука; знайдено дірку фокуса в doTransfer (A9); effort S → M"
   - "Спека 2026-08-09 (/to-spec): шов тестування — ОДИН, StreamList.test.tsx (переглядає A10); знайдено другу дірку — одиночний Shift+F5 обходить `moveDisabled` меню рядка (§5); зафіксовано правило порядку токенів aria-keyshortcuts (§7) і правку примітки гарду в keyboard-shortcuts.md (§9)"
+  - "Реалізація 2026-08-09: лейбл move в uk — «Перемістити в інший профіль…», а не «Перенести», як писала §8. Усі п'ять наявних користувацьких рядків цієї дії кажуть «Перемістити», а лейбл `SHORTCUTS` теж користувацький рядок (F1-довідник + відмова KeyRecorder) — два дієслова на одну дію коштували б зайвої перевірки на слух. У тілі запису «перенести» лишається синонімом і UI не описує"
+  - "Реалізація 2026-08-09: `reservedShortcuts.test.ts` таки відредаговано, попри «не розширюються» в §Тестування — його тест пінить ТОЧНИЙ масив усіх reserved-комбо, тож кожен новий `reserved: true` механічно змушує дописати туди комбо. Це оновлення фікстури, не нове твердження; на майбутнє — цей файл падає першим при будь-якому додаванні в SHORTCUTS"
+  - "Реалізація 2026-08-09: `doTransfer` / `doBulkTransfer` / `handleConfirmBulkDelete` тепер ділять один `handOffFocusAfterRemoval(visible, removed)` — механіка «фокус на вцілілий рядок» існувала в трьох копіях, і A9 додав би четверту. Дві додаткові перевірки понад перелік §Тестування: F5 з кнопки всередині рядка (історія 21 — доводить, що інтент не гейтиться на isNativeControl) і слухач на `document`, який бачить, що Ctrl+F5 пропагується далі, а зматчений F5 — ні (та половина §3, яку `listProfiles` не спостерігає)"
+  - "Реалізація 2026-08-09: `accessibility.md` §12 отримав розширений перелік винятків правила e.code — функційний ряд F1–F24, стрілки, Home/End/PageUp/PageDown/Delete. Доти виняток був лише Escape/Enter/Space/Tab, тож наявний F2 і новий F5 у switch (e.key) формально суперечили писаному правилу, хоч по суті ні (ці клавіші не несуть символу)"
+  - "NVDA-прогін 2026-08-09: усі 12 сценаріїв пройдено, зауважень немає — включно з фокусом після Shift+F5 (A9, єдиний доказ) і швом із гардом (A15: F5 відкриває діалог І webview не перезавантажується)"
 ---
 
 # Потоки: F5 / Shift+F5 — копіювати / перенести в інший профіль
@@ -41,7 +47,7 @@ notes:
 > **Контекст:** дослідження проведено 2026-07-23, рішення прийнято:
 > **`F5` = «Копіювати в профіль…», `Shift+F5` = «Перенести в профіль…»** у
 > списку потоків. Подавлення webview-reload винесено в
-> [webview-reload-guard](done/p2-webview-reload-guard.md) (залежність цього запису).
+> [webview-reload-guard](p2-webview-reload-guard.md) (залежність цього запису).
 > Ширший аудит закрито без нових шорткатів (див. «Результат дослідження» §5).
 >
 > **Ревізія 2026-08-07 (grilling).** Запис перейменовано під фактичний зміст;
@@ -70,7 +76,7 @@ notes:
 
 Водночас `F5` — це перша клавіша, яку натисне користувач Total Commander,
 очікуючи «копіювати»: серед незрячих користувачів TC — стандарт де-факто. Зараз
-вона в списку не робить **нічого** (після [webview-reload-guard](done/p2-webview-reload-guard.md)
+вона в списку не робить **нічого** (після [webview-reload-guard](p2-webview-reload-guard.md)
 — свідома тиша замість перезавантаження webview).
 
 ## Рішення
@@ -190,7 +196,7 @@ notes:
 - **A4. Гард модифікаторів — лише для F5.** `switch` по `e.key` сьогодні не має
   гарду взагалі (`Ctrl+F2` → `edit`, `Alt+Delete` → `delete`). Вирівнювання
   F2/Delete/Enter — це зміна поведінки в чотирьох списках, винесена в
-  [list-key-modifier-guards](p3-list-key-modifier-guards.md).
+  [list-key-modifier-guards](../p3-list-key-modifier-guards.md).
 - **A5. `aria-keyshortcuts` — усі три токени.** Рядок потоку вже обробляє
   `Alt+Enter`, але не рекламує нічого; `SongItem` свою пару рекламує. Оголосити
   `"F5 Shift+F5 Alt+Enter"` і переписати наявний тест
@@ -236,7 +242,7 @@ notes:
 якщо видалити гілку в `StreamList`, хукові тести лишились би зеленими, а фіча
 була б мертвою; якщо видалити матч у хуку, тести `StreamList` падають.
 
-Це та сама логіка, якою спека [webview-reload-guard](done/p2-webview-reload-guard.md)
+Це та сама логіка, якою спека [webview-reload-guard](p2-webview-reload-guard.md)
 відмовила `webviewAccelerators.ts` у власному тесті: предикат покривається
 наскрізь через верхній шов, окремий табличний тест дублює твердження.
 
@@ -244,7 +250,7 @@ notes:
 
 ### 2. Публічний інтерфейс: два generic-інтенти
 
-Обидва типи-union у [useCompositeList.ts](../../src/hooks/useCompositeList.ts)
+Обидва типи-union у [useCompositeList.ts](../../../src/hooks/useCompositeList.ts)
 розширюються однаково — так само, як свого часу зробив `edit`:
 
 ```ts
@@ -323,7 +329,7 @@ const moveDisabled = isRecordingLike(state) || isThisStreamPlaying;
 й меню, і **лише на одиночному маршруті** (виділення порожнє):
 
 - умова — `isRecordingLike(statuses[itemId]?.state) || <цей потік грає>`,
-  через наявний `isRecordingLike` ([streamState.ts](../../src/lib/streamState.ts))
+  через наявний `isRecordingLike` ([streamState.ts](../../../src/lib/streamState.ts))
   і `$playerStatus`, які `StreamList` уже читає; другого словника станів не
   заводимо;
 - діалог **не** відкривається;
@@ -486,12 +492,12 @@ KeyRecorder. Два дієслова на одну дію коштували б 
 ## Поза скоупом
 
 - **Гард модифікаторів для `F2`/`Delete`/`Enter`** — зміна поведінки в шести
-  списках, окремий запис [list-key-modifier-guards](p3-list-key-modifier-guards.md) (A4).
+  списках, окремий запис [list-key-modifier-guards](../p3-list-key-modifier-guards.md) (A4).
 - **Симетрія клавіатура↔меню в семантиці виділення** (`size > 0` vs `.has(id)`)
   — свідомо лишається розбіжною (A6).
 - **`F5`/`Shift+F5` в інших списках** (пісні, профілі, розклад, патерни,
   браузер): інтенти generic, але гілок там немає й не заводимо.
-- **Подавлення reload-родини** — [webview-reload-guard](done/p2-webview-reload-guard.md);
+- **Подавлення reload-родини** — [webview-reload-guard](p2-webview-reload-guard.md);
   цей запис на нього спирається й нічого в ньому не міняє.
 - **Зміни в `StreamTransferDialog`** — лічильник уже є (A11).
 - **Зміни в `StreamContextMenu` / `SelectionActionsMenu`** — вхідні точки меню
@@ -535,22 +541,22 @@ KeyRecorder. Два дієслова на одну дію коштували б 
       розділі гарду**, що KeyRecorder приймає `F5` (§9)
 - [x] Тести `StreamList.test.tsx` — один шов, повний перелік тверджень із
       «Рішень щодо тестування» (§1). `useCompositeList.test.tsx` не редагується
-- [ ] **NVDA-прогін на прод-збірці** (`pnpm tauri build`, не `dev`) за
-      чеклістом [nvda-streams-transfer-hotkeys.md](../testing/nvda-streams-transfer-hotkeys.md); проводиться
-      однією сесією слідом за `webview-reload-guard`, приймається окремим
-      комітом (A14). Обов'язкові кроки:
-  - [ ] `F5`/`Shift+F5` озвучуються з рядка; діалог відкривається з фокусом
+- [x] **NVDA-прогін на прод-збірці** (`pnpm tauri build`, не `dev`) за чеклістом
+      `docs/testing/nvda-streams-transfer-hotkeys.md` — **проведено 2026-08-09,
+      усі 12 сценаріїв пройдено, зауважень немає**; чекліст видалено на
+      прийманні. Обов'язкові кроки:
+  - [x] `F5`/`Shift+F5` озвучуються з рядка; діалог відкривається з фокусом
         усередині
-  - [ ] заголовок читає «N потоків» при непорожньому виділенні
-  - [ ] **фокус після `Shift+F5` → підтвердження стає на сусідній рядок, не на
+  - [x] заголовок читає «N потоків» при непорожньому виділенні
+  - [x] **фокус після `Shift+F5` → підтвердження стає на сусідній рядок, не на
         `<body>`** (A9 — jsdom це не покриває)
-  - [ ] bulk-of-1 читає «1 потік», а не ім'я — це очікувано, не баг (A13)
-  - [ ] `Shift+F5` на потоці, що записується, і на потоці, що грає, — діалогу
+  - [x] bulk-of-1 читає «1 потік», а не ім'я — це очікувано, не баг (A13)
+  - [x] `Shift+F5` на потоці, що записується, і на потоці, що грає, — діалогу
         немає, причина озвучена (§5)
-  - [ ] **шов із гардом:** з фокусом на рядку потоку `F5` відкриває діалог
+  - [x] **шов із гардом:** з фокусом на рядку потоку `F5` відкриває діалог
         **І** webview не перезавантажується — одна дія, обидва інваріанти
         (A15). Свідомо дублює зону відповідальності
-        [webview-reload-guard](done/p2-webview-reload-guard.md): якщо гард колись
+        [webview-reload-guard](p2-webview-reload-guard.md): якщо гард колись
         додасть `stopPropagation`, жоден з двох чеклистів поодинці цього не
         спіймає
 - [x] `pnpm test` без регресій
@@ -580,13 +586,13 @@ KeyRecorder. Два дієслова на одну дію коштували б 
 4. **Конфлікт F5 у Tauri — підтверджений:** WebView2 за замовчуванням
    перезавантажує webview на F5/Ctrl+R (Tauri v2 опції вимкнути це не має;
    рішення — JS `preventDefault`, підтверджено мейнтейнером у tauri#3844).
-   Винесено в окремий запис [webview-reload-guard](done/p2-webview-reload-guard.md)
+   Винесено в окремий запис [webview-reload-guard](p2-webview-reload-guard.md)
    (`depends_on`): без нього F5 поза списком скидає стан UI.
 5. **Ширший аудит — закрито без нових шорткатів.** Таблиці первинного запису
    були частково застарілі: «Додати потік» уже має `Ctrl+N`
-   ([shortcuts.ts](../../src/lib/shortcuts.ts), `new:streams`), «попередня
+   ([shortcuts.ts](../../../src/lib/shortcuts.ts), `new:streams`), «попередня
    зона» — `Shift+F6` ✅; Songs (`Alt+Enter`/`Ctrl+Enter`) повністю
-   специфіковані в [open-song-with-default-app](done/p1-open-song-with-default-app.md)
+   специфіковані в [open-song-with-default-app](p1-open-song-with-default-app.md)
    (на 2026-07-23 — ready; прийнято 2026-08-06). Низькочастотні дії (імпорт,
    сортування, скидання фільтра, теги) — через командну палітру `Ctrl+K`,
    окремі комбінації не проходять критерій частоти.
@@ -621,10 +627,10 @@ KeyRecorder. Два дієслова на одну дію коштували б 
   `row-edit`/`copy-url`), `src/components/common/composite-list/CompositeRow.tsx`
   (`keyshortcuts` + докстрінг правила §7),
   `src/components/streams/StreamTransferDialog.tsx` (лічильник — уже є, A11)
-- Реєстр: [docs/keyboard-shortcuts.md](../keyboard-shortcuts.md) (Tier 2′ +
+- Реєстр: [docs/keyboard-shortcuts.md](../../keyboard-shortcuts.md) (Tier 2′ +
   примітка гарду, §9)
-- Залежність: [p2-webview-reload-guard.md](done/p2-webview-reload-guard.md)
-- Відгалуження: [p3-list-key-modifier-guards.md](p3-list-key-modifier-guards.md) (A4)
+- Залежність: [p2-webview-reload-guard.md](p2-webview-reload-guard.md)
+- Відгалуження: [p3-list-key-modifier-guards.md](../p3-list-key-modifier-guards.md) (A4)
 - [Total Commander: F5 (Copy) / F6 (Move)](https://ghisler.ch/board/viewtopic.php?t=18963) ·
   [Norton Commander shortcuts](https://www.winnc.com/norton_commander_keyboard_shortcuts/)
 - [Microsoft: Keyboard accessibility — F6 pane navigation](https://learn.microsoft.com/en-us/windows/apps/design/accessibility/keyboard-accessibility) ·

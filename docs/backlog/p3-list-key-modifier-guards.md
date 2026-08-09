@@ -9,7 +9,7 @@ kind: bug
 target:
 updated: 2026-08-07
 a11y: true
-depends_on: [streams-transfer-hotkeys]
+depends_on: []
 blocks: []
 touches:
   - src/hooks/useCompositeList.ts
@@ -24,8 +24,8 @@ notes:
 # Списки: клавіші F2/Delete/Enter спрацьовують із будь-яким модифікатором
 
 > **Контекст:** знахідка ревізії
-> [streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md) (2026-08-07).
-> Виявлено при звірці критеріїв F5 з фактичним кодом хука.
+> [streams-transfer-hotkeys](done/p2-streams-transfer-hotkeys.md) (2026-08-07,
+> прийнято 2026-08-09). Виявлено при звірці критеріїв F5 з фактичним кодом хука.
 
 ## Опис
 
@@ -70,4 +70,4 @@ notes:
 ## Документи
 
 - Код: `src/hooks/useCompositeList.ts` (`resolveKeyAction`, фінальний `switch`)
-- Джерело: [p2-streams-transfer-hotkeys.md](p2-streams-transfer-hotkeys.md) (A4)
+- Джерело: [p2-streams-transfer-hotkeys.md](done/p2-streams-transfer-hotkeys.md) (A4)

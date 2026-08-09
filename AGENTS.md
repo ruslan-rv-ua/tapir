@@ -92,7 +92,6 @@ All project documentation lives in `docs/`. Key files:
 - [test-streams.md](docs/testing/test-streams.md) — тестові URL радіо-потоків
 - [nvda-profile-scoped-settings.md](docs/testing/nvda-profile-scoped-settings.md) — прогін профільних налаштувань і діалогу профілю
 - [nvda-profile-settings-silent-numeric-save.md](docs/testing/nvda-profile-settings-silent-numeric-save.md) — повторне оголошення того самого тексту (спільний `LiveAnnouncer`)
-- [nvda-streams-transfer-hotkeys.md](docs/testing/nvda-streams-transfer-hotkeys.md) — `F5`/`Shift+F5` у списку потоків: діалог передачі, запобіжник активного потоку, фокус після переміщення, шов із гардом акселераторів
 Чеклісти NVDA-прогону (`docs/testing/nvda-<slug>.md`) створюються для записів беклогу
 з `a11y: true` і видаляються на прийманні — метод і шаблон живуть у скілі
 `.claude/skills/writing-nvda-checklists/`.
