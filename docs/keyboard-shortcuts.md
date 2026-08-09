@@ -3,7 +3,11 @@
 - **Тип:** живий довідник (reference), **не** ADR. Тут — *що забіндано зараз*;
   *чому* саме так — у відповідних ADR (посилання в рядках).
 - **Оновлювати:** при кожному додаванні/зміні названого шортката (Tier 1–2).
-- **Останнє звірення з кодом:** 2026-08-09 (Tier 2′: `F5` / `Shift+F5` —
+- **Останнє звірення з кодом:** 2026-08-09 (grilling help-intro: `Alt+4` (секція Schedule)
+  реалізовано — [shortcuts.test.ts:68](../src/lib/shortcuts.test.ts) `"maps Alt+4 →
+  schedule (shipped in Phase 3D)"` — стан виправлено ⬜→✅, умова «після Phase 3D» лишена
+  як історична, за прецедентом рядка `Alt+0`);
+  2026-08-09 (Tier 2′: `F5` / `Shift+F5` —
   копіювати / перенести в інший профіль у списку потоків; обидві резервуються
   проти KeyRecorder, тому виправлено твердження в розділі гарду, що він приймає
   `F5`);
@@ -131,7 +135,7 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 | `Alt+1` | секція Streams | — | webview | ✅ | [section-navigation ADR](decisions/2026-06-02-section-navigation-shortcuts.md) |
 | `Alt+2` | секція Browser | — | webview | ✅ | ↑ |
 | `Alt+3` | секція Wishlist | — | webview | ✅ | ↑ |
-| `Alt+4` | секція Schedule | після Phase 3D | webview | ⬜ | ↑ |
+| `Alt+4` | секція Schedule | після Phase 3D | webview | ✅ | ↑ |
 | `Alt+5` | секція Songs | — | webview | ✅ | ↑ |
 | `Alt+0` | секція Profiles | після Phase 3F | webview | ✅ | ↑ |
 | `Ctrl+N` | Add Stream | `$activeSection === "streams"` | webview | ✅ | [context-aware ADR](decisions/2026-06-02-context-aware-keyboard-shortcuts.md) |
