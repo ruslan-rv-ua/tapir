@@ -30,6 +30,6 @@ When a file ends, **Auto-play next track** — profile settings, tab **Playback*
 
 **Output** shows the current device. Change it, or rescan after plugging something in, in the app settings, tab **Audio**.
 
-When nothing is playing, Tapir can pick up whatever you listened to last: a station goes back on air, while a file resumes from its saved position or starts over — that choice is **Resume file** in the profile settings, tab **Playback**. This never affects a pause: a paused file continues where it stopped.
+When nothing is playing, Tapir can pick up whatever you listened to last: a station goes back on air, while a file resumes from its saved position or starts over — that choice is **Resume file** in the profile settings, tab **Playback**. It does not do so by default: to have it pick up the last source at startup, switch on **Resume last playback on startup** on the same tab. This never affects a pause: a paused file continues where it stopped.
 
 Listening to one station while another records is normal.
