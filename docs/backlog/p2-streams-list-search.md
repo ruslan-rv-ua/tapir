@@ -29,7 +29,7 @@ notes:
 
 Пошук колись спроєктували й описали, але не реалізували. Сліди: ключі
 `streams_search_label` («Пошук потоків або URL») і `zone_streams_toolbar` («Пошук і
-фільтри»), обидва мертві (видаляє [help-recording](p1-help-recording.md)), і структура в
+фільтри»), обидва мертві (видаляє [help-recording](done/p1-help-recording.md)), і структура в
 [accessibility.md:200](../accessibility.md:200) із `SearchField` та `Ctrl+F`.
 
 Що є натомість: фільтр (усі / записуються / з помилками), сортування (за назвою, за датою
@@ -59,4 +59,4 @@ notes:
 - `src/components/streams/StreamsPanel.tsx` — тулбар, фільтр, сортування
 - `src/components/songs/SongsFilterBar.tsx` — наявне поле пошуку на екрані «Записи»,
   готовий зразок
-- [help-recording](p1-help-recording.md) — запис, під час якого знайдено
+- [help-recording](done/p1-help-recording.md) — запис, під час якого знайдено

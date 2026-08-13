@@ -73,12 +73,12 @@ notes:
 - [ ] Тест на семантику нуля в `manager.rs` (сьогодні її не покриває жоден)
 - [ ] Оновлено `docs/help/uk/recording.md` і `docs/help/en/recording.md` — вони описують
       сьогоднішню поведінку за рішенням grilling-сесії
-      [help-recording](p1-help-recording.md); після цієї правки опис стає застарілим
+      [help-recording](done/p1-help-recording.md); після цієї правки опис стає застарілим
 - [ ] `cargo test`, `cargo clippy`, `pnpm test`, `pnpm vite:build` — без помилок
 
 ## Документи
 
-- [help-recording](p1-help-recording.md) — запис, під час якого знайдено; містить звірені
+- [help-recording](done/p1-help-recording.md) — запис, під час якого знайдено; містить звірені
   з кодом числа перепідключення
 - `src-tauri/src/stream/manager.rs` — цикл `'reconnect` і `compute_backoff_delay`
 - `src/components/profile/ProfileRecordingTab.tsx` — поля налаштувань перепідключення

@@ -32,7 +32,7 @@ notes:
   потоків", Ctrl+F)`. **Такого елемента немає** — у `StreamsPanel.tsx` немає ні поля, ні
   стану запиту, ні `Ctrl+F` у `SHORTCUTS`. Слідами задуму лишилися два мертві ключі
   (`streams_search_label`, `zone_streams_toolbar`), які видаляє
-  [help-recording](p1-help-recording.md).
+  [help-recording](done/p1-help-recording.md).
 - Той самий розділ описує список як `role="grid"` із `columnheader`, тоді як абзацом вище
   документ каже `role="application"` / `listitem`. **Документ суперечить сам собі**, і
   правильний варіант — другий.
@@ -51,4 +51,4 @@ notes:
 ## Документи
 
 - [accessibility.md](../accessibility.md) — документ, що звіряється
-- [help-recording](p1-help-recording.md) — запис, під час якого знайдено
+- [help-recording](done/p1-help-recording.md) — запис, під час якого знайдено
