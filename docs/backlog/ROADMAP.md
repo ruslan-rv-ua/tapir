@@ -46,6 +46,7 @@ semver; `unscheduled` — наприкінці.
 | [reconnect-max-in-status](p2-reconnect-max-in-status.md) | P2 | planned | ready | S | [reconnect-zero-retries](done/p0-reconnect-zero-retries.md) | — (відщеплено там: стеля спроб має їхати зі статусом, а не з поточних налаштувань) |
 | [webview-zoom-hotkeys](p2-webview-zoom-hotkeys.md) | P2 | planned | ready | S | — | — (відгалуження webview-reload-guard: зуму в застосунку зараз немає) |
 | [accessibility-doc-audit](p2-accessibility-doc-audit.md) | P2 | planned | ready | M | — | — (знахідка grilling help-recording: accessibility.md описує неіснуючий `SearchField`) |
+| [player-recording-badge-term](p2-player-recording-badge-term.md) | P2 | planned | ready | S | — | — (знахідка grilling help-listening: мітка «Запис» означає файл, усупереч CONTEXT.md) |
 | [sleep-timer](p2-sleep-timer.md) | P2 | idea | draft | S | — | — |
 | [pause-recording](p2-pause-recording.md) | P2 | idea | draft | M | — | — |
 | [focus-on-screen-open-option](p2-focus-on-screen-open-option.md) | P2 | idea | draft | S | — | — |
