@@ -61,7 +61,7 @@ uk: **«Згортати до tray замість закриття»**. Слов
 
 ## Документи
 
-- [help-config](p1-help-config.md) — довідка цитує обидві мітки як є
+- [help-config](done/p1-help-config.md) — довідка цитує обидві мітки як є
 - [help-content-polish](done/p1-help-content-polish.md) — конвенція розмітки 5 (жирна
   мітка мусить збігатися з рядком у `messages/`)
 - [CONTEXT.md](../../CONTEXT.md) — розведення «автозапуск / автовідтворення при запуску /

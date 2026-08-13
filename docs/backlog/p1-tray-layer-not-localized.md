@@ -99,5 +99,5 @@ notes:
 
 - [help-content-polish](done/p1-help-content-polish.md) — мапа `background.md`, конвенція
   розмітки 5, рішення описувати фоновий шар за дією
-- [help-config](p1-help-config.md) — запис, що описує поточний стан як є
+- [help-config](done/p1-help-config.md) — запис, що описує поточний стан як є
 - `src-tauri/src/tray/` — увесь шар

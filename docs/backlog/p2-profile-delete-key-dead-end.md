@@ -67,6 +67,6 @@ notes:
 
 ## Документи
 
-- [help-config](p1-help-config.md) — довідка описує робочий шлях і про глухий кут мовчить
+- [help-config](done/p1-help-config.md) — довідка описує робочий шлях і про глухий кут мовчить
 - [help-content-polish](done/p1-help-content-polish.md) — мапа `profiles.md`
 - `src/components/profile/`

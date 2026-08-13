@@ -70,7 +70,7 @@ notes:
 
 ## Документи
 
-- [help-config](p1-help-config.md) — довідка описує обмеження позитивним переліком
+- [help-config](done/p1-help-config.md) — довідка описує обмеження позитивним переліком
 - [help-content-polish](done/p1-help-content-polish.md) — мапа `settings.md`, три види
   відмови
 - `src/components/common/KeyRecorder.tsx`, `src/components/settings/HotkeysTab.tsx`
