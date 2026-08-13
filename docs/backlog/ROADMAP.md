@@ -17,7 +17,7 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [reconnect-zero-retries](p0-reconnect-zero-retries.md) | P0 | planned | ready | S | — | — (знахідка grilling help-recording: `0` = «жодної спроби» проти підказки «необмежено») |
+| [reconnect-zero-retries](p0-reconnect-zero-retries.md) | P0 | planned | ready | M | — | [reconnect-max-in-status](p2-reconnect-max-in-status.md) (знахідка grilling help-recording: `0` = «жодної спроби» проти підказки «необмежено»; grilling 2026-08-13 ухвалив семантику й додав другу помилку — скидання лічильника на `connect`) |
 | [hotkeys-expansion](p2-hotkeys-expansion.md) | P2 | planned | ready | M | — | — |
 | [import-duplicate-metadata-update](p3-import-duplicate-metadata-update.md) | P3 | planned | ready | M | — | — |
 | [help-listening](p1-help-listening.md) | P1 | planned | ready | M | [help-content-polish](done/p1-help-content-polish.md), [help-intro](done/p1-help-intro.md) | [help-troubleshooting](p1-help-troubleshooting.md) |
@@ -44,6 +44,7 @@ semver; `unscheduled` — наприкінці.
 | [focus-active-item-on-playback-start](p1-focus-active-item-on-playback-start.md) | P1 | idea | draft | S | — | — |
 | [wishlist-conditions](p1-wishlist-conditions.md) | P1 | idea | draft | L | — | — |
 | [browser-filter-cursor-reset](p2-browser-filter-cursor-reset.md) | P2 | planned | ready | S | — | — |
+| [reconnect-max-in-status](p2-reconnect-max-in-status.md) | P2 | planned | **blocked** | S | [reconnect-zero-retries](p0-reconnect-zero-retries.md) | — (відщеплено там: стеля спроб має їхати зі статусом, а не з поточних налаштувань) |
 | [webview-zoom-hotkeys](p2-webview-zoom-hotkeys.md) | P2 | planned | ready | S | — | — (відгалуження webview-reload-guard: зуму в застосунку зараз немає) |
 | [accessibility-doc-audit](p2-accessibility-doc-audit.md) | P2 | planned | ready | M | — | — (знахідка grilling help-recording: accessibility.md описує неіснуючий `SearchField`) |
 | [sleep-timer](p2-sleep-timer.md) | P2 | idea | draft | S | — | — |
