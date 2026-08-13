@@ -52,9 +52,12 @@ export function HelpDialog() {
               <Tab id="shortcuts" className={TAB_CLS}>{m.shortcuts_help_title()}</Tab>
               <Tab id="profiles" className={TAB_CLS}>{m.help_section_profiles()}</Tab>
               <Tab id="streams" className={TAB_CLS}>{m.help_section_streams()}</Tab>
+              <Tab id="browser" className={TAB_CLS}>{m.help_section_browser()}</Tab>
               <Tab id="wishlist" className={TAB_CLS}>{m.help_section_wishlist()}</Tab>
               <Tab id="scheduling" className={TAB_CLS}>{m.help_section_scheduling()}</Tab>
+              <Tab id="songs" className={TAB_CLS}>{m.help_section_songs()}</Tab>
               <Tab id="recording" className={TAB_CLS}>{m.help_section_recording()}</Tab>
+              <Tab id="player" className={TAB_CLS}>{m.help_section_player()}</Tab>
               <Tab id="templates" className={TAB_CLS}>{m.help_section_templates()}</Tab>
             </TabList>
             <div className="flex-1 overflow-y-auto px-6 py-4">
@@ -68,9 +71,12 @@ export function HelpDialog() {
               <TabPanel id="shortcuts"><ShortcutsHelp /></TabPanel>
               <TabPanel id="profiles"><HelpContent html={getHelpHtml(locale, "profiles")} /></TabPanel>
               <TabPanel id="streams"><HelpContent html={getHelpHtml(locale, "streams")} /></TabPanel>
+              <TabPanel id="browser"><HelpContent html={getHelpHtml(locale, "browser")} /></TabPanel>
               <TabPanel id="wishlist"><HelpContent html={getHelpHtml(locale, "wishlist")} /></TabPanel>
               <TabPanel id="scheduling"><HelpContent html={getHelpHtml(locale, "scheduling")} /></TabPanel>
+              <TabPanel id="songs"><HelpContent html={getHelpHtml(locale, "songs")} /></TabPanel>
               <TabPanel id="recording"><HelpContent html={getHelpHtml(locale, "recording")} /></TabPanel>
+              <TabPanel id="player"><HelpContent html={getHelpHtml(locale, "player")} /></TabPanel>
               <TabPanel id="templates"><HelpContent html={getHelpHtml(locale, "templates")} /></TabPanel>
             </div>
           </Tabs>
