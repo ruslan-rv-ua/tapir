@@ -81,5 +81,5 @@ not ambient track chatter»). Сповіщення планувальника �
 
 - [help-content-polish](done/p1-help-content-polish.md) — мапа покриття `scheduling.md`
   (пункт «Сповіщення»), конвенція розмітки 5
-- [help-automation](p1-help-automation.md) — запис, що описує поточну поведінку як є
+- [help-automation](done/p1-help-automation.md) — запис, що описує поточну поведінку як є
 - `src-tauri/src/tray/notify.rs` (гейт і прецедент обходу), `src-tauri/src/scheduler/timer.rs`
