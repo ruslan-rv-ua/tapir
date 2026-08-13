@@ -13,7 +13,9 @@ describe("getHelpHtml", () => {
   });
 
   it("returns locale-specific content for en", () => {
-    expect(getHelpHtml("en", "overview")).toContain("Overview &#x26; first steps");
+    // Substring avoids the "&" in the heading: the sanitizer emits it as an HTML
+    // entity, and asserting on that couples this test to its escaping choice.
+    expect(getHelpHtml("en", "overview")).toContain("first steps");
   });
 
   it("resolves the stub sections", () => {

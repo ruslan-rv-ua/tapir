@@ -10,11 +10,11 @@ Inside a zone, use the arrow keys, `Home`, and `End` to move around. Pressing `T
 
 ### Working with lists
 
-- **Main action:** press `Enter` to perform the primary action on the focused row. `Space` mostly does the same thing. `Space` acts as a true toggle only where the row has an on/off state (like in the Schedule), and it has no effect in the Station Browser.
-- **Modifiers with Enter:** these apply only to the focused row. Their specific action depends on the screen (see the section for the respective screen).
-- **Selection:** use `Ctrl+Space` to toggle selection for a row. `Shift+↑` or `Shift+↓` select a range, `Ctrl+A` selects all visible rows. Press `Escape` to clear the selection.
-- **Deletion:** the `Delete` key removes the focused row or all selected rows, always asking for confirmation. In the Station Browser, this key has no effect.
-- **Context menu:** open it with a right click, the menu key, or `Shift+F10`. Outside of lists, there are no context menus in the application.
+- Main action: press `Enter` to perform the primary action on the focused row. `Space` mostly does the same thing. `Space` acts as a true toggle only where the row has an on/off state (like in the Schedule), and it has no effect in the Station Browser.
+- Modifiers with `Enter` apply only to the focused row. Their specific action depends on the screen (see the section for the respective screen).
+- Selection: use `Ctrl+Space` to toggle selection for a row. `Shift+↑` or `Shift+↓` select a range, `Ctrl+A` selects all visible rows. Press `Escape` to clear the selection.
+- Deletion: the `Delete` key removes the focused row or all selected rows, always asking for confirmation. In the Station Browser, this key has no effect.
+- Context menu: open it with a right click, the menu key, or `Shift+F10`. Outside of lists, there are no context menus in the application.
 
 ### Command palette and screens
 
