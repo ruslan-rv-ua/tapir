@@ -46,6 +46,8 @@ semver; `unscheduled` — наприкінці.
 | [webview-zoom-hotkeys](p2-webview-zoom-hotkeys.md) | P2 | planned | ready | S | — | — (відгалуження webview-reload-guard: зуму в застосунку зараз немає) |
 | [accessibility-doc-audit](p2-accessibility-doc-audit.md) | P2 | planned | ready | M | — | — (знахідка grilling help-recording: accessibility.md описує неіснуючий `SearchField`) |
 | [player-recording-badge-term](p2-player-recording-badge-term.md) | P2 | planned | ready | S | — | — (знахідка grilling help-listening: мітка «Запис» означає файл, усупереч CONTEXT.md) |
+| [wishlist-pattern-hint-anchoring](p2-wishlist-pattern-hint-anchoring.md) | P2 | planned | ready | S | — | — (знахідка grilling help-automation: підказка мовчить про якірність, `Tycho` не ловить `Tycho - Dive`) |
+| [tray-notifications-label-scope](p2-tray-notifications-label-scope.md) | P2 | planned | ready | S | — | — (знахідка grilling help-automation: «Сповіщення при зміні треку» гейтить і сповіщення розкладу) |
 | [sleep-timer](p2-sleep-timer.md) | P2 | idea | draft | S | — | — |
 | [pause-recording](p2-pause-recording.md) | P2 | idea | draft | M | — | — |
 | [focus-on-screen-open-option](p2-focus-on-screen-open-option.md) | P2 | idea | draft | S | — | — |
