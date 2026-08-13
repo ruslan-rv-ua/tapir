@@ -22,7 +22,8 @@ describe("HelpDialog", () => {
     render(<HelpDialog />);
     expect(screen.getByRole("dialog")).toBeTruthy();
     // Overview HTML (compiled from docs/help/uk/overview.md) is the default panel.
-    expect(screen.getByText(/Ласкаво просимо/)).toBeTruthy();
+    // The markdown content contains "Перший запуск".
+    expect(screen.getByText(/Перший запуск/)).toBeTruthy();
   });
 
   it("shows a representative combo from every group after switching to the shortcuts tab", async () => {

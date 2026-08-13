@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Help_Section_OverviewInputs */
 
 const uk_help_section_overview = /** @type {(inputs: Help_Section_OverviewInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Огляд`)
+	return /** @type {LocalizedString} */ (`Огляд і перші кроки`)
 };
 
 const en_help_section_overview = /** @type {(inputs: Help_Section_OverviewInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Overview`)
+	return /** @type {LocalizedString} */ (`Overview & first steps`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Overview" |
+* | "Overview & first steps" |
 *
 * @param {Help_Section_OverviewInputs} inputs
 * @param {{ locale?: "uk" | "en" }} options

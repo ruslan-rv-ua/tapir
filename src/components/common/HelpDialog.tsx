@@ -45,6 +45,7 @@ export function HelpDialog() {
               className="flex w-48 flex-col gap-1 overflow-y-auto border-r border-slate-700 px-2 py-4"
             >
               <Tab id="overview" autoFocus className={TAB_CLS}>{m.help_section_overview()}</Tab>
+              <Tab id="navigation" className={TAB_CLS}>{m.help_section_navigation()}</Tab>
               <Tab id="shortcuts" className={TAB_CLS}>{m.shortcuts_help_title()}</Tab>
               <Tab id="recording" className={TAB_CLS}>{m.help_section_recording()}</Tab>
               <Tab id="wishlist" className={TAB_CLS}>{m.help_section_wishlist()}</Tab>
@@ -59,6 +60,7 @@ export function HelpDialog() {
                 </div>
                 <HelpContent html={getHelpHtml(locale, "overview")} />
               </TabPanel>
+              <TabPanel id="navigation"><HelpContent html={getHelpHtml(locale, "navigation")} /></TabPanel>
               <TabPanel id="shortcuts"><ShortcutsHelp /></TabPanel>
               <TabPanel id="recording"><HelpContent html={getHelpHtml(locale, "recording")} /></TabPanel>
               <TabPanel id="wishlist"><HelpContent html={getHelpHtml(locale, "wishlist")} /></TabPanel>
