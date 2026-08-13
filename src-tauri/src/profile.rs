@@ -131,11 +131,23 @@ pub struct ReconnectConfig {
 impl Default for ReconnectConfig {
     fn default() -> Self {
         Self {
-            max_retries: 0,
+            // 0 = не перепідключатися; «необмежено» в домені немає (ADR
+            // 2026-08-13). ≈40 хв наполегливості з дефолтним backoff.
+            max_retries: 10,
             retry_interval_secs: 5,
             backoff_multiplier: 1.5,
             max_interval_secs: 300,
         }
+    }
+}
+
+impl ReconnectConfig {
+    /// Стеля `max_retries` (ADR 2026-08-13): без неї «необмежено» повертається
+    /// чорним ходом через `u32::MAX`, а статус читається «Спроба 3 з 4294967295».
+    pub const MAX_RETRIES_CAP: u32 = 10_000;
+
+    pub fn clamp_max_retries(&mut self) {
+        self.max_retries = self.max_retries.min(Self::MAX_RETRIES_CAP);
     }
 }
 
@@ -504,6 +516,10 @@ impl Profile {
         let content = strip_bom(&content);
         let mut profile: Self = serde_json::from_str(content)?;
         crate::scheduler::validation::sanitize_on_load(&mut profile);
+        // A profile.json written before MAX_RETRIES_CAP existed (or hand-edited)
+        // can carry an out-of-range value; load-time is the other entry point
+        // besides apply_settings_patch, so the cap has to be enforced here too.
+        profile.recording.reconnect.clamp_max_retries();
         Ok(profile)
     }
 
@@ -568,6 +584,7 @@ impl Profile {
             self.player_session.resume_file_from = v;
         }
         self.recording.clamp_schedule_padding();
+        self.recording.reconnect.clamp_max_retries();
     }
 
     pub fn list(active: &str) -> Result<Vec<ProfileMeta>, RadioError> {
@@ -727,8 +744,10 @@ impl Profile {
             stream.password = None;
         }
         // Defense-in-depth: even a hand-crafted import file cannot smuggle in an
-        // enabled autoplay policy (export already strips it).
+        // enabled autoplay policy (export already strips it) or an out-of-range
+        // reconnect ceiling (MAX_RETRIES_CAP).
         profile.player_session.autoplay_on_startup = false;
+        profile.recording.reconnect.clamp_max_retries();
         profile.name = name.to_string();
         crate::profile_store::save_detached(&profile)?;
         Ok(ProfileMeta {
@@ -924,6 +943,20 @@ mod tests {
         });
         assert_eq!(p.recording.schedule_pad_before_min, 30);
         assert_eq!(p.recording.schedule_pad_after_min, 60);
+    }
+
+    #[test]
+    fn apply_patch_clamps_reconnect_max_retries() {
+        let mut p = Profile::create_default();
+        let recording = RecordingSettings {
+            reconnect: ReconnectConfig { max_retries: 999_999, ..ReconnectConfig::default() },
+            ..RecordingSettings::default()
+        };
+        p.apply_settings_patch(ProfileSettingsPatch {
+            recording: Some(recording),
+            ..Default::default()
+        });
+        assert_eq!(p.recording.reconnect.max_retries, ReconnectConfig::MAX_RETRIES_CAP);
     }
 
     #[test]
@@ -1204,6 +1237,27 @@ mod tests {
         r.clamp_schedule_padding();
         assert_eq!(r.schedule_pad_before_min, 30);
         assert_eq!(r.schedule_pad_after_min, 60);
+    }
+
+    #[test]
+    fn reconnect_config_default_is_ten_retries() {
+        // ADR 2026-08-13: 0 means "don't reconnect", so it can no longer be
+        // the default — a dropped connection must recover on its own.
+        assert_eq!(ReconnectConfig::default().max_retries, 10);
+    }
+
+    #[test]
+    fn clamp_max_retries_clamps_to_cap() {
+        let mut cfg = ReconnectConfig { max_retries: 999_999, ..ReconnectConfig::default() };
+        cfg.clamp_max_retries();
+        assert_eq!(cfg.max_retries, ReconnectConfig::MAX_RETRIES_CAP);
+    }
+
+    #[test]
+    fn clamp_max_retries_keeps_valid_values() {
+        let mut cfg = ReconnectConfig { max_retries: 42, ..ReconnectConfig::default() };
+        cfg.clamp_max_retries();
+        assert_eq!(cfg.max_retries, 42);
     }
 
     #[test]

@@ -156,11 +156,15 @@ describe("StreamItem — reconnecting counter display", () => {
     expect(statusCell.textContent).toMatch(/attempt 3 of 10|спроба 3 з 10/i);
   });
 
-  it("shows 'Attempt N' without max when maxRetries is 0 (unlimited)", () => {
+  it("falls back to 'Reconnecting...' when maxRetries is 0 (reconnection disabled)", () => {
+    // ADR 2026-08-13: 0 = "don't reconnect", not "unlimited" — this status
+    // shouldn't normally be reachable at maxRetries 0, but if it is (a stale
+    // settings snapshot mid-recording), showing a bare attempt number with no
+    // ceiling would misrepresent a domain state that no longer exists.
     const { container } = renderItem(mkStream(), mkReconnecting(5), "summary", 0);
     const statusCell = container.querySelector('[data-segment="status"]')!;
-    expect(statusCell.textContent).toMatch(/attempt 5|спроба 5/i);
-    expect(statusCell.textContent).not.toMatch(/of \d|з \d/i);
+    expect(statusCell.textContent).toMatch(/reconnecting|перепідключення/i);
+    expect(statusCell.textContent).not.toMatch(/attempt|спроба/i);
   });
 
   it("falls back to 'Reconnecting...' when reconnectAttempt is null", () => {

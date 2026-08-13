@@ -226,6 +226,7 @@ export function ProfileRecordingTab({ recording, onChange }: Props) {
             value={recording.reconnect.maxRetries}
             onChange={(val) => { if (!Number.isNaN(val)) updateReconnect({ maxRetries: val }); }}
             minValue={0}
+            maxValue={10000}
           >
             <Label className="block text-sm font-medium text-slate-300">{m.settings_max_retries()}</Label>
             <Group className="mt-1 flex w-32">

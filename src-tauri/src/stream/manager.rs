@@ -499,6 +499,34 @@ fn compute_backoff_delay(reconnect: &ReconnectConfig, attempt: u32) -> u64 {
     delay.min(reconnect.max_interval_secs as f64) as u64
 }
 
+/// The next reconnect attempt to take, or `None` to give up.
+struct RetryPlan {
+    attempt: u32,
+    delay_secs: u64,
+}
+
+/// Single source of truth for "try again?" — `max_retries == 0` means never
+/// reconnect at all (ADR 2026-08-13: zero is not "unlimited"), otherwise the
+/// next attempt is allowed as long as it doesn't exceed the configured ceiling.
+/// Split out from `plan_retry` so callers that only need the yes/no answer
+/// (e.g. the `will_retry` flag on `emit_stream_error`) don't pay for
+/// `compute_backoff_delay`'s `powi` when the actual plan is computed
+/// separately right after.
+fn would_retry(reconnect: &ReconnectConfig, attempt: u32) -> bool {
+    reconnect.max_retries != 0 && attempt < reconnect.max_retries
+}
+
+fn plan_retry(reconnect: &ReconnectConfig, attempt: u32) -> Option<RetryPlan> {
+    if !would_retry(reconnect, attempt) {
+        return None;
+    }
+    let next_attempt = attempt + 1;
+    Some(RetryPlan {
+        attempt: next_attempt,
+        delay_secs: compute_backoff_delay(reconnect, next_attempt),
+    })
+}
+
 // ---------------------------------------------------------------------------
 // ICY metadata parser
 // ---------------------------------------------------------------------------
@@ -606,36 +634,23 @@ pub async fn recording_task(
                 let msg = e.to_string();
                 error!("[{}] Connection failed: {}", stream_id, msg);
                 update_state_error(&manager, &stream_id, &msg).await;
-                // attempt will be incremented below, so use attempt + 1 to correctly
-                // predict whether a retry will actually happen.
-                emit_stream_error(
-                    &app_handle,
-                    &stream_id,
-                    &msg,
-                    reconnect.max_retries > 0 && (attempt + 1) <= reconnect.max_retries,
-                );
+                let plan = plan_retry(&reconnect, attempt);
+                emit_stream_error(&app_handle, &stream_id, &msg, plan.is_some());
                 // fall through to reconnect logic
-                if reconnect.max_retries == 0 {
+                let Some(RetryPlan { attempt: next_attempt, delay_secs }) = plan else {
                     break 'reconnect;
-                }
-                attempt += 1;
-                if attempt > reconnect.max_retries {
-                    break 'reconnect;
-                }
-                let delay = compute_backoff_delay(&reconnect, attempt);
-                debug!("[{}] Reconnecting in {}s (attempt {}/{})", stream_id, delay, attempt, reconnect.max_retries);
+                };
+                attempt = next_attempt;
+                debug!("[{}] Reconnecting in {}s (attempt {}/{})", stream_id, delay_secs, attempt, reconnect.max_retries);
                 update_state_reconnecting(&manager, &stream_id, attempt).await;
                 emit_recording_status(&app_handle, &stream_id, "reconnecting", None);
                 tokio::select! {
                     _ = cancel_token.cancelled() => break 'reconnect,
-                    _ = tokio::time::sleep(Duration::from_secs(delay)) => {}
+                    _ = tokio::time::sleep(Duration::from_secs(delay_secs)) => {}
                 }
                 continue 'reconnect;
             }
         };
-
-        // Reset attempt counter on successful connection
-        attempt = 0;
 
         // --- Update profile with ICY headers ---
         let icy_bitrate = conn.headers.bitrate();
@@ -879,6 +894,11 @@ pub async fn recording_task(
 
         let mut local_bytes: u64 = 0;
         const BYTES_UPDATE_THRESHOLD: u64 = 65536;
+        // The attempt counter resets on the first audio byte, not on a successful
+        // `connect` — a connection that accepts and immediately drops (dead
+        // mountpoint that still answers) must keep spending attempts, or the
+        // ceiling and backoff never engage (ADR 2026-08-13).
+        let mut got_audio = false;
 
         'read: loop {
             tokio::select! {
@@ -903,10 +923,7 @@ pub async fn recording_task(
                         Some(ReadEvent::Error(msg)) => {
                             error!("[{}] Stream read error: {}", stream_id, msg);
                             rec.close().await.ok();
-                            // attempt will be incremented after the 'read loop, so use
-                            // attempt + 1 to correctly predict whether a retry will occur.
-                            let will_retry = reconnect.max_retries > 0
-                                && (attempt + 1) <= reconnect.max_retries;
+                            let will_retry = would_retry(&reconnect, attempt);
                             emit_stream_error(&app_handle, &stream_id, &msg, will_retry);
                             break 'read;
                         }
@@ -976,6 +993,10 @@ pub async fn recording_task(
                             }
                         }
                         Some(ReadEvent::AudioBytes(data)) => {
+                            if !got_audio {
+                                got_audio = true;
+                                attempt = 0;
+                            }
                             local_bytes += data.len() as u64;
                             if let Err(e) = rec.write_bytes(&data).await {
                                 rec.close().await.ok();
@@ -1016,20 +1037,16 @@ pub async fn recording_task(
         if cancel_token.is_cancelled() {
             break 'reconnect;
         }
-        if reconnect.max_retries == 0 {
+        let Some(RetryPlan { attempt: next_attempt, delay_secs }) = plan_retry(&reconnect, attempt) else {
             break 'reconnect;
-        }
-        attempt += 1;
-        if attempt > reconnect.max_retries {
-            break 'reconnect;
-        }
-        let delay = compute_backoff_delay(&reconnect, attempt);
-        debug!("[{}] Reconnecting in {}s (attempt {}/{})", stream_id, delay, attempt, reconnect.max_retries);
+        };
+        attempt = next_attempt;
+        debug!("[{}] Reconnecting in {}s (attempt {}/{})", stream_id, delay_secs, attempt, reconnect.max_retries);
         update_state_reconnecting(&manager, &stream_id, attempt).await;
         emit_recording_status(&app_handle, &stream_id, "reconnecting", None);
         tokio::select! {
             _ = cancel_token.cancelled() => break 'reconnect,
-            _ = tokio::time::sleep(Duration::from_secs(delay)) => {}
+            _ = tokio::time::sleep(Duration::from_secs(delay_secs)) => {}
         }
     }
 
@@ -1045,6 +1062,70 @@ pub async fn recording_task(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn reconnect_config(max_retries: u32) -> ReconnectConfig {
+        ReconnectConfig {
+            max_retries,
+            retry_interval_secs: 5,
+            backoff_multiplier: 1.5,
+            max_interval_secs: 300,
+        }
+    }
+
+    #[test]
+    fn would_retry_matches_plan_retry_is_some() {
+        // would_retry exists so callers that only need the boolean don't pay
+        // for compute_backoff_delay; it must never disagree with plan_retry.
+        for max_retries in [0, 1, 3, 10] {
+            let cfg = reconnect_config(max_retries);
+            for attempt in 0..5 {
+                assert_eq!(
+                    would_retry(&cfg, attempt),
+                    plan_retry(&cfg, attempt).is_some(),
+                    "max_retries={max_retries} attempt={attempt}",
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn plan_retry_zero_max_retries_never_retries() {
+        // ADR 2026-08-13: 0 means "don't reconnect", not "unlimited".
+        let cfg = reconnect_config(0);
+        assert!(plan_retry(&cfg, 0).is_none());
+        assert!(plan_retry(&cfg, 5).is_none());
+    }
+
+    #[test]
+    fn plan_retry_stays_within_ceiling() {
+        let cfg = reconnect_config(3);
+        assert!(plan_retry(&cfg, 0).is_some(), "attempt 1 of 3 should be planned");
+        assert!(plan_retry(&cfg, 1).is_some(), "attempt 2 of 3 should be planned");
+        assert!(plan_retry(&cfg, 2).is_some(), "attempt 3 of 3 should be planned");
+        assert!(plan_retry(&cfg, 3).is_none(), "attempt 4 of 3 exceeds the ceiling");
+    }
+
+    #[test]
+    fn plan_retry_increments_attempt() {
+        let cfg = reconnect_config(10);
+        let plan = plan_retry(&cfg, 4).expect("within ceiling");
+        assert_eq!(plan.attempt, 5);
+    }
+
+    #[test]
+    fn plan_retry_delay_matches_backoff() {
+        let cfg = reconnect_config(10);
+        let plan = plan_retry(&cfg, 0).expect("within ceiling");
+        assert_eq!(plan.delay_secs, compute_backoff_delay(&cfg, plan.attempt));
+    }
+
+    #[test]
+    fn compute_backoff_delay_grows_and_caps() {
+        let cfg = reconnect_config(100);
+        assert_eq!(compute_backoff_delay(&cfg, 1), 5); // 5 * 1.5^0
+        assert_eq!(compute_backoff_delay(&cfg, 2), 7); // 5 * 1.5^1 = 7.5 -> 7 (truncation)
+        assert_eq!(compute_backoff_delay(&cfg, 20), 300); // capped at max_interval_secs
+    }
 
     #[test]
     fn stop_all_async_returns_handles_for_active_entries() {

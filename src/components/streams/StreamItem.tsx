@@ -163,9 +163,7 @@ export function StreamItem({
   const retryLabel =
     retryAttempt !== null && maxRetries > 0
       ? m.status_reconnecting_attempt({ attempt: retryAttempt, max: maxRetries })
-      : retryAttempt !== null
-        ? m.status_reconnecting_attempt_unlimited({ attempt: retryAttempt })
-        : m.status_reconnecting();
+      : m.status_reconnecting();
 
   const statusValue =
     state === "recording"

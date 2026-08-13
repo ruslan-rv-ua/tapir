@@ -22,7 +22,7 @@ Turn on **Save stream file** and Tapir additionally keeps the whole broadcast as
 
 ### When something interrupts it
 
-By default Tapir does not reconnect: a dropped connection ends the recording. To have it recover on its own, set **Max reconnection attempts** in the profile settings. The first retry then waits 5 seconds, each further wait is multiplied by 1.5, and the wait never exceeds 300 seconds.
+By default Tapir recovers a dropped connection on its own — up to 10 attempts. The first retry waits 5 seconds, each further wait is multiplied by 1.5, and the wait never exceeds 300 seconds. The attempt count is set in **Max reconnection attempts** in the profile settings; `0` turns reconnecting off entirely — then a dropped connection ends the recording.
 
 Free space is checked before a recording starts — whether you started it, the schedule did, or it was resumed after a crash. Below the threshold (1 GB by default, 0 turns the check off) the recording does not start. A recording already under way is not stopped by the threshold; if the disk genuinely fills up, that recording ends with an error.
 
