@@ -38,6 +38,7 @@ semver; `unscheduled` — наприкінці.
 |------|---|-----|------|---------|---------------|-------------|
 | [post-processing](p1-post-processing.md) | P1 | planned | ready | M | [profile-scoped-settings](done/p0-profile-scoped-settings.md) | — (оживляє вкладку-заглушку в діалозі профілю) |
 | [bandwidth-limit-dead-setting](p1-bandwidth-limit-dead-setting.md) | P1 | planned | ready | S | — | — (знахідка profile-scoped-settings: налаштування без реалізації) |
+| [tray-layer-not-localized](p1-tray-layer-not-localized.md) | P1 | planned | ready | M | — | — (знахідка grilling help-config: меню трею, діалог виходу й тости існують лише українською) |
 | [focus-active-item-on-playback-start](p1-focus-active-item-on-playback-start.md) | P1 | idea | draft | S | — | — |
 | [wishlist-conditions](p1-wishlist-conditions.md) | P1 | idea | draft | L | — | — |
 | [browser-filter-cursor-reset](p2-browser-filter-cursor-reset.md) | P2 | planned | ready | S | — | — |
@@ -47,6 +48,10 @@ semver; `unscheduled` — наприкінці.
 | [player-recording-badge-term](p2-player-recording-badge-term.md) | P2 | planned | ready | S | — | — (знахідка grilling help-listening: мітка «Запис» означає файл, усупереч CONTEXT.md) |
 | [wishlist-pattern-hint-anchoring](p2-wishlist-pattern-hint-anchoring.md) | P2 | planned | ready | S | — | — (знахідка grilling help-automation: підказка мовчить про якірність, `Tycho` не ловить `Tycho - Dive`) |
 | [tray-notifications-label-scope](p2-tray-notifications-label-scope.md) | P2 | planned | ready | S | — | — (знахідка grilling help-automation: «Сповіщення при зміні треку» гейтить і сповіщення розкладу) |
+| [hotkey-registration-silent-at-startup](p2-hotkey-registration-silent-at-startup.md) | P2 | planned | ready | S | — | — (знахідка grilling help-config: зайнята іншою програмою комбінація мовчки не працює після перезапуску) |
+| [key-recorder-silent-rejection](p2-key-recorder-silent-rejection.md) | P2 | planned | ready | S | — | — (знахідка grilling help-config: непридатна клавіша ігнорується без відмови) |
+| [settings-labels-wording](p2-settings-labels-wording.md) | P2 | planned | ready | S | — | — (знахідка grilling help-config: локалі автовідтворення обіцяють різне; «до tray» латиницею) |
+| [profile-delete-key-dead-end](p2-profile-delete-key-dead-end.md) | P2 | planned | ready | S | — | — (знахідка grilling help-config: `Delete` на Default/активному → нелокалізоване `Forbidden: …`) |
 | [sleep-timer](p2-sleep-timer.md) | P2 | idea | draft | S | — | — |
 | [pause-recording](p2-pause-recording.md) | P2 | idea | draft | M | — | — |
 | [focus-on-screen-open-option](p2-focus-on-screen-open-option.md) | P2 | idea | draft | S | — | — |
