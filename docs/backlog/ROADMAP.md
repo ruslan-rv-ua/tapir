@@ -17,6 +17,7 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
+| [reconnect-zero-retries](p0-reconnect-zero-retries.md) | P0 | planned | ready | S | — | — (знахідка grilling help-recording: `0` = «жодної спроби» проти підказки «необмежено») |
 | [hotkeys-expansion](p2-hotkeys-expansion.md) | P2 | planned | ready | M | — | — |
 | [import-duplicate-metadata-update](p3-import-duplicate-metadata-update.md) | P3 | planned | ready | M | — | — |
 | [help-recording](p1-help-recording.md) | P1 | planned | ready | M | [help-content-polish](done/p1-help-content-polish.md), [help-intro](done/p1-help-intro.md) | [help-troubleshooting](p1-help-troubleshooting.md) |
@@ -45,6 +46,7 @@ semver; `unscheduled` — наприкінці.
 | [wishlist-conditions](p1-wishlist-conditions.md) | P1 | idea | draft | L | — | — |
 | [browser-filter-cursor-reset](p2-browser-filter-cursor-reset.md) | P2 | planned | ready | S | — | — |
 | [webview-zoom-hotkeys](p2-webview-zoom-hotkeys.md) | P2 | planned | ready | S | — | — (відгалуження webview-reload-guard: зуму в застосунку зараз немає) |
+| [accessibility-doc-audit](p2-accessibility-doc-audit.md) | P2 | planned | ready | M | — | — (знахідка grilling help-recording: accessibility.md описує неіснуючий `SearchField`) |
 | [sleep-timer](p2-sleep-timer.md) | P2 | idea | draft | S | — | — |
 | [pause-recording](p2-pause-recording.md) | P2 | idea | draft | M | — | — |
 | [focus-on-screen-open-option](p2-focus-on-screen-open-option.md) | P2 | idea | draft | S | — | — |
@@ -53,6 +55,7 @@ semver; `unscheduled` — наприкінці.
 | [command-palette-dual-language-search](p2-command-palette-dual-language-search.md) | P2 | idea | draft | S | — | — |
 | [wishlist-separate-folder](p2-wishlist-separate-folder.md) | P2 | idea | draft | S | — | — |
 | [stream-manual-reorder](p2-stream-manual-reorder.md) | P2 | idea | draft | M | — | — |
+| [streams-list-search](p2-streams-list-search.md) | P2 | idea | draft | S | — | — (спроєктовано й не зроблено; `Ctrl+K` частково закриває сценарій) |
 | [track-log-only-mode](p2-track-log-only-mode.md) | P2 | idea | draft | M | — | — |
 | [quick-controls-overlay](p2-quick-controls-overlay.md) | P2 | idea | draft | L | — | — |
 | [per-stream-ignorelist-ui](p2-per-stream-ignorelist-ui.md) | P2 | planned | draft | M | — | — (логіка вже жива, бракує редактора; винесено з [full-edit-stream](done/p1-full-edit-stream.md)) |
