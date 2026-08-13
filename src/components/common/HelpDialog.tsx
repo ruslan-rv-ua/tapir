@@ -44,14 +44,18 @@ export function HelpDialog() {
               aria-label={m.help_sections_label()}
               className="flex w-48 flex-col gap-1 overflow-y-auto border-r border-slate-700 px-2 py-4"
             >
+              {/* Order is fixed by the help spec and guarded by helpContent.test.ts —
+                  screen tabs follow src/lib/sections.ts, the rest slot in around them.
+                  Records that add a tab insert it in place; they never reorder. */}
               <Tab id="overview" autoFocus className={TAB_CLS}>{m.help_section_overview()}</Tab>
               <Tab id="navigation" className={TAB_CLS}>{m.help_section_navigation()}</Tab>
               <Tab id="shortcuts" className={TAB_CLS}>{m.shortcuts_help_title()}</Tab>
-              <Tab id="recording" className={TAB_CLS}>{m.help_section_recording()}</Tab>
-              <Tab id="wishlist" className={TAB_CLS}>{m.help_section_wishlist()}</Tab>
-              <Tab id="templates" className={TAB_CLS}>{m.help_section_templates()}</Tab>
-              <Tab id="scheduling" className={TAB_CLS}>{m.help_section_scheduling()}</Tab>
               <Tab id="profiles" className={TAB_CLS}>{m.help_section_profiles()}</Tab>
+              <Tab id="streams" className={TAB_CLS}>{m.help_section_streams()}</Tab>
+              <Tab id="wishlist" className={TAB_CLS}>{m.help_section_wishlist()}</Tab>
+              <Tab id="scheduling" className={TAB_CLS}>{m.help_section_scheduling()}</Tab>
+              <Tab id="recording" className={TAB_CLS}>{m.help_section_recording()}</Tab>
+              <Tab id="templates" className={TAB_CLS}>{m.help_section_templates()}</Tab>
             </TabList>
             <div className="flex-1 overflow-y-auto px-6 py-4">
               <TabPanel id="overview">
@@ -62,11 +66,12 @@ export function HelpDialog() {
               </TabPanel>
               <TabPanel id="navigation"><HelpContent html={getHelpHtml(locale, "navigation")} /></TabPanel>
               <TabPanel id="shortcuts"><ShortcutsHelp /></TabPanel>
-              <TabPanel id="recording"><HelpContent html={getHelpHtml(locale, "recording")} /></TabPanel>
-              <TabPanel id="wishlist"><HelpContent html={getHelpHtml(locale, "wishlist")} /></TabPanel>
-              <TabPanel id="templates"><HelpContent html={getHelpHtml(locale, "templates")} /></TabPanel>
-              <TabPanel id="scheduling"><HelpContent html={getHelpHtml(locale, "scheduling")} /></TabPanel>
               <TabPanel id="profiles"><HelpContent html={getHelpHtml(locale, "profiles")} /></TabPanel>
+              <TabPanel id="streams"><HelpContent html={getHelpHtml(locale, "streams")} /></TabPanel>
+              <TabPanel id="wishlist"><HelpContent html={getHelpHtml(locale, "wishlist")} /></TabPanel>
+              <TabPanel id="scheduling"><HelpContent html={getHelpHtml(locale, "scheduling")} /></TabPanel>
+              <TabPanel id="recording"><HelpContent html={getHelpHtml(locale, "recording")} /></TabPanel>
+              <TabPanel id="templates"><HelpContent html={getHelpHtml(locale, "templates")} /></TabPanel>
             </div>
           </Tabs>
         </Dialog>

@@ -3,6 +3,18 @@ import fs from "fs";
 import path from "path";
 import { getHelpHtml } from "./helpContent";
 
+/** The generated tab — the one `<Tab id>` with no markdown file behind it. */
+const GENERATED_TAB = "shortcuts";
+
+/** `<Tab id="…">` values in the order HelpDialog declares them. */
+function tabIds(): string[] {
+  const dialogSrc = fs.readFileSync(
+    path.join(process.cwd(), "src/components/common/HelpDialog.tsx"),
+    "utf-8",
+  );
+  return Array.from(dialogSrc.matchAll(/<Tab id="([^"]+)"/g)).map((m) => m[1]);
+}
+
 describe("getHelpHtml", () => {
   it("compiles the uk overview markdown to sanitized HTML through the plugin", () => {
     const html = getHelpHtml("uk", "overview");
@@ -18,8 +30,16 @@ describe("getHelpHtml", () => {
     expect(getHelpHtml("en", "overview")).toContain("first steps");
   });
 
-  it("resolves the stub sections", () => {
-    expect(getHelpHtml("en", "recording")).toContain("coming soon");
+  it("returns non-empty HTML for every tab in both locales", () => {
+    // getHelpHtml falls back to "" for a missing section — silently, so a tab
+    // pointing at a file that does not exist (or an empty file) would render a
+    // blank panel with nothing failing. Replaces the old "coming soon" assert,
+    // which only held while a specific section was still a stub.
+    for (const id of tabIds().filter((t) => t !== GENERATED_TAB)) {
+      for (const locale of ["uk", "en"]) {
+        expect(getHelpHtml(locale, id), `${locale}/${id}`).not.toBe("");
+      }
+    }
   });
 
   it("falls back to uk for an unknown locale", () => {
@@ -37,11 +57,8 @@ describe("getHelpHtml", () => {
   });
 
   it("has exactly one tab in HelpDialog for every markdown file except ShortcutsHelp", () => {
-    const dialogSrc = fs.readFileSync(path.join(process.cwd(), "src/components/common/HelpDialog.tsx"), "utf-8");
-    // Match the id attribute of <Tab id="..."> in HelpDialog.tsx
-    const tabMatches = Array.from(dialogSrc.matchAll(/<Tab id="([^"]+)"/g)).map(m => m[1]);
     // The only tab without a file is the generated one (ShortcutsHelp).
-    const tabsWithoutShortcuts = tabMatches.filter(t => t !== "shortcuts").sort();
+    const tabsWithoutShortcuts = tabIds().filter(t => t !== GENERATED_TAB).sort();
 
     const ukFiles = fs.readdirSync(path.join(process.cwd(), "docs/help/uk"))
       .filter(f => f.endsWith(".md"))
@@ -49,5 +66,38 @@ describe("getHelpHtml", () => {
       .sort();
 
     expect(tabsWithoutShortcuts).toEqual(ukFiles);
+  });
+
+  it("declares its tabs in the order fixed by the help spec", () => {
+    // Order comes from help-content-polish ("Структура довідки"): the six screen
+    // tabs follow src/lib/sections.ts, and the rest slot in around them. The test
+    // above only compares the SET, so without this one the five records that add
+    // tabs one at a time could each land theirs anywhere.
+    //
+    // Sections not written yet are simply absent — assert on the subsequence, so
+    // each new record adds its tab in the right slot without editing this list.
+    const SPEC_ORDER = [
+      "overview",
+      "navigation",
+      GENERATED_TAB,
+      "profiles",
+      "streams",
+      "browser",
+      "wishlist",
+      "scheduling",
+      "songs",
+      "recording",
+      "player",
+      "templates",
+      "settings",
+      "background",
+      "troubleshooting",
+    ];
+
+    const declared = tabIds();
+    const unknown = declared.filter(id => !SPEC_ORDER.includes(id));
+    expect(unknown, "tab ids missing from the spec order").toEqual([]);
+
+    expect(declared).toEqual(SPEC_ORDER.filter(id => declared.includes(id)));
   });
 });
