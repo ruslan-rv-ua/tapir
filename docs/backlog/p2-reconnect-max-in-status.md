@@ -3,7 +3,7 @@ slug: reconnect-max-in-status
 title: "Стеля спроб їде разом зі статусом потоку, а не читається з поточних налаштувань"
 priority: P2
 type: planned
-status: blocked
+status: ready
 effort: S
 kind: bug
 target: unscheduled
@@ -11,7 +11,6 @@ updated: 2026-08-13
 a11y: false
 depends_on: [reconnect-zero-retries]
 blocks: []
-blocked_reason: "Чекає reconnect-zero-retries: той запис міняє семантику стелі й видаляє гілку, яку цей замінює."
 touches:
   - src-tauri/src/stream/manager.rs
   - src/lib/tauri.ts
@@ -63,5 +62,5 @@ notes:
 
 ## Документи
 
-- [reconnect-zero-retries](p0-reconnect-zero-retries.md) — запис, від якого відщеплено (рішення 2, варіант F3)
+- [reconnect-zero-retries](done/p0-reconnect-zero-retries.md) — запис, від якого відщеплено (рішення 2, варіант F3)
 - [ADR: семантика спроби перепідключення](../decisions/2026-08-13-reconnect-attempt-semantics.md)

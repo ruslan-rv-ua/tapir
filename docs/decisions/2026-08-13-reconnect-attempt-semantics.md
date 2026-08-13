@@ -3,7 +3,7 @@
 - **Статус:** ПРИЙНЯТО
 - **Дата:** 2026-08-13
 - **Тип:** ADR — модель перепідключення при записі потоку
-- **Контекст:** беклог — [reconnect-zero-retries](../backlog/p0-reconnect-zero-retries.md);
+- **Контекст:** беклог — [reconnect-zero-retries](../backlog/done/p0-reconnect-zero-retries.md);
   словник — [CONTEXT.md](../../CONTEXT.md) §«Перепідключення»; код — цикл `'reconnect`
   у [manager.rs](../../src-tauri/src/stream/manager.rs).
 
