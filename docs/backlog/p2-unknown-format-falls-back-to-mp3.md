@@ -30,8 +30,8 @@ notes:
 ## Опис
 
 `AudioFormat` має рівно два варіанти — `Mp3` і `Aac`
-([profile.rs:9](../src-tauri/src/profile.rs:9)). Розпізнавання йде тільки по
-`Content-Type` ([format.rs](../src-tauri/src/stream/format.rs)), і все, крім
+([profile.rs:9](../../src-tauri/src/profile.rs:9)). Розпізнавання йде тільки по
+`Content-Type` ([format.rs](../../src-tauri/src/stream/format.rs)), і все, крім
 `audio/mpeg`, `audio/mp3`, `audio/aac`, `audio/aacp`, `audio/x-aac`, `audio/mp4`, дає
 `None`.
 
@@ -83,7 +83,7 @@ OGG/Vorbis, Opus чи FLAC записується у файл із назвою 
 
 ## Документи
 
-- [help-troubleshooting](p1-help-troubleshooting.md) — знахідка сесії; довідка описує
+- [help-troubleshooting](done/p1-help-troubleshooting.md) — знахідка сесії; довідка описує
   лише видиме («Tapir відтворює MP3 і AAC») і про розширення мовчить свідомо
 - [mpv-playback-engine](p3-mpv-playback-engine.md), [he-aac-mf-playback](p3-he-aac-mf-playback.md)
   — сусідня межа: що Tapir уміє **відтворювати**

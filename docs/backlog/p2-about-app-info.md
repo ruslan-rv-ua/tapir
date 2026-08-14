@@ -73,7 +73,7 @@ issue», але README користувач у застосунку не бач�
 
 ## Документи
 
-- [help-troubleshooting](p1-help-troubleshooting.md) — знахідка сесії; ескалаційна
+- [help-troubleshooting](done/p1-help-troubleshooting.md) — знахідка сесії; ескалаційна
   позиція довідки, задля якої версія й потрібна
 - [webview-reload-guard](done/p2-webview-reload-guard.md) — чому посилання в webview
   небезпечні
