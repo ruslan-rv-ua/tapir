@@ -1,4 +1,5 @@
 import type { PlaybackSource, StreamStatus } from "./tauri";
+import { trackLabel } from "./playbackAnnounce";
 
 /** Strip directory and extension from a file path (either path separator). */
 function fileStem(path: string): string {
@@ -20,13 +21,10 @@ export function windowTitleLabel(
 ): string | null {
   if (!source) return null;
   switch (source.type) {
-    case "stream": {
-      const track = statuses[source.streamId]?.currentTrack;
-      if (track?.artist || track?.title) {
-        return [track.artist, track.title].filter(Boolean).join(" — ");
-      }
-      return null;
-    }
+    // Same fact as the F9 announce, so the same renderer — the two must not
+    // drift into different punctuation for the same track.
+    case "stream":
+      return trackLabel(statuses[source.streamId]?.currentTrack);
     case "file":
       return fileStem(source.path) || null;
     case "preview":

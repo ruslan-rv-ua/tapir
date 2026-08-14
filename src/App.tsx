@@ -40,7 +40,7 @@ import { computePlaybackNeighbors } from "./stores/playbackNeighbors";
 import { resolveEndedAction } from "./lib/playbackTransport";
 import { executeTransportSkip, parseSkipTrigger } from "./lib/transportControl";
 import { applyMuteCleanup } from "./lib/muteCleanup";
-import { selectPlaybackAnnouncement, suppressesStarted, type PendingConnect } from "./lib/playbackAnnounce";
+import { selectPlaybackAnnouncement, sourceName, suppressesStarted, type PendingConnect } from "./lib/playbackAnnounce";
 import { formatTimeParts } from "./lib/time";
 import { windowTitleLabel } from "./lib/windowTitle";
 import { useGlobalShortcuts } from "./hooks/useGlobalShortcuts";
@@ -225,15 +225,9 @@ function AppContent() {
     const prev = $playerStatus.get();
     $playerStatus.set(payload);
 
-    const nameOf = (source: NonNullable<PlayerStatus["source"]>): string => {
-      if (source.type === "stream") {
-        return $streams.get().find((s) => s.id === source.streamId)?.name ?? source.streamId;
-      }
-      if (source.type === "preview") return source.name;
-      return source.path.split(/[\\/]/).pop() ?? source.path;
-    };
-
-    const a = selectPlaybackAnnouncement(prev, payload, nameOf);
+    // Store read stays here so selectPlaybackAnnouncement itself keeps taking
+    // the name by injection; the naming rule itself lives in playbackAnnounce.
+    const a = selectPlaybackAnnouncement(prev, payload, (s) => sourceName(s, $streams.get()));
     if (suppressesStarted(pendingConnectRef.current, a, Date.now())) {
       // "Connecting — X" already covered this gesture; don't double up.
       pendingConnectRef.current = null;

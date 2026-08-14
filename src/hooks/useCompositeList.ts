@@ -37,6 +37,7 @@ export type ActionType =
   | 'delete'
   | 'copy'
   | 'edit'
+  | 'edit-content'
   | 'transfer-copy'
   | 'transfer-move';
 
@@ -146,7 +147,7 @@ interface UseCompositeListOptions<T extends CompositeListItem> {
 type ActionId =
   | "up" | "down" | "left" | "right"
   | "home" | "end" | "pageup" | "pagedown"
-  | "enter" | "space" | "delete" | "edit" | "tab" | "copy" | "selectToggle"
+  | "enter" | "space" | "delete" | "edit" | "edit-content" | "tab" | "copy" | "selectToggle"
   | "selectRangeUp" | "selectRangeDown" | "selectAll" | "clearSelection"
   | "transfer-copy" | "transfer-move";
 
@@ -181,7 +182,19 @@ function resolveKeyAction(e: React.KeyboardEvent): ActionId | null {
     case "Delete": return "delete";
     // F2 — desktop "rename/edit" row key (Explorer/VS Code/NVDA convention).
     // Generic intent; each list decides what "edit" means (no-op if it doesn't).
-    case "F2": return "edit";
+    // Modifiers decline the match, exactly as for its F4 pair below: the two are
+    // one convention (name / content) and must not answer to different rules.
+    case "F2":
+      if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return null;
+      return "edit";
+    // F4 — edit the row's CONTENT, the other half of the Total Commander / FAR
+    // pair (F2 = name, F4 = content); in Songs that is the tag editor. Any
+    // modifier DECLINES the match (null) rather than matching an empty action —
+    // the F5 precedent, and load-bearing here: null returns before consume(), so
+    // `Alt+F4` stays the system window close instead of being swallowed.
+    case "F4":
+      if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return null;
+      return "edit-content";
     // F5 — "copy to…" row key, Shift+F5 — "move to…". The KEY is borrowed from
     // Norton Commander / Total Commander (where blind users learned it); the
     // two-panel model is NOT — the destination is asked for by a dialog. Move is
@@ -632,14 +645,15 @@ export function useCompositeList<T extends CompositeListItem>({
           onActionRef.current("delete", activeItemId, activeSegment, modifiers(e));
           break;
 
+        case "edit-content":
         case "transfer-copy":
         case "transfer-move":
-          // Generic "hand this row somewhere else" intents (Streams: copy/move to
-          // another profile). Like edit/delete they are NOT gated on
-          // isNativeControl — they fire from any segment, action buttons included.
-          // Lists that don't handle them ignore them; the consume() still mutes
-          // the bare key. The intent name is the ActionType name, so it forwards
-          // to onAction untranslated.
+          // Generic row intents: edit the row's content (Songs: tags), hand the
+          // row somewhere else (Streams: copy/move to another profile). Like
+          // edit/delete they are NOT gated on isNativeControl — they fire from
+          // any segment, action buttons included. Lists that don't handle them
+          // ignore them; the consume() still mutes the bare key. Each intent
+          // name IS the ActionType name, so it forwards to onAction untranslated.
           consume();
           onActionRef.current(action, activeItemId, activeSegment, modifiers(e));
           break;

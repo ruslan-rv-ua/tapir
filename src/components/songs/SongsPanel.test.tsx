@@ -6,6 +6,7 @@ import { $songs, $songsSelection, $songsQuery, $songsStation } from "../../store
 import { $announcer } from "../../stores/announcer";
 import { replaceSelection } from "../../stores/selection";
 import type { Song } from "../../types/song";
+import * as tauri from "../../lib/tauri";
 import { SongsPanel } from "./SongsPanel";
 
 vi.mock("../../lib/tauri", () => ({
@@ -51,5 +52,39 @@ describe("SongsPanel — selection cluster", () => {
     replaceSelection($songsSelection, new Set(["a.mp3"]));
     act(() => { $songsStation.set("SomeStation"); });
     expect($songsSelection.get().size).toBe(0);
+  });
+});
+
+// End of the row-key path: SongsList routes the intent, the panel owns the
+// dialogs. Checked here because a dialog on screen is the only observation that
+// proves the key actually does something for the user.
+describe("SongsPanel — F2 / F4 open the row's dialogs", () => {
+  /** Render with rows on screen (the panel reloads the list on mount). */
+  async function renderLoaded() {
+    vi.mocked(tauri.listSavedSongs).mockResolvedValue([mk("a.mp3"), mk("b.mp3")]);
+    const utils = renderPanel();
+    const row = await utils.findByRole("listitem", { name: /a\.mp3/ });
+    return { ...utils, row };
+  }
+
+  it("F4 opens the tag editor", async () => {
+    const { row, queryByText, getByText } = await renderLoaded();
+    expect(queryByText(m.tag_editor_title())).toBeNull();
+    fireEvent.keyDown(row, { key: "F4" });
+    expect(getByText(m.tag_editor_title())).toBeTruthy();
+  });
+
+  it("F2 opens rename", async () => {
+    const { row, queryByText, getByText } = await renderLoaded();
+    expect(queryByText(m.rename_dialog_title())).toBeNull();
+    fireEvent.keyDown(row, { key: "F2" });
+    expect(getByText(m.rename_dialog_title())).toBeTruthy();
+  });
+
+  it("Alt+F4 opens nothing — the window close stays the system's", async () => {
+    const { row, queryByText } = await renderLoaded();
+    fireEvent.keyDown(row, { key: "F4", altKey: true });
+    expect(queryByText(m.tag_editor_title())).toBeNull();
+    expect(queryByText(m.rename_dialog_title())).toBeNull();
   });
 });

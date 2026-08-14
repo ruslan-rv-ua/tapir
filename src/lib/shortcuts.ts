@@ -19,6 +19,8 @@ export interface ShortcutActions {
   openCreateProfile: () => void;
   openAddPattern: () => void;
   openCreateSchedule: () => void;
+  toggleMute: () => void;
+  announceNowPlaying: () => void;
 }
 
 export interface Shortcut {
@@ -109,6 +111,29 @@ export const SHORTCUTS: readonly Shortcut[] = [
     reserved: true,
     match: (e) => !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey && e.code === "F1",
     run: (a) => a.openHelp(),
+  },
+  {
+    // Precedents: TapinRadio Ctrl+M, YouTube M. Deliberately NOT Ctrl+Shift+M —
+    // that is the global microphone mute in Teams and Discord.
+    id: "toggle-mute",
+    combo: "Ctrl+M",
+    label: m.settings_hotkey_action_toggle_mute,
+    group: "global",
+    reserved: true,
+    match: (e) => ctrlOrMeta(e) && e.code === "KeyM",
+    run: (a) => a.toggleMute(),
+  },
+  {
+    // "What am I hearing?" on demand, without moving focus into the player zone.
+    // Borrowed from TapinRadio's F11 (Announce currently playing song); F11
+    // itself is WebView2's fullscreen accelerator, so the key moved to F9.
+    id: "now-playing",
+    combo: "F9",
+    label: m.settings_hotkey_action_now_playing,
+    group: "global",
+    reserved: true,
+    match: (e) => !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey && e.code === "F9",
+    run: (a) => a.announceNowPlaying(),
   },
   ...sectionShortcuts,
   {
@@ -204,13 +229,22 @@ export const SHORTCUTS: readonly Shortcut[] = [
     group: "list",
     reserved: true,
   },
-  // F2 — edit/rename the focused row. Handled by useCompositeList (no match/run);
-  // listed here so it's reserved against the KeyRecorder (F2 is recordable, unlike
-  // bare Enter/Delete) and surfaces in the F1 help.
+  // F2 — edit/rename the focused row, F4 — edit its CONTENT (Songs: the tag
+  // editor). Total Commander / FAR convention: F2 = name, F4 = content. Both are
+  // handled by useCompositeList (no match/run); listed here so they're reserved
+  // against the KeyRecorder (F2/F4 are recordable, unlike bare Enter/Delete) and
+  // surface in the F1 help.
   {
     id: "row-edit",
     combo: "F2",
     label: m.settings_hotkey_action_row_edit,
+    group: "list",
+    reserved: true,
+  },
+  {
+    id: "row-edit-content",
+    combo: "F4",
+    label: m.settings_hotkey_action_row_tags,
     group: "list",
     reserved: true,
   },

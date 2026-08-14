@@ -3,7 +3,10 @@
 - **Тип:** живий довідник (reference), **не** ADR. Тут — *що забіндано зараз*;
   *чому* саме так — у відповідних ADR (посилання в рядках).
 - **Оновлювати:** при кожному додаванні/зміні названого шортката (Tier 1–2).
-- **Останнє звірення з кодом:** 2026-08-09 (grilling help-intro: `Alt+4` (секція Schedule)
+- **Останнє звірення з кодом:** 2026-08-14 (hotkeys-expansion: Tier 2 — `Ctrl+M`
+  (mute) і `F9` («що зараз відтворюється»); Tier 2′ — `F4` (теги рядка Записів),
+  `F2` на Записах ⬜→✅; додано конвенцію 5 — пріоритет анонсів);
+  2026-08-09 (grilling help-intro: `Alt+4` (секція Schedule)
   реалізовано — [shortcuts.test.ts:68](../src/lib/shortcuts.test.ts) `"maps Alt+4 →
   schedule (shipped in Phase 3D)"` — стан виправлено ⬜→✅, умова «після Phase 3D» лишена
   як історична, за прецедентом рядка `Alt+0`);
@@ -65,7 +68,11 @@ OS-хоткей на `Ctrl+K`/`Alt+digit`/`F6`/… — гард і реєстр 
 > Rust→webview для таких дій уже існує (подія `transport-skip` для
 > prev/next_track — [shortcuts.rs](../src-tauri/src/shortcuts.rs) →
 > [transportControl.ts](../src/lib/transportControl.ts)); mute лишається
-> окремою задачею. Глобальний stop-playback не додаємо (`Ctrl+Shift+K`
+> окремою задачею. **Ґрунт для нього готовий (2026-08-14):** дія, її guard і
+> формулювання живуть у [muteControl.ts](../src/lib/muteControl.ts), куди вже
+> дзвонять кнопка плеєра й webview-`Ctrl+M` — мосту лишиться викликати
+> `toggleMute()`. `Ctrl+M` цього кандидата **не закриває**: він webview-scope
+> (працює лише з фокусом у вікні), `Ctrl+Shift+U` — OS-scope. Глобальний stop-playback не додаємо (`Ctrl+Shift+K`
 > достатньо). Дефолт — `Ctrl+Shift+U`, **не** `Ctrl+Shift+M` (початковий
 > кандидат, відхилено 2026-06-11): `Ctrl+Shift+M` — глобальний mute мікрофона
 > в MS Teams і Discord; красти його під час дзвінка заради audio-mute плеєра —
@@ -142,6 +149,8 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 | `Ctrl+N` | Додати патерн до wishlist | `$activeSection === "wishlist"` | webview | ⬜ | ↑ |
 | `Ctrl+N` | Новий профіль | `$activeSection === "profiles"` | webview | ⬜ | ↑ |
 | `F1` | довідник гарячих клавіш (open-once, модаль з реєстру) | — | webview | ✅ | відкривність (a11y) |
+| `Ctrl+M` | вимкнути/увімкнути звук (toggle; анонс **стану**) | плеєр не зупинено | webview | ✅ | TapinRadio `Ctrl+M`, YouTube `M`; [hotkeys-expansion](backlog/p2-hotkeys-expansion.md) |
+| `F9` | сказати, що зараз відтворюється (фокус не рухається) | — | webview | ✅ | TapinRadio `F11` (Announce currently playing song); `F11` тут зайнятий fullscreen'ом |
 
 > `Alt+digit` нумерує секції за порядком в ActivityBar; `Alt+0` — Profiles
 > (винесено окремо вгорі). Чому `Alt`, а не `Ctrl`: NVDA у browse mode перехоплює
@@ -164,8 +173,9 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 > коли відкрита модаль (`isInModal`, [shortcutGuard.ts](../src/lib/shortcutGuard.ts)).
 > Capture — бо react-aria контроли (напр. `SearchField` пошуку Browser) поглинають
 > keydown у фазі спливання; bubble-слухач втрачав би хоткей із фокусом у такому
-> полі. Текстове поле само хоткеї **не** глушить: усі Tier-2 комбо під модифікатором
-> або `F1`, тож `Alt+2` працює навіть із фокусом у пошуку. Колізію з набором тексту
+> полі. Текстове поле само хоткеї **не** глушить: усі Tier-2 комбо або під
+> модифікатором, або функційні (`F1`, `F9`), тож `Alt+2` працює навіть із фокусом
+> у пошуку. Колізію з набором тексту
 > мають лише немодифіковані клавіші рядка Tier 2′ (`Enter`/`F2`/`Delete`) — їх
 > блокуватиме `useCompositeList`, не цей слухач (KB-14).
 
@@ -189,7 +199,8 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 | `Ctrl+Space` | перемкнути виділення активного рядка (+ ставить якір) — у **всіх** композитних списках (streams, songs, profiles, schedule, patterns, browser) | фокус у списку з multi-select | [useCompositeList.ts](../src/hooks/useCompositeList.ts) `resolveKeyAction` → `selectToggle` | ✅ |
 | `Ctrl+A` | виділити всі видимі / зняти (toggle) — у **всіх** композитних списках | фокус у списку з multi-select | ↑ (`selectAll` / `clearSelection`) | ✅ |
 | `Shift+↑` / `Shift+↓` | розширити / звузити діапазон виділення від якоря — у **всіх** композитних списках | фокус у списку з multi-select | ↑ (`selectRangeUp` / `selectRangeDown`) | ✅ |
-| `F2` | редагувати / перейменувати рядок (Streams: edit/rename · Songs/Profiles: rename — заплановано) | фокус на рядку (де застосовно) | generic `edit`-інтент [useCompositeList.ts](../src/hooks/useCompositeList.ts) `resolveKeyAction`→`onAction("edit")`; гілка [StreamList.tsx](../src/components/streams/StreamList.tsx)→`$editStream`; reserved у [shortcuts.ts](../src/lib/shortcuts.ts) | Streams ✅ · решта ⬜ |
+| `F2` | редагувати / перейменувати рядок (Streams: edit/rename · Songs: перейменувати файл · Profiles: rename — заплановано) | фокус на рядку (де застосовно) | generic `edit`-інтент [useCompositeList.ts](../src/hooks/useCompositeList.ts) `resolveKeyAction`→`onAction("edit")`; гілки [StreamList.tsx](../src/components/streams/StreamList.tsx)→`$editStream`, [SongsList.tsx](../src/components/songs/SongsList.tsx)→`RenameDialog`; reserved у [shortcuts.ts](../src/lib/shortcuts.ts) | Streams ✅ · Songs ✅ · Profiles ⬜ |
+| `F4` | редагувати **вміст** рядка (Songs: редактор тегів). Конвенція Total Commander / FAR: `F2` = ім'я, `F4` = вміст. **Будь-який** модифікатор → відмова від матчу, щоб `Alt+F4` лишалась системним закриттям вікна | фокус на рядку Записів | generic `edit-content`-інтент [useCompositeList.ts](../src/hooks/useCompositeList.ts) `resolveKeyAction`→`onAction("edit-content")`; гілка [SongsList.tsx](../src/components/songs/SongsList.tsx)→`TagEditorDialog`; reserved у [shortcuts.ts](../src/lib/shortcuts.ts) | Songs ✅ · решта — не заводимо |
 | `F5` | копіювати в інший профіль (Streams): за наявності виділення — **усе виділення**, інакше сфокусований рядок; ціль питає `StreamTransferDialog` | фокус на рядку потоків | generic `transfer-copy`-інтент [useCompositeList.ts](../src/hooks/useCompositeList.ts) `resolveKeyAction`→`onAction("transfer-copy")`; гілка [StreamList.tsx](../src/components/streams/StreamList.tsx)→`openTransfer`; reserved у [shortcuts.ts](../src/lib/shortcuts.ts) | Streams ✅ · решта — не заводимо |
 | `Shift+F5` | перенести в інший профіль (Streams), та сама модель виділення; **одиночний** маршрут блокується на активному потоці (запис / грає через наш плеєр) з озвученою причиною — bulk ні (бекенд пропускає активні сам) | ↑ | ↑ (`transfer-move`); гард — `isRecordingLike` ([streamState.ts](../src/lib/streamState.ts)) + `$playerStatus`, та сама умова, що `moveDisabled` у [StreamContextMenu.tsx](../src/components/streams/StreamContextMenu.tsx) | Streams ✅ |
 | `Delete` | видалити рядок (з підтвердженням); за наявності виділення — масове видалення множини (Explorer-модель) — у **всіх** списках, крім browser (там немає Delete; bulk-дія browser — «Додати виділені» через тулбар/кластер, не клавіша) | фокус на рядку списку | [useCompositeList.ts:361](../src/hooks/useCompositeList.ts#L361) → `onAction("delete")` → per-list bulk handler; bulk-видалення: streams/songs/profiles/schedule; bulk-remove: patterns (wishlist/ignorelist) | одинично ✅ · bulk ✅ |
@@ -214,8 +225,10 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 > | patterns (wishlist / ignorelist) | bulk-remove |
 > | browser | **bulk-add-selected** — додати до активного профілю (тулбар / кластер зони; `Delete` не діє; фокус не рухається; live-підсумок «Додано N, пропущено M (дублікати)») |
 
-> `F2` / `Delete` — контекстні дії рядка (focus mode), за desktop-list
-> конвенцією.
+> `F2` / `F4` / `Delete` — контекстні дії рядка (focus mode), за desktop-list
+> конвенцією. `F2`/`F4` діють **тільки на сфокусований рядок** (виділення
+> ігнорують — на відміну від `Delete`/`F5`/`Shift+F5` нижче) і ведуть у ті самі
+> діалоги, що й ⋯-меню рядка.
 >
 > **`F5`/`Shift+F5`: із Total Commander запозичено лише клавішу, не модель.**
 > `F5` = Copy — конвенція Norton Commander, успадкована TC і FAR; серед незрячих
@@ -347,6 +360,12 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
    авто-повтори утримуваної клавіші відкидаються на початку слухача
    ([App.tsx](../src/App.tsx#L135)), щоб held-комбо не «блимало». Кнопки на
    react-aria `usePress` (напр. mute) уже відкидають повтор самі.
+5. **Пріоритет анонсів: відповідь на натискання — `assertive`, фонова подія —
+   `polite`.** Користувач щойно натиснув клавішу й чекає на відповідь саме
+   зараз (`Ctrl+M` — стан звуку, `F9` — що грає, `F5` — причина відмови), тож
+   черга ввічливих повідомлень тут неприйнятна. Навпаки, те, що сталося без
+   його участі (трек змінився, запис завершився, список перечитано), не має
+   переривати читання — це `polite`.
 
 ## Звірення з ADR (2026-06-07)
 

@@ -16,6 +16,8 @@ A row marked **incomplete** is a track Tapir did not see the start or the end of
 
 ### Renaming, tags and deleting
 
+Both editors open from the keyboard: `F2` renames the focused row, `F4` opens its tags. Either key acts on the focused row alone, even when several rows are selected.
+
 **Rename…** changes the name only — Tapir keeps the extension, so renaming cannot change the format. Windows forbids `< > : " / \ | ? *` in file names, and while any of them is present the dialog will not save. If a file of that name already exists, Tapir appends `_2` and tells you the name it actually used.
 
 **Edit tags…** sets artist, title, album and genre inside the file itself.
@@ -25,6 +27,8 @@ A row marked **incomplete** is a track Tapir did not see the start or the end of
 ### Keys on this screen
 
 - `Enter` — play the recording, or stop it if it is already playing
+- `F2` — rename the focused recording
+- `F4` — edit the tags of the focused recording
 - `Alt+Enter` — open the file in the associated program
 - `Ctrl+Enter` — show the file in its folder
 - `Delete` — move the focused recording, or the whole selection, to the Recycle Bin

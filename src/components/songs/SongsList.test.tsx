@@ -109,6 +109,58 @@ describe("SongsList — Enter modifiers act on the focused row", () => {
   it("advertises Alt+Enter and Control+Enter on the row via aria-keyshortcuts", () => {
     const { container } = renderList();
     const li = container.querySelector('li[data-segment="summary"]')!;
-    expect(li.getAttribute("aria-keyshortcuts")).toBe("Alt+Enter Control+Enter");
+    expect(li.getAttribute("aria-keyshortcuts")).toBe("F2 F4 Alt+Enter Control+Enter");
+  });
+});
+
+// Total Commander / FAR convention: F2 = name, F4 = content. Both act on the
+// FOCUSED row (never the selection) and route through the same entry point the
+// ⋯-menu uses, so keyboard and menu open the very same dialogs.
+describe("SongsList — F2 / F4 row keys", () => {
+  const focusFirstRow = (ref: React.RefObject<SongsListHandle | null>) =>
+    act(() => ref.current!.focus("forward"));
+
+  it("F4 opens the tag editor for the focused row", () => {
+    const { ref, onAction } = renderList();
+    focusFirstRow(ref);
+    fireEvent.keyDown(document.activeElement!, { key: "F4" });
+    expect(onAction).toHaveBeenCalledWith("a.mp3", "tags");
+  });
+
+  it("F2 opens rename for the focused row", () => {
+    const { ref, onAction } = renderList();
+    focusFirstRow(ref);
+    fireEvent.keyDown(document.activeElement!, { key: "F2" });
+    expect(onAction).toHaveBeenCalledWith("a.mp3", "rename");
+  });
+
+  it("acts on the FOCUSED row, not on the selection", () => {
+    replaceSelection($songsSelection, new Set(["b.mp3", "c.mp3"]));
+    const { ref, onAction } = renderList();
+    focusFirstRow(ref);
+    fireEvent.keyDown(document.activeElement!, { key: "F4" });
+    expect(onAction).toHaveBeenCalledTimes(1);
+    expect(onAction).toHaveBeenCalledWith("a.mp3", "tags");
+  });
+
+  // Alt+F4 must stay the system window close — the list declines the match
+  // before consuming the key, so nothing is swallowed either. F2 answers to the
+  // same rule: the pair is one convention, not two.
+  it("declines any modifier on F4 and on F2", () => {
+    const { ref, onAction } = renderList();
+    focusFirstRow(ref);
+    for (const mods of [{ altKey: true }, { ctrlKey: true }, { shiftKey: true }]) {
+      fireEvent.keyDown(document.activeElement!, { key: "F4", ...mods });
+      fireEvent.keyDown(document.activeElement!, { key: "F2", ...mods });
+    }
+    expect(onAction).not.toHaveBeenCalled();
+  });
+
+  it("F4 on an empty list does nothing", () => {
+    $songs.set([]);
+    const { ref, onAction } = renderList();
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: "F4" });
+    expect(onAction).not.toHaveBeenCalled();
   });
 });

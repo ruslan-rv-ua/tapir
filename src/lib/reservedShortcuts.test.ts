@@ -6,13 +6,13 @@ import { matchShortcut } from "./shortcuts";
 describe("RESERVED_WEBVIEW_COMBOS", () => {
   it("reserves exactly the registry's reserved combos, in registry order", () => {
     expect(RESERVED_WEBVIEW_COMBOS.map((r) => r.combo)).toEqual([
-      "Ctrl+K", "Ctrl+,", "Ctrl+Shift+,", "F1",
+      "Ctrl+K", "Ctrl+,", "Ctrl+Shift+,", "F1", "Ctrl+M", "F9",
       "Alt+0", "Alt+1", "Alt+2", "Alt+3", "Alt+4", "Alt+5",
       "Ctrl+N",
       "F6", "Shift+F6", "Shift+F10",
       "Shift+Enter", "Ctrl+Enter", "Alt+Enter",
       "Ctrl+C",
-      "F2", "F5", "Shift+F5",
+      "F2", "F4", "F5", "Shift+F5",
     ]);
   });
 
@@ -41,6 +41,14 @@ describe("findReservedConflict", () => {
     expect(findReservedConflict("Shift+F6")).not.toBeNull();
     expect(findReservedConflict("Shift+F10")).not.toBeNull();
     expect(findReservedConflict("F2")).not.toBeNull();
+  });
+
+  // KeyRecorder accepts both letters and F1–F24, so without these entries a user
+  // could silently take the app's own keys for an OS hotkey.
+  it("covers Ctrl+M, F9 and F4", () => {
+    expect(findReservedConflict("Ctrl+M")).not.toBeNull();
+    expect(findReservedConflict("F9")).not.toBeNull();
+    expect(findReservedConflict("F4")).not.toBeNull();
   });
 
   it("returns null for a free combo", () => {

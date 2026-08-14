@@ -10,7 +10,9 @@ A live broadcast cannot be usefully paused — you would replay a stale buffer w
 
 ### Volume and position
 
-On the volume slider `↑` and `↓` move the level by one step: 5%, unless you change **Volume step (keys, %)** in the app settings, tab **Audio** (1 to 10). The global volume keys use the same step. Muting has its own button.
+On the volume slider `↑` and `↓` move the level by one step: 5%, unless you change **Volume step (keys, %)** in the app settings, tab **Audio** (1 to 10). The global volume keys use the same step.
+
+Muting has its own button on the player, or press `Ctrl+M` anywhere in the window while something is playing. Both are the same toggle, and Tapir says what came of it: "Sound off" or "Sound on". The level is remembered and comes back when you unmute.
 
 On the position slider `↑` and `↓` seek five seconds at a time. A broadcast has no position and gets no slider — the air cannot be rewound.
 
@@ -27,6 +29,8 @@ When a file ends, **Auto-play next track** — profile settings, tab **Playback*
 ### The panel
 
 **Now playing** names the source and marks what it is: **LIVE** for a station on air, **Recording** for a saved file.
+
+To hear that without walking into the player zone, press `F9` — anywhere in the window, and the focus stays where it is. For a broadcast Tapir names the station and the current track (when the station sends one), for a file the name and the position, and when nothing plays it says so. A muted output is added at the end of the answer.
 
 **Output** shows the current device. Change it, or rescan after plugging something in, in the app settings, tab **Audio**.
 

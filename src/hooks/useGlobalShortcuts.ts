@@ -3,14 +3,55 @@ import { matchShortcut, type ShortcutActions } from "../lib/shortcuts";
 import { isInModal } from "../lib/shortcutGuard";
 import { $activeSection, $commandPaletteOpen, $helpOpen } from "../stores/navigation";
 import { $settings, $settingsDialogOpen, $profileSettingsTarget } from "../stores/settings";
-import { $showAddStreamDialog } from "../stores/streams";
+import { $showAddStreamDialog, $statuses, $streams } from "../stores/streams";
 import { $showCreateProfileDialog } from "../stores/profileManager";
 import { $showAddPatternDialog } from "../stores/wishlist";
 import { $showAddScheduleDialog } from "../stores/schedule";
+import { $muteState, $playerStatus } from "../stores/player";
+import { describePlayback, type PlaybackDescription } from "../lib/playbackAnnounce";
+import { toggleMute } from "../lib/muteControl";
+import { formatDuration } from "../lib/formatters";
+import { useAnnounce } from "./useAnnounce";
+import * as m from "../i18n/paraglide/messages";
 
 /**
- * Global Tier-2 webview shortcuts (Alt+digit, Ctrl+K, Ctrl+,, Ctrl+Shift+,, Ctrl+N, F1),
- * dispatched through the pure `matchShortcut` registry.
+ * Localize a playback description (F9). One key per reachable state × source
+ * pair, so word order and punctuation belong to the translator; the muted clause
+ * wraps a FINISHED sentence, which is why it can be added exactly once to any of
+ * them — "nothing is playing" included.
+ */
+function nowPlayingMessage(description: PlaybackDescription, muted: boolean): string {
+  let sentence: string;
+  switch (description.kind) {
+    case "nothing":
+      sentence = m.f9_nothing();
+      break;
+    case "stream":
+      sentence = description.track
+        ? m.f9_stream({ station: description.station, track: description.track })
+        : m.f9_stream_no_track({ station: description.station });
+      break;
+    case "preview":
+      sentence = m.f9_preview({ name: description.name });
+      break;
+    case "file": {
+      // An unknown position is spoken as "0:00" rather than dropped: §4 of the
+      // record fixes seven keys and has none for a positionless file, and the
+      // only moment a playing file has `positionMs: null` is before its first
+      // progress tick — when 0:00 is what the position actually is.
+      const position = formatDuration(description.positionMs ?? 0);
+      sentence = description.paused
+        ? m.f9_file_paused({ name: description.name, position })
+        : m.f9_file({ name: description.name, position });
+      break;
+    }
+  }
+  return muted ? m.f9_muted({ sentence }) : sentence;
+}
+
+/**
+ * Global Tier-2 webview shortcuts (Alt+digit, Ctrl+K, Ctrl+,, Ctrl+Shift+,, Ctrl+N,
+ * Ctrl+M, F1, F9), dispatched through the pure `matchShortcut` registry.
  *
  * CAPTURE phase, not bubble: react-aria controls (notably the Browser
  * `SearchField`) swallow keydown in the bubble phase, so a bubble-phase window
@@ -24,6 +65,7 @@ import { $showAddScheduleDialog } from "../stores/schedule";
  * from a focused text field too (KB-14). Key auto-repeat is dropped (KB-06).
  */
 export function useGlobalShortcuts(): void {
+  const announce = useAnnounce();
   useEffect(() => {
     const actions: ShortcutActions = {
       setSection: (s) => $activeSection.set(s),
@@ -40,6 +82,21 @@ export function useGlobalShortcuts(): void {
       openCreateProfile: () => $showCreateProfileDialog.set(true),
       openAddPattern: () => $showAddPatternDialog.set(true),
       openCreateSchedule: () => $showAddScheduleDialog.set(true),
+      // The action, the guard and the wording belong to muteControl — the
+      // player's mute button goes through the very same call.
+      toggleMute: () => { void toggleMute(announce); },
+      // Answers where the user stands: the announce moves no focus, so the
+      // reading position in the list is kept. Assertive because it is the
+      // reply to a keypress (a background event would be polite).
+      announceNowPlaying: () => {
+        const { description, muted } = describePlayback({
+          status: $playerStatus.get(),
+          statuses: $statuses.get(),
+          streams: $streams.get(),
+          muted: $muteState.get().muted,
+        });
+        announce(nowPlayingMessage(description, muted), "assertive");
+      },
     };
     const handler = (e: KeyboardEvent) => {
       if (e.repeat) return;
@@ -54,5 +111,5 @@ export function useGlobalShortcuts(): void {
     };
     window.addEventListener("keydown", handler, { capture: true });
     return () => window.removeEventListener("keydown", handler, { capture: true });
-  }, []);
+  }, [announce]);
 }

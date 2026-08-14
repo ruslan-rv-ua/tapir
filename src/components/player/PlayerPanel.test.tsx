@@ -6,7 +6,7 @@ import * as m from "../../i18n/paraglide/messages";
 import { $announcer } from "../../stores/announcer";
 import { $settings } from "../../stores/settings";
 import { PlayerPanel } from "./PlayerPanel";
-import { $playerStatus } from "../../stores/player";
+import { $muteState, $playerStatus } from "../../stores/player";
 import { $streams } from "../../stores/streams";
 import { $songs, $songsQuery, $songsStation, $songsSort } from "../../stores/songs";
 import type { GlobalSettings, StreamInfo } from "../../lib/tauri";
@@ -101,6 +101,7 @@ function playingFile(path: string) {
 beforeEach(() => vi.clearAllMocks());
 
 afterEach(() => {
+  $muteState.set({ muted: false, savedVolume: 0.75, restoring: false });
   $playerStatus.set({ state: "stopped", source: null, volume: 0.75, positionMs: null, durationMs: null });
   $streams.set([]);
   $songs.set([]);
@@ -210,6 +211,34 @@ describe("PlayerPanel — boundary focus", () => {
     // For a live stream the central control is the Stop action (pause is
     // meaningless); it's still the focus anchor at a transport boundary.
     expect(document.activeElement).toBe(getByRole("button", { name: m.stop_stream_playback() }));
+  });
+});
+
+describe("PlayerPanel — mute button", () => {
+  it("mutes the output and announces the resulting STATE, not the command name", async () => {
+    playingStream("s2");
+    const { getByRole } = renderPanel();
+    fireEvent.click(getByRole("button", { name: m.player_mute_action() }));
+    await vi.waitFor(() => expect(tauri.setVolume).toHaveBeenCalledWith(0));
+    expect($muteState.get().muted).toBe(true);
+    // The bug this closes: the button used to speak its own next-action label
+    // ("Mute") right after muting, contradicting the label it had just flipped to.
+    // m.player_muted() is the same text useGlobalShortcuts asserts for Ctrl+M —
+    // both go through muteControl.toggleMute, so they cannot drift apart.
+    expect($announcer.get()?.message).toBe(m.player_muted());
+    expect($announcer.get()?.message).not.toBe(m.player_mute_action());
+    expect($announcer.get()?.priority).toBe("assertive");
+  });
+
+  it("unmutes on the second press and announces the opposite state", async () => {
+    playingStream("s2");
+    const { getByRole } = renderPanel();
+    fireEvent.click(getByRole("button", { name: m.player_mute_action() }));
+    await vi.waitFor(() => expect($muteState.get().muted).toBe(true));
+    fireEvent.click(getByRole("button", { name: m.player_unmute_action() }));
+    await vi.waitFor(() => expect($muteState.get().muted).toBe(false));
+    expect(tauri.setVolume).toHaveBeenLastCalledWith(0.75);
+    expect($announcer.get()?.message).toBe(m.player_unmuted());
   });
 });
 

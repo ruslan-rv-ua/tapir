@@ -18,6 +18,11 @@ const makeActions = (): ShortcutActions => ({
   toggleProfileSettings: vi.fn(),
   openAddStream: vi.fn(),
   openHelp: vi.fn(),
+  openCreateProfile: vi.fn(),
+  openAddPattern: vi.fn(),
+  openCreateSchedule: vi.fn(),
+  toggleMute: vi.fn(),
+  announceNowPlaying: vi.fn(),
 });
 
 describe("matchShortcut — matching", () => {
@@ -57,6 +62,16 @@ describe("matchShortcut — matching", () => {
 
   it("matches F1 → help", () => {
     expect(matchShortcut(ev("F1"), ctx("streams"))?.id).toBe("help");
+  });
+
+  it("matches Ctrl+M → toggle-mute, but leaves Ctrl+Shift+M alone (Teams/Discord)", () => {
+    expect(matchShortcut(ev("KeyM", { ctrlKey: true }), ctx("streams"))?.id).toBe("toggle-mute");
+    expect(matchShortcut(ev("KeyM", { ctrlKey: true, shiftKey: true }), ctx("streams"))).toBeNull();
+  });
+
+  it("matches bare F9 → now-playing", () => {
+    expect(matchShortcut(ev("F9"), ctx("streams"))?.id).toBe("now-playing");
+    expect(matchShortcut(ev("F9", { shiftKey: true }), ctx("streams"))).toBeNull();
   });
 
   it("maps Alt+digit to the right section", () => {

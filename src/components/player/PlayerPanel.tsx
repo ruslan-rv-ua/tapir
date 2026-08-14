@@ -26,6 +26,8 @@ import { RecordingBadge } from "./RecordingBadge";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 import { executeTransportSkip, type SkipTrigger } from "../../lib/transportControl";
+import { toggleMute } from "../../lib/muteControl";
+import { sourceName } from "../../lib/playbackAnnounce";
 
 /**
  * Will the just-pressed skip button resolve to "none" after `action` applies?
@@ -57,26 +59,14 @@ function pressedBecomesDisabled(
   return false;
 }
 
-function useSourceLabel(): string {
-  const { source } = useStore($playerStatus);
-  const streams = useStore($streams);
-  if (!source) return "";
-  if (source.type === "stream") {
-    const stream = streams.find((s) => s.id === source.streamId);
-    return stream?.name ?? source.streamId;
-  }
-  if (source.type === "preview") return source.name;
-  return source.path.split(/[\\/]/).pop() ?? source.path;
-}
-
 export const PlayerPanel = forwardRef<
   ZoneEntry,
   { exitZone: (forward: boolean) => void }
 >(({ exitZone }, ref) => {
   const playerStatus = useStore($playerStatus);
   const { state } = playerStatus;
-  const sourceLabel = useSourceLabel();
   const streams = useStore($streams);
+  const sourceLabel = playerStatus.source ? sourceName(playerStatus.source, streams) : "";
   const statuses = useStore($statuses);
   const settings = useStore($settings);
   const announce = useAnnounce();
@@ -112,7 +102,6 @@ export const PlayerPanel = forwardRef<
   const canPrev = isActive && resolveTransportAction("prev", transportCtx).kind !== "none";
   const canNext = isActive && resolveTransportAction("next", transportCtx).kind !== "none";
 
-  const mutePendingRef = useRef(false);
   const playerRootRef = useRef<HTMLDivElement>(null);
   const prevRef = useRef<HTMLButtonElement>(null);
   const playPauseRef = useRef<HTMLButtonElement>(null);
@@ -171,29 +160,9 @@ export const PlayerPanel = forwardRef<
     [restoreFocusPlayer]
   );
 
-  const handleMute = async () => {
-    if (mutePendingRef.current) return;
-    mutePendingRef.current = true;
-    try {
-      if (!isMuted) {
-        const vol = $playerStatus.get().volume;
-        const savedVolume = vol > 0 ? vol : 0.75;
-        await tauri.setVolume(0);
-        $muteState.set({ muted: true, savedVolume, restoring: false });
-        announce(m.player_mute_action(), "assertive");
-      } else {
-        const { savedVolume } = $muteState.get();
-        await tauri.setVolume(savedVolume);
-        $muteState.set({ muted: false, savedVolume, restoring: false });
-        announce(m.player_unmute_action(), "assertive");
-      }
-    } catch (e) {
-      console.error(e);
-      announce(m.playback_error(), "assertive");
-    } finally {
-      mutePendingRef.current = false;
-    }
-  };
+  // The action, the in-flight guard and the wording all live in muteControl —
+  // the button and Ctrl+M are the same gesture with two triggers.
+  const handleMute = () => toggleMute(announce);
 
   const handleSkip = useCallback(
     (trigger: SkipTrigger) =>

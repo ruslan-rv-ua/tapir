@@ -122,6 +122,12 @@ export const SongsList = forwardRef<SongsListHandle, Props>(
               else onAction(itemId, "delete");
               return;
             }
+            // F2 / F4 — rename and tags for the FOCUSED row (never the selection,
+            // unlike Delete above). Both hand off to the same panel entry point as
+            // the ⋯-menu, so keyboard and menu open the very same dialogs. Placed
+            // before the segment gate: like Delete they work from any segment.
+            if (type === "edit") { onAction(itemId, "rename"); return; }
+            if (type === "edit-content") { onAction(itemId, "tags"); return; }
             if (segment !== "summary") return;
             // Modifiers ride on Enter only, and always target the FOCUSED row —
             // unlike Delete, which fans out to the selection. Space (toggle)

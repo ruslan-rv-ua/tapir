@@ -15,14 +15,20 @@ touches:
   - src/lib/shortcuts.ts
   - src/lib/playbackAnnounce.ts
   - src/lib/muteControl.ts
+  - src/lib/windowTitle.ts
   - src/hooks/useGlobalShortcuts.ts
   - src/hooks/useCompositeList.ts
   - src/components/player/PlayerPanel.tsx
   - src/components/songs/SongsList.tsx
+  - src/components/songs/SongItem.tsx
   - src/App.tsx
   - src/i18n/messages/uk.json
   - src/i18n/messages/en.json
   - docs/keyboard-shortcuts.md
+  - docs/help/uk/player.md
+  - docs/help/en/player.md
+  - docs/help/uk/songs.md
+  - docs/help/en/songs.md
 gates: [pnpm test, pnpm vite:build]
 notes:
   - "Модель — TapinRadio (еталонний доступний радіо-рекордер, розсилка pc-audio): голі F-клавіші + Ctrl+літери; F9-анонс — запозичення TapinRadio F11 (Announce currently playing song), F11 у WebView2 зайнятий fullscreen"
@@ -343,29 +349,31 @@ streams-transfer): якщо видалити гілку в списку, хук�
 
 ## Критерії готовності
 
-- [ ] `playbackAnnounce.ts`: `sourceName` — єдиний власник назви джерела
+- [x] `playbackAnnounce.ts`: `sourceName` — єдиний власник назви джерела
       (`PlayerPanel` і `App.tsx` більше своїх копій не мають); `describePlayback`
       повертає union
-- [ ] `muteControl.ts`: `toggleMute` володіє `setVolume`, `savedVolume`,
+- [x] `muteControl.ts`: `toggleMute` володіє `setVolume`, `savedVolume`,
       pending-прапорцем і текстом; `PlayerPanel` і `Ctrl+M` кличуть **його**
-- [ ] `Ctrl+M`: перемикає звук + assertive-анонс стану; `e.repeat` ігнорується;
+- [x] `Ctrl+M`: перемикає звук + assertive-анонс стану; `e.repeat` ігнорується;
       кнопка плеєра озвучує той самий текст (баг «назва команди замість стану» зник)
-- [ ] `F9`: assertive-анонс, фокус не рухається; прев'ю й пауза озвучені
+- [x] `F9`: assertive-анонс, фокус не рухається; прев'ю й пауза озвучені
       нарівні з потоком і файлом; клауза про вимкнений звук — лише коли muted
-- [ ] `F4` (Записи): відкриває редактор тегів фокусованого рядка; `F2`:
+- [x] `F4` (Записи): відкриває редактор тегів фокусованого рядка; `F2`:
       відкриває перейменування; будь-який модифікатор інтенту не дає; інші
       списки без падінь
-- [ ] `aria-keyshortcuts` рядка Записів = `"F2 F4 Alt+Enter Control+Enter"`
-- [ ] Усі три комбінації — reserved у `SHORTCUTS` + F1-довідник (групи
+- [x] `aria-keyshortcuts` рядка Записів = `"F2 F4 Alt+Enter Control+Enter"`
+- [x] Усі три комбінації — reserved у `SHORTCUTS` + F1-довідник (групи
       global / list) + i18n-лейбли uk/en
-- [ ] Сім ключів `f9_*` + два `player_muted`/`player_unmuted` у uk **і** en
-- [ ] `docs/keyboard-shortcuts.md`: Tier 2 (+`Ctrl+M`, `F9`), Tier 2′ (+`F4`,
+- [x] Сім ключів `f9_*` + два `player_muted`/`player_unmuted` у uk **і** en
+- [x] `docs/keyboard-shortcuts.md`: Tier 2 (+`Ctrl+M`, `F9`), Tier 2′ (+`F4`,
       `F2` Записи ⬜→✅), примітка `Ctrl+M` ↔ відкладений `Ctrl+Shift+U`, правило
       пріоритету анонсів у «Конвенціях реалізації»
-- [ ] Тести за чотирма швами вище; `useCompositeList.test.tsx` не змінено
-- [ ] NVDA-прогін (мануально, перед релізом): чекліст за скілом
-      `writing-nvda-checklists`
-- [ ] `pnpm test` без регресій, `pnpm vite:build` зелений
+- [x] `docs/help/` (правило AGENTS.md): `player.md` — `Ctrl+M` і `F9`,
+      `songs.md` — `F2`/`F4`; обидві локалі
+- [x] Тести за чотирма швами вище; `useCompositeList.test.tsx` не змінено
+- [ ] NVDA-прогін (мануально, перед релізом):
+      [nvda-hotkeys-expansion.md](../testing/nvda-hotkeys-expansion.md)
+- [x] `pnpm test` без регресій, `pnpm vite:build` зелений
 
 ## Поза скоупом
 
@@ -405,6 +413,45 @@ streams-transfer): якщо видалити гілку в списку, хук�
 - **Дев'ять комбінацій — не всі досяжні** в реальному застосунку (пауза потоку
   й прев'ю не існує), але функція лишається тотальною: таблиця перевіряє всі
   дев'ять, щоб недосяжний стан не давав `undefined` у мові.
+
+### Відхилення реалізації (2026-08-14)
+
+1. **`Ctrl+M` при зупиненому плеєрі — тихий no-op.** Спека гейта не називала, але
+   він знайшовся при реалізації: `set_volume` **завжди** емітить `player-status`
+   ([engine.rs](../../src-tauri/src/player/engine.rs)), а `applyMuteCleanup` на
+   статусі `stopped` із `muted` відновлює гучність — тобто mute на зупиненому
+   плеєрі скасував би сам себе, і «Звук вимкнено» стало б неправдою через подію.
+   Гейт живе в `muteControl.toggleMute` (одне місце на обох викликачів) і
+   дзеркалить `isDisabled={!isActive}` кнопки плеєра — саме та симетрія
+   «кнопка ↔ клавіша», заради якої модуль і заводився. Тиша замість оголошення —
+   прецедент `executeTransportSkip`, що так само мовчки no-op'ить на порожньому
+   плеєрі. Клауза `f9_muted` над `f9_nothing` лишилась: вона захищає тотальність
+   функції, а не описує досяжний стан.
+2. **Три тести в `SongsPanel.test.tsx` понад чотири шви.** Шов 4 вимагав
+   спостерігати «який діалог відкрито», а діалоги живуть у панелі, не в списку;
+   у `SongsList.test.tsx` спостережний максимум — виклик `onAction(path, "tags")`.
+   Тож клавіші перевірено двічі: маршрут — у списку, результат (діалог на екрані)
+   — у панелі. `useCompositeList.test.tsx`, як і домовлено, не змінювався.
+3. **`docs/help/` оновлено** (правило AGENTS.md, у критеріях спеки його не було —
+   критерій дописано): `player.md` — `Ctrl+M` і `F9` (uk + en), `songs.md` —
+   `F2`/`F4` у прозі й у переліку клавіш екрана. Один власник на пояснення: mute
+   і `F9` — тільки в `player.md`, рядкові клавіші Записів — тільки в `songs.md`.
+4. **`trackLabel` — новий спільний рендер «виконавець — назва»** (знахідка
+   код-рев'ю). Rust-парсер ICY ділить рядок лише по `" - "`, тож станція, що
+   передає саму назву треку, приходить із порожнім `artist`
+   ([connection.rs](../../src-tauri/src/stream/connection.rs)) — і пряма
+   інтерполяція в `describePlayback` озвучувала б «Станція —  — Назва». За §3
+   гриля («один власник формулювання») правильний рендер винесено з
+   `windowTitle.ts` у `playbackAnnounce.ts` як `trackLabel`, обидва місця
+   тепер кличуть його. **Хвіст:** ті самі два незалежні рендери лишились у
+   `PlayerPanel.tsx` (`trackDisplay`, живе під `aria-live`) і
+   `StreamContextMenu.tsx` — той самий баг порожнього виконавця, але поза
+   скоупом цього запису.
+5. **`F2` теж відмовляється від матчу під модифікатором** (знахідка код-рев'ю).
+   Критерій «будь-який модифікатор інтенту не дає» стосується пари, а не самої
+   `F4`: інакше на Записах `Ctrl+F2`/`Shift+F2` відкривали б перейменування, а
+   `Ctrl+F4`/`Shift+F4` — ні. Зачіпає й Потоки (там `F2` під модифікатором
+   більше не відкриває редактор потоку).
 
 ## Документи
 
