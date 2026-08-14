@@ -28,7 +28,7 @@ notes:
 
 ## Опис
 
-Обидва `<PatternList>` у [WishlistPanel](../../src/components/wishlist/WishlistPanel.tsx)
+Обидва `<PatternList>` у [WishlistPanel](../../../src/components/wishlist/WishlistPanel.tsx)
 ділять один стабільний callback-ref (`patternListCallbackRef`). RAC `TabPanel`
 тримає деселектнуту панель змонтованою **ще один коміт** (`useExitAnimation`),
 тож при перемиканні вкладки порядок — **attach(нова, коміт N) → detach(стара,
@@ -106,9 +106,9 @@ handle — і не затирає. Перемикання на порожню в
 
 ## Документи
 
-- Код: [WishlistPanel.tsx](../../src/components/wishlist/WishlistPanel.tsx)
+- Код: [WishlistPanel.tsx](../../../src/components/wishlist/WishlistPanel.tsx)
   (`patternListCallbackRef`, проксі `patternListProxyRef`),
-  [WishlistPanel.test.tsx](../../src/components/wishlist/WishlistPanel.test.tsx).
+  [WishlistPanel.test.tsx](../../../src/components/wishlist/WishlistPanel.test.tsx).
 - Джерела дослідження:
   [React v19 — Cleanup functions for refs](https://react.dev/blog/2024/12/05/react-19)
   (працює для `useImperativeHandle`; TS-заборона implicit return),
@@ -117,5 +117,5 @@ handle — і не затирає. Перемикання на порожню в
   [motion #3360](https://github.com/motiondivision/motion/issues/3360)
   (обгортки ref, що ламають cleanup — у нашому ланцюжку таких немає).
 - Споріднений механізм: memory-нотатка про стабільні проксі зон;
-  [done/p2-wishlist-example-patterns.md](done/p2-wishlist-example-patterns.md) —
+  [done/p2-wishlist-example-patterns.md](p2-wishlist-example-patterns.md) —
   follow-up-хвиля, в якій знахідку зроблено.

@@ -527,7 +527,7 @@ pub enum ScheduleResultReason {
 }
 ```
 
-Правила валідації та семантика — [спека Phase 3D](superpowers/specs/2026-06-12-scheduler-design.md) §2.
+Правила валідації та семантика — спека Phase 3D §2.
 
 ### 3.4. RecordingSettings
 

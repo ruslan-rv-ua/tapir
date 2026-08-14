@@ -98,7 +98,6 @@ Output binary: `src-tauri/target/release-fast/tapir.exe` (build-fast) or `src-ta
 
 All project documentation lives in `docs/`. Key files:
 
-- [PRD.md](docs/PRD.md) — product requirements
 - [architecture.md](docs/architecture.md) — system design
 - [data-models.md](docs/data-models.md) — data structures and storage
 - [tech-stack.md](docs/tech-stack.md) — technology choices and rationale

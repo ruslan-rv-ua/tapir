@@ -2,7 +2,7 @@
 
 - **Дата:** 2026-07-19
 - **Гілка:** `feature/streams-ctrlk-empty-hint` (від `develop`)
-- **Джерела:** [беклог `p2-streams-ctrlk-empty-hint`](../../backlog/p2-streams-ctrlk-empty-hint.md),
+- **Джерела:** [беклог `p2-streams-ctrlk-empty-hint`](../../backlog/done/p2-streams-ctrlk-empty-hint.md),
   [ADR 2026-05-31 «Командна палітра і пошук/фільтр»](../../decisions/2026-05-31-command-palette-and-search-ux.md) §6 (S3, конкретна зміна #3), §7
 
 ## 1. Задача

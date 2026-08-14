@@ -33,7 +33,7 @@ notes:
 # Нові гарячі клавіші: Ctrl+F (пошук), Ctrl+M (mute), F9 (що грає), F4 (теги)
 
 > **Контекст:** друга хвиля аудиту шорткатів, рішення 2026-07-23 (перша —
-> [streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md): F5/Shift+F5).
+> [streams-transfer-hotkeys](done/p2-streams-transfer-hotkeys.md): F5/Shift+F5).
 > Прийнято чотири комбінації; відхилені кандидати і причини — у «Свідомо не
 > додано» нижче.
 
@@ -80,7 +80,7 @@ F6-ходити в зону плеєра і назад. Зміст повідо�
 `onAction("tags")` (id `tags` уже існує в `SongContextMenu`), гілка лише в
 `SongsList`, інші списки інтент ігнорують. `aria-keyshortcuts` рядка Songs
 доповнюється `F4` — **координувати** з
-[open-song-with-default-app](p1-open-song-with-default-app.md) (той додає
+[open-song-with-default-app](done/p1-open-song-with-default-app.md) (той додає
 `Alt+Enter Control+Enter` на ті самі рядки; хто лендиться другим — зливає
 рядок атрибута).
 
@@ -132,7 +132,7 @@ F6-ходити в зону плеєра і назад. Зміст повідо�
   (`$playerStatus`/`$muteState`), `src/components/common/LiveAnnouncer` /
   `useAnnounce` (F9)
 - Суміжні: [p2-webview-reload-guard.md](done/p2-webview-reload-guard.md) (F3/F7/F11),
-  [p1-open-song-with-default-app.md](p1-open-song-with-default-app.md)
+  [p1-open-song-with-default-app.md](done/p1-open-song-with-default-app.md)
   (координація aria-keyshortcuts Songs),
   [p3-screen-reader-direct-speech.md](p3-screen-reader-direct-speech.md) (F9 —
   споріднений, не залежить)

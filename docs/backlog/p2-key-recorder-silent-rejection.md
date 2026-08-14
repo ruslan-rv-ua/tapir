@@ -30,10 +30,10 @@ notes:
 
 `KeyRecorder` перетворює `KeyboardEvent.code` на токен комбінації, і набір придатних
 кодів обмежений: літери `A`–`Z`, цифри `0`–`9`, стрілки, `Space`, `Pause`, `F1`–`F24`
-([KeyRecorder.tsx:20-43](../../src/components/common/KeyRecorder.tsx:20)). Усе інше —
+([KeyRecorder.tsx:20-43](../../src/components/settings/KeyRecorder.tsx:20)). Усе інше —
 пунктуація, `Enter`, numpad, самі модифікатори — повертає `null`, і обробник просто
 виходить, лишаючи рекордер у режимі запису
-([KeyRecorder.tsx:60](../../src/components/common/KeyRecorder.tsx:60)).
+([KeyRecorder.tsx:60](../../src/components/settings/KeyRecorder.tsx:60)).
 
 Для користувача це виглядає так: кнопку натиснуто, поле каже «Натисніть клавіші…»,
 людина тисне `Ctrl+Shift+;` — і **нічого не відбувається**. Ні комбінації, ні відмови,

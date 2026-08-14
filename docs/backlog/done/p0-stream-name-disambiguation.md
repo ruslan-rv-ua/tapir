@@ -75,7 +75,7 @@ notes:
    перевіряються і проти профілю, і всередині партії (плейліст з кількома
    mountpoints однієї станції — типове джерело дублів); метадані — з наявного
    батч-probe імпорту. Перевірка дубля URL при імпорті вже існує (Phase 3J) — не
-   чіпаємо. [import-duplicate-metadata-update](p3-import-duplicate-metadata-update.md)
+   чіпаємо. [import-duplicate-metadata-update](../p3-import-duplicate-metadata-update.md)
    лишається окремим незалежним P3-записом.
 5. **Двох окремих полів імені (auto + custom) НЕ вводимо.** Отримана назва вже
    зберігається окремо (`icy_name`); похідне «живе» авто-ім'я суперечило б рішенню 2
@@ -186,11 +186,11 @@ hatch «додати все одно» є лише на шляху ручног�
 Wishlist спрацює на обох варіантах станції, якщо обидва записуються — трек
 з'явиться двічі у двох теках. Це коректний наслідок рішення «записуй обидва»;
 «писати лише з кращого варіанта» — окрема можлива фіча поверх `minBitrate`/`format`
-(див. [wishlist-conditions](p1-wishlist-conditions.md)).
+(див. [wishlist-conditions](../p1-wishlist-conditions.md)).
 
 ## Документи
 
-- [data-models.md §3.1 StreamInfo](../data-models.md) — модель потоку, семантика ICY-автооновлення
+- [data-models.md §3.1 StreamInfo](../../data-models.md) — модель потоку, семантика ICY-автооновлення
 - `src-tauri/src/stream/manager.rs:640-698` — ICY-оновлення профілю + вибір `station_name` для recorder
 - `src-tauri/src/stream/probe.rs` — `ProbeResult` (`icy_name`/`bitrate`/`format`, зараз display-only)
 - `src-tauri/src/sanitize.rs` — санітизація `%s` (база для порівняння колізій)

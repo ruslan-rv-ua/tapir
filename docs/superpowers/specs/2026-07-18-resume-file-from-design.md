@@ -1,7 +1,7 @@
 # Design: налаштування «відновлювати файл з позиції / з початку» (`resume_file_from`)
 
 - **Дата:** 2026-07-18
-- **Джерело:** [docs/backlog/p2-resume-file-from-setting.md](../../backlog/p2-resume-file-from-setting.md) (P2, дизайн узгоджено там; цей spec фіксує актуалізацію під реальний код після P1)
+- **Джерело:** [docs/backlog/p2-resume-file-from-setting.md](../../backlog/done/p2-resume-file-from-setting.md) (P2, дизайн узгоджено там; цей spec фіксує актуалізацію під реальний код після P1)
 - **Залежить від:** P1 `p1-playback-toggle-stop-pause` — done, змержено в develop (46513f2)
 
 ## Мета

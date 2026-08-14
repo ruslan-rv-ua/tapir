@@ -46,7 +46,7 @@
 **Out of scope (explicit non-goals):**
 - The **in-app** PlayerPanel Play/Pause button keeps its current behavior (it still `pause`s a live stream if pressed). The spec scopes the stream=stop semantics to the **hotkey + tray** only; changing the visible toggle button (icon/zone-nav) is a separate concern.
 - SMTC hardware media keys stay untouched — Play/Pause/Stop are distinct buttons there, already semantically correct (spec: "SMTC лишається окремим шляхом").
-- Autostart auto-play and the per-profile `startup_playback_mode` superstructure belong to #10 [resume-last-playback](../../backlog/p2-resume-last-playback.md); this plan only lays the fields + the reusable resume function.
+- Autostart auto-play and the per-profile `startup_playback_mode` superstructure belong to #10 [resume-last-playback](../../backlog/done/p1-resume-last-playback.md); this plan only lays the fields + the reusable resume function.
 
 ---
 

@@ -8,7 +8,7 @@
 
 **Tech Stack:** Rust (tokio, serde, tokio-util `CancellationToken`), Tauri v2 events, React 19 + nanostores, Paraglide.js i18n, vitest.
 
-**Spec:** [docs/backlog/p1-crash-recovery.md](../../backlog/p1-crash-recovery.md) — усі дизайн-рішення закриті таблицею «Прийняті рішення».
+**Spec:** [docs/backlog/p1-crash-recovery.md](../../backlog/done/p1-crash-recovery.md) — усі дизайн-рішення закриті таблицею «Прийняті рішення».
 
 ## Global Constraints
 

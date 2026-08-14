@@ -109,7 +109,7 @@ OS-глобальний хоткей забирає комбінацію в **у
 ### SMTC: системні медіа-клавіші
 
 Апаратні медіа-клавіші (⏯, кнопки гарнітури, Bluetooth-пульти) керують
-відтворенням через [SMTC-сесію](frd/2026-06-11-smtc-integration.md)
+відтворенням через SMTC-сесію
 (`src-tauri/src/smtc.rs`), а не через глобальні хоткеї — ОС маршрутизує їх
 кооперативно, нічого не крадучи в інших плеєрів. SMTC **доповнює** Tier 1,
 дефолти хоткеїв не змінює; запис через SMTC невиразимий принципово
@@ -132,7 +132,7 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 | `Ctrl+K` | командна палітра (toggle) | — | webview | ✅ | [command-palette ADR](decisions/2026-05-31-command-palette-and-search-ux.md) · [accessibility.md §2.4](accessibility.md) |
 | `Ctrl+,` | налаштування програми — тільки глобальні (toggle) | — | webview | ✅ | — |
 | `Ctrl+Shift+,` | налаштування активного профілю (toggle) | — | webview | ✅ | [global-vs-profile-settings-boundary ADR](decisions/2026-08-08-global-vs-profile-settings-boundary.md) |
-| `Alt+1` | секція Streams | — | webview | ✅ | [section-navigation ADR](decisions/2026-06-02-section-navigation-shortcuts.md) |
+| `Alt+1` | секція Streams | — | webview | ✅ | section-navigation ADR |
 | `Alt+2` | секція Browser | — | webview | ✅ | ↑ |
 | `Alt+3` | секція Wishlist | — | webview | ✅ | ↑ |
 | `Alt+4` | секція Schedule | після Phase 3D | webview | ✅ | ↑ |
@@ -352,7 +352,7 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 
 - Код-приклади в обох ADR приведено до конвенції №1 (`e.code`, не `e.key`):
   [context-aware ADR](decisions/2026-06-02-context-aware-keyboard-shortcuts.md) →
-  `e.code === "KeyN"`; [section-navigation ADR](decisions/2026-06-02-section-navigation-shortcuts.md)
+  `e.code === "KeyN"`; section-navigation ADR
   → `"Digit0".."Digit5"` (Numpad не матчиться — Alt+Numpad на Windows це alt-коди).
 - Колізій між запланованими `Alt+0..5` / `Ctrl+N` і наявними `Ctrl+Shift+*`
   (Tier 1) немає.

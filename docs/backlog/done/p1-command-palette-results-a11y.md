@@ -29,13 +29,13 @@ notes:
 
 ## Опис
 
-Виділено з [`command-palette-taxonomy`](p2-command-palette-taxonomy.md) — там лишилися
+Виділено з [`command-palette-taxonomy`](../p2-command-palette-taxonomy.md) — там лишилися
 спірні зміни семантики (категорія-як-`sublabel`, пункти-навігація замість дій). Тут —
 лише те, що цінне вже зараз і ні від чого не залежить.
 
 ### 1. i18n порожнього стану
 
-Зараз рядок «No results» **захардкоджено** ([CommandPalette.tsx:230](../../src/components/common/CommandPalette.tsx#L230)) —
+Зараз рядок «No results» **захардкоджено** ([CommandPalette.tsx:230](../../../src/components/common/CommandPalette.tsx#L230)) —
 не локалізується. Замінити на новий i18n-ключ `palette_no_results` («Нічого не знайдено» / «No results»).
 
 ### 2. Оголошення кількості результатів (NVDA)
@@ -62,6 +62,6 @@ notes:
 
 ## Документи
 
-- Код: [src/components/common/CommandPalette.tsx](../../src/components/common/CommandPalette.tsx) — `filtered`, порожній `<li>`, `<ul role="listbox">`
+- Код: [src/components/common/CommandPalette.tsx](../../../src/components/common/CommandPalette.tsx) — `filtered`, порожній `<li>`, `<ul role="listbox">`
 - Тести: `src/components/common/CommandPalette.test.tsx`
-- Спірна частина, винесена окремо: [command-palette-taxonomy](p2-command-palette-taxonomy.md)
+- Спірна частина, винесена окремо: [command-palette-taxonomy](../p2-command-palette-taxonomy.md)

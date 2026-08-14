@@ -27,7 +27,7 @@ gates: [pnpm test, pnpm vite:build]
 # Довідка: Вішліст і Розклад
 
 > **Контекст:** четвертий із шести записів, що наповнюють вбудовану довідку (F1).
-> Специфікація — [help-content-polish](done/p1-help-content-polish.md). Обидва розділи —
+> Специфікація — [help-content-polish](p1-help-content-polish.md). Обидва розділи —
 > про те, як Tapir працює замість користувача: одне фільтрує треки, друге вмикає запис
 > за годинником. Нових вкладок не потребує: обидві вже існують із заглушками.
 
@@ -83,15 +83,15 @@ gates: [pnpm test, pnpm vite:build]
 
 ## Документи
 
-- [help-content-polish](done/p1-help-content-polish.md) — специфікація (мапа, стиль, розмітка)
-- [CONTEXT.md](../../CONTEXT.md) — терміни «Вішліст і Ігнор-лист», «Метадані ефіру»
+- [help-content-polish](p1-help-content-polish.md) — специфікація (мапа, стиль, розмітка)
+- [CONTEXT.md](../../../CONTEXT.md) — терміни «Вішліст і Ігнор-лист», «Метадані ефіру»
 - `src-tauri/src/wishlist/matcher.rs` — правила збігу (`wildcard_match` — якірний)
 - `src-tauri/src/scheduler/` — `core.rs` (правила вікна й результати), `windows.rs`
   (наступний запуск, запас часу), `timer.rs` (тік і сповіщення), `validation.rs`
 - `src/lib/scheduleFormat.ts` — вісім текстів результату й три причини пропуску
 - `src/components/wishlist/`, `src/components/schedule/`
 - `DEVELOPERS.md` — та сама тема для іншої аудиторії (звірити, не копіювати)
-- Хвости сесії: [wishlist-pattern-hint-anchoring](p2-wishlist-pattern-hint-anchoring.md),
-  [tray-notifications-label-scope](p2-tray-notifications-label-scope.md),
-  [per-stream-ignorelist-ui](p2-per-stream-ignorelist-ui.md) (чому крок правил знято),
-  [wishlist-conditions](p1-wishlist-conditions.md) (чому поля моделі мертві)
+- Хвости сесії: [wishlist-pattern-hint-anchoring](../p2-wishlist-pattern-hint-anchoring.md),
+  [tray-notifications-label-scope](../p2-tray-notifications-label-scope.md),
+  [per-stream-ignorelist-ui](../p2-per-stream-ignorelist-ui.md) (чому крок правил знято),
+  [wishlist-conditions](../p1-wishlist-conditions.md) (чому поля моделі мертві)

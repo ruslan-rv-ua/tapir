@@ -34,7 +34,7 @@ notes:
 # Коміт профілю — один шов замість 31 копії
 
 > **Контекст:** рефакторинг збереження активного профілю. Рішення ухвалені
-> (grilling 2026-08-07), терміни — [CONTEXT.md](../../CONTEXT.md). Читати першим:
+> (grilling 2026-08-07), терміни — [CONTEXT.md](../../../CONTEXT.md). Читати першим:
 > «Прийняті рішення» нижче.
 
 ## Опис
@@ -56,7 +56,7 @@ tokio::task::spawn_blocking(move || snapshot.save())
 1. **Гонка.** Запис відбувається *поза* локом, тож два записувачі, що
    перекрилися, кладуть на диск знімки в порядку, зворотному до порядку мутацій.
    Реальна пара: команда `add_stream` і фонове ICY-перейменування
-   ([manager.rs:699](../../src-tauri/src/stream/manager.rs#L699)). У пам'яті стан
+   ([manager.rs:699](../../../src-tauri/src/stream/manager.rs#L699)). У пам'яті стан
    правильний, на диску — старіший. Втрата видима лише після аварійного
    завершення. Автор уже бачив цей клас проблем: у `graceful_shutdown` є
    коментар «avoid a third profile write / racing saves».
@@ -64,7 +64,7 @@ tokio::task::spawn_blocking(move || snapshot.save())
    `tauri::State`. `portable::profiles_dir()` виводиться з `current_exe()` без
    хука підміни, тому тести `profile.rs` взагалі не торкаються файлової системи —
    перевіряють лише серіалізацію й валідацію імені.
-3. **Розходження форм.** [settings_commands.rs:49](../../src-tauri/src/commands/settings_commands.rs#L49)
+3. **Розходження форм.** [settings_commands.rs:49](../../../src-tauri/src/commands/settings_commands.rs#L49)
    пише на диск **перед** мутацією пам'яті — єдиний сайт із такою інверсією.
    `save_recording_settings` бере при цьому read-лок, а не write.
 
@@ -114,7 +114,7 @@ tokio::task::spawn_blocking(move || snapshot.save())
    запис; гучність пише `persist_session_snapshot` і `graceful_shutdown` — той
    самий шлях, яким уже йде позиція відтворення. Це прибирає запис із гарячого
    шляху (слайдер шле IPC на кожну стрілку) і вирівнює два шляхи зміни гучності:
-   глобальний хоткей [shortcuts.rs:100](../../src-tauri/src/shortcuts.rs#L100)
+   глобальний хоткей [shortcuts.rs:100](../../../src-tauri/src/shortcuts.rs#L100)
    не персистить уже сьогодні, повторюючись кожні 80 мс при затиснутій клавіші.
 10. **`save_recording_settings` зводиться до загальної форми** — пам'ять першою,
     без відкату. Ми пишемо профіль цілком, тож наступний успішний коміт сам
@@ -154,6 +154,6 @@ tokio::task::spawn_blocking(move || snapshot.save())
 
 ## Документи
 
-- [CONTEXT.md](../../CONTEXT.md) — терміни «коміт профілю», «сховище профілю», «знімок», «сесійні поля»
-- [architecture.md §4](../architecture.md) — правила доступу до стану
+- [CONTEXT.md](../../../CONTEXT.md) — терміни «коміт профілю», «сховище профілю», «знімок», «сесійні поля»
+- [architecture.md §4](../../architecture.md) — правила доступу до стану
 - код: `src-tauri/src/profile_store.rs`, `src-tauri/src/app_state.rs`

@@ -23,14 +23,14 @@
   Songs (§7.11.2), Schedule (§7.12.2). Сама палітра — глобальний модальний overlay
   (§7.8). Джерело: FRD-navigation.md (видалено).
 - **Задумана роль палітри ширша за потоки.**
-  [implementation-phases.md:68](../../implementation-phases.md#L68): «CommandPalette
+  [implementation-phases.md:68](../implementation-phases.md#L68): «CommandPalette
   — Ctrl+K: fuzzy search **дій, станцій, пісень**». Модель Spotlight/VS Code.
 - **Поточна реалізація вужча за задум:** палітра містить лише *дії над потоками*
   (add, stop-all, per-stream record/stop). Станцій і пісень у ній ще немає →
   вона недобудована, а не «лише про потоки».
 - **PRD про палітру не згадує** — вона з'явилась на рівні FRD/навігації, не
   продуктових вимог. Це дає свободу переглянути її роль.
-- **Палітра вже глобальна:** `Ctrl+K` ([App.tsx:132](../../../src/App.tsx#L132)),
+- **Палітра вже глобальна:** `Ctrl+K` ([App.tsx:132](../../src/App.tsx#L132)),
   спільна для Streams, Wishlist, Browser. Плюс у кожній шапці є **видима кнопка
   «Команди»**, що дублює `Ctrl+K`.
 - **Екрани й очікувані розміри списків:** Streams — 3–15 (мало); Browser —
@@ -105,7 +105,7 @@
    chip1, chip2]` (5 елементів, індекси 0–4); переіндексувати чипи на
    `toolbarTabIndex(2..4)`; виправити застарілий коментар «7 items (0–6)» → «5
    items (0–4)»
-   ([StreamsPanel.tsx:142-145](../../../src/components/streams/StreamsPanel.tsx#L142-L145)).
+   ([StreamsPanel.tsx:142-145](../../src/components/streams/StreamsPanel.tsx#L142-L145)).
 2. Прибрати кнопку «Команди» з порожнього стану → лишається лише CTA «Додати
    потік»; `emptyBtns` стає одноелементним, зона `streams-empty` спрощується.
 3. Приглушений `kbd`-бейдж «Ctrl+K» поряд із CTA в порожньому стані; не Tab-стоп;
@@ -114,7 +114,7 @@
 **A11y-наслідки:** менше Tab-стопів у тулбарі (6→5) і порожній зоні (2→1);
 `Ctrl+K` працює як раніше.
 
-**Тести** ([StreamsPanel.test.tsx](../../../src/components/streams/StreamsPanel.test.tsx)):
+**Тести** ([StreamsPanel.test.tsx](../../src/components/streams/StreamsPanel.test.tsx)):
 прибрати перевірки кнопки «Команди»; оновити очікувані індекси roving-focus і
 кількість кнопок у порожньому стані; додати: бейдж рендериться і не фокусується,
 `Ctrl+K` досі відкриває палітру.

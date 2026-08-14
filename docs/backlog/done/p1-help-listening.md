@@ -28,7 +28,7 @@ gates: [pnpm test, pnpm vite:build]
 # Довідка: Прослуховування, Записи, Браузер станцій
 
 > **Контекст:** третій із шести записів, що наповнюють вбудовану довідку (F1).
-> Специфікація — [help-content-polish](done/p1-help-content-polish.md). Три розділи разом,
+> Специфікація — [help-content-polish](p1-help-content-polish.md). Три розділи разом,
 > бо всі троє про «слухати»: ефір, збережений файл і прев'ю станції з каталогу — це
 > один плеєр, і різницю між ними треба пояснити в одному місці.
 
@@ -69,13 +69,13 @@ gates: [pnpm test, pnpm vite:build]
       масового шляху (видалення, додавання станцій), контекст «наступного», межі дії
       налаштувань
 - [x] Значок джерела в плеєрі названо дослівно й **не** як «ознака запису»
-      (див. [player-recording-badge-term](p2-player-recording-badge-term.md))
+      (див. [player-recording-badge-term](../p2-player-recording-badge-term.md))
 - [x] Вкладки «Браузер станцій», «Записи», «Прослуховування» на своїх місцях
 - [x] `pnpm test`, `pnpm vite:build` — без помилок
 
 ## Документи
 
-- [help-content-polish](done/p1-help-content-polish.md) — специфікація (мапа, стиль, розмітка)
+- [help-content-polish](p1-help-content-polish.md) — специфікація (мапа, стиль, розмітка)
 - `src-tauri/src/player/` — рушій відтворення
 - `src-tauri/src/playback_control.rs` — пауза/зупинка, продовження з позиції
 - `src/components/player/`, `src/components/songs/`, `src/components/browser/`

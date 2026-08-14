@@ -35,7 +35,7 @@ notes:
 # Довідка: Профілі, Налаштування, Робота у фоні
 
 > **Контекст:** п'ятий із шести записів, що наповнюють вбудовану довідку (F1).
-> Специфікація — [help-content-polish](done/p1-help-content-polish.md); мапу покриття для
+> Специфікація — [help-content-polish](p1-help-content-polish.md); мапу покриття для
 > всіх трьох розділів звірено з кодом під час grilling 2026-08-13, **читати її як є**.
 > Три розділи разом, бо ділять одну межу: що налаштовується для всієї програми, що — для
 > профілю, а що взагалі живе поза вікном (трей, автозапуск, глобальні клавіші, ярлик
@@ -130,9 +130,9 @@ notes:
 
 ## Документи
 
-- [help-content-polish](done/p1-help-content-polish.md) — специфікація (мапа, стиль, розмітка)
-- [ADR: межа глобальних і профільних налаштувань](../decisions/2026-08-08-global-vs-profile-settings-boundary.md)
-- [CONTEXT.md](../../CONTEXT.md) — «налаштування програми» і розведення трьох «авто»
+- [help-content-polish](p1-help-content-polish.md) — специфікація (мапа, стиль, розмітка)
+- [ADR: межа глобальних і профільних налаштувань](../../decisions/2026-08-08-global-vs-profile-settings-boundary.md)
+- [CONTEXT.md](../../../CONTEXT.md) — «налаштування програми» і розведення трьох «авто»
 - `src/components/settings/`, `src/components/profile/` — склад обох діалогів
 - `src-tauri/src/cli.rs` — перелік аргументів командного рядка
 - `src-tauri/src/tray/` — значок, динамічне меню, тости, діалог виходу
@@ -141,8 +141,8 @@ notes:
 
 ### Знахідки, заведені окремими записами
 
-- [tray-layer-not-localized](p1-tray-layer-not-localized.md) — фоновий шар лише українською
-- [hotkey-registration-silent-at-startup](p2-hotkey-registration-silent-at-startup.md)
-- [key-recorder-silent-rejection](p2-key-recorder-silent-rejection.md)
-- [settings-labels-wording](p2-settings-labels-wording.md)
-- [profile-delete-key-dead-end](p2-profile-delete-key-dead-end.md)
+- [tray-layer-not-localized](../p1-tray-layer-not-localized.md) — фоновий шар лише українською
+- [hotkey-registration-silent-at-startup](../p2-hotkey-registration-silent-at-startup.md)
+- [key-recorder-silent-rejection](../p2-key-recorder-silent-rejection.md)
+- [settings-labels-wording](../p2-settings-labels-wording.md)
+- [profile-delete-key-dead-end](../p2-profile-delete-key-dead-end.md)

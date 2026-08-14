@@ -3,7 +3,7 @@
 - **Слаг:** `contextual-ctrl-n`
 - **Дата:** 2026-06-21
 - **Тип:** дизайн (spec) для реалізації
-- **Беклог:** [docs/backlog/p0-contextual-ctrl-n.md](../../backlog/p0-contextual-ctrl-n.md)
+- **Беклог:** docs/backlog/p0-contextual-ctrl-n.md
 - **ADR:** [docs/decisions/2026-06-02-context-aware-keyboard-shortcuts.md](../../decisions/2026-06-02-context-aware-keyboard-shortcuts.md)
 - **Гілка реалізації:** `feature/contextual-ctrl-n` (відгалужена від `develop`); фінал — merge у `develop`, без push, `main` не чіпати.
 

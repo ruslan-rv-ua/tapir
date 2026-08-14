@@ -26,7 +26,7 @@ notes:
 > **Контекст:** спірна ідея реструктуризації пунктів палітри. Не братися в роботу, доки
 > не закрито «Відкриті питання» нижче — вони ставлять під сумнів **саму суть** пропозиції.
 > Готові-до-роботи дрібні покращення винесено окремо в
-> [`command-palette-results-a11y`](p1-command-palette-results-a11y.md).
+> [`command-palette-results-a11y`](done/p1-command-palette-results-a11y.md).
 
 ## Опис
 
@@ -105,5 +105,5 @@ notes:
 ## Документи
 
 - Код: [src/components/common/CommandPalette.tsx](../../src/components/common/CommandPalette.tsx)
-- Винесені готові покращення: [command-palette-results-a11y](p1-command-palette-results-a11y.md)
+- Винесені готові покращення: [command-palette-results-a11y](done/p1-command-palette-results-a11y.md)
 - Пов'язана (розчеплена) фаза, що більше не залежить від цього запису: [command-palette-phase-3](p2-command-palette-phase-3.md)

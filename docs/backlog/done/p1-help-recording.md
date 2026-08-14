@@ -35,7 +35,7 @@ notes:
 # Довідка: Потоки, Як працює запис, Файли й імена
 
 > **Контекст:** другий із шести записів, що наповнюють вбудовану довідку (F1).
-> Специфікація — [help-content-polish](done/p1-help-content-polish.md). Три розділи пишуться
+> Специфікація — [help-content-polish](p1-help-content-polish.md). Три розділи пишуться
 > одним заходом, бо тісно перехресні: запис бере потік і кладе файл за шаблоном у теку.
 > Читати перед роботою — «Рішення, прийняті до реалізації»: карта покриття розійшлася
 > з кодом у трьох місцях, і всі три вже виправлені в парасольці.
@@ -81,7 +81,7 @@ notes:
    над виділенням; `recording.md` володіє **процесом** (старт-стоп одного потоку, статуси,
    метадані ефіру, поділ на треки, перепідключення, місце, підйом після аварії). Перевірка
    шва: «як записати цю станцію?» → `recording`; «як записати всі одразу?» → `streams`.
-   Підстава — [CONTEXT.md](../../CONTEXT.md): «Запис — процес», «Записи — екран».
+   Підстава — [CONTEXT.md](../../../CONTEXT.md): «Запис — процес», «Записи — екран».
 3. **Перепідключення документується як є, код не чіпаємо.** Дефолт `max_retries: 0`
    означає в коді «жодної спроби», а підказка під полем обіцяє «необмежено» — це
    розбіжність шарів, і вона винесена в окремий P0-запис
@@ -123,41 +123,41 @@ notes:
 Числа й поведінку **не перевіряти повторно** — звірено 2026-08-13. Джерела в дужках.
 
 - Перепідключення: `max_retries: 0`, `retry_interval_secs: 5`, `backoff_multiplier: 1.5`,
-  `max_interval_secs: 300` ([profile.rs:131](../../src-tauri/src/profile.rs:131)); нуль
-  розривається одразу ([manager.rs:618](../../src-tauri/src/stream/manager.rs:618), `:1019`).
+  `max_interval_secs: 300` ([profile.rs:131](../../../src-tauri/src/profile.rs:131)); нуль
+  розривається одразу ([manager.rs:618](../../../src-tauri/src/stream/manager.rs:618), `:1019`).
 - Вільне місце: поріг `1` ГБ, `0` вимикає
-  ([stream_commands.rs:94](../../src-tauri/src/commands/stream_commands.rs:94)); перевірка
+  ([stream_commands.rs:94](../../../src-tauri/src/commands/stream_commands.rs:94)); перевірка
   лише **перед стартом** — ручним (`:514`), «Записати все» (`:575`), плановим
-  ([timer.rs:157](../../src-tauri/src/scheduler/timer.rs:157)) і при підйомі після аварії
-  ([crash_recovery.rs:216](../../src-tauri/src/crash_recovery.rs:216)). Заповнення диска на
+  ([timer.rs:157](../../../src-tauri/src/scheduler/timer.rs:157)) і при підйомі після аварії
+  ([crash_recovery.rs:216](../../../src-tauri/src/crash_recovery.rs:216)). Заповнення диска на
   ходу завершує запис помилкою без ретраю
-  ([manager.rs:980](../../src-tauri/src/stream/manager.rs:980)).
+  ([manager.rs:980](../../../src-tauri/src/stream/manager.rs:980)).
 - Фільтри треків: перший неповний трек типово **не зберігається**
   (`skip_first_incomplete_track: true`), мінімальна тривалість — `30000` мс,
   автокорекція регістру — Title Case, увімкнена
-  ([profile.rs:182](../../src-tauri/src/profile.rs:182)).
+  ([profile.rs:182](../../../src-tauri/src/profile.rs:182)).
 - Шаблони за замовчуванням: `%s\%a - %t`, `%s\%a - %t_incomplete`, `%s\stream_%d_%time`
-  ([profile.rs:176](../../src-tauri/src/profile.rs:176)). Український інтерфейс дає файлам
+  ([profile.rs:176](../../../src-tauri/src/profile.rs:176)). Український інтерфейс дає файлам
   англійський суфікс `_incomplete` — так і показувати, дефолт не міняємо.
 - Змінні: `%s`, `%a`, `%t`, `%d` (`YYYY-MM-DD`), `%time` (`HH-MM-SS`), `%n` (номер треку,
-  `001`) ([sanitize.rs:34](../../src-tauri/src/sanitize.rs:34)). `%n` рахує треки **в межах
+  `001`) ([sanitize.rs:34](../../../src-tauri/src/sanitize.rs:34)). `%n` рахує треки **в межах
   одного сеансу запису** — лічильник живе в `Recorder`
-  ([recorder.rs:63](../../src-tauri/src/stream/recorder.rs:63)), який створюється всередині
-  циклу перепідключення ([manager.rs:722](../../src-tauri/src/stream/manager.rs:722)), тож
+  ([recorder.rs:63](../../../src-tauri/src/stream/recorder.rs:63)), який створюється всередині
+  циклу перепідключення ([manager.rs:722](../../../src-tauri/src/stream/manager.rs:722)), тож
   відлік починається заново з кожним стартом.
 - Імена: заборонені `\ / : * ? " < > |` → `_`; хвостові крапки й пробіли обрізаються;
   зарезервовані імена пристроїв (`CON`, `NUL`, `COM1`…) отримують префікс `_`
-  ([sanitize.rs:90](../../src-tauri/src/sanitize.rs:90)). Збіг імен → `_2`, `_3`
-  ([sanitize.rs:144](../../src-tauri/src/sanitize.rs:144)).
+  ([sanitize.rs:90](../../../src-tauri/src/sanitize.rs:90)). Збіг імен → `_2`, `_3`
+  ([sanitize.rs:144](../../../src-tauri/src/sanitize.rs:144)).
 - Теги: виконавець, назва і коментар «Recorded from: <станція>»; альбом при записі
-  порожній ([writer.rs:8](../../src-tauri/src/tags/writer.rs:8),
-  [recorder.rs:173](../../src-tauri/src/stream/recorder.rs:173)).
+  порожній ([writer.rs:8](../../../src-tauri/src/tags/writer.rs:8),
+  [recorder.rs:173](../../../src-tauri/src/stream/recorder.rs:173)).
 - Кнопки панелі дій перейменовуються за виділенням: **Записати все** / **Зупинити запис**
   без виділення, **Записати виділені (N)** / **Зупинити виділені (N)** з ним
-  ([StreamsPanel.tsx:590](../../src/components/streams/StreamsPanel.tsx:590), `:603`).
+  ([StreamsPanel.tsx:590](../../../src/components/streams/StreamsPanel.tsx:590), `:603`).
 - Клавіші екрана: `Enter`/`Space` — головна дія за налаштуванням «Дія при активації
   потоку» (типово запис), `Ctrl+Enter` записати, `Shift+Enter` слухати, `Alt+Enter`
-  відкрити у медіаплеєрі ([StreamList.tsx:276](../../src/components/streams/StreamList.tsx:276)),
+  відкрити у медіаплеєрі ([StreamList.tsx:276](../../../src/components/streams/StreamList.tsx:276)),
   `F2`, `Ctrl+C`, `F5`/`Shift+F5`, `Ctrl+N`.
 - Пошуку по списку потоків **немає** — ні поля, ні `Ctrl+F` у `SHORTCUTS`.
 
@@ -170,7 +170,7 @@ notes:
   "How recording works"; `help_section_templates` → «Файли й імена» / "Files & names".
   Самі ключі та імена файлів **не** перейменовуються.
 - `songs_incomplete_badge` (uk): «незавершений» → «неповний». Англійська без змін.
-  Мок у [SongItem.test.tsx:10](../../src/components/songs/SongItem.test.tsx:10) уже
+  Мок у [SongItem.test.tsx:10](../../../src/components/songs/SongItem.test.tsx:10) уже
   повертає «неповний» — після правки він нарешті збігається з продом.
 - `settings_template_help`: додати `%n` в обидві локалі.
 - Видалити мертві ключі `streams_search_label` і `zone_streams_toolbar` (обидві локалі) —
@@ -179,11 +179,11 @@ notes:
 ## Тести
 
 - **Замінити** `it("resolves the stub sections")` у
-  [helpContent.test.ts:21](../../src/components/common/helpContent.test.ts:21) на перевірку,
+  [helpContent.test.ts:21](../../../src/components/common/helpContent.test.ts:21) на перевірку,
   що **кожен `id` вкладки повертає непорожній HTML в обох локалях**. Наявний тест впаде
   (`recording` перестає бути заглушкою), а перенацілювання на іншу заглушку створило б
   естафету правок для трьох наступних записів. Нова перевірка закриває справжню дірку:
-  [helpContent.ts:20](../../src/components/common/helpContent.ts:20) на відсутньому чи
+  [helpContent.ts:20](../../../src/components/common/helpContent.ts:20) на відсутньому чи
   порожньому розділі мовчки повертає `""`.
 - **Додати** перевірку **послідовності** `id` вкладок проти порядку зі специфікації —
   сьогодні тест звіряє лише множину. Без неї рішення 1 не має захисту, а чотири наступні
@@ -222,11 +222,11 @@ notes:
 
 ## Документи
 
-- [help-content-polish](done/p1-help-content-polish.md) — специфікація (мапа, стиль, розмітка)
+- [help-content-polish](p1-help-content-polish.md) — специфікація (мапа, стиль, розмітка)
 - [reconnect-zero-retries](p0-reconnect-zero-retries.md) — P0 з цієї сесії; полагодить
   семантику нуля й оновить `recording.md`
 - `src-tauri/src/stream/` — з'єднання, поділ на треки, перепідключення
 - `src-tauri/src/sanitize.rs`, `src-tauri/src/naming.rs` — імена файлів і потоків
 - `src/components/streams/` — діалоги додавання, імпорту, експорту, перенесення
 - `src/components/profile/ProfileRecordingTab.tsx` — склад налаштувань запису
-- [CONTEXT.md](../../CONTEXT.md) — терміни предметної області
+- [CONTEXT.md](../../../CONTEXT.md) — терміни предметної області
