@@ -18,6 +18,7 @@ semver; `unscheduled` — наприкінці.
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
 | [hotkeys-expansion](p2-hotkeys-expansion.md) | P2 | planned | ready | M | — | — |
+| [search-focus-hotkey](p2-search-focus-hotkey.md) | P2 | planned | ready | S | [webview-reload-guard](done/p2-webview-reload-guard.md) | — (відщеплено від [hotkeys-expansion](p2-hotkeys-expansion.md) 2026-08-14) |
 | [import-duplicate-metadata-update](p3-import-duplicate-metadata-update.md) | P3 | planned | ready | M | — | — |
 
 ## v0.2.0
