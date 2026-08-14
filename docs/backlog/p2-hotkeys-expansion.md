@@ -10,7 +10,7 @@ target: 0.1.0
 updated: 2026-08-14
 a11y: true
 depends_on: []
-blocks: []
+blocks: [help-muted-playback-symptom]
 touches:
   - src/lib/shortcuts.ts
   - src/lib/playbackAnnounce.ts
