@@ -78,6 +78,24 @@ Output binary: `src-tauri/target/release-fast/tapir.exe` (build-fast) or `src-ta
 Межу продубльовано HTML-коментарем на початку кожного з цих файлів. Цей файл
 (AGENTS.md) — третя аудиторія: агенти й контриб'ютори.
 
+[`docs/help/`](docs/help/) — **вбудована довідка (`F1`)** і **четверта аудиторія**: людина,
+яка зараз усередині застосунку. 14 markdown-файлів × 2 локалі (`uk`/`en`) компілюються на
+збірці у вкладки `HelpDialog`. Формат жорсткіший, ніж у решті документації:
+
+- **таблиць немає** — `.help-content` не має правил для `table`, вийде злиплий текст;
+- **посилань немає жодних** — клік по `http`-посиланню вивів би webview із застосунку без
+  дороги назад (той самий клас аварії, від якого стоїть `useWebviewGuard`); перехресні
+  згадки — словами;
+- заголовки лише `##`/`###`, жирний — лише для дослівних міток інтерфейсу.
+
+Принцип, стиль-гайд, конвенції розмітки й мапа «фіча → файл» —
+[help-content-polish](docs/backlog/done/p1-help-content-polish.md). **Читати перед
+будь-якою правкою `docs/help/`.**
+
+**Запис, що змінює видиму поведінку, оновлює відповідний файл `docs/help/`** — інакше
+довідка тихо починає брехати, і помітить це користувач, а не тест. У беклозі це окремий
+пункт критеріїв готовності, див. [_TEMPLATE.md](docs/backlog/_TEMPLATE.md).
+
 All project documentation lives in `docs/`. Key files:
 
 - [PRD.md](docs/PRD.md) — product requirements
@@ -90,8 +108,7 @@ All project documentation lives in `docs/`. Key files:
 
 **Manual testing** (`docs/testing/`):
 - [test-streams.md](docs/testing/test-streams.md) — тестові URL радіо-потоків
-- [nvda-profile-scoped-settings.md](docs/testing/nvda-profile-scoped-settings.md) — прогін профільних налаштувань і діалогу профілю
-- [nvda-profile-settings-silent-numeric-save.md](docs/testing/nvda-profile-settings-silent-numeric-save.md) — повторне оголошення того самого тексту (спільний `LiveAnnouncer`)
+
 Чеклісти NVDA-прогону (`docs/testing/nvda-<slug>.md`) створюються для записів беклогу
 з `a11y: true` і видаляються на прийманні — метод і шаблон живуть у скілі
 `.claude/skills/writing-nvda-checklists/`.

@@ -61,6 +61,7 @@ export function HelpDialog() {
               <Tab id="templates" className={TAB_CLS}>{m.help_section_templates()}</Tab>
               <Tab id="settings" className={TAB_CLS}>{m.help_section_settings()}</Tab>
               <Tab id="background" className={TAB_CLS}>{m.help_section_background()}</Tab>
+              <Tab id="troubleshooting" className={TAB_CLS}>{m.help_section_troubleshooting()}</Tab>
             </TabList>
             <div className="flex-1 overflow-y-auto px-6 py-4">
               <TabPanel id="overview">
@@ -82,6 +83,7 @@ export function HelpDialog() {
               <TabPanel id="templates"><HelpContent html={getHelpHtml(locale, "templates")} /></TabPanel>
               <TabPanel id="settings"><HelpContent html={getHelpHtml(locale, "settings")} /></TabPanel>
               <TabPanel id="background"><HelpContent html={getHelpHtml(locale, "background")} /></TabPanel>
+              <TabPanel id="troubleshooting"><HelpContent html={getHelpHtml(locale, "troubleshooting")} /></TabPanel>
             </div>
           </Tabs>
         </Dialog>

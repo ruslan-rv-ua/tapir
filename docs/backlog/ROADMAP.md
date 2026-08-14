@@ -19,7 +19,7 @@ semver; `unscheduled` — наприкінці.
 |------|---|-----|------|---------|---------------|-------------|
 | [hotkeys-expansion](p2-hotkeys-expansion.md) | P2 | planned | ready | M | — | — |
 | [import-duplicate-metadata-update](p3-import-duplicate-metadata-update.md) | P3 | planned | ready | M | — | — |
-| [help-troubleshooting](p1-help-troubleshooting.md) | P1 | planned | ready | S | усі п'ять `help-*` вище | — |
+| [help-troubleshooting](p1-help-troubleshooting.md) | P1 | planned | ready | S | усі п'ять `help-*` (виконано) | — |
 
 ## v0.2.0
 
@@ -51,6 +51,8 @@ semver; `unscheduled` — наприкінці.
 | [key-recorder-silent-rejection](p2-key-recorder-silent-rejection.md) | P2 | planned | ready | S | — | — (знахідка grilling help-config: непридатна клавіша ігнорується без відмови) |
 | [settings-labels-wording](p2-settings-labels-wording.md) | P2 | planned | ready | S | — | — (знахідка grilling help-config: локалі автовідтворення обіцяють різне; «до tray» латиницею) |
 | [profile-delete-key-dead-end](p2-profile-delete-key-dead-end.md) | P2 | planned | ready | S | — | — (знахідка grilling help-config: `Delete` на Default/активному → нелокалізоване `Forbidden: …`) |
+| [unknown-format-falls-back-to-mp3](p2-unknown-format-falls-back-to-mp3.md) | P2 | planned | ready | S | — | — (знахідка grilling help-troubleshooting: нерозпізнаний `Content-Type` мовчки стає MP3, файл дістає чуже розширення) |
+| [about-app-info](p2-about-app-info.md) | P2 | planned | ready | S | — | — (знахідка grilling help-troubleshooting: ні версії, ні адреси проєкту в інтерфейсі — а довідка веде користувача саме до звіту про проблему) |
 | [sleep-timer](p2-sleep-timer.md) | P2 | idea | draft | S | — | — |
 | [pause-recording](p2-pause-recording.md) | P2 | idea | draft | M | — | — |
 | [focus-on-screen-open-option](p2-focus-on-screen-open-option.md) | P2 | idea | draft | S | — | — |
