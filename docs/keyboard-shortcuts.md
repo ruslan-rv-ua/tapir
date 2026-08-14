@@ -149,7 +149,7 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 | `Ctrl+N` | Додати патерн до wishlist | `$activeSection === "wishlist"` | webview | ⬜ | ↑ |
 | `Ctrl+N` | Новий профіль | `$activeSection === "profiles"` | webview | ⬜ | ↑ |
 | `F1` | довідник гарячих клавіш (open-once, модаль з реєстру) | — | webview | ✅ | відкривність (a11y) |
-| `Ctrl+M` | вимкнути/увімкнути звук (toggle; анонс **стану**) | плеєр не зупинено | webview | ✅ | TapinRadio `Ctrl+M`, YouTube `M`; [hotkeys-expansion](backlog/p2-hotkeys-expansion.md) |
+| `Ctrl+M` | вимкнути/увімкнути звук (toggle; анонс **стану**) | плеєр не зупинено | webview | ✅ | TapinRadio `Ctrl+M`, YouTube `M`; [hotkeys-expansion](backlog/done/p2-hotkeys-expansion.md) |
 | `F9` | сказати, що зараз відтворюється (фокус не рухається) | — | webview | ✅ | TapinRadio `F11` (Announce currently playing song); `F11` тут зайнятий fullscreen'ом |
 
 > `Alt+digit` нумерує секції за порядком в ActivityBar; `Alt+0` — Profiles

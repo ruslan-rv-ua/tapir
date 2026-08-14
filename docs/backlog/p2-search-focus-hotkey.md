@@ -32,7 +32,7 @@ notes:
 # Ctrl+F — фокус на пошук поточного екрана (+ гасіння Find bar WebView2)
 
 > **Контекст:** відщеплено 2026-08-14 від
-> [hotkeys-expansion](p2-hotkeys-expansion.md) (друга хвиля аудиту шорткатів,
+> [hotkeys-expansion](done/p2-hotkeys-expansion.md) (друга хвиля аудиту шорткатів,
 > рішення 2026-07-23). Виправляє також підставу, на якій `Ctrl+F` було виключено
 > з переліку гарда в [webview-reload-guard](done/p2-webview-reload-guard.md) §8.
 
@@ -132,7 +132,7 @@ KeyRecorder — `Ctrl+F` долітає до WebView2 і відкриває Find
 - Код: `src/hooks/useZoneNavigation.ts` (`ZoneEntry`), `src/hooks/useFocusBoundary.ts`
   (`restoreFocus` — чому «фокус зони» не годиться), `src/App.tsx` (`orderedZonesRef`,
   `ShortcutActions`), `src/lib/webviewAccelerators.ts`
-- Суміжні: [hotkeys-expansion](p2-hotkeys-expansion.md) (звідки відщеплено),
+- Суміжні: [hotkeys-expansion](done/p2-hotkeys-expansion.md) (звідки відщеплено),
   [p2-webview-reload-guard.md](done/p2-webview-reload-guard.md) (§7 системний вимикач,
   §8 перелік акселераторів — підставу для `Ctrl+F` виправляє цей запис),
   [p2-webview-zoom-hotkeys.md](p2-webview-zoom-hotkeys.md) (сусідній випадок

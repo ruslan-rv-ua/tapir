@@ -3,11 +3,12 @@ slug: hotkeys-expansion
 title: "Клавіші плеєра і рядків Songs: Ctrl+M (mute), F9 (що грає), F4 (теги), F2 (перейменувати)"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: M
 kind: feature
 target: 0.1.0
 updated: 2026-08-14
+completed: 2026-08-14
 a11y: true
 depends_on: []
 blocks: [help-muted-playback-symptom]
@@ -42,8 +43,8 @@ notes:
 # Клавіші плеєра і рядків Songs: Ctrl+M (mute), F9 (що грає), F4 (теги), F2 (перейменувати)
 
 > **Контекст:** друга хвиля аудиту шорткатів, рішення 2026-07-23 (перша —
-> [streams-transfer-hotkeys](done/p2-streams-transfer-hotkeys.md): F5/Shift+F5).
-> Гриль 2026-08-14 відщепив `Ctrl+F` у [search-focus-hotkey](p2-search-focus-hotkey.md)
+> [streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md): F5/Shift+F5).
+> Гриль 2026-08-14 відщепив `Ctrl+F` у [search-focus-hotkey](../p2-search-focus-hotkey.md)
 > і додав сюди `F2` на Songs; спека — 2026-08-14, нижче.
 
 ## Проблема
@@ -61,7 +62,7 @@ notes:
    виникає постійно — після паузи в роботі, після перемикання станції, після
    випадкового натискання.
 3. **На екрані Записів клавіатура німа щодо самого файлу.** Перейменування й
-   редактор [тегів](../../CONTEXT.md) є **тільки** в ⋯-меню рядка, хоча обидві
+   редактор [тегів](../../../CONTEXT.md) є **тільки** в ⋯-меню рядка, хоча обидві
    дії — найчастіші на цьому екрані.
 4. **`F2` на Записах уже сьогодні з'їдається без дії.** Хук списку робить
    `consume()` на інтенті `edit`, а гілки в списку Записів немає: клавіша
@@ -112,7 +113,7 @@ notes:
 10. Як користувач, я хочу, щоб пауза називалася паузою, щоб не плутати її із
     зупинкою.
 11. Як користувач, я хочу почути назву станції з каталогу, коли слухаю
-    [прев'ю](../../CONTEXT.md), бо це такий самий вид джерела, як два інші.
+    [прев'ю](../../../CONTEXT.md), бо це такий самий вид джерела, як два інші.
 12. Як користувач, я хочу почути «нічого не відтворюється», коли нічого не
     відтворюється, а не тишу у відповідь на натискання.
 13. Як користувач, я хочу, щоб відповідь згадала **вимкнений звук**, коли він
@@ -137,7 +138,7 @@ notes:
 
 ## Прийняті рішення (гриль 2026-08-14)
 
-1. **`Ctrl+F` відщеплено** в [search-focus-hotkey](p2-search-focus-hotkey.md):
+1. **`Ctrl+F` відщеплено** в [search-focus-hotkey](../p2-search-focus-hotkey.md):
    йому потрібні нова інфраструктура фокуса й правка переліку гарда
    акселераторів, тобто інший ризик і інший обсяг.
 2. **`F9` — одна предметна область.** Стан запису в речення не входить: «що я
@@ -261,7 +262,7 @@ export async function toggleMute(
 
 ### 7. `edit-content` — обидва union'и, гілка лише в списку Записів
 
-За §2 [streams-transfer-hotkeys](done/p2-streams-transfer-hotkeys.md) обидва
+За §2 [streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md) обидва
 типи розширюються однаково, імена збігаються, тож інтент іде в `onAction` без
 перекладу:
 
@@ -282,7 +283,7 @@ export type ActionType = … | 'edit' | 'edit-content' | …;
 
 `aria-keyshortcuts` рядка Записів стає `"F2 F4 Alt+Enter Control+Enter"` —
 доповнення наявного рядка від
-[open-song-with-default-app](done/p1-open-song-with-default-app.md).
+[open-song-with-default-app](p1-open-song-with-default-app.md).
 
 ### 8. Реєстр і довідник
 
@@ -371,8 +372,8 @@ streams-transfer): якщо видалити гілку в списку, хук�
 - [x] `docs/help/` (правило AGENTS.md): `player.md` — `Ctrl+M` і `F9`,
       `songs.md` — `F2`/`F4`; обидві локалі
 - [x] Тести за чотирма швами вище; `useCompositeList.test.tsx` не змінено
-- [ ] NVDA-прогін (мануально, перед релізом):
-      [nvda-hotkeys-expansion.md](../testing/nvda-hotkeys-expansion.md)
+- [x] NVDA-прогін (мануально, перед релізом): **проведено 2026-08-14, усі 13
+      сценаріїв пройдено, зауважень немає**; чекліст видалено при прийманні
 - [x] `pnpm test` без регресій, `pnpm vite:build` зелений
 
 ## Поза скоупом
@@ -396,7 +397,7 @@ streams-transfer): якщо видалити гілку в списку, хук�
 - **Голі літери (Winamp-стиль Z/X/C/V)** — конфлікт із текстовими полями та
   browse mode; заборонено інваріантом реєстру.
 - **F3/F7/F11/F12** — акселератори WebView2; подавлення F3/F7/F11 — скоуп
-  [webview-reload-guard](done/p2-webview-reload-guard.md). NVDA-прогін того
+  [webview-reload-guard](p2-webview-reload-guard.md). NVDA-прогін того
   запису (2026-08-07, сценарій 15, Edge) підтвердив: F3/F7 інертні — у пулі
   вільних голих F-клавіш; F11 зайнятий (fullscreen) — лишається виключеним.
 
@@ -406,7 +407,7 @@ streams-transfer): якщо видалити гілку в списку, хук�
   `role="log"` (e332160 у develop), тож `F9` двічі поспіль із незмінним станом
   озвучиться обидва рази. Обхідних маневрів не потрібно.
 - **Черговість із сусіднім записом:** цей — першим,
-  [search-focus-hotkey](p2-search-focus-hotkey.md) — другим. Правило пріоритету
+  [search-focus-hotkey](../p2-search-focus-hotkey.md) — другим. Правило пріоритету
   анонсів і рядок конвенцій з'являються тут, а той запис на них спирається;
   обидва правлять `shortcuts.ts` і `keyboard-shortcuts.md`, тож паралельно їх
   вести не варто.
@@ -418,7 +419,7 @@ streams-transfer): якщо видалити гілку в списку, хук�
 
 1. **`Ctrl+M` при зупиненому плеєрі — тихий no-op.** Спека гейта не називала, але
    він знайшовся при реалізації: `set_volume` **завжди** емітить `player-status`
-   ([engine.rs](../../src-tauri/src/player/engine.rs)), а `applyMuteCleanup` на
+   ([engine.rs](../../../src-tauri/src/player/engine.rs)), а `applyMuteCleanup` на
    статусі `stopped` із `muted` відновлює гучність — тобто mute на зупиненому
    плеєрі скасував би сам себе, і «Звук вимкнено» стало б неправдою через подію.
    Гейт живе в `muteControl.toggleMute` (одне місце на обох викликачів) і
@@ -439,7 +440,7 @@ streams-transfer): якщо видалити гілку в списку, хук�
 4. **`trackLabel` — новий спільний рендер «виконавець — назва»** (знахідка
    код-рев'ю). Rust-парсер ICY ділить рядок лише по `" - "`, тож станція, що
    передає саму назву треку, приходить із порожнім `artist`
-   ([connection.rs](../../src-tauri/src/stream/connection.rs)) — і пряма
+   ([connection.rs](../../../src-tauri/src/stream/connection.rs)) — і пряма
    інтерполяція в `describePlayback` озвучувала б «Станція —  — Назва». За §3
    гриля («один власник формулювання») правильний рендер винесено з
    `windowTitle.ts` у `playbackAnnounce.ts` як `trackLabel`, обидва місця
@@ -455,21 +456,21 @@ streams-transfer): якщо видалити гілку в списку, хук�
 
 ## Документи
 
-- Реєстр: [docs/keyboard-shortcuts.md](../keyboard-shortcuts.md) (Tier 2 / 2′,
+- Реєстр: [docs/keyboard-shortcuts.md](../../keyboard-shortcuts.md) (Tier 2 / 2′,
   конвенції: `e.code`, capture, `e.repeat`)
-- Словник: [CONTEXT.md](../../CONTEXT.md) — «Теги» (проти «метаданих ефіру»), «Прев'ю»
+- Словник: [CONTEXT.md](../../../CONTEXT.md) — «Теги» (проти «метаданих ефіру»), «Прев'ю»
 - Код: `src/lib/playbackAnnounce.ts` (майбутній дім `sourceName` /
   `describePlayback`), `src/lib/transportControl.ts` (зразок модуля дії),
   `src/lib/formatters.ts` (`formatDuration`), `src/lib/shortcuts.ts` (реєстр +
   reserved), `src/hooks/useCompositeList.ts` (`resolveKeyAction`, прецеденти
   `F2`/`F5`), `src/stores/player.ts` (`$playerStatus` / `$muteState`)
-- Суміжні: [search-focus-hotkey](p2-search-focus-hotkey.md) (відщеплений `Ctrl+F`),
-  [p2-streams-transfer-hotkeys.md](done/p2-streams-transfer-hotkeys.md) (§1 шов,
+- Суміжні: [search-focus-hotkey](../p2-search-focus-hotkey.md) (відщеплений `Ctrl+F`),
+  [p2-streams-transfer-hotkeys.md](p2-streams-transfer-hotkeys.md) (§1 шов,
   §2 розширення union'ів),
-  [p2-webview-reload-guard.md](done/p2-webview-reload-guard.md) (F3/F7/F11),
-  [p1-open-song-with-default-app.md](done/p1-open-song-with-default-app.md)
+  [p2-webview-reload-guard.md](p2-webview-reload-guard.md) (F3/F7/F11),
+  [p1-open-song-with-default-app.md](p1-open-song-with-default-app.md)
   (`aria-keyshortcuts` рядка Записів),
-  [p3-screen-reader-direct-speech.md](p3-screen-reader-direct-speech.md) (`F9` —
+  [p3-screen-reader-direct-speech.md](../p3-screen-reader-direct-speech.md) (`F9` —
   споріднений, не залежить)
 - [TapinRadio shortcut keys — pc-audio](https://www.mail-archive.com/pc-audio@pc-audio.org/msg56302.html) ·
   [TapinRadio help](http://www.tapinradio.com/help/lessons/General.html)

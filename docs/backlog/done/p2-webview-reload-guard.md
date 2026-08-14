@@ -152,7 +152,7 @@ Reload (тобто ще один вхід у ту саму пастку) і кр
     автотестом, а не лише ручним прогоном.
 24. Як розробник, я хочу заміряти на прогоні **фактичну** поведінку `F3`/`F7`/`F11`
     у WebView2, щоб знати, чи вони справді зайняті — і повернути висновок у
-    пул вільних F-клавіш [hotkeys-expansion](../p2-hotkeys-expansion.md).
+    пул вільних F-клавіш [hotkeys-expansion](p2-hotkeys-expansion.md).
 
 ## Прийняті рішення (grilling 2026-08-07)
 
@@ -256,7 +256,7 @@ Document-level `preventDefault()` вимикає обидва входи скр�
 
 **Свідомо поза переліком:** `Ctrl+Plus`/`Ctrl+Minus`/`Ctrl+0` (§2), `Alt+F4`
 (закриття вікна — системна клавіша, не браузерний акселератор), `Ctrl+F`
-(споживає Tier-2 диспетчер, [hotkeys-expansion](../p2-hotkeys-expansion.md)),
+(споживає Tier-2 диспетчер, [hotkeys-expansion](p2-hotkeys-expansion.md)),
 `F12` (у прод-збірці Tauri мертвий без `devtools`-feature), `Ctrl+P`/`Ctrl+S`
 (шкідливого ефекту, як у reload/fullscreen, не мають).
 
@@ -415,7 +415,7 @@ debug-збірці й перевіряється тим, що debug-запуск
       немає
 - [x] Прогін заміряв **фактичну** поведінку `F3`/`F7`/`F11` у WebView2: F3/F7
       інертні (повернуто в пул вільних F-клавіш —
-      [hotkeys-expansion](../p2-hotkeys-expansion.md)), F11 зайнятий (fullscreen)
+      [hotkeys-expansion](p2-hotkeys-expansion.md)), F11 зайнятий (fullscreen)
 
 ## Додаткові нотатки
 
@@ -439,7 +439,7 @@ debug-збірці й перевіряється тим, що debug-запуск
 ## Документи
 
 - Дослідження-джерело: [p2-streams-transfer-hotkeys.md](p2-streams-transfer-hotkeys.md);
-  друга хвиля (F3/F7/F11, Ctrl+F у диспетчері): [p2-hotkeys-expansion.md](../p2-hotkeys-expansion.md)
+  друга хвиля (F3/F7/F11, Ctrl+F у диспетчері): [p2-hotkeys-expansion.md](p2-hotkeys-expansion.md)
 - Відгалуження цього запису: [p2-webview-zoom-hotkeys.md](../p2-webview-zoom-hotkeys.md) (§2),
   [p3-window-fullscreen-f11.md](../p3-window-fullscreen-f11.md) (§5)
 - Код: `src/App.tsx`, `src/hooks/useGlobalShortcuts.ts` (сусідній прецедент

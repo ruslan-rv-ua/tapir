@@ -40,7 +40,7 @@ notes:
 її почути, треба дійти `F6` у зону плеєра й пройти стрілками до неї. Тобто підтвердження
 здогадки коштує дорожче, ніж сама здогадка.
 
-[hotkeys-expansion](p2-hotkeys-expansion.md) прогалину не створив, але зробив її
+[hotkeys-expansion](done/p2-hotkeys-expansion.md) прогалину не створив, але зробив її
 ймовірнішою й водночас дав дешевий вихід:
 
 - `Ctrl+M` тепер працює **з будь-якого місця вікна**, тож випадкове натискання
@@ -89,7 +89,7 @@ notes:
 
 - **Показувати вимкнений звук поза кнопкою плеєра** (значок у рядку стану, суфікс у
   заголовку вікна, окреме оголошення) — це зміна поведінки, а не довідки. Якщо
-  прогін [hotkeys-expansion](p2-hotkeys-expansion.md) покаже, що самої `F9` мало, —
+  прогін [hotkeys-expansion](done/p2-hotkeys-expansion.md) покаже, що самої `F9` мало, —
   це окремий запис, і починати його треба з питання «чи не досить `F9`».
 - **Решта причин тиші, які лікує сам застосунок** (буферизація на старті потоку,
   нульова гучність слайдера) — у розділі свідомо немає позицій для того, що минає
@@ -103,7 +103,7 @@ notes:
   [en](../help/en/troubleshooting.md)
 - Специфікація довідки: [help-content-polish](done/p1-help-content-polish.md)
   (мапа `troubleshooting.md`, жанр «відповідь без механіки», правило порядку)
-- Суміжні: [hotkeys-expansion](p2-hotkeys-expansion.md) (`Ctrl+M`, `F9`),
+- Суміжні: [hotkeys-expansion](done/p2-hotkeys-expansion.md) (`Ctrl+M`, `F9`),
   [help-troubleshooting](done/p1-help-troubleshooting.md) (розділ як такий)
 - Код: `src/lib/muteControl.ts` (дія й тексти стану), `src/stores/player.ts`
   (`$muteState`), `src/components/player/PlayerPanel.tsx` (кнопка — єдиний

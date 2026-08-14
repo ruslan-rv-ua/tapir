@@ -60,7 +60,7 @@ NVDA перестала читати заголовок вікна. Тому в 
    декорації й заголовок — і, можливо, покриває всю реальну потребу.
 3. Якщо робимо — лишити `F11` (конвенція браузерів і Провідника) чи перенести
    на комбінацію, щоб не витрачати дефіцитну голу F-клавішу з пулу
-   [hotkeys-expansion](p2-hotkeys-expansion.md)?
+   [hotkeys-expansion](done/p2-hotkeys-expansion.md)?
 
 ## Критерії готовності
 
@@ -77,5 +77,5 @@ _Формулювати після відповіді на «Відкриті п
   рішення» §5)
 - Суміжний: [p2-webview-zoom-hotkeys.md](p2-webview-zoom-hotkeys.md) (та сама
   аудиторія — слабозорі)
-- Пул вільних F-клавіш: [p2-hotkeys-expansion.md](p2-hotkeys-expansion.md)
+- Пул вільних F-клавіш: [p2-hotkeys-expansion.md](done/p2-hotkeys-expansion.md)
 - [Tauri `Window::set_fullscreen`](https://docs.rs/tauri/latest/tauri/window/struct.Window.html#method.set_fullscreen)
