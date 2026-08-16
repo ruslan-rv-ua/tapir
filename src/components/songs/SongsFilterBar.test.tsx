@@ -1,8 +1,9 @@
 import { createRef } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, act } from "@testing-library/react";
+import { render, act, screen } from "@testing-library/react";
 import { $songsQuery, $songsStation, $songsSort } from "../../stores/songs";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
+import * as m from "../../i18n/paraglide/messages";
 import { SongsFilterBar } from "./SongsFilterBar";
 
 vi.mock("../../lib/tauri", () => ({ listSavedSongs: vi.fn().mockResolvedValue([]) }));
@@ -22,8 +23,8 @@ function renderBar() {
 
 describe("SongsFilterBar — focusSearch (Ctrl+F)", () => {
   it("lands focus in the search input, not on the sort <select> last touched", () => {
-    const { ref, input, } = renderBar();
-    const sort = document.querySelectorAll("select")[1] as HTMLSelectElement;
+    const { ref, input } = renderBar();
+    const sort = screen.getByLabelText(m.songs_sort_label());
     act(() => sort.focus());
     expect(document.activeElement).toBe(sort);
 

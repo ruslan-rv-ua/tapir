@@ -1,6 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { it, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent, waitFor, act } from "@testing-library/react";
+import { useCallback, useRef } from "react";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
+import { useGlobalShortcuts } from "../../hooks/useGlobalShortcuts";
 import * as m from "../../i18n/paraglide/messages";
 import { $popularStations, $stationSelection } from "../../stores/browser";
 import { $announcer } from "../../stores/announcer";
@@ -12,6 +14,8 @@ vi.mock("../../lib/tauri", () => ({
   getBrowserFilters: vi.fn().mockResolvedValue({ countries: [], languages: [], codecs: [] }),
   searchStationsIpc: vi.fn().mockResolvedValue([mk("u1"), mk("u2")]),
   addStationsFromBrowser: vi.fn().mockResolvedValue([]),
+  // Pulled in by useGlobalShortcuts (Ctrl+M → muteControl) in the wired test below.
+  setVolume: vi.fn().mockResolvedValue(undefined),
 }));
 
 function mk(uuid: string): StationResult {
@@ -43,6 +47,27 @@ it("registers the search zone as this section's Ctrl+F target", async () => {
   document.body.appendChild(elsewhere);
   act(() => elsewhere.focus());
   act(() => searchable[0].focusSearch!());
+  expect((document.activeElement as HTMLInputElement).placeholder)
+    .toBe(m.browser_search_placeholder());
+});
+
+// End-to-end for the criterion "фокус лендиться в поле пошуку з будь-якої зони
+// секції": the real panel registers the real zones, and the real Tier-2 listener
+// dispatches a real Ctrl+F. App.tsx wires exactly these two together.
+it("Ctrl+F lands focus in the search field from another zone of the section", async () => {
+  function Wired() {
+    const zonesRef = useRef<ZoneEntry[]>([]);
+    const onZonesChange = useCallback((z: ZoneEntry[]) => { zonesRef.current = z; }, []);
+    useGlobalShortcuts(zonesRef);
+    return <BrowserPanel onZonesChange={onZonesChange} exitZone={vi.fn()} />;
+  }
+  const { getByText } = render(<Wired />);
+  await waitFor(() => getByText(m.select_all()));
+
+  // Stand in the selection toolbar — a zone with no search field of its own.
+  act(() => getByText(m.select_all()).focus());
+  fireEvent.keyDown(getByText(m.select_all()), { code: "KeyF", ctrlKey: true });
+
   expect((document.activeElement as HTMLInputElement).placeholder)
     .toBe(m.browser_search_placeholder());
 });

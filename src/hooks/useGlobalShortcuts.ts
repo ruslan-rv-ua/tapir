@@ -109,12 +109,12 @@ export function useGlobalShortcuts(orderedZonesRef: RefObject<ZoneEntry[]>): voi
       // Focus the search field of the current screen. Asking the zone to focus
       // itself would land on whatever the user last touched there (the sort
       // <select>, say) — see restoreFocus in useFocusBoundary — hence a method of
-      // its own, implemented only by zones that own a search field. Two screens
-      // have none; silence there is indistinguishable from a wedged app, so they
-      // get a short reply instead.
+      // its own, implemented only by zones that own a search field. Only Browser
+      // and Songs do; everywhere else silence would be indistinguishable from a
+      // wedged app, so the key answers with a short reply instead.
       focusSearch: () => {
-        const zone = orderedZonesRef.current?.find((z) => z.focusSearch);
-        if (zone) zone.focusSearch!();
+        const zone = orderedZonesRef.current.find((z) => z.focusSearch);
+        if (zone?.focusSearch) zone.focusSearch();
         else announce(m.search_none_on_screen(), "assertive");
       },
     };

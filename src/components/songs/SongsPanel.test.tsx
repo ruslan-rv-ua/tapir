@@ -6,13 +6,17 @@ import { $songs, $songsSelection, $songsQuery, $songsStation } from "../../store
 import { $announcer } from "../../stores/announcer";
 import { replaceSelection } from "../../stores/selection";
 import type { Song } from "../../types/song";
+import { useCallback, useRef } from "react";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
+import { useGlobalShortcuts } from "../../hooks/useGlobalShortcuts";
 import * as tauri from "../../lib/tauri";
 import { SongsPanel } from "./SongsPanel";
 
 vi.mock("../../lib/tauri", () => ({
   listSavedSongs: vi.fn().mockResolvedValue([]),
   deleteSongs: vi.fn().mockResolvedValue({ deleted: [], skipped: [] }),
+  // Pulled in by useGlobalShortcuts (Ctrl+M → muteControl) in the wired test below.
+  setVolume: vi.fn().mockResolvedValue(undefined),
 }));
 
 // SongsPanel uses useTauriEvent; stub it so jsdom doesn't try to call the
@@ -43,6 +47,23 @@ describe("SongsPanel — Ctrl+F target", () => {
 
     act(() => searchable[0].focusSearch!());
     expect((document.activeElement as HTMLInputElement).type).toBe("search");
+  });
+
+  // Same end-to-end as BrowserPanel's: real zones + the real Tier-2 listener,
+  // wired the way App.tsx wires them.
+  it("Ctrl+F lands focus in the search field from another zone of the section", () => {
+    function Wired() {
+      const zonesRef = useRef<ZoneEntry[]>([]);
+      const onZonesChange = useCallback((z: ZoneEntry[]) => { zonesRef.current = z; }, []);
+      useGlobalShortcuts(zonesRef);
+      return <SongsPanel onZonesChange={onZonesChange} exitZone={vi.fn()} />;
+    }
+    const { getByText } = render(<Wired />);
+    act(() => getByText(m.select_all()).focus());
+    fireEvent.keyDown(getByText(m.select_all()), { code: "KeyF", ctrlKey: true });
+
+    expect((document.activeElement as HTMLInputElement).placeholder)
+      .toBe(m.songs_search_placeholder());
   });
 });
 

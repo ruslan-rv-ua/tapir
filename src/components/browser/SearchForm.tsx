@@ -10,6 +10,7 @@ import {
   resetSearch,
 } from "../../stores/browser";
 import { useFocusBoundary } from "../../hooks/useFocusBoundary";
+import { focusOrSelect } from "../../lib/focusOrSelect";
 import { ScreenZone } from "../layout/ScreenZone";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import type { SearchParams } from "../../lib/tauri";
@@ -34,14 +35,8 @@ export const SearchForm = forwardRef<ZoneEntry, SearchFormProps>(function Search
 
   useEffect(() => { refreshBoundary(); }, [filters, isActive, refreshBoundary]);
 
-  // Ctrl+F target. Browser convention: already in the field ⇒ select the text
-  // instead of a no-op focus, so a second press starts a new query.
-  const focusSearch = useCallback(() => {
-    const input = searchInputRef.current;
-    if (!input) return;
-    if (document.activeElement === input) input.select();
-    else input.focus();
-  }, []);
+  // Ctrl+F target: the input itself, not the zone.
+  const focusSearch = useCallback(() => focusOrSelect(searchInputRef.current), []);
 
   useImperativeHandle(ref, () => ({
     id: "browser-search",

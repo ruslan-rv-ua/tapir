@@ -4,6 +4,7 @@ import {
   $songsQuery, $songsStation, $songsSort, $songsStations,
 } from "../../stores/songs";
 import { useFocusBoundary } from "../../hooks/useFocusBoundary";
+import { focusOrSelect } from "../../lib/focusOrSelect";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as m from "../../i18n/paraglide/messages";
 
@@ -37,13 +38,8 @@ export const SongsFilterBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) =
 
   // Ctrl+F target — the search input itself, never `restoreFocus`: that one
   // returns to the last-touched control of the zone, which here is as likely to
-  // be the station or sort <select>. Already in the field ⇒ select the text.
-  const focusSearch = useCallback(() => {
-    const input = searchInputRef.current;
-    if (!input) return;
-    if (document.activeElement === input) input.select();
-    else input.focus();
-  }, []);
+  // be the station or sort <select>.
+  const focusSearch = useCallback(() => focusOrSelect(searchInputRef.current), []);
 
   useImperativeHandle(ref, () => ({
     id: "songs-filter",
