@@ -18,6 +18,7 @@ semver; `unscheduled` — наприкінці.
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
 | [help-muted-playback-symptom](p2-help-muted-playback-symptom.md) | P2 | planned | ready | S | [hotkeys-expansion](done/p2-hotkeys-expansion.md), [help-troubleshooting](done/p1-help-troubleshooting.md) | — |
+| [zero-volume-reads-as-muted](p2-zero-volume-reads-as-muted.md) | P2 | planned | ready | M | — | — (знахідка grilling help-muted-playback-symptom: нульова гучність дає ту саму тишу, але ні кнопка, ні `F9` про неї не знають; `Ctrl+M` при нулі оголошує «Звук вимкнено» беззвучному плеєру — [ADR](../decisions/2026-08-16-silence-is-mute-or-zero-volume.md)) |
 | [search-focus-hotkey](p2-search-focus-hotkey.md) | P2 | planned | ready | S | [webview-reload-guard](done/p2-webview-reload-guard.md) | — (відщеплено від [hotkeys-expansion](done/p2-hotkeys-expansion.md) 2026-08-14) |
 | [import-duplicate-metadata-update](p3-import-duplicate-metadata-update.md) | P3 | planned | ready | M | — | — |
 
@@ -49,6 +50,7 @@ semver; `unscheduled` — наприкінці.
 | [tray-notifications-label-scope](p2-tray-notifications-label-scope.md) | P2 | planned | ready | S | — | — (знахідка grilling help-automation: «Сповіщення при зміні треку» гейтить і сповіщення розкладу) |
 | [hotkey-registration-silent-at-startup](p2-hotkey-registration-silent-at-startup.md) | P2 | planned | ready | S | — | — (знахідка grilling help-config: зайнята іншою програмою комбінація мовчки не працює після перезапуску) |
 | [key-recorder-silent-rejection](p2-key-recorder-silent-rejection.md) | P2 | planned | ready | S | — | — (знахідка grilling help-config: непридатна клавіша ігнорується без відмови) |
+| [sound-hotkeys-feedback-announce-only](p2-sound-hotkeys-feedback-announce-only.md) | P2 | planned | ready | M | — | — (знахідка grilling help-muted-playback-symptom: `Ctrl+M` і `F9` відповідають лише в `sr-only`; для користувача без скрінрідера клавіші не роблять нічого видимого) |
 | [settings-labels-wording](p2-settings-labels-wording.md) | P2 | planned | ready | S | — | — (знахідка grilling help-config: локалі автовідтворення обіцяють різне; «до tray» латиницею) |
 | [profile-delete-key-dead-end](p2-profile-delete-key-dead-end.md) | P2 | planned | ready | S | — | — (знахідка grilling help-config: `Delete` на Default/активному → нелокалізоване `Forbidden: …`) |
 | [unknown-format-falls-back-to-mp3](p2-unknown-format-falls-back-to-mp3.md) | P2 | planned | ready | S | — | — (знахідка grilling help-troubleshooting: нерозпізнаний `Content-Type` мовчки стає MP3, файл дістає чуже розширення) |
