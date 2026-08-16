@@ -3,11 +3,12 @@ slug: help-muted-playback-symptom
 title: "Довідка: симптом «відтворення йде, а звуку немає» — вимкнений звук"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: S
 kind: chore
 target: 0.1.0
 updated: 2026-08-16
+completed: 2026-08-16
 a11y: false
 depends_on: [hotkeys-expansion, help-troubleshooting]
 blocks: []
@@ -28,9 +29,9 @@ notes:
 # Довідка: симптом «відтворення йде, а звуку немає» — вимкнений звук
 
 > **Контекст:** одна позиція у вбудованому розділі «Якщо щось не працює»
-> ([troubleshooting.md](../help/uk/troubleshooting.md)). Специфікація довідки —
-> [help-content-polish](done/p1-help-content-polish.md) (читати перед правкою),
-> сам розділ завела [help-troubleshooting](done/p1-help-troubleshooting.md).
+> ([troubleshooting.md](../../help/uk/troubleshooting.md)). Специфікація довідки —
+> [help-content-polish](p1-help-content-polish.md) (читати перед правкою),
+> сам розділ завела [help-troubleshooting](p1-help-troubleshooting.md).
 > Форму позиції перевизначив grilling 2026-08-16 — див. «Що написати».
 
 ## Опис
@@ -43,14 +44,14 @@ notes:
 рухається, індикатор не червоний. Стан вимкненого звуку в застосунку видно **в одному
 місці** — кнопка плеєра змінює лейбл на «Увімкнути звук» і має `aria-pressed`.
 
-[hotkeys-expansion](done/p2-hotkeys-expansion.md) прогалину не створив, але зробив її
+[hotkeys-expansion](p2-hotkeys-expansion.md) прогалину не створив, але зробив її
 ймовірнішою: `Ctrl+M` тепер працює з будь-якого місця вікна, тож випадкове натискання
 дістало шлях, якого раніше не було — кнопка вимагала походу в зону плеєра.
 
 ## Що написати
 
 Одна позиція `###` у `troubleshooting.md`, обидві локалі. Форма — за
-[help-content-polish](done/p1-help-content-polish.md): заголовок словами користувача
+[help-content-polish](p1-help-content-polish.md): заголовок словами користувача
 (не назвою підсистеми), **причина + дія, 1–3 речення**, без переказу механіки.
 
 **Місце в порядку — між позиціями 6 і 7** («Станція записується, але не відтворюється»
@@ -69,8 +70,8 @@ notes:
 ### Три рішення, вбудовані в ці фрази
 
 **1. Кнопка названа поруч із `F9`, а не замість неї.** `F9` віддає відповідь виключно
-в `sr-only`-регіон ([useGlobalShortcuts.ts:49](../../src/hooks/useGlobalShortcuts.ts:49)
-→ [LiveAnnouncer.tsx:56](../../src/components/common/LiveAnnouncer.tsx:56)): тост не
+в `sr-only`-регіон ([useGlobalShortcuts.ts:49](../../../src/hooks/useGlobalShortcuts.ts:49)
+→ [LiveAnnouncer.tsx:56](../../../src/components/common/LiveAnnouncer.tsx:56)): тост не
 піднімається, рядок стану не змінюється. Порадити саму `F9` означало б написати текст,
 який має сенс лише для користувача скрінрідера, — заборонено принципом універсального
 дизайну. Кнопка плеєра — єдина поверхня, спостережувана всіма; обидва шляхи в одному
@@ -90,9 +91,9 @@ notes:
 ### Чого в позиції свідомо немає
 
 - **«`Ctrl+M` діє з будь-якого місця вікна, тож натиснути її випадково легко»** —
-  переказ [player.md:15](../help/uk/player.md:15), тобто чуже пояснення, плюс оцінка,
+  переказ [player.md:15](../../help/uk/player.md:15), тобто чуже пояснення, плюс оцінка,
   з якої читачеві нічого робити. До того ж теза вужча, ніж звучить: `Ctrl+M` вимагає
-  сфокусованого вікна, а [muteCleanup.ts](../../src/lib/muteCleanup.ts) сам знімає mute
+  сфокусованого вікна, а [muteCleanup.ts](../../../src/lib/muteCleanup.ts) сам знімає mute
   на зупинці й на зміні джерела — натиснути мусили під час цього самого відтворення.
 - **Відсилання «докладніше — у розділі «Плеєр і відтворення»»** — жанр дозволяє його
   лише там, де без механіки дія неповна. Тут дія повна.
@@ -101,32 +102,32 @@ notes:
 
 1. Позиції 7 і 8 лишаються як є — але тепер читач доходить до них після найдешевшої
    перевірки й **за прямою вказівкою**, а не випадково.
-2. Мапа покриття в [help-content-polish](done/p1-help-content-polish.md) отримує
+2. Мапа покриття в [help-content-polish](p1-help-content-polish.md) отримує
    14-ту позицію, а рядок «Ціна визнана: 13 заголовків проти 3–6 у решті розділів»
    стає «14».
 
 ## Критерії готовності
 
-- [ ] `docs/help/uk/troubleshooting.md` і `docs/help/en/troubleshooting.md`: нова
+- [x] `docs/help/uk/troubleshooting.md` і `docs/help/en/troubleshooting.md`: нова
       позиція між 6 і 7, формула «причина + дія», без таблиць і посилань
-- [ ] Позиція називає **і** кнопку плеєра, **і** `F9` — жоден із двох шляхів не
+- [x] Позиція називає **і** кнопку плеєра, **і** `F9` — жоден із двох шляхів не
       єдиний (принцип універсального дизайну)
-- [ ] Позиція закінчується передачею до причини «пристрій виведення»
-- [ ] Стеля розділу не перевищена (200–1000 слів по en-файлу, правило 6 довідки;
+- [x] Позиція закінчується передачею до причини «пристрій виведення»
+- [x] Стеля розділу не перевищена (200–1000 слів по en-файлу, правило 6 довідки;
       en-файл до правки — 846 слів)
-- [ ] Мапа `troubleshooting.md` у [help-content-polish](done/p1-help-content-polish.md):
+- [x] Мапа `troubleshooting.md` у [help-content-polish](p1-help-content-polish.md):
       14-та позиція + лічильник заголовків
-- [ ] `pnpm test` (парність локалей — `helpContent.test.ts`), `pnpm vite:build` зелений
+- [x] `pnpm test` (парність локалей — `helpContent.test.ts`), `pnpm vite:build` зелений
 
 ## Поза скоупом
 
 - **Показувати вимкнений звук поза кнопкою плеєра** (значок у рядку стану, тост,
   суфікс у заголовку вікна) — це зміна поведінки, а не довідки. Заведено окремо:
-  [sound-hotkeys-feedback-announce-only](p2-sound-hotkeys-feedback-announce-only.md).
+  [sound-hotkeys-feedback-announce-only](../p2-sound-hotkeys-feedback-announce-only.md).
   Пряме питання того запису — не «чи вистачає `F9`», а «чому глобальна клавіша не дає
   нічого видимого».
 - **Нульова гучність.** Не другою причиною в тексті, а зведенням її з вимкненим звуком
-  у коді: [zero-volume-reads-as-muted](p2-zero-volume-reads-as-muted.md). До того запису
+  у коді: [zero-volume-reads-as-muted](../p2-zero-volume-reads-as-muted.md). До того запису
   позиція лишається правдивою, але покриває лише перемикач; після нього ті самі три
   мітки починають працювати й для нульового рівня. Залежності немає свідомо — текст під
   обидва стани однаковий.
@@ -137,15 +138,15 @@ notes:
 
 ## Документи
 
-- Довідка: [docs/help/uk/troubleshooting.md](../help/uk/troubleshooting.md),
-  [en](../help/en/troubleshooting.md)
-- Специфікація довідки: [help-content-polish](done/p1-help-content-polish.md)
+- Довідка: [docs/help/uk/troubleshooting.md](../../help/uk/troubleshooting.md),
+  [en](../../help/en/troubleshooting.md)
+- Специфікація довідки: [help-content-polish](p1-help-content-polish.md)
   (мапа `troubleshooting.md`, жанр «відповідь без механіки», правило порядку,
   принцип універсального дизайну)
-- Суміжні: [hotkeys-expansion](done/p2-hotkeys-expansion.md) (`Ctrl+M`, `F9`),
-  [help-troubleshooting](done/p1-help-troubleshooting.md) (розділ як такий),
-  [zero-volume-reads-as-muted](p2-zero-volume-reads-as-muted.md),
-  [sound-hotkeys-feedback-announce-only](p2-sound-hotkeys-feedback-announce-only.md)
+- Суміжні: [hotkeys-expansion](p2-hotkeys-expansion.md) (`Ctrl+M`, `F9`),
+  [help-troubleshooting](p1-help-troubleshooting.md) (розділ як такий),
+  [zero-volume-reads-as-muted](../p2-zero-volume-reads-as-muted.md),
+  [sound-hotkeys-feedback-announce-only](../p2-sound-hotkeys-feedback-announce-only.md)
 - Код: `src/lib/muteControl.ts` (дія й тексти стану), `src/stores/player.ts`
   (`$muteState`), `src/components/player/PlayerPanel.tsx` (кнопка — єдиний
   видимий індикатор стану)

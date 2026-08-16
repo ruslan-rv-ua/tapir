@@ -25,7 +25,7 @@ notes:
 
 # Глобальні клавіші звуку не дають жодного видимого відгуку
 
-> **Контекст:** знайдено під час grilling [help-muted-playback-symptom](p2-help-muted-playback-symptom.md).
+> **Контекст:** знайдено під час grilling [help-muted-playback-symptom](done/p2-help-muted-playback-symptom.md).
 > Довідка мала порадити `F9` як дешеву перевірку «чи не вимкнено звук» — і не змогла:
 > для читача без скрінрідера ця клавіша не робить нічого спостережуваного.
 
@@ -95,7 +95,7 @@ notes:
 
 ## Документи
 
-- [help-muted-playback-symptom](p2-help-muted-playback-symptom.md) — звідки знахідка
+- [help-muted-playback-symptom](done/p2-help-muted-playback-symptom.md) — звідки знахідка
 - [help-content-polish](done/p1-help-content-polish.md) — принцип універсального
   дизайну: зворотний зв'язок описуємо нейтрально щодо модальності, і він мусить таким
   **бути**

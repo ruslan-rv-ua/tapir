@@ -28,7 +28,7 @@ notes:
 
 # Нульова гучність не читається як вимкнений звук
 
-> **Контекст:** знайдено під час grilling [help-muted-playback-symptom](p2-help-muted-playback-symptom.md),
+> **Контекст:** знайдено під час grilling [help-muted-playback-symptom](done/p2-help-muted-playback-symptom.md),
 > коли з'ясовували, скільки причин має симптом «відтворення йде, а звуку немає».
 > Рішення про модель — [ADR 2026-08-16](../decisions/2026-08-16-silence-is-mute-or-zero-volume.md),
 > читати першим.
@@ -142,7 +142,7 @@ notes:
 ## Документи
 
 - [ADR 2026-08-16](../decisions/2026-08-16-silence-is-mute-or-zero-volume.md) — модель і відхилені варіанти
-- [help-muted-playback-symptom](p2-help-muted-playback-symptom.md) — позиція довідки, з
+- [help-muted-playback-symptom](done/p2-help-muted-playback-symptom.md) — позиція довідки, з
   якої знайдено; залежності між записами немає свідомо
 - [videojs/video.js#3909](https://github.com/videojs/video.js/issues/3909) — той самий
   баг у чужій кодовій базі й еталонна поведінка YouTube
