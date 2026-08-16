@@ -40,6 +40,7 @@ import { computePlaybackNeighbors } from "./stores/playbackNeighbors";
 import { resolveEndedAction } from "./lib/playbackTransport";
 import { executeTransportSkip, parseSkipTrigger } from "./lib/transportControl";
 import { applyMuteCleanup } from "./lib/muteCleanup";
+import { rememberVolumeLevel } from "./lib/muteControl";
 import { selectPlaybackAnnouncement, sourceName, suppressesStarted, type PendingConnect } from "./lib/playbackAnnounce";
 import { formatTimeParts } from "./lib/time";
 import { windowTitleLabel } from "./lib/windowTitle";
@@ -149,6 +150,10 @@ function AppContent() {
       }),
       tauri.getPlayerStatus().then((status) => {
         $playerStatus.set(status);
+        // Seed the level memory from the profile's own level; a profile that
+        // starts at zero leaves it at FALLBACK_VOLUME, which is what that
+        // constant is for.
+        rememberVolumeLevel(status.volume);
       }),
     ]).catch(console.error).finally(() => {
       // The window is already visible and OS-foreground (shown from Rust setup —
@@ -250,6 +255,12 @@ function AppContent() {
           break;
       }
     }
+
+    // ── Level memory ─────────────────────────────────────────────────────────
+    // Every volume change lands here, including the global Ctrl+Alt+Up/Down that
+    // Rust handles without the webview — so this is the only place that can see
+    // the level the user was at just before it reached zero.
+    rememberVolumeLevel(payload.volume);
 
     // ── Mute state cleanup ───────────────────────────────────────────────────
     const stateChangedToPlaying = prev.state === "stopped" && payload.state === "playing";

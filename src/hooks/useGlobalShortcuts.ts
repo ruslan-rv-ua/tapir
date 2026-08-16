@@ -9,7 +9,7 @@ import { $showAddPatternDialog } from "../stores/wishlist";
 import { $showAddScheduleDialog } from "../stores/schedule";
 import { $muteState, $playerStatus } from "../stores/player";
 import { describePlayback, type PlaybackDescription } from "../lib/playbackAnnounce";
-import { toggleMute } from "../lib/muteControl";
+import { isSoundOff, toggleMute } from "../lib/muteControl";
 import { formatDuration } from "../lib/formatters";
 import { useAnnounce } from "./useAnnounce";
 import * as m from "../i18n/paraglide/messages";
@@ -89,11 +89,14 @@ export function useGlobalShortcuts(): void {
       // reading position in the list is kept. Assertive because it is the
       // reply to a keypress (a background event would be polite).
       announceNowPlaying: () => {
+        const status = $playerStatus.get();
         const { description, muted } = describePlayback({
-          status: $playerStatus.get(),
+          status,
           statuses: $statuses.get(),
           streams: $streams.get(),
-          muted: $muteState.get().muted,
+          // The state, not the toggle: a level at zero is the same silence and
+          // gets the same clause.
+          muted: isSoundOff($muteState.get().muted, status.volume),
         });
         announce(nowPlayingMessage(description, muted), "assertive");
       },

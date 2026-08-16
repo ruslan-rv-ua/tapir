@@ -240,6 +240,26 @@ describe("PlayerPanel — mute button", () => {
     expect(tauri.setVolume).toHaveBeenLastCalledWith(0.75);
     expect($announcer.get()?.message).toBe(m.player_unmuted());
   });
+
+  it("reads as pressed at a zero level, with `muted` never having been set", () => {
+    playingStream("s2");
+    $playerStatus.set({ ...$playerStatus.get(), volume: 0 });
+    const { getByRole } = renderPanel();
+    // Label, state and (with it) the icon all come from the one predicate: the
+    // button used to offer "Mute" while the player was already silent.
+    const button = getByRole("button", { name: m.player_unmute_action() });
+    expect(button).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("raises the sound from a zero level on the first press", async () => {
+    playingStream("s2");
+    $playerStatus.set({ ...$playerStatus.get(), volume: 0 });
+    $muteState.set({ muted: false, savedVolume: 0.6, restoring: false });
+    const { getByRole } = renderPanel();
+    fireEvent.click(getByRole("button", { name: m.player_unmute_action() }));
+    await vi.waitFor(() => expect(tauri.setVolume).toHaveBeenCalledWith(0.6));
+    expect($announcer.get()?.message).toBe(m.player_unmuted());
+  });
 });
 
 describe("PlayerPanel — prev/next error handling", () => {

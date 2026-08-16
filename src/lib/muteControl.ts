@@ -2,8 +2,50 @@ import { $muteState, $playerStatus } from "../stores/player";
 import * as tauri from "./tauri";
 import * as m from "../i18n/paraglide/messages";
 
-/** Volume to restore when mute was engaged from an already-silent player. */
-const FALLBACK_VOLUME = 0.75;
+/**
+ * "Sound off" as the user meets it: healthy playback that makes no sound. Two
+ * paths lead there — the toggle (`$muteState.muted`) and a volume level brought
+ * down to zero — and every surface treats them as ONE state: same icon, same
+ * button label, same `aria-pressed`, same `F9` clause, same way out.
+ *
+ * The two values stay separate underneath because their lifetimes differ: the
+ * toggle is cleared by `muteCleanup` on a stop or a new source, the level is a
+ * profile session field that survives a restart. So read this predicate, never
+ * the `muted` field on its own — a field that is `false` does not mean sound.
+ * Model and rejected alternatives:
+ * docs/decisions/2026-08-16-silence-is-mute-or-zero-volume.md.
+ */
+export function isSoundOff(muted: boolean, volume: number): boolean {
+  return muted || volume <= 0;
+}
+
+/**
+ * Feed the level memory from a fresh `player-status`.
+ *
+ * It has to be observed on the status event rather than captured where
+ * `setVolume` is called: `Ctrl+Alt+Up/Down` are GLOBAL keys handled in Rust
+ * (shortcuts.rs), so the webview never sees that gesture — only its outcome.
+ * Zero is deliberately not recorded; that is the whole point of the memory.
+ */
+export function rememberVolumeLevel(volume: number): void {
+  if (volume <= 0) return;
+  const state = $muteState.get();
+  if (state.savedVolume === volume) return;
+  $muteState.set({ ...state, savedVolume: volume });
+}
+
+/**
+ * Reflect a level this module just committed, without waiting for the
+ * `player-status` event to echo it back — the same optimistic write
+ * `PlaybackPosition` makes after a seek.
+ *
+ * Not cosmetic: since the surfaces now read the LEVEL and not just the toggle,
+ * a second press that beats the event home would otherwise still see the old
+ * zero and raise the volume again instead of silencing it.
+ */
+function applyLevel(volume: number): void {
+  $playerStatus.set({ ...$playerStatus.get(), volume });
+}
 
 // Module-level guard shared by the player button and the hotkey — mirrors
 // transportControl.ts: only one mute command may be in flight at a time, so a
@@ -11,8 +53,9 @@ const FALLBACK_VOLUME = 0.75;
 let pending = false;
 
 /**
- * Toggle the player's mute, announce the resulting STATE, keep `$muteState` in
- * sync. Reads the stores directly; safe to call from outside React.
+ * Toggle the player's sound off/on, announce the resulting STATE, keep
+ * `$muteState` in sync. Reads the stores directly; safe to call from outside
+ * React.
  *
  * Unlike the sibling `transportControl.ts`, the wording lives here rather than
  * in the caller: this module already has three callers (the player button,
@@ -34,16 +77,23 @@ export async function toggleMute(
   pending = true;
   try {
     const { muted, savedVolume } = $muteState.get();
-    if (!muted) {
-      const volume = $playerStatus.get().volume;
-      const restoreTo = volume > 0 ? volume : FALLBACK_VOLUME;
-      await tauri.setVolume(0);
-      $muteState.set({ muted: true, savedVolume: restoreTo, restoring: false });
-      announce(m.player_muted(), "assertive");
-    } else {
+    const volume = $playerStatus.get().volume;
+    if (isSoundOff(muted, volume)) {
+      // One way out for both paths. Reached with a zero level and no toggle,
+      // this is the case the old code got backwards: it announced "sound off"
+      // to an already-silent player and changed nothing.
       await tauri.setVolume(savedVolume);
       $muteState.set({ muted: false, savedVolume, restoring: false });
+      applyLevel(savedVolume);
+      // After the await, so "sound on" is never spoken to a still-silent player.
       announce(m.player_unmuted(), "assertive");
+    } else {
+      await tauri.setVolume(0);
+      // The level being silenced is by definition non-zero here, so it is worth
+      // remembering — this is the toggle's half of the memory's two feeds.
+      $muteState.set({ muted: true, savedVolume: volume, restoring: false });
+      applyLevel(0);
+      announce(m.player_muted(), "assertive");
     }
   } catch (e) {
     console.error(e);

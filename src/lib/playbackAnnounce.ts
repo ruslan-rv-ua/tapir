@@ -125,6 +125,9 @@ export type PlaybackDescription =
  * the two the running app cannot reach (a live stream and a preview have no
  * pause — the player's primary control stops them). `muted` comes back as its
  * own field because it describes the OUTPUT, not the source.
+ *
+ * `muted` is the sound-off STATE (`muteControl.isSoundOff`), not the toggle
+ * field: silence reached by dropping the level to zero gets the same clause.
  */
 export function describePlayback(input: {
   status: PlayerStatus;

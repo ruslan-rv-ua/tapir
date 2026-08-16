@@ -284,6 +284,17 @@ describe("useGlobalShortcuts — Ctrl+M (mute)", () => {
     expect(tauri.setVolume).not.toHaveBeenCalled();
     expect($muteState.get().muted).toBe(false);
   });
+
+  it("RAISES the sound at a zero level instead of announcing silence again", async () => {
+    playingStream();
+    // The level was brought down to zero by the global key — `muted` stayed false.
+    $playerStatus.set({ ...$playerStatus.get(), volume: 0 });
+    $muteState.set({ muted: false, savedVolume: 0.6, restoring: false });
+    const field = renderWithField();
+    fireEvent.keyDown(field, { code: "KeyM", ctrlKey: true });
+    await waitFor(() => expect(tauri.setVolume).toHaveBeenCalledWith(0.6));
+    expect($announcer.get()?.message).toBe(m.player_unmuted());
+  });
 });
 
 describe("useGlobalShortcuts — F9 (what is playing)", () => {
@@ -325,6 +336,17 @@ describe("useGlobalShortcuts — F9 (what is playing)", () => {
   it("adds the muted clause only while muted", () => {
     playingStream();
     $muteState.set({ muted: true, savedVolume: 0.6, restoring: false });
+    const field = renderWithField();
+    fireEvent.keyDown(field, { code: "F9" });
+    expect($announcer.get()?.message).toBe(
+      m.f9_muted({ sentence: m.f9_stream({ station: "Jazz FM", track: "Miles — So What" }) }),
+    );
+  });
+
+  it("names a zero level with the SAME clause as the toggle", () => {
+    playingStream();
+    $playerStatus.set({ ...$playerStatus.get(), volume: 0 });
+    $muteState.set({ muted: false, savedVolume: 0.6, restoring: false });
     const field = renderWithField();
     fireEvent.keyDown(field, { code: "F9" });
     expect($announcer.get()?.message).toBe(

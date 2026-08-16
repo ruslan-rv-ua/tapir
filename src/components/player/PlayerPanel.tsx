@@ -26,7 +26,7 @@ import { RecordingBadge } from "./RecordingBadge";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 import { executeTransportSkip, type SkipTrigger } from "../../lib/transportControl";
-import { toggleMute } from "../../lib/muteControl";
+import { isSoundOff, toggleMute } from "../../lib/muteControl";
 import { sourceName } from "../../lib/playbackAnnounce";
 
 /**
@@ -71,7 +71,9 @@ export const PlayerPanel = forwardRef<
   const settings = useStore($settings);
   const announce = useAnnounce();
   const muteState = useStore($muteState);
-  const isMuted = muteState.muted;
+  // The predicate, not the field: a level brought down to zero is the same
+  // "sound off" state to the user, and this button is where they see it.
+  const isSilent = isSoundOff(muteState.muted, playerStatus.volume);
   const isPlaying = state === "playing";
   const isPaused = state === "paused";
   const isActive = isPlaying || isPaused;
@@ -362,15 +364,15 @@ export const PlayerPanel = forwardRef<
 
             <Button
               ref={muteRef}
-              aria-label={isMuted ? m.player_unmute_action() : m.player_mute_action()}
-              aria-pressed={isMuted}
+              aria-label={isSilent ? m.player_unmute_action() : m.player_mute_action()}
+              aria-pressed={isSilent}
               isDisabled={!isActive}
               onPress={handleMute}
               // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
               tabIndex={-1}
               className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 aria-pressed:bg-amber-500/20 aria-pressed:border-amber-400/40 aria-pressed:text-amber-400 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText] forced-colors:aria-pressed:bg-[Highlight] forced-colors:aria-pressed:text-[HighlightText] forced-colors:aria-pressed:border-[Highlight]"
             >
-              {isMuted ? <VolumeX aria-hidden={true} size={18} /> : <Volume2 aria-hidden={true} size={18} />}
+              {isSilent ? <VolumeX aria-hidden={true} size={18} /> : <Volume2 aria-hidden={true} size={18} />}
             </Button>
           </div>
 
