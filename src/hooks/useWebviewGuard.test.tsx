@@ -94,6 +94,31 @@ describe("useWebviewGuard — keydown", () => {
     },
   );
 
+  // Find bar: the app takes Ctrl+F for its own "focus the screen's search",
+  // so WebView2's find bar must never open — including from inside a dialog,
+  // where the Tier-2 dispatcher bails out on isInModal() and cannot consume it.
+  it.each([
+    ["Ctrl+F", { code: "KeyF", ctrlKey: true }],
+    ["Meta+F", { code: "KeyF", metaKey: true }],
+    ["Ctrl+Shift+F", { code: "KeyF", ctrlKey: true, shiftKey: true }],
+  ])("suppresses the find bar: %s", (_label, init) => {
+    expect(pressKey(renderWithButton(), init).defaultPrevented).toBe(true);
+  });
+
+  it("suppresses Ctrl+F with focus inside an open dialog, where Tier 2 bails out", () => {
+    render(
+      <Harness>
+        <div role="dialog">
+          <button data-testid="btn" />
+        </div>
+      </Harness>,
+    );
+    act(() => screen.getByTestId("btn").focus());
+    expect(
+      pressKey(screen.getByTestId("btn"), { code: "KeyF", ctrlKey: true }).defaultPrevented,
+    ).toBe(true);
+  });
+
   it.each([
     ["Ctrl+Plus", { code: "Equal", ctrlKey: true }],
     ["Ctrl+NumpadAdd", { code: "NumpadAdd", ctrlKey: true }],
@@ -103,6 +128,9 @@ describe("useWebviewGuard — keydown", () => {
     ["bare R", { code: "KeyR" }],
     ["Alt+R", { code: "KeyR", altKey: true }],
     ["Ctrl+Alt+R (AltGr)", { code: "KeyR", ctrlKey: true, altKey: true }],
+    ["bare F", { code: "KeyF" }],
+    ["Alt+F", { code: "KeyF", altKey: true }],
+    ["Ctrl+Alt+F (AltGr)", { code: "KeyF", ctrlKey: true, altKey: true }],
     ["Ctrl+K", { code: "KeyK", ctrlKey: true }],
     ["Alt+1", { code: "Digit1", altKey: true }],
   ])("leaves %s alone", (_label, init) => {

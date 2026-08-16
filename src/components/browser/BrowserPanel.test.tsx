@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, fireEvent, waitFor } from "@testing-library/react";
+import { render, fireEvent, waitFor, act } from "@testing-library/react";
+import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as m from "../../i18n/paraglide/messages";
 import { $popularStations, $stationSelection } from "../../stores/browser";
 import { $announcer } from "../../stores/announcer";
@@ -24,6 +25,26 @@ function mk(uuid: string): StationResult {
 beforeEach(() => {
   $popularStations.set([mk("u1"), mk("u2")]);
   replaceSelection($stationSelection, new Set());
+});
+
+// The Ctrl+F contract at the section level: App only ever sees the zones this
+// panel registers, so exactly one of them must offer focusSearch.
+it("registers the search zone as this section's Ctrl+F target", async () => {
+  const onZonesChange = vi.fn();
+  render(<BrowserPanel onZonesChange={onZonesChange} exitZone={vi.fn()} />);
+  await waitFor(() => expect(onZonesChange).toHaveBeenCalled());
+  const zones = onZonesChange.mock.lastCall![0] as ZoneEntry[];
+  const searchable = zones.filter((z) => z.focusSearch);
+  expect(searchable.map((z) => z.id)).toEqual(["browser-search"]);
+
+  // Park focus outside the field first — SearchForm autofocuses on mount, which
+  // would make the assertion vacuous.
+  const elsewhere = document.createElement("button");
+  document.body.appendChild(elsewhere);
+  act(() => elsewhere.focus());
+  act(() => searchable[0].focusSearch!());
+  expect((document.activeElement as HTMLInputElement).placeholder)
+    .toBe(m.browser_search_placeholder());
 });
 
 it("select-all selects all visible stations and announces the count", async () => {

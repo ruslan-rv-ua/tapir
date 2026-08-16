@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 import { useGlobalShortcuts } from "./useGlobalShortcuts";
+import type { ZoneEntry } from "./useZoneNavigation";
 import { $activeSection, $commandPaletteOpen } from "../stores/navigation";
 import { $showAddStreamDialog, $streams, $statuses } from "../stores/streams";
 import { $showCreateProfileDialog } from "../stores/profileManager";
@@ -16,10 +17,27 @@ import type { StreamInfo } from "../lib/tauri";
 
 vi.mock("../lib/tauri", () => ({ setVolume: vi.fn().mockResolvedValue(undefined) }));
 
-function Harness({ children }: { children?: ReactNode }) {
-  useGlobalShortcuts();
+function Harness({ children, zones = [] }: { children?: ReactNode; zones?: ZoneEntry[] }) {
+  // Stands in for App.tsx's orderedZonesRef: already section-scoped, permanent
+  // zones included.
+  const zonesRef = useRef<ZoneEntry[]>(zones);
+  zonesRef.current = zones;
+  useGlobalShortcuts(zonesRef);
   return <>{children}</>;
 }
+
+/** A zone with no search field — the ordinary case (lists, toolbars). */
+const plainZone = (id: string, focus = vi.fn()): ZoneEntry => ({
+  id,
+  el: document.createElement("div"),
+  focus,
+});
+
+/** A zone that owns a search field, i.e. one that implements focusSearch. */
+const searchZone = (id: string, focusSearch: () => void): ZoneEntry => ({
+  ...plainZone(id),
+  focusSearch,
+});
 
 // A field that swallows keydown in the BUBBLE phase via a native listener —
 // reproduces react-aria's SearchField, which is why the old bubble-phase global
@@ -294,6 +312,82 @@ describe("useGlobalShortcuts — Ctrl+M (mute)", () => {
     fireEvent.keyDown(field, { code: "KeyM", ctrlKey: true });
     await waitFor(() => expect(tauri.setVolume).toHaveBeenCalledWith(0.6));
     expect($announcer.get()?.message).toBe(m.player_unmuted());
+  });
+});
+
+describe("useGlobalShortcuts — Ctrl+F (focus the screen's search)", () => {
+  function renderWithZones(zones: ZoneEntry[]) {
+    render(
+      <Harness zones={zones}>
+        <input data-testid="field" />
+      </Harness>,
+    );
+    act(() => screen.getByTestId("field").focus());
+    return screen.getByTestId("field");
+  }
+
+  it("calls focusSearch on the first zone that has one, whatever the zone order", () => {
+    const focusSearch = vi.fn();
+    const plainFocus = vi.fn();
+    const field = renderWithZones([
+      plainZone("activity-bar", plainFocus),
+      plainZone("songs-selection", plainFocus),
+      searchZone("songs-filter", focusSearch),
+      plainZone("songs-list", plainFocus),
+    ]);
+    fireEvent.keyDown(field, { code: "KeyF", ctrlKey: true });
+    expect(focusSearch).toHaveBeenCalledOnce();
+    // The zone's own focus() would restore the LAST-TOUCHED control (a sort
+    // <select>, say) — which is exactly why focusSearch exists.
+    expect(plainFocus).not.toHaveBeenCalled();
+  });
+
+  it("takes the first search zone when the screen registers several", () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    const field = renderWithZones([
+      searchZone("browser-search", first),
+      searchZone("other-search", second),
+    ]);
+    fireEvent.keyDown(field, { code: "KeyF", ctrlKey: true });
+    expect(first).toHaveBeenCalledOnce();
+    expect(second).not.toHaveBeenCalled();
+  });
+
+  it("answers out loud on a section with no search, without moving focus", () => {
+    const field = renderWithZones([
+      plainZone("activity-bar"),
+      plainZone("schedule-list"),
+      plainZone("player"),
+    ]);
+    const notPrevented = fireEvent.keyDown(field, { code: "KeyF", ctrlKey: true });
+    expect($announcer.get()?.message).toBe(m.search_none_on_screen());
+    // A reply to a keypress, not a background event.
+    expect($announcer.get()?.priority).toBe("assertive");
+    expect(document.activeElement).toBe(field);
+    // The key is still consumed — WebView2's find bar must not open behind it.
+    expect(notPrevented).toBe(false);
+  });
+
+  it("survives an empty zone list", () => {
+    const field = renderWithZones([]);
+    expect(() => fireEvent.keyDown(field, { code: "KeyF", ctrlKey: true })).not.toThrow();
+    expect($announcer.get()?.message).toBe(m.search_none_on_screen());
+  });
+
+  it("does nothing while a modal is open — the guard alone kills the find bar there", () => {
+    const focusSearch = vi.fn();
+    render(
+      <Harness zones={[searchZone("browser-search", focusSearch)]}>
+        <div role="dialog">
+          <input data-testid="modal-field" />
+        </div>
+      </Harness>,
+    );
+    act(() => screen.getByTestId("modal-field").focus());
+    fireEvent.keyDown(screen.getByTestId("modal-field"), { code: "KeyF", ctrlKey: true });
+    expect(focusSearch).not.toHaveBeenCalled();
+    expect($announcer.get()).toBeNull();
   });
 });
 

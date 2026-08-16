@@ -178,9 +178,11 @@ function AppContent() {
     win.setTitle(label ? `${label} \u00b7 ${appTitle}` : appTitle);
   }, [settings?.showTrackInTitle, playerStatus.source, statuses]);
 
-  // Global Tier-2 webview shortcuts (Alt+digit, Ctrl+K, Ctrl+,, Ctrl+N, F1).
+  // Global Tier-2 webview shortcuts (Alt+digit, Ctrl+K, Ctrl+,, Ctrl+N, Ctrl+F, F1).
   // Capture-phase window listener extracted to a hook — see useGlobalShortcuts.
-  useGlobalShortcuts();
+  // The zone list goes in for Ctrl+F: it is already section-scoped, so the
+  // "search field of this screen" needs no separate registry.
+  useGlobalShortcuts(orderedZonesRef);
 
   // Neutralises WebView2's own accelerators (F5/Ctrl+R reload, F3/F7/F11) and the
   // native context menu outside text fields — see useWebviewGuard.

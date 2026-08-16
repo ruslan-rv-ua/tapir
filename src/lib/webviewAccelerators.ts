@@ -25,10 +25,23 @@ import { isTextEntryTarget } from "./shortcutGuard";
 const SUPPRESSED_CODES = new Set(["F3", "F5", "F7", "F11"]);
 
 /**
+ * Letter keys that are accelerators only under `Ctrl`/`Cmd` — a bare R or F is
+ * just a letter. `alt` is excluded for both: AltGr reports ctrl+alt, and
+ * AltGr+letter is a character on several European layouts.
+ *
+ * `KeyF` opens WebView2's find bar, and the app claims `Ctrl+F` for itself
+ * (Tier 2 — focus the current screen's search field). The Tier-2 dispatcher
+ * alone would not be enough: it bails out first thing on `isInModal()`, so from
+ * any open dialog the key would reach WebView2 and open the find bar. This guard
+ * has no such gate — same division of labour as `F5`.
+ */
+const SUPPRESSED_WITH_CTRL = new Set(["KeyR", "KeyF"]);
+
+/**
  * True for a keystroke whose browser default must be suppressed: the reload
  * family (`F5` any-modifier, `Ctrl`/`Cmd`+`R`) plus `F3` (find next), `F7`
- * (caret browsing — flips NVDA's input mode) and `F11` (fullscreen — hides the
- * window frame NVDA tracks).
+ * (caret browsing — flips NVDA's input mode), `F11` (fullscreen — hides the
+ * window frame NVDA tracks) and `Ctrl`/`Cmd`+`F` (find bar).
  *
  * Matching is on `e.code` per convention 1 of docs/keyboard-shortcuts.md: on a
  * Cyrillic layout `e.key` for the physical R is «к».
@@ -40,10 +53,7 @@ export function isSuppressedAccelerator(
   e: Pick<KeyboardEvent, "code" | "ctrlKey" | "metaKey" | "altKey">,
 ): boolean {
   if (SUPPRESSED_CODES.has(e.code)) return true;
-  // `KeyR` is the one entry where the modifier is what makes the key an
-  // accelerator — a bare R is just a letter. `alt` excluded: AltGr reports
-  // ctrl+alt, and AltGr+R is a character on several layouts.
-  if (e.code === "KeyR") return (e.ctrlKey || e.metaKey) && !e.altKey;
+  if (SUPPRESSED_WITH_CTRL.has(e.code)) return (e.ctrlKey || e.metaKey) && !e.altKey;
   return false;
 }
 

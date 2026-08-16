@@ -4,8 +4,8 @@ import { isSuppressedAccelerator, keepsNativeContextMenu } from "../lib/webviewA
 /**
  * Neutralises the WebView2 browser accelerators the app does not want: the
  * reload family (`F5`, `Ctrl+F5`, `Shift+F5`, `Ctrl+R`, `Ctrl+Shift+R`, `Cmd+R`),
- * `F3`/`F7`/`F11`, and the native context menu outside text fields — the menu's
- * Reload item being a second door into the same trap.
+ * `F3`/`F7`/`F11`, `Ctrl+F` (find bar), and the native context menu outside text
+ * fields — the menu's Reload item being a second door into the same trap.
  *
  * `preventDefault()` ONLY, never `stopPropagation()` — unlike the neighbouring
  * `useGlobalShortcuts`, which does both. This guard kills a default, it does not

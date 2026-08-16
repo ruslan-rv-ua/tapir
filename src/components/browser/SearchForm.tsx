@@ -34,11 +34,21 @@ export const SearchForm = forwardRef<ZoneEntry, SearchFormProps>(function Search
 
   useEffect(() => { refreshBoundary(); }, [filters, isActive, refreshBoundary]);
 
+  // Ctrl+F target. Browser convention: already in the field ⇒ select the text
+  // instead of a no-op focus, so a second press starts a new query.
+  const focusSearch = useCallback(() => {
+    const input = searchInputRef.current;
+    if (!input) return;
+    if (document.activeElement === input) input.select();
+    else input.focus();
+  }, []);
+
   useImperativeHandle(ref, () => ({
     id: "browser-search",
     get el() { return containerRef.current!; },
     focus: restoreFocus,
-  }), [restoreFocus]);
+    focusSearch,
+  }), [restoreFocus, focusSearch]);
 
   // Debounced text search
   const handleQueryChange = useCallback((value: string) => {

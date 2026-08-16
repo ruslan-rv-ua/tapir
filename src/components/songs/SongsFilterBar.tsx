@@ -1,5 +1,5 @@
 import { useStore } from "@nanostores/react";
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import {
   $songsQuery, $songsStation, $songsSort, $songsStations,
 } from "../../stores/songs";
@@ -32,13 +32,25 @@ export const SongsFilterBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) =
   }, [storeQuery]);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const { restoreFocus } = useFocusBoundary(containerRef, exitZone);
+
+  // Ctrl+F target — the search input itself, never `restoreFocus`: that one
+  // returns to the last-touched control of the zone, which here is as likely to
+  // be the station or sort <select>. Already in the field ⇒ select the text.
+  const focusSearch = useCallback(() => {
+    const input = searchInputRef.current;
+    if (!input) return;
+    if (document.activeElement === input) input.select();
+    else input.focus();
+  }, []);
 
   useImperativeHandle(ref, () => ({
     id: "songs-filter",
     get el() { return containerRef.current!; },
     focus: restoreFocus,
-  }), [restoreFocus]);
+    focusSearch,
+  }), [restoreFocus, focusSearch]);
 
   return (
     <div
@@ -51,6 +63,7 @@ export const SongsFilterBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) =
       <label className="flex flex-1 min-w-[220px] flex-col gap-1">
         <span className="sr-only">{m.songs_search_placeholder()}</span>
         <input
+          ref={searchInputRef}
           type="search"
           value={localQuery}
           onChange={(e) => setLocalQuery(e.target.value)}

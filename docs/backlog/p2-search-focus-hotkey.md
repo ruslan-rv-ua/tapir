@@ -7,7 +7,7 @@ status: ready
 effort: S
 kind: feature
 target: 0.1.0
-updated: 2026-08-14
+updated: 2026-08-17
 a11y: true
 depends_on: [webview-reload-guard]
 blocks: []
@@ -95,25 +95,27 @@ KeyRecorder — `Ctrl+F` долітає до WebView2 і відкриває Find
 
 ## Критерії готовності
 
-- [ ] `ZoneEntry.focusSearch?()` — опційний метод; реалізують `SearchForm` і
+- [x] `ZoneEntry.focusSearch?()` — опційний метод; реалізують `SearchForm` і
       `SongsFilterBar` (обидві ведуть на **інпут**, не на зону; якщо фокус уже там —
       `select()`)
-- [ ] `Ctrl+F` у `SHORTCUTS`: глобальний матч (`e.code === "KeyF"`, ctrlOrMeta),
+- [x] `Ctrl+F` у `SHORTCUTS`: глобальний матч (`e.code === "KeyF"`, ctrlOrMeta),
       `reserved: true`, група global, лейбли uk/en
-- [ ] Browser і Songs: фокус лендиться в поле пошуку з будь-якої зони секції
-- [ ] Секція без пошуку: assertive-репліка «На цьому екрані немає пошуку», без
+- [x] Browser і Songs: фокус лендиться в поле пошуку з будь-якої зони секції
+- [x] Секція без пошуку: assertive-репліка «На цьому екрані немає пошуку», без
       падінь і без руху фокуса
-- [ ] `Ctrl+F` у [webviewAccelerators.ts](../../src/lib/webviewAccelerators.ts)
+- [x] `Ctrl+F` у [webviewAccelerators.ts](../../src/lib/webviewAccelerators.ts)
       (`ctrl`/`meta` без `alt`); Find bar не відкривається **ніде**, включно з
       відкритим діалогом
-- [ ] `docs/keyboard-shortcuts.md`: рядок Tier 2, рядок у таблиці гарда, і
+- [x] `docs/keyboard-shortcuts.md`: рядок Tier 2, рядок у таблиці гарда, і
       **виправлена** примітка «свідомо поза переліком: `Ctrl+F` (споживає Tier-2)» —
       її підстава спростована
-- [ ] Тести: диспетч на Browser/Songs; секція без пошуку → репліка + `defaultPrevented`
+- [x] Тести: диспетч на Browser/Songs; секція без пошуку → репліка + `defaultPrevented`
       без падіння; предикат гарда на `Ctrl+F` / `Ctrl+Alt+F` (AltGr не гаситься)
 - [ ] NVDA-прогін (мануально, перед релізом): приземлення фокуса на обох екранах,
       репліка на секції без пошуку, `Ctrl+F` з відкритого діалогу — тиша без Find bar
-- [ ] `pnpm test` без регресій
+      — чекліст: [docs/testing/nvda-search-focus-hotkey.md](../testing/nvda-search-focus-hotkey.md)
+- [x] `pnpm test` без регресій
+- [x] Довідка: `docs/help/{uk,en}/navigation.md` — розділ «Пошук на екрані»
 
 ## Нюанси реалізації
 

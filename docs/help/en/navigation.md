@@ -22,6 +22,10 @@ Press `Ctrl+K` to open the command palette. It lets you find actions and streams
 
 To switch between screens, use `Alt` with a digit from `0` to `5`.
 
+### Search on a screen
+
+Press `Ctrl+F` to move focus into the current screen's search field, from any of its zones. Two screens have one — the **Station Browser** and **Recordings**; elsewhere Tapir answers that this screen has no search, and focus stays where it was. If focus is already in the field, `Ctrl+F` selects the text you typed, so the next character starts a new query.
+
 ### Global windows
 
 - `F1` — help

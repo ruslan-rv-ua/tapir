@@ -8,6 +8,16 @@ export interface ZoneEntry {
   readonly el: HTMLElement;
   /** Called to give focus to this zone. */
   focus(direction: 'forward' | 'backward'): void;
+  /**
+   * Present ONLY on zones that own a text search field: puts focus in that
+   * field (and selects its text if focus is already there). `Ctrl+F` picks the
+   * first zone that has one — see useGlobalShortcuts.
+   *
+   * Deliberately not folded into `focus`: that one restores the zone's
+   * last-touched control (useFocusBoundary.restoreFocus), which for a filter bar
+   * is as likely to be the sort <select> as the search input.
+   */
+  focusSearch?(): void;
 }
 
 /**

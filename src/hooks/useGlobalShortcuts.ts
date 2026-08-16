@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, type RefObject } from "react";
 import { matchShortcut, type ShortcutActions } from "../lib/shortcuts";
+import type { ZoneEntry } from "./useZoneNavigation";
 import { isInModal } from "../lib/shortcutGuard";
 import { $activeSection, $commandPaletteOpen, $helpOpen } from "../stores/navigation";
 import { $settings, $settingsDialogOpen, $profileSettingsTarget } from "../stores/settings";
@@ -63,8 +64,13 @@ function nowPlayingMessage(description: PlaybackDescription, muted: boolean): st
  * Suppressed only while a modal/recorder is open (`isInModal`); every combo here
  * is modified or `F1`, so none collide with text entry — they deliberately fire
  * from a focused text field too (KB-14). Key auto-repeat is dropped (KB-06).
+ *
+ * Takes App.tsx's `orderedZonesRef` for `Ctrl+F`: it already holds the zones of
+ * the CURRENT section plus the permanent ones, so "the search field of this
+ * screen" is just the first entry that offers a `focusSearch` — no section→zone
+ * map to drift out of sync, and no extra store.
  */
-export function useGlobalShortcuts(): void {
+export function useGlobalShortcuts(orderedZonesRef: RefObject<ZoneEntry[]>): void {
   const announce = useAnnounce();
   useEffect(() => {
     const actions: ShortcutActions = {
@@ -100,6 +106,17 @@ export function useGlobalShortcuts(): void {
         });
         announce(nowPlayingMessage(description, muted), "assertive");
       },
+      // Focus the search field of the current screen. Asking the zone to focus
+      // itself would land on whatever the user last touched there (the sort
+      // <select>, say) — see restoreFocus in useFocusBoundary — hence a method of
+      // its own, implemented only by zones that own a search field. Two screens
+      // have none; silence there is indistinguishable from a wedged app, so they
+      // get a short reply instead.
+      focusSearch: () => {
+        const zone = orderedZonesRef.current?.find((z) => z.focusSearch);
+        if (zone) zone.focusSearch!();
+        else announce(m.search_none_on_screen(), "assertive");
+      },
     };
     const handler = (e: KeyboardEvent) => {
       if (e.repeat) return;
@@ -114,5 +131,5 @@ export function useGlobalShortcuts(): void {
     };
     window.addEventListener("keydown", handler, { capture: true });
     return () => window.removeEventListener("keydown", handler, { capture: true });
-  }, [announce]);
+  }, [announce, orderedZonesRef]);
 }

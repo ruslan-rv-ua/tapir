@@ -23,6 +23,7 @@ const makeActions = (): ShortcutActions => ({
   openCreateSchedule: vi.fn(),
   toggleMute: vi.fn(),
   announceNowPlaying: vi.fn(),
+  focusSearch: vi.fn(),
 });
 
 describe("matchShortcut — matching", () => {
@@ -72,6 +73,20 @@ describe("matchShortcut — matching", () => {
   it("matches bare F9 → now-playing", () => {
     expect(matchShortcut(ev("F9"), ctx("streams"))?.id).toBe("now-playing");
     expect(matchShortcut(ev("F9", { shiftKey: true }), ctx("streams"))).toBeNull();
+  });
+
+  // Global (no `when`): a section without a search field still answers the key —
+  // silence would be indistinguishable from "the app is stuck".
+  it("matches Ctrl+F → focus-search on every section", () => {
+    expect(matchShortcut(ev("KeyF", { ctrlKey: true }), ctx("browser"))?.id).toBe("focus-search");
+    expect(matchShortcut(ev("KeyF", { ctrlKey: true }), ctx("schedule"))?.id).toBe("focus-search");
+    expect(matchShortcut(ev("KeyF", { metaKey: true }), ctx("songs"))?.id).toBe("focus-search");
+  });
+
+  // AltGr reports ctrl+alt on European layouts — it must stay a character.
+  it("leaves Ctrl+Alt+F and Ctrl+Shift+F alone", () => {
+    expect(matchShortcut(ev("KeyF", { ctrlKey: true, altKey: true }), ctx("browser"))).toBeNull();
+    expect(matchShortcut(ev("KeyF", { ctrlKey: true, shiftKey: true }), ctx("browser"))).toBeNull();
   });
 
   it("maps Alt+digit to the right section", () => {
@@ -128,6 +143,13 @@ describe("matchShortcut — run mapping", () => {
     const c = ctx("streams");
     matchShortcut(ev("KeyN", { ctrlKey: true }), c)!.run!(a, c);
     expect(a.openAddStream).toHaveBeenCalledOnce();
+  });
+
+  it("Ctrl+F runs focusSearch", () => {
+    const a = makeActions();
+    const c = ctx("browser");
+    matchShortcut(ev("KeyF", { ctrlKey: true }), c)!.run!(a, c);
+    expect(a.focusSearch).toHaveBeenCalledOnce();
   });
 
   it("F1 runs openHelp", () => {

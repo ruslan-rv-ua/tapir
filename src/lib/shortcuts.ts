@@ -21,6 +21,7 @@ export interface ShortcutActions {
   openCreateSchedule: () => void;
   toggleMute: () => void;
   announceNowPlaying: () => void;
+  focusSearch: () => void;
 }
 
 export interface Shortcut {
@@ -134,6 +135,20 @@ export const SHORTCUTS: readonly Shortcut[] = [
     reserved: true,
     match: (e) => !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey && e.code === "F9",
     run: (a) => a.announceNowPlaying(),
+  },
+  {
+    // The universal "find" convention: focus goes to the current screen's search
+    // field. Deliberately NOT gated on the section — a key the convention
+    // promises everywhere must answer everywhere, and the two screens without a
+    // search field say so out loud (focusSearch owns that reply). NVDA does not
+    // claim Ctrl+F either; its own find is NVDA+Ctrl+F.
+    id: "focus-search",
+    combo: "Ctrl+F",
+    label: m.settings_hotkey_action_focus_search,
+    group: "global",
+    reserved: true,
+    match: (e) => ctrlOrMeta(e) && e.code === "KeyF",
+    run: (a) => a.focusSearch(),
   },
   ...sectionShortcuts,
   {

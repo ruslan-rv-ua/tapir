@@ -6,6 +6,7 @@ import { $songs, $songsSelection, $songsQuery, $songsStation } from "../../store
 import { $announcer } from "../../stores/announcer";
 import { replaceSelection } from "../../stores/selection";
 import type { Song } from "../../types/song";
+import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as tauri from "../../lib/tauri";
 import { SongsPanel } from "./SongsPanel";
 
@@ -31,6 +32,19 @@ beforeEach(() => {
 });
 
 const renderPanel = () => render(<SongsPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
+
+describe("SongsPanel — Ctrl+F target", () => {
+  it("registers the filter zone as this section's Ctrl+F target", () => {
+    const onZonesChange = vi.fn();
+    render(<SongsPanel onZonesChange={onZonesChange} exitZone={vi.fn()} />);
+    const zones = onZonesChange.mock.lastCall![0] as ZoneEntry[];
+    const searchable = zones.filter((z) => z.focusSearch);
+    expect(searchable.map((z) => z.id)).toEqual(["songs-filter"]);
+
+    act(() => searchable[0].focusSearch!());
+    expect((document.activeElement as HTMLInputElement).type).toBe("search");
+  });
+});
 
 describe("SongsPanel — selection cluster", () => {
   it("select-all selects every visible song and announces the count", () => {
