@@ -3,11 +3,12 @@ slug: zero-volume-reads-as-muted
 title: "Нульова гучність не читається як вимкнений звук"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: M
 kind: bug
 target: 0.1.0
-updated: 2026-08-16
+updated: 2026-08-17
+completed: 2026-08-17
 a11y: true
 depends_on: []
 blocks: []
@@ -20,7 +21,6 @@ touches:
   - src/App.tsx
   - CONTEXT.md
   - docs/decisions/2026-08-16-silence-is-mute-or-zero-volume.md
-  - docs/testing/nvda-zero-volume-reads-as-muted.md
 gates: [pnpm test, pnpm vite:build]
 notes:
   - "Знахідка grilling help-muted-playback-symptom (2026-08-16). Той самий клас, що key-recorder-silent-rejection і hotkey-registration-silent-at-startup: стан існує, а поверхня про нього мовчить."
@@ -32,9 +32,9 @@ notes:
 
 # Нульова гучність не читається як вимкнений звук
 
-> **Контекст:** знайдено під час grilling [help-muted-playback-symptom](done/p2-help-muted-playback-symptom.md),
+> **Контекст:** знайдено під час grilling [help-muted-playback-symptom](p2-help-muted-playback-symptom.md),
 > коли з'ясовували, скільки причин має симптом «відтворення йде, а звуку немає».
-> Рішення про модель — [ADR 2026-08-16](../decisions/2026-08-16-silence-is-mute-or-zero-volume.md),
+> Рішення про модель — [ADR 2026-08-16](../../decisions/2026-08-16-silence-is-mute-or-zero-volume.md),
 > читати першим.
 
 ## Опис
@@ -43,13 +43,13 @@ notes:
 
 **Перемикач** — кнопка плеєра або `Ctrl+M`. Стан живе в `$muteState.muted`, кнопка
 міняє підпис і `aria-pressed`, `F9` додає «звук вимкнено»
-([playbackAnnounce.ts:129](../../src/lib/playbackAnnounce.ts:129), ключ `f9_muted`).
+([playbackAnnounce.ts:129](../../../src/lib/playbackAnnounce.ts:129), ключ `f9_muted`).
 
 **Рівень** — `Ctrl+Alt+Down` до дна або повзунок. `muted` лишається `false`, і далі
 мовчать усі:
 
 - кнопка показує «Вимкнути звук» — тобто стверджує, що звук увімкнено
-  ([PlayerPanel.tsx:373](../../src/components/player/PlayerPanel.tsx:373), значок від
+  ([PlayerPanel.tsx:373](../../../src/components/player/PlayerPanel.tsx:373), значок від
   `isMuted`);
 - `F9` про рівень не знає взагалі: `describePlayback` несе лише поле `muted`;
 - вихід із стану не названий ніде.
@@ -58,8 +58,8 @@ notes:
 
 | | перемикач | нульовий рівень |
 |---|---|---|
-| Досяжність випадкового натискання | лише при сфокусованому вікні | **глобальна клавіша**, з автоповтором ([shortcuts.rs:88](../../src-tauri/src/shortcuts.rs:88)) |
-| Живучість | гасне сама на `stopped` і на зміні джерела ([muteCleanup.ts](../../src/lib/muteCleanup.ts)) | не гасне; рівень — сесійне поле профілю ([app_state.rs:120](../../src-tauri/src/app_state.rs:120)), тож **переживає перезапуск** |
+| Досяжність випадкового натискання | лише при сфокусованому вікні | **глобальна клавіша**, з автоповтором ([shortcuts.rs:88](../../../src-tauri/src/shortcuts.rs:88)) |
+| Живучість | гасне сама на `stopped` і на зміні джерела ([muteCleanup.ts](../../../src/lib/muteCleanup.ts)) | не гасне; рівень — сесійне поле профілю ([app_state.rs:120](../../../src-tauri/src/app_state.rs:120)), тож **переживає перезапуск** |
 | Названий у відповіді `F9` | так | ні |
 
 ### Найгірше — не мовчання, а відповідь
@@ -67,7 +67,7 @@ notes:
 `Ctrl+M` при нульовій гучності сьогодні поводиться так: `toggleMute` бачить `!muted`,
 бере `restoreTo = FALLBACK_VOLUME` (бо `volume === 0`), ставить гучність у нуль — вона
 й так нуль, — і оголошує **«Звук вимкнено»** вже беззвучному плеєру
-([muteControl.ts:37-43](../../src/lib/muteControl.ts:37)). Звук повертає лише **друге**
+([muteControl.ts:37-43](../../../src/lib/muteControl.ts:37)). Звук повертає лише **друге**
 натискання, одразу на 75%.
 
 Тобто контрол не просто не допомагає — він підтверджує стан, у який щойно нібито
@@ -77,7 +77,7 @@ notes:
 
 Стани лишаються окремі; об'єднуються **поверхня** і **вихід** — модель YouTube/video.js.
 Повне обґрунтування й відкинута альтернатива (звести `muted` і `volume` в один стан) —
-в [ADR](../decisions/2026-08-16-silence-is-mute-or-zero-volume.md).
+в [ADR](../../decisions/2026-08-16-silence-is-mute-or-zero-volume.md).
 
 1. **Предикат тиші.** Одна функція — «звук вимкнено» = `muted || volume === 0` — живить
    значок і підпис кнопки, `aria-pressed` і клаузу `f9_muted`. Нових текстів не
@@ -112,14 +112,14 @@ notes:
 - [x] Явний `Ctrl+M` при звичайній гучності поводиться як раніше, включно з
       відновленням на зупинці й на зміні джерела
 - [x] `CONTEXT.md`: додано термін «Вимкнений звук» (текст — нижче)
-- [x] ADR [2026-08-16](../decisions/2026-08-16-silence-is-mute-or-zero-volume.md) на місці
+- [x] ADR [2026-08-16](../../decisions/2026-08-16-silence-is-mute-or-zero-volume.md) на місці
 - [x] `pnpm test`, `pnpm vite:build` зелені
-- [ ] NVDA-прогін (мануально, перед прийманням) — чекліст
-      [nvda-zero-volume-reads-as-muted.md](../testing/nvda-zero-volume-reads-as-muted.md),
-      8 сценаріїв. Чого автотести не доводять: що при нульовій гучності кнопка
-      **читається** як натиснута, що `F9` вимовляє клаузу стану без розриву речення,
-      і що `Ctrl+M` оголошує «Звук увімкнено» **після** того, як звук справді
-      з'явився, а не до
+- [x] NVDA-прогін проведено 2026-08-17: усі 8 сценаріїв пройдено, зауважень немає.
+      Чекліст (`docs/testing/nvda-zero-volume-reads-as-muted.md`) видалено на
+      прийманні за конвенцією. Що він доводив понад автотести: що при нульовій
+      гучності кнопка **читається** як натиснута, що `F9` вимовляє клаузу стану без
+      розриву речення, і що `Ctrl+M` оголошує «Звук увімкнено» **після** того, як
+      звук справді з'явився, а не до
 
 ## Текст для `CONTEXT.md`
 
@@ -144,14 +144,14 @@ notes:
   нулем виявиться частим.
 - **Видимий відгук на самі клавіші.** `Ctrl+M` і `F9` й після цієї зміни пишуть лише в
   `sr-only`; це окремий запис
-  [sound-hotkeys-feedback-announce-only](p2-sound-hotkeys-feedback-announce-only.md).
+  [sound-hotkeys-feedback-announce-only](../p2-sound-hotkeys-feedback-announce-only.md).
 - **Об'єднання станів `muted` і `volume`.** Розглянуто й відкинуто — див. «Відхилені
   варіанти» в ADR. Не піднімати без нових аргументів.
 
 ## Документи
 
-- [ADR 2026-08-16](../decisions/2026-08-16-silence-is-mute-or-zero-volume.md) — модель і відхилені варіанти
-- [help-muted-playback-symptom](done/p2-help-muted-playback-symptom.md) — позиція довідки, з
+- [ADR 2026-08-16](../../decisions/2026-08-16-silence-is-mute-or-zero-volume.md) — модель і відхилені варіанти
+- [help-muted-playback-symptom](p2-help-muted-playback-symptom.md) — позиція довідки, з
   якої знайдено; залежності між записами немає свідомо
 - [videojs/video.js#3909](https://github.com/videojs/video.js/issues/3909) — той самий
   баг у чужій кодовій базі й еталонна поведінка YouTube

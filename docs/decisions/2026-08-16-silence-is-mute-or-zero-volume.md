@@ -3,7 +3,7 @@
 - **Статус:** ПРИЙНЯТО
 - **Дата:** 2026-08-16
 - **Тип:** ADR — модель стану виводу плеєра
-- **Контекст:** беклог — [zero-volume-reads-as-muted](../backlog/p2-zero-volume-reads-as-muted.md),
+- **Контекст:** беклог — [zero-volume-reads-as-muted](../backlog/done/p2-zero-volume-reads-as-muted.md),
   знайдено під час grilling [help-muted-playback-symptom](../backlog/done/p2-help-muted-playback-symptom.md);
   словник — [CONTEXT.md](../../CONTEXT.md) §«Вимкнений звук»; код —
   [muteControl.ts](../../src/lib/muteControl.ts), [muteCleanup.ts](../../src/lib/muteCleanup.ts),
