@@ -30,6 +30,10 @@ Tapir plays MP3 and AAC. A station whose codec is `AAC+` records perfectly well 
 
 You can see this coming. The Station Browser shows a **Codec** column for every station, and the **Codec** filter narrows a search to the ones Tapir can play.
 
+### Playback runs but there is no sound
+
+The simplest cause is that the sound is off. The button on the player panel shows the state, and `F9` names it from anywhere in the window; `Ctrl+M` brings the sound back. If the sound is on, the cause is most likely the output device.
+
 ### Sound goes to the wrong device
 
 The player panel only shows the current device. Choose a different one in the app settings, tab **Audio**.
