@@ -195,7 +195,7 @@ Grilling 2026-08-17. Кожне рішення записане з причин�
 - [help-content-polish](p1-help-content-polish.md) — мапа `background.md`, конвенція
   розмітки 5, рішення описувати фоновий шар за дією
 - [help-config](p1-help-config.md) — запис, що описує поточний стан як є
-- [tray-notifications-label-scope](../p1-tray-notifications-label-scope.md) — той самий шар,
+- [tray-notifications-label-scope](p1-tray-notifications-label-scope.md) — той самий шар,
   брати разом
 - [CONTEXT.md](../../../CONTEXT.md) — «Прев'ю» як термін домену, а не мітка інтерфейсу (§9)
 - `src-tauri/src/tray/` — увесь шар; `src-tauri/src/lib.rs:183` — діалог невдалого старту

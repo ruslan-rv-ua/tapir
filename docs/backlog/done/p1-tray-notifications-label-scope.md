@@ -3,7 +3,8 @@ slug: tray-notifications-label-scope
 title: "Прапорець «Сповіщення при зміні треку» вимикає й сповіщення розкладу"
 priority: P1
 type: planned
-status: in-progress
+status: done
+completed: 2026-08-17
 effort: M
 kind: bug
 target: 0.1.0
@@ -62,7 +63,7 @@ notes:
 
 Розвилку («перейменувати чи розділити») знято на grilling 2026-08-17. Прийнято **два
 незалежні прапорці**; повне рішення з відхиленими варіантами —
-[ADR про категорії тостів](../decisions/2026-08-17-tray-toast-categories.md). Стисло:
+[ADR про категорії тостів](../../decisions/2026-08-17-tray-toast-categories.md). Стисло:
 
 - категорій тостів три — зміна треку, плановий запис, зворотний зв'язок хоткея;
   прапорцем вимикається те, що лишає **інший слід**, а третя категорія не гейтиться
@@ -94,18 +95,18 @@ notes:
       `settings.md` називають актуальні мітки (uk + en)
 - [x] ADR про категорії тостів написано; у ADR 2026-08-08 звірено ім'я поля, статус
       ПРИЙНЯТО без змін; `CONTEXT.md` §«Сповіщення в треї»
-- [ ] Ручна перевірка: пройти Tab'ом по вкладці «Інтерфейс» — обидва прапорці називають
-      повну мітку
+- [x] Ручна перевірка: пройти Tab'ом по вкладці «Інтерфейс» — обидва прапорці називають
+      повну мітку (прийнято розробником 2026-08-17)
 - [x] `pnpm vite:build`, `pnpm test`, `cargo test` — без помилок
 
 ## Документи
 
-- [ADR: категорії тостів](../decisions/2026-08-17-tray-toast-categories.md) — рішення,
+- [ADR: категорії тостів](../../decisions/2026-08-17-tray-toast-categories.md) — рішення,
   відхилені варіанти, коли переглядати
-- [CONTEXT.md](../../CONTEXT.md) §«Сповіщення в треї» — три категорії, «сповіщення ≠
+- [CONTEXT.md](../../../CONTEXT.md) §«Сповіщення в треї» — три категорії, «сповіщення ≠
   оголошення», слово «трей»
-- [help-content-polish](done/p1-help-content-polish.md) — мапа покриття `scheduling.md`
+- [help-content-polish](p1-help-content-polish.md) — мапа покриття `scheduling.md`
   (пункт «Сповіщення»), конвенція розмітки 5
-- [help-automation](done/p1-help-automation.md) — запис, що описує поточну поведінку як є
+- [help-automation](p1-help-automation.md) — запис, що описує поточну поведінку як є
 - `src-tauri/src/tray/notify.rs` (`ToastKind`, `is_enabled`, `show_toast`),
   `src-tauri/src/scheduler/timer.rs`

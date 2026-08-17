@@ -3,7 +3,7 @@
 - **Статус:** ПРИЙНЯТО
 - **Дата:** 2026-08-17
 - **Тип:** ADR — модель сповіщень у треї
-- **Контекст:** беклог — [tray-notifications-label-scope](../backlog/p1-tray-notifications-label-scope.md),
+- **Контекст:** беклог — [tray-notifications-label-scope](../backlog/done/p1-tray-notifications-label-scope.md),
   знайдено під час grilling [help-automation](../backlog/done/p1-help-automation.md);
   словник — [CONTEXT.md](../../CONTEXT.md) §«Сповіщення в треї»; межа глобальне/профільне —
   [ADR 2026-08-08](2026-08-08-global-vs-profile-settings-boundary.md); код —
