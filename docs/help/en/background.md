@@ -12,7 +12,7 @@ A left click hides the window when it is visible and brings it back when it is n
 
 The icon's menu changes with the state. From it you can pause or resume playback, stop it, stop all recordings, show or hide the window, and quit. Items with nothing to act on are simply not shown: there is nothing to stop while nothing is playing.
 
-Tapir can also raise a notification when the track changes — that is switched on per profile, in its settings on the **Interface** tab.
+Tapir can also raise a notification when the track changes — that is switched on per profile, in its settings on the **Interface** tab. The checkbox next to it governs notifications about scheduled recordings; those belong to the section "Schedule".
 
 ### Global hotkeys
 

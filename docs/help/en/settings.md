@@ -24,6 +24,6 @@ Two kinds of combination are refused straight away, with a reason: those reserve
 
 The **Recording** tab holds **Output & templates** (**Recording folder**, **Track file name template**, **Incomplete file template**, **Stream file template**), **Stream file** (**Save stream file**), **Track filters** (**Skip first incomplete track**, **Minimum track duration (sec)**, **Auto-correct case**, **Disk threshold (GB)**) and **Scheduler** (**Start earlier, min**, **Stop later, min**). At the end sits the collapsed **Reconnection** block with four fields: **Max reconnection attempts**, **Retry interval (sec)**, **Backoff multiplier** and **Max interval (sec)**. What all of these do is described in the sections "How recording works" and "Schedule".
 
-The **Playback** tab holds **Resume last playback on startup**, **Resume file** and **Auto-play next track**; those belong to the section "Listening". The **Interface** tab holds the stream list **Sort** order and **Notifications on track change**.
+The **Playback** tab holds **Resume last playback on startup**, **Resume file** and **Auto-play next track**; those belong to the section "Listening". The **Interface** tab holds the stream list **Sort** order and two independent checkboxes: **Tray notifications for track changes** and **Tray notifications for scheduled recordings**.
 
 The **Post-processing** tab is empty for now: running an external program over a finished file is not available yet, and the tab stays in place so you know it is coming.
