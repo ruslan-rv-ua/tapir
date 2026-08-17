@@ -253,7 +253,8 @@ pub struct HotkeyMap {
   // Інтерфейс — профільний (ADR 2026-08-08, фільтр 4)
   "ui": {
     "streamSort": "name",
-    "trayNotifications": true
+    "trayNotificationsTrackChange": true,
+    "trayNotificationsScheduled": true
   },
 
   // Збережені треки (lightweight metadata, не файли)
@@ -705,16 +706,22 @@ interface PlayerSession {
 
 ```typescript
 interface UiSettings {
-  streamSort: "name" | "added";  // порядок списку потоків цього профілю
-  trayNotifications: boolean;    // сповіщення про зміну треку в треї
+  streamSort: "name" | "added";           // порядок списку потоків цього профілю
+  trayNotificationsTrackChange: boolean;  // тости про зміну треку
+  trayNotificationsScheduled: boolean;    // тости про плановий запис
 }
 ```
 
-`trayNotifications` — **свідомий виняток** із фільтра «зареєстроване в ОС»:
-«нічний сценарій — тихо» є сценарною потребою. Виняток задокументовано в ADR
-саме щоб він лишався винятком і не почав розмивати фільтр за прецедентом.
-Глобальні тости `notify_recording_toggle` / `notify_stop_all` цей гейт **не**
-читають: вони — єдиний фідбек фонового хоткея.
+Обидва прапорці — **один** свідомий виняток із фільтра «зареєстроване в ОС»
+(«нічний сценарій — тихо» є сценарною потребою), просто втілений двома полями:
+категорій тостів дві, і вимикаються вони незалежно (ADR 2026-08-17 про
+категорії тостів). Рахувати їх як два винятки не можна — поріг «2–3 винятки →
+переглянути фільтр» із ADR 2026-08-08 цим не зачеплено.
+
+Третя категорія — тости `notify_recording_toggle` / `notify_stop_all` — не
+гейтиться ніколи й поля не має: вона єдиний слід фонового хоткея. Правило, за
+яким категорія отримує прапорець, живе в `is_enabled` (`tray/notify.rs`):
+вимикається те, що лишає інший слід.
 
 ```rust
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1189,7 +1196,8 @@ interface PostprocessErrorPayload {
   },
   "ui": {
     "streamSort": "name",
-    "trayNotifications": true
+    "trayNotificationsTrackChange": true,
+    "trayNotificationsScheduled": true
   },
   "savedTracks": []
 }
