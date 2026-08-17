@@ -6,8 +6,8 @@ type: planned
 status: ready
 effort: S
 kind: feature
-target: unscheduled
-updated: 2026-07-23
+target: 0.1.0
+updated: 2026-08-17
 a11y: true
 depends_on: []
 blocks: []

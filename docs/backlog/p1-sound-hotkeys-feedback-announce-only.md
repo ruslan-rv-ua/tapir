@@ -1,13 +1,13 @@
 ---
 slug: sound-hotkeys-feedback-announce-only
 title: "Глобальні клавіші звуку не дають жодного видимого відгуку"
-priority: P2
+priority: P1
 type: planned
 status: ready
 effort: M
 kind: bug
-target: unscheduled
-updated: 2026-08-16
+target: 0.1.0
+updated: 2026-08-17
 a11y: false
 depends_on: []
 blocks: []
@@ -55,8 +55,8 @@ notes:
 `ToastContainer` у застосунку є й використовується, тобто поверхня для відповіді вже
 стоїть поруч.
 
-Це той самий клас, що [key-recorder-silent-rejection](p2-key-recorder-silent-rejection.md)
-і [hotkey-registration-silent-at-startup](p2-hotkey-registration-silent-at-startup.md):
+Це той самий клас, що [key-recorder-silent-rejection](p1-key-recorder-silent-rejection.md)
+і [hotkey-registration-silent-at-startup](p1-hotkey-registration-silent-at-startup.md):
 дія відбувається, а поверхня про неї мовчить. Відмінність — тут мовчання вибіркове за
 модальністю, тож повз тестування скрінрідером воно проходить непоміченим.
 

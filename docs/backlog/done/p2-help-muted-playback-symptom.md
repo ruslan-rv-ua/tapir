@@ -123,11 +123,11 @@ notes:
 
 - **Показувати вимкнений звук поза кнопкою плеєра** (значок у рядку стану, тост,
   суфікс у заголовку вікна) — це зміна поведінки, а не довідки. Заведено окремо:
-  [sound-hotkeys-feedback-announce-only](../p2-sound-hotkeys-feedback-announce-only.md).
+  [sound-hotkeys-feedback-announce-only](../p1-sound-hotkeys-feedback-announce-only.md).
   Пряме питання того запису — не «чи вистачає `F9`», а «чому глобальна клавіша не дає
   нічого видимого».
 - **Нульова гучність.** Не другою причиною в тексті, а зведенням її з вимкненим звуком
-  у коді: [zero-volume-reads-as-muted](../p2-zero-volume-reads-as-muted.md). До того запису
+  у коді: [zero-volume-reads-as-muted](p2-zero-volume-reads-as-muted.md). До того запису
   позиція лишається правдивою, але покриває лише перемикач; після нього ті самі три
   мітки починають працювати й для нульового рівня. Залежності немає свідомо — текст під
   обидва стани однаковий.
@@ -145,8 +145,8 @@ notes:
   принцип універсального дизайну)
 - Суміжні: [hotkeys-expansion](p2-hotkeys-expansion.md) (`Ctrl+M`, `F9`),
   [help-troubleshooting](p1-help-troubleshooting.md) (розділ як такий),
-  [zero-volume-reads-as-muted](../p2-zero-volume-reads-as-muted.md),
-  [sound-hotkeys-feedback-announce-only](../p2-sound-hotkeys-feedback-announce-only.md)
+  [zero-volume-reads-as-muted](p2-zero-volume-reads-as-muted.md),
+  [sound-hotkeys-feedback-announce-only](../p1-sound-hotkeys-feedback-announce-only.md)
 - Код: `src/lib/muteControl.ts` (дія й тексти стану), `src/stores/player.ts`
   (`$muteState`), `src/components/player/PlayerPanel.tsx` (кнопка — єдиний
   видимий індикатор стану)

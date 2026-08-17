@@ -6,8 +6,8 @@ type: idea
 status: draft
 effort: S
 kind: feature
-target: unscheduled
-updated: 2026-07-23
+target: 0.3.0
+updated: 2026-08-17
 a11y: false
 depends_on: []
 blocks: []
@@ -43,4 +43,4 @@ notes:
 ## Документи
 
 - шляхи коду: `src/components/common/`
-- [command-palette-phase-4](p3-command-palette-phase-4.md) — context-буст поверх score (див. notes)
+- [command-palette-phase-4](p2-command-palette-phase-4.md) — context-буст поверх score (див. notes)

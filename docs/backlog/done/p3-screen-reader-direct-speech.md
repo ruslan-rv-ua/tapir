@@ -3,22 +3,43 @@ slug: screen-reader-direct-speech
 title: "Пряме озвучення через API скрінрідера (Tolk)"
 priority: P3
 type: idea
-status: blocked
+status: done
 effort: S
 kind: feature
 target: unscheduled
-updated: 2026-06-14
+updated: 2026-08-17
+completed: 2026-08-17
 a11y: true
 depends_on: []
 blocks: []
 touches: [src/components/common/LiveAnnouncer.tsx, src/stores/announcer.ts, src/hooks/useAnnounce.ts]
 gates: []
-blocked_reason: "тригер-gated: повернутись лише якщо balloon tips виявляться недостатніми для швидкого фідбеку на глобальні хоткеї (типово — гучність). Scope тоді — лише озвучення глобальних хоткеїв, не заміна LiveAnnouncer."
 ---
 
 # Пряме озвучення через API скрінрідера (Tolk)
 
-> **Контекст:** свідомо відкладено (вердикт запису: цінність не виправдовує вартість). Не брати без явного тригера.
+> **Контекст:** **відхилено 2026-08-17** — запис закрито, а не відкладено. Тригер
+> повернення (нижче) знято: умовного «якщо balloon tips виявляться недостатніми»
+> більше не існує. Читати як зафіксоване рішення проти нативного SR-API.
+
+## Рішення: відхилено (2026-08-17)
+
+Розробник відмовився від ідеї. Раніше запис стояв `blocked` із тригером — тепер
+тригера немає: `blocked_reason` вилучено, повернення не передбачене.
+
+**Що це закріплює назавжди:**
+
+- Озвучення в застосунку йде **лише** через `aria-live` (`LiveAnnouncer`) плюс tray
+  balloon tips для фонового шару. Третьої поверхні мовлення не буде.
+- **Нативної DLL поруч із EXE не буде** — «portable single EXE» лишається інваріантом,
+  а LGPL-комплаєнс (Tolk + NVDA Controller Client) і крос-SR тести не входять у проєкт.
+- Narrator лишається читачем першого класу: гібрид «SR з контролерним API → Tolk,
+  решта → aria-live» відпадає разом із записом.
+
+**Наслідок для чинної черги:** [sound-hotkeys-feedback-announce-only](../p1-sound-hotkeys-feedback-announce-only.md)
+(P1, 0.1.0) втрачає резервний вихід «а швидкий фідбек колись озвучимо напряму». Тепер
+видима поверхня у вікні — **єдина** можлива відповідь на «клавіша нічого не робить»,
+і політика тостів, яку той запис ухвалює, є остаточною, а не проміжною.
 
 ## Опис
 
@@ -59,7 +80,7 @@ accessible_output2 / Tolk / VocaBraille.
 
 ## Документи
 
-- [accessibility.md — §11 / §15 / §1.4 / §17.1](../accessibility.md)
+- [accessibility.md — §11 / §15 / §1.4 / §17.1](../../accessibility.md)
 - Код: `src/components/common/LiveAnnouncer.tsx`, `src/stores/announcer.ts`,
   `src/hooks/useAnnounce.ts`
 - Зовнішнє: `tts` crate (tts-rs), `tolk` crate (darbaga/Tolk-rs), dkager/tolk

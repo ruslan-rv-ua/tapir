@@ -109,7 +109,7 @@ muted icon after setting volume slider to 0% has no user-visible effect».
   стану мусить брати предикат, а не поле. Це ціна §1, і саме її фіксує цей ADR.
 - **Клавіші й далі не мають видимого відгуку.** `Ctrl+M` і `F9` пишуть лише в `sr-only`;
   ця зміна робить їхню **відповідь** правдивою, але не робить її видимою. Окремий запис —
-  [sound-hotkeys-feedback-announce-only](../backlog/p2-sound-hotkeys-feedback-announce-only.md).
+  [sound-hotkeys-feedback-announce-only](../backlog/p1-sound-hotkeys-feedback-announce-only.md).
 - **Довідка не чекає на цю зміну.** Позиція «Відтворення йде, а звуку немає» правдива до
   й після; зміна лише розширює покриття тих самих трьох міток на нульовий рівень.
 

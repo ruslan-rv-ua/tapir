@@ -7,7 +7,7 @@ status: draft
 effort: L
 kind: feature
 target: unscheduled
-updated: 2026-06-23
+updated: 2026-08-17
 a11y: true
 depends_on: []
 blocks: [he-aac-mf-playback, hls-stream-support]

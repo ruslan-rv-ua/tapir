@@ -1,13 +1,13 @@
 ---
 slug: stream-auth
 title: "Автентифікація потоку: оживити username/password (DPAPI + передача в HTTP)"
-priority: P2
+priority: P3
 type: research
 status: draft
 effort: L
 kind: feature
 target: unscheduled
-updated: 2026-08-07
+updated: 2026-08-17
 a11y: true
 depends_on: []
 blocks: []

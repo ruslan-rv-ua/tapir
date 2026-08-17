@@ -6,8 +6,8 @@ type: idea
 status: draft
 effort: M
 kind: feature
-target: unscheduled
-updated: 2026-07-22
+target: 0.3.0
+updated: 2026-08-17
 a11y: false
 depends_on: []
 blocks: []

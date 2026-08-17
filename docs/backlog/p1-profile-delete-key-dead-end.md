@@ -1,14 +1,14 @@
 ---
 slug: profile-delete-key-dead-end
 title: "Delete на профілі Default або активному веде в глухий кут із нелокалізованою помилкою"
-priority: P2
+priority: P1
 type: planned
 status: ready
 effort: S
 kind: bug
-target: unscheduled
+target: 0.1.0
 a11y: false
-updated: 2026-08-13
+updated: 2026-08-17
 depends_on: []
 blocks: []
 touches:

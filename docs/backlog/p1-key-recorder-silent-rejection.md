@@ -1,14 +1,14 @@
 ---
 slug: key-recorder-silent-rejection
 title: "Рекордер гарячих клавіш мовчки ігнорує непридатну клавішу"
-priority: P2
+priority: P1
 type: planned
 status: ready
 effort: S
 kind: bug
-target: unscheduled
+target: 0.1.0
 a11y: false
-updated: 2026-08-13
+updated: 2026-08-17
 depends_on: []
 blocks: []
 touches:

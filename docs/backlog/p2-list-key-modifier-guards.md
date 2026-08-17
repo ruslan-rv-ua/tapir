@@ -1,13 +1,13 @@
 ---
 slug: list-key-modifier-guards
 title: "Списки: клавіші F2/Delete/Enter спрацьовують із будь-яким модифікатором"
-priority: P3
+priority: P2
 type: planned
 status: draft
 effort: S
 kind: bug
-target:
-updated: 2026-08-07
+target: 0.1.0
+updated: 2026-08-17
 a11y: true
 depends_on: []
 blocks: []

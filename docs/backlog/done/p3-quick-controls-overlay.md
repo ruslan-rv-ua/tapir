@@ -1,13 +1,14 @@
 ---
 slug: quick-controls-overlay
 title: "Quick Controls Overlay — швидке меню у фоні"
-priority: P2
+priority: P3
 type: idea
-status: draft
+status: done
 effort: L
 kind: feature
 target: unscheduled
-updated: 2026-07-22
+updated: 2026-08-17
+completed: 2026-08-17
 a11y: true
 depends_on: []
 blocks: []
@@ -18,7 +19,28 @@ depends_on_external: ["Phase 3A (System Tray, ✅)", "Phase 2A (PlayerEngine, �
 
 # Quick Controls Overlay — швидке меню у фоні
 
-> **Контекст:** сира ідея, велика (L), низький пріоритет — навмисно unscheduled/відкладено.
+> **Контекст:** **відхилено 2026-08-17.** Запис закрито; опис нижче лишається як розбір
+> варіантів, а не як план. Керування у фоні — трей-меню плюс глобальні клавіші.
+
+## Рішення: відхилено (2026-08-17)
+
+Розробник відмовився від ідеї. Разом із записом закриваються всі чотири відкриті
+питання (яку глобальну клавішу призначити; чи робити overlay конфігурованим; друге
+Tauri-вікно проти нативного Win32; toggle проти відкривання заново) — вони вилучені
+з [OPEN-QUESTIONS.md](../OPEN-QUESTIONS.md), секція P2 там спорожніла.
+
+**Що це закріплює:**
+
+- **Другого вікна в застосунку не буде.** Ні другого WebView2 (~50 МБ RAM поверх
+  «portable single EXE»), ні нативного Win32-popup'а з власним MSAA/UIA-деревом.
+- **Фонова поверхня одна — трей.** Меню значка плюс глобальні хоткеї лишаються
+  єдиним способом керувати Tapir, не піднімаючи вікно. Це підвищує ставку двох
+  записів у 0.1.0: [tray-layer-not-localized](../p1-tray-layer-not-localized.md)
+  (єдина фонова поверхня зобов'язана бути двомовною — обхідного шляху більше немає)
+  і [sound-hotkeys-feedback-announce-only](../p1-sound-hotkeys-feedback-announce-only.md)
+  (відгук на глобальні клавіші лишається balloon tips + видима поверхня у вікні).
+- Сценарій «5–10 кроків, щоб змінити дію з іншого застосунку» приймається як ціна:
+  дешевшає він лише розширенням набору глобальних клавіш, не новим вікном.
 
 ## Опис
 
@@ -87,6 +109,6 @@ depends_on_external: ["Phase 3A (System Tray, ✅)", "Phase 2A (PlayerEngine, �
 
 ## Документи
 
-- [docs/accessibility.md](../accessibility.md) — NVDA focus handling
+- [docs/accessibility.md](../../accessibility.md) — NVDA focus handling
 - Phase 3A System Tray — аналогічний підхід з фоновим вікном
 - Tauri docs: multiple windows, `skip_taskbar`, `always_on_top`

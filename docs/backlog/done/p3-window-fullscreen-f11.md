@@ -3,11 +3,12 @@ slug: window-fullscreen-f11
 title: "F11 — справжній повноекранний режим вікна замість подавлення"
 priority: P3
 type: idea
-status: draft
+status: done
 effort: S
 kind: feature
 target: unscheduled
-updated: 2026-08-07
+updated: 2026-08-17
+completed: 2026-08-17
 a11y: true
 depends_on: []
 blocks: []
@@ -24,17 +25,36 @@ notes:
 
 # F11 — справжній повноекранний режим вікна замість подавлення
 
-> **Контекст:** ідея, рішення не прийнято. Відгалуження
-> [webview-reload-guard](done/p2-webview-reload-guard.md), який поки що просто гасить
-> `F11` разом з рештою акселераторів WebView2. Брати лише за явним запитом —
-> потреби від користувача ще не було.
+> **Контекст:** **відхилено 2026-08-17.** Рішення ухвалено — повноекранного режиму не
+> буде; `F11` лишається подавленою гардом
+> [webview-reload-guard](p2-webview-reload-guard.md) назавжди, а не «поки що».
+
+## Рішення: відхилено (2026-08-17)
+
+Розробник відмовився від ідеї. Це закриває обидва питання, на яких запис стояв у
+`draft`: потреби немає (питання 1 — реального запиту так і не було), тож вибір між
+справжнім fullscreen'ом і простою максимізацією (питання 2) не постає.
+
+**Що це закріплює:**
+
+- **`F11` подавлена назавжди.** Рядок у [webviewAccelerators.ts](../../../src/lib/webviewAccelerators.ts)
+  не тимчасовий: §5 «Прийняті рішення» у [webview-reload-guard](p2-webview-reload-guard.md)
+  («подавити зараз, справжній fullscreen окремо») закривається **відмовою**, а не
+  реалізацією — там це відзначено.
+- Формально клавіша лишається **вільною**: гард робить `preventDefault()` без
+  `stopPropagation()`, а в `SHORTCUTS` `F11` немає, тож пул вільних F-клавіш
+  ([hotkeys-expansion](p2-hotkeys-expansion.md)) її й далі містить. Але вішати на неї
+  саме повний екран більше не планується — якщо колись візьмуть, то під іншу дію.
+- Більше площі для слабозорих лишається за масштабом
+  ([webview-zoom-hotkeys](../p1-webview-zoom-hotkeys.md), P1 у 0.1.0) — це тепер
+  єдиний шлях до цієї потреби.
 
 ## Опис
 
 `F11` вирізняється серед подавлених акселераторів: `F5`, `F3`, `F7` не дають
 користувачу нічого, а повний екран дає більше корисної площі — для слабозорого
 це може мати сенс разом із масштабом
-([webview-zoom-hotkeys](p2-webview-zoom-hotkeys.md)).
+([webview-zoom-hotkeys](../p1-webview-zoom-hotkeys.md)).
 
 Проблема не в самій ідеї, а в дефолтній реалізації: WebView2 переводить у
 fullscreen **документ**, а не вікно. Зникають рамка й заголовок, стан ніде не
@@ -60,22 +80,22 @@ NVDA перестала читати заголовок вікна. Тому в 
    декорації й заголовок — і, можливо, покриває всю реальну потребу.
 3. Якщо робимо — лишити `F11` (конвенція браузерів і Провідника) чи перенести
    на комбінацію, щоб не витрачати дефіцитну голу F-клавішу з пулу
-   [hotkeys-expansion](done/p2-hotkeys-expansion.md)?
+   [hotkeys-expansion](p2-hotkeys-expansion.md)?
 
 ## Критерії готовності
 
 _Формулювати після відповіді на «Відкриті питання» — запис у `draft`._
 
 Мінімум, без якого не приймати: `F11` прибрано з переліку в
-[webviewAccelerators.ts](../../src/lib/webviewAccelerators.ts) (інакше гард
+[webviewAccelerators.ts](../../../src/lib/webviewAccelerators.ts) (інакше гард
 з'їсть клавішу першим), обидва переходи оголошуються, вихід відновлює
 декорації, NVDA-прогін.
 
 ## Документи
 
-- Джерело: [p2-webview-reload-guard.md](done/p2-webview-reload-guard.md) («Прийняті
+- Джерело: [p2-webview-reload-guard.md](p2-webview-reload-guard.md) («Прийняті
   рішення» §5)
-- Суміжний: [p2-webview-zoom-hotkeys.md](p2-webview-zoom-hotkeys.md) (та сама
+- Суміжний: [p1-webview-zoom-hotkeys.md](../p1-webview-zoom-hotkeys.md) (та сама
   аудиторія — слабозорі)
-- Пул вільних F-клавіш: [p2-hotkeys-expansion.md](done/p2-hotkeys-expansion.md)
+- Пул вільних F-клавіш: [p2-hotkeys-expansion.md](p2-hotkeys-expansion.md)
 - [Tauri `Window::set_fullscreen`](https://docs.rs/tauri/latest/tauri/window/struct.Window.html#method.set_fullscreen)

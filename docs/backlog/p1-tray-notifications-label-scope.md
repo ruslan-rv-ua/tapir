@@ -1,13 +1,13 @@
 ---
 slug: tray-notifications-label-scope
 title: "Прапорець «Сповіщення при зміні треку» вимикає й сповіщення розкладу"
-priority: P2
+priority: P1
 type: planned
 status: ready
 effort: S
 kind: bug
-target: unscheduled
-updated: 2026-08-13
+target: 0.1.0
+updated: 2026-08-17
 a11y: false
 depends_on: []
 blocks: []

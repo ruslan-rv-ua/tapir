@@ -175,7 +175,7 @@ Reload (тобто ще один вхід у ту саму пастку) і кр
 у [tauri.conf.json](../../../src-tauri/tauri.conf.json) опції `zoomHotkeysEnabled`
 немає, а її дефолт у Tauri v2 — `false`, тобто зуму в застосунку зараз немає
 взагалі. Захищати нічого. Вимикач відхилено з інших причин (див. §7), а сам
-зум винесено в [webview-zoom-hotkeys](../p2-webview-zoom-hotkeys.md).
+зум винесено в [webview-zoom-hotkeys](../p1-webview-zoom-hotkeys.md).
 
 Практичний наслідок для гарду: `Ctrl+Plus`/`Ctrl+Minus`/`Ctrl+0` у перелік
 **не** додавати — щоб після вмикання зуму цей гард не довелося переробляти.
@@ -211,7 +211,11 @@ F5, ні контекстного меню: їх відкриває Rust (§9).
 
 Справжній повноекранний режим — це не рядок у гарді, а свій стан, оголошення,
 повернення фокуса й пункт у F1-довідці. Винесено в
-[window-fullscreen-f11](../p3-window-fullscreen-f11.md) (P3, unscheduled).
+[window-fullscreen-f11](p3-window-fullscreen-f11.md) (P3, unscheduled).
+
+> **Оновлення 2026-08-17:** той запис **відхилено** — повноекранного режиму не буде,
+> тож «подавити зараз» читається як «подавити назавжди». Слово «окремо» в заголовку
+> лишилось історичним: розвилки більше немає.
 
 ### 6. Контекстне меню зникає й з клавіатури — це задокументувати
 
@@ -374,9 +378,9 @@ debug-збірці й перевіряється тим, що debug-запуск
 - **Решта акселераторів** — `Ctrl+P` (друк), `Ctrl+S`, `Ctrl+F`, `F12`: §8.
 - **Системний вимикач WebView2** `AreBrowserAcceleratorKeysEnabled`: §7.
 - **Зум** `Ctrl+Plus`/`Ctrl+Minus`/`Ctrl+0` — окремий запис
-  [webview-zoom-hotkeys](../p2-webview-zoom-hotkeys.md) (§2).
+  [webview-zoom-hotkeys](../p1-webview-zoom-hotkeys.md) (§2).
 - **Справжній fullscreen на F11** — окремий запис
-  [window-fullscreen-f11](../p3-window-fullscreen-f11.md) (§5).
+  [window-fullscreen-f11](p3-window-fullscreen-f11.md) (§5), **відхилений 2026-08-17**.
 - **`F5` = «Копіювати в профіль»** — [streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md);
   цей запис лише не заважає йому.
 - **Власне контекстне меню поза списками** (застосункова заміна нативного):
@@ -440,8 +444,8 @@ debug-збірці й перевіряється тим, що debug-запуск
 
 - Дослідження-джерело: [p2-streams-transfer-hotkeys.md](p2-streams-transfer-hotkeys.md);
   друга хвиля (F3/F7/F11, Ctrl+F у диспетчері): [p2-hotkeys-expansion.md](p2-hotkeys-expansion.md)
-- Відгалуження цього запису: [p2-webview-zoom-hotkeys.md](../p2-webview-zoom-hotkeys.md) (§2),
-  [p3-window-fullscreen-f11.md](../p3-window-fullscreen-f11.md) (§5)
+- Відгалуження цього запису: [p1-webview-zoom-hotkeys.md](../p1-webview-zoom-hotkeys.md) (§2),
+  [p3-window-fullscreen-f11.md](p3-window-fullscreen-f11.md) (§5, відхилено)
 - Код: `src/App.tsx`, `src/hooks/useGlobalShortcuts.ts` (сусідній прецедент
   capture-listener'а, **не редагується**), `src/hooks/useGlobalShortcuts.test.tsx`
   (прецедент тесту-харнеса), `src/lib/shortcutGuard.ts` (`isTextEntryTarget` —

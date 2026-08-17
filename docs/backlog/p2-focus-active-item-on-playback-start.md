@@ -1,13 +1,13 @@
 ---
 slug: focus-active-item-on-playback-start
 title: Автофокус на елементі при старті відтворення
-priority: P1
+priority: P2
 type: idea
 status: draft
 effort: S
 kind: feature
-target: unscheduled
-updated: 2026-07-22
+target: 0.2.0
+updated: 2026-08-17
 a11y: true
 depends_on: []
 blocks: []

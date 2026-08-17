@@ -29,7 +29,7 @@ notes:
 
 ## Опис
 
-Виділено з [`command-palette-taxonomy`](../p2-command-palette-taxonomy.md) — там лишилися
+Виділено з [`command-palette-taxonomy`](../p3-command-palette-taxonomy.md) — там лишилися
 спірні зміни семантики (категорія-як-`sublabel`, пункти-навігація замість дій). Тут —
 лише те, що цінне вже зараз і ні від чого не залежить.
 
@@ -64,4 +64,4 @@ notes:
 
 - Код: [src/components/common/CommandPalette.tsx](../../../src/components/common/CommandPalette.tsx) — `filtered`, порожній `<li>`, `<ul role="listbox">`
 - Тести: `src/components/common/CommandPalette.test.tsx`
-- Спірна частина, винесена окремо: [command-palette-taxonomy](../p2-command-palette-taxonomy.md)
+- Спірна частина, винесена окремо: [command-palette-taxonomy](../p3-command-palette-taxonomy.md)

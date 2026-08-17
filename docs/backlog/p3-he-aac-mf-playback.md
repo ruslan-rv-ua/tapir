@@ -7,7 +7,7 @@ status: draft
 effort: M
 kind: feature
 target: unscheduled
-updated: 2026-06-19
+updated: 2026-08-17
 a11y: true
 depends_on: []
 blocks: []

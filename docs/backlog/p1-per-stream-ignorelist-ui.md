@@ -1,13 +1,13 @@
 ---
 slug: per-stream-ignorelist-ui
 title: "UI для per-stream ignorelist (логіка вже жива, редактора немає)"
-priority: P2
+priority: P1
 type: planned
 status: draft
 effort: M
 kind: feature
-target: unscheduled
-updated: 2026-08-07
+target: 0.2.0
+updated: 2026-08-17
 a11y: true
 depends_on: []
 blocks: []

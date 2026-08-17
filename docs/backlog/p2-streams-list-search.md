@@ -6,7 +6,7 @@ type: idea
 status: draft
 effort: S
 kind: feature
-target: unscheduled
+target: 0.2.0
 updated: 2026-08-17
 a11y: true
 depends_on: []

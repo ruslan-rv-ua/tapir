@@ -1,13 +1,13 @@
 ---
 slug: import-duplicate-metadata-update
 title: Оновлення метаданих існуючого потоку при імпорті дубліката
-priority: P3
+priority: P2
 type: planned
 status: ready
 effort: M
 kind: feature
-target: 0.1.0
-updated: 2026-07-23
+target: 0.2.0
+updated: 2026-08-17
 a11y: true
 depends_on: []
 blocks: []

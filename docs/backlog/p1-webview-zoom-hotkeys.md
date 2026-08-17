@@ -1,13 +1,13 @@
 ---
 slug: webview-zoom-hotkeys
 title: "Масштаб інтерфейсу: увімкнути Ctrl+Plus/Minus/0 у вікні WebView2"
-priority: P2
+priority: P1
 type: planned
 status: ready
 effort: S
 kind: feature
 target: 0.1.0
-updated: 2026-08-07
+updated: 2026-08-17
 a11y: true
 depends_on: []
 blocks: []

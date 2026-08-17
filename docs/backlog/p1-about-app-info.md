@@ -1,13 +1,13 @@
 ---
 slug: about-app-info
 title: "Застосунок ніде не показує ні своєї версії, ні адреси проєкту"
-priority: P2
+priority: P1
 type: planned
 status: ready
 effort: S
 kind: feature
-target: unscheduled
-updated: 2026-08-14
+target: 0.1.0
+updated: 2026-08-17
 a11y: true
 depends_on: []
 blocks: []

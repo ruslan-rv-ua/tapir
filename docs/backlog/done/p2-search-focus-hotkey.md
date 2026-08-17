@@ -139,7 +139,7 @@ KeyRecorder — `Ctrl+F` долітає до WebView2 і відкриває Find
 - Суміжні: [hotkeys-expansion](p2-hotkeys-expansion.md) (звідки відщеплено),
   [p2-webview-reload-guard.md](p2-webview-reload-guard.md) (§7 системний вимикач,
   §8 перелік акселераторів — підставу для `Ctrl+F` виправляє цей запис),
-  [p2-webview-zoom-hotkeys.md](../p2-webview-zoom-hotkeys.md) (сусідній випадок
+  [p1-webview-zoom-hotkeys.md](../p1-webview-zoom-hotkeys.md) (сусідній випадок
   «акселератор, який застосунок забирає собі»)
 - [Overriding default browser shortcuts (Chromium)](https://www.robin-drexler.com/2015/07/07/overriding-default-browser-shortcuts)
 - [NVDA Commands Quick Reference](https://download.nvaccess.org/documentation/keyCommands.html)

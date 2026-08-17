@@ -7,7 +7,7 @@ status: draft
 effort: S
 kind: feature
 target: unscheduled
-updated: 2026-07-23
+updated: 2026-08-17
 a11y: true
 depends_on: [command-palette-phase-3]
 blocks: []
@@ -20,7 +20,7 @@ notes:
 
 # Командна палітра — mode-prefixes (`>` команди, `@` контент)
 
-> **Контекст:** спірна ідея, вирізана з [command-palette-phase-4](p3-command-palette-phase-4.md).
+> **Контекст:** спірна ідея, вирізана з [command-palette-phase-4](p2-command-palette-phase-4.md).
 > Не братися, доки не закрито «Відкриті питання» — насамперед проблему розкладки.
 
 ## Опис
@@ -32,7 +32,7 @@ VS Code використовує `>` у Ctrl+P для фільтрації ли�
 | Префікс | Показує |
 |---------|---------|
 | `>` | команди: `action` + `navigate` («Перейти до: …» — теж команда з погляду користувача) |
-| `@` | контент: `song` (+ `stream`, якщо [command-palette-taxonomy](p2-command-palette-taxonomy.md) ухвалить пункти-потоки) |
+| `@` | контент: `song` (+ `stream`, якщо [command-palette-taxonomy](p3-command-palette-taxonomy.md) ухвалить пункти-потоки) |
 | *(без префікса)* | все |
 
 Парсинг локальний в input-обробнику: якщо перший символ запиту `>` або `@` —
@@ -76,8 +76,8 @@ VS Code використовує `>` у Ctrl+P для фільтрації ли�
 
 ## Документи
 
-- [command-palette-phase-4](p3-command-palette-phase-4.md) — звідки вирізано
-- [command-palette-phase-3](p2-command-palette-phase-3.md) — вводить `PaletteItem.type`
+- [command-palette-phase-4](p2-command-palette-phase-4.md) — звідки вирізано
+- [command-palette-phase-3](p1-command-palette-phase-3.md) — вводить `PaletteItem.type`
 - [decisions/2026-05-31-command-palette-and-search-ux.md](../decisions/2026-05-31-command-palette-and-search-ux.md) —
   §8 Ф4 («можливі режими-префікси»), §9 питання 4
 - Код: [src/components/common/CommandPalette.tsx](../../src/components/common/CommandPalette.tsx)

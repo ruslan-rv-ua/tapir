@@ -91,7 +91,7 @@ gates: [pnpm test, pnpm vite:build]
 - `src/lib/scheduleFormat.ts` — вісім текстів результату й три причини пропуску
 - `src/components/wishlist/`, `src/components/schedule/`
 - `DEVELOPERS.md` — та сама тема для іншої аудиторії (звірити, не копіювати)
-- Хвости сесії: [wishlist-pattern-hint-anchoring](../p2-wishlist-pattern-hint-anchoring.md),
-  [tray-notifications-label-scope](../p2-tray-notifications-label-scope.md),
-  [per-stream-ignorelist-ui](../p2-per-stream-ignorelist-ui.md) (чому крок правил знято),
-  [wishlist-conditions](../p1-wishlist-conditions.md) (чому поля моделі мертві)
+- Хвости сесії: [wishlist-pattern-hint-anchoring](../p1-wishlist-pattern-hint-anchoring.md),
+  [tray-notifications-label-scope](../p1-tray-notifications-label-scope.md),
+  [per-stream-ignorelist-ui](../p1-per-stream-ignorelist-ui.md) (чому крок правил знято),
+  [wishlist-conditions](../p2-wishlist-conditions.md) (чому поля моделі мертві)

@@ -4,10 +4,10 @@ title: "Постпроцесинг: запуск зовнішніх програ
 priority: P1
 type: planned
 status: ready
-effort: M
+effort: L
 kind: feature
-target: unscheduled
-updated: 2026-08-08
+target: 0.2.0
+updated: 2026-08-17
 a11y: true
 depends_on: [profile-scoped-settings]
 blocks: []
@@ -16,6 +16,7 @@ gates: [pnpm test, pnpm vite:build, cargo test, cargo clippy]
 depends_on_external: ["Phase 1 — Core Recording (✅ реалізовано)"]
 notes:
   - "P2 → P1 (2026-08-08): після profile-scoped-settings у діалозі профілю з'явиться готова, але вимкнена вкладка «Постобробка» — тобто це вже видима користувачу заглушка, а не просто відсутня фіча"
+  - "Переоцінка 2026-08-17: M → L. Новий Rust-модуль із чергою, таймаутом і скасуванням, повна форма налаштувань із кнопкою «Тест», рішення щодо безпеки запуску довільного бінарника — 15 критеріїв у трьох шарах."
 ---
 
 # Постпроцесинг: запуск зовнішніх програм після запису

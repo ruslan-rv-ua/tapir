@@ -1,13 +1,13 @@
 ---
 slug: wishlist-conditions
 title: Умови та дії після запису у вішлісті
-priority: P1
+priority: P2
 type: idea
 status: draft
 effort: L
 kind: feature
-target: unscheduled
-updated: 2026-07-22
+target: 0.3.0
+updated: 2026-08-17
 a11y: false
 depends_on: []
 blocks: []

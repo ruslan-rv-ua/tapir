@@ -1,13 +1,13 @@
 ---
 slug: command-palette-phase-3
 title: "Командна палітра — Фаза 3: розширення контенту (пісні, навігація)"
-priority: P2
+priority: P1
 type: planned
 status: ready
 effort: S
 kind: feature
 target: 0.2.0
-updated: 2026-07-23
+updated: 2026-08-17
 a11y: true
 depends_on: []
 blocks: [command-palette-phase-4, command-palette-mode-prefixes]
@@ -18,13 +18,14 @@ notes:
   - "Станції вирізано з фази повністю → пункти-потоки живуть у command-palette-taxonomy; ця фаза = пісні + навігація, per-stream дії не чіпаються."
   - "effort переоцінено M→S: станції вирізано, пісні вже завантажені в $songs, навігація генерується з SECTIONS."
   - "Пошук лишається токенізованим substring; fuzzy — окремий запис command-palette-fuzzy-search."
+  - "Переоцінка 2026-08-17 звірена й скасована: S лишається. Двадцять критеріїв — гранулярність приймання, а не обсяг: даних із бекенду не додається ($songs уже в сторі, навігація з SECTIONS), робота в одному компоненті."
 ---
 
 # Командна палітра — Фаза 3: розширення контенту (пісні, навігація)
 
 > **Контекст:** добудова `CommandPalette.tsx` (зараз — лише дії над потоками) до задуму
 > ADR DA1: додаються **пісні** та **навігаційні команди**. Станції (пункти-потоки)
-> **вирізані** в [command-palette-taxonomy](p2-command-palette-taxonomy.md) — ця фаза
+> **вирізані** в [command-palette-taxonomy](p3-command-palette-taxonomy.md) — ця фаза
 > per-stream дій не торкається. Читати спершу ADR
 > [`2026-05-31-command-palette-and-search-ux.md`](../decisions/2026-05-31-command-palette-and-search-ux.md).
 
@@ -85,14 +86,14 @@ NVDA-навігація по глибоких екранах — багато н
 
 | Питання | Рішення |
 |---|---|
-| Станції у фазі | **Вирізано повністю** → [command-palette-taxonomy](p2-command-palette-taxonomy.md); per-stream «Записати/Зупинити» лишаються як є. (Формулювання ADR Ф3 «станції (Browser)» не реалізовуємо: серверний пошук у палітрі суперечив би DA4; локальні потоки вже шукаються через sublabel.) |
+| Станції у фазі | **Вирізано повністю** → [command-palette-taxonomy](p3-command-palette-taxonomy.md); per-stream «Записати/Зупинити» лишаються як є. (Формулювання ADR Ф3 «станції (Browser)» не реалізовуємо: серверний пошук у палітрі суперечив би DA4; локальні потоки вже шукаються через sublabel.) |
 | Пунктів на пісню | Один — «Відтворити»; reveal-у-провіднику не дублюємо (є в контекст-меню Songs) |
 | Порожній запит | Статус-кво (статичні + per-stream дії) **+ навігація в кінці**; пісні лише при запиті ≥ 2 символів |
 | Ліміт пісень | 10 збігів, найновіші за `recordedAt` першими |
 | Механізм пошуку | Токенізований substring (патерн `$filteredSongs`); fuzzy — окремий запис [command-palette-fuzzy-search](p2-command-palette-fuzzy-search.md) |
 | Sublabel пісні | `<station> · <дата recordedAt>` (локалізована дата) |
 | Анонс кількості | Наявний дебаунсований анонс, рахує показані пункти; окремого «10 з N» не робимо |
-| Ранжування | Немає — фіксований порядок типів; recency/context-boost — [command-palette-phase-4](p3-command-palette-phase-4.md) |
+| Ранжування | Немає — фіксований порядок типів; recency/context-boost — [command-palette-phase-4](p2-command-palette-phase-4.md) |
 | Кнопка «Команди» (DA5) | Питання зняте — кнопок у коді вже немає, Ф1/Ф2 виконані |
 
 ## Критерії готовності
@@ -147,4 +148,4 @@ NVDA-навігація по глибоких екранах — багато н
 - [implementation-phases.md](../implementation-phases.md) — roadmap (пункт про CommandPalette)
 - Код: `src/components/common/CommandPalette.tsx`; тести: `src/components/common/CommandPalette.test.tsx`
 - Стори/реєстри: `src/stores/navigation.ts` (`$activeSection`, `$commandPaletteOpen`), `src/stores/songs.ts` (`$songs`), `src/stores/settings.ts` (`$settingsDialogOpen`), `src/lib/sections.ts` (`SECTIONS`)
-- Суміжні записи: [command-palette-taxonomy](p2-command-palette-taxonomy.md) (станції/форма пунктів), [command-palette-phase-4](p3-command-palette-phase-4.md) (ранжування), [command-palette-mode-prefixes](p3-command-palette-mode-prefixes.md) (фільтри `>`/`@`), [command-palette-fuzzy-search](p2-command-palette-fuzzy-search.md), [command-palette-dual-language-search](p2-command-palette-dual-language-search.md)
+- Суміжні записи: [command-palette-taxonomy](p3-command-palette-taxonomy.md) (станції/форма пунктів), [command-palette-phase-4](p2-command-palette-phase-4.md) (ранжування), [command-palette-mode-prefixes](p3-command-palette-mode-prefixes.md) (фільтри `>`/`@`), [command-palette-fuzzy-search](p2-command-palette-fuzzy-search.md), [command-palette-dual-language-search](p2-command-palette-dual-language-search.md)

@@ -367,7 +367,7 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 > порожньою дією».
 >
 > **Свідомо поза переліком:** `Ctrl+Plus`/`Ctrl+Minus`/`Ctrl+0` (зум — окремий
-> запис [webview-zoom-hotkeys](backlog/p2-webview-zoom-hotkeys.md)), `Alt+F4`
+> запис [webview-zoom-hotkeys](backlog/p1-webview-zoom-hotkeys.md)), `Alt+F4`
 > (системне закриття вікна, не браузерний акселератор),
 > `F12` (у прод-збірці Tauri мертвий без `devtools`-feature),
 > `Ctrl+P`/`Ctrl+S` (шкідливого ефекту не мають). **`Ctrl+F` був у цьому списку

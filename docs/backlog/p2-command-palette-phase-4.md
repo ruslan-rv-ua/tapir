@@ -1,13 +1,13 @@
 ---
 slug: command-palette-phase-4
 title: "Командна палітра — Phase 4: context-aware ранжування"
-priority: P3
+priority: P2
 type: planned
 status: blocked
 effort: S
 kind: feature
 target: 0.2.0
-updated: 2026-07-23
+updated: 2026-08-17
 a11y: true
 depends_on: [command-palette-phase-3]
 blocks: []
@@ -23,7 +23,7 @@ notes:
 
 # Командна палітра — Phase 4: context-aware ранжування
 
-> **Контекст:** blocked до реалізації [command-palette-phase-3](p2-command-palette-phase-3.md).
+> **Контекст:** blocked до реалізації [command-palette-phase-3](p1-command-palette-phase-3.md).
 > Реалізує DA2 (ADR) у мінімальному обсязі: одне правило «на Songs — пісні першими».
 > Mode-prefixes вирізано в [command-palette-mode-prefixes](p3-command-palette-mode-prefixes.md).
 
@@ -49,7 +49,7 @@ ADR DA2 (§3 рішення): палітра стає **context-aware** — пі
 | `browser` | станцій Radio Browser у палітрі немає й не буде (DA4) |
 | `wishlist`, `schedule`, `profiles` | відповідного типу вмісту в палітрі немає |
 
-Якщо [command-palette-taxonomy](p2-command-palette-taxonomy.md) колись ухвалить
+Якщо [command-palette-taxonomy](p3-command-palette-taxonomy.md) колись ухвалить
 пункти-потоки (`stream`) — додати правило `streams` → `stream` окремим follow-up.
 
 Порожній запит нічого не змінює: пісні з'являються лише при запиті ≥ 2 символів
@@ -87,7 +87,7 @@ ADR DA2 (§3 рішення): палітра стає **context-aware** — пі
 
 - [decisions/2026-05-31-command-palette-and-search-ux.md](../decisions/2026-05-31-command-palette-and-search-ux.md) —
   Фаза Ф4, рішення DA2 і DA4, §8
-- [command-palette-phase-3](p2-command-palette-phase-3.md) — попередня фаза
+- [command-palette-phase-3](p1-command-palette-phase-3.md) — попередня фаза
   (вводить `PaletteItem.type` і пісні)
 - [command-palette-mode-prefixes](p3-command-palette-mode-prefixes.md) — вирізаний
   аспект mode-prefixes

@@ -1,13 +1,13 @@
 ---
 slug: command-palette-taxonomy
 title: "Командна палітра — таксономія категорій і потоки-навігація"
-priority: P2
+priority: P3
 type: idea
 status: draft
 effort: M
 kind: feature
 target: unscheduled
-updated: 2026-07-23
+updated: 2026-08-17
 a11y: true
 depends_on: []
 blocks: []
@@ -106,4 +106,4 @@ notes:
 
 - Код: [src/components/common/CommandPalette.tsx](../../src/components/common/CommandPalette.tsx)
 - Винесені готові покращення: [command-palette-results-a11y](done/p1-command-palette-results-a11y.md)
-- Пов'язана (розчеплена) фаза, що більше не залежить від цього запису: [command-palette-phase-3](p2-command-palette-phase-3.md)
+- Пов'язана (розчеплена) фаза, що більше не залежить від цього запису: [command-palette-phase-3](p1-command-palette-phase-3.md)

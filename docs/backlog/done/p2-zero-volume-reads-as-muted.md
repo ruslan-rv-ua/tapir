@@ -144,7 +144,7 @@ notes:
   нулем виявиться частим.
 - **Видимий відгук на самі клавіші.** `Ctrl+M` і `F9` й після цієї зміни пишуть лише в
   `sr-only`; це окремий запис
-  [sound-hotkeys-feedback-announce-only](../p2-sound-hotkeys-feedback-announce-only.md).
+  [sound-hotkeys-feedback-announce-only](../p1-sound-hotkeys-feedback-announce-only.md).
 - **Об'єднання станів `muted` і `volume`.** Розглянуто й відкинуто — див. «Відхилені
   варіанти» в ADR. Не піднімати без нових аргументів.
 

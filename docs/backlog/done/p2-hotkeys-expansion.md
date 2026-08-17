@@ -470,8 +470,8 @@ streams-transfer): якщо видалити гілку в списку, хук�
   [p2-webview-reload-guard.md](p2-webview-reload-guard.md) (F3/F7/F11),
   [p1-open-song-with-default-app.md](p1-open-song-with-default-app.md)
   (`aria-keyshortcuts` рядка Записів),
-  [p3-screen-reader-direct-speech.md](../p3-screen-reader-direct-speech.md) (`F9` —
-  споріднений, не залежить)
+  [p3-screen-reader-direct-speech.md](p3-screen-reader-direct-speech.md) (`F9` —
+  споріднений, не залежить; відхилено 2026-08-17)
 - [TapinRadio shortcut keys — pc-audio](https://www.mail-archive.com/pc-audio@pc-audio.org/msg56302.html) ·
   [TapinRadio help](http://www.tapinradio.com/help/lessons/General.html)
 - [NVDA Commands Quick Reference](https://download.nvaccess.org/documentation/keyCommands.html)
