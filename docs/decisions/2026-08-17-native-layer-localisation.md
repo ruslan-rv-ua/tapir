@@ -3,7 +3,7 @@
 - **Статус:** ПРИЙНЯТО
 - **Дата:** 2026-08-17
 - **Тип:** ADR — межа локалізації між Rust і webview
-- **Контекст:** беклог — [tray-layer-not-localized](../backlog/p1-tray-layer-not-localized.md)
+- **Контекст:** беклог — [tray-layer-not-localized](../backlog/done/p1-tray-layer-not-localized.md)
   (там же десять рішень рівня реалізації); код — [i18n.rs](../../src-tauri/src/i18n.rs),
   [tray/menu.rs](../../src-tauri/src/tray/menu.rs), [tray/notify.rs](../../src-tauri/src/tray/notify.rs),
   [settings_commands.rs](../../src-tauri/src/commands/settings_commands.rs);

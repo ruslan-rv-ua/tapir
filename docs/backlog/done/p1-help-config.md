@@ -141,7 +141,7 @@ notes:
 
 ### Знахідки, заведені окремими записами
 
-- [tray-layer-not-localized](../p1-tray-layer-not-localized.md) — фоновий шар лише українською
+- [tray-layer-not-localized](p1-tray-layer-not-localized.md) — фоновий шар лише українською
 - [hotkey-registration-silent-at-startup](../p1-hotkey-registration-silent-at-startup.md)
 - [key-recorder-silent-rejection](../p1-key-recorder-silent-rejection.md)
 - [settings-labels-wording](../p2-settings-labels-wording.md)

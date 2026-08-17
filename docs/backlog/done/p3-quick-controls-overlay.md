@@ -35,7 +35,7 @@ Tauri-вікно проти нативного Win32; toggle проти відк
   «portable single EXE»), ні нативного Win32-popup'а з власним MSAA/UIA-деревом.
 - **Фонова поверхня одна — трей.** Меню значка плюс глобальні хоткеї лишаються
   єдиним способом керувати Tapir, не піднімаючи вікно. Це підвищує ставку двох
-  записів у 0.1.0: [tray-layer-not-localized](../p1-tray-layer-not-localized.md)
+  записів у 0.1.0: [tray-layer-not-localized](p1-tray-layer-not-localized.md)
   (єдина фонова поверхня зобов'язана бути двомовною — обхідного шляху більше немає)
   і [sound-hotkeys-feedback-announce-only](../p1-sound-hotkeys-feedback-announce-only.md)
   (відгук на глобальні клавіші лишається balloon tips + видима поверхня у вікні).
