@@ -107,8 +107,6 @@ All project documentation lives in `docs/`. Key files:
 
 **Manual testing** (`docs/testing/`):
 - [test-streams.md](docs/testing/test-streams.md) — тестові URL радіо-потоків
-- [nvda-search-focus-hotkey.md](docs/testing/nvda-search-focus-hotkey.md) — прогін
-  `Ctrl+F` (фокус у пошук екрана + гасіння Find bar); видаляється на прийманні
 
 Чеклісти NVDA-прогону (`docs/testing/nvda-<slug>.md`) створюються для записів беклогу
 з `a11y: true` і видаляються на прийманні — метод і шаблон живуть у скілі

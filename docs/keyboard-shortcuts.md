@@ -155,7 +155,7 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 | `F1` | довідник гарячих клавіш (open-once, модаль з реєстру) | — | webview | ✅ | відкривність (a11y) |
 | `Ctrl+M` | вимкнути/увімкнути звук (toggle; анонс **стану**) | плеєр не зупинено | webview | ✅ | TapinRadio `Ctrl+M`, YouTube `M`; [hotkeys-expansion](backlog/done/p2-hotkeys-expansion.md) |
 | `F9` | сказати, що зараз відтворюється (фокус не рухається) | — | webview | ✅ | TapinRadio `F11` (Announce currently playing song); `F11` тут зайнятий fullscreen'ом |
-| `Ctrl+F` | фокус у поле пошуку поточного екрана (Browser, Записи); фокус уже там → `select()` тексту. На екрані без пошуку — assertive-репліка «На цьому екрані немає пошуку» | — | webview | ✅ | універсальна конвенція «знайти»; NVDA `Ctrl+F` не бронює (її пошук — `NVDA+Ctrl+F`); [search-focus-hotkey](backlog/p2-search-focus-hotkey.md) |
+| `Ctrl+F` | фокус у поле пошуку поточного екрана (Browser, Записи); фокус уже там → `select()` тексту. На екрані без пошуку — assertive-репліка «На цьому екрані немає пошуку» | — | webview | ✅ | універсальна конвенція «знайти»; NVDA `Ctrl+F` не бронює (її пошук — `NVDA+Ctrl+F`); [search-focus-hotkey](backlog/done/p2-search-focus-hotkey.md) |
 
 > `Alt+digit` нумерує секції за порядком в ActivityBar; `Alt+0` — Profiles
 > (винесено окремо вгорі). Чому `Alt`, а не `Ctrl`: NVDA у browse mode перехоплює

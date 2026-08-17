@@ -44,7 +44,7 @@ notes:
 
 > **Контекст:** друга хвиля аудиту шорткатів, рішення 2026-07-23 (перша —
 > [streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md): F5/Shift+F5).
-> Гриль 2026-08-14 відщепив `Ctrl+F` у [search-focus-hotkey](../p2-search-focus-hotkey.md)
+> Гриль 2026-08-14 відщепив `Ctrl+F` у [search-focus-hotkey](p2-search-focus-hotkey.md)
 > і додав сюди `F2` на Songs; спека — 2026-08-14, нижче.
 
 ## Проблема
@@ -138,7 +138,7 @@ notes:
 
 ## Прийняті рішення (гриль 2026-08-14)
 
-1. **`Ctrl+F` відщеплено** в [search-focus-hotkey](../p2-search-focus-hotkey.md):
+1. **`Ctrl+F` відщеплено** в [search-focus-hotkey](p2-search-focus-hotkey.md):
    йому потрібні нова інфраструктура фокуса й правка переліку гарда
    акселераторів, тобто інший ризик і інший обсяг.
 2. **`F9` — одна предметна область.** Стан запису в речення не входить: «що я
@@ -407,7 +407,7 @@ streams-transfer): якщо видалити гілку в списку, хук�
   `role="log"` (e332160 у develop), тож `F9` двічі поспіль із незмінним станом
   озвучиться обидва рази. Обхідних маневрів не потрібно.
 - **Черговість із сусіднім записом:** цей — першим,
-  [search-focus-hotkey](../p2-search-focus-hotkey.md) — другим. Правило пріоритету
+  [search-focus-hotkey](p2-search-focus-hotkey.md) — другим. Правило пріоритету
   анонсів і рядок конвенцій з'являються тут, а той запис на них спирається;
   обидва правлять `shortcuts.ts` і `keyboard-shortcuts.md`, тож паралельно їх
   вести не варто.
@@ -464,7 +464,7 @@ streams-transfer): якщо видалити гілку в списку, хук�
   `src/lib/formatters.ts` (`formatDuration`), `src/lib/shortcuts.ts` (реєстр +
   reserved), `src/hooks/useCompositeList.ts` (`resolveKeyAction`, прецеденти
   `F2`/`F5`), `src/stores/player.ts` (`$playerStatus` / `$muteState`)
-- Суміжні: [search-focus-hotkey](../p2-search-focus-hotkey.md) (відщеплений `Ctrl+F`),
+- Суміжні: [search-focus-hotkey](p2-search-focus-hotkey.md) (відщеплений `Ctrl+F`),
   [p2-streams-transfer-hotkeys.md](p2-streams-transfer-hotkeys.md) (§1 шов,
   §2 розширення union'ів),
   [p2-webview-reload-guard.md](p2-webview-reload-guard.md) (F3/F7/F11),
