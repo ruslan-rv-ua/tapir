@@ -12,11 +12,13 @@ pub async fn get_settings(state: tauri::State<'_, AppState>) -> Result<GlobalSet
 #[tauri::command]
 pub async fn save_settings(
     settings: GlobalSettings,
+    app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
     // Пам'ять першою, як і в решті комітів — цей сайт мав ту саму інверсію, що
     // й save_recording_settings.
     let smtc_enabled = settings.smtc_enabled;
+    let language = settings.language.clone();
     let smtc_changed = state
         .commit_settings(|current| {
             let changed = current.smtc_enabled != smtc_enabled;
@@ -25,6 +27,16 @@ pub async fn save_settings(
         })
         .await
         .map_err(|e| e.to_string())?;
+
+    // Мова нативного шару їде тим самим шляхом, що й решта налаштувань: окрема
+    // команда додала б фронтенду обов'язок, забуття якого дало б трей чужою
+    // мовою й не ловилося б жодним тестом. Меню перезбирається наявним
+    // notify_state_changed — окремого шляху для мови не заводимо.
+    let locale = crate::i18n::Locale::from_tag(&language);
+    if locale != crate::i18n::locale() {
+        crate::i18n::set_locale(locale);
+        crate::tray::notify_state_changed(&app);
+    }
     // No separate command needed (unlike register_hotkeys): there is no
     // error list for the UI here, the toggle applies silently.
     if smtc_changed {

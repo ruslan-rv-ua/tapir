@@ -19,6 +19,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use tauri_plugin_notification::NotificationExt;
 
+use crate::i18n::{self, Key, PluralKey};
 use crate::profile::ScheduleResultReason;
 use crate::recording_control::ToggleOutcome;
 
@@ -51,20 +52,25 @@ type ScheduledLine = (String, String);
 /// Тіло quit-confirm. Планові записи перелічуються окремим рядком (§3.5):
 /// користувач має знати, що зупиняє не просто запис, а запланований.
 fn quit_confirm_body(active_count: usize, scheduled: &[ScheduledLine]) -> String {
-    let mut body = format!("Активних записів: {active_count}.");
+    let mut body = i18n::t_args(Key::QuitConfirmActive, &[("count", &active_count.to_string())]);
     if !scheduled.is_empty() {
         let list = scheduled
             .iter()
-            .map(|(name, end)| format!("«{name}» до {end}"))
+            .map(|(name, end)| {
+                i18n::t_args(Key::QuitConfirmSchedItem, &[("name", name), ("end", end)])
+            })
             .collect::<Vec<_>>()
             .join(", ");
-        if scheduled.len() == 1 {
-            body.push_str(&format!("\nТриває плановий запис {list}."));
+        let line = if scheduled.len() == 1 {
+            Key::QuitConfirmSchedOne
         } else {
-            body.push_str(&format!("\nТривають планові записи: {list}."));
-        }
+            Key::QuitConfirmSchedMany
+        };
+        body.push('\n');
+        body.push_str(&i18n::t_args(line, &[("list", &list)]));
     }
-    body.push_str("\nВийти з програми і зупинити їх?");
+    body.push('\n');
+    body.push_str(&i18n::t(Key::QuitConfirmQuestion));
     body
 }
 
@@ -72,8 +78,12 @@ fn quit_confirm_body(active_count: usize, scheduled: &[ScheduledLine]) -> String
 /// recordings are active. Returns true if the user confirmed (clicked Yes).
 ///
 /// Uses `MB_DEFBUTTON2` so "No" is the default — pressing Enter dismisses safely.
+///
+/// Заголовок і тіло йдуть мовою застосунку, кнопки — мовою Windows: «Так/Ні»
+/// малює `user32` зі своїх ресурсів, і прапорця на це немає. Прийнято свідомо
+/// (запис `tray-layer-not-localized`, рішення 10).
 pub fn show_quit_confirm(body: &str) -> bool {
-    let title = HSTRING::from("Tapir — підтвердження");
+    let title = HSTRING::from(i18n::t(Key::QuitConfirmTitle));
     let body = HSTRING::from(body);
     let result = unsafe {
         MessageBoxW(
@@ -183,52 +193,32 @@ pub fn notify_track_change(app: &tauri::AppHandle, stream_id: &str, artist: &str
     });
 }
 
-/// Ukrainian plural for "потік": 1 → потік; 2–4 → потоки; 0, 5–20, … → потоків.
-fn plural_streams(n: usize) -> &'static str {
-    let n100 = n % 100;
-    let n10 = n % 10;
-    if n10 == 1 && n100 != 11 {
-        "потік"
-    } else if (2..=4).contains(&n10) && !(12..=14).contains(&n100) {
-        "потоки"
-    } else {
-        "потоків"
-    }
-}
-
 /// Show the NVDA-readable toast for a global recording toggle.
 ///
 /// Intentionally bypasses `ui.tray_notifications`: this is the *only* feedback
 /// for a backgrounded hotkey, not ambient track chatter, so it must always fire.
-/// Strings are Ukrainian-only, matching the other native surfaces here.
+///
+/// Старт бере той самий ключ, що й кнопка «Записати все» в списку потоків: одна
+/// подія — один текст. У зупинки близнюка на фронтенді немає (там рахунок
+/// іде разом із пропущеними), тож ключ власний, але формулювання дзеркальне.
 pub fn notify_recording_toggle(app: &tauri::AppHandle, outcome: ToggleOutcome) {
     // Synchronous (no spawn): the shortcut handler already calls this from a
     // spawned task after awaiting toggle_all, and notification show() is non-blocking.
     let body = match outcome {
-        ToggleOutcome::Started(n) => format!("Запис розпочато: {n} {}", plural_streams(n)),
-        ToggleOutcome::Stopped(n) => format!("Запис зупинено: {n} {}", plural_streams(n)),
-        ToggleOutcome::NothingToStart => "Немає потоків для запису".to_string(),
+        ToggleOutcome::Started(n) => i18n::t_plural(PluralKey::RecordAllStarted, n),
+        ToggleOutcome::Stopped(n) => i18n::t_plural(PluralKey::StopAll, n),
+        ToggleOutcome::NothingToStart => i18n::t_plural(PluralKey::RecordAllStarted, 0),
     };
 
     log::info!("notify_recording_toggle: {body:?}");
     if let Err(e) = app
         .notification()
         .builder()
-        .title("Tapir")
+        .title(i18n::t(Key::AppName))
         .body(&body)
         .show()
     {
         log::warn!("notify_recording_toggle: failed to show toast: {e}");
-    }
-}
-
-/// Body for the stop-all toast. `0` is not "stopped 0 streams" — recording
-/// simply wasn't running, and the silent no-op is unacceptable for NVDA.
-fn stop_all_toast_body(stopped: usize) -> String {
-    if stopped > 0 {
-        format!("Запис зупинено: {stopped} {}", plural_streams(stopped))
-    } else {
-        "Запис не йшов".to_string()
     }
 }
 
@@ -237,13 +227,16 @@ fn stop_all_toast_body(stopped: usize) -> String {
 /// Like `notify_recording_toggle`: intentionally bypasses
 /// `ui.tray_notifications` (sole feedback for a backgrounded hotkey) and is
 /// synchronous — the shortcut handler calls it from a spawned task.
+///
+/// `0` — не «зупинено 0 потоків», а «запис не йшов»: окремий `_zero`-ключ, бо
+/// мовчазний no-op тут неприйнятний.
 pub fn notify_stop_all(app: &tauri::AppHandle, stopped: usize) {
-    let body = stop_all_toast_body(stopped);
+    let body = i18n::t_plural(PluralKey::StopAll, stopped);
     log::info!("notify_stop_all: {body:?}");
     if let Err(e) = app
         .notification()
         .builder()
-        .title("Tapir")
+        .title(i18n::t(Key::AppName))
         .body(&body)
         .show()
     {
@@ -252,33 +245,40 @@ pub fn notify_stop_all(app: &tauri::AppHandle, stopped: usize) {
 }
 
 // --- Balloon-дублікати подій scheduled-* (Phase 3D §5.5) ---
-// Тексти дзеркалять live region (uk-only — native surface, як решта рядків
-// цього модуля). StoppedByUser не дублюється: ручну зупинку вже озвучує
-// існуючий recording-флоу.
+// Тексти не «дзеркалять» live region, а беруть **ті самі ключі**: одна подія —
+// один текст, розійтися нема чому. StoppedByUser не дублюється: ручну зупинку
+// вже озвучує існуючий recording-флоу.
 
 pub fn scheduled_started_body(name: &str) -> String {
-    format!("Плановий запис «{name}» розпочато")
+    i18n::t_args(Key::SchedStarted, &[("name", name)])
 }
 
 pub fn scheduled_completed_body(name: &str, minutes: u32) -> String {
-    format!("Плановий запис «{name}» завершено, записано {minutes} хв")
+    i18n::t_args(
+        Key::SchedCompleted,
+        &[("name", name), ("minutes", &minutes.to_string())],
+    )
 }
 
-fn missed_reason_uk(reason: Option<&ScheduleResultReason>) -> &'static str {
+fn missed_reason(reason: Option<&ScheduleResultReason>) -> String {
     match reason {
-        Some(ScheduleResultReason::AppNotRunning) => "Tapir не працював",
-        Some(ScheduleResultReason::StartFailed) => "не вдалося стартувати запис",
-        Some(ScheduleResultReason::ClockChange) => "переведення годинника",
-        _ => "—",
+        Some(ScheduleResultReason::AppNotRunning) => i18n::t(Key::ReasonAppNotRunning),
+        Some(ScheduleResultReason::StartFailed) => i18n::t(Key::ReasonStartFailed),
+        Some(ScheduleResultReason::ClockChange) => i18n::t(Key::ReasonClockChange),
+        // Причини немає — тире не перекладається.
+        _ => "—".to_string(),
     }
 }
 
 pub fn scheduled_missed_body(name: &str, reason: Option<&ScheduleResultReason>) -> String {
-    format!("Плановий запис «{name}» пропущено: {}", missed_reason_uk(reason))
+    i18n::t_args(
+        Key::SchedMissed,
+        &[("name", name), ("reason", &missed_reason(reason))],
+    )
 }
 
 pub fn scheduled_skipped_body(name: &str) -> String {
-    format!("Плановий запис «{name}» не стартував: потік уже записується")
+    i18n::t_args(Key::SchedSkipped, &[("name", name)])
 }
 
 /// Fire-and-forget balloon для подій планувальника. Гейт ui.trayNotifications
@@ -289,7 +289,7 @@ pub fn notify_scheduled(app: &tauri::AppHandle, body: String) {
         let state = tauri::Manager::state::<crate::app_state::AppState>(&app);
         if !state.active_profile.read().await.ui.tray_notifications { return; }
         log::info!("notify_scheduled: {body:?}");
-        if let Err(e) = app.notification().builder().title("Tapir").body(&body).show() {
+        if let Err(e) = app.notification().builder().title(i18n::t(Key::AppName)).body(&body).show() {
             log::warn!("notify_scheduled: failed to show toast: {e}");
         }
     });
@@ -298,58 +298,20 @@ pub fn notify_scheduled(app: &tauri::AppHandle, body: String) {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn plural_streams_singular() {
-        assert_eq!(plural_streams(1), "потік");
-        assert_eq!(plural_streams(21), "потік");
-        assert_eq!(plural_streams(101), "потік");
-    }
-
-    #[test]
-    fn plural_streams_few() {
-        assert_eq!(plural_streams(2), "потоки");
-        assert_eq!(plural_streams(3), "потоки");
-        assert_eq!(plural_streams(4), "потоки");
-        assert_eq!(plural_streams(22), "потоки");
-    }
-
-    #[test]
-    fn plural_streams_many() {
-        assert_eq!(plural_streams(0), "потоків");
-        assert_eq!(plural_streams(5), "потоків");
-        assert_eq!(plural_streams(11), "потоків");
-        assert_eq!(plural_streams(12), "потоків");
-        assert_eq!(plural_streams(13), "потоків");
-        assert_eq!(plural_streams(14), "потоків");
-        assert_eq!(plural_streams(25), "потоків");
-    }
-
-    #[test]
-    fn stop_all_toast_body_with_streams() {
-        assert_eq!(stop_all_toast_body(1), "Запис зупинено: 1 потік");
-        assert_eq!(stop_all_toast_body(3), "Запис зупинено: 3 потоки");
-        assert_eq!(stop_all_toast_body(5), "Запис зупинено: 5 потоків");
-    }
-
-    #[test]
-    fn stop_all_toast_body_when_idle() {
-        assert_eq!(stop_all_toast_body(0), "Запис не йшов");
-    }
+    use crate::i18n::{with_locale, Locale};
 
     #[test]
     fn quit_confirm_body_without_scheduled() {
-        assert_eq!(
-            quit_confirm_body(2, &[]),
-            "Активних записів: 2.\nВийти з програми і зупинити їх?"
-        );
+        let body = with_locale(Locale::Uk, || quit_confirm_body(2, &[]));
+        assert_eq!(body, "Активних записів: 2.\nВийти з програми і зупинити їх?");
     }
 
     #[test]
     fn quit_confirm_body_with_one_scheduled() {
         let lines = vec![("Evening Jazz".to_string(), "22:05".to_string())];
+        let body = with_locale(Locale::Uk, || quit_confirm_body(1, &lines));
         assert_eq!(
-            quit_confirm_body(1, &lines),
+            body,
             "Активних записів: 1.\nТриває плановий запис «Evening Jazz» до 22:05.\nВийти з програми і зупинити їх?"
         );
     }
@@ -360,36 +322,65 @@ mod tests {
             ("A".to_string(), "22:05".to_string()),
             ("B".to_string(), "23:10".to_string()),
         ];
+        let body = with_locale(Locale::Uk, || quit_confirm_body(3, &lines));
         assert_eq!(
-            quit_confirm_body(3, &lines),
+            body,
             "Активних записів: 3.\nТривають планові записи: «A» до 22:05, «B» до 23:10.\nВийти з програми і зупинити їх?"
         );
     }
 
+    /// Діалог виходу — єдина дія, доступна користувачеві, коли вікна немає:
+    /// англійською він мусить бути англійським цілком, разом із лапками списку.
     #[test]
-    fn scheduled_bodies_match_live_region_texts() {
+    fn quit_confirm_body_in_english() {
+        let lines = vec![("Evening Jazz".to_string(), "22:05".to_string())];
+        let body = with_locale(Locale::En, || quit_confirm_body(1, &lines));
+        assert_eq!(
+            body,
+            "Active recordings: 1.\nA scheduled recording is in progress: “Evening Jazz” until 22:05.\nQuit the app and stop them?"
+        );
+    }
+
+    #[test]
+    fn scheduled_bodies_render_in_ukrainian() {
         use crate::profile::ScheduleResultReason;
-        assert_eq!(scheduled_started_body("X"), "Плановий запис «X» розпочато");
-        assert_eq!(
-            scheduled_completed_body("X", 119),
-            "Плановий запис «X» завершено, записано 119 хв"
-        );
-        assert_eq!(
-            scheduled_missed_body("X", Some(&ScheduleResultReason::AppNotRunning)),
-            "Плановий запис «X» пропущено: Tapir не працював"
-        );
-        assert_eq!(
-            scheduled_missed_body("X", Some(&ScheduleResultReason::StartFailed)),
-            "Плановий запис «X» пропущено: не вдалося стартувати запис"
-        );
-        assert_eq!(
-            scheduled_missed_body("X", Some(&ScheduleResultReason::ClockChange)),
-            "Плановий запис «X» пропущено: переведення годинника"
-        );
-        assert_eq!(scheduled_missed_body("X", None), "Плановий запис «X» пропущено: —");
-        assert_eq!(
-            scheduled_skipped_body("X"),
-            "Плановий запис «X» не стартував: потік уже записується"
-        );
+        with_locale(Locale::Uk, || {
+            assert_eq!(scheduled_started_body("X"), "Плановий запис «X» розпочато");
+            assert_eq!(
+                scheduled_completed_body("X", 119),
+                "Плановий запис «X» завершено, записано 119 хв"
+            );
+            assert_eq!(
+                scheduled_missed_body("X", Some(&ScheduleResultReason::AppNotRunning)),
+                "Плановий запис «X» пропущено: Tapir не працював"
+            );
+            assert_eq!(
+                scheduled_missed_body("X", Some(&ScheduleResultReason::StartFailed)),
+                "Плановий запис «X» пропущено: не вдалося стартувати запис"
+            );
+            assert_eq!(
+                scheduled_missed_body("X", Some(&ScheduleResultReason::ClockChange)),
+                "Плановий запис «X» пропущено: переведення годинника"
+            );
+            assert_eq!(scheduled_missed_body("X", None), "Плановий запис «X» пропущено: —");
+            assert_eq!(
+                scheduled_skipped_body("X"),
+                "Плановий запис «X» не стартував: потік уже записується"
+            );
+        });
+    }
+
+    /// Причина пропуску підставляється **всередину** речення, тож англійською
+    /// має бути англійським і речення, і причина — це два різні ключі.
+    #[test]
+    fn scheduled_bodies_render_in_english() {
+        use crate::profile::ScheduleResultReason;
+        with_locale(Locale::En, || {
+            assert_eq!(
+                scheduled_missed_body("X", Some(&ScheduleResultReason::AppNotRunning)),
+                "Scheduled recording \"X\" missed: Tapir was not running"
+            );
+            assert_eq!(scheduled_missed_body("X", None), "Scheduled recording \"X\" missed: —");
+        });
     }
 }

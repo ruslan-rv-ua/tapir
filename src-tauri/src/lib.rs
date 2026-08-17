@@ -3,6 +3,7 @@ mod autostart;
 mod commands;
 mod crash_recovery;
 mod errors;
+mod i18n;
 mod naming;
 mod player;
 mod playback_control;
@@ -60,6 +61,11 @@ pub fn run() {
     // Load settings once, before the builder, so the log plugin (which is built
     // at startup and cannot change afterwards) reflects the user's choices.
     let mut initial_settings = GlobalSettings::load().expect("Failed to load settings");
+
+    // Локаль нативного шару — одразу після читання налаштувань і до всього, що
+    // може щось показати. Найраніший діалог (невдалий старт) з'являється тоді,
+    // коли AppState створити не вдалося, тож брати мову звідти пізно.
+    i18n::set_locale(i18n::Locale::from_tag(&initial_settings.language));
 
     // --profile: pick the profile BEFORE AppState::new so we load the right one
     // directly (not Default -> switch). Session-only override (decision §7): we do
@@ -181,10 +187,11 @@ pub fn run() {
                 Err(e) => {
                     log::error!("Failed to initialize AppState: {e}");
                     app.dialog()
-                        .message(format!(
-                            "Не вдалося запустити Tapir:\n\n{e}\n\nПереконайтеся, що аудіо-пристрій підключено, і спробуйте ще раз."
+                        .message(i18n::t_args(
+                            i18n::Key::StartupErrorBody,
+                            &[("error", &e.to_string())],
                         ))
-                        .title("Помилка запуску")
+                        .title(i18n::t(i18n::Key::StartupErrorTitle))
                         .blocking_show();
                     return Err(e.into());
                 }

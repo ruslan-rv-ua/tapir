@@ -1,5 +1,6 @@
 //! Tray menu and tooltip construction (pure functions).
 
+use crate::i18n::{self, Key, PluralKey};
 use crate::player::engine::PlaybackState;
 use crate::tray::MenuSnapshot;
 
@@ -10,13 +11,15 @@ pub fn tooltip(snap: &MenuSnapshot) -> String {
     let playing = matches!(snap.player_state, PlaybackState::Playing);
     let station = snap.now_playing_label.as_deref();
     let rec = snap.active_recordings;
+    let app = i18n::t(Key::AppName);
+    let recs = |n| i18n::t_plural(PluralKey::ActiveRecordings, n);
 
     let s = match (playing, station, rec) {
-        (false, _, 0)       => "Tapir".to_string(),
-        (true, Some(st), 0) => format!("Tapir — ▶ {st}"),
-        (false, _, n)       => format!("Tapir — ● {n} записів"),
-        (true, Some(st), n) => format!("Tapir — ▶ {st} · ● {n} записів"),
-        (true, None, _)     => "Tapir — ▶".to_string(),
+        (false, _, 0)       => app,
+        (true, Some(st), 0) => format!("{app} — ▶ {st}"),
+        (false, _, n)       => format!("{app} — ● {}", recs(n)),
+        (true, Some(st), n) => format!("{app} — ▶ {st} · ● {}", recs(n)),
+        (true, None, _)     => format!("{app} — ▶"),
     };
 
     truncate_chars(&s, MAX_TOOLTIP_CHARS)
@@ -58,15 +61,16 @@ pub fn build_menu(app: &AppHandle, snap: &MenuSnapshot) -> tauri::Result<Menu<Wr
 
     if show_now_playing {
         let label = snap.now_playing_label.as_deref().unwrap_or("");
-        let item = MenuItemBuilder::with_id(ID_NOW_PLAYING, format!("Зараз грає: {label}"))
+        let text = i18n::t_args(Key::TrayNowPlaying, &[("label", label)]);
+        let item = MenuItemBuilder::with_id(ID_NOW_PLAYING, text)
             .enabled(false)
             .build(app)?;
         builder = builder.item(&item).separator();
     }
 
     let play_label = match snap.player_state {
-        PlaybackState::Playing => "Пауза",
-        _ => "Грати",
+        PlaybackState::Playing => i18n::t(Key::TrayPause),
+        _ => i18n::t(Key::TrayPlay),
     };
     let toggle_playback = MenuItemBuilder::with_id(ID_TOGGLE_PLAYBACK, play_label)
         .enabled(!matches!(snap.player_state, PlaybackState::Stopped))
@@ -74,28 +78,34 @@ pub fn build_menu(app: &AppHandle, snap: &MenuSnapshot) -> tauri::Result<Menu<Wr
     builder = builder.item(&toggle_playback);
 
     if !matches!(snap.player_state, PlaybackState::Stopped) {
-        let stop = MenuItemBuilder::with_id(ID_STOP_PLAYBACK, "Зупинити").build(app)?;
+        let stop = MenuItemBuilder::with_id(ID_STOP_PLAYBACK, i18n::t(Key::TrayStop)).build(app)?;
         builder = builder.item(&stop);
     }
 
     builder = builder.separator();
 
     if snap.active_recordings > 0 {
+        // ● — маркер, а не текст: рахунок бере той самий ключ, що й список потоків.
         let info = MenuItemBuilder::with_id(
             ID_RECORDING_INFO,
-            format!("● Записи: {} активних", snap.active_recordings),
+            format!("● {}", i18n::t_plural(PluralKey::ActiveRecordings, snap.active_recordings)),
         )
         .enabled(false)
         .build(app)?;
-        let stop_all = MenuItemBuilder::with_id(ID_STOP_ALL, "Зупинити всі записи").build(app)?;
+        let stop_all =
+            MenuItemBuilder::with_id(ID_STOP_ALL, i18n::t(Key::TrayStopAllRecordings)).build(app)?;
         builder = builder.item(&info).item(&stop_all).separator();
     }
 
-    let window_label = if snap.window_visible { "Приховати Tapir" } else { "Показати Tapir" };
+    let window_label = if snap.window_visible {
+        i18n::t(Key::TrayHideWindow)
+    } else {
+        i18n::t(Key::TrayShowWindow)
+    };
     let toggle_window = MenuItemBuilder::with_id(ID_TOGGLE_WINDOW, window_label).build(app)?;
     builder = builder.item(&toggle_window).separator();
 
-    let quit = MenuItemBuilder::with_id(ID_QUIT, "Вихід").build(app)?;
+    let quit = MenuItemBuilder::with_id(ID_QUIT, i18n::t(Key::TrayQuit)).build(app)?;
     builder = builder.item(&quit);
 
     builder.build()
@@ -141,10 +151,12 @@ pub async fn build_now_playing_label(
                 .file_name()
                 .and_then(|n| n.to_str())
                 .unwrap_or("?");
-            Some(format!("Файл: {basename}"))
+            Some(i18n::t_args(Key::TraySourceFile, &[("name", basename)]))
         }
+        // Прев'ю — термін домену, а не мітка інтерфейсу (CONTEXT.md): для
+        // користувача це станція, як її зве й решта інтерфейсу.
         PlaybackSource::Preview { name, .. } => {
-            Some(format!("Прев'ю: {name}"))
+            Some(i18n::t_args(Key::TraySourceStation, &[("name", name)]))
         }
     }
 }
@@ -162,33 +174,55 @@ mod tests {
         }
     }
 
+    use crate::i18n::{with_locale, Locale};
+
     #[test]
     fn idle_shows_just_app_name() {
-        assert_eq!(tooltip(&snap(PlaybackState::Stopped, None, 0)), "Tapir");
+        let s = with_locale(Locale::Uk, || tooltip(&snap(PlaybackState::Stopped, None, 0)));
+        assert_eq!(s, "Tapir");
     }
 
     #[test]
     fn playing_only_shows_play_arrow_and_station() {
-        let s = snap(PlaybackState::Playing, Some("SomaFM"), 0);
-        assert_eq!(tooltip(&s), "Tapir — ▶ SomaFM");
+        let s = with_locale(Locale::Uk, || {
+            tooltip(&snap(PlaybackState::Playing, Some("SomaFM"), 0))
+        });
+        assert_eq!(s, "Tapir — ▶ SomaFM");
     }
 
     #[test]
     fn recording_only_shows_recording_count() {
-        let s = snap(PlaybackState::Stopped, None, 3);
-        assert_eq!(tooltip(&s), "Tapir — ● 3 записів");
+        let s = with_locale(Locale::Uk, || tooltip(&snap(PlaybackState::Stopped, None, 3)));
+        assert_eq!(s, "Tapir — ● 3 записи");
     }
 
     #[test]
     fn playing_and_recording_shows_both() {
-        let s = snap(PlaybackState::Playing, Some("SomaFM"), 2);
-        assert_eq!(tooltip(&s), "Tapir — ▶ SomaFM · ● 2 записів");
+        let s = with_locale(Locale::Uk, || {
+            tooltip(&snap(PlaybackState::Playing, Some("SomaFM"), 2))
+        });
+        assert_eq!(s, "Tapir — ▶ SomaFM · ● 2 записи");
     }
 
     #[test]
     fn paused_does_not_show_play_arrow() {
-        let s = snap(PlaybackState::Paused, Some("SomaFM"), 1);
-        assert_eq!(tooltip(&s), "Tapir — ● 1 записів");
+        let s = with_locale(Locale::Uk, || {
+            tooltip(&snap(PlaybackState::Paused, Some("SomaFM"), 1))
+        });
+        assert_eq!(s, "Tapir — ● 1 запис");
+    }
+
+    /// Підказка — не лише переклад слів: англійська має власне узгодження,
+    /// і саме воно ламається першим, якщо форму обирають за українськими правилами.
+    #[test]
+    fn tooltip_follows_the_selected_language() {
+        let s = with_locale(Locale::En, || {
+            tooltip(&snap(PlaybackState::Playing, Some("SomaFM"), 2))
+        });
+        assert_eq!(s, "Tapir — ▶ SomaFM · ● 2 recordings");
+
+        let one = with_locale(Locale::En, || tooltip(&snap(PlaybackState::Stopped, None, 1)));
+        assert_eq!(one, "Tapir — ● 1 recording");
     }
 
     #[test]
