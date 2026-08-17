@@ -15,7 +15,7 @@ const mkStream = (id: string, name: string, addedAt: string): StreamInfo =>
 
 const setSort = (streamSort: "name" | "added") => {
   $settings.set({ language: "uk" } as GlobalSettings);
-  $profileSettings.set({ ui: { streamSort, trayNotifications: true } } as ProfileSettings);
+  $profileSettings.set({ ui: { streamSort, trayNotificationsTrackChange: true, trayNotificationsScheduled: true } } as ProfileSettings);
 };
 
 describe("$streamSelection + replaceSelection", () => {

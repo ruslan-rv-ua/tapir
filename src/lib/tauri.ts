@@ -571,10 +571,17 @@ export interface ProfileMeta {
   isActive: boolean;
 }
 
-/** Профільні налаштування інтерфейсу (ADR 2026-08-08, фільтр 4). */
+/**
+ * Профільні налаштування інтерфейсу (ADR 2026-08-08, фільтр 4).
+ *
+ * Дві категорії тостів — два незалежні прапорці (ADR 2026-08-17): балаканина
+ * про треки й події планувальника вимикаються окремо. Тости у відповідь на
+ * фоновий хоткей не вимикаються взагалі, тож поля для них немає.
+ */
 export interface UiSettings {
   streamSort: "name" | "added";
-  trayNotifications: boolean;
+  trayNotificationsTrackChange: boolean;
+  trayNotificationsScheduled: boolean;
 }
 
 /**

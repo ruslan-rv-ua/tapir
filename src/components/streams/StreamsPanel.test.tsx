@@ -126,7 +126,7 @@ function setSort(streamSort: "name" | "added") {
       diskSpaceThresholdGb: 0,
       reconnect: { maxRetries: 0, retryIntervalSecs: 5, backoffMultiplier: 1.5, maxIntervalSecs: 60 },
     },
-    ui: { streamSort, trayNotifications: true },
+    ui: { streamSort, trayNotificationsTrackChange: true, trayNotificationsScheduled: true },
   } as ProfileSettings);
 }
 
@@ -548,7 +548,7 @@ describe("StreamsPanel — stream sorting", () => {
     const added = sortButtons(container).find((b) => /час|added|date/i.test(b.textContent ?? ""))!;
     fireEvent.click(added);
     expect(tauri.updateProfileSettings).toHaveBeenCalledWith("Default", {
-      ui: { streamSort: "added", trayNotifications: true },
+      ui: { streamSort: "added", trayNotificationsTrackChange: true, trayNotificationsScheduled: true },
     });
     expect(tauri.saveSettings).not.toHaveBeenCalled();
   });

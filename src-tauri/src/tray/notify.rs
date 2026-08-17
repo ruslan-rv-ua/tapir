@@ -141,13 +141,53 @@ pub async fn confirm_quit_if_recording(app: &tauri::AppHandle) -> bool {
         .unwrap_or(false)
 }
 
+/// Категорія тоста. Заведена не заради типізації, а заради зобов'язання:
+/// п'ятий тост неможливо додати, не відповівши, до якої з категорій він
+/// належить, — а саме ця відповідь раніше жила лише в коментарі й загубилась
+/// (ADR 2026-08-17 про категорії тостів).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ToastKind {
+    /// Ефірна балаканина: рядок за рядком, поки грає радіо.
+    TrackChange,
+    /// Події планувальника — старт, завершення, пропуск, не стартував.
+    Scheduled,
+    /// Відповідь на фоновий хоткей.
+    HotkeyFeedback,
+}
+
+/// Чи показувати тост цієї категорії при таких налаштуваннях профілю.
+///
+/// Правило одне: гейтиться те, що лишає **інший слід** — зміну треку видно в
+/// плеєрі, події планувальника пишуть `last_result` у панель розкладу й
+/// озвучуються live region'ом. `HotkeyFeedback` сліду не лишає ніде, тож не
+/// гейтиться ніколи: інакше натискання у фоні лишається без відповіді.
+pub fn is_enabled(kind: ToastKind, ui: &crate::profile::UiSettings) -> bool {
+    match kind {
+        ToastKind::TrackChange => ui.tray_notifications_track_change,
+        ToastKind::Scheduled => ui.tray_notifications_scheduled,
+        ToastKind::HotkeyFeedback => true,
+    }
+}
+
+/// Єдина точка, з якої в застосунку виходить тост: категорія — обов'язковий
+/// аргумент, тож новий тост не скласти, не назвавши її, а назвавши — не
+/// обійти питання гейта (`is_enabled`). Сам гейт лишається на боці викликача:
+/// прапорець читається з активного профілю, а це `await`, якого синхронні
+/// шляхи хоткеїв не мають і не потребують.
+fn show_toast(app: &tauri::AppHandle, kind: ToastKind, title: &str, body: &str) {
+    log::info!("toast {kind:?}: title={title:?} body={body:?}");
+    if let Err(e) = app.notification().builder().title(title).body(body).show() {
+        log::warn!("toast {kind:?}: failed to show: {e}");
+    }
+}
+
 static LAST_NOTIFY_MS: AtomicU64 = AtomicU64::new(0);
 const THROTTLE_MS: u64 = 3000;
 
-/// Fire-and-forget: gate on the profile's `ui.trayNotifications`, resolve the station name
-/// from the active profile, throttle to one toast per 3 s, and dispatch through
-/// `tauri-plugin-notification`. Use this from any track-change emitter
-/// (recorder, player) so the rules live in one place.
+/// Fire-and-forget: gate on the profile's `ui.trayNotificationsTrackChange`, resolve
+/// the station name from the active profile, throttle to one toast per 3 s, and
+/// dispatch through `tauri-plugin-notification`. Use this from any track-change
+/// emitter (recorder, player) so the rules live in one place.
 pub fn notify_track_change(app: &tauri::AppHandle, stream_id: &str, artist: &str, title: &str) {
     let app = app.clone();
     let stream_id = stream_id.to_string();
@@ -160,7 +200,7 @@ pub fn notify_track_change(app: &tauri::AppHandle, stream_id: &str, artist: &str
         // профільні (ADR 2026-08-08), нового лока не з'являється.
         let station = {
             let profile = state.active_profile.read().await;
-            if !profile.ui.tray_notifications { return; }
+            if !is_enabled(ToastKind::TrackChange, &profile.ui) { return; }
             profile.streams.iter()
                 .find(|s| s.id == stream_id)
                 .map(|s| s.name.clone())
@@ -182,21 +222,15 @@ pub fn notify_track_change(app: &tauri::AppHandle, stream_id: &str, artist: &str
             _ => return,
         };
 
-        log::info!("notify_track_change: station={station:?} body={body:?}");
-        if let Err(e) = app.notification().builder()
-            .title(&station)
-            .body(&body)
-            .show()
-        {
-            log::warn!("notify_track_change: failed to show toast: {e}");
-        }
+        show_toast(&app, ToastKind::TrackChange, &station, &body);
     });
 }
 
 /// Show the NVDA-readable toast for a global recording toggle.
 ///
-/// Intentionally bypasses `ui.tray_notifications`: this is the *only* feedback
-/// for a backgrounded hotkey, not ambient track chatter, so it must always fire.
+/// `ToastKind::HotkeyFeedback` — категорія без гейта: це єдиний слід
+/// натискання у фоні, а не ефірна балаканина, тож прапорці профілю її не
+/// стосуються (ADR 2026-08-17 про категорії тостів).
 ///
 /// Старт бере той самий ключ, що й кнопка «Записати все» в списку потоків: одна
 /// подія — один текст. У зупинки близнюка на фронтенді немає (там рахунок
@@ -210,38 +244,20 @@ pub fn notify_recording_toggle(app: &tauri::AppHandle, outcome: ToggleOutcome) {
         ToggleOutcome::NothingToStart => i18n::t_plural(PluralKey::RecordAllStarted, 0),
     };
 
-    log::info!("notify_recording_toggle: {body:?}");
-    if let Err(e) = app
-        .notification()
-        .builder()
-        .title(i18n::t(Key::AppName))
-        .body(&body)
-        .show()
-    {
-        log::warn!("notify_recording_toggle: failed to show toast: {e}");
-    }
+    show_toast(app, ToastKind::HotkeyFeedback, &i18n::t(Key::AppName), &body);
 }
 
 /// Show the NVDA-readable toast for the global stop-all shortcut (KB-12).
 ///
-/// Like `notify_recording_toggle`: intentionally bypasses
-/// `ui.tray_notifications` (sole feedback for a backgrounded hotkey) and is
-/// synchronous — the shortcut handler calls it from a spawned task.
+/// Like `notify_recording_toggle`: `ToastKind::HotkeyFeedback`, тобто без
+/// гейта (єдиний слід натискання у фоні), і синхронний — обробник хоткея
+/// викликає його зі спавненої задачі.
 ///
 /// `0` — не «зупинено 0 потоків», а «запис не йшов»: окремий `_zero`-ключ, бо
 /// мовчазний no-op тут неприйнятний.
 pub fn notify_stop_all(app: &tauri::AppHandle, stopped: usize) {
     let body = i18n::t_plural(PluralKey::StopAll, stopped);
-    log::info!("notify_stop_all: {body:?}");
-    if let Err(e) = app
-        .notification()
-        .builder()
-        .title(i18n::t(Key::AppName))
-        .body(&body)
-        .show()
-    {
-        log::warn!("notify_stop_all: failed to show toast: {e}");
-    }
+    show_toast(app, ToastKind::HotkeyFeedback, &i18n::t(Key::AppName), &body);
 }
 
 // --- Balloon-дублікати подій scheduled-* (Phase 3D §5.5) ---
@@ -281,17 +297,21 @@ pub fn scheduled_skipped_body(name: &str) -> String {
     i18n::t_args(Key::SchedSkipped, &[("name", name)])
 }
 
-/// Fire-and-forget balloon для подій планувальника. Гейт ui.trayNotifications
-/// («механізм Фази 3A», §5.5); без тротлінгу — події рідкісні.
+/// Fire-and-forget balloon для подій планувальника. Гейт —
+/// `ui.trayNotificationsScheduled`, **власний** прапорець категорії, а не той,
+/// що вимикає балаканину про треки (ADR 2026-08-17); без тротлінгу — події
+/// рідкісні. Гейт накриває всі чотири події однаково, включно з «пропущено»:
+/// слід лишається в панелі розкладу, тож мовчання тут — вибір користувача, а
+/// не втрата.
 pub fn notify_scheduled(app: &tauri::AppHandle, body: String) {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
         let state = tauri::Manager::state::<crate::app_state::AppState>(&app);
-        if !state.active_profile.read().await.ui.tray_notifications { return; }
-        log::info!("notify_scheduled: {body:?}");
-        if let Err(e) = app.notification().builder().title(i18n::t(Key::AppName)).body(&body).show() {
-            log::warn!("notify_scheduled: failed to show toast: {e}");
+        {
+            let profile = state.active_profile.read().await;
+            if !is_enabled(ToastKind::Scheduled, &profile.ui) { return; }
         }
+        show_toast(&app, ToastKind::Scheduled, &i18n::t(Key::AppName), &body);
     });
 }
 
@@ -299,6 +319,37 @@ pub fn notify_scheduled(app: &tauri::AppHandle, body: String) {
 mod tests {
     use super::*;
     use crate::i18n::{with_locale, Locale};
+    use crate::profile::UiSettings;
+
+    /// Дві категорії — два прапорці, і вони не знають одна про одну. Саме
+    /// зв'язок «зняв балаканину про треки — втратив розклад» і був багом.
+    #[test]
+    fn track_change_and_scheduled_gate_independently() {
+        let mut ui = UiSettings::default();
+        assert!(is_enabled(ToastKind::TrackChange, &ui));
+        assert!(is_enabled(ToastKind::Scheduled, &ui));
+
+        ui.tray_notifications_track_change = false;
+        assert!(!is_enabled(ToastKind::TrackChange, &ui));
+        assert!(is_enabled(ToastKind::Scheduled, &ui), "розклад не залежить від треків");
+
+        ui.tray_notifications_track_change = true;
+        ui.tray_notifications_scheduled = false;
+        assert!(is_enabled(ToastKind::TrackChange, &ui), "треки не залежать від розкладу");
+        assert!(!is_enabled(ToastKind::Scheduled, &ui));
+    }
+
+    /// Відповідь на фоновий хоткей не вимикається нічим: іншого сліду
+    /// натискання не лишає.
+    #[test]
+    fn hotkey_feedback_is_never_gated() {
+        let ui = UiSettings {
+            stream_sort: "name".to_string(),
+            tray_notifications_track_change: false,
+            tray_notifications_scheduled: false,
+        };
+        assert!(is_enabled(ToastKind::HotkeyFeedback, &ui));
+    }
 
     #[test]
     fn quit_confirm_body_without_scheduled() {

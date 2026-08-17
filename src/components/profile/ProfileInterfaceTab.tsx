@@ -17,8 +17,38 @@ interface Props {
 }
 
 /**
+ * Прапорці однакові рівно в усьому, крім поля й мітки, тож розмітка одна.
+ * Без групи свідомо: підпис групи не оголошується, поки в неї не зайти, і
+ * мітка знову виявилась би вужчою за поведінку (ADR 2026-08-17).
+ */
+function NotificationCheckbox({
+  isSelected,
+  onChange,
+  label,
+}: {
+  isSelected: boolean;
+  onChange: (value: boolean) => void;
+  label: string;
+}) {
+  return (
+    <Checkbox
+      isSelected={isSelected}
+      onChange={onChange}
+      className="flex items-center gap-2 text-sm text-slate-300"
+    >
+      <div className="flex h-5 w-5 items-center justify-center rounded border border-slate-600 bg-slate-700 forced-colors:border-[ButtonText]">
+        {isSelected && <span aria-hidden="true">✓</span>}
+      </div>
+      <Label>{label}</Label>
+    </Checkbox>
+  );
+}
+
+/**
  * «Інтерфейс» — порядок списку потоків і сповіщення в треї. Сповіщення тут
  * свідомий виняток із ОС-межі: «нічний сценарій — тихо» (ADR 2026-08-08).
+ * Категорій тостів дві, і кожна вимикається окремо (ADR 2026-08-17) — виняток
+ * при цьому лишається один, просто втілений двома полями.
  */
 export function ProfileInterfaceTab({ ui, onChange }: Props) {
   return (
@@ -52,16 +82,17 @@ export function ProfileInterfaceTab({ ui, onChange }: Props) {
         </Popover>
       </Select>
 
-      <Checkbox
-        isSelected={ui.trayNotifications}
-        onChange={(val) => onChange({ trayNotifications: val })}
-        className="flex items-center gap-2 text-sm text-slate-300"
-      >
-        <div className="flex h-5 w-5 items-center justify-center rounded border border-slate-600 bg-slate-700 forced-colors:border-[ButtonText]">
-          {ui.trayNotifications && <span aria-hidden="true">✓</span>}
-        </div>
-        <Label>{m.settings_show_tray_notifications()}</Label>
-      </Checkbox>
+      <NotificationCheckbox
+        isSelected={ui.trayNotificationsTrackChange}
+        onChange={(val) => onChange({ trayNotificationsTrackChange: val })}
+        label={m.settings_tray_notifications_track_change()}
+      />
+
+      <NotificationCheckbox
+        isSelected={ui.trayNotificationsScheduled}
+        onChange={(val) => onChange({ trayNotificationsScheduled: val })}
+        label={m.settings_tray_notifications_scheduled()}
+      />
     </div>
   );
 }

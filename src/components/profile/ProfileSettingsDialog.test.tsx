@@ -23,7 +23,7 @@ const profileSettings: ProfileSettings = {
       maxRetries: 10, retryIntervalSecs: 5, backoffMultiplier: 1.5, maxIntervalSecs: 60,
     },
   },
-  ui: { streamSort: "name", trayNotifications: true },
+  ui: { streamSort: "name", trayNotificationsTrackChange: true, trayNotificationsScheduled: true },
   autoplayOnStartup: false,
   autoAdvance: true,
   resumeFileFrom: "position",
@@ -119,20 +119,39 @@ describe("ProfileSettingsDialog — редагування", () => {
     renderDialog();
     await screen.findByRole("tablist");
     await userEvent.keyboard("{ArrowDown}{ArrowDown}");
-    await userEvent.click(screen.getByRole("checkbox", { name: m.settings_show_tray_notifications() }));
+    await userEvent.click(screen.getByRole("checkbox", { name: m.settings_tray_notifications_track_change() }));
 
     await waitFor(() => expect(tauri.updateProfileSettings).toHaveBeenCalled());
     const [name, patch] = vi.mocked(tauri.updateProfileSettings).mock.calls[0];
     expect(name).toBe("Jazz");
-    expect(patch).toEqual({ ui: { streamSort: "name", trayNotifications: false } });
+    expect(patch).toEqual({
+      ui: { streamSort: "name", trayNotificationsTrackChange: false, trayNotificationsScheduled: true },
+    });
     expect(patch).not.toHaveProperty("recording");
+  });
+
+  // Вихідний баг: один прапорець глушив і балаканину про треки, і розклад.
+  // Тепер це дві незалежні категорії — і на боці UI теж.
+  it("прапорець про плановий запис не чіпає прапорець про зміну треку", async () => {
+    renderDialog();
+    await screen.findByRole("tablist");
+    await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: m.settings_tray_notifications_scheduled() }),
+    );
+
+    await waitFor(() => expect(tauri.updateProfileSettings).toHaveBeenCalled());
+    const [, patch] = vi.mocked(tauri.updateProfileSettings).mock.calls[0];
+    expect(patch).toEqual({
+      ui: { streamSort: "name", trayNotificationsTrackChange: true, trayNotificationsScheduled: false },
+    });
   });
 
   it("оголошує збереження — автозбереження без візуального фідбеку має бути чутним", async () => {
     renderDialog();
     await screen.findByRole("tablist");
     await userEvent.keyboard("{ArrowDown}{ArrowDown}");
-    await userEvent.click(screen.getByRole("checkbox", { name: m.settings_show_tray_notifications() }));
+    await userEvent.click(screen.getByRole("checkbox", { name: m.settings_tray_notifications_track_change() }));
     await waitFor(() =>
       expect(announce).toHaveBeenCalledWith(m.profile_settings_saved({ name: "Jazz" }), "polite"),
     );
@@ -194,8 +213,8 @@ describe("ProfileSettingsDialog — редагування", () => {
     const { unmount } = renderDialog({ name: "Default", activeProfile: "Default" });
     await screen.findByRole("tablist");
     await userEvent.keyboard("{ArrowDown}{ArrowDown}");
-    await userEvent.click(screen.getByRole("checkbox", { name: m.settings_show_tray_notifications() }));
-    await waitFor(() => expect($profileSettings.get()?.ui.trayNotifications).toBe(false));
+    await userEvent.click(screen.getByRole("checkbox", { name: m.settings_tray_notifications_track_change() }));
+    await waitFor(() => expect($profileSettings.get()?.ui.trayNotificationsTrackChange).toBe(false));
 
     unmount();
     $profileSettings.set(null);
@@ -203,7 +222,7 @@ describe("ProfileSettingsDialog — редагування", () => {
     renderDialog({ name: "Jazz", activeProfile: "Default" });
     await screen.findByRole("tablist");
     await userEvent.keyboard("{ArrowDown}{ArrowDown}");
-    await userEvent.click(screen.getByRole("checkbox", { name: m.settings_show_tray_notifications() }));
+    await userEvent.click(screen.getByRole("checkbox", { name: m.settings_tray_notifications_track_change() }));
     await waitFor(() => expect(tauri.updateProfileSettings).toHaveBeenCalledTimes(2));
     expect($profileSettings.get()).toBeNull();
   });

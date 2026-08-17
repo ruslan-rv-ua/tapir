@@ -221,9 +221,10 @@ impl RecordingSettings {
 
 // --- UiSettings ---
 /// «Яким є набір даних і як він показаний» — фільтр 4 ADR 2026-08-08.
-/// `tray_notifications` — свідомий виняток із фільтра ОС-межі: «нічний
-/// сценарій — тихо» є сценарною потребою, і виняток задокументовано в ADR
-/// саме щоб він лишався винятком.
+/// Обидва `tray_notifications_*` — той самий **один** свідомий виняток із
+/// фільтра ОС-межі («нічний сценарій — тихо»), просто втілений двома полями:
+/// категорій тостів дві, і кожна вимикається окремо (ADR 2026-08-17 про
+/// категорії тостів). Рахувати їх як два винятки не можна.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UiSettings {
@@ -234,7 +235,9 @@ pub struct UiSettings {
     #[serde(default = "default_stream_sort")]
     pub stream_sort: String,
     #[serde(default = "default_true")]
-    pub tray_notifications: bool,
+    pub tray_notifications_track_change: bool,
+    #[serde(default = "default_true")]
+    pub tray_notifications_scheduled: bool,
 }
 
 fn default_stream_sort() -> String { "name".to_string() }
@@ -243,7 +246,8 @@ impl Default for UiSettings {
     fn default() -> Self {
         Self {
             stream_sort: default_stream_sort(),
-            tray_notifications: true,
+            tray_notifications_track_change: true,
+            tray_notifications_scheduled: true,
         }
     }
 }
@@ -807,7 +811,20 @@ mod tests {
     fn ui_settings_defaults() {
         let u = UiSettings::default();
         assert_eq!(u.stream_sort, "name");
-        assert!(u.tray_notifications);
+        assert!(u.tray_notifications_track_change);
+        assert!(u.tray_notifications_scheduled);
+    }
+
+    /// Профіль, записаний до розділення прапорця, читається без помилки, а
+    /// обидві категорії піднімаються ввімкненими. Міграції немає свідомо:
+    /// `UiSettings` без `deny_unknown_fields`, тож старе поле просто зникає.
+    #[test]
+    fn profile_with_pre_split_tray_flag_reads_with_both_categories_on() {
+        let json = r#"{"name":"T","ui":{"streamSort":"added","trayNotifications":false}}"#;
+        let p: Profile = serde_json::from_str(json).unwrap();
+        assert_eq!(p.ui.stream_sort, "added");
+        assert!(p.ui.tray_notifications_track_change);
+        assert!(p.ui.tray_notifications_scheduled);
     }
 
     #[test]
@@ -816,7 +833,8 @@ mod tests {
         let json = r#"{"name":"T"}"#;
         let p: Profile = serde_json::from_str(json).unwrap();
         assert_eq!(p.ui.stream_sort, "name");
-        assert!(p.ui.tray_notifications);
+        assert!(p.ui.tray_notifications_track_change);
+        assert!(p.ui.tray_notifications_scheduled);
         assert_eq!(p.recording.disk_space_threshold_gb, 1);
         assert!(p.player_session.auto_advance);
         assert_eq!(p.player_session.resume_file_from, ResumeFileFrom::Position);
@@ -827,7 +845,8 @@ mod tests {
         let p = Profile::create_default();
         let json = serde_json::to_string(&p).unwrap();
         assert!(json.contains(r#""streamSort":"name""#), "got: {json}");
-        assert!(json.contains(r#""trayNotifications":true"#), "got: {json}");
+        assert!(json.contains(r#""trayNotificationsTrackChange":true"#), "got: {json}");
+        assert!(json.contains(r#""trayNotificationsScheduled":true"#), "got: {json}");
         assert!(json.contains(r#""diskSpaceThresholdGb":1"#), "got: {json}");
         assert!(json.contains(r#""autoAdvance":true"#), "got: {json}");
         assert!(json.contains(r#""resumeFileFrom":"position""#), "got: {json}");
@@ -838,13 +857,15 @@ mod tests {
         let mut p = Profile::create_default();
         p.recording.disk_space_threshold_gb = 25;
         p.ui.stream_sort = "added".into();
-        p.ui.tray_notifications = false;
+        p.ui.tray_notifications_track_change = false;
+        p.ui.tray_notifications_scheduled = false;
         p.player_session.auto_advance = false;
         p.player_session.resume_file_from = ResumeFileFrom::Start;
         let back: Profile = serde_json::from_str(&serde_json::to_string(&p).unwrap()).unwrap();
         assert_eq!(back.recording.disk_space_threshold_gb, 25);
         assert_eq!(back.ui.stream_sort, "added");
-        assert!(!back.ui.tray_notifications);
+        assert!(!back.ui.tray_notifications_track_change);
+        assert!(!back.ui.tray_notifications_scheduled);
         assert!(!back.player_session.auto_advance);
         assert_eq!(back.player_session.resume_file_from, ResumeFileFrom::Start);
     }
@@ -853,11 +874,11 @@ mod tests {
     fn settings_view_mirrors_the_three_sections() {
         let mut p = Profile::create_default();
         p.recording.output_dir = "D:/arc".into();
-        p.ui.tray_notifications = false;
+        p.ui.tray_notifications_track_change = false;
         p.player_session.autoplay_on_startup = true;
         let view = p.settings_view();
         assert_eq!(view.recording.output_dir, "D:/arc");
-        assert!(!view.ui.tray_notifications);
+        assert!(!view.ui.tray_notifications_track_change);
         assert!(view.autoplay_on_startup);
         assert!(view.auto_advance);
     }
@@ -987,13 +1008,13 @@ mod tests {
         // the session trace does not.
         let mut p = Profile::create_default();
         p.recording.disk_space_threshold_gb = 25;
-        p.ui.tray_notifications = false;
+        p.ui.tray_notifications_track_change = false;
         p.player_session.auto_advance = false;
         p.player_session.resume_file_from = ResumeFileFrom::Start;
         p.player_session.autoplay_on_startup = true;
         p.player_session.reset_for_share();
         assert_eq!(p.recording.disk_space_threshold_gb, 25);
-        assert!(!p.ui.tray_notifications);
+        assert!(!p.ui.tray_notifications_track_change);
         assert!(!p.player_session.auto_advance);
         assert_eq!(p.player_session.resume_file_from, ResumeFileFrom::Start);
         assert!(!p.player_session.autoplay_on_startup, "autoplay does not travel");

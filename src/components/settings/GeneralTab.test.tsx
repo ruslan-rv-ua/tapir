@@ -102,7 +102,7 @@ describe("GeneralTab — межа глобальне/профільне", () => 
   it("does not show the tray-notifications toggle", () => {
     const { queryByRole } = render(<GeneralTab />);
     expect(
-      queryByRole("checkbox", { name: new RegExp(m.settings_show_tray_notifications()) }),
+      queryByRole("checkbox", { name: new RegExp(m.settings_tray_notifications_track_change()) }),
     ).toBeNull();
   });
 
