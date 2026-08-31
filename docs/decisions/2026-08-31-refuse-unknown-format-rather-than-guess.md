@@ -3,7 +3,7 @@
 - **Статус:** ПРИЙНЯТО
 - **Дата:** 2026-08-31
 - **Тип:** ADR — політика розпізнавання формату ефіру
-- **Контекст:** беклог — [unknown-format-falls-back-to-mp3](../backlog/p1-unknown-format-falls-back-to-mp3.md),
+- **Контекст:** беклог — [unknown-format-falls-back-to-mp3](../backlog/done/p1-unknown-format-falls-back-to-mp3.md),
   знайдено під час grilling [help-troubleshooting](../backlog/done/p1-help-troubleshooting.md);
   словник — [CONTEXT.md](../../CONTEXT.md) §«Формат» і §«Перепідключення і спроба»;
   **поправка до** [ADR 2026-08-13](2026-08-13-reconnect-attempt-semantics.md);

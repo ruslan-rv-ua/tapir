@@ -209,10 +209,8 @@ https://listen.moe/stream                      → Content-Type: audio/ogg,     
 | Radio Paradise Mellow Mix | `http://stream.radioparadise.com/mellow-128` (AAC) | `https://stream.radioparadise.com/mellow-flac` (OGG) |
 | Classic Vinyl HD | `https://icecast.walmradio.com:8443/classic` (MP3) | `https://icecast.walmradio.com:8443/classic_opus` (OGG) |
 
-> **Готовий плейлист для перевірки імпорту:**
-> [`unsupported-codec.m3u`](unsupported-codec.m3u) — три рядки, один із яких OGG.
-> Файл існує рівно заради ручної перевірки діалогу імпорту; після приймання
-> запису його можна видалити.
+> **Для перевірки діалогу імпорту** зліпіть `.m3u` із трьох рядків — MP3, AAC і
+> будь-який OGG звідси: імпорт має показати третій вид рядка, не помилку.
 
 ---
 

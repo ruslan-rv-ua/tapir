@@ -25,7 +25,7 @@ notes:
 # «Попередній / наступний» не каже, чому не заграло — а з глобальної клавіші мовчить зовсім
 
 > **Контекст:** знайдено на code-review
-> [unknown-format-falls-back-to-mp3](p1-unknown-format-falls-back-to-mp3.md).
+> [unknown-format-falls-back-to-mp3](done/p1-unknown-format-falls-back-to-mp3.md).
 > Поверхню не обрано — запис у GROOMING.
 
 ## Опис
@@ -46,7 +46,7 @@ notes:
 `addToast(m.playback_error(), "error")`). Тобто дві гілки одного модуля розходяться в
 поверхні на однаковій події.
 
-Прогалина стала помітнішою після [unknown-format-falls-back-to-mp3](p1-unknown-format-falls-back-to-mp3.md):
+Прогалина стала помітнішою після [unknown-format-falls-back-to-mp3](done/p1-unknown-format-falls-back-to-mp3.md):
 черга прев/некст іде по **видимому списку потоків**
 ([playbackNeighbors.ts](../../src/stores/playbackNeighbors.ts) читає `$visibleStreams`), а
 непідтримуваний потік у ньому лишається — його не ховають і кнопку «Запис» йому не вимикають.
@@ -89,7 +89,7 @@ notes:
 
 ## Документи
 
-- [unknown-format-falls-back-to-mp3](p1-unknown-format-falls-back-to-mp3.md) — звідки знахідка; додав відмову, на яку транспорт тепер натикається
+- [unknown-format-falls-back-to-mp3](done/p1-unknown-format-falls-back-to-mp3.md) — звідки знахідка; додав відмову, на яку транспорт тепер натикається
 - [ADR 2026-08-31 — видимий носій](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) §2, §5 — чому оголошення саме по собі поверхнею не є
 - [sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md), [volume-hotkey-no-feedback](p1-volume-hotkey-no-feedback.md) — та сама родина мовчазних поверхонь
 - Код: `src/lib/transportControl.ts`, `src/App.tsx`, `src/components/player/PlayerPanel.tsx`

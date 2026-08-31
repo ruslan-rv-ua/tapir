@@ -152,7 +152,7 @@ notes:
   максимум). Відповідає на тривогу, якої в користувача немає, поки довідка сама її не
   назве: типово це 20 МБ на все.
 - **Опису того, що невідомий формат зберігається з розширенням `.mp3`.** Це дефект, а не
-  поведінка екрана — окремий запис [unknown-format-falls-back-to-mp3](../p1-unknown-format-falls-back-to-mp3.md).
+  поведінка екрана — окремий запис [unknown-format-falls-back-to-mp3](p1-unknown-format-falls-back-to-mp3.md).
 
 ## Технічні кроки
 
@@ -231,5 +231,5 @@ notes:
 - [help-content-polish](p1-help-content-polish.md) — специфікація (мапа, стиль, розмітка)
 - `src/components/common/helpContent.ts` — фолбек локалі, який ховає розсинхрон
 - `src-tauri/src/lib.rs` — конфігурація журналу (рівень, розмір, ротація)
-- [unknown-format-falls-back-to-mp3](../p1-unknown-format-falls-back-to-mp3.md) — знахідка сесії
+- [unknown-format-falls-back-to-mp3](p1-unknown-format-falls-back-to-mp3.md) — знахідка сесії
 - [about-app-info](../p1-about-app-info.md) — знахідка сесії (версія й адреса проєкту для звіту)
