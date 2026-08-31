@@ -38,6 +38,7 @@ See [docs/architecture.md](docs/architecture.md) for module structure and data f
 ## Key Constraints
 
 - **Accessibility-first**: every UI element must work with NVDA/JAWS/Narrator. Use React Aria Components, ARIA landmarks, `aria-live` regions. See [docs/accessibility.md](docs/accessibility.md).
+- **Visible carrier**: whatever `announce()` says about a user action, the screen must also carry — as text a person reads, never as an `aria-*` attribute alone. A fact with no visible carrier is fixed one of two ways: put it on screen, or drop it from the announcement. The rule is one-directional (a visible change owes no announcement) and covers user actions only. Rule, rejected alternatives and its limits: [ADR 2026-08-31](docs/decisions/2026-08-31-visible-carrier-for-announced-facts.md); vocabulary: [CONTEXT.md](CONTEXT.md) §«Оголошення, сповіщення і видимий носій».
 - **Portable**: single EXE, no installer. Data stored in `data/` next to the executable. See `src-tauri/src/portable.rs`.
 - **Window decorations**: `decorations: true` is required (NVDA mouse tracking — Tauri #12901).
 - **i18n**: Ukrainian first, English second. Uses Paraglide.js (compile-time, type-safe). Messages in `src/i18n/messages/{uk,en}.json`.

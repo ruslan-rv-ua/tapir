@@ -19,15 +19,17 @@ semver; `unscheduled` — наприкінці.
 > не бреше й не мовчить: мертві налаштування прибрані, мовчазні відмови дістають видиму
 > поверхню, хибні мітки виправлені, обидві локалі повні, масштаб інтерфейсу працює.
 > Нових можливостей версія не додає — три записи типу `feature` тут закривають
-> прогалини, а не розширюють функціонал. 14 записів: 11 × S, 3 × M.
+> прогалини, а не розширюють функціонал. 17 записів: 13 × S, 4 × M.
 
 Порядок рядків у секціях — за пріоритетом, а в межах пріоритету **більші першими**:
 саме вони визначають, чи версія закриється, тож беруться раніше за дрібні.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md) | P1 | planned | ready | M | — | — (ухвалює політику «яка дія заслуговує на тост» — її успадкують наступні записи) |
 | [unknown-format-falls-back-to-mp3](p1-unknown-format-falls-back-to-mp3.md) | P1 | planned | ready | **M** | — | — (файл бреше про свій вміст: OGG/FLAC записується як `.mp3`) |
+| [wishlist-match-invisible](p1-wishlist-match-invisible.md) | P1 | planned | **draft** | **M** | — | — (вішліст «повідомляє про трек» лише в `sr-only`: для решти користувачів функція не робить нічого; поверхню не обрано) |
+| [volume-hotkey-no-feedback](p1-volume-hotkey-no-feedback.md) | P1 | planned | **draft** | **M** | — | — (`Ctrl+Alt+Up/Down` мовчать в обидві сторони; механізм не обрано, зачіпає `muteControl`) |
+| [sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md) | P1 | planned | ready | S | — | — (ухвалює [ADR про видимий носій](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) — правило успадкують наступні записи) |
 | [about-app-info](p1-about-app-info.md) | P1 | planned | ready | S | — | — (довідка веде до звіту про проблему, а версії взяти нізвідки) |
 | [webview-zoom-hotkeys](p1-webview-zoom-hotkeys.md) | P1 | planned | ready | S | — | — (прогалина доступності для слабозорих; перший крок — вимірювання, не правка) |
 | [hotkey-registration-silent-at-startup](p1-hotkey-registration-silent-at-startup.md) | P1 | planned | ready | S | — | — (механізм повідомлення вже є, працює лише на одному з двох шляхів) |
@@ -36,6 +38,7 @@ semver; `unscheduled` — наприкінці.
 | [wishlist-pattern-hint-anchoring](p1-wishlist-pattern-hint-anchoring.md) | P1 | planned | ready | S | — | — (підказка мовчить про якірність, тож найприродніший патерн не ловить нічого) |
 | [settings-labels-wording](p2-settings-labels-wording.md) | P2 | planned | ready | S | — | — (дві мітки: локалі обіцяють різне, латиниця посеред українського рядка) |
 | [player-recording-badge-term](p2-player-recording-badge-term.md) | P2 | planned | ready | S | — | — (мітка «Запис» означає файл, усупереч CONTEXT.md) |
+| [preview-player-presentation](p2-preview-player-presentation.md) | P2 | planned | **draft** | S | — | — (плеєр пропонує поставити ефір на паузу; сусід попереднього рядка — обидва про позначки джерела) |
 | [reconnect-max-in-status](p2-reconnect-max-in-status.md) | P2 | planned | ready | S | [reconnect-zero-retries](done/p0-reconnect-zero-retries.md) | — («спроба N з M» бере N і M з двох різних джерел) |
 | [list-key-modifier-guards](p2-list-key-modifier-guards.md) | P2 | planned | draft | S | [streams-transfer-hotkeys](done/p2-streams-transfer-hotkeys.md) | — (switch по `e.key` не перевіряє модифікаторів) |
 | [browser-filter-cursor-reset](p2-browser-filter-cursor-reset.md) | P2 | planned | ready | S | — | — (погоджено 2026-07-23) |
