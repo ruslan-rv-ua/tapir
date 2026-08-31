@@ -113,7 +113,7 @@ formatTime(pos)` іде і в видимий `<span>`, і в `aria-valuetext`. �
 
 Знайдено цим правилом, винесено окремими записами:
 
-- [wishlist-match-invisible](p1-wishlist-match-invisible.md) — збіг із вішлістом не показується
+- [wishlist-match-invisible](done/p1-wishlist-match-invisible.md) — збіг із вішлістом не показується
   **ніде**. Поза межею: подія станції, не дія користувача (§3 ADR).
 - [preview-player-presentation](p2-preview-player-presentation.md) — плеєр пропонує поставити
   ефір на паузу. Інший клас: дія видима, але неможлива.

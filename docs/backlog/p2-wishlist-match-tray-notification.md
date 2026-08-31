@@ -3,7 +3,7 @@ slug: wishlist-match-tray-notification
 title: "Збіг із вішлістом не доходить, коли вікна немає перед очима"
 priority: P2
 type: planned
-status: blocked
+status: ready
 effort: M
 kind: feature
 target: 0.2.0
@@ -11,7 +11,6 @@ updated: 2026-08-31
 a11y: true
 depends_on: [wishlist-match-invisible]
 blocks: []
-blocked_reason: "Прапорцем можна гейтити лише те, що має інший слід (ADR 2026-08-17). Слід — журнал збігів — заводить wishlist-match-invisible; поки його немає, ця категорія тоста мусила б бути незнімною."
 touches:
   - src-tauri/src/tray/notify.rs
   - src-tauri/src/stream/manager.rs
@@ -33,7 +32,7 @@ notes:
 
 # Збіг із вішлістом не доходить, коли вікна немає перед очима
 
-> **Контекст:** друга половина [wishlist-match-invisible](p1-wishlist-match-invisible.md).
+> **Контекст:** друга половина [wishlist-match-invisible](done/p1-wishlist-match-invisible.md).
 > Той запис дає **стан** (журнал збігів), цей — **подію**. Читати спершу
 > [ADR про носії для подій станції](../decisions/2026-08-31-carriers-for-station-events.md).
 
@@ -113,7 +112,7 @@ notes:
 
 ## Документи
 
-- [wishlist-match-invisible](p1-wishlist-match-invisible.md) — перша половина, дає слід
+- [wishlist-match-invisible](done/p1-wishlist-match-invisible.md) — перша половина, дає слід
 - [ADR 2026-08-31 про носії для подій станції](../decisions/2026-08-31-carriers-for-station-events.md)
 - [ADR 2026-08-17](../decisions/2026-08-17-tray-toast-categories.md) — категорії тостів трею
 - [ADR 2026-08-08](../decisions/2026-08-08-global-vs-profile-settings-boundary.md) — межа глобальне/профільне

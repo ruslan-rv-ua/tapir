@@ -126,7 +126,7 @@
   `useSettingsAutoSave` не використовує.
 - **Правило не перевіряється тестом загалом** — лише чотири конкретні носії. Див. §6.
 - **Прогалини, знайдені правилом, але поза його межею, винесено окремо:**
-  [wishlist-match-invisible](../backlog/p1-wishlist-match-invisible.md) (збіг із вішлістом не
+  [wishlist-match-invisible](../backlog/done/p1-wishlist-match-invisible.md) (збіг із вішлістом не
   показується ніде — подія станції, не дія користувача),
   [preview-player-presentation](../backlog/p2-preview-player-presentation.md) (плеєр не має
   єдиної історії про прослуховування — інший клас: дія видима, але неможлива),

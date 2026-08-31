@@ -3,7 +3,7 @@
 - **Статус:** ПРИЙНЯТО
 - **Дата:** 2026-08-31
 - **Тип:** ADR — модель зворотного зв'язку для подій, яких користувач не викликав
-- **Контекст:** беклог — [wishlist-match-invisible](../backlog/p1-wishlist-match-invisible.md),
+- **Контекст:** беклог — [wishlist-match-invisible](../backlog/done/p1-wishlist-match-invisible.md),
   [wishlist-match-tray-notification](../backlog/p2-wishlist-match-tray-notification.md);
   знайдено під час grilling [sound-hotkeys-feedback-announce-only](../backlog/p1-sound-hotkeys-feedback-announce-only.md);
   парний ADR для дій користувача — [2026-08-31](2026-08-31-visible-carrier-for-announced-facts.md);

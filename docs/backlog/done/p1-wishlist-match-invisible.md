@@ -3,11 +3,12 @@ slug: wishlist-match-invisible
 title: "Збіг із вішлістом не показується ніде — вішліст працює лише для скрінрідера"
 priority: P1
 type: planned
-status: in-progress
+status: done
 effort: L
 kind: bug
 target: 0.1.0
 updated: 2026-08-31
+completed: 2026-08-31
 a11y: true
 depends_on: []
 blocks: [wishlist-match-tray-notification]
@@ -33,29 +34,29 @@ notes:
 # Збіг із вішлістом не показується ніде — вішліст працює лише для скрінрідера
 
 > **Контекст:** поверхню обрано на grilling 2026-08-31; читати спершу
-> [ADR про носії для подій станції](../decisions/2026-08-31-carriers-for-station-events.md),
+> [ADR про носії для подій станції](../../decisions/2026-08-31-carriers-for-station-events.md),
 > потім розділ «Ухвалені рішення» нижче.
 
 ## Опис
 
 Коли в ефірі з'являється бажаний трек, застосунок робить **рівно одну річ**: кладе текст
-в `sr-only`-регіон — [App.tsx:315](../../src/App.tsx:315). Тоста немає. Сповіщення в треї
-немає: у [notify.rs](../../src-tauri/src/tray/notify.rs) вішліст не згадується взагалі.
+в `sr-only`-регіон — [App.tsx:315](../../../src/App.tsx:315). Тоста немає. Сповіщення в треї
+немає: у [notify.rs](../../../src-tauri/src/tray/notify.rs) вішліст не згадується взагалі.
 Значка, лічильника, запису в списку — немає.
 
 Тобто **для людини без скрінрідера вішліст не робить нічого спостережуваного**.
 
 Це суперечить двом документам одночасно.
 
-**Словник.** [CONTEXT.md](../../CONTEXT.md) §«Вішліст»: «список патернів, за якими Tapir
+**Словник.** [CONTEXT.md](../../../CONTEXT.md) §«Вішліст»: «список патернів, за якими Tapir
 упізнає в ефірі бажаний трек і **повідомляє** про нього».
 
-**Довідка.** [wishlist.md:3](../help/uk/wishlist.md:3): «**Бажані треки** повідомляють,
+**Довідка.** [wishlist.md:3](../../help/uk/wishlist.md:3): «**Бажані треки** повідомляють,
 коли в ефірі з'явився трек, на який ви чекали». Для читача, який дивиться очима, це
 неправда — і це рівно той клас тексту, який забороняє принцип універсального дизайну зі
-специфікації [help-content-polish](done/p1-help-content-polish.md).
+специфікації [help-content-polish](p1-help-content-polish.md).
 
-Те саме, м'якше, з `track-ignored` ([App.tsx:319](../../src/App.tsx:319)): проігнорований
+Те саме, м'якше, з `track-ignored` ([App.tsx:319](../../../src/App.tsx:319)): проігнорований
 трек теж лише промовляється.
 
 ### Що з'ясувалось у коді під час grilling
@@ -63,25 +64,25 @@ notes:
 Чотири факти, без яких обговорення поверхні йшло б наосліп:
 
 - **Збіг перевіряється тільки в `recording_task`** —
-  [manager.rs:974](../../src-tauri/src/stream/manager.rs:974). Потік, який просто слухають,
+  [manager.rs:974](../../../src-tauri/src/stream/manager.rs:974). Потік, який просто слухають,
   під патерни не потрапляє. Ніде — ні в довідці, ні в словнику — цього не сказано, і це
   найчастіша причина, чому «вішліст не працює».
 - **Слідів немає навіть випадкових.** `SavedTrack.is_wishlist_match`
-  ([profile.rs:385](../../src-tauri/src/profile.rs:385)), `WishlistEntry.remove_after_record`,
+  ([profile.rs:385](../../../src-tauri/src/profile.rs:385)), `WishlistEntry.remove_after_record`,
   `add_to_ignorelist_after_record`, `min_bitrate`, `format` — усі **мертві**: захардкожені
   `false`/`None`, ніде не читаються. Збережений файл нічим не відрізняється від сусіднього.
 - **Список збережених треків сканується з диска** щоразу
-  ([`list_saved_songs`](../../src-tauri/src/commands/songs_commands.rs:22) → `scanner::scan`),
+  ([`list_saved_songs`](../../../src-tauri/src/commands/songs_commands.rs:22) → `scanner::scan`),
   `Song` не має полів про вішліст, бази немає. Позначити файл «це був бажаний» — це нова
   персистентна сутність, не правка.
 - **Ігнорований трек уже видно** в рядку потоку: гілка `Ignored` викликає `emit_track_changed`
-  і `update_track_info` ([manager.rs:1014](../../src-tauri/src/stream/manager.rs:1014)).
+  і `update_track_info` ([manager.rs:1014](../../../src-tauri/src/stream/manager.rs:1014)).
   Бракує рівно одного слова — що саме цей трек ігнорується.
 
 ## Ухвалені рішення
 
 Тринадцять рішень grilling 2026-08-31. Загальне правило, яке з них виросло, винесено в
-[ADR про носії для подій станції](../decisions/2026-08-31-carriers-for-station-events.md);
+[ADR про носії для подій станції](../../decisions/2026-08-31-carriers-for-station-events.md);
 тут — те, що робить саме цей запис.
 
 **1. Подія і стан, стан первинний.** Спершу заводимо носія стану, і вже щодо нього
@@ -118,7 +119,7 @@ notes:
 **трек** (`Виконавець — Назва`), **патерн**. Порядок — **найновіші зверху**.
 
 **7. Подія — сповіщення в треї.** Винесено окремим записом
-[wishlist-match-tray-notification](p2-wishlist-match-tray-notification.md).
+[wishlist-match-tray-notification](../p2-wishlist-match-tray-notification.md).
 
 **8. Оголошення лишається `assertive` і негейтованим, текст доповнюється станцією.**
 `assertive` виправданий строком придатності: трек грає просто зараз, і повідомлення, що
@@ -140,9 +141,9 @@ notes:
 
 Слова «за цей сеанс» рятують від брехні після перезапуску (журнал сесійний); друге речення —
 єдине місце в інтерфейсі, де сказано про залежність від запису. Механіка вже є:
-`ListCardState role="status"` ([PatternList.tsx:117](../../src/components/wishlist/PatternList.tsx:117)).
+`ListCardState role="status"` ([PatternList.tsx:117](../../../src/components/wishlist/PatternList.tsx:117)).
 
-**11. Документи.** Новий [ADR про носії для подій станції](../decisions/2026-08-31-carriers-for-station-events.md);
+**11. Документи.** Новий [ADR про носії для подій станції](../../decisions/2026-08-31-carriers-for-station-events.md);
 `CONTEXT.md` §«Вішліст і Ігнор-лист» отримує «Збіг» і «Журнал збігів»; довідка обох локалей.
 Правки ADR 2026-08-17 і 2026-08-08 належать записові про тост, не цьому.
 
@@ -192,13 +193,15 @@ notes:
       (нейтрально щодо модальності) і що звіряння йде **лише під час запису**
 - [x] `CONTEXT.md` §«Вішліст і Ігнор-лист» має «Збіг» і «Журнал збігів»
 - [x] ADR про носії для подій станції написаний і покриває відхилені варіанти
-- [ ] NVDA-прогін пройдено (чекліст [nvda-wishlist-match-invisible.md](../testing/nvda-wishlist-match-invisible.md), 9 сценаріїв)
+- [x] NVDA-прогін пройдено — 9 сценаріїв, 2026-08-31, зауважень немає (чекліст видалено на прийманні)
 - [x] `pnpm vite:build`, `pnpm test`, `cargo test` зелені — **саме в цьому порядку**
 
 ## Ручна перевірка (NVDA)
 
-Чернетка нижче реалізована як [nvda-wishlist-match-invisible.md](../testing/nvda-wishlist-match-invisible.md)
-(9 сценаріїв). Одна розбіжність із чернеткою, свідома: пункт 7 казав, що порожній
+Прогін пройдено 2026-08-31: усі 9 сценаріїв чисті, жодного `[!]`. Чекліст
+видалено за процедурою приймання — рішення лишаються тут.
+
+Одна розбіжність із чернеткою, свідома: пункт 7 казав, що порожній
 список має **відмовлятись** від фокуса. Реалізовано навпаки — порожній журнал
 фокус **приймає** і NVDA дочитує причину, чому він порожній. Зона, що мовчки
 відмовляє, — це рівно той баг, від якого стоїть фікс у
@@ -221,11 +224,11 @@ notes:
 
 ## Документи
 
-- [ADR 2026-08-31 про носії для подій станції](../decisions/2026-08-31-carriers-for-station-events.md) — правило, яке ухвалює цей запис
-- [wishlist-match-tray-notification](p2-wishlist-match-tray-notification.md) — друга половина, сповіщення в треї
-- [sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md) — звідки знахідка
-- [ADR 2026-08-31 про видимий носій](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) — сусідній ADR; §3 лишив події станції поза межею, цей запис ту межу й добудовує
-- [ADR 2026-08-17](../decisions/2026-08-17-tray-toast-categories.md) — категорії тостів трею (правиться записом про тост, не цим)
-- [CONTEXT.md](../../CONTEXT.md) §«Вішліст і Ігнор-лист», §«Оголошення, сповіщення і видимий носій»
+- [ADR 2026-08-31 про носії для подій станції](../../decisions/2026-08-31-carriers-for-station-events.md) — правило, яке ухвалює цей запис
+- [wishlist-match-tray-notification](../p2-wishlist-match-tray-notification.md) — друга половина, сповіщення в треї
+- [sound-hotkeys-feedback-announce-only](../p1-sound-hotkeys-feedback-announce-only.md) — звідки знахідка
+- [ADR 2026-08-31 про видимий носій](../../decisions/2026-08-31-visible-carrier-for-announced-facts.md) — сусідній ADR; §3 лишив події станції поза межею, цей запис ту межу й добудовує
+- [ADR 2026-08-17](../../decisions/2026-08-17-tray-toast-categories.md) — категорії тостів трею (правиться записом про тост, не цим)
+- [CONTEXT.md](../../../CONTEXT.md) §«Вішліст і Ігнор-лист», §«Оголошення, сповіщення і видимий носій»
 - Код: `src-tauri/src/stream/manager.rs`, `src-tauri/src/app_state.rs`, `src/App.tsx`,
   `src/components/wishlist/WishlistPanel.tsx`, `src/components/streams/StreamItem.tsx`
