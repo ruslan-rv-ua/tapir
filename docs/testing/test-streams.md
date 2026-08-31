@@ -28,6 +28,8 @@
 | 17 | 101 Smooth Jazz | `http://jking.cdnstream1.com/b22139_128mp3` | MP3 | 128 kbps | SHOUTcast CDN | ⚠️ | ❌ | **SHOUTcast ICY** |
 | 18 | JamendoLounge | `http://streamingp.shoutcast.com/JamendoLounge` | MP3 | 128 kbps | SHOUTcast v2 | ✅ | ❌ | **SHOUTcast v2** |
 | 19 | BBC World Service | `http://stream.live.vc.bbcmedia.co.uk/bbc_world_service` | MP3 | 128 kbps | BBC CDN | ⚠️ ні | ❌ | **Без ICY-метаданих** |
+| 20 | Radio Paradise Mellow (FLAC) | `https://stream.radioparadise.com/mellow-flac` | **OGG** | 1441 kbps | Custom | ✅ | ✅ | **`application/ogg` — Tapir не пише** |
+| 21 | Listen.moe JPop | `https://listen.moe/stream` | **OGG** | 192 kbps | Icecast | ✅ | ✅ | **`audio/ogg` — Tapir не пише** |
 
 **Рівні впевненості ICY-метаданих:**
 - ✅ підтверджено — Icecast-сервер з відомим `icy-metaint` заголовком
@@ -180,6 +182,37 @@ https://icecast.walmradio.com:8443/classic    → MP3 320k
 ```
 https://st01.sslstream.dlf.de/dlf/01/128/mp3/stream.mp3?aggregator=web    → MP3 128k
 ```
+
+---
+
+### Категорія A2: OGG — те, чого Tapir **не** записує
+
+Потрібні для перевірки відмови ([ADR 2026-08-31](../decisions/2026-08-31-refuse-unknown-format-rather-than-guess.md)):
+Tapir мусить назвати кодек і не створити жодного файлу. Обидві адреси перевірено
+живим probe 2026-08-31 — вердикт `OGG`, бітрейт і `icy-name` при цьому читаються
+нормально.
+
+```
+https://stream.radioparadise.com/mellow-flac   → Content-Type: application/ogg, байти OggS
+https://listen.moe/stream                      → Content-Type: audio/ogg,       байти OggS
+```
+
+Перша адреса цінна окремо: `application/ogg` — це `application/*`, тобто **повз**
+матчер, що перебирає лише `audio/…`. Саме на ній ловиться регресія, якщо
+розпізнавання колись звузять назад до `audio/*`.
+
+Обидві станції мають у каталозі братів-близнюків, які пишуться нормально, — зручно
+для порівняння «до і після» на одній станції:
+
+| Станція | Пише | Не пише |
+|---------|------|---------|
+| Radio Paradise Mellow Mix | `http://stream.radioparadise.com/mellow-128` (AAC) | `https://stream.radioparadise.com/mellow-flac` (OGG) |
+| Classic Vinyl HD | `https://icecast.walmradio.com:8443/classic` (MP3) | `https://icecast.walmradio.com:8443/classic_opus` (OGG) |
+
+> **Готовий плейлист для перевірки імпорту:**
+> [`unsupported-codec.m3u`](unsupported-codec.m3u) — три рядки, один із яких OGG.
+> Файл існує рівно заради ручної перевірки діалогу імпорту; після приймання
+> запису його можна видалити.
 
 ---
 
@@ -511,6 +544,8 @@ def read_icy_metadata(host, port, path, n_blocks=3):
 | **MP3 320 kbps** | `https://ice5.somafm.com/seventies-320-mp3` | Пропускна здатність |
 | **AAC 32 kbps** | `http://ice.bassdrive.net/stream32` | Малий icy-metaint |
 | **Без ICY-метаданих** | `http://stream.live.vc.bbcmedia.co.uk/bbc_world_service` | Обробка відсутнього `icy-metaint` |
+| **OGG через `application/*`** | `https://stream.radioparadise.com/mellow-flac` | Відмова з назвою сім'ї; матчер `audio/*` цього не бачив |
+| **OGG через `audio/ogg`** | `https://listen.moe/stream` | Та сама відмова простішим шляхом |
 | **PLS-плейлист** | `https://somafm.com/groovesalad.pls` | Парсинг `.pls` → отримання URL |
 | **M3U-плейлист** | `https://somafm.com/m3u/groovesalad.m3u` | Парсинг `.m3u` → отримання URL |
 | **M3U via HTTP redirect** | `http://bassdrive.com/bassdrive.m3u` | HTTP редирект + M3U парсинг |
