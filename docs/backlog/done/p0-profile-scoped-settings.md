@@ -387,7 +387,7 @@ padding не мають залежати від того, через яку гі
 - **Вішліст, ігнор-лист, розклади** — сутності, а не налаштування; лишаються екранами
   з власними зонами F6.
 - **`bandwidth_limit_kbps`** — не переїжджає: у Rust немає жодного споживача, див.
-  [bandwidth-limit-dead-setting](../p1-bandwidth-limit-dead-setting.md).
+  [bandwidth-limit-dead-setting](p1-bandwidth-limit-dead-setting.md).
 - **Реальна постобробка** — вкладка лишається заглушкою; оживляє її
   [post-processing](../p1-post-processing.md).
 - **Редагування хоткеїв на профіль** — відхилено в ADR (фільтр 2).
@@ -455,4 +455,4 @@ padding не мають залежати від того, через яку гі
 - [ADR: межа глобальних і профільних налаштувань](../../decisions/2026-08-08-global-vs-profile-settings-boundary.md)
 - [data-models.md](../../data-models.md) · [keyboard-shortcuts.md](../../keyboard-shortcuts.md)
 - [post-processing](../p1-post-processing.md) — оживляє вкладку-заглушку
-- [bandwidth-limit-dead-setting](../p1-bandwidth-limit-dead-setting.md) — суміжна знахідка
+- [bandwidth-limit-dead-setting](p1-bandwidth-limit-dead-setting.md) — суміжна знахідка

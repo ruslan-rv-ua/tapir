@@ -774,7 +774,7 @@ notes:
   можна, хрестик у рядку її **очищає**, а не відновлює (уточнено 2026-08-13).
 - **`bandwidthLimitKbps` не згадується взагалі**: поле є в налаштуваннях на диску, але
   контролю в інтерфейсі немає (запис
-  [bandwidth-limit-dead-setting](../p1-bandwidth-limit-dead-setting.md)); довідка описує
+  [bandwidth-limit-dead-setting](p1-bandwidth-limit-dead-setting.md)); довідка описує
   екран.
 
 ### `background.md` — Робота у фоні

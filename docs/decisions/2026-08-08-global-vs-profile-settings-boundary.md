@@ -82,8 +82,9 @@
   вже мають екрани та зони F6. Затягувати їх у модальний діалог означає подовжити
   найчастішу дію в програмі заради симетрії.
 - **`bandwidth_limit_kbps`** — у Rust немає жодного споживача (див.
-  [bandwidth-limit-dead-setting](../backlog/p1-bandwidth-limit-dead-setting.md)).
+  [bandwidth-limit-dead-setting](../backlog/done/p1-bandwidth-limit-dead-setting.md)).
   Переносити мертве поле — закріпити його ще в одному форматі файлу.
+  _(2026-08-31: поле прибрано зовсім — рішення того запису.)_
 
 ## Відхилені варіанти
 
