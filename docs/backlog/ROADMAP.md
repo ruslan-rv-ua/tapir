@@ -19,15 +19,15 @@ semver; `unscheduled` — наприкінці.
 > не бреше й не мовчить: мертві налаштування прибрані, мовчазні відмови дістають видиму
 > поверхню, хибні мітки виправлені, обидві локалі повні, масштаб інтерфейсу працює.
 > Нових можливостей версія не додає — три записи типу `feature` тут закривають
-> прогалини, а не розширюють функціонал. 17 записів: 13 × S, 4 × M.
+> прогалини, а не розширюють функціонал. 17 записів: 13 × S, 3 × M, 1 × L.
 
 Порядок рядків у секціях — за пріоритетом, а в межах пріоритету **більші першими**:
 саме вони визначають, чи версія закриється, тож беруться раніше за дрібні.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
+| [wishlist-match-invisible](p1-wishlist-match-invisible.md) | P1 | planned | ready | **L** | — | [wishlist-match-tray-notification](p2-wishlist-match-tray-notification.md) (вішліст «повідомляє про трек» лише в `sr-only`; поверхню обрано — журнал збігів третьою вкладкою, [ADR про носії для подій станції](../decisions/2026-08-31-carriers-for-station-events.md)) |
 | [unknown-format-falls-back-to-mp3](p1-unknown-format-falls-back-to-mp3.md) | P1 | planned | ready | **M** | — | — (файл бреше про свій вміст: OGG/FLAC записується як `.mp3`) |
-| [wishlist-match-invisible](p1-wishlist-match-invisible.md) | P1 | planned | **draft** | **M** | — | — (вішліст «повідомляє про трек» лише в `sr-only`: для решти користувачів функція не робить нічого; поверхню не обрано) |
 | [volume-hotkey-no-feedback](p1-volume-hotkey-no-feedback.md) | P1 | planned | **draft** | **M** | — | — (`Ctrl+Alt+Up/Down` мовчать в обидві сторони; механізм не обрано, зачіпає `muteControl`) |
 | [sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md) | P1 | planned | ready | S | — | — (ухвалює [ADR про видимий носій](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) — правило успадкують наступні записи) |
 | [about-app-info](p1-about-app-info.md) | P1 | planned | ready | S | — | — (довідка веде до звіту про проблему, а версії взяти нізвідки) |
@@ -48,7 +48,7 @@ semver; `unscheduled` — наприкінці.
 
 > **Тема — фічі з готовим дизайном.** Записи, де рішення вже ухвалені (`type: planned`)
 > і лишилася реалізація, включно з останньою незакритою фазою застосунку —
-> **3H Post-processing**. 7 записів: 4 × S, 2 × M, 1 × L.
+> **3H Post-processing**. 8 записів: 4 × S, 3 × M, 1 × L.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
@@ -56,6 +56,7 @@ semver; `unscheduled` — наприкінці.
 | [per-stream-ignorelist-ui](p1-per-stream-ignorelist-ui.md) | P1 | planned | draft | M | — | — (бекенд уже працює, наповнити список з інтерфейсу неможливо; довідка описує це як дірку) |
 | [command-palette-phase-3](p1-command-palette-phase-3.md) | P1 | planned | ready | S | — | [command-palette-phase-4](p2-command-palette-phase-4.md), [command-palette-mode-prefixes](p3-command-palette-mode-prefixes.md) |
 | [import-duplicate-metadata-update](p2-import-duplicate-metadata-update.md) | P2 | planned | ready | M | — | — (рішення ухвалено 2026-07-23) |
+| [wishlist-match-tray-notification](p2-wishlist-match-tray-notification.md) | P2 | planned | **blocked** | M | [wishlist-match-invisible](p1-wishlist-match-invisible.md) | — (четверта категорія `ToastKind`; гейт прапорцем дозволений лише коли слід уже є) |
 | [command-palette-phase-4](p2-command-palette-phase-4.md) | P2 | planned | **blocked** | S | [command-palette-phase-3](p1-command-palette-phase-3.md) | — |
 | [focus-active-item-on-playback-start](p2-focus-active-item-on-playback-start.md) | P2 | idea | draft | S | — | — |
 | [streams-list-search](p2-streams-list-search.md) | P2 | idea | draft | S | — | — (гачок уже стоїть: `ZoneEntry.focusSearch?()` із [search-focus-hotkey](done/p2-search-focus-hotkey.md); зникне репліка «на цьому екрані немає пошуку») |
