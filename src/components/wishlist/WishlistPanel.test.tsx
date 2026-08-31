@@ -4,7 +4,8 @@ import { render, fireEvent, waitFor, screen, act } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import { useEffect, useRef, useState } from "react";
 import * as m from "../../i18n/paraglide/messages";
-import { $wishlist, $ignorelist, $patternSelection, $showAddPatternDialog } from "../../stores/wishlist";
+import { $wishlist, $ignorelist, $wishlistMatches, $patternSelection, $showAddPatternDialog } from "../../stores/wishlist";
+import type { WishlistMatch } from "../../lib/tauri";
 import { $announcer } from "../../stores/announcer";
 import { replaceSelection } from "../../stores/selection";
 import * as tauri from "../../lib/tauri";
@@ -57,6 +58,7 @@ beforeEach(() => {
   $ignorelist.set([]);
   replaceSelection($patternSelection, new Set());
   $showAddPatternDialog.set(false);
+  $wishlistMatches.set([]);
 });
 
 it("routes the cluster delete to the wishlist bulk command for the active tab", async () => {
@@ -450,3 +452,99 @@ describe("empty-state example seeding", () => {
   });
 });
 
+
+
+// ── Журнал збігів (третя вкладка) ──────────────────────────────────────────
+// Носій-стан для рідкісної події станції: без нього збіг спостережуваний лише
+// для скрінрідера (ADR 2026-08-31 «Носії для подій станції»).
+
+const mkMatch = (over: Partial<WishlistMatch> = {}): WishlistMatch => ({
+  id: 1,
+  matchedAt: "2026-08-31T21:04:00Z",
+  streamId: "s1",
+  stationName: "Radio Paradise",
+  artist: "Tycho",
+  title: "Dive",
+  pattern: "Tycho*",
+  ...over,
+});
+
+async function openMatchesTab() {
+  const view = render(<WishlistPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
+  await waitFor(() => screen.getByText(m.select_all()));
+  fireEvent.click(view.getByRole("tab", { name: m.matches_section_title() }));
+  return view;
+}
+
+describe("WishlistPanel — журнал збігів", () => {
+  it("рядок несе всі чотири факти: час, станцію, трек і патерн", async () => {
+    $wishlistMatches.set([mkMatch()]);
+    const { getByRole } = await openMatchesTab();
+
+    const row = getByRole("listitem");
+    const label = row.getAttribute("aria-label")!;
+    expect(label).toMatch(/\d\d:\d\d/); // час, локальний
+    expect(label).toContain("Radio Paradise");
+    expect(label).toContain("Tycho — Dive");
+    expect(label).toContain("Tycho*");
+  });
+
+  it("найновіший збіг стоїть зверху", async () => {
+    // Порядок приходить із буфера в Rust; екран його не переупорядковує.
+    $wishlistMatches.set([mkMatch({ id: 2, title: "Awake" }), mkMatch({ id: 1, title: "Dive" })]);
+    const { getAllByRole } = await openMatchesTab();
+
+    const labels = getAllByRole("listitem").map((li) => li.getAttribute("aria-label")!);
+    expect(labels[0]).toContain("Awake");
+    expect(labels[1]).toContain("Dive");
+  });
+
+  it("порожній вішліст → порожній стан кличе додати патерн", async () => {
+    // Не лише store: на монтуванні панель перечитує список із бекенду, і без
+    // цього мока він одразу повернув би патерн назад.
+    vi.mocked(tauri.getWishlist).mockResolvedValueOnce([]);
+    $wishlist.set([]);
+    const { getByText } = await openMatchesTab();
+    expect(getByText(m.empty_matches_no_patterns())).toBeTruthy();
+  });
+
+  it("патерни є, збігів немає → порожній стан називає сеанс і залежність від запису", async () => {
+    // Обидва факти обов'язкові: без «за цей сеанс» текст брехав би після
+    // перезапуску, а без другого речення ніде в інтерфейсі не сказано, що
+    // звіряння йде лише під час запису.
+    const { getByText } = await openMatchesTab();
+    expect(getByText(m.empty_matches_none_yet())).toBeTruthy();
+  });
+
+  it("порожній журнал усе одно приймає фокус, тож F6 його не проскакує", async () => {
+    render(<ZoneHarness />);
+    await waitFor(() => screen.getByText(m.select_all()));
+    fireEvent.click(screen.getByRole("tab", { name: m.matches_section_title() }));
+
+    await waitFor(() => expect(document.querySelector('[data-zone-id="wishlist-matches"]')).toBeTruthy());
+    screen.getByRole("tab", { name: m.matches_section_title() }).focus();
+    fireEvent.keyDown(document.activeElement!, { key: "F6" });
+
+    expect(document.activeElement?.closest("[data-zone-id]")?.getAttribute("data-zone-id"))
+      .toBe("wishlist-matches");
+  });
+
+  it("тулбар зникає: у журналі немає ні куди додавати, ні що виділяти", async () => {
+    const { queryByText } = await openMatchesTab();
+    expect(queryByText(m.add_pattern())).toBeNull();
+    expect(queryByText(m.select_all())).toBeNull();
+  });
+
+  it("Ctrl+N у журналі відкриває ту вкладку, в яку насправді додає", async () => {
+    const { getByRole } = await openMatchesTab();
+    act(() => $showAddPatternDialog.set(true));
+
+    // Заголовок діалогу називає список, у який патерн ляже.
+    await waitFor(() => expect(getByRole("dialog")).toBeTruthy());
+    expect(getByRole("heading", { name: m.add_to_wishlist() })).toBeTruthy();
+    // `hidden: true` обов'язкове: відкритий Modal aria-ховає решту сторінки.
+    expect(
+      getByRole("tab", { name: m.wishlist_section_title(), hidden: true }).getAttribute("aria-selected"),
+    ).toBe("true");
+  });
+});

@@ -35,6 +35,12 @@ export interface TrackInfo {
   title: string;
   album: string;
   startedAt: string;
+  /**
+   * Трек підпав під ігнор-лист. Рутинна подія станції — носієм їй служить
+   * позначка в тому рядку, який трек уже показує, і оголошення вона не має
+   * (ADR 2026-08-31 «Носії для подій станції» §3, §4).
+   */
+  ignored: boolean;
 }
 
 export interface StreamStatus {
@@ -114,6 +120,8 @@ export interface TrackChangedPayload {
   artist: string;
   title: string;
   album: string;
+  /** Див. [`TrackInfo.ignored`] — живий рядок збирається саме з цієї події. */
+  ignored: boolean;
 }
 
 export interface StreamErrorPayload {
@@ -335,15 +343,18 @@ export interface WishlistEntry {
   addedAt: string;
 }
 
-export interface WishlistMatchPayload {
+/**
+ * Рядок журналу збігів. Той самий тип приходить і подією `wishlist-match`, і
+ * з `get_wishlist_matches`, тож живий рядок виходить точно таким, як після
+ * перечитування.
+ */
+export interface WishlistMatch {
+  /** Монотонний id у межах сесії — стабільний ключ рядка. */
+  id: number;
+  /** Локальний час збігу, RFC3339. */
+  matchedAt: string;
   streamId: string;
-  artist: string;
-  title: string;
-  pattern: string;
-}
-
-export interface TrackIgnoredPayload {
-  streamId: string;
+  stationName: string;
   artist: string;
   title: string;
   pattern: string;
@@ -385,6 +396,10 @@ export interface BrowserProbeSummary {
 
 // ── Wishlist/Ignorelist IPC wrappers ──────────────────────────────────────
 
+/** Знімок журналу збігів активного профілю, найновіші зверху. */
+export async function getWishlistMatches(): Promise<WishlistMatch[]> {
+  return invoke("get_wishlist_matches");
+}
 export async function getWishlist(): Promise<WishlistEntry[]> {
   return invoke("get_wishlist");
 }

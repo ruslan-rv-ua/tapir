@@ -14,6 +14,7 @@ use crate::portable;
 use crate::profile::{RecordingSettings, ReconnectConfig, StreamInfo};
 use crate::stream::{connection, format, recorder, splitter};
 use log::{info, warn, error, debug};
+use crate::wishlist::match_log::{MatchInput, WishlistMatch};
 use crate::wishlist::matcher;
 use crate::wake_lock::WakeLock;
 
@@ -56,6 +57,11 @@ pub struct TrackInfo {
     pub title: String,
     pub album: String,
     pub started_at: String,
+    /// Трек підпав під ігнор-лист і окремим файлом не збережеться. Носій цього
+    /// факту — сам рядок потоку: подія рутинна (десятки за ніч), тож дістає
+    /// позначку на місці, а не хронологію, і оголошення не має
+    /// (ADR 2026-08-31 «Носії для подій станції» §3, §4).
+    pub ignored: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -77,6 +83,9 @@ struct TrackChangedPayload {
     artist: String,
     title: String,
     album: String,
+    /// Дублює [`TrackInfo::ignored`]: живий рядок фронтенд збирає з цієї події,
+    /// а не перечитує статуси, тож кваліфікатор мусить їхати обома шляхами.
+    ignored: bool,
 }
 
 #[derive(Clone, Serialize)]
@@ -111,24 +120,6 @@ struct RecordingCompletedPayload {
     stream_id: String,
     file_name: String,
     duration_ms: u64,
-}
-
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct WishlistMatchPayload {
-    stream_id: String,
-    artist: String,
-    title: String,
-    pattern: String,
-}
-
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct TrackIgnoredPayload {
-    stream_id: String,
-    artist: String,
-    title: String,
-    pattern: String,
 }
 
 // ---------------------------------------------------------------------------
@@ -320,7 +311,7 @@ fn emit_recording_status(app: &AppHandle, stream_id: &str, status: &str, error: 
     crate::tray::notify_state_changed(app);
 }
 
-fn emit_track_changed(app: &AppHandle, stream_id: &str, artist: &str, title: &str, album: &str) {
+fn emit_track_changed(app: &AppHandle, stream_id: &str, artist: &str, title: &str, album: &str, ignored: bool) {
     app.emit(
         "track-changed",
         TrackChangedPayload {
@@ -328,6 +319,7 @@ fn emit_track_changed(app: &AppHandle, stream_id: &str, artist: &str, title: &st
             artist: artist.to_string(),
             title: title.to_string(),
             album: album.to_string(),
+            ignored,
         },
     )
     .ok();
@@ -381,30 +373,11 @@ fn emit_recording_completed(app: &AppHandle, stream_id: &str, file_name: &str, d
     .ok();
 }
 
-fn emit_wishlist_match(app: &AppHandle, stream_id: &str, artist: &str, title: &str, pattern: &str) {
-    app.emit(
-        "wishlist-match",
-        WishlistMatchPayload {
-            stream_id: stream_id.to_string(),
-            artist: artist.to_string(),
-            title: title.to_string(),
-            pattern: pattern.to_string(),
-        },
-    )
-    .ok();
-}
-
-fn emit_track_ignored(app: &AppHandle, stream_id: &str, artist: &str, title: &str, pattern: &str) {
-    app.emit(
-        "track-ignored",
-        TrackIgnoredPayload {
-            stream_id: stream_id.to_string(),
-            artist: artist.to_string(),
-            title: title.to_string(),
-            pattern: pattern.to_string(),
-        },
-    )
-    .ok();
+/// Подія несе вже записаний рядок журналу цілком — фронтенд кладе його в
+/// дзеркало як є, і живий рядок виходить точно таким, як після перечитування
+/// команди. Окремої події «журнал змінився» тому й немає.
+fn emit_wishlist_match(app: &AppHandle, entry: &WishlistMatch) {
+    app.emit("wishlist-match", entry.clone()).ok();
 }
 
 // ---------------------------------------------------------------------------
@@ -486,6 +459,7 @@ async fn update_track_info(
     stream_id: &str,
     artist: &str,
     title: &str,
+    ignored: bool,
 ) {
     let started_at = chrono::Local::now().to_rfc3339();
     let mut guard = manager.write().await;
@@ -495,6 +469,7 @@ async fn update_track_info(
             title: title.to_string(),
             album: String::new(),
             started_at,
+            ignored,
         });
         // tracks_recorded is NOT incremented here — only when a track is finalized
         // (i.e., kept on disk). See update_tracks_recorded.
@@ -578,6 +553,9 @@ enum ReadEvent {
 // recording_task — top-level free async function
 // ---------------------------------------------------------------------------
 
+/// Ігнорований трек сюди не заходить: його гілка фіналізує попередній трек і
+/// емітить сама (щоб не починати новий файл), тож `ignored: false` нижче — це
+/// факт про єдиних викликачів, а не типове значення.
 async fn handle_splitter_action(
     action: splitter::SplitAction,
     app_handle: &AppHandle,
@@ -590,16 +568,16 @@ async fn handle_splitter_action(
     match action {
         splitter::SplitAction::Skip => {
             debug!("[{}] Splitter: skip (first-incomplete/too-short/unchanged): {} - {}", stream_id, artist, title);
-            emit_track_changed(app_handle, stream_id, artist, title, "");
-            update_track_info(manager, stream_id, artist, title).await;
+            emit_track_changed(app_handle, stream_id, artist, title, "", false);
+            update_track_info(manager, stream_id, artist, title, false).await;
         }
         splitter::SplitAction::StartTrack(m) => {
             debug!("[{}] Splitter: start track: {} - {}", stream_id, m.artist, m.title);
             if let Ok(file_name) = rec.start_track(&m.artist, &m.title).await {
                 emit_recording_started(app_handle, stream_id, &file_name);
             }
-            emit_track_changed(app_handle, stream_id, &m.artist, &m.title, "");
-            update_track_info(manager, stream_id, &m.artist, &m.title).await;
+            emit_track_changed(app_handle, stream_id, &m.artist, &m.title, "", false);
+            update_track_info(manager, stream_id, &m.artist, &m.title, false).await;
         }
         splitter::SplitAction::FinalizeAndStart { completed, new, duration_ms } => {
             debug!("[{}] Splitter: finalize '{} - {}' ({}ms), start '{} - {}'", stream_id, completed.artist, completed.title, duration_ms, new.artist, new.title);
@@ -613,8 +591,8 @@ async fn handle_splitter_action(
             if let Ok(file_name) = rec.start_track(&new.artist, &new.title).await {
                 emit_recording_started(app_handle, stream_id, &file_name);
             }
-            emit_track_changed(app_handle, stream_id, &new.artist, &new.title, "");
-            update_track_info(manager, stream_id, &new.artist, &new.title).await;
+            emit_track_changed(app_handle, stream_id, &new.artist, &new.title, "", false);
+            update_track_info(manager, stream_id, &new.artist, &new.title, false).await;
         }
     }
 }
@@ -1011,13 +989,32 @@ pub async fn recording_task(
                                             emit_recording_completed(&app_handle, &stream_id, &file_name, duration_ms);
                                         }
                                     }
-                                    emit_track_changed(&app_handle, &stream_id, &artist, &title, "");
-                                    update_track_info(&manager, &stream_id, &artist, &title).await;
-                                    emit_track_ignored(&app_handle, &stream_id, &artist, &title, pattern);
+                                    // Носій — кваліфікатор у рядку потоку; окремої події
+                                    // «трек проігноровано» більше немає, бо оголошувати
+                                    // кожен рекламний блок нічим (ADR 2026-08-31 §4).
+                                    emit_track_changed(&app_handle, &stream_id, &artist, &title, "", true);
+                                    update_track_info(&manager, &stream_id, &artist, &title, true).await;
                                     info!("[{}] Track ignored ({}): {} - {}", stream_id, pattern, artist, title);
                                 }
                                 matcher::TrackAction::WishlistMatch { ref pattern } => {
-                                    emit_wishlist_match(&app_handle, &stream_id, &artist, &title, pattern);
+                                    // Носій-стан первинний, подія проєктується поверх нього
+                                    // (ADR 2026-08-31 §2): спершу рядок у журналі, і вже його
+                                    // несе подія.
+                                    let entry = {
+                                        let state = app_handle.state::<crate::app_state::AppState>();
+                                        let mut log = state.match_log.write().await;
+                                        log.push(
+                                            MatchInput {
+                                                stream_id: stream_id.clone(),
+                                                station_name: station_name.clone(),
+                                                artist: artist.clone(),
+                                                title: title.clone(),
+                                                pattern: pattern.clone(),
+                                            },
+                                            chrono::Local::now().to_rfc3339(),
+                                        )
+                                    };
+                                    emit_wishlist_match(&app_handle, &entry);
                                     info!("[{}] Wishlist match ({}): {} - {}", stream_id, pattern, artist, title);
                                     let meta = connection::TrackMetadata {
                                         artist: artist.clone(),

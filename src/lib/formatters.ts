@@ -63,6 +63,20 @@ export function formatDateTime(iso: string): string {
   }).format(d);
 }
 
+/**
+ * Localized clock only, no date (e.g. "21:04"). For the wishlist match log:
+ * the journal is session-scoped, so every row happened today and a repeated
+ * date would be noise.
+ */
+export function formatTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
+}
+
 /** True when free disk space is known and below the threshold. 0 = disabled. */
 export function isLowDiskSpace(freeBytes: number | null, thresholdGb: number): boolean {
   if (thresholdGb <= 0 || freeBytes === null) return false;

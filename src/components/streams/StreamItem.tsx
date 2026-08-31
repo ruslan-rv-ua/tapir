@@ -151,10 +151,18 @@ export function StreamItem({
   const trackValue = status?.currentTrack
     ? `${status.currentTrack.artist} — ${status.currentTrack.title}`
     : "—";
+  // Кваліфікатор ігнорованого треку стоїть у самому тексті сегмента, а не лише
+  // в aria-мітці: подія рутинна, оголошення в неї більше немає, і носієм цього
+  // факту лишається рядок на екрані (ADR 2026-08-31 §3, §4). «Востаннє грав»
+  // накладається зверху, бо це різні факти: один про свіжість, другий про долю
+  // треку.
+  const trackDisplay = status?.currentTrack?.ignored
+    ? m.segment_track_ignored({ track: trackValue })
+    : trackValue;
   const trackLabel = showAsLastTrack
-    ? m.segment_track_last({ track: trackValue })
+    ? m.segment_track_last({ track: trackDisplay })
     : hasTrack
-      ? trackValue
+      ? trackDisplay
       : m.segment_track_none();
   const trackTextClass = showAsLastTrack ? "text-slate-500 italic" : "text-slate-400";
 
@@ -224,7 +232,7 @@ export function StreamItem({
               className={`px-3 py-2 text-sm ${trackTextClass} truncate`}
               style={{ gridRow: 1, gridColumn: 2 }}
             >
-              {trackValue}
+              {trackDisplay}
             </CompositeSegment>
           );
 

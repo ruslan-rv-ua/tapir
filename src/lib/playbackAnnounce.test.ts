@@ -123,7 +123,7 @@ describe("describePlayback", () => {
   const statuses: Record<string, StreamStatus> = {
     s1: {
       streamId: "s1", state: "recording",
-      currentTrack: { artist: "Miles", title: "So What", album: "", startedAt: "" },
+      currentTrack: { artist: "Miles", title: "So What", album: "", startedAt: "", ignored: false },
       recordingStartedAt: null, bytesRecorded: 0, tracksRecorded: 0,
       error: null, reconnectAttempt: null, sessionId: 1,
     },
@@ -159,7 +159,7 @@ describe("describePlayback", () => {
   // song title arrives with an empty artist — the common case, not an edge one.
   it("stream playing with an empty artist → title alone, no dangling dash", () => {
     const half: Record<string, StreamStatus> = {
-      s1: { ...statuses.s1, currentTrack: { artist: "", title: "So What", album: "", startedAt: "" } },
+      s1: { ...statuses.s1, currentTrack: { artist: "", title: "So What", album: "", startedAt: "", ignored: false } },
     };
     expect(describePlayback({
       status: st("playing", stream("s1")), statuses: half, streams, muted: false,
@@ -168,7 +168,7 @@ describe("describePlayback", () => {
 
   it("stream playing with an empty artist AND title → no track at all", () => {
     const empty: Record<string, StreamStatus> = {
-      s1: { ...statuses.s1, currentTrack: { artist: "", title: "", album: "", startedAt: "" } },
+      s1: { ...statuses.s1, currentTrack: { artist: "", title: "", album: "", startedAt: "", ignored: false } },
     };
     expect(describePlayback({
       status: st("playing", stream("s1")), statuses: empty, streams, muted: false,

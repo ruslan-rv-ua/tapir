@@ -1,6 +1,17 @@
 use crate::app_state::AppState;
 use crate::profile::WishlistEntry;
 use crate::store::Commit;
+use crate::wishlist::match_log::WishlistMatch;
+
+/// Знімок журналу збігів, найновіші зверху. Дзеркало на фронтенді сіється звідси
+/// (екран міг ще жодного разу не відкриватись, а збіги вже були) і далі живе з
+/// події `wishlist-match`, яка несе такий самий рядок.
+#[tauri::command]
+pub async fn get_wishlist_matches(
+    state: tauri::State<'_, AppState>,
+) -> Result<Vec<WishlistMatch>, String> {
+    Ok(state.match_log.read().await.entries())
+}
 
 #[tauri::command]
 pub async fn get_wishlist(state: tauri::State<'_, AppState>) -> Result<Vec<WishlistEntry>, String> {

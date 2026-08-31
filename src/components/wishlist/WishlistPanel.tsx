@@ -4,6 +4,7 @@ import type React from "react";
 import { createPortal } from "react-dom";
 import { useStore } from "@nanostores/react";
 import { PatternList, type PatternListHandle } from "./PatternList";
+import { MatchList } from "./MatchList";
 import { SelectionToolbar } from "../common/SelectionToolbar";
 import { AddPatternDialog } from "./AddPatternDialog";
 import { ScreenZone } from "../layout/ScreenZone";
@@ -12,12 +13,29 @@ import { ListCard } from "../common/ListCard";
 import { useRovingFocus } from "../../hooks/useRovingFocus";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import { addToast } from "../../stores/toasts";
-import { $wishlist, $ignorelist, $patternSelection, $showAddPatternDialog } from "../../stores/wishlist";
+import { $wishlist, $ignorelist, $wishlistMatches, $patternSelection, $showAddPatternDialog } from "../../stores/wishlist";
 import { replaceSelection } from "../../stores/selection";
 import * as tauri from "../../lib/tauri";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as m from "../../i18n/paraglide/messages";
 import { EXAMPLE_WISHLIST_PATTERNS, EXAMPLE_IGNORELIST_PATTERNS } from "./examplePatterns";
+
+/**
+ * Третя вкладка — журнал збігів. Він відповідає на питання ПРО вішліст, тож
+ * живе на екрані вішліста; окрема секція в боковій панелі казала б «це
+ * самостійна частина застосунку», хоча без свого списку правил журнал порожній
+ * за побудовою (ADR 2026-08-31 «Носії для подій станції»).
+ */
+type TabKind = "wishlist" | "ignorelist" | "matches";
+// Мітка третьої вкладки — «Збіги в ефірі». Паралель із сусідами («Бажані
+// треки», «Ігноровані треки») порушена свідомо: «Знайдені треки» обіцяли б
+// файли, яких журнал не тримає, а «Журнал» зіштовхнувся б із діагностичним
+// логом застосунку (рівень логування, ротація).
+/** Вкладки з патернами: у них є тулбар і мультивибір, у журналу — ні. */
+type PatternTab = Exclude<TabKind, "matches">;
+
+/** Стабільна порожня константа — activeItems іде в deps ефекту реєстрації зон. */
+const EMPTY_ITEMS: { pattern: string }[] = [];
 
 type DialogState =
   | null
@@ -33,12 +51,13 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   // --- Store subscriptions ---
   const wishlist = useStore($wishlist);
   const ignorelist = useStore($ignorelist);
+  const matches = useStore($wishlistMatches);
   const selection = useStore($patternSelection);
   const selCount = selection.size;
 
   // --- Local state ---
   const [dialog, setDialog] = useState<DialogState>(null);
-  const [activeTab, setActiveTab] = useState<"wishlist" | "ignorelist">("wishlist");
+  const [activeTab, setActiveTab] = useState<TabKind>("wishlist");
   const announce = useAnnounce();
   const showAddPattern = useStore($showAddPatternDialog);
   const [seeding, setSeeding] = useState(false);
@@ -54,10 +73,14 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   // activeTab is in deps so the dialog opens against the current tab; the guard
   // stops a tab switch from re-opening it.
   useEffect(() => {
-    if (showAddPattern) {
-      setDialog({ mode: "add", listType: activeTab });
-      $showAddPatternDialog.set(false);
-    }
+    if (!showAddPattern) return;
+    // На вкладці журналу додавати нема куди, а мовчазна відмова була б гіршою
+    // за перемикання: клавіша відкриває ту вкладку, в яку насправді додає, і
+    // обіцянка довідки «додає у вкладку, яка зараз відкрита» лишається чесною.
+    const listType: PatternTab = activeTab === "matches" ? "wishlist" : activeTab;
+    if (activeTab === "matches") setActiveTab("wishlist");
+    setDialog({ mode: "add", listType });
+    $showAddPatternDialog.set(false);
   }, [showAddPattern, activeTab]);
 
   // --- Wishlist handlers ---
@@ -210,6 +233,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   // --- Zone navigation ---
   const controlsRef = useRef<HTMLDivElement | null>(null);
   const patternListRef = useRef<PatternListHandle | null>(null);
+  const matchListRef = useRef<ZoneEntry | null>(null);
   const addPatternBtnRef = useRef<HTMLButtonElement | null>(null);
   const selectAllBtnRef = useRef<HTMLButtonElement | null>(null);
   const deleteSelectedBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -226,9 +250,14 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   // pendingFocusEmptyZone (StreamsPanel.tsx:291).
   const pendingFocusEmptyZone = useRef(false);
 
-  // Focus the currently-selected Wishlist/Ignorelist tab (react-aria marks it
-  // aria-selected="true" + tabindex="0"). Used as the toolbar's backward exit
-  // and as the zone's forward F6 entry.
+  // Тулбар належить спискам патернів: у журналі додавати нема куди, а
+  // виділяти — нема чого. Порожній тулбар на вкладці був би трьома кнопками,
+  // які нічого не роблять.
+  const hasToolbar = activeTab !== "matches";
+
+  // Focus the currently-selected tab (react-aria marks it aria-selected="true"
+  // + tabindex="0"). Used as the toolbar's backward exit and as the zone's
+  // forward F6 entry.
   const focusActiveTab = useCallback(() => {
     controlsRef.current
       ?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
@@ -253,6 +282,14 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
       forward ? exitZone("wishlist-controls", true) : focusActiveTab(),
   });
 
+  // Зона віддає фокус назад тулбару, лише поки тулбар є; на вкладці журналу
+  // без цієї гілки Shift+F6 не мав би на що сісти — refs порожні, restoreFocus
+  // нікого не знайшов би, і зона мовчки відмовила б у фокусі.
+  const focusControlsBackward = useCallback(() => {
+    if (hasToolbar) toolbarRestore("backward");
+    else focusActiveTab();
+  }, [hasToolbar, toolbarRestore, focusActiveTab]);
+
   // Bridge Tab between the react-aria <TabList> (owns ←/→) and the toolbar.
   // Tab → toolbar's active button; Shift+Tab → exit the zone backward. Arrows
   // are left to react-aria for tab switching.
@@ -261,9 +298,11 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
       if (e.key !== "Tab") return;
       e.preventDefault();
       if (e.shiftKey) exitZone("wishlist-controls", false);
-      else toolbarRestore("forward");
+      else if (hasToolbar) toolbarRestore("forward");
+      // Тулбара немає — Tab уперед іде одразу в список, а не в нікуди.
+      else exitZone("wishlist-controls", true);
     },
-    [exitZone, toolbarRestore],
+    [exitZone, toolbarRestore, hasToolbar],
   );
 
   // Memoize items to prevent identity churn in PatternList → restoreFocus
@@ -284,14 +323,18 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
     // Guard on the ACTIVE tab's list specifically. Checking "either list is
     // non-empty" would clear the flag on a render where the other tab already
     // had rows, dropping the focus move on the floor.
-    const active = activeTab === "wishlist" ? wishlistItems : ignorelistItems;
+    const active = activeTab === "ignorelist" ? ignorelistItems : wishlistItems;
     if (active.length === 0) return;
     pendingFocusFirstRow.current = false;
     patternListRef.current?.focus("forward");
   }, [activeTab, wishlistItems, ignorelistItems]);
 
   // --- Selection cluster ---
-  const activeItems = activeTab === "wishlist" ? wishlistItems : ignorelistItems;
+  // Мультивибір і порожній стан із CTA стосуються лише вкладок із патернами;
+  // журнал не бере участі в жодному з них.
+  const activeItems = hasToolbar
+    ? (activeTab === "wishlist" ? wishlistItems : ignorelistItems)
+    : EMPTY_ITEMS;
 
   // Consume the pending-empty-focus flag once the empty zone has actually
   // mounted (covers both single-row delete and bulk delete, on either tab —
@@ -351,6 +394,13 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
     [activeTab],
   );
 
+  // Два порожні стани, і кожен несе один факт, без якого порожній екран брехав
+  // би. «За цей сеанс» рятує від брехні після перезапуску — журнал сесійний; а
+  // друге речення — єдине місце в інтерфейсі, де сказано, що звіряння йде лише
+  // під час запису.
+  const matchesEmptyMessage =
+    wishlist.length === 0 ? m.empty_matches_no_patterns() : m.empty_matches_none_yet();
+
   // Lifecycle: clear selection on tab change.
   useEffect(() => { replaceSelection($patternSelection, new Set()); }, [activeTab]);
   // Lifecycle: clear selection on unmount.
@@ -376,6 +426,16 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
     };
   }, []);
 
+  // Дзеркало patternListCallbackRef для журналу: RAC тримає щойно знятий
+  // TabPanel ще один коміт, тож attach(new) стається ДО detach(old) — cleanup,
+  // прив'язаний до конкретного екземпляра, не дає старому обнулити чужий ref.
+  const matchListCallbackRef = useCallback((zone: ZoneEntry) => {
+    matchListRef.current = zone;
+    return () => {
+      if (matchListRef.current === zone) matchListRef.current = null;
+    };
+  }, []);
+
   // Stable proxy for the list zone. PatternList's ZoneEntry is recreated when its
   // items change (and the list remounts when switching tabs), but the registration
   // effect only re-runs on activeTab — so without the proxy a same-tab data change
@@ -388,6 +448,15 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
     focus: (dir) => patternListRef.current?.focus(dir),
   });
 
+  // Той самий стабільний проксі для журналу — MatchList перестворює свій
+  // ZoneEntry на кожній зміні списку, а живий збіг змінює список під час, коли
+  // ефект реєстрації не перезапускається.
+  const matchListProxyRef = useRef<ZoneEntry>({
+    id: "wishlist-matches",
+    get el() { return matchListRef.current?.el as HTMLElement; },
+    focus: (dir) => matchListRef.current?.focus(dir),
+  });
+
   // Register zones whenever tab or roving restore changes.
   // Zone entry: forward (F6) lands on the tabs (visually first), backward
   // (Shift+F6) lands on the last enabled toolbar button.
@@ -395,10 +464,15 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
     const controlsZone: ZoneEntry = {
       id: "wishlist-controls",
       get el() { return controlsRef.current!; },
-      focus: (dir) => (dir === "forward" ? focusActiveTab() : toolbarRestore("backward")),
+      focus: (dir) => (dir === "forward" ? focusActiveTab() : focusControlsBackward()),
     };
     const zones: ZoneEntry[] = [controlsZone];
-    if (activeItems.length === 0) {
+    if (!hasToolbar) {
+      // Журнал реєструється завжди: порожнім він теж ПРИЙМАЄ фокус (CompositeList
+      // робить порожній стан якорем зони), і саме тому F6 не проскакує його повз
+      // — а NVDA дочитує причину, чому список порожній.
+      zones.push(matchListProxyRef.current);
+    } else if (activeItems.length === 0) {
       // Replaces the list zone while the active list is empty — the CTA button
       // is the focus target directly (mirrors StreamsPanel.tsx:342-347), which
       // is what makes it keyboard-reachable via F6/Tab.
@@ -413,7 +487,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
     onZonesChange(zones);
     // onZonesChange intentionally omitted — callers must pass a stable (useCallback-wrapped) reference.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, toolbarRestore, focusActiveTab, activeItems.length]);
+  }, [activeTab, hasToolbar, focusControlsBackward, focusActiveTab, activeItems.length]);
 
   // Shared empty-state zone. Both tabs render the same shape via this helper;
   // handleAddExamples branches on activeTab, and only the active tab's empty
@@ -455,7 +529,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
     <>
     <Tabs
       selectedKey={activeTab}
-      onSelectionChange={(k) => setActiveTab(k as "wishlist" | "ignorelist")}
+      onSelectionChange={(k) => setActiveTab(k as TabKind)}
       className="flex flex-1 flex-col overflow-hidden"
     >
       <div
@@ -494,7 +568,14 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
             >
               {m.ignorelist_section_title()}
             </Tab>
+            <Tab
+              id="matches"
+              className="rounded px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 selected:bg-blue-600 selected:text-white text-slate-400 hover:text-slate-200 forced-colors:selected:bg-[Highlight] forced-colors:selected:text-[HighlightText]"
+            >
+              {m.matches_section_title()}
+            </Tab>
           </TabList>
+          {hasToolbar && (
           <div
             role="toolbar"
             aria-label={m.zone_wishlist_controls()}
@@ -522,6 +603,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
               onAction={() => patternListRef.current?.requestBulkRemove()}
             />
           </div>
+          )}
         </ScreenZone>
 
         {/* Pattern list zones */}
@@ -571,6 +653,16 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
                 onBulkRemove={handleBulkRemove}
               />
             )}
+          </ListCard>
+        </TabPanel>
+        <TabPanel id="matches" className="flex flex-1 flex-col overflow-hidden">
+          <ListCard>
+            <MatchList
+              ref={matchListCallbackRef}
+              items={matches}
+              emptyMessage={matchesEmptyMessage}
+              exitZone={(forward) => exitZone("wishlist-matches", forward)}
+            />
           </ListCard>
         </TabPanel>
       </div>

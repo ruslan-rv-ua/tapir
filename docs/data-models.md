@@ -815,6 +815,7 @@ interface TrackInfo {
   title: string;
   album: string;
   startedAt: string;
+  ignored: boolean;             // трек підпав під ігнор-лист — кваліфікатор у рядку потоку
 }
 ```
 
@@ -1029,6 +1030,7 @@ interface TrackChangedPayload {
   artist: string;
   title: string;
   album: string;
+  ignored: boolean;             // дублює TrackInfo.ignored — живий рядок збирається з події
 }
 
 // recording-status
@@ -1106,9 +1108,15 @@ interface ScheduledMissedPayload {
   reason: ScheduleResultReason | null;  // код — локалізує frontend (§5.6 спеки)
 }
 
-// wishlist-match
-interface WishlistMatchPayload {
+// wishlist-match — подія несе готовий рядок журналу збігів (той самий тип
+// повертає команда get_wishlist_matches). Журнал сесійний: кільцевий буфер на
+// 200 записів у AppState.match_log, на диск не йде, очищається на переключенні
+// профілю. ADR 2026-08-31 «Носії для подій станції».
+interface WishlistMatch {
+  id: number;                   // монотонний у межах сесії — стабільний ключ рядка
+  matchedAt: string;            // локальний час, RFC3339
   streamId: string;
+  stationName: string;
   artist: string;
   title: string;
   pattern: string;

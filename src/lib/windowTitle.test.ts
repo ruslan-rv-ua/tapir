@@ -7,7 +7,7 @@ const fileSrc = (path: string): PlaybackSource => ({ type: "file", path });
 const previewSrc = (name: string): PlaybackSource => ({ type: "preview", url: "http://x", name });
 
 const track = (over: Partial<TrackInfo> = {}): TrackInfo => ({
-  artist: "", title: "", album: "", startedAt: "", ...over,
+  artist: "", title: "", album: "", startedAt: "", ignored: false, ...over,
 });
 
 const statusWith = (streamId: string, currentTrack: TrackInfo | null): Record<string, StreamStatus> => ({

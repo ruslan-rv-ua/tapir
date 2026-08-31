@@ -11,6 +11,7 @@ use crate::stream::manager::{StreamManager, StreamState, StreamStatus};
 use crate::player::engine::PlayerEngine;
 use crate::browser::api::RadioBrowserClient;
 use crate::wake_lock::WakeLock;
+use crate::wishlist::match_log::MatchLog;
 
 pub struct AppState {
     pub stream_manager: Arc<RwLock<StreamManager>>,
@@ -25,6 +26,10 @@ pub struct AppState {
     pub browser_client: Arc<tokio::sync::OnceCell<RadioBrowserClient>>,
     pub scheduler: Arc<crate::scheduler::timer::SchedulerShared>,
     pub snapshot: Arc<crate::crash_recovery::SnapshotShared>,
+    /// Журнал збігів із вішлістом — третій персистентний агрегат тут НЕ
+    /// заводиться: буфер сесійний і на диск не йде (ADR 2026-08-31 §6).
+    /// Очищається на переключенні профілю, бо вішліст профільний.
+    pub match_log: Arc<RwLock<MatchLog>>,
 }
 
 impl AppState {
@@ -50,6 +55,7 @@ impl AppState {
             browser_client,
             scheduler: crate::scheduler::timer::SchedulerShared::new(),
             snapshot: crate::crash_recovery::SnapshotShared::new(),
+            match_log: Arc::new(RwLock::new(MatchLog::default())),
         })
     }
 

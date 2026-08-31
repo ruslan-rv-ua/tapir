@@ -307,6 +307,7 @@ pub fn run() {
             commands::player_commands::list_output_devices,
             commands::player_commands::set_output_device,
             commands::wishlist_commands::get_wishlist,
+            commands::wishlist_commands::get_wishlist_matches,
             commands::wishlist_commands::add_to_wishlist,
             commands::wishlist_commands::remove_from_wishlist,
             commands::wishlist_commands::remove_from_wishlist_bulk,

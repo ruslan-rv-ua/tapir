@@ -107,7 +107,7 @@ describe("StreamItem — last-played track presentation", () => {
   const mkStatus = (over: Partial<StreamStatus> = {}): StreamStatus => ({
     streamId: "s1",
     state: "idle",
-    currentTrack: { artist: "A", title: "B", album: "", startedAt: "2026-01-01T00:00:00Z" },
+    currentTrack: { artist: "A", title: "B", album: "", startedAt: "2026-01-01T00:00:00Z", ignored: false },
     recordingStartedAt: null,
     bytesRecorded: 0,
     tracksRecorded: 0,
@@ -124,6 +124,24 @@ describe("StreamItem — last-played track presentation", () => {
     expect(track.getAttribute("aria-label")).toMatch(/A — B/);
     expect(track.className).toMatch(/italic/);
     expect(track.className).toMatch(/text-slate-500/);
+  });
+
+  it("marks an ignored track in the row itself, visibly and in the label", () => {
+    // Рутинна подія станції дістає позначку на місці, а не оголошення
+    // (ADR 2026-08-31 «Носії для подій станції» §3, §4). Позначка мусить бути
+    // текстом на екрані — сама лише aria-мітка носієм не рахується.
+    const { container } = renderItem(
+      mkStream(),
+      mkStatus({
+        state: "recording",
+        recordingStartedAt: "2026-01-01T00:00:00Z",
+        currentTrack: { artist: "A", title: "B", album: "", startedAt: "", ignored: true },
+      }),
+    );
+    const track = container.querySelector('[data-segment="track"]')!;
+    const qualified = m.segment_track_ignored({ track: "A — B" });
+    expect(track.textContent).toBe(qualified);
+    expect(track.getAttribute("aria-label")).toBe(qualified);
   });
 
   it("labels a track as current (no prefix, not italic) while recording", () => {

@@ -5,7 +5,7 @@ import * as tauri from "../lib/tauri";
 import { $profile } from "../stores/profile";
 import { $streams, $statuses, replaceSelection } from "../stores/streams";
 import { $settings, $profileSettings } from "../stores/settings";
-import { $wishlist, $ignorelist } from "../stores/wishlist";
+import { $wishlist, $ignorelist, $wishlistMatches } from "../stores/wishlist";
 import { loadSongs } from "../stores/songs";
 import { loadSchedules } from "../stores/schedule";
 import { addToast } from "../stores/toasts";
@@ -42,6 +42,11 @@ export function useProfileSync(): void {
 
         // Reset all stream statuses to idle
         $statuses.set({});
+
+        // Журнал збігів профільний разом із вішлістом — Rust уже спорожнив свій
+        // буфер у switch_profile, дзеркало йде слідом. Зупинка запису його НЕ
+        // чистить: там сеанс той самий.
+        $wishlistMatches.set([]);
 
         // Wishlist + ignorelist — re-fetch from backend (new active profile)
         try {

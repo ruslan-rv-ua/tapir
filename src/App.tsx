@@ -29,12 +29,12 @@ import { useAnnounce } from "./hooks/useAnnounce";
 import { $streams, $statuses, updateStreamStatus } from "./stores/streams";
 import { $settings, $profileSettings } from "./stores/settings";
 import { $playerStatus } from "./stores/player";
-import { $wishlist } from "./stores/wishlist";
+import { $wishlist, $wishlistMatches, prependMatch } from "./stores/wishlist";
 import { $activeSection } from "./stores/navigation";
 import { SECTIONS } from "./lib/sections";
 import { addToast } from "./stores/toasts";
 import * as tauri from "./lib/tauri";
-import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, StreamUnsupportedPayload, RecordingStartedPayload, RecordingCompletedPayload, StreamInfo, PlayerStatus, PlayerProgressPayload, WishlistMatchPayload, TrackIgnoredPayload, PlayerEndedPayload, PlaybackAnnounce } from "./lib/tauri";
+import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, StreamUnsupportedPayload, RecordingStartedPayload, RecordingCompletedPayload, StreamInfo, PlayerStatus, PlayerProgressPayload, WishlistMatch, PlayerEndedPayload, PlaybackAnnounce } from "./lib/tauri";
 import { $filteredSongs } from "./stores/songs";
 import { computePlaybackNeighbors } from "./stores/playbackNeighbors";
 import { resolveEndedAction } from "./lib/playbackTransport";
@@ -137,6 +137,9 @@ function AppContent() {
       tauri.getAllStatuses().then((statuses) => {
         statuses.forEach((s) => updateStreamStatus(s.streamId, s));
       }),
+      // Журнал сіється тут, а не на монтуванні екрана: збіги йдуть, поки
+      // застосунок згорнутий, і вкладку могли жодного разу не відкрити.
+      tauri.getWishlistMatches().then((matches) => $wishlistMatches.set(matches)),
       tauri.getSettings().then(async (settings) => {
         $settings.set(settings);
         document.documentElement.lang = settings.language === "uk-UA" ? "uk" : "en";
@@ -210,7 +213,13 @@ function AppContent() {
 
   const handleTrackChanged = useCallback((payload: TrackChangedPayload) => {
     updateStreamStatus(payload.streamId, {
-      currentTrack: { artist: payload.artist, title: payload.title, album: payload.album, startedAt: new Date().toISOString() },
+      currentTrack: {
+        artist: payload.artist,
+        title: payload.title,
+        album: payload.album,
+        startedAt: new Date().toISOString(),
+        ignored: payload.ignored,
+      },
     });
   }, []);
 
@@ -324,12 +333,19 @@ function AppContent() {
     announce(m.track_saved({ name, fileName: payload.fileName }), "polite");
   }, [announce]);
 
-  const handleWishlistMatch = useCallback((payload: WishlistMatchPayload) => {
-    announce(m.announcement_wishlist_match({ title: `${payload.artist} — ${payload.title}` }), "assertive");
-  }, [announce]);
-
-  const handleTrackIgnored = useCallback((payload: TrackIgnoredPayload) => {
-    announce(m.announcement_track_ignored({ title: `${payload.artist} — ${payload.title}` }), "polite");
+  // Подія несе готовий рядок журналу — дзеркало приймає його як є, і той самий
+  // набір фактів (станція + трек) іде в оголошення. `assertive` лишається:
+  // трек грає просто зараз, і повідомлення, що відстоїть чергу за довгим
+  // списком, приїде вже після того, як він скінчився.
+  const handleWishlistMatch = useCallback((payload: WishlistMatch) => {
+    $wishlistMatches.set(prependMatch($wishlistMatches.get(), payload));
+    announce(
+      m.announcement_wishlist_match({
+        title: `${payload.artist} — ${payload.title}`,
+        station: payload.stationName,
+      }),
+      "assertive",
+    );
   }, [announce]);
 
   const handleStreamsChanged = useCallback(() => {
@@ -383,8 +399,7 @@ function AppContent() {
   useTauriEvent<PlayerProgressPayload>("player-progress", handlePlayerProgress);
   useTauriEvent<PlayerEndedPayload>("player-ended", handlePlayerEnded);
   useTauriEvent<PlaybackAnnounce>("player-announce", handlePlayerAnnounce);
-  useTauriEvent<WishlistMatchPayload>("wishlist-match", handleWishlistMatch);
-  useTauriEvent<TrackIgnoredPayload>("track-ignored", handleTrackIgnored);
+  useTauriEvent<WishlistMatch>("wishlist-match", handleWishlistMatch);
   useTauriEvent("streams-changed", handleStreamsChanged);
   useTauriEvent("wishlist-changed", handleWishlistChanged);
   // OS-global prev/next hotkeys: Rust only bridges the keypress; the queue

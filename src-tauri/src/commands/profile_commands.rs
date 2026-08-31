@@ -251,6 +251,11 @@ pub async fn switch_profile(
         *profile = new_profile.clone();
     }
 
+    // Журнал збігів профільний разом із вішлістом — те, що спіймав минулий
+    // профіль, у новому не значить нічого. Зупинка запису його НЕ чистить:
+    // сеанс той самий.
+    state.match_log.write().await.clear();
+
     // Step 12: emit profile-changed
     if let Err(e) = app.emit("profile-changed", ProfileChangedPayload { profile: new_profile.clone() }) {
         log::warn!("Could not emit profile-changed: {e}");

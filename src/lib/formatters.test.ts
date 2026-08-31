@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { isLowDiskSpace, formatBytes, formatDate, formatDateTime, formatBitrate } from "./formatters";
+import { isLowDiskSpace, formatBytes, formatDate, formatDateTime, formatTime, formatBitrate } from "./formatters";
 
 vi.mock("../i18n/paraglide/messages", () => ({
   codec_unsupported: () => "не підтримується",
@@ -48,6 +48,23 @@ describe("formatDate / formatDateTime", () => {
   it("returns the raw input for an unparseable date", () => {
     expect(formatDate("not-a-date")).toBe("not-a-date");
     expect(formatDateTime("not-a-date")).toBe("not-a-date");
+  });
+});
+
+describe("formatTime", () => {
+  it("keeps the clock and drops the date", () => {
+    // Рядок журналу збігів несе час, а не дату: журнал сесійний, тож усе в
+    // ньому — сьогоднішнє, і дата була б шумом у кожному рядку.
+    // Без якорів навмисно: формат годин дає локаль (під en-US це «12:34 PM»),
+    // і перевіряємо ми не її, а те, що дати в рядку немає.
+    const out = formatTime("2026-06-15T12:34:00Z");
+    expect(out).toMatch(/\d\d:\d\d/);
+    expect(out).not.toContain("2026");
+    expect(out).not.toMatch(/\d{4}/);
+  });
+
+  it("returns the raw input for an unparseable time", () => {
+    expect(formatTime("not-a-date")).toBe("not-a-date");
   });
 });
 
