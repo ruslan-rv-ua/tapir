@@ -26,7 +26,7 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [unknown-format-falls-back-to-mp3](p1-unknown-format-falls-back-to-mp3.md) | P1 | planned | ready | **M** | — | — (файл бреше про свій вміст: OGG/FLAC записується як `.mp3`) |
+| [unknown-format-falls-back-to-mp3](p1-unknown-format-falls-back-to-mp3.md) | P1 | planned | ready | **L** | — | — (файл бреше про свій вміст: OGG/FLAC записується як `.mp3`; розвилку закрито — [ADR](../decisions/2026-08-31-refuse-unknown-format-rather-than-guess.md)) |
 | [wishlist-match-invisible](p1-wishlist-match-invisible.md) | P1 | planned | **draft** | **M** | — | — (вішліст «повідомляє про трек» лише в `sr-only`: для решти користувачів функція не робить нічого; поверхню не обрано) |
 | [volume-hotkey-no-feedback](p1-volume-hotkey-no-feedback.md) | P1 | planned | **draft** | **M** | — | — (`Ctrl+Alt+Up/Down` мовчать в обидві сторони; механізм не обрано, зачіпає `muteControl`) |
 | [sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md) | P1 | planned | ready | S | — | — (ухвалює [ADR про видимий носій](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) — правило успадкують наступні записи) |
