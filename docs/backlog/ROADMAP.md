@@ -19,7 +19,7 @@ semver; `unscheduled` — наприкінці.
 > не бреше й не мовчить: мертві налаштування прибрані, мовчазні відмови дістають видиму
 > поверхню, хибні мітки виправлені, обидві локалі повні, масштаб інтерфейсу працює.
 > Нових можливостей версія не додає — три записи типу `feature` тут закривають
-> прогалини, а не розширюють функціонал. 17 записів: 13 × S, 4 × M.
+> прогалини, а не розширюють функціонал. 18 записів: 13 × S, 4 × M, 1 × L.
 
 Порядок рядків у секціях — за пріоритетом, а в межах пріоритету **більші першими**:
 саме вони визначають, чи версія закриється, тож беруться раніше за дрібні.
@@ -29,6 +29,7 @@ semver; `unscheduled` — наприкінці.
 | [unknown-format-falls-back-to-mp3](p1-unknown-format-falls-back-to-mp3.md) | P1 | planned | ready | **L** | — | — (файл бреше про свій вміст: OGG/FLAC записується як `.mp3`; розвилку закрито — [ADR](../decisions/2026-08-31-refuse-unknown-format-rather-than-guess.md)) |
 | [wishlist-match-invisible](p1-wishlist-match-invisible.md) | P1 | planned | **draft** | **M** | — | — (вішліст «повідомляє про трек» лише в `sr-only`: для решти користувачів функція не робить нічого; поверхню не обрано) |
 | [volume-hotkey-no-feedback](p1-volume-hotkey-no-feedback.md) | P1 | planned | **draft** | **M** | — | — (`Ctrl+Alt+Up/Down` мовчать в обидві сторони; механізм не обрано, зачіпає `muteControl`) |
+| [transport-skip-silent-failure](p1-transport-skip-silent-failure.md) | P1 | planned | **draft** | **M** | — | — (невдале «попередній / наступний» мовчить із глобальної клавіші й не називає причини з кнопки; поверхню не обрано) |
 | [sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md) | P1 | planned | ready | S | — | — (ухвалює [ADR про видимий носій](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) — правило успадкують наступні записи) |
 | [about-app-info](p1-about-app-info.md) | P1 | planned | ready | S | — | — (довідка веде до звіту про проблему, а версії взяти нізвідки) |
 | [webview-zoom-hotkeys](p1-webview-zoom-hotkeys.md) | P1 | planned | ready | S | — | — (прогалина доступності для слабозорих; перший крок — вимірювання, не правка) |
