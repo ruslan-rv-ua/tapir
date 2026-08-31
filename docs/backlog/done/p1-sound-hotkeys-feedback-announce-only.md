@@ -122,7 +122,7 @@ formatTime(pos)` іде і в видимий `<span>`, і в `aria-valuetext`. �
   **ніде**. Поза межею: подія станції, не дія користувача (§3 ADR).
 - [preview-player-presentation](../p2-preview-player-presentation.md) — плеєр пропонує поставити
   ефір на паузу. Інший клас: дія видима, але неможлива.
-- [volume-hotkey-no-feedback](../p1-volume-hotkey-no-feedback.md) — глобальні клавіші гучності
+- [volume-hotkey-no-feedback](p1-volume-hotkey-no-feedback.md) — глобальні клавіші гучності
   мовчать і для скрінрідера. Дзеркальний бік, якого §4 ADR свідомо не покриває.
 
 Також лишається поза скоупом, як і у вихідній редакції:
