@@ -472,9 +472,9 @@ app.global_shortcut().on_shortcut("Ctrl+Shift+R", |app, _shortcut, event| {
 | Command | Params | Returns | Опис |
 |---|---|---|---|
 | `get_streams` | — | `Vec<StreamInfo>` | Список усіх потоків з поточного профілю |
-| `add_stream` | `{url, name?}` | `StreamInfo` | Додати потік (resolve PLS/M3U) |
+| `add_stream` | `{url, name?, meta?}` | `StreamInfo` | Додати потік (resolve PLS/M3U). `meta` — те, що знайшов probe (`icyName`, `bitrate`, `format`, `unsupported`): іменує безіменний потік і дає суфікс при колізії |
 | `remove_stream` | `{streamId}` | `()` | Видалити потік з профілю |
-| `update_stream` | `{streamId, name, url?, icyName?, bitrate?, format?}` | `StreamInfo` | Редагувати потік. Без `url` — чисте перейменування (`format`/`bitrate`/`icyName` недоторкані); з `url` — resolve PLS/M3U і перезапис усіх трьох похідних полів переданим, включно з `null`. Auth і per-stream ignorelist — беклог `p3-stream-auth.md`, `p1-per-stream-ignorelist-ui.md` |
+| `update_stream` | `{streamId, name, url?, meta?}` | `StreamInfo` | Редагувати потік. Без `url` — чисте перейменування (`meta` не застосовується взагалі); з `url` — resolve PLS/M3U і перезапис усіх похідних полів переданим `meta`, включно з порожніми: вони описують адресу, а не рядок. Auth і per-stream ignorelist — беклог `p3-stream-auth.md`, `p1-per-stream-ignorelist-ui.md` |
 | `start_recording` | `{streamId}` | `()` | Почати запис потоку |
 | `stop_recording` | `{streamId}` | `()` | Зупинити запис потоку |
 | `stop_all_recordings` | — | `()` | Зупинити всі записи |

@@ -190,12 +190,10 @@ pub fn build_added_stream(
     streams: &[StreamInfo],
     resolved_url: String,
     name: Option<String>,
-    icy_name: Option<String>,
-    bitrate: Option<u32>,
-    format: Option<AudioFormat>,
-    unsupported: Option<UnsupportedCodec>,
+    probed: ProbedMeta,
     now: String,
 ) -> StreamInfo {
+    let ProbedMeta { icy_name, bitrate, format, unsupported } = probed;
     let icy_name = non_blank(icy_name);
     let stream_name = match non_blank(name).or_else(|| icy_name.clone()) {
         Some(n) => {
@@ -251,10 +249,7 @@ pub fn build_edited_stream(
     current: &StreamInfo,
     name: String,
     resolved_url: Option<String>,
-    icy_name: Option<String>,
-    bitrate: Option<u32>,
-    format: Option<AudioFormat>,
-    unsupported: Option<UnsupportedCodec>,
+    probed: ProbedMeta,
 ) -> StreamInfo {
     let mut out = current.clone();
 
@@ -263,6 +258,7 @@ pub fn build_edited_stream(
         return out;
     };
 
+    let ProbedMeta { icy_name, bitrate, format, unsupported } = probed;
     let icy_name = non_blank(icy_name);
     // Blank, or still equal to the address it was standing in for: either way
     // the user has not named this stream. Blank is folded in deliberately —
@@ -291,6 +287,30 @@ pub fn build_edited_stream(
     out.format = format;
     out.unsupported_codec = unsupported;
     out
+}
+
+/// What a probe found out about one URL — the four facts that always travel
+/// together, from `probe_stream` through the dialog and back into the profile.
+/// The Rust mirror of the frontend's `StreamMeta` (`src/lib/tauri.ts`).
+///
+/// They are one bundle because they describe **the address, not the row**: a
+/// move overwrites all four together, blanks included, and a plain rename
+/// leaves all four alone. Splitting them into positional arguments is what let
+/// `build_edited_stream` grow to nine.
+///
+/// `format` and `unsupported` are the two halves of one `format::detect`
+/// verdict, so at most one of them is ever set.
+#[derive(Debug, Clone, Default, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProbedMeta {
+    #[serde(default)]
+    pub icy_name: Option<String>,
+    #[serde(default)]
+    pub bitrate: Option<u32>,
+    #[serde(default)]
+    pub format: Option<AudioFormat>,
+    #[serde(default)]
+    pub unsupported: Option<UnsupportedCodec>,
 }
 
 /// What the Add/Edit-stream dialog warns about before saving. Both are
@@ -362,10 +382,7 @@ pub async fn check_stream_conflicts(
 pub async fn add_stream(
     url: String,
     name: Option<String>,
-    icy_name: Option<String>,
-    bitrate: Option<u32>,
-    format: Option<AudioFormat>,
-    unsupported: Option<UnsupportedCodec>,
+    meta: Option<ProbedMeta>,
     state: tauri::State<'_, AppState>,
 ) -> Result<StreamInfo, String> {
     let resolved_url = playlist::resolve_playlist_url(&url)
@@ -378,10 +395,7 @@ pub async fn add_stream(
                 &profile.streams,
                 resolved_url,
                 name,
-                icy_name,
-                bitrate,
-                format,
-                unsupported,
+                meta.unwrap_or_default(),
                 chrono::Local::now().to_rfc3339(),
             );
             profile.streams.push(new_stream.clone());
@@ -474,10 +488,7 @@ pub async fn update_stream(
     stream_id: String,
     name: String,
     url: Option<String>,
-    icy_name: Option<String>,
-    bitrate: Option<u32>,
-    format: Option<AudioFormat>,
-    unsupported: Option<UnsupportedCodec>,
+    meta: Option<ProbedMeta>,
     state: tauri::State<'_, AppState>,
 ) -> Result<StreamInfo, String> {
     let resolved_url = match url {
@@ -499,10 +510,7 @@ pub async fn update_stream(
                 &current,
                 name,
                 resolved_url,
-                icy_name,
-                bitrate,
-                format,
-                unsupported,
+                meta.unwrap_or_default(),
             );
             if let Some(slot) = profile.streams.iter_mut().find(|s| s.id == stream_id) {
                 *slot = updated.clone();
@@ -947,10 +955,11 @@ mod tests {
             &[],
             "http://ogg".into(),
             Some("Radio Ogg".into()),
-            None,
-            Some(128),
-            None,
-            Some(UnsupportedCodec { family: Some("OGG".into()) }),
+            ProbedMeta {
+                bitrate: Some(128),
+                unsupported: Some(UnsupportedCodec { family: Some("OGG".into()) }),
+                ..Default::default()
+            },
             "NOW".into(),
         );
         assert_eq!(got.format, None);
@@ -971,10 +980,7 @@ mod tests {
             &current,
             "Radio X".into(),
             Some("http://moved".into()),
-            None,
-            Some(128),
-            Some(AudioFormat::Mp3),
-            None,
+            ProbedMeta { bitrate: Some(128), format: Some(AudioFormat::Mp3), ..Default::default() },
         );
         assert_eq!(got.format, Some(AudioFormat::Mp3));
         assert_eq!(got.unsupported_codec, None);
@@ -989,10 +995,7 @@ mod tests {
             &current,
             "Radio Y".into(),
             None,
-            None,
-            None,
-            None,
-            None,
+            ProbedMeta::default(),
         );
         assert_eq!(got.name, "Radio Y");
         assert_eq!(
@@ -1008,10 +1011,7 @@ mod tests {
             &existing,
             "http://new".into(),
             Some("  Radio X  ".into()),
-            None,
-            Some(64),
-            Some(AudioFormat::Aac),
-            None,
+            ProbedMeta { bitrate: Some(64), format: Some(AudioFormat::Aac), ..Default::default() },
             "NOW".into(),
         );
         assert_eq!(got.name, "Radio X"); // trimmed, unsuffixed
@@ -1028,10 +1028,7 @@ mod tests {
             &existing,
             "http://new".into(),
             Some("Radio X".into()),
-            None,
-            Some(64),
-            Some(AudioFormat::Aac),
-            None,
+            ProbedMeta { bitrate: Some(64), format: Some(AudioFormat::Aac), ..Default::default() },
             "NOW".into(),
         );
         assert_eq!(got.name, "Radio X (AAC 64k)");
@@ -1044,10 +1041,7 @@ mod tests {
             &existing,
             "http://new".into(),
             Some("Radio X".into()),
-            None,
-            None,
-            None,
-            None,
+            ProbedMeta::default(),
             "NOW".into(),
         );
         assert_eq!(got.name, "Radio X (2)");
@@ -1062,10 +1056,7 @@ mod tests {
             &[],
             "http://new".into(),
             None,
-            Some("Groove Salad".into()),
-            None,
-            None,
-            None,
+            ProbedMeta { icy_name: Some("Groove Salad".into()), ..Default::default() },
             "NOW".into(),
         );
         assert_eq!(got.name, "Groove Salad");
@@ -1078,10 +1069,12 @@ mod tests {
             &existing,
             "http://new".into(),
             None,
-            Some("Groove Salad".into()),
-            Some(128),
-            Some(AudioFormat::Mp3),
-            None,
+            ProbedMeta {
+                icy_name: Some("Groove Salad".into()),
+                bitrate: Some(128),
+                format: Some(AudioFormat::Mp3),
+                ..Default::default()
+            },
             "NOW".into(),
         );
         assert_eq!(got.name, "Groove Salad (MP3 128k)");
@@ -1095,10 +1088,7 @@ mod tests {
             &[],
             "http://new".into(),
             Some("My Name".into()),
-            Some("Groove Salad".into()),
-            None,
-            None,
-            None,
+            ProbedMeta { icy_name: Some("Groove Salad".into()), ..Default::default() },
             "NOW".into(),
         );
         assert_eq!(got.name, "My Name");
@@ -1111,7 +1101,13 @@ mod tests {
         // and the ICY auto-naming replaces it on the first connection instead.
         let existing = vec![named("a", "Radio X")];
         let got =
-            build_added_stream(&existing, "http://new".into(), None, None, None, None, None, "NOW".into());
+            build_added_stream(
+                &existing,
+                "http://new".into(),
+                None,
+                ProbedMeta::default(),
+                "NOW".into(),
+            );
         assert_eq!(got.name, "http://new");
         assert_eq!(got.icy_name, None);
     }
@@ -1122,10 +1118,7 @@ mod tests {
             &[],
             "http://new".into(),
             Some("   ".into()),
-            Some("  ".into()),
-            None,
-            None,
-            None,
+            ProbedMeta { icy_name: Some("  ".into()), ..Default::default() },
             "NOW".into(),
         );
         assert_eq!(got.name, "http://new");
@@ -1157,10 +1150,7 @@ mod tests {
             &current,
             "  Radio Y  ".into(),
             None,
-            None,
-            None,
-            None,
-            None,
+            ProbedMeta::default(),
         );
         assert_eq!(got.name, "Radio Y"); // trimmed
         assert_eq!(got.url, "http://old");
@@ -1177,10 +1167,12 @@ mod tests {
             &current,
             "Radio X".into(),
             Some("http://new".into()),
-            Some("New Station".into()),
-            Some(128),
-            Some(AudioFormat::Mp3),
-            None,
+            ProbedMeta {
+                icy_name: Some("New Station".into()),
+                bitrate: Some(128),
+                format: Some(AudioFormat::Mp3),
+                ..Default::default()
+            },
         );
         assert_eq!(got.url, "http://new");
         assert_eq!(got.name, "Radio X"); // a name the user chose is never touched
@@ -1201,10 +1193,7 @@ mod tests {
             &current,
             "Radio X".into(),
             Some("http://new".into()),
-            None,
-            None,
-            None,
-            None,
+            ProbedMeta::default(),
         );
         assert_eq!(got.format, None);
         assert_eq!(got.bitrate, None);
@@ -1219,12 +1208,10 @@ mod tests {
         let got = build_edited_stream(
             std::slice::from_ref(&current),
             &current,
-            "http://old".into(), // the field still holds the placeholder
+            "http://old".into(),
+            // the field still holds the placeholder
             Some("http://new".into()),
-            None,
-            None,
-            None,
-            None,
+            ProbedMeta::default(),
         );
         assert_eq!(got.name, "http://new");
         assert_eq!(got.name, got.url, "icy_rename must still recognise this stream");
@@ -1238,10 +1225,7 @@ mod tests {
             &current,
             "http://old".into(),
             Some("http://new".into()),
-            Some("Groove Salad".into()),
-            None,
-            None,
-            None,
+            ProbedMeta { icy_name: Some("Groove Salad".into()), ..Default::default() },
         );
         assert_eq!(got.name, "Groove Salad");
     }
@@ -1255,10 +1239,12 @@ mod tests {
             &current,
             "http://old".into(),
             Some("http://new".into()),
-            Some("Groove Salad".into()),
-            Some(64),
-            Some(AudioFormat::Aac),
-            None,
+            ProbedMeta {
+                icy_name: Some("Groove Salad".into()),
+                bitrate: Some(64),
+                format: Some(AudioFormat::Aac),
+                ..Default::default()
+            },
         );
         assert_eq!(got.name, "Groove Salad (AAC 64k)");
     }
@@ -1271,10 +1257,7 @@ mod tests {
             &current,
             "   ".into(),
             Some("http://new".into()),
-            None,
-            None,
-            None,
-            None,
+            ProbedMeta::default(),
         );
         assert_eq!(got.name, "http://new");
     }
@@ -1290,10 +1273,7 @@ mod tests {
             &current,
             "  Taken  ".into(),
             Some("http://new".into()),
-            None,
-            None,
-            None,
-            None,
+            ProbedMeta::default(),
         );
         assert_eq!(got.name, "Taken");
     }

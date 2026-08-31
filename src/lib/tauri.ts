@@ -157,7 +157,10 @@ export interface ProbeVerdict {
   unsupported: UnsupportedCodec | null;
 }
 
-/** What the stream is known to be at add time — names it and drives the suffix. */
+/** What a probe found out about one URL — the four facts that always travel
+ *  together, from `probeStream` through the dialog and back into the profile.
+ *  Mirrors Rust `ProbedMeta`, and crosses the IPC boundary as one object: they
+ *  describe the *address*, so a move overwrites all four and a rename none. */
 export type StreamMeta = {
   icyName: string | null;
   bitrate: number | null;
@@ -179,14 +182,7 @@ export async function getStreams(): Promise<StreamInfo[]> {
   return invoke("get_streams");
 }
 export async function addStream(url: string, name?: string, meta?: StreamMeta): Promise<StreamInfo> {
-  return invoke("add_stream", {
-    url,
-    name,
-    icyName: meta?.icyName ?? null,
-    bitrate: meta?.bitrate ?? null,
-    format: meta?.format ?? null,
-    unsupported: meta?.unsupported ?? null,
-  });
+  return invoke("add_stream", { url, name, meta: meta ?? null });
 }
 /** Pre-flight for the add/edit dialog: pass `url` when adding, `name` +
  *  `excludeId` when renaming. Both results are warnings, not refusals. */
@@ -222,15 +218,7 @@ export async function updateStream(
   url?: string,
   meta?: StreamMeta,
 ): Promise<StreamInfo> {
-  return invoke("update_stream", {
-    streamId,
-    name,
-    url: url ?? null,
-    icyName: meta?.icyName ?? null,
-    bitrate: meta?.bitrate ?? null,
-    format: meta?.format ?? null,
-    unsupported: meta?.unsupported ?? null,
-  });
+  return invoke("update_stream", { streamId, name, url: url ?? null, meta: meta ?? null });
 }
 export async function startRecording(streamId: string): Promise<void> {
   return invoke("start_recording", { streamId });
