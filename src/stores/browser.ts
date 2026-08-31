@@ -80,8 +80,10 @@ export async function loadPopularStations(): Promise<void> {
   }
 }
 
-export async function addStation(station: StationResult): Promise<void> {
-  await addStationFromBrowser(station);
+/** Returns the stream as it landed in the profile — the caller needs its codec
+ *  verdict to say, in the same breath, that Tapir will not record it. */
+export async function addStation(station: StationResult): Promise<StreamInfo> {
+  return addStationFromBrowser(station);
 }
 
 /** Bulk add: backend appends in one save+emit (streams-changed reloads $streams). */

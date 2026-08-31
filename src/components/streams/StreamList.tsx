@@ -8,6 +8,7 @@ import type { ActionModifiers, CompositeSelection, SelectionChange, SegmentKind 
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import type { StreamInfo, ProfileMeta } from "../../lib/tauri";
 import { StreamItem, getStreamSegments } from "./StreamItem";
+import { playRefusalMessage } from "../../lib/playRefusal";
 import { StreamTransferDialog } from "./StreamTransferDialog";
 import { ProfileNameDialog } from "../profile/ProfileNameDialog";
 import * as tauri from "../../lib/tauri";
@@ -286,7 +287,7 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
           : (settings?.doubleClickAction ?? "record");
       if (action === "play") {
         (isPlayingStream(itemId) ? tauri.stopPlayback() : tauri.playStream(itemId)).catch((err) =>
-          addToast(String(err), "error"),
+          addToast(playRefusalMessage(err), "error"),
         );
       } else {
         const isRecording = statuses[itemId]?.state === "recording";

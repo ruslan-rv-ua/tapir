@@ -3,6 +3,7 @@ import { Copy, FolderInput, Link } from "lucide-react";
 import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import * as tauri from "../../lib/tauri";
 import { isRecordingLike } from "../../lib/streamState";
+import { playRefusalMessage } from "../../lib/playRefusal";
 import { $editStream, $streamSelection } from "../../stores/streams";
 import { $playerStatus } from "../../stores/player";
 import { addToast } from "../../stores/toasts";
@@ -80,7 +81,7 @@ export function StreamContextMenu({ stream, status, menuFocused, onAddToWishlist
           break;
       }
     } catch (err) {
-      addToast(String(err), "error");
+      addToast(playRefusalMessage(err), "error");
     }
   };
 

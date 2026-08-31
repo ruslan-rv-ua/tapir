@@ -3,7 +3,7 @@ use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_dialog::{DialogExt, FilePath};
 
 use crate::app_state::AppState;
-use crate::profile::{AudioFormat, StreamInfo};
+use crate::profile::{AudioFormat, StreamInfo, UnsupportedCodec};
 use crate::store::Commit;
 use crate::stream::{playlist, probe};
 
@@ -34,6 +34,10 @@ pub struct ImportProgress {
     pub icy_name: Option<String>,
     pub bitrate: Option<u32>,
     pub format: Option<AudioFormat>,
+    /// Заповнена, коли ефір не з тих, які Tapir пише — рядок читається третім
+    /// виглядом, а не «✓». Галочка при цьому лишається позначеною: додати таку
+    /// станцію не заборонено (ADR 2026-08-31 §6).
+    pub unsupported: Option<UnsupportedCodec>,
     pub error: Option<String>,
 }
 
@@ -49,6 +53,9 @@ pub struct ProbeVerdict {
     pub icy_name: Option<String>,
     pub bitrate: Option<u32>,
     pub format: Option<AudioFormat>,
+    /// Друга половина вердикту `format::detect`: заповнена рівно тоді, коли
+    /// `format` порожній, бо ефір чужий або невпізнаний.
+    pub unsupported: Option<UnsupportedCodec>,
 }
 
 /// One user-selected stream to add on commit. `bitrate`/`format` come from the
@@ -63,6 +70,10 @@ pub struct SelectedStream {
     pub bitrate: Option<u32>,
     #[serde(default)]
     pub format: Option<AudioFormat>,
+    /// Мітка з тієї ж пакетної перевірки — інакше вердикт, уже показаний у
+    /// рядку діалогу, не дожив би до профілю.
+    #[serde(default)]
+    pub unsupported: Option<UnsupportedCodec>,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -131,7 +142,7 @@ pub async fn validate_import_candidates(urls: Vec<String>, app: AppHandle) -> Re
         async move {
             let _ = app.emit(
                 "stream-import-progress",
-                ImportProgress { url: url.clone(), status: "checking".into(), icy_name: None, bitrate: None, format: None, error: None },
+                ImportProgress { url: url.clone(), status: "checking".into(), icy_name: None, bitrate: None, format: None, unsupported: None, error: None },
             );
             let r = probe::probe(&url).await;
             let _ = app.emit(
@@ -142,6 +153,7 @@ pub async fn validate_import_candidates(urls: Vec<String>, app: AppHandle) -> Re
                     icy_name: r.icy_name,
                     bitrate: r.bitrate,
                     format: r.format,
+                    unsupported: r.unsupported,
                     error: r.error,
                 },
             );
@@ -165,6 +177,7 @@ pub(crate) async fn probe_once(url: &str) -> ProbeVerdict {
             icy_name: r.icy_name,
             bitrate: r.bitrate,
             format: r.format,
+            unsupported: r.unsupported,
         },
         Err(_) => ProbeVerdict {
             ok: false,
@@ -172,6 +185,7 @@ pub(crate) async fn probe_once(url: &str) -> ProbeVerdict {
             icy_name: None,
             bitrate: None,
             format: None,
+            unsupported: None,
         },
     }
 }
@@ -207,6 +221,7 @@ pub fn plan_import(streams: &[StreamInfo], selected: Vec<SelectedStream>, now: &
             url: sel.url,
             name,
             format: sel.format,
+            unsupported_codec: sel.unsupported,
             bitrate: sel.bitrate,
             icy_name: None,
             icy_genre: None,
@@ -351,13 +366,28 @@ mod tests {
     }
 
     fn sel(url: &str, name: &str, bitrate: Option<u32>, format: Option<AudioFormat>) -> SelectedStream {
-        SelectedStream { url: url.into(), name: name.into(), bitrate, format }
+        SelectedStream { url: url.into(), name: name.into(), bitrate, format, unsupported: None }
+    }
+
+    #[test]
+    fn import_carries_the_unsupported_label_into_the_profile() {
+        // Вердикт уже показано в рядку діалогу — без цього він не дожив би до
+        // профілю, і потік знову виглядав би невідомим.
+        let mut chosen = sel("https://ogg", "Radio Ogg", Some(128), None);
+        chosen.unsupported = Some(UnsupportedCodec { family: Some("OGG".into()) });
+        let planned = plan_import(&[], vec![chosen], "NOW");
+        assert_eq!(planned.len(), 1);
+        assert_eq!(
+            planned[0].unsupported_codec,
+            Some(UnsupportedCodec { family: Some("OGG".into()) }),
+        );
     }
 
     fn existing(id: &str, url: &str, name: &str) -> StreamInfo {
         StreamInfo {
             id: id.into(), url: url.into(), name: name.into(),
             format: None, bitrate: None, icy_name: None, icy_genre: None,
+            unsupported_codec: None,
             icy_url: None, ignorelist: vec![], username: None, password: None,
             added_at: "2026-01-01".into(),
         }

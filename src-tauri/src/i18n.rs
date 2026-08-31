@@ -116,9 +116,10 @@ keys! { Key, ALL,
     SchedCompleted        => "scheduled_announce_completed",
     SchedMissed           => "scheduled_announce_missed",
     SchedSkipped          => "scheduled_announce_skipped",
-    ReasonAppNotRunning   => "schedule_reason_app_not_running",
-    ReasonStartFailed     => "schedule_reason_start_failed",
-    ReasonClockChange     => "schedule_reason_clock_change",
+    ReasonAppNotRunning    => "schedule_reason_app_not_running",
+    ReasonStartFailed      => "schedule_reason_start_failed",
+    ReasonClockChange      => "schedule_reason_clock_change",
+    ReasonUnsupportedCodec => "schedule_reason_unsupported_codec",
 }
 
 keys! { PluralKey, ALL,

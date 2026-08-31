@@ -40,6 +40,7 @@ const mkStream = (id: string, name: string): StreamInfo => ({
   url: `http://x/${id}`,
   name,
   format: "mp3",
+  unsupportedCodec: null,
   bitrate: 192,
   icyName: null,
   icyGenre: null,

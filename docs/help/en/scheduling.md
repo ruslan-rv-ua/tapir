@@ -25,7 +25,7 @@ Whoever takes the stream first keeps it until the window ends:
 
 Your own actions are final for the window; a failure is not.
 
-Every entry shows the result of its last run: the minutes recorded, or why nothing was. A missed run names its reason: Tapir was not running, the recording failed to start, or the clock changed. Deleting a stream leaves its entries behind, marked **stream removed**, and still lets you switch them on; at their hour they fail to start, which is where that second reason usually comes from.
+Every entry shows the result of its last run: the minutes recorded, or why nothing was. A missed run names its reason: Tapir was not running, the recording failed to start, the clock changed, or the codec is not supported. Deleting a stream leaves its entries behind, marked **stream removed**, and still lets you switch them on; at their hour they fail to start, which is where that second reason usually comes from.
 
 Tapir announces the start, the finish and every failure. The tray balloon for those follows **Tray notifications for scheduled recordings** in the profile settings, on the **Interface** tab; with it off, a missed broadcast still shows up as the entry's own result. Track-change notifications have their own checkbox and leave the schedule alone.
 

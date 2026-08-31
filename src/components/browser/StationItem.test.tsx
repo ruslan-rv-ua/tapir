@@ -37,6 +37,7 @@ function renderItem(over: Partial<Parameters<typeof StationItem>[0]> = {}) {
     isFocused: (seg: string) => seg === "summary",
     isActiveRow: true,
     isAdded: false,
+    unsupported: null,
     isUnavailable: false,
     isSelected: false,
     onAdd: vi.fn(),
@@ -193,5 +194,24 @@ describe("StationItem — selection", () => {
     const li = container.querySelector<HTMLElement>('li[data-segment="summary"]')!;
     expect(li.getAttribute("aria-label")).toMatch(new RegExp(`${m.selection_suffix()}$`));
     expect(li.getAttribute("data-selected")).toBe("true");
+  });
+});
+
+describe("codec verdict", () => {
+  it("says on screen that an added station is not one Tapir records", () => {
+    // Видимий носій для застереження, яке промовляє додавання (ADR 2026-08-31):
+    // вердикт береться з профілю, другого рішення на фронтенді немає.
+    const { container } = renderItem({
+      station: mkStation({ codec: "OGG" }),
+      isAdded: true,
+      unsupported: { family: "OGG" },
+    });
+    const codec = container.querySelector('[data-segment="codec"]')!;
+    expect(codec.textContent).toBe(`OGG · ${m.codec_unsupported()}`);
+  });
+
+  it("leaves a recordable station's codec cell alone", () => {
+    const { container } = renderItem({ isAdded: true, unsupported: null });
+    expect(container.querySelector('[data-segment="codec"]')!.textContent).toBe("MP3");
   });
 });

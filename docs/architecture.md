@@ -566,6 +566,7 @@ app.global_shortcut().on_shortcut("Ctrl+Shift+R", |app, _shortcut, event| {
 | `recording-started` | `{streamId, fileName}` | Трек розпочато записувати |
 | `recording-completed` | `{streamId, fileName, duration}` | Трек завершено |
 | `stream-error` | `{streamId, message, willRetry, retryNumber?, maxRetries?}` | Помилка з'єднання |
+| `stream-unsupported` | `{streamId, family}` | Ефір не з тих, які Tapir пише — запис не почався (не помилка: стан не стає `error`) |
 | `player-status` | `{status, source, volume, positionMs?, durationMs?}` | Зміна стану player (playing/paused/stopped) |
 | `player-progress` | `{positionMs, durationMs}` | Оновлення позиції (для файлів) |
 | `scheduled-started` | `{recordingId, streamId}` | Плановий запис розпочався |

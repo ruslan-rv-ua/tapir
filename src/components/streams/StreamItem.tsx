@@ -6,6 +6,7 @@ import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import type { ActionModifiers, SegmentKind } from "../../hooks/useCompositeList";
 import { CompositeRow, CompositeSegment, CompositeAction } from "../common/composite-list";
 import { formatBitrate, formatDuration } from "../../lib/formatters";
+import { playRefusalMessage } from "../../lib/playRefusal";
 import { isRecordingLike } from "../../lib/streamState";
 import { StreamContextMenu } from "./StreamContextMenu";
 import { AddPatternDialog } from "../wishlist/AddPatternDialog";
@@ -104,7 +105,7 @@ export function StreamItem({
       if (isThisStreamPlaying) await tauri.stopPlayback();
       else await tauri.playStream(stream.id);
     } catch (err) {
-      addToast(String(err), "error");
+      addToast(playRefusalMessage(err), "error");
     }
   };
 
@@ -157,7 +158,7 @@ export function StreamItem({
       : m.segment_track_none();
   const trackTextClass = showAsLastTrack ? "text-slate-500 italic" : "text-slate-400";
 
-  const techValue = formatBitrate(stream.bitrate, stream.format);
+  const techValue = formatBitrate(stream.bitrate, stream.format, stream.unsupportedCodec);
 
   const retryAttempt = status?.reconnectAttempt ?? null;
   const retryLabel =

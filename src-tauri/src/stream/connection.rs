@@ -13,8 +13,19 @@ pub struct TrackMetadata {
 pub struct IcyConnection {
     pub headers: IcyHeaders,
     pub content_type: Option<String>,
+    /// Перші байти ефіру, вже зняті з `response`. Другий доказ для
+    /// `format::detect` (ADR 2026-08-31 §1) — заголовок у радіо ненадійний за
+    /// побудовою, а частина станцій не шле його зовсім.
+    ///
+    /// Читач мусить віддати ці байти першими, інакше початок ефіру пропаде;
+    /// `probe` їх просто розглядає й викидає разом із тілом.
+    pub prefix: bytes::Bytes,
     pub response: reqwest::Response,
 }
+
+/// Скільки чекати на перший шматок тіла. Окремо від `connect_timeout`: там
+/// вимірюється встановлення з'єднання, тут — чи пішов ефір.
+const FIRST_CHUNK_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 
 pub async fn connect(url: &str) -> Result<IcyConnection, RadioError> {
     let client = Client::builder()
@@ -46,9 +57,30 @@ pub async fn connect(url: &str) -> Result<IcyConnection, RadioError> {
         headers.metadata_interval(),
     );
 
+    // Знімаємо перший шматок тут, а не в читачі: обидва викликачі `detect`
+    // мусять бачити ті самі байти, і probe серед них — він тіла не читає
+    // взагалі.
+    let mut response = response;
+    let prefix = match tokio::time::timeout(FIRST_CHUNK_TIMEOUT, response.chunk()).await {
+        Ok(Ok(Some(b))) if !b.is_empty() => b,
+        Ok(Err(e)) => return Err(e.into()),
+        // Тіло скінчилось одразу або станція мовчить: ефір не пішов. Це **не**
+        // вердикт про формат — доказів немає взагалі, а порожній префікс
+        // видав би «невпізнаний» і застряг би міткою в профілі. Це той самий
+        // випадок, що й обрив: спроба витрачена, перепідключення планується
+        // (ADR 2026-08-13, CONTEXT.md §«Перепідключення і спроба»).
+        _ => {
+            return Err(RadioError::Other(format!(
+                "Stream sent no audio within {}s",
+                FIRST_CHUNK_TIMEOUT.as_secs(),
+            )))
+        }
+    };
+
     Ok(IcyConnection {
         headers,
         content_type,
+        prefix,
         response,
     })
 }

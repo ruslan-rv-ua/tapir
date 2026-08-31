@@ -11,7 +11,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::errors::RadioError;
 use crate::portable;
-use crate::profile::{AudioFormat, RecordingSettings, ReconnectConfig, StreamInfo};
+use crate::profile::{RecordingSettings, ReconnectConfig, StreamInfo};
 use crate::stream::{connection, format, recorder, splitter};
 use log::{info, warn, error, debug};
 use crate::wishlist::matcher;
@@ -85,6 +85,17 @@ struct StreamErrorPayload {
     stream_id: String,
     message: String,
     will_retry: bool,
+}
+
+/// Відмова записувати ефір, який Tapir не вміє (ADR 2026-08-31 §3). Окрема
+/// подія, а не `stream-error`: це не збій станції, стан потоку не стає `Error`,
+/// і повторювати спробу нема сенсу. `family` названа, коли сім'ю впізнано.
+/// Готового рядка backend не віддає — його складе Paraglide.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct StreamUnsupportedPayload {
+    stream_id: String,
+    family: Option<String>,
 }
 
 #[derive(Clone, Serialize)]
@@ -335,6 +346,14 @@ fn emit_stream_error(app: &AppHandle, stream_id: &str, message: &str, will_retry
             message: message.to_string(),
             will_retry,
         },
+    )
+    .ok();
+}
+
+fn emit_stream_unsupported(app: &AppHandle, stream_id: &str, family: Option<String>) {
+    app.emit(
+        "stream-unsupported",
+        StreamUnsupportedPayload { stream_id: stream_id.to_string(), family },
     )
     .ok();
 }
@@ -659,9 +678,10 @@ pub async fn recording_task(
         // IcyHeaders doesn't expose a url() method
         let icy_url_val: Option<String> = None;
 
-        let content_type = conn.content_type.as_deref().unwrap_or("");
-        let detected_format = format::detect_from_content_type(content_type)
-            .unwrap_or(AudioFormat::Mp3);
+        // Докази перед вердиктом, дефолту немає (ADR 2026-08-31 §1). Обидві
+        // половини вердикту йдуть у профіль разом, нижче.
+        let (detected_format, unsupported) =
+            format::detect(conn.content_type.as_deref(), &conn.prefix).split();
 
         // `%s` is ALWAYS the profile's name. Two mountpoints of one station send
         // the SAME icy-name, so using it here would merge their folders and undo
@@ -694,7 +714,7 @@ pub async fn recording_task(
                         }
                         if let Some(icy) = icy_name_val.as_ref() {
                             let meta = crate::naming::NameMeta {
-                                format: Some(detected_format.clone()),
+                                format: detected_format.clone(),
                                 bitrate: icy_bitrate.map(|b| b as u32),
                             };
                             if let Some(renamed) =
@@ -710,7 +730,11 @@ pub async fn recording_task(
                         if icy_url_val.is_some() {
                             s.icy_url = icy_url_val.clone();
                         }
-                        s.format = Some(detected_format.clone());
+                        // Дві половини одного вердикту — пишуться разом, інакше
+                        // рядок показував би формат від однієї перевірки й мітку
+                        // від іншої.
+                        s.format = detected_format.clone();
+                        s.unsupported_codec = unsupported.clone();
                         updated_stream = Some(s.clone());
                         crate::store::Commit::Save(())
                     }
@@ -729,6 +753,23 @@ pub async fn recording_task(
                 // name the task started with.
                 None => station_name.clone(),
             }
+        };
+
+        // --- Відмова: ефір не з тих, які Tapir уміє писати ---
+        // Коміт даних ефіру вище вже відбувся — мітка лягла в профіль, тож
+        // наступна спроба (і планувальник) впадуть швидко, ще до з'єднання.
+        // Спроби це не витрачає й перепідключення не планує: станція справна,
+        // відмовляє Tapir, і повторний запит дасть той самий вердикт
+        // (ADR 2026-08-31 §4 — поправка до ADR 2026-08-13).
+        let Some(detected_format) = detected_format else {
+            let family = unsupported.and_then(|u| u.family);
+            warn!(
+                "[{}] Unsupported air format ({}) — refusing to record",
+                stream_id,
+                family.as_deref().unwrap_or("unrecognised"),
+            );
+            emit_stream_unsupported(&app_handle, &stream_id, family);
+            break 'reconnect;
         };
 
         // --- Set up recorder ---
@@ -758,6 +799,9 @@ pub async fn recording_task(
         let (tx, mut rx) = tokio::sync::mpsc::channel::<ReadEvent>(64);
 
         let metaint: Option<NonZeroUsize> = conn.headers.metadata_interval();
+        // Перші байти вже зняті з тіла в `connect` — читач мусить віддати їх
+        // першими, інакше початок ефіру не потрапить у файл.
+        let prefix = conn.prefix;
         // Move the reqwest Response into the blocking thread.
         // reqwest::Response is not Send+Sync directly in all configurations; however
         // since we are on tokio and reqwest uses tokio internally, the response is Send.
@@ -807,7 +851,7 @@ pub async fn recording_task(
 
             let mut reader = ReqwestSyncReader {
                 stream: stream_box,
-                buf: bytes::Bytes::new(),
+                buf: prefix,
                 rt,
             };
 

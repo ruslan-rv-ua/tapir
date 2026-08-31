@@ -607,6 +607,9 @@ impl PlayerEngine {
             Error,
         }
         let (read_tx, mut read_rx) = tokio::sync::mpsc::channel::<IcyEvent>(64);
+        // Перші байти зняв `connect` (їх нюхає `format::detect`) — читач мусить
+        // віддати їх першими, інакше symphonia пробує ефір без його початку.
+        let prefix = conn.prefix;
         let response = conn.response;
 
         // Blocking reader: strips ICY metadata from the byte stream
@@ -657,7 +660,7 @@ impl PlayerEngine {
             > = Box::pin(response.bytes_stream());
             let mut reader = ReqwestSyncReader {
                 stream: stream_box,
-                buf: bytes::Bytes::new(),
+                buf: prefix,
                 rt,
             };
 

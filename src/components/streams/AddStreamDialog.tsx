@@ -8,7 +8,7 @@ import { addToast } from "../../stores/toasts";
 import { isRecordingLike } from "../../lib/streamState";
 import * as m from "../../i18n/paraglide/messages";
 
-const NO_META: StreamMeta = { icyName: null, bitrate: null, format: null };
+const NO_META: StreamMeta = { icyName: null, bitrate: null, format: null, unsupported: null };
 
 /** Id of the explanation tied to a locked URL field. The dialog is a singleton,
  *  so a constant is unambiguous. */
@@ -127,8 +127,25 @@ export function AddStreamDialog() {
       }
       // icyName rides along so the backend can name a stream the user left
       // unnamed, instead of parking a URL in the list until the first recording.
-      meta = { icyName: verdict.icyName, bitrate: verdict.bitrate, format: verdict.format };
+      meta = {
+        icyName: verdict.icyName,
+        bitrate: verdict.bitrate,
+        format: verdict.format,
+        unsupported: verdict.unsupported,
+      };
       setProbeMeta(meta);
+      // The probe reached the station and read what it sends: Tapir will not
+      // record it. A warning, never a ban — the address may be worth keeping,
+      // and the label rides into the profile either way, so the row says so and
+      // the scheduler refuses without connecting (ADR 2026-08-31 §6).
+      if (verdict.unsupported) {
+        setWarning(
+          verdict.unsupported.family
+            ? m.stream_unsupported_codec_warning({ codec: verdict.unsupported.family })
+            : m.stream_unsupported_unknown_warning(),
+        );
+        return;
+      }
     }
 
     // Then the profile-level conflicts, also once. A new address is checked

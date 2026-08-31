@@ -158,6 +158,7 @@ mod tests {
             url: url.into(),
             name: name.into(),
             format,
+            unsupported_codec: None,
             bitrate,
             icy_name: None,
             icy_genre: None,

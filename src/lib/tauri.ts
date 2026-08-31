@@ -4,11 +4,20 @@ import type { LogLevel } from "./logLevel";
 
 // --- Types matching Rust structs (camelCase, as serialized) ---
 
+/** The label a refused stream carries — the mirror of Rust `UnsupportedCodec`.
+ *  Present exactly when `format` is null because the air was foreign or
+ *  unrecognised, absent when the stream has simply never been checked.
+ *  `family` names the family when it was recognised (`OGG`, `FLAC`). */
+export interface UnsupportedCodec {
+  family: string | null;
+}
+
 export interface StreamInfo {
   id: string;
   url: string;
   name: string;
   format: "mp3" | "aac" | null;
+  unsupportedCodec: UnsupportedCodec | null;
   bitrate: number | null;
   icyName: string | null;
   icyGenre: string | null;
@@ -113,6 +122,15 @@ export interface StreamErrorPayload {
   willRetry: boolean;
 }
 
+/** `stream-unsupported`: the recording task connected, read the evidence and
+ *  refused — Tapir does not record this air. Deliberately not a `stream-error`:
+ *  the stream state does not become `error`, no attempt was spent and no
+ *  reconnect is planned. `family` is null when nothing was recognised. */
+export interface StreamUnsupportedPayload {
+  streamId: string;
+  family: string | null;
+}
+
 export interface RecordingStartedPayload {
   streamId: string;
   fileName: string;
@@ -134,6 +152,9 @@ export interface ProbeVerdict {
   icyName: string | null;
   bitrate: number | null;
   format: "mp3" | "aac" | null;
+  /** The other half of the same verdict: set exactly when `format` is null
+   *  because Tapir does not record this air. */
+  unsupported: UnsupportedCodec | null;
 }
 
 /** What the stream is known to be at add time — names it and drives the suffix. */
@@ -141,6 +162,7 @@ export type StreamMeta = {
   icyName: string | null;
   bitrate: number | null;
   format: "mp3" | "aac" | null;
+  unsupported: UnsupportedCodec | null;
 };
 
 /** Warnings (never bans) the add/edit dialog raises before saving. */
@@ -163,6 +185,7 @@ export async function addStream(url: string, name?: string, meta?: StreamMeta): 
     icyName: meta?.icyName ?? null,
     bitrate: meta?.bitrate ?? null,
     format: meta?.format ?? null,
+    unsupported: meta?.unsupported ?? null,
   });
 }
 /** Pre-flight for the add/edit dialog: pass `url` when adding, `name` +
@@ -206,6 +229,7 @@ export async function updateStream(
     icyName: meta?.icyName ?? null,
     bitrate: meta?.bitrate ?? null,
     format: meta?.format ?? null,
+    unsupported: meta?.unsupported ?? null,
   });
 }
 export async function startRecording(streamId: string): Promise<void> {
@@ -513,7 +537,7 @@ export async function getBrowserFilters(): Promise<BrowserFilters> {
   return invoke<BrowserFilters>("get_browser_filters");
 }
 
-export async function addStationFromBrowser(station: StationResult): Promise<void> {
+export async function addStationFromBrowser(station: StationResult): Promise<StreamInfo> {
   return invoke("add_station_from_browser", { station });
 }
 
@@ -628,6 +652,7 @@ export type ScheduleResultReason =
   | "appNotRunning"
   | "startFailed"
   | "clockChange"
+  | "unsupportedCodec"
   // stoppedByUser:
   | "manualStop"
   | "profileSwitch"
@@ -804,6 +829,9 @@ export interface ImportProgressPayload {
   icyName: string | null;
   bitrate: number | null;
   format: "mp3" | "aac" | null;
+  /** Set on an `ok` probe whose air Tapir does not record — the row reads a
+   *  third way instead of "✓", and its checkbox stays ticked. */
+  unsupported: UnsupportedCodec | null;
   error: string | null;
 }
 
@@ -820,7 +848,13 @@ export async function validateImportCandidates(urls: string[]): Promise<void> {
   return invoke("validate_import_candidates", { urls });
 }
 export async function commitStreamImport(
-  selected: { url: string; name: string; bitrate: number | null; format: "mp3" | "aac" | null }[],
+  selected: {
+    url: string;
+    name: string;
+    bitrate: number | null;
+    format: "mp3" | "aac" | null;
+    unsupported: UnsupportedCodec | null;
+  }[],
 ): Promise<StreamImportResult> {
   return invoke("commit_stream_import", { selected });
 }

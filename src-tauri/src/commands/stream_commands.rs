@@ -2,7 +2,7 @@ use crate::app_state::AppState;
 use crate::commands::shell_open::{shell_open, SHELL_ERR_GENERIC, SHELL_ERR_WRITE_FAILED};
 use crate::errors::RadioError;
 use crate::portable;
-use crate::profile::{AudioFormat, Profile, StreamInfo};
+use crate::profile::{AudioFormat, Profile, StreamInfo, UnsupportedCodec};
 use crate::profile_store::save_detached;
 use crate::store::Commit;
 use crate::stream::manager::{StreamState, StreamStatus};
@@ -193,6 +193,7 @@ pub fn build_added_stream(
     icy_name: Option<String>,
     bitrate: Option<u32>,
     format: Option<AudioFormat>,
+    unsupported: Option<UnsupportedCodec>,
     now: String,
 ) -> StreamInfo {
     let icy_name = non_blank(icy_name);
@@ -209,6 +210,7 @@ pub fn build_added_stream(
         url: resolved_url,
         name: stream_name,
         format,
+        unsupported_codec: unsupported,
         bitrate,
         icy_name,
         icy_genre: None,
@@ -252,6 +254,7 @@ pub fn build_edited_stream(
     icy_name: Option<String>,
     bitrate: Option<u32>,
     format: Option<AudioFormat>,
+    unsupported: Option<UnsupportedCodec>,
 ) -> StreamInfo {
     let mut out = current.clone();
 
@@ -286,6 +289,7 @@ pub fn build_edited_stream(
     out.icy_name = icy_name;
     out.bitrate = bitrate;
     out.format = format;
+    out.unsupported_codec = unsupported;
     out
 }
 
@@ -361,6 +365,7 @@ pub async fn add_stream(
     icy_name: Option<String>,
     bitrate: Option<u32>,
     format: Option<AudioFormat>,
+    unsupported: Option<UnsupportedCodec>,
     state: tauri::State<'_, AppState>,
 ) -> Result<StreamInfo, String> {
     let resolved_url = playlist::resolve_playlist_url(&url)
@@ -376,6 +381,7 @@ pub async fn add_stream(
                 icy_name,
                 bitrate,
                 format,
+                unsupported,
                 chrono::Local::now().to_rfc3339(),
             );
             profile.streams.push(new_stream.clone());
@@ -471,6 +477,7 @@ pub async fn update_stream(
     icy_name: Option<String>,
     bitrate: Option<u32>,
     format: Option<AudioFormat>,
+    unsupported: Option<UnsupportedCodec>,
     state: tauri::State<'_, AppState>,
 ) -> Result<StreamInfo, String> {
     let resolved_url = match url {
@@ -495,6 +502,7 @@ pub async fn update_stream(
                 icy_name,
                 bitrate,
                 format,
+                unsupported,
             );
             if let Some(slot) = profile.streams.iter_mut().find(|s| s.id == stream_id) {
                 *slot = updated.clone();
@@ -798,6 +806,7 @@ mod tests {
         StreamInfo {
             id: "src-id".into(), url: "http://x".into(), name: "X".into(),
             format: None, bitrate: None, icy_name: None, icy_genre: None,
+            unsupported_codec: None,
             icy_url: None, ignorelist: vec!["*ad*".into()],
             username: Some("u".into()), password: Some("DPAPI:abc".into()),
             added_at: "2026-01-01".into(),
@@ -931,6 +940,68 @@ mod tests {
     }
 
     #[test]
+    fn added_stream_persists_the_unsupported_label_from_the_probe() {
+        // Мітка з моменту додавання: наступний запис і планувальник читають її
+        // замість того, щоб з'єднуватись задарма (ADR 2026-08-31 §6).
+        let got = build_added_stream(
+            &[],
+            "http://ogg".into(),
+            Some("Radio Ogg".into()),
+            None,
+            Some(128),
+            None,
+            Some(UnsupportedCodec { family: Some("OGG".into()) }),
+            "NOW".into(),
+        );
+        assert_eq!(got.format, None);
+        assert_eq!(
+            got.unsupported_codec,
+            Some(UnsupportedCodec { family: Some("OGG".into()) }),
+        );
+    }
+
+    #[test]
+    fn moving_the_address_replaces_the_unsupported_label_too() {
+        // `format` і мітка описують адресу, а не рядок: після переїзду стара
+        // мітка була б брехнею, яку рядок читав би вголос.
+        let mut current = named("a", "Radio X");
+        current.unsupported_codec = Some(UnsupportedCodec { family: Some("OGG".into()) });
+        let got = build_edited_stream(
+            std::slice::from_ref(&current),
+            &current,
+            "Radio X".into(),
+            Some("http://moved".into()),
+            None,
+            Some(128),
+            Some(AudioFormat::Mp3),
+            None,
+        );
+        assert_eq!(got.format, Some(AudioFormat::Mp3));
+        assert_eq!(got.unsupported_codec, None);
+    }
+
+    #[test]
+    fn a_plain_rename_keeps_the_unsupported_label() {
+        let mut current = named("a", "Radio X");
+        current.unsupported_codec = Some(UnsupportedCodec { family: Some("OGG".into()) });
+        let got = build_edited_stream(
+            std::slice::from_ref(&current),
+            &current,
+            "Radio Y".into(),
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+        assert_eq!(got.name, "Radio Y");
+        assert_eq!(
+            got.unsupported_codec,
+            Some(UnsupportedCodec { family: Some("OGG".into()) }),
+        );
+    }
+
+    #[test]
     fn added_stream_keeps_a_free_name_and_persists_probe_metadata() {
         let existing = vec![named("a", "Other")];
         let got = build_added_stream(
@@ -940,6 +1011,7 @@ mod tests {
             None,
             Some(64),
             Some(AudioFormat::Aac),
+            None,
             "NOW".into(),
         );
         assert_eq!(got.name, "Radio X"); // trimmed, unsuffixed
@@ -959,6 +1031,7 @@ mod tests {
             None,
             Some(64),
             Some(AudioFormat::Aac),
+            None,
             "NOW".into(),
         );
         assert_eq!(got.name, "Radio X (AAC 64k)");
@@ -971,6 +1044,7 @@ mod tests {
             &existing,
             "http://new".into(),
             Some("Radio X".into()),
+            None,
             None,
             None,
             None,
@@ -991,6 +1065,7 @@ mod tests {
             Some("Groove Salad".into()),
             None,
             None,
+            None,
             "NOW".into(),
         );
         assert_eq!(got.name, "Groove Salad");
@@ -1006,6 +1081,7 @@ mod tests {
             Some("Groove Salad".into()),
             Some(128),
             Some(AudioFormat::Mp3),
+            None,
             "NOW".into(),
         );
         assert_eq!(got.name, "Groove Salad (MP3 128k)");
@@ -1022,6 +1098,7 @@ mod tests {
             Some("Groove Salad".into()),
             None,
             None,
+            None,
             "NOW".into(),
         );
         assert_eq!(got.name, "My Name");
@@ -1034,7 +1111,7 @@ mod tests {
         // and the ICY auto-naming replaces it on the first connection instead.
         let existing = vec![named("a", "Radio X")];
         let got =
-            build_added_stream(&existing, "http://new".into(), None, None, None, None, "NOW".into());
+            build_added_stream(&existing, "http://new".into(), None, None, None, None, None, "NOW".into());
         assert_eq!(got.name, "http://new");
         assert_eq!(got.icy_name, None);
     }
@@ -1046,6 +1123,7 @@ mod tests {
             "http://new".into(),
             Some("   ".into()),
             Some("  ".into()),
+            None,
             None,
             None,
             "NOW".into(),
@@ -1062,6 +1140,7 @@ mod tests {
             url: url.into(),
             name: name.into(),
             format: Some(AudioFormat::Aac),
+            unsupported_codec: None,
             bitrate: Some(64),
             icy_name: Some("Old Station".into()),
             ..sample()
@@ -1077,6 +1156,7 @@ mod tests {
             std::slice::from_ref(&current),
             &current,
             "  Radio Y  ".into(),
+            None,
             None,
             None,
             None,
@@ -1100,6 +1180,7 @@ mod tests {
             Some("New Station".into()),
             Some(128),
             Some(AudioFormat::Mp3),
+            None,
         );
         assert_eq!(got.url, "http://new");
         assert_eq!(got.name, "Radio X"); // a name the user chose is never touched
@@ -1123,6 +1204,7 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
         assert_eq!(got.format, None);
         assert_eq!(got.bitrate, None);
@@ -1142,6 +1224,7 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
         assert_eq!(got.name, "http://new");
         assert_eq!(got.name, got.url, "icy_rename must still recognise this stream");
@@ -1156,6 +1239,7 @@ mod tests {
             "http://old".into(),
             Some("http://new".into()),
             Some("Groove Salad".into()),
+            None,
             None,
             None,
         );
@@ -1174,6 +1258,7 @@ mod tests {
             Some("Groove Salad".into()),
             Some(64),
             Some(AudioFormat::Aac),
+            None,
         );
         assert_eq!(got.name, "Groove Salad (AAC 64k)");
     }
@@ -1186,6 +1271,7 @@ mod tests {
             &current,
             "   ".into(),
             Some("http://new".into()),
+            None,
             None,
             None,
             None,
@@ -1204,6 +1290,7 @@ mod tests {
             &current,
             "  Taken  ".into(),
             Some("http://new".into()),
+            None,
             None,
             None,
             None,

@@ -68,6 +68,7 @@ export function missedReasonText(reason: ScheduleResultReason | null): string {
     case "appNotRunning": return m.schedule_reason_app_not_running();
     case "startFailed": return m.schedule_reason_start_failed();
     case "clockChange": return m.schedule_reason_clock_change();
+    case "unsupportedCodec": return m.schedule_reason_unsupported_codec();
     default: return m.schedule_result_none();
   }
 }

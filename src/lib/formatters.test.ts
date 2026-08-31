@@ -1,5 +1,9 @@
-import { describe, it, expect } from "vitest";
-import { isLowDiskSpace, formatBytes, formatDate, formatDateTime } from "./formatters";
+import { describe, it, expect, vi } from "vitest";
+import { isLowDiskSpace, formatBytes, formatDate, formatDateTime, formatBitrate } from "./formatters";
+
+vi.mock("../i18n/paraglide/messages", () => ({
+  codec_unsupported: () => "не підтримується",
+}));
 
 const GiB = 1024 ** 3;
 
@@ -44,5 +48,25 @@ describe("formatDate / formatDateTime", () => {
   it("returns the raw input for an unparseable date", () => {
     expect(formatDate("not-a-date")).toBe("not-a-date");
     expect(formatDateTime("not-a-date")).toBe("not-a-date");
+  });
+});
+
+describe("formatBitrate", () => {
+  it("joins what is known and dashes when nothing is", () => {
+    expect(formatBitrate(128, "mp3")).toBe("128 kbps · MP3");
+    expect(formatBitrate(128, null)).toBe("128 kbps");
+    expect(formatBitrate(null, "aac")).toBe("AAC");
+    expect(formatBitrate(null, null)).toBe("—");
+  });
+
+  it("names the family and says it is not supported", () => {
+    // Видимий носій рядка: те, що Tapir відмовився писати, мусить бути на
+    // екрані текстом, а не лише в події (ADR 2026-08-31).
+    expect(formatBitrate(128, null, { family: "OGG" })).toBe("128 kbps · OGG · не підтримується");
+  });
+
+  it("still says it is not supported when the family has no name", () => {
+    expect(formatBitrate(null, null, { family: null })).toBe("не підтримується");
+    expect(formatBitrate(96, null, { family: null })).toBe("96 kbps · не підтримується");
   });
 });

@@ -308,6 +308,7 @@ mod tests {
         let mk = |url: &str, name: &str| crate::profile::StreamInfo {
             id: "x".into(), url: url.into(), name: name.into(),
             format: None, bitrate: None, icy_name: None, icy_genre: None,
+            unsupported_codec: None,
             icy_url: None, ignorelist: vec![], username: None, password: None,
             added_at: "2026-01-01".into(),
         };

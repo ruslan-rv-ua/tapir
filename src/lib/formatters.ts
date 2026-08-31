@@ -1,3 +1,6 @@
+import type { UnsupportedCodec } from "./tauri";
+import * as m from "../i18n/paraglide/messages";
+
 export function formatDuration(ms: number): string {
   const secs = Math.floor(ms / 1000);
   const h = Math.floor(secs / 3600);
@@ -7,13 +10,26 @@ export function formatDuration(ms: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-export function formatBitrate(kbps: number | null, format?: "mp3" | "aac" | null): string {
-  const bitrateStr = kbps != null ? `${kbps} kbps` : null;
-  const formatStr = format ? format.toUpperCase() : null;
-  if (bitrateStr && formatStr) return `${bitrateStr} · ${formatStr}`;
-  if (bitrateStr) return bitrateStr;
-  if (formatStr) return formatStr;
-  return "—";
+/**
+ * The "codec and bitrate" segment, in the streams list and the player panel
+ * alike. `unsupported` is the visible carrier of a refusal (ADR 2026-08-31):
+ * whatever the toast said once, the row keeps saying — "128 kbps · OGG · not
+ * supported", or without the family name when nothing was recognised.
+ *
+ * `format` and `unsupported` are the two halves of one verdict, so at most one
+ * of them is ever set; the dash is only for a stream nobody has checked yet.
+ */
+export function formatBitrate(
+  kbps: number | null,
+  format?: "mp3" | "aac" | null,
+  unsupported?: UnsupportedCodec | null,
+): string {
+  const parts = [
+    kbps != null ? `${kbps} kbps` : null,
+    unsupported ? unsupported.family : format ? format.toUpperCase() : null,
+    unsupported ? m.codec_unsupported() : null,
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(" · ") : "—";
 }
 
 export function formatBytes(bytes: number): string {

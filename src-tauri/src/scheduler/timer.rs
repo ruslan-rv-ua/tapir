@@ -12,7 +12,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use tokio_util::sync::CancellationToken;
 
 use crate::app_state::AppState;
-use crate::profile::{ScheduleResultReason, ScheduleResultStatus, ScheduledRecording};
+use crate::profile::{ScheduleResultReason, ScheduleResultStatus, ScheduleType, ScheduledRecording};
 use super::core::{Fixation, SchedulerCore, TickAction, TickCtx};
 use super::windows::{resolve_local, LocalKind};
 
@@ -139,10 +139,34 @@ pub async fn run_tick(app: &AppHandle) {
                         }).ok();
                         crate::tray::notify::notify_scheduled(app, started_body);
                     }
-                    Err(e) => {
+                    Err(StartFailure::Failed(e)) => {
                         // §3.2: нічого не фіксуємо — наступний тік повторить
                         core.start_failed(&key);
                         log::warn!("Scheduler: start failed for schedule '{}': {e} (retry next tick)", key.0);
+                    }
+                    Err(StartFailure::UnsupportedCodec) => {
+                        // Не спроба, що не вдалася, а відмова Tapir: вердикт про
+                        // ефір той самий на кожному тіку, тож фіксуємо Missed
+                        // одразу — інакше вікно давало б старт щохвилини
+                        // (ADR 2026-08-31 §4).
+                        let schedule = schedules.iter().find(|s| s.id == key.0);
+                        let name = schedule.map(|s| s.name.clone()).unwrap_or_default();
+                        let is_oneshot = schedule
+                            .is_some_and(|s| s.schedule_type == ScheduleType::Oneshot);
+                        let fix = core.start_refused(
+                            key.clone(),
+                            stream_id,
+                            name,
+                            ScheduleResultReason::UnsupportedCodec,
+                            is_oneshot,
+                            now_local,
+                        );
+                        drop(core);
+                        log::warn!(
+                            "Scheduler: '{}' records an air format Tapir cannot write — no start",
+                            key.0,
+                        );
+                        fixes.push(fix);
                     }
                 }
             }
@@ -151,21 +175,40 @@ pub async fn run_tick(app: &AppHandle) {
     apply_fixations(app, fixes).await;
 }
 
+/// Чому старт не відбувся. Розрізнення не косметичне: невдача станції варта
+/// повтору на наступному тіку, відмова Tapir — ні.
+enum StartFailure {
+    /// Спроба була й не вдалася — наступний тік повторить її до кінця вікна.
+    Failed(String),
+    /// Ефір не з тих, які Tapir уміє писати. З'єднання не було й не буде.
+    UnsupportedCodec,
+}
+
 /// Той самий шлях, що й ручний старт (§3.2): check_disk_space НЕ обходиться.
-async fn try_start(app: &AppHandle, stream_id: &str) -> Result<u64, String> {
+///
+/// Мітка кодека читається **до з'єднання** (ADR 2026-08-31 §6): вона вже в
+/// профілі — її поклала або перевірка при додаванні, або попередня відмова.
+/// Порядок решти перевірок незмінний: повний диск — це збій, який минеться,
+/// тож він і далі говорить першим і повторюється наступним тіком.
+async fn try_start(app: &AppHandle, stream_id: &str) -> Result<u64, StartFailure> {
     let state = app.state::<AppState>();
     crate::commands::stream_commands::check_disk_space(&state)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| StartFailure::Failed(e.to_string()))?;
     let (stream, settings) = {
         let p = state.active_profile.read().await;
-        let stream = p.streams.iter().find(|s| s.id == stream_id).cloned()
-            .ok_or_else(|| format!("Stream '{stream_id}' not found in active profile"))?;
+        let stream = p.streams.iter().find(|s| s.id == stream_id).cloned().ok_or_else(|| {
+            StartFailure::Failed(format!("Stream '{stream_id}' not found in active profile"))
+        })?;
         (stream, p.recording.clone())
     };
+    if stream.unsupported_codec.is_some() {
+        return Err(StartFailure::UnsupportedCodec);
+    }
     let mgr_arc = state.stream_manager.clone();
     let mut mgr = mgr_arc.write().await;
-    mgr.start_recording(stream, settings, mgr_arc.clone()).map_err(|e| e.to_string())
+    mgr.start_recording(stream, settings, mgr_arc.clone())
+        .map_err(|e| StartFailure::Failed(e.to_string()))
 }
 
 /// Кожна фіксація оновлює last_result і персистить профіль (§3.2 крок 5);

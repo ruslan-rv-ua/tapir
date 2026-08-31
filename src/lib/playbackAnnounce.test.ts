@@ -95,7 +95,7 @@ describe("suppressesStarted", () => {
 });
 
 const streams: StreamInfo[] = [{
-  id: "s1", url: "http://s1", name: "Jazz FM", format: "mp3", bitrate: 128,
+  id: "s1", url: "http://s1", name: "Jazz FM", format: "mp3", unsupportedCodec: null, bitrate: 128,
   icyName: null, icyGenre: null, icyUrl: null, ignorelist: [],
   username: null, password: null, addedAt: "2026-01-01T00:00:00Z",
 }];

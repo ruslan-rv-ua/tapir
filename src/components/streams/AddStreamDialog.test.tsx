@@ -22,6 +22,9 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   stream_probe_checking: () => "Checking stream…",
   stream_probe_failed: () => "The stream did not respond",
   stream_probe_add_anyway: () => "Add anyway",
+  stream_unsupported_codec_warning: ({ codec }: { codec: string }) =>
+    `Tapir does not record the ${codec} codec`,
+  stream_unsupported_unknown_warning: () => "The codec was not recognised",
   stream_save_anyway: () => "Save anyway",
   stream_duplicate_url_warning: ({ name }: { name: string }) => `URL already in profile as ${name}`,
   stream_name_collision_warning: ({ name }: { name: string }) => `Name already used by ${name}`,
@@ -39,7 +42,7 @@ const addStream = vi.mocked(tauri.addStream);
 const checkStreamConflicts = vi.mocked(tauri.checkStreamConflicts);
 
 const NO_CONFLICTS = { duplicateUrlOf: null, nameCollidesWith: null };
-const NO_META = { icyName: null, bitrate: null, format: null };
+const NO_META = { icyName: null, bitrate: null, format: null, unsupported: null };
 
 const newStream = { id: "s1", url: "http://a", name: "A" } as never;
 
@@ -127,6 +130,42 @@ describe("AddStreamDialog probe", () => {
     await waitFor(() => expect(addStream).toHaveBeenCalled());
   });
 
+  it("warns about a codec Tapir cannot record, then adds it anyway", async () => {
+    // Відмова — попередження, а не заборона: адреса може бути потрібна, а
+    // мітка все одно їде в профіль (ADR 2026-08-31 §6).
+    const OGG = { icyName: null, bitrate: 128, format: null, unsupported: { family: "OGG" } };
+    probeStream.mockResolvedValue({ ok: true, error: null, ...OGG });
+    render(<AddStreamDialog />);
+
+    await fillUrlAndSubmit();
+
+    expect(await screen.findByText("Tapir does not record the OGG codec")).toBeInTheDocument();
+    expect(addStream).not.toHaveBeenCalled();
+    // Фокус лишається на кнопці підтвердження — інакше вимкнення форми на час
+    // перевірки кинуло б його на <body>, і діалог замовк би.
+    const confirm = screen.getByRole("button", { name: "Add anyway" });
+    expect(confirm).toHaveFocus();
+
+    await userEvent.click(confirm);
+    await waitFor(() => expect(addStream).toHaveBeenCalledWith("http://a", undefined, OGG));
+  });
+
+  it("says so without naming a family when nothing was recognised", async () => {
+    probeStream.mockResolvedValue({
+      ok: true,
+      error: null,
+      icyName: null,
+      bitrate: null,
+      format: null,
+      unsupported: { family: null },
+    });
+    render(<AddStreamDialog />);
+
+    await fillUrlAndSubmit();
+
+    expect(await screen.findByText("The codec was not recognised")).toBeInTheDocument();
+  });
+
   it("does not probe when editing leaves the address alone", async () => {
     $showAddStreamDialog.set(false);
     $editStream.set({ id: "s1", url: "http://a", name: "A" } as never);
@@ -194,7 +233,7 @@ describe("AddStreamDialog edit mode — URL", () => {
 
   it("probes the new address and saves it with the fresh metadata", async () => {
     probeStream.mockResolvedValue({
-      ok: true, error: null, icyName: "Groove Salad", bitrate: 128, format: "mp3",
+      ok: true, error: null, icyName: "Groove Salad", bitrate: 128, format: "mp3", unsupported: null,
     });
     openEdit();
     render(<AddStreamDialog />);
@@ -207,6 +246,7 @@ describe("AddStreamDialog edit mode — URL", () => {
         icyName: "Groove Salad",
         bitrate: 128,
         format: "mp3",
+        unsupported: null,
       }),
     );
     expect(probeStream).toHaveBeenCalledWith("http://new");
@@ -378,7 +418,7 @@ describe("AddStreamDialog conflicts", () => {
   });
 
   it("passes the probed bitrate and codec to addStream so the name can be suffixed", async () => {
-    probeStream.mockResolvedValue({ ok: true, error: null, icyName: null, bitrate: 64, format: "aac" });
+    probeStream.mockResolvedValue({ ok: true, error: null, icyName: null, bitrate: 64, format: "aac", unsupported: null });
     render(<AddStreamDialog />);
 
     await userEvent.type(screen.getByLabelText("URL"), "http://a");
@@ -390,6 +430,7 @@ describe("AddStreamDialog conflicts", () => {
         icyName: null,
         bitrate: 64,
         format: "aac",
+        unsupported: null,
       }),
     );
   });
@@ -398,7 +439,7 @@ describe("AddStreamDialog conflicts", () => {
     // Without this the stream would sit in the list under its URL until the
     // first recording renamed it — a URL is what NVDA would read out.
     probeStream.mockResolvedValue({
-      ok: true, error: null, icyName: "Groove Salad", bitrate: 128, format: "mp3",
+      ok: true, error: null, icyName: "Groove Salad", bitrate: 128, format: "mp3", unsupported: null,
     });
     render(<AddStreamDialog />);
 
@@ -409,6 +450,7 @@ describe("AddStreamDialog conflicts", () => {
         icyName: "Groove Salad",
         bitrate: 128,
         format: "mp3",
+        unsupported: null,
       }),
     );
   });

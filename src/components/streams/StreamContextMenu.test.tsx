@@ -27,7 +27,7 @@ vi.mock("../../i18n/paraglide/messages", () => ({
 }));
 
 const mkStream = (over: Partial<StreamInfo> = {}): StreamInfo => ({
-  id: "s1", url: "http://x/s1", name: "Radio Paradise", format: "mp3", bitrate: 192,
+  id: "s1", url: "http://x/s1", name: "Radio Paradise", format: "mp3", unsupportedCodec: null, bitrate: 192,
   icyName: null, icyGenre: null, icyUrl: null, ignorelist: [], username: null,
   password: null, addedAt: "2026-01-01T00:00:00Z", ...over,
 });

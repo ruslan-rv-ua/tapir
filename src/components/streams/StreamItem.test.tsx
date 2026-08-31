@@ -21,6 +21,7 @@ const mkStream = (over: Partial<StreamInfo> = {}): StreamInfo => ({
   url: "http://x/s1",
   name: "Radio Paradise",
   format: "mp3",
+  unsupportedCodec: null,
   bitrate: 192,
   icyName: null,
   icyGenre: null,
@@ -78,6 +79,17 @@ describe("StreamItem — accessibility structure", () => {
     expect(tech.getAttribute("aria-roledescription")).toMatch(/бітрейт|bitrate/i);
     // Value only — the segment type lives in aria-roledescription, not the label.
     expect(tech.getAttribute("aria-label")).toMatch(/192/);
+  });
+
+  it("carries the refusal in the row, as text, not just in a toast", () => {
+    // Видимий носій (ADR 2026-08-31): те, що Tapir цього не пише, мусить бути
+    // на екрані й з холодного старту, а не жити в події, яку вже показали.
+    const { container } = renderItem(
+      mkStream({ format: null, unsupportedCodec: { family: "OGG" }, bitrate: 128 }),
+    );
+    const tech = container.querySelector('[data-segment="tech"]')!;
+    expect(tech.textContent).toBe(`128 kbps · OGG · ${m.codec_unsupported()}`);
+    expect(tech.getAttribute("aria-label")).toContain("OGG");
   });
 
   it("renders each action as its own button focus stop", () => {

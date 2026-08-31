@@ -20,6 +20,7 @@ vi.mock("../i18n/paraglide/messages", () => ({
   schedule_reason_app_not_running: () => "Tapir не працював",
   schedule_reason_start_failed: () => "не вдалося стартувати запис",
   schedule_reason_clock_change: () => "переведення годинника",
+  schedule_reason_unsupported_codec: () => "кодек не підтримується",
   profile_switch_scheduled_one: ({ name, end }: { name: string; end: string }) =>
     `Триває плановий запис «${name}» до ${end}. Переключити профіль і зупинити його?`,
   profile_switch_scheduled_item: ({ name, end }: { name: string; end: string }) => `«${name}» до ${end}`,
@@ -98,6 +99,7 @@ describe("missedReasonText", () => {
     expect(missedReasonText("appNotRunning")).toBe("Tapir не працював");
     expect(missedReasonText("startFailed")).toBe("не вдалося стартувати запис");
     expect(missedReasonText("clockChange")).toBe("переведення годинника");
+    expect(missedReasonText("unsupportedCodec")).toBe("кодек не підтримується");
     expect(missedReasonText(null)).toBe("—");
   });
 });

@@ -279,6 +279,37 @@ impl SchedulerCore {
         self.start_attempted.insert(key.clone());
     }
 
+    /// Відмова самого Tapir, а не невдача станції (ADR 2026-08-31 §4): ефір не
+    /// з тих, які він уміє писати, і повторний запит дасть той самий вердикт.
+    /// Тому — на відміну від [`start_failed`](Self::start_failed) — входження
+    /// фіксується Missed одразу й лягає в ledger: до кінця вікна прохід B його
+    /// більше не бачить, тож двогодинне вікно не дає ста двадцяти стартів.
+    pub fn start_refused(
+        &mut self,
+        key: OccKey,
+        stream_id: String,
+        schedule_name: String,
+        reason: ScheduleResultReason,
+        disable_schedule: bool,
+        now_local: NaiveDateTime,
+    ) -> Fixation {
+        let fix = Fixation {
+            schedule_id: key.0.clone(),
+            stream_id,
+            schedule_name,
+            result: ScheduleResult {
+                occurrence: key.1.clone(),
+                status: ScheduleResultStatus::Missed,
+                reason: Some(reason),
+                recorded_minutes: 0,
+                finished_at: finished_at(now_local),
+            },
+            disable_schedule,
+        };
+        self.remember(key, now_local);
+        fix
+    }
+
     /// §3.3: спільний хук чотирьох шляхів ручної зупинки. Фіксує
     /// StoppedByUser(ManualStop), ЛИШЕ якщо session_id збігається з активним
     /// входженням; інакше ігнор — зупинили ручний запис, що зайняв потік
@@ -574,6 +605,72 @@ mod tests {
         let actions = core.tick(&ctx("2026-06-12T21:00", &schedules, &statuses), &no_dst);
         let fixes = fixations(&actions);
         assert_eq!(fixes[0].result.reason, Some(ScheduleResultReason::StartFailed));
+    }
+
+    #[test]
+    fn refused_start_fixes_missed_with_the_named_reason() {
+        // Відмова Tapir, а не невдача станції (ADR 2026-08-31 §4): результат
+        // фіксується одразу, з причиною, що називає себе.
+        let schedules = [recurring("a", "st1", &[4], "20:00", 60)];
+        let statuses = busy(&[]);
+        let mut core = SchedulerCore::default();
+        let actions = core.tick(&ctx("2026-06-12T20:00", &schedules, &statuses), &no_dst);
+        let TickAction::StartRecording { key, .. } = actions[0].clone() else { panic!() };
+        let fix = core.start_refused(
+            key,
+            "st1".into(),
+            "Schedule a".into(),
+            ScheduleResultReason::UnsupportedCodec,
+            false,
+            at("2026-06-12T20:00"),
+        );
+        assert_eq!(fix.result.status, ScheduleResultStatus::Missed);
+        assert_eq!(fix.result.reason, Some(ScheduleResultReason::UnsupportedCodec));
+        assert_eq!(fix.result.occurrence, "2026-06-12T20:00");
+        assert_eq!(fix.result.recorded_minutes, 0);
+    }
+
+    #[test]
+    fn refused_start_does_not_retry_for_the_rest_of_the_window() {
+        // Головна ціна помилки: двогодинне вікно давало б ~120 стартів
+        // щохвилини, і кожен з них — з'єднання. Після відмови вікно мовчить.
+        let schedules = [recurring("a", "st1", &[4], "20:00", 120)];
+        let statuses = busy(&[]);
+        let mut core = SchedulerCore::default();
+        let actions = core.tick(&ctx("2026-06-12T20:00", &schedules, &statuses), &no_dst);
+        let TickAction::StartRecording { key, .. } = actions[0].clone() else { panic!() };
+        core.start_refused(
+            key,
+            "st1".into(),
+            "Schedule a".into(),
+            ScheduleResultReason::UnsupportedCodec,
+            false,
+            at("2026-06-12T20:00"),
+        );
+        for minute in ["20:01", "20:30", "21:59"] {
+            let now = format!("2026-06-12T{minute}");
+            let actions = core.tick(&ctx(&now, &schedules, &statuses), &no_dst);
+            assert!(start_actions(&actions).is_empty(), "{now}: старт після відмови");
+        }
+        // Вікно минуло — і другого Missed теж немає: результат уже зафіксовано.
+        let actions = core.tick(&ctx("2026-06-12T22:00", &schedules, &statuses), &no_dst);
+        assert!(fixations(&actions).is_empty(), "повторна фіксація Missed");
+    }
+
+    #[test]
+    fn refused_oneshot_is_disabled_like_any_other_missed() {
+        let mut core = SchedulerCore::default();
+        let fix = core.start_refused(
+            ("a".into(), "2026-06-12T20:00".into()),
+            "st1".into(),
+            "Evening Jazz".into(),
+            ScheduleResultReason::UnsupportedCodec,
+            true,
+            at("2026-06-12T20:00"),
+        );
+        assert!(fix.disable_schedule);
+        assert_eq!(fix.schedule_id, "a");
+        assert_eq!(fix.schedule_name, "Evening Jazz");
     }
 
     #[test]

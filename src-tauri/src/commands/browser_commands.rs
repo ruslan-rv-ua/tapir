@@ -6,7 +6,7 @@ use crate::app_state::AppState;
 use crate::browser::api::RadioBrowserClient;
 use crate::browser::types::*;
 use crate::errors::RadioError;
-use crate::profile::{AudioFormat, StreamInfo};
+use crate::profile::{AudioFormat, StreamInfo, UnsupportedCodec};
 use crate::store::Commit;
 
 /// Helper: get or init the RadioBrowserClient from OnceCell.
@@ -64,13 +64,31 @@ const EXAMPLE_ANCHORS: &[ExampleAnchor] = &[
     },
 ];
 
-/// Codec string -> AudioFormat. Single source of truth shared by the browser-add
-/// path and the example fallback path (keeps add_station_from_browser behavior).
-fn codec_to_format(codec: &str) -> Option<AudioFormat> {
-    match codec.to_uppercase().as_str() {
-        "MP3" => Some(AudioFormat::Mp3),
-        "AAC" | "AAC+" => Some(AudioFormat::Aac),
-        _ => None,
+/// Codec string -> вердикт для профілю. Single source of truth shared by the
+/// browser-add path and the example fallback path.
+///
+/// Каталог зве кодеком те саме, про що питає `format::detect`, і дає ту саму
+/// трійку станів. Названий чужий кодек стає міткою просто з моменту додавання
+/// (ADR 2026-08-31 §6), тож марного з'єднання на першому записі не буде.
+///
+/// **Розпізнаються лише знайомі імена.** `StationResult.codec` — вільний рядок
+/// із чужого API: там трапляються і `AACP`, і `MPEG`, і `MP3,AAC`. Мітка за
+/// принципом «усе незнайоме — чуже» відмовила б станції, яку Tapir пише й грає,
+/// а ADR §7 обіцяє протилежне: хибної відмови бути не може. Тож незнайоме — це
+/// **відсутність доказу**, і вердикт для нього виносить перше з'єднання, де
+/// докази справжні.
+///
+/// Імена сімей канонізуються (`OPUS` → `OGG`), щоб рядок потоку читався
+/// однаково, хоч би звідки прийшов вердикт — з каталогу чи з байтів.
+fn codec_to_verdict(codec: &str) -> (Option<AudioFormat>, Option<UnsupportedCodec>) {
+    match codec.trim().to_uppercase().as_str() {
+        "MP3" => (Some(AudioFormat::Mp3), None),
+        "AAC" | "AAC+" => (Some(AudioFormat::Aac), None),
+        "OGG" | "OPUS" | "VORBIS" | "OGG VORBIS" => {
+            (None, Some(UnsupportedCodec { family: Some("OGG".to_string()) }))
+        }
+        "FLAC" => (None, Some(UnsupportedCodec { family: Some("FLAC".to_string()) })),
+        _ => (None, None),
     }
 }
 
@@ -82,11 +100,13 @@ fn station_to_stream_info(station: &StationResult) -> StreamInfo {
     } else {
         station.url_resolved.clone()
     };
+    let (format, unsupported_codec) = codec_to_verdict(&station.codec);
     StreamInfo {
         id: nanoid::nanoid!(),
         url,
         name: station.name.trim().to_string(),
-        format: codec_to_format(&station.codec),
+        format,
+        unsupported_codec,
         bitrate: if station.bitrate > 0 { Some(station.bitrate) } else { None },
         icy_name: None,
         icy_genre: if station.tags.is_empty() { None } else { Some(station.tags.clone()) },
@@ -101,11 +121,13 @@ fn station_to_stream_info(station: &StationResult) -> StreamInfo {
 /// Build a StreamInfo straight from an anchor's offline fallback fields.
 /// StationResult has no Default, so we synthesize the StreamInfo directly.
 fn fallback_to_stream_info(anchor: &ExampleAnchor) -> StreamInfo {
+    let (format, unsupported_codec) = codec_to_verdict(anchor.fallback_codec);
     StreamInfo {
         id: nanoid::nanoid!(),
         url: anchor.fallback_url.to_string(),
         name: anchor.fallback_name.to_string(),
-        format: codec_to_format(anchor.fallback_codec),
+        format,
+        unsupported_codec,
         bitrate: if anchor.fallback_bitrate > 0 { Some(anchor.fallback_bitrate) } else { None },
         icy_name: None,
         icy_genre: None,
@@ -350,6 +372,7 @@ mod tests {
             url: url.into(),
             name: "n".into(),
             format: None,
+            unsupported_codec: None,
             bitrate: None,
             icy_name: None,
             icy_genre: None,
@@ -376,6 +399,46 @@ mod tests {
     }
 
     #[test]
+    fn station_with_a_foreign_codec_is_labelled_at_add_time() {
+        // Каталог має фільтр «Кодек» зі значенням OGG, тож такі станції
+        // додаються реально. Мітка з моменту додавання (ADR 2026-08-31 §6)
+        // рятує від марного з'єднання на першому записі.
+        let info = station_to_stream_info(&mk_station("Radio Ogg", "https://o", "OGG", 128));
+        assert_eq!(info.format, None);
+        assert_eq!(
+            info.unsupported_codec,
+            Some(UnsupportedCodec { family: Some("OGG".into()) }),
+        );
+    }
+
+    #[test]
+    fn an_unfamiliar_catalogue_codec_gets_no_verdict_at_all() {
+        // Поле каталогу — вільний рядок чужого API. Мітка за принципом «усе
+        // незнайоме — чуже» відмовила б станції, яку Tapir пише й грає, а
+        // ADR §7 обіцяє, що хибної відмови бути не може. Вирок винесе перше
+        // з'єднання, де докази справжні.
+        for codec in ["", "   ", "UNKNOWN", "AACP", "MPEG", "MP3,AAC"] {
+            let info = station_to_stream_info(&mk_station("X", "https://x", codec, 0));
+            assert_eq!(info.format, None, "codec {codec:?}");
+            assert_eq!(info.unsupported_codec, None, "codec {codec:?}");
+        }
+    }
+
+    #[test]
+    fn catalogue_family_names_are_canonical() {
+        // Та сама станція мусить читатись однаково, хоч би звідки прийшов
+        // вердикт: каталог зве це `OPUS`, магічні байти — `OggS`.
+        for codec in ["OGG", "Opus", "vorbis"] {
+            let info = station_to_stream_info(&mk_station("X", "https://x", codec, 0));
+            assert_eq!(
+                info.unsupported_codec,
+                Some(UnsupportedCodec { family: Some("OGG".into()) }),
+                "codec {codec:?}",
+            );
+        }
+    }
+
+    #[test]
     fn station_to_stream_info_maps_aac_zero_bitrate_and_empty_meta() {
         let s = mk_station("FIP", "https://fip", "AAC+", 0);
         let info = station_to_stream_info(&s);
@@ -390,7 +453,8 @@ mod tests {
         let mut s = mk_station("X", "", "OGG", 96);
         s.url = "https://raw-only".into();
         let info = station_to_stream_info(&s);
-        assert_eq!(info.format, None); // unknown codec
+        assert_eq!(info.format, None); // OGG — не з тих, які Tapir пише
+        assert!(info.unsupported_codec.is_some());
         assert_eq!(info.url, "https://raw-only"); // url_resolved empty -> url
     }
 
@@ -469,9 +533,11 @@ mod tests {
     }
 
     fn named_stream(url: &str, name: &str, codec: &str, bitrate: u32) -> StreamInfo {
+        let (format, unsupported_codec) = codec_to_verdict(codec);
         StreamInfo {
             name: name.into(),
-            format: codec_to_format(codec),
+            format,
+            unsupported_codec,
             bitrate: if bitrate > 0 { Some(bitrate) } else { None },
             ..stream(url)
         }

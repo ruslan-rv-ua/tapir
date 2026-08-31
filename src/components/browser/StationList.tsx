@@ -32,10 +32,20 @@ export const StationList = forwardRef<StationListHandle, Props>(
     const [failedPreview, setFailedPreview] = useState<Set<string>>(new Set());
     const selectedSet = useStore($stationSelection);
 
-    const existingUrls = useMemo(() => new Set(streams.map((s) => s.url)), [streams]);
+    // Keyed by URL, not id: the catalogue and the profile share nothing else.
+    // Holding the whole stream (rather than just its URL) is what lets a row
+    // show the codec verdict the backend already made — no second decision here.
+    const existingByUrl = useMemo(
+      () => new Map(streams.map((s) => [s.url, s])),
+      [streams],
+    );
+    const streamFor = useCallback(
+      (station: StationResult) => existingByUrl.get(station.urlResolved || station.url),
+      [existingByUrl],
+    );
     const isAlreadyAdded = useCallback(
-      (station: StationResult) => existingUrls.has(station.urlResolved || station.url),
-      [existingUrls],
+      (station: StationResult) => streamFor(station) !== undefined,
+      [streamFor],
     );
 
     const items = useMemo(
@@ -65,8 +75,17 @@ export const StationList = forwardRef<StationListHandle, Props>(
           return;
         }
         try {
-          await addStation(station);
-          announce(m.browser_station_added({ name: station.name }), "polite");
+          // The catalogue's own Codec column is the evidence, so the caveat can
+          // ride inside the confirmation instead of arriving as a second toast
+          // the user has to reconcile with the first (ADR 2026-08-31).
+          const added = await addStation(station);
+          const codec = added.unsupportedCodec?.family;
+          announce(
+            codec
+              ? m.browser_station_added_unsupported({ name: station.name, codec })
+              : m.browser_station_added({ name: station.name }),
+            "polite",
+          );
         } catch (err) {
           addToast(String(err), "error");
         }
@@ -84,6 +103,10 @@ export const StationList = forwardRef<StationListHandle, Props>(
         if (added.length > 0) replaceSelection($stationSelection, new Set()); // full skip keeps selection
         const parts = [m.stations_added_bulk({ count: added.length })];
         if (skipped > 0) parts.push(m.stations_skipped_duplicate({ count: skipped }));
+        // Added, but Tapir will not record them — said here rather than in a
+        // toast of its own, for the same reason as the single-add path.
+        const unrecordable = added.filter((s) => s.unsupportedCodec).length;
+        if (unrecordable > 0) parts.push(m.stations_added_unsupported({ count: unrecordable }));
         announce(parts.join(", "), "polite"); // focus deliberately NOT moved
       } catch (err) {
         addToast(String(err), "error");
@@ -156,6 +179,7 @@ export const StationList = forwardRef<StationListHandle, Props>(
               isFocused={isFocused}
               isActiveRow={isActive}
               isAdded={isAlreadyAdded(station)}
+              unsupported={streamFor(station)?.unsupportedCodec ?? null}
               isSelected={selectedSet.has(id)}
               isUnavailable={station.lastcheckok === 0 || failedPreview.has(id)}
               onAdd={() => void handleAdd(station)}

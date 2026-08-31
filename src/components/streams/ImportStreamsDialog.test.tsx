@@ -27,6 +27,9 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   streams_import_status_ok: ({ details }: { details: string }) => `✓ ${details}`,
   streams_import_status_error: ({ error }: { error: string }) => `✗ ${error}`,
   streams_import_status_duplicate: () => "already in profile",
+  streams_import_status_unsupported: ({ details }: { details: string }) => `⚠ ${details}`,
+  // formatBitrate builds the row's tail, so its key has to be mocked here too.
+  codec_unsupported: () => "not supported",
   streams_import_confirm: ({ count }: { count: number }) => `Import selected (${count})`,
   streams_import_progress: ({ done, total }: { done: number; total: number }) => `Checked ${done} of ${total}`,
   streams_import_summary: ({ ok, errors, duplicates }: { ok: number; errors: number; duplicates: number }) =>
@@ -67,10 +70,31 @@ describe("ImportStreamsDialog", () => {
     render(<ImportStreamsDialog />);
     await screen.findByText("Alpha");
     act(() => {
-      progressHandler?.({ url: "https://a/1", status: "ok", icyName: "Real Name", bitrate: 128, format: "mp3", error: null });
+      progressHandler?.({ url: "https://a/1", status: "ok", icyName: "Real Name", bitrate: 128, format: "mp3", unsupported: null, error: null });
     });
     await screen.findByText("Real Name");
     expect(screen.getByText("✓ 128 kbps · MP3")).toBeInTheDocument();
+  });
+
+  it("reads a stream Tapir cannot record as its own kind of row, still ticked", async () => {
+    // Не «✗»: станція відповіла й шле рівно те, що обіцяла — не пишемо її ми.
+    // Галочка лишається, бо додати таку станцію не заборонено.
+    $importCandidates.set(CANDIDATES);
+    render(<ImportStreamsDialog />);
+    await screen.findByText("Alpha");
+    act(() => {
+      progressHandler?.({
+        url: "https://a/1",
+        status: "ok",
+        icyName: null,
+        bitrate: 128,
+        format: null,
+        unsupported: { family: "OGG" },
+        error: null,
+      });
+    });
+    expect(await screen.findByText("⚠ 128 kbps · OGG · not supported")).toBeInTheDocument();
+    expect(screen.getByLabelText("Select stream: Alpha")).toBeChecked();
   });
 
   it("shows checking progress visibly, then the summary", async () => {
@@ -80,8 +104,8 @@ describe("ImportStreamsDialog", () => {
     // 2 non-duplicates are being checked — progress line is visible text
     expect(screen.getByText("Checked 0 of 2")).toBeVisible();
     act(() => {
-      progressHandler?.({ url: "https://a/1", status: "ok", icyName: null, bitrate: null, format: null, error: null });
-      progressHandler?.({ url: "https://b/2", status: "error", icyName: null, bitrate: null, format: null, error: "boom" });
+      progressHandler?.({ url: "https://a/1", status: "ok", icyName: null, bitrate: null, format: null, unsupported: null, error: null });
+      progressHandler?.({ url: "https://b/2", status: "error", icyName: null, bitrate: null, format: null, unsupported: null, error: "boom" });
     });
     expect(await screen.findByText("1 working, 1 failed, 1 already in profile")).toBeVisible();
   });
@@ -116,8 +140,8 @@ describe("ImportStreamsDialog", () => {
     await user.click(screen.getByRole("button", { name: "Import selected (2)" }));
     await waitFor(() =>
       expect(tauri.commitStreamImport).toHaveBeenCalledWith([
-        { url: "https://a/1", name: "Alpha", bitrate: null, format: null },
-        { url: "https://b/2", name: "Beta", bitrate: null, format: null },
+        { url: "https://a/1", name: "Alpha", bitrate: null, format: null, unsupported: null },
+        { url: "https://b/2", name: "Beta", bitrate: null, format: null, unsupported: null },
       ]),
     );
     expect(tauri.getStreams).toHaveBeenCalled();
@@ -129,14 +153,14 @@ describe("ImportStreamsDialog", () => {
     render(<ImportStreamsDialog />);
     await screen.findByText("Radio X");
     act(() => {
-      progressHandler?.({ url: "https://a/1", status: "ok", icyName: null, bitrate: 64, format: "aac", error: null });
+      progressHandler?.({ url: "https://a/1", status: "ok", icyName: null, bitrate: 64, format: "aac", unsupported: null, error: null });
     });
 
     await user.click(screen.getByRole("button", { name: "Import selected (1)" }));
 
     await waitFor(() =>
       expect(tauri.commitStreamImport).toHaveBeenCalledWith([
-        { url: "https://a/1", name: "Radio X", bitrate: 64, format: "aac" },
+        { url: "https://a/1", name: "Radio X", bitrate: 64, format: "aac", unsupported: null },
       ]),
     );
   });

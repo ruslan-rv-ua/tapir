@@ -147,6 +147,10 @@ pub struct HotkeyMap {
       "url": "https://ice1.somafm.com/groovesalad-256-mp3",
       "name": "SomaFM Groove Salad",
       "format": "mp3",
+      // Заповнена, лише коли останній вердикт про ефір був «не пишемо»:
+      // { "family": "OGG" } — сім'ю впізнано, { "family": null } — доказів
+      // не вистачило ні на що. Взаємовиключна з format.
+      "unsupportedCodec": null,
       "bitrate": 256,
       // Ці поля заповнюються при першому підключенні
       "icyName": "SomaFM: Groove Salad",
@@ -324,6 +328,7 @@ interface StreamInfo {
   url: string;                   // resolved URL (після PLS/M3U parsing)
   name: string;                  // user-defined або ICY name
   format: "mp3" | "aac" | null; // визначається при першому підключенні
+  unsupportedCodec: { family: string | null } | null; // мітка відмови, див. нижче
   bitrate: number | null;        // з ICY headers, кбіт/с
   icyName: string | null;        // icy-name заголовок
   icyGenre: string | null;       // icy-genre заголовок
@@ -343,6 +348,8 @@ pub struct StreamInfo {
     pub url: String,
     pub name: String,
     pub format: Option<AudioFormat>,
+    #[serde(default)]
+    pub unsupported_codec: Option<UnsupportedCodec>,
     pub bitrate: Option<u32>,
     pub icy_name: Option<String>,
     pub icy_genre: Option<String>,
@@ -354,12 +361,28 @@ pub struct StreamInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnsupportedCodec {
+    #[serde(default)]
+    pub family: Option<String>,   // "OGG" / "FLAC"; None — доказів не вистачило
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AudioFormat {
     Mp3,
     Aac,
 }
 ```
+
+**Формат і мітка кодека** — дві половини одного вердикту `stream::format::detect`
+(`Content-Type`, далі магічні байти, без дефолту — ADR 2026-08-31): заповнена завжди
+рівно одна з них, і обидві перезаписуються разом. `unsupportedCodec != null` означає,
+що Tapir цього ефіру **не записує**: старт запису відмовляє, не створивши файлу й не
+витративши спроби перепідключення, планувальник відмовляє **не з'єднуючись**, а Play
+відмовляє одразу. Мітку кладе перевірка при додаванні (діалог, каталог, імпорт) або
+попередня відмова; вона застаріває, як і `format`, і лікується наступним запуском
+запису вручну.
 
 **Автооновлення ICY полів:** Після першого підключення `recording_task` зберігає дані з ICY headers у профіль: `bitrate`, `format`, `icy_name`, `icy_genre`. Якщо `name == url` (користувач не вказав ім'я), `name` автоматично замінюється на `icy_name` — з антиколізійним суфіксом за правилами нижче. Профіль зберігається на диск, і emit-ується `stream-info-updated` event для оновлення фронтенду.
 
@@ -456,7 +479,7 @@ interface ScheduleResult {
 
 type ScheduleResultReason =
   // missed:
-  | "appNotRunning" | "startFailed" | "clockChange"
+  | "appNotRunning" | "startFailed" | "clockChange" | "unsupportedCodec"
   // stoppedByUser:
   | "manualStop" | "profileSwitch" | "appClosing" | "scheduleEdited";
 ```
@@ -516,6 +539,7 @@ pub enum ScheduleResultReason {
     AppNotRunning,
     StartFailed,
     ClockChange,
+    UnsupportedCodec,
     ManualStop,
     ProfileSwitch,
     AppClosing,
@@ -1032,6 +1056,15 @@ interface StreamErrorPayload {
   streamId: string;
   message: string;
   willRetry: boolean;
+}
+
+// stream-unsupported — ефір, який Tapir не записує (ADR 2026-08-31).
+// Свідомо НЕ stream-error: стан потоку не стає `error`, спроба не витрачена,
+// перепідключення не заплановано. family = "OGG" / "FLAC", або null, коли
+// доказів не вистачило; готового рядка backend не віддає — текст складе Paraglide.
+interface StreamUnsupportedPayload {
+  streamId: string;
+  family: string | null;
 }
 
 // stream-info-updated — після підключення, коли ICY headers оновили профіль потоку

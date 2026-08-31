@@ -281,6 +281,7 @@ fn missed_reason(reason: Option<&ScheduleResultReason>) -> String {
         Some(ScheduleResultReason::AppNotRunning) => i18n::t(Key::ReasonAppNotRunning),
         Some(ScheduleResultReason::StartFailed) => i18n::t(Key::ReasonStartFailed),
         Some(ScheduleResultReason::ClockChange) => i18n::t(Key::ReasonClockChange),
+        Some(ScheduleResultReason::UnsupportedCodec) => i18n::t(Key::ReasonUnsupportedCodec),
         // Причини немає — тире не перекладається.
         _ => "—".to_string(),
     }

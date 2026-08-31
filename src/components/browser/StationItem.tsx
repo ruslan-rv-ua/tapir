@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useStore } from "@nanostores/react";
 import { Play, Square, Plus, Check, TriangleAlert, Globe, Languages, Music, Signal, Tag, Headphones } from "lucide-react";
-import type { StationResult } from "../../lib/tauri";
+import type { StationResult, UnsupportedCodec } from "../../lib/tauri";
 import type { SegmentKind } from "../../hooks/useCompositeList";
 import { CompositeRow, CompositeSegment, CompositeAction, COMPOSITE_FOCUS_RING } from "../common/composite-list";
 import { $playerStatus } from "../../stores/player";
@@ -41,6 +41,10 @@ interface StationItemProps {
   isFocused: (segment: SegmentKind) => boolean;
   isActiveRow: boolean;
   isAdded: boolean;
+  /** Set when this station is already in the profile AND its air is not
+   *  something Tapir records. The visible carrier for the caveat the add
+   *  announces (ADR 2026-08-31): the codec cell says so, not just the voice. */
+  unsupported: UnsupportedCodec | null;
   /** lastcheckok === 0 OR a preview attempt has failed this session. */
   isUnavailable: boolean;
   isSelected: boolean;
@@ -53,6 +57,7 @@ export function StationItem({
   isFocused,
   isActiveRow,
   isAdded,
+  unsupported,
   isUnavailable,
   isSelected,
   onAdd,
@@ -118,7 +123,11 @@ export function StationItem({
   }[] = [
     { kind: "country",    show: !!station.country,    role: m.segment_country(),    value: station.country },
     { kind: "language",   show: !!station.language,   role: m.segment_language(),   value: station.language },
-    { kind: "codec",      show: !!station.codec,      role: m.segment_codec(),      value: station.codec },
+    // Gated on the catalogue's own codec so the cell list keeps matching
+    // `getStationSegments` — an extra cell would knock segment navigation out
+    // of step with what is rendered.
+    { kind: "codec",      show: !!station.codec,      role: m.segment_codec(),
+      value: unsupported ? `${station.codec} · ${m.codec_unsupported()}` : station.codec },
     { kind: "bitrate",    show: !!station.bitrate,    role: m.segment_bitrate(),    value: `${station.bitrate} kbps` },
     { kind: "genre",      show: !!station.tags,       role: m.segment_genre(),      value: station.tags },
     { kind: "popularity", show: !!station.clickcount, role: m.segment_popularity(), value: String(station.clickcount) },

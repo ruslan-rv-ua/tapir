@@ -34,7 +34,7 @@ import { $activeSection } from "./stores/navigation";
 import { SECTIONS } from "./lib/sections";
 import { addToast } from "./stores/toasts";
 import * as tauri from "./lib/tauri";
-import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, RecordingStartedPayload, RecordingCompletedPayload, StreamInfo, PlayerStatus, PlayerProgressPayload, WishlistMatchPayload, TrackIgnoredPayload, PlayerEndedPayload, PlaybackAnnounce } from "./lib/tauri";
+import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, StreamUnsupportedPayload, RecordingStartedPayload, RecordingCompletedPayload, StreamInfo, PlayerStatus, PlayerProgressPayload, WishlistMatchPayload, TrackIgnoredPayload, PlayerEndedPayload, PlaybackAnnounce } from "./lib/tauri";
 import { $filteredSongs } from "./stores/songs";
 import { computePlaybackNeighbors } from "./stores/playbackNeighbors";
 import { resolveEndedAction } from "./lib/playbackTransport";
@@ -220,6 +220,19 @@ function AppContent() {
     addToast(`${name}: ${payload.message}`, "error");
   }, []);
 
+  // Відмова записувати, а не збій: стан потоку лишається чистим, і текст не
+  // радить повторити спробу — вердикт про ефір той самий (ADR 2026-08-31).
+  const handleStreamUnsupported = useCallback((payload: StreamUnsupportedPayload) => {
+    const stream = $streams.get().find((s) => s.id === payload.streamId);
+    const name = stream?.name ?? payload.streamId;
+    addToast(
+      payload.family
+        ? m.stream_unsupported_codec({ name, codec: payload.family })
+        : m.stream_unsupported_unknown({ name }),
+      "error",
+    );
+  }, []);
+
   const handleStreamInfoUpdated = useCallback((updated: StreamInfo) => {
     $streams.set($streams.get().map((s) => (s.id === updated.id ? updated : s)));
   }, []);
@@ -361,6 +374,7 @@ function AppContent() {
   useTauriEvent<RecordingStatusPayload>("recording-status", handleRecordingStatus);
   useTauriEvent<TrackChangedPayload>("track-changed", handleTrackChanged);
   useTauriEvent<StreamErrorPayload>("stream-error", handleStreamError);
+  useTauriEvent<StreamUnsupportedPayload>("stream-unsupported", handleStreamUnsupported);
   useTauriEvent<StreamInfo>("stream-info-updated", handleStreamInfoUpdated);
   const handleRecordingStarted = useCallback(() => {}, []);
   useTauriEvent<RecordingStartedPayload>("recording-started", handleRecordingStarted);

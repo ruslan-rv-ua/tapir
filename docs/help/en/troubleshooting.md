@@ -28,7 +28,7 @@ The entry's own row carries the reason. Three of them come up most: Tapir was no
 
 Tapir plays MP3 and AAC. A station whose codec is `AAC+` records perfectly well but stays silent inside Tapir — playback waits a while and gives up. The recording itself is sound: open it in another program with `Alt+Enter` on the Recordings screen.
 
-You can see this coming. The Station Browser shows a **Codec** column for every station, and the **Codec** filter narrows a search to the ones Tapir can play.
+You can see this coming. The Station Browser shows a **Codec** column for every station, and the **Codec** filter narrows a search to the values you want. Tapir records exactly two of them: `MP3` and `AAC`. A station with any other codec — `OGG`, say — will not record at all: rather than a file whose contents do not match its name, Tapir says it cannot do this, and the stream's row then shows the codec followed by "not supported".
 
 ### Playback runs but there is no sound
 

@@ -6,13 +6,13 @@ The Streams screen holds your station list — everything you record or listen t
 
 Press `Ctrl+N` or use **Add stream**, then paste the address into **Stream URL**. **Name (optional)** can stay empty: Tapir takes the station's own name from the air. A playlist address (`.pls`, `.m3u`) works too — Tapir reads the real stream address out of it.
 
-The first time you submit, Tapir checks the address and reports what it finds. Nothing here refuses a stream: if it does not respond, if the address is already in the profile, or if the name would collide with another station, you see the warning once and a second submit adds it anyway. Take the name collision seriously, though — two streams under one name record into the same folder.
+The first time you submit, Tapir checks the address and reports what it finds. Nothing here refuses a stream: if it does not respond, if its codec is not one Tapir records, if the address is already in the profile, or if the name would collide with another station, you see the warning once and a second submit adds it anyway. Take the name collision seriously, though — two streams under one name record into the same folder.
 
 ### Keeping the list in order
 
 Filter with **All**, **Recording** and **With errors**; sort **By name** or **By date added**. There is no search box on this screen — press `Ctrl+K` and type a few letters of the name.
 
-**Import…** and **Export…** move whole lists as `M3U8` or `PLS`. On import Tapir checks every stream and marks those already in the profile; they are skipped, never duplicated.
+**Import…** and **Export…** move whole lists as `M3U8` or `PLS`. On import Tapir checks every stream and marks those already in the profile; they are skipped, never duplicated. A stream whose codec Tapir does not record is marked too — but stays selected: nothing stops you adding it.
 
 `F2` edits the name and address. While a stream is recording its address is locked — stop the recording and the field opens. When the station reports a name of its own, the dialog offers **Use the official name**.
 

@@ -2,14 +2,19 @@ import { Dialog, Modal, ModalOverlay, Heading } from "react-aria-components";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStore } from "@nanostores/react";
 import * as tauri from "../../lib/tauri";
-import type { ImportCandidate, ImportProgressPayload } from "../../lib/tauri";
+import type { ImportCandidate, ImportProgressPayload, UnsupportedCodec } from "../../lib/tauri";
+import { formatBitrate } from "../../lib/formatters";
 import { $streams, $importCandidates } from "../../stores/streams";
 import { useTauriEvent } from "../../hooks/useTauriEvent";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import { addToast } from "../../stores/toasts";
 import * as m from "../../i18n/paraglide/messages";
 
-type RowStatus = "checking" | "ok" | "error" | "duplicate";
+/** "unsupported" is a fourth kind of row, not a failure: the probe reached the
+ *  station and read what it sends — Tapir just does not record it. The row says
+ *  so and its checkbox stays ticked, because adding such a stream is allowed
+ *  (ADR 2026-08-31). */
+type RowStatus = "checking" | "ok" | "error" | "duplicate" | "unsupported";
 
 interface Row {
   url: string;
@@ -18,6 +23,7 @@ interface Row {
   checked: boolean;
   bitrate: number | null;
   format: string | null;
+  unsupported: UnsupportedCodec | null;
   error: string | null;
 }
 
@@ -29,6 +35,7 @@ function seedRows(candidates: ImportCandidate[]): Row[] {
     checked: !c.alreadyInProfile,
     bitrate: null,
     format: null,
+    unsupported: null,
     error: null,
   }));
 }
@@ -37,6 +44,13 @@ function statusText(r: Row): string {
   if (r.status === "duplicate") return m.streams_import_status_duplicate();
   if (r.status === "checking") return m.streams_import_status_checking();
   if (r.status === "error") return m.streams_import_status_error({ error: r.error ?? "" });
+  // Same segment the streams list shows, so the verdict reads identically in
+  // both places: "128 kbps · OGG · not supported".
+  if (r.status === "unsupported") {
+    return m.streams_import_status_unsupported({
+      details: formatBitrate(r.bitrate, null, r.unsupported ?? { family: null }),
+    });
+  }
   const details = [r.bitrate ? `${r.bitrate} kbps` : null, r.format ? r.format.toUpperCase() : null]
     .filter(Boolean)
     .join(" · ");
@@ -49,6 +63,7 @@ const STATUS_CLASSES: Record<RowStatus, string> = {
   checking: "animate-pulse text-slate-400",
   ok: "text-emerald-400",
   error: "text-red-400",
+  unsupported: "text-amber-400",
   duplicate: "text-amber-400",
 };
 
@@ -80,13 +95,18 @@ export function ImportStreamsDialog() {
         r.url === p.url
           ? {
               ...r,
-              status: p.status,
+              // The backend reports one `ok` for "reachable"; the label is what
+              // splits it into two kinds of row.
+              status: p.status === "ok" && p.unsupported ? "unsupported" : p.status,
               // A stream that failed its probe defaults to unchecked (but stays
-              // enabled — the user may still import an offline station).
+              // enabled — the user may still import an offline station). An
+              // unsupported one keeps its tick: the address is fine, and the
+              // label travels into the profile with it.
               checked: p.status === "error" ? false : r.checked,
               name: p.status === "ok" && p.icyName ? p.icyName : r.name,
               bitrate: p.bitrate ?? r.bitrate,
               format: p.format ?? r.format,
+              unsupported: p.unsupported ?? null,
               error: p.error ?? null,
             }
           : r,
@@ -123,7 +143,7 @@ export function ImportStreamsDialog() {
     stillChecking > 0
       ? m.streams_import_progress({ done: totalToCheck - stillChecking, total: totalToCheck })
       : m.streams_import_summary({
-          ok: rows.filter((r) => r.status === "ok").length,
+          ok: rows.filter((r) => r.status === "ok" || r.status === "unsupported").length,
           errors: rows.filter((r) => r.status === "error").length,
           duplicates: rows.filter((r) => r.status === "duplicate").length,
         });
@@ -139,6 +159,7 @@ export function ImportStreamsDialog() {
         name: r.name,
         bitrate: r.bitrate,
         format: r.format as "mp3" | "aac" | null,
+        unsupported: r.unsupported,
       }));
     if (selected.length === 0) return;
     setCommitting(true);

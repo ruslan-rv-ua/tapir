@@ -4,11 +4,29 @@ use crate::settings::strip_bom;
 use serde::{Deserialize, Serialize};
 
 // --- AudioFormat ---
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// Закритий набір того, що Tapir уміє **записати**: назвати розширенням файлу
+/// й протегувати (CONTEXT.md, «Формат»). Не опис того, що буває в ефірі —
+/// чужа сім'я варіанта тут не отримує, вона живе в [`UnsupportedCodec`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AudioFormat {
     Mp3,
     Aac,
+}
+
+/// Мітка «цього ефіру Tapir не пише» — кеш останнього вердикту `detect`
+/// (ADR 2026-08-31 §6). Живе поруч із `format` і перезаписується разом із ним:
+/// заповнена рівно тоді, коли `format` порожній через відмову, а не через те,
+/// що потік ще жодного разу не перевіряли.
+///
+/// `family` названа, коли сім'ю впізнано (`OGG`, `FLAC`), і `None`, коли
+/// доказів не вистачило ні на що. Мітка живить три речі: носія в рядку потоку,
+/// фаст-фейл планувальника й коротке замикання Play.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnsupportedCodec {
+    #[serde(default)]
+    pub family: Option<String>,
 }
 
 // --- StreamInfo ---
@@ -20,6 +38,10 @@ pub struct StreamInfo {
     pub name: String,
     #[serde(default)]
     pub format: Option<AudioFormat>,
+    /// Заповнена, коли останній вердикт про ефір був «не пишемо» — див.
+    /// [`UnsupportedCodec`]. Взаємовиключна з `format`.
+    #[serde(default)]
+    pub unsupported_codec: Option<UnsupportedCodec>,
     #[serde(default)]
     pub bitrate: Option<u32>,
     #[serde(default)]
@@ -111,6 +133,7 @@ pub enum ScheduleResultReason {
     AppNotRunning,   // вікно минуло без жодної спроби старту в цій сесії
     StartFailed,     // спроби старту були, всі невдалі
     ClockChange,     // неіснуючий локальний час (DST-стрибок уперед)
+    UnsupportedCodec, // ефір не з тих, які Tapir уміє писати — старту не було
     // StoppedByUser:
     ManualStop,      // зупинка з UI або глобального хоткея
     ProfileSwitch,   // переключення профілю
@@ -1160,6 +1183,7 @@ mod tests {
         profile.streams.push(StreamInfo {
             id: "1".into(), url: "http://x".into(), name: "X".into(),
             format: None, bitrate: None, icy_name: None, icy_genre: None,
+            unsupported_codec: None,
             icy_url: None, ignorelist: vec![], username: Some("user".into()),
             password: Some("hunter2".into()), added_at: "2026-01-01".into(),
         });
@@ -1202,6 +1226,7 @@ mod tests {
         let s = StreamInfo {
             id: "1".into(), url: "http://a".into(), name: "A".into(),
             format: None, bitrate: None, icy_name: None, icy_genre: None,
+            unsupported_codec: None,
             icy_url: None, ignorelist: vec![], username: None, password: None,
             added_at: "2026-01-01".into(),
         };
@@ -1215,6 +1240,7 @@ mod tests {
         let mk = |id: &str| StreamInfo {
             id: id.into(), url: "http://dup".into(), name: "X".into(),
             format: None, bitrate: None, icy_name: None, icy_genre: None,
+            unsupported_codec: None,
             icy_url: None, ignorelist: vec![], username: None, password: None,
             added_at: "2026-01-01".into(),
         };
