@@ -37,9 +37,6 @@
   // Дія при активації потоку (Enter / подвійний клік): "record" | "play"
   "doubleClickAction": "record",
 
-  // Ліміт пропускної здатності (кБ/с). 0 = без ліміту
-  "bandwidthLimitKbps": 0,
-
   // Автозапуск з Windows
   "autostart": false,
 
@@ -72,7 +69,6 @@ interface GlobalSettings {
   minimizeToTray: boolean;
   showTrackInTitle: boolean;
   doubleClickAction: "record" | "play";
-  bandwidthLimitKbps: number;
   autostart: boolean;
   autostartMinimized: boolean;
   hotkeys: HotkeyMap;
@@ -102,7 +98,6 @@ pub struct GlobalSettings {
     pub minimize_to_tray: bool,
     pub show_track_in_title: bool,
     pub double_click_action: DoubleClickAction,
-    pub bandwidth_limit_kbps: u32,
     pub autostart: bool,
     pub autostart_minimized: bool,
     pub hotkeys: HotkeyMap,
@@ -1131,7 +1126,6 @@ interface PostprocessErrorPayload {
   "minimizeToTray": true,
   "showTrackInTitle": true,
   "doubleClickAction": "record",
-  "bandwidthLimitKbps": 0,
   "autostart": false,
   "autostartMinimized": true,
   "hotkeys": {

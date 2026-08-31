@@ -22,7 +22,6 @@ const baseSettings: GlobalSettings = {
   showTrackInTitle: true,
   doubleClickAction: "play",
   smtcEnabled: true,
-  bandwidthLimitKbps: 0,
   autostart: false,
   autostartMinimized: true,
   prevRestartThresholdMs: 0,

@@ -264,7 +264,7 @@
 | 3F | Profile Manager (повний CRUD) | Phase 1 | 🟡 Середня |
 | 3G | CLI Arguments | Phase 1 + 2, 3E | 🟡 Середня |
 | 3H | Post-processing | Phase 1 | 🟢 Низька |
-| 3I | Polish Bundle (HC, Autostart, Logs, BW) | — (незалежні) | 🟢 Низька |
+| 3I | Polish Bundle (HC, Autostart, Logs) | — (незалежні) | 🟢 Низька |
 | 3J | Stream Import/Export (M3U8/PLS) | Phase 1 (stream::playlist) | 🟡 Середня |
 | 3K | Crash Recovery (clean_shutdown + resume) | Phase 1 (graceful_shutdown) | 🟠 Висока |
 

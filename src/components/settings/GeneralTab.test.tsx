@@ -21,7 +21,6 @@ const baseSettings: GlobalSettings = {
   minimizeToTray: false,
   showTrackInTitle: true,
   doubleClickAction: "play",
-  bandwidthLimitKbps: 0,
   autostart: false,
   autostartMinimized: true,
   prevRestartThresholdMs: 0,

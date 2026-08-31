@@ -47,7 +47,7 @@ const mkSong = (path: string, title: string): Song => ({
 
 const baseSettings: GlobalSettings = {
   language: "en-US", theme: "auto", activeProfile: "Default", outputDevice: null,
-  minimizeToTray: true, showTrackInTitle: true, doubleClickAction: "play", bandwidthLimitKbps: 0,
+  minimizeToTray: true, showTrackInTitle: true, doubleClickAction: "play",
   autostart: false, autostartMinimized: true, prevRestartThresholdMs: 0,
   hotkeys: {
     toggleRecording: "", togglePlayback: "", volumeUp: "", volumeDown: "", toggleWindow: "", stopAll: "", prevTrack: "", nextTrack: "",

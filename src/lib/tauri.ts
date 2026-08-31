@@ -82,7 +82,6 @@ export interface GlobalSettings {
   minimizeToTray: boolean;
   showTrackInTitle: boolean;
   doubleClickAction: "record" | "play";
-  bandwidthLimitKbps: number;
   autostart: boolean;
   autostartMinimized: boolean;
   prevRestartThresholdMs: number;

@@ -52,7 +52,7 @@ const mkStream = (id: string, name: string): StreamInfo => ({
 
 const baseSettings: GlobalSettings = {
   language: "uk", theme: "auto", activeProfile: "Default", outputDevice: null,
-  minimizeToTray: false, showTrackInTitle: false, doubleClickAction: "record", bandwidthLimitKbps: 0,
+  minimizeToTray: false, showTrackInTitle: false, doubleClickAction: "record",
   autostart: false, autostartMinimized: true, prevRestartThresholdMs: 0,
   hotkeys: { toggleRecording: "", togglePlayback: "", volumeUp: "", volumeDown: "", toggleWindow: "", stopAll: "", prevTrack: "", nextTrack: "" },
   logMaxSizeMb: 10, logLevel: "info",

@@ -26,8 +26,6 @@ pub struct GlobalSettings {
     #[serde(default)]
     pub double_click_action: DoubleClickAction,
     #[serde(default)]
-    pub bandwidth_limit_kbps: u32,
-    #[serde(default)]
     pub autostart: bool,
     #[serde(default = "default_true")]
     pub autostart_minimized: bool,
@@ -173,7 +171,6 @@ impl Default for GlobalSettings {
             minimize_to_tray: true,
             show_track_in_title: true,
             double_click_action: DoubleClickAction::Record,
-            bandwidth_limit_kbps: 0,
             autostart: false,
             autostart_minimized: true,
             hotkeys: HotkeyMap::default(),
@@ -273,6 +270,21 @@ mod tests {
                     "resumeFileFrom", "sortBy"] {
             assert!(!out.contains(key), "{key} must not be written back: {out}");
         }
+    }
+
+    #[test]
+    fn bandwidth_limit_is_gone_from_global_settings() {
+        // Фазу 3I-4 (Bandwidth Limiting) відхилено 2026-06-15 — поле лишалося
+        // налаштуванням без жодного споживача. Старий settings.json, який його
+        // ще має, мусить завантажитись, а ключ назад не записується.
+        let json = r#"{"language":"en-US","activeProfile":"Default","bandwidthLimitKbps":512}"#;
+        let s: GlobalSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(s.active_profile, "Default");
+        let out = serde_json::to_string(&s).unwrap();
+        assert!(
+            !out.contains("bandwidthLimitKbps"),
+            "bandwidthLimitKbps must not be written back: {out}"
+        );
     }
 
     #[test]

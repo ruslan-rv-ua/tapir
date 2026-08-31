@@ -574,7 +574,6 @@ app.global_shortcut().on_shortcut("Ctrl+Shift+R", |app, _shortcut, event| {
 | `wishlist-match` | `{streamId, artist, title, pattern}` | Знайдено трек зі списку бажань |
 | `disk-space-low` | `{availableGb, thresholdGb}` | Мало місця на диску |
 | `disk-space-ok` | `{availableGb}` | Місце на диску відновлено (після disk-space-low) |
-| `bandwidth-exceeded` | `{currentKbps, limitKbps}` | Перевищено ліміт пропускної здатності |
 | `profile-changed` | `{profile}` | Профіль змінено |
 | `postprocess-started` | `{fileName}` | Розпочато постобробку |
 | `postprocess-completed` | `{fileName, success, output?}` | Постобробку завершено |
@@ -708,12 +707,6 @@ loop {
   - Кнопки: "Відкрити провідник" (показати папку recordings) | "Закрити"
 - Після `disk-space-ok` — toast замінюється на polite announcement: "Місце на диску відновлено"
 - Перезапуск записів — лише вручну (користувач повторно натискає Record)
-
-### Пропускна здатність
-
-Якщо `bandwidthLimitKbps > 0`, StreamManager обчислює сумарну швидкість усіх активних потоків. При перевищенні:
-- `emit("bandwidth-exceeded", {currentKbps, limitKbps})`
-- Нові записи не стартують до зниження навантаження
 
 ---
 
