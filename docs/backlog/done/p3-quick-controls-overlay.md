@@ -37,7 +37,7 @@ Tauri-вікно проти нативного Win32; toggle проти відк
   єдиним способом керувати Tapir, не піднімаючи вікно. Це підвищує ставку двох
   записів у 0.1.0: [tray-layer-not-localized](p1-tray-layer-not-localized.md)
   (єдина фонова поверхня зобов'язана бути двомовною — обхідного шляху більше немає)
-  і [sound-hotkeys-feedback-announce-only](../p1-sound-hotkeys-feedback-announce-only.md)
+  і [sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md)
   (відгук на глобальні клавіші лишається balloon tips + видима поверхня у вікні).
 - Сценарій «5–10 кроків, щоб змінити дію з іншого застосунку» приймається як ціна:
   дешевшає він лише розширенням набору глобальних клавіш, не новим вікном.

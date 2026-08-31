@@ -91,5 +91,5 @@ notes:
 
 - [unknown-format-falls-back-to-mp3](done/p1-unknown-format-falls-back-to-mp3.md) — звідки знахідка; додав відмову, на яку транспорт тепер натикається
 - [ADR 2026-08-31 — видимий носій](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) §2, §5 — чому оголошення саме по собі поверхнею не є
-- [sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md), [volume-hotkey-no-feedback](p1-volume-hotkey-no-feedback.md) — та сама родина мовчазних поверхонь
+- [sound-hotkeys-feedback-announce-only](done/p1-sound-hotkeys-feedback-announce-only.md), [volume-hotkey-no-feedback](p1-volume-hotkey-no-feedback.md) — та сама родина мовчазних поверхонь
 - Код: `src/lib/transportControl.ts`, `src/App.tsx`, `src/components/player/PlayerPanel.tsx`

@@ -3,11 +3,12 @@ slug: sound-hotkeys-feedback-announce-only
 title: "Правило видимого носія — і числа плеєра, які його порушують"
 priority: P1
 type: planned
-status: ready
+status: done
 effort: S
 kind: bug
 target: 0.1.0
 updated: 2026-08-31
+completed: 2026-08-31
 a11y: false
 depends_on: []
 blocks: [volume-hotkey-no-feedback]
@@ -34,9 +35,9 @@ notes:
 
 # Правило видимого носія — і числа плеєра, які його порушують
 
-> **Контекст:** правило ухвалено й лежить в [ADR 2026-08-31](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) —
+> **Контекст:** правило ухвалено й лежить в [ADR 2026-08-31](../../decisions/2026-08-31-visible-carrier-for-announced-facts.md) —
 > читати першим, тут лише його застосування. Знайдено під час grilling
-> [help-muted-playback-symptom](done/p2-help-muted-playback-symptom.md), переосмислено
+> [help-muted-playback-symptom](p2-help-muted-playback-symptom.md), переосмислено
 > під час grilling 2026-08-31.
 
 ## Опис
@@ -53,14 +54,14 @@ notes:
 Позиція у файлі та рівень гучності показані **смужками**, а самі числа записані в
 `aria-valuetext` — атрибут, який читає лише скрінрідер:
 
-- позиція — [PlaybackPosition.tsx:70](../../src/components/player/PlaybackPosition.tsx:70),
+- позиція — [PlaybackPosition.tsx:70](../../../src/components/player/PlaybackPosition.tsx:70),
   `formatTime(pos)`;
-- гучність — [VolumeSlider.tsx:66](../../src/components/player/VolumeSlider.tsx:66), `${percent}%`.
+- гучність — [VolumeSlider.tsx:66](../../../src/components/player/VolumeSlider.tsx:66), `${percent}%`.
 
 Смужка повідомляє «десь на третині». Вона не повідомляє «2:14» і не повідомляє «45%».
 
 Для позиції є друга половина дефекту: при невідомій тривалості файлу `PlaybackPosition`
-повертає `null` ([:39](../../src/components/player/PlaybackPosition.tsx:39)) — тоді позиції
+повертає `null` ([:39](../../../src/components/player/PlaybackPosition.tsx:39)) — тоді позиції
 немає ні в якому вигляді.
 
 Правку робити **однією змінною на двох споживачів** (§6 ADR): `const positionText =
@@ -71,22 +72,22 @@ formatTime(pos)` іде і в видимий `<span>`, і в `aria-valuetext`. �
 
 Два оголошення без видимого носія:
 
-- «Налаштування програми збережено» — [useSettingsAutoSave.ts:27](../../src/hooks/useSettingsAutoSave.ts:27);
-- «Налаштування збережено: назва» — [ProfileSettingsDialog.tsx:111](../../src/components/profile/ProfileSettingsDialog.tsx:111).
+- «Налаштування програми збережено» — [useSettingsAutoSave.ts:27](../../../src/hooks/useSettingsAutoSave.ts:27);
+- «Налаштування збережено: назва» — [ProfileSettingsDialog.tsx:111](../../../src/components/profile/ProfileSettingsDialog.tsx:111).
 
 Це застосування §5 ADR у бік «прибрати факт», а не «додати носія». Обґрунтування:
 результат дії «зняв прапорець» — це стан прапорця, і він видимий; «записано на диск» —
 внутрішня механіка, якою застосунок пообіцяв займатись сам. Втратити зміну не можна навіть
-закривши діалог ([useAutoSave.ts:20](../../src/hooks/useAutoSave.ts:20) дописує при
+закривши діалог ([useAutoSave.ts:20](../../../src/hooks/useAutoSave.ts:20) дописує при
 розмонтуванні), а провал кричить тостом. Довідка підтвердження не обіцяє —
-[settings.md:7](../help/uk/settings.md:7) каже лише «зберігаються самі, кнопки «Зберегти» немає».
+[settings.md:7](../../help/uk/settings.md:7) каже лише «зберігаються самі, кнопки «Зберегти» немає».
 
 Прецедент уже в коді: вкладка гарячих клавіш `useSettingsAutoSave` **не використовує**, бо
 говорить про саму зміну, а не про запис.
 
 ## Критерії готовності
 
-- [x] `docs/help/` оновлено: [player.md](../help/uk/player.md) §«Що показує панель» називає
+- [x] `docs/help/` оновлено: [player.md](../../help/uk/player.md) §«Що показує панель» називає
       числа позиції й гучності — зараз перелік вмісту панелі стане неповним. Обидві локалі.
 - [x] Позиція файлу показана числом поруч зі смужкою; при невідомій тривалості число є теж
 - [x] Гучність показана числом поруч зі смужкою
@@ -101,7 +102,7 @@ formatTime(pos)` іде і в видимий `<span>`, і в `aria-valuetext`. �
 
 ## Прийняті рішення
 
-Усе — в [ADR 2026-08-31](../decisions/2026-08-31-visible-carrier-for-announced-facts.md).
+Усе — в [ADR 2026-08-31](../../decisions/2026-08-31-visible-carrier-for-announced-facts.md).
 Коротко, що змінилось проти вихідної редакції запису:
 
 - **Критерій «`F9` дає видиму відповідь» викреслено.** Зона плеєра постійна, відповідь `F9`
@@ -117,27 +118,27 @@ formatTime(pos)` іде і в видимий `<span>`, і в `aria-valuetext`. �
 
 Знайдено цим правилом, винесено окремими записами:
 
-- [wishlist-match-invisible](done/p1-wishlist-match-invisible.md) — збіг із вішлістом не показується
+- [wishlist-match-invisible](p1-wishlist-match-invisible.md) — збіг із вішлістом не показується
   **ніде**. Поза межею: подія станції, не дія користувача (§3 ADR).
-- [preview-player-presentation](p2-preview-player-presentation.md) — плеєр пропонує поставити
+- [preview-player-presentation](../p2-preview-player-presentation.md) — плеєр пропонує поставити
   ефір на паузу. Інший клас: дія видима, але неможлива.
-- [volume-hotkey-no-feedback](p1-volume-hotkey-no-feedback.md) — глобальні клавіші гучності
+- [volume-hotkey-no-feedback](../p1-volume-hotkey-no-feedback.md) — глобальні клавіші гучності
   мовчать і для скрінрідера. Дзеркальний бік, якого §4 ADR свідомо не покриває.
 
 Також лишається поза скоупом, як і у вихідній редакції:
 
 - **Постійний індикатор вимкненого звуку поза зоною плеєра** — відхилено в ADR: кнопка mute
   не може зникнути з екрана.
-- **Що саме вважається вимкненим звуком** — [zero-volume-reads-as-muted](done/p2-zero-volume-reads-as-muted.md).
+- **Що саме вважається вимкненим звуком** — [zero-volume-reads-as-muted](p2-zero-volume-reads-as-muted.md).
 
 ## Документи
 
-- [ADR 2026-08-31](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) — правило,
+- [ADR 2026-08-31](../../decisions/2026-08-31-visible-carrier-for-announced-facts.md) — правило,
   відхилені варіанти, межі
-- [CONTEXT.md](../../CONTEXT.md) §«Оголошення, сповіщення і видимий носій» — словник
-- [ADR 2026-08-17](../decisions/2026-08-17-tray-toast-categories.md) — сусідня модель для
+- [CONTEXT.md](../../../CONTEXT.md) §«Оголошення, сповіщення і видимий носій» — словник
+- [ADR 2026-08-17](../../decisions/2026-08-17-tray-toast-categories.md) — сусідня модель для
   фонового шару
-- [help-muted-playback-symptom](done/p2-help-muted-playback-symptom.md) — звідки знахідка
-- [help-content-polish](done/p1-help-content-polish.md) — принцип універсального дизайну
+- [help-muted-playback-symptom](p2-help-muted-playback-symptom.md) — звідки знахідка
+- [help-content-polish](p1-help-content-polish.md) — принцип універсального дизайну
 - Код: `src/components/player/PlaybackPosition.tsx`, `src/components/player/VolumeSlider.tsx`,
   `src/hooks/useSettingsAutoSave.ts`, `src/components/profile/ProfileSettingsDialog.tsx`

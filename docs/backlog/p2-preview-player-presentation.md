@@ -25,7 +25,7 @@ notes:
 # Плеєр не має єдиної історії про прослуховування
 
 > **Контекст:** знайдено під час grilling
-> [sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md).
+> [sound-hotkeys-feedback-announce-only](done/p1-sound-hotkeys-feedback-announce-only.md).
 > Вид бейджа не обрано — він залежить від першого питання нижче.
 
 ## Опис
@@ -86,7 +86,7 @@ unavailable for live stream» ([engine.rs:400](../../src-tauri/src/player/engine
 
 ## Документи
 
-- [sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md) — звідки знахідка
+- [sound-hotkeys-feedback-announce-only](done/p1-sound-hotkeys-feedback-announce-only.md) — звідки знахідка
 - [player-recording-badge-term](p2-player-recording-badge-term.md) — сусідній запис про той самий
   ряд позначок джерела; якщо третій бейдж заводитиметься, робити разом
 - [ADR 2026-08-31](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) §2 — узгодження `F9` з екраном

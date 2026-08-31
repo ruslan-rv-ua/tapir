@@ -226,7 +226,7 @@ notes:
 
 - [ADR 2026-08-31 про носії для подій станції](../../decisions/2026-08-31-carriers-for-station-events.md) — правило, яке ухвалює цей запис
 - [wishlist-match-tray-notification](../p2-wishlist-match-tray-notification.md) — друга половина, сповіщення в треї
-- [sound-hotkeys-feedback-announce-only](../p1-sound-hotkeys-feedback-announce-only.md) — звідки знахідка
+- [sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md) — звідки знахідка
 - [ADR 2026-08-31 про видимий носій](../../decisions/2026-08-31-visible-carrier-for-announced-facts.md) — сусідній ADR; §3 лишив події станції поза межею, цей запис ту межу й добудовує
 - [ADR 2026-08-17](../../decisions/2026-08-17-tray-toast-categories.md) — категорії тостів трею (правиться записом про тост, не цим)
 - [CONTEXT.md](../../../CONTEXT.md) §«Вішліст і Ігнор-лист», §«Оголошення, сповіщення і видимий носій»

@@ -39,7 +39,7 @@ notes:
   правильний варіант — другий.
 
 Знайдені розбіжності (розділи 4.3 «Volume Slider» і 4.4 «Playback Position»), додано
-2026-08-31 під час реалізації [sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md):
+2026-08-31 під час реалізації [sound-hotkeys-feedback-announce-only](done/p1-sound-hotkeys-feedback-announce-only.md):
 
 - Обидва ескізи малюють `formatOptions` як спосіб задати текст значення. Для гучності
   наведений `{ style: "percent", maximumFractionDigits: 0 }` при `minValue={0}

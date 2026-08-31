@@ -3,7 +3,7 @@
 - **Статус:** ПРИЙНЯТО
 - **Дата:** 2026-08-31
 - **Тип:** ADR — модель зворотного зв'язку у вікні
-- **Контекст:** беклог — [sound-hotkeys-feedback-announce-only](../backlog/p1-sound-hotkeys-feedback-announce-only.md),
+- **Контекст:** беклог — [sound-hotkeys-feedback-announce-only](../backlog/done/p1-sound-hotkeys-feedback-announce-only.md),
   знайдено під час grilling [help-muted-playback-symptom](../backlog/done/p2-help-muted-playback-symptom.md);
   словник — [CONTEXT.md](../../CONTEXT.md) §«Оголошення, сповіщення і видимий носій»;
   модель для фонового шару — [ADR 2026-08-17](2026-08-17-tray-toast-categories.md);

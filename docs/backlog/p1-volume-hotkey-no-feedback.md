@@ -3,7 +3,7 @@ slug: volume-hotkey-no-feedback
 title: "Глобальні клавіші гучності не дають відгуку взагалі жодного"
 priority: P1
 type: planned
-status: blocked
+status: ready
 effort: M
 kind: bug
 target: 0.1.0
@@ -26,8 +26,8 @@ touches:
   - docs/help/uk/troubleshooting.md
   - docs/help/en/troubleshooting.md
 gates: [pnpm test, pnpm vite:build]
-blocked_reason: "Оголошення «Гучність 45%» без видимого числа біля повзунка — це нове порушення §2 ADR 2026-08-31; число додає sound-hotkeys-feedback-announce-only, тож він іде першим"
 notes:
+  - "2026-08-31: блокування знято — sound-hotkeys-feedback-announce-only виконано, видиме число гучності біля повзунка є, тож §2 ADR більше не порушується. Оголошення «Гучність 45%» тепер має носія."
   - "Знахідка grilling sound-hotkeys-feedback-announce-only (2026-08-31). Дзеркальний бік правила: ADR 2026-08-31 §4 свідомо односторонній (промовлене мусить бути видимим, не навпаки), тож цей випадок він не покриває."
   - "a11y: true — на відміну від батьківського запису. Тут прогалина б'є саме по користувачах скрінрідера, потрібен NVDA-прогін."
   - "2026-08-31 (grilling /grill-with-docs): усі чотири питання запису закриті, плюс шість розвилок, яких він не називав — див. «Прийняті рішення». Механізм обрано, запис виходить із GROOMING."
@@ -38,7 +38,7 @@ notes:
 # Глобальні клавіші гучності не дають відгуку взагалі жодного
 
 > **Контекст:** знайдено під час grilling
-> [sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md),
+> [sound-hotkeys-feedback-announce-only](done/p1-sound-hotkeys-feedback-announce-only.md),
 > огрилено 2026-08-31. Рішення ухвалені — читати «Прийняті рішення» перед кодом.
 
 ## Опис
@@ -275,7 +275,7 @@ F11 зайнятий), і це «ще один спосіб спитати», я
 
 ## Документи
 
-- [sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md) — звідки
+- [sound-hotkeys-feedback-announce-only](done/p1-sound-hotkeys-feedback-announce-only.md) — звідки
   знахідка; додає видиме число; **виїжджає першим**
 - [ADR 2026-08-31](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) §2, §4, §6 —
   чому `aria-*` не носій, чому правило одностороннє, одна змінна на двох споживачів

@@ -90,7 +90,7 @@ _Порожньо з **2026-08-17**: `command-palette-taxonomy` переоцін
 - 🟨 **NVDA-прогін [resume-last-playback](done/p1-resume-last-playback.md):** новий діалог (фокус-трап, анонс заголовка, Escape) та авто-старт — не проведено, рекомендовано перед релізом.
 - 🟨 **NVDA-прогін [command-palette-phase-4](p2-command-palette-phase-4.md):** стандартний прогін після реалізації (питання «reranking збиває NVDA» знято з коду, окремих сценаріїв не лишилось).
 - 🟨 **Тригер ADR §9.2 ([streams-ctrlk-empty-hint](done/p2-streams-ctrlk-empty-hint.md)):** якщо порожнього стану як єдиного місця навчання Ctrl+K замало — повернутись до `aria-keyshortcuts` (S4).
-- ~~🟨 **Тригер screen-reader-direct-speech (blocked):** лише якщо balloon tips виявляться недостатніми…~~ — **тригер знято 2026-08-17**: запис [відхилено](done/p3-screen-reader-direct-speech.md), нативного SR-API не буде взагалі. Швидкий відгук на глобальні клавіші лишається за balloon tips і видимою поверхнею у вікні ([sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md), P1 у 0.1.0).
+- ~~🟨 **Тригер screen-reader-direct-speech (blocked):** лише якщо balloon tips виявляться недостатніми…~~ — **тригер знято 2026-08-17**: запис [відхилено](done/p3-screen-reader-direct-speech.md), нативного SR-API не буде взагалі. Швидкий відгук на глобальні клавіші лишається за balloon tips і видимою поверхнею у вікні ([sound-hotkeys-feedback-announce-only](done/p1-sound-hotkeys-feedback-announce-only.md), P1 у 0.1.0).
 
 ---
 
