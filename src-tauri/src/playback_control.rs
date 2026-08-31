@@ -11,8 +11,8 @@ use crate::profile::{FilePosition, LastActive, PlayerSession};
 use crate::profile::ResumeFileFrom;
 use tauri::{AppHandle, Emitter, Manager};
 
-/// Cold-start hints the webview can't derive from `player-status`. The webview
-/// localizes `kind` via Paraglide (backend never sends ready-made strings).
+/// Hints the webview can't derive from `player-status`. The webview localizes
+/// `kind` via Paraglide (backend never sends ready-made strings).
 #[derive(Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 struct PlaybackAnnounce {
@@ -21,7 +21,11 @@ struct PlaybackAnnounce {
     position_ms: Option<u64>,
 }
 
-fn emit_announce(app: &AppHandle, kind: &str, name: Option<String>) {
+/// Ask the webview to say something it could not have worked out on its own.
+/// `pub(crate)` for `shortcuts.rs`: the global volume keys change the level here
+/// in Rust and only ASK for the sentence — the number itself the webview reads
+/// off its own `$playerStatus`, so no level travels in the payload.
+pub(crate) fn emit_announce(app: &AppHandle, kind: &str, name: Option<String>) {
     let payload = PlaybackAnnounce { kind: kind.to_string(), name, position_ms: None };
     if let Err(e) = app.emit("player-announce", payload) {
         log::warn!("playback: failed to emit player-announce: {e}");

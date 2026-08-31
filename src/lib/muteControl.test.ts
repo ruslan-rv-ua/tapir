@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { isSoundOff, rememberVolumeLevel, toggleMute } from "./muteControl";
+import { isSoundOff, rememberVolumeLevel, selectVolumeAnnouncement, toggleMute } from "./muteControl";
 import { $muteState, $playerStatus, FALLBACK_VOLUME } from "../stores/player";
 import * as tauri from "./tauri";
 import * as m from "../i18n/paraglide/messages";
@@ -32,6 +32,30 @@ describe("isSoundOff", () => {
     expect(isSoundOff(true, 0.6)).toBe(true);    // toggle mid-restore
     expect(isSoundOff(false, 0)).toBe(true);     // the case this record closes
     expect(isSoundOff(false, 0.6)).toBe(false);
+  });
+});
+
+describe("selectVolumeAnnouncement", () => {
+  it("names the level as whole percent, the same number the slider shows", () => {
+    expect(selectVolumeAnnouncement(0.45, false)).toEqual({ kind: "level", percent: 45 });
+    expect(selectVolumeAnnouncement(1, false)).toEqual({ kind: "level", percent: 100 });
+  });
+
+  it("answers silence for a zero level, not '0%'", () => {
+    // A fourth phrasing of one state is what this avoids: the toggle, the
+    // button label and the F9 clause all say "sound off" here.
+    expect(selectVolumeAnnouncement(0, false)).toEqual({ kind: "silent" });
+  });
+
+  it("answers silence while the toggle is on, whatever level is stored", () => {
+    expect(selectVolumeAnnouncement(0, true)).toEqual({ kind: "silent" });
+    expect(selectVolumeAnnouncement(0.45, true)).toEqual({ kind: "silent" });
+  });
+
+  it("names the level once the key lifts it off zero", () => {
+    // Ctrl+M then volume up: `player-status` lands first and muteCleanup Case 1
+    // clears the toggle, so by the time this is asked the answer is the LEVEL.
+    expect(selectVolumeAnnouncement(0.05, false)).toEqual({ kind: "level", percent: 5 });
   });
 });
 

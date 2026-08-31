@@ -285,8 +285,14 @@ export interface PlayerEndedPayload {
   path: string;
 }
 
+/**
+ * Hints the webview cannot derive from `player-status`: the backend asks for a
+ * sentence and names its `kind`, never the words. `volume` carries no level —
+ * the number is read off `$playerStatus`, the same variable the slider draws
+ * from, so a copy in the payload cannot drift from it (ADR 2026-08-31 §6).
+ */
 export interface PlaybackAnnounce {
-  kind: "connecting" | "unavailable" | "error" | "resuming";
+  kind: "connecting" | "unavailable" | "error" | "resuming" | "volume";
   name: string | null;
   positionMs: number | null;
 }

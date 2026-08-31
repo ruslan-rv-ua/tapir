@@ -509,6 +509,8 @@
   "f9_file": "{name}, {position}",
   "f9_file_paused": "{name}, paused, {position}",
   "f9_muted": "{sentence}, sound off",
+  "f9_volume": "{sentence}. {level}",
+  "volume_level": "Volume {percent}%",
   "search_none_on_screen": "This screen has no search",
   "player_active_recording": "Active recording",
   "player_device": "Device",

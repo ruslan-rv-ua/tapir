@@ -396,8 +396,12 @@ describe("useGlobalShortcuts — F9 (what is playing)", () => {
     playingStream();
     const field = renderWithField();
     fireEvent.keyDown(field, { code: "F9" });
+    // The sound clause is unconditional (§6), so every F9 answer carries it.
     expect($announcer.get()?.message).toBe(
-      m.f9_stream({ station: "Jazz FM", track: "Miles — So What" }),
+      m.f9_volume({
+        sentence: m.f9_stream({ station: "Jazz FM", track: "Miles — So What" }),
+        level: m.volume_level({ percent: 60 }),
+      }),
     );
     expect($announcer.get()?.priority).toBe("assertive");
     expect(document.activeElement).toBe(field);
@@ -408,13 +412,20 @@ describe("useGlobalShortcuts — F9 (what is playing)", () => {
     $statuses.set({});
     const field = renderWithField();
     fireEvent.keyDown(field, { code: "F9" });
-    expect($announcer.get()?.message).toBe(m.f9_stream_no_track({ station: "Jazz FM" }));
+    expect($announcer.get()?.message).toBe(
+      m.f9_volume({
+        sentence: m.f9_stream_no_track({ station: "Jazz FM" }),
+        level: m.volume_level({ percent: 60 }),
+      }),
+    );
   });
 
   it("answers 'nothing is playing' rather than staying silent", () => {
     const field = renderWithField();
     fireEvent.keyDown(field, { code: "F9" });
-    expect($announcer.get()?.message).toBe(m.f9_nothing());
+    expect($announcer.get()?.message).toBe(
+      m.f9_volume({ sentence: m.f9_nothing(), level: m.volume_level({ percent: 75 }) }),
+    );
   });
 
   it("names the file and its position, and marks a pause as a pause", () => {
@@ -424,7 +435,12 @@ describe("useGlobalShortcuts — F9 (what is playing)", () => {
     });
     const field = renderWithField();
     fireEvent.keyDown(field, { code: "F9" });
-    expect($announcer.get()?.message).toBe(m.f9_file_paused({ name: "a.mp3", position: "1:05" }));
+    expect($announcer.get()?.message).toBe(
+      m.f9_volume({
+        sentence: m.f9_file_paused({ name: "a.mp3", position: "1:05" }),
+        level: m.volume_level({ percent: 60 }),
+      }),
+    );
   });
 
   it("adds the muted clause only while muted", () => {
@@ -435,6 +451,40 @@ describe("useGlobalShortcuts — F9 (what is playing)", () => {
     expect($announcer.get()?.message).toBe(
       m.f9_muted({ sentence: m.f9_stream({ station: "Jazz FM", track: "Miles — So What" }) }),
     );
+  });
+
+  it("names the level when the sound is on — one clause, never both", () => {
+    playingStream();
+    $playerStatus.set({ ...$playerStatus.get(), volume: 0.45 });
+    const field = renderWithField();
+    fireEvent.keyDown(field, { code: "F9" });
+    const message = $announcer.get()!.message;
+    expect(message).toBe(
+      m.f9_volume({
+        sentence: m.f9_stream({ station: "Jazz FM", track: "Miles — So What" }),
+        level: m.volume_level({ percent: 45 }),
+      }),
+    );
+    expect(message).not.toContain(m.player_muted());
+  });
+
+  it("names the level even when nothing is playing — the clause is unconditional", () => {
+    $playerStatus.set({ ...$playerStatus.get(), volume: 0.45 });
+    const field = renderWithField();
+    fireEvent.keyDown(field, { code: "F9" });
+    expect($announcer.get()?.message).toBe(
+      m.f9_volume({ sentence: m.f9_nothing(), level: m.volume_level({ percent: 45 }) }),
+    );
+  });
+
+  it("speaks the SAME level clause the volume key speaks", () => {
+    // §7: the key and the question answer with one string, not two that agree
+    // today. Both go through selectVolumeAnnouncement → m.volume_level.
+    playingStream();
+    $playerStatus.set({ ...$playerStatus.get(), volume: 0.45 });
+    const field = renderWithField();
+    fireEvent.keyDown(field, { code: "F9" });
+    expect($announcer.get()?.message).toContain(m.volume_level({ percent: 45 }));
   });
 
   it("names a zero level with the SAME clause as the toggle", () => {

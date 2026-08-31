@@ -43,11 +43,21 @@ pub fn register_global_shortcuts(app: &AppHandle, hotkeys: &HotkeyMap) -> Vec<St
                             let app = app.clone();
                             tauri::async_runtime::spawn(async move {
                                 apply_volume_change(&app, dir).await;
-                                tokio::time::sleep(Duration::from_millis(VOLUME_REPEAT_INITIAL_DELAY_MS)).await;
+                                sleep_initial_delay(held).await;
                                 while held.load(Ordering::Relaxed) {
                                     apply_volume_change(&app, dir).await;
                                     tokio::time::sleep(Duration::from_millis(VOLUME_REPEAT_INTERVAL_MS)).await;
                                 }
+                                // One reply per gesture, on release. Here rather
+                                // than in the Released callback: the callback
+                                // would race the spawned change and read out the
+                                // PREVIOUS number on a short tap. Past this
+                                // point the level has settled by construction —
+                                // every apply_volume_change above is awaited,
+                                // and set_volume emits `player-status` before it
+                                // returns, so the webview already holds the
+                                // number it is about to speak.
+                                crate::playback_control::emit_announce(&app, "volume", None);
                             });
                         }
                     }
@@ -86,6 +96,21 @@ const VOLUME_REPEAT_INTERVAL_MS: u64 = 80;
 
 fn volume_held_flag(action: &str) -> &'static AtomicBool {
     if action == "volume_up" { &VOLUME_UP_HELD } else { &VOLUME_DOWN_HELD }
+}
+
+/// Wait out the pre-repeat delay in `VOLUME_REPEAT_INTERVAL_MS` slices, checking
+/// the key on each one. Sliced rather than slept whole because the announce that
+/// follows the loop is this key's ONLY feedback: a single tap would otherwise sit
+/// silent for the full 350 ms, and past roughly 100 ms that reads as a hang. The
+/// slices add up to exactly the same delay for a key that stays down, so the
+/// repeat rate is unchanged.
+async fn sleep_initial_delay(held: &AtomicBool) {
+    let mut remaining = VOLUME_REPEAT_INITIAL_DELAY_MS;
+    while remaining > 0 && held.load(Ordering::Relaxed) {
+        let slice = remaining.min(VOLUME_REPEAT_INTERVAL_MS);
+        tokio::time::sleep(Duration::from_millis(slice)).await;
+        remaining -= slice;
+    }
 }
 
 async fn apply_volume_change(app: &AppHandle, direction: i8) {

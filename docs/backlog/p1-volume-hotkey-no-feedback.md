@@ -261,7 +261,7 @@ F11 зайнятий), і це «ще один спосіб спитати», я
 - [ ] Видиме число, `aria-valuetext` і оголошення беруться з одного хелпера округлення
 - [ ] Тести: `selectVolumeAnnouncement` (рівень / нуль / тумблер при ненульовому рівні),
       хелпер округлення, клаузула `F9` у наявному `useGlobalShortcuts.test.tsx`
-- [ ] NVDA-прогін пройдено
+- [ ] NVDA-прогін пройдено — [nvda-volume-hotkey-no-feedback.md](../testing/nvda-volume-hotkey-no-feedback.md)
 - [ ] `pnpm test`, `pnpm vite:build` зелені
 
 ## Поза скоупом

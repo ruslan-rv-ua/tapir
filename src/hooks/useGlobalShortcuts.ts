@@ -10,18 +10,24 @@ import { $showAddPatternDialog } from "../stores/wishlist";
 import { $showAddScheduleDialog } from "../stores/schedule";
 import { $muteState, $playerStatus } from "../stores/player";
 import { describePlayback, type PlaybackDescription } from "../lib/playbackAnnounce";
-import { isSoundOff, toggleMute } from "../lib/muteControl";
+import { selectVolumeAnnouncement, toggleMute, type VolumeAnnouncement } from "../lib/muteControl";
 import { formatDuration } from "../lib/formatters";
 import { useAnnounce } from "./useAnnounce";
 import * as m from "../i18n/paraglide/messages";
 
 /**
  * Localize a playback description (F9). One key per reachable state × source
- * pair, so word order and punctuation belong to the translator; the muted clause
+ * pair, so word order and punctuation belong to the translator; the sound clause
  * wraps a FINISHED sentence, which is why it can be added exactly once to any of
  * them — "nothing is playing" included.
+ *
+ * Exactly ONE clause about the sound, always, and it comes last: silence keeps
+ * its own wording, an audible player is named by its level. "Sound off, volume
+ * 45%" is not an option — silence and a zero level are one state, and the level
+ * stored inside it is machinery the user never asked about. Whoever pressed F9
+ * for the track releases Ctrl before the clause anyway, so last is cheapest.
  */
-function nowPlayingMessage(description: PlaybackDescription, muted: boolean): string {
+function nowPlayingMessage(description: PlaybackDescription, sound: VolumeAnnouncement): string {
   let sentence: string;
   switch (description.kind) {
     case "nothing":
@@ -47,7 +53,9 @@ function nowPlayingMessage(description: PlaybackDescription, muted: boolean): st
       break;
     }
   }
-  return muted ? m.f9_muted({ sentence }) : sentence;
+  return sound.kind === "silent"
+    ? m.f9_muted({ sentence })
+    : m.f9_volume({ sentence, level: m.volume_level({ percent: sound.percent }) });
 }
 
 /**
@@ -96,15 +104,17 @@ export function useGlobalShortcuts(orderedZonesRef: RefObject<ZoneEntry[]>): voi
       // reply to a keypress (a background event would be polite).
       announceNowPlaying: () => {
         const status = $playerStatus.get();
-        const { description, muted } = describePlayback({
+        // One decision for the clause, shared with Ctrl+Alt+Up/Down: the key
+        // and the question can never end up saying different things about the
+        // same output. The state, not the toggle — a level at zero is silence.
+        const sound = selectVolumeAnnouncement(status.volume, $muteState.get().muted);
+        const { description } = describePlayback({
           status,
           statuses: $statuses.get(),
           streams: $streams.get(),
-          // The state, not the toggle: a level at zero is the same silence and
-          // gets the same clause.
-          muted: isSoundOff($muteState.get().muted, status.volume),
+          muted: sound.kind === "silent",
         });
-        announce(nowPlayingMessage(description, muted), "assertive");
+        announce(nowPlayingMessage(description, sound), "assertive");
       },
       // Focus the search field of the current screen. Asking the zone to focus
       // itself would land on whatever the user last touched there (the sort

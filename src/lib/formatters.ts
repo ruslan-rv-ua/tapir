@@ -77,6 +77,16 @@ export function formatTime(iso: string): string {
   }).format(d);
 }
 
+/**
+ * The 0..1 level as whole percent — the one rounding behind every surface that
+ * shows or speaks it: the number beside the volume slider, the value the thumb
+ * reads out, and the `Ctrl+Alt+Up/Down` announce. One variable, three carriers
+ * (ADR 2026-08-31 §6); rounded separately they would drift apart in silence.
+ */
+export function volumePercent(volume: number): number {
+  return Math.round(volume * 100);
+}
+
 /** True when free disk space is known and below the threshold. 0 = disabled. */
 export function isLowDiskSpace(freeBytes: number | null, thresholdGb: number): boolean {
   if (thresholdGb <= 0 || freeBytes === null) return false;

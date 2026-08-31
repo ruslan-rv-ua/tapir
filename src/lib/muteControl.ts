@@ -1,4 +1,5 @@
 import { $muteState, $playerStatus } from "../stores/player";
+import { volumePercent } from "./formatters";
 import * as tauri from "./tauri";
 import * as m from "../i18n/paraglide/messages";
 
@@ -17,6 +18,33 @@ import * as m from "../i18n/paraglide/messages";
  */
 export function isSoundOff(muted: boolean, volume: number): boolean {
   return muted || volume <= 0;
+}
+
+/**
+ * What the sound is, as a fact: a level in whole percent, or silence. Wording
+ * belongs to the caller (App.tsx maps each kind onto an i18n key), the same
+ * contract `playbackAnnounce.ts` follows.
+ */
+export type VolumeAnnouncement =
+  | { kind: "level"; percent: number }
+  | { kind: "silent" };
+
+/**
+ * The answer `Ctrl+Alt+Up/Down` and the `F9` sound clause both give — one
+ * decision, so the key and the question can never disagree.
+ *
+ * Zero is `silent`, not "0%": silence has one name across every surface
+ * (docs/decisions/2026-08-16-silence-is-mute-or-zero-volume.md), and a fourth
+ * phrasing of it is exactly what that model exists to prevent.
+ *
+ * It lives here because this module already owns "sound on / sound off" —
+ * `isSoundOff` and the level memory are its neighbours, and the same argument
+ * that keeps `toggleMute`'s wording out of its three callers keeps this rule
+ * out of its two.
+ */
+export function selectVolumeAnnouncement(volume: number, muted: boolean): VolumeAnnouncement {
+  if (isSoundOff(muted, volume)) return { kind: "silent" };
+  return { kind: "level", percent: volumePercent(volume) };
 }
 
 /**

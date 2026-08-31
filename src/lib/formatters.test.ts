@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { isLowDiskSpace, formatBytes, formatDate, formatDateTime, formatTime, formatBitrate } from "./formatters";
+import { isLowDiskSpace, formatBytes, formatDate, formatDateTime, formatTime, formatBitrate, volumePercent } from "./formatters";
 
 vi.mock("../i18n/paraglide/messages", () => ({
   codec_unsupported: () => "не підтримується",
@@ -85,5 +85,23 @@ describe("formatBitrate", () => {
   it("still says it is not supported when the family has no name", () => {
     expect(formatBitrate(null, null, { family: null })).toBe("не підтримується");
     expect(formatBitrate(96, null, { family: null })).toBe("96 kbps · не підтримується");
+  });
+});
+
+describe("volumePercent", () => {
+  // One rounding for three carriers (ADR 2026-08-31 §6): the number beside the
+  // slider, the value the thumb reads out, and the hotkey announce. Rounded in
+  // two places they would disagree at exactly the levels a person checks.
+  it("turns a 0..1 level into whole percent", () => {
+    expect(volumePercent(0)).toBe(0);
+    expect(volumePercent(0.45)).toBe(45);
+    expect(volumePercent(1)).toBe(100);
+  });
+
+  it("rounds rather than truncates, so a step lands on the number the slider shows", () => {
+    expect(volumePercent(0.4499)).toBe(45);
+    expect(volumePercent(0.055)).toBe(6);
+    // Float drift from repeated steps must not read as 44%.
+    expect(volumePercent(0.1 + 0.35)).toBe(45);
   });
 });

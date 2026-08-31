@@ -32,7 +32,7 @@ You can see this coming. The Station Browser shows a **Codec** column for every 
 
 ### Playback runs but there is no sound
 
-The simplest cause is that the sound is off. The button on the player panel shows the state, and `F9` names it from anywhere in the window; `Ctrl+M` brings the sound back. If the sound is on, the cause is most likely the output device.
+The simplest cause is that the sound is off. The button on the player panel shows the state, and `F9` names it from anywhere in the window; `Ctrl+M` brings the sound back. Next most common is a very low level: 3% is not silence, so the sound does not count as off, yet you still hear nothing. `F9` names the level too, and the global volume keys raise it. If the level is fine, the cause is most likely the output device.
 
 ### Sound goes to the wrong device
 

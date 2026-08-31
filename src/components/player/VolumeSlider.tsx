@@ -8,6 +8,7 @@ import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import { useSliderThumbInput } from "../../hooks/useSliderThumbInput";
+import { volumePercent } from "../../lib/formatters";
 
 interface VolumeSliderProps {
   inputRef?: RefObject<HTMLInputElement | null>;
@@ -18,11 +19,12 @@ export function VolumeSlider({ inputRef, onNavigate }: VolumeSliderProps) {
   const { volume } = useStore($playerStatus);
   const step = useStore($settings)?.volumeStepPercent ?? 5;
   const announce = useAnnounce();
-  const storePercent = Math.round(volume * 100);
+  const storePercent = volumePercent(volume);
   const [dragPercent, setDragPercent] = useState<number | null>(null);
   const percent = dragPercent ?? storePercent;
-  // One variable, two carriers (ADR 2026-08-31 §6): the visible number below and
-  // the one the screen reader reads off the thumb. Formatting twice would drift
+  // One variable, three carriers (ADR 2026-08-31 §6): the visible number below,
+  // the one the screen reader reads off the thumb, and the Ctrl+Alt+Up/Down
+  // announce — hence the shared `volumePercent`. Rounding twice would drift
   // apart silently.
   const volumeText = `${percent}%`;
   const thumbInputRef = useSliderThumbInput(volumeText, inputRef);

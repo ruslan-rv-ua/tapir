@@ -28,7 +28,7 @@ import { useScheduleEvents } from "./hooks/useScheduleEvents";
 import { useAnnounce } from "./hooks/useAnnounce";
 import { $streams, $statuses, updateStreamStatus } from "./stores/streams";
 import { $settings, $profileSettings } from "./stores/settings";
-import { $playerStatus } from "./stores/player";
+import { $muteState, $playerStatus } from "./stores/player";
 import { $wishlist, $wishlistMatches, prependMatch } from "./stores/wishlist";
 import { $activeSection } from "./stores/navigation";
 import { SECTIONS } from "./lib/sections";
@@ -40,7 +40,7 @@ import { computePlaybackNeighbors } from "./stores/playbackNeighbors";
 import { resolveEndedAction } from "./lib/playbackTransport";
 import { executeTransportSkip, parseSkipTrigger } from "./lib/transportControl";
 import { applyMuteCleanup } from "./lib/muteCleanup";
-import { rememberVolumeLevel } from "./lib/muteControl";
+import { rememberVolumeLevel, selectVolumeAnnouncement } from "./lib/muteControl";
 import { selectPlaybackAnnouncement, sourceName, suppressesStarted, type PendingConnect } from "./lib/playbackAnnounce";
 import { formatTimeParts } from "./lib/time";
 import { windowTitleLabel } from "./lib/windowTitle";
@@ -376,6 +376,22 @@ function AppContent() {
         // this announce — arm the same one-shot suppression as "connecting".
         pendingConnectRef.current = { name: payload.name ?? "", until: Date.now() + 20_000 };
         break;
+      case "volume": {
+        // Ctrl+Alt+Up/Down are handled entirely in Rust; this event only asks
+        // for the number, which is read off the store the slider draws from —
+        // `player-status` for the same change always lands first (set_volume
+        // emits it before returning), muteCleanup included. Assertive: it is
+        // the reply to a keypress, and the only feedback the key has.
+        const status = $playerStatus.get();
+        const sound = selectVolumeAnnouncement(status.volume, $muteState.get().muted);
+        announceRef.current(
+          sound.kind === "silent"
+            ? m.player_muted()
+            : m.volume_level({ percent: sound.percent }),
+          "assertive",
+        );
+        break;
+      }
       case "unavailable":
         announceRef.current(m.playback_unavailable(), "assertive");
         pendingConnectRef.current = null;

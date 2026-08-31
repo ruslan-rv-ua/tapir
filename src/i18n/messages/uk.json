@@ -509,6 +509,8 @@
   "f9_file": "{name}, {position}",
   "f9_file_paused": "{name}, пауза, {position}",
   "f9_muted": "{sentence}, звук вимкнено",
+  "f9_volume": "{sentence}. {level}",
+  "volume_level": "Гучність {percent}%",
   "search_none_on_screen": "На цьому екрані немає пошуку",
   "player_active_recording": "Активний запис",
   "player_device": "Пристрій",

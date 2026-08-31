@@ -10,7 +10,7 @@ A live broadcast cannot be usefully paused — you would replay a stale buffer w
 
 ### Volume and position
 
-On the volume slider `↑` and `↓` move the level by one step: 5%, unless you change **Volume step (keys, %)** in the app settings, tab **Audio** (1 to 10). The global volume keys use the same step.
+On the volume slider `↑` and `↓` move the level by one step: 5%, unless you change **Volume step (keys, %)** in the app settings, tab **Audio** (1 to 10). The global volume keys use the same step, and Tapir names the level you stop on: "Volume 45%". Hold a key and the level keeps moving, but the number comes once — the level you let go at.
 
 Muting has its own button on the player, or press `Ctrl+M` anywhere in the window while something is playing. Both are the same toggle, and Tapir says what came of it: "Sound off" or "Sound on". The level is remembered and comes back when you unmute.
 
@@ -30,7 +30,7 @@ When a file ends, **Auto-play next track** — profile settings, tab **Playback*
 
 **Now playing** names the source and marks what it is: **LIVE** for a station on air, **Recording** for a saved file.
 
-To hear that without walking into the player zone, press `F9` — anywhere in the window, and the focus stays where it is. For a broadcast Tapir names the station and the current track (when the station sends one), for a file the name and the position, and when nothing plays it says so. A muted output is added at the end of the answer.
+To hear that without walking into the player zone, press `F9` — anywhere in the window, and the focus stays where it is. For a broadcast Tapir names the station and the current track (when the station sends one), for a file the name and the position, and when nothing plays it says so. The volume closes the answer: its level, or, when the sound is off, that instead.
 
 The position in a file and the volume level stand as numbers beside their bars — 2 min 14 sec and 45%. The position is there even when the file's duration is unknown and there is no bar.
 
