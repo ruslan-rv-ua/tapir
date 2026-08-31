@@ -48,7 +48,6 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   profile_settings_named: ({ name }: { name: string }) => `Settings for ${name}`,
   profile_autoplay_label: () => "Resume last playback on startup",
   profile_autoplay_hint: () => "Sound plays over NVDA speech.",
-  profile_settings_saved: ({ name }: { name: string }) => `Settings saved: ${name}`,
   profile_import: () => "Import",
   profile_create: () => "New profile",
   profile_new_name_label: () => "New name",

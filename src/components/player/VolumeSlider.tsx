@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { RefObject } from "react";
 import { Slider, SliderThumb, SliderTrack } from "react-aria-components";
 import { useStore } from "@nanostores/react";
@@ -7,6 +7,7 @@ import { $settings } from "../../stores/settings";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 import { useAnnounce } from "../../hooks/useAnnounce";
+import { useSliderThumbInput } from "../../hooks/useSliderThumbInput";
 
 interface VolumeSliderProps {
   inputRef?: RefObject<HTMLInputElement | null>;
@@ -20,19 +21,14 @@ export function VolumeSlider({ inputRef, onNavigate }: VolumeSliderProps) {
   const storePercent = Math.round(volume * 100);
   const [dragPercent, setDragPercent] = useState<number | null>(null);
   const percent = dragPercent ?? storePercent;
+  // One variable, two carriers (ADR 2026-08-31 §6): the visible number below and
+  // the one the screen reader reads off the thumb. Formatting twice would drift
+  // apart silently.
+  const volumeText = `${percent}%`;
+  const thumbInputRef = useSliderThumbInput(volumeText, inputRef);
   // RAC onChangeEnd only fires on pointer-up, not on keyboard. Track drag state so
   // onChange can commit immediately for keyboard while deferring to onChangeEnd for drag.
   const isDraggingRef = useRef(false);
-
-  // RAC controls the input's tabIndex internally; patch it after every render so that
-  // any RAC re-render cannot silently return the input to the Tab order.
-  // No dep array: VolumeSlider always renders (no conditional mount), so the overhead
-  // is a single synchronous DOM write per render — negligible and safe.
-  useEffect(() => {
-    const input = inputRef?.current;
-    if (!input) return;
-    input.tabIndex = -1;
-  });
 
   return (
     <Slider
@@ -61,8 +57,7 @@ export function VolumeSlider({ inputRef, onNavigate }: VolumeSliderProps) {
           aria-hidden="true"
         />
         <SliderThumb
-          inputRef={inputRef}
-          aria-valuetext={`${percent}%`}
+          inputRef={thumbInputRef}
           onPointerDown={() => { isDraggingRef.current = true; }}
           onKeyDown={(e) => {
             if (e.key === 'ArrowLeft') {
@@ -93,6 +88,11 @@ export function VolumeSlider({ inputRef, onNavigate }: VolumeSliderProps) {
           className="w-3.5 h-3.5 rounded-full bg-white top-1/2 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1 forced-colors:bg-[ButtonText]"
         />
       </SliderTrack>
+      {/* aria-hidden: the thumb already speaks this exact string, so a second
+          copy in the accessibility tree would only be read twice. */}
+      <span aria-hidden="true" className="text-sm text-slate-400 tabular-nums shrink-0">
+        {volumeText}
+      </span>
     </Slider>
   );
 }

@@ -80,18 +80,16 @@ describe("GeneralTab — Autostart", () => {
   });
 });
 
-// Діалог налаштувань програми не має жодного візуального фідбеку про
-// збереження — «Зміни зберігаються автоматично» це статичний рядок, а не
-// підтвердження. Та сама обіцянка, що в діалозі профілю.
-describe("GeneralTab — автозбереження чути", () => {
-  it("оголошує збереження після зміни налаштування", async () => {
+// ADR 2026-08-31 §5: «записано на диск» не має видимого носія, тож факт
+// прибрано з оголошення, а не забезпечено носієм. Результат дії — сам
+// прапорець, і він на екрані. Тест стереже й запис, і тишу.
+describe("GeneralTab — автозбереження мовчазне", () => {
+  it("зберігає зміну налаштування, нічого не оголошуючи", async () => {
     const { getByRole } = render(<GeneralTab />);
     fireEvent.click(getByRole("checkbox", { name: new RegExp(m.settings_minimize_to_tray()) }));
 
-    await waitFor(() => {
-      expect(tauri.saveSettings).toHaveBeenCalled();
-      expect($announcer.get()).toEqual({ message: m.settings_saved(), priority: "polite" });
-    });
+    await waitFor(() => expect(tauri.saveSettings).toHaveBeenCalled());
+    expect($announcer.get()).toBeNull();
   });
 });
 

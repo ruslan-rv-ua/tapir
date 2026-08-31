@@ -79,18 +79,17 @@ describe("AudioTab — SMTC toggle (FR-7)", () => {
   });
 });
 
-// Той самий шов, що в GeneralTab: у діалозі немає жодного візуального
-// підтвердження запису, тож автозбереження мусить бути чутним.
-describe("AudioTab — автозбереження чути", () => {
-  it("оголошує збереження після зміни налаштування", async () => {
+// ADR 2026-08-31 §5: «записано на диск» не має видимого носія, тож факт
+// прибрано з оголошення, а не забезпечено носієм. Результат дії — сам
+// прапорець, і він на екрані. Тест стереже й запис, і тишу.
+describe("AudioTab — автозбереження мовчазне", () => {
+  it("зберігає зміну налаштування, нічого не оголошуючи", async () => {
     const { getByRole } = render(<AudioTab />);
     fireEvent.click(
       getByRole("checkbox", { name: new RegExp(m.settings_smtc_enabled()) }),
     );
 
-    await waitFor(() => {
-      expect(tauri.saveSettings).toHaveBeenCalled();
-      expect($announcer.get()).toEqual({ message: m.settings_saved(), priority: "polite" });
-    });
+    await waitFor(() => expect(tauri.saveSettings).toHaveBeenCalled());
+    expect($announcer.get()).toBeNull();
   });
 });

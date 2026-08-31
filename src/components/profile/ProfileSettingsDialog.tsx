@@ -107,8 +107,8 @@ export function ProfileSettingsDialog({
       pendingRef.current = { ...sending, ...pendingRef.current };
       throw e;
     }
-    // The dialog gives no visual feedback, so autosave must be audible.
-    announce(m.profile_settings_saved({ name }), "polite");
+    // No announcement: the write has no visible carrier and the dialog already
+    // shows the changed control (ADR 2026-08-31 §5). A failure still toasts.
     const current = settingsRef.current;
     if (current && name === activeProfile) $profileSettings.set(current);
   });

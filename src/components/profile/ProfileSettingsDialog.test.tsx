@@ -147,35 +147,36 @@ describe("ProfileSettingsDialog — редагування", () => {
     });
   });
 
-  it("оголошує збереження — автозбереження без візуального фідбеку має бути чутним", async () => {
+  // ADR 2026-08-31 §5: «збережено» не має видимого носія — діалог показує сам
+  // змінений контрол, а не запис на диск. Факт прибрано з оголошення; тест
+  // стереже, щоб він не повернувся.
+  it("зберігає мовчки — жодного оголошення про запис", async () => {
     renderDialog();
     await screen.findByRole("tablist");
     await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+    // Чистимо після переходу по вкладках: перевіряємо тишу саме навколо
+    // збереження, а не забороняємо діалогу говорити взагалі.
+    announce.mockClear();
     await userEvent.click(screen.getByRole("checkbox", { name: m.settings_tray_notifications_track_change() }));
-    await waitFor(() =>
-      expect(announce).toHaveBeenCalledWith(m.profile_settings_saved({ name: "Jazz" }), "polite"),
-    );
+    await waitFor(() => expect(tauri.updateProfileSettings).toHaveBeenCalled());
+    expect(announce).not.toHaveBeenCalled();
   });
 
-  // Знахідка NVDA-прогону: числові поля вкладки «Запис» зберігали мовчки.
-  // Причина була в LiveAnnouncer (повтор того самого тексту), але шов діалогу
-  // тримаємо під тестом: announce() має спрацювати для будь-якого поля.
-  it("числове поле озвучує збереження нарівні з чекбоксом", async () => {
+  it("числове поле зберігає нарівні з чекбоксом — і так само мовчки", async () => {
     renderDialog();
     await screen.findByRole("tablist");
     const field = screen.getByLabelText(m.settings_disk_threshold());
+    announce.mockClear();
     await userEvent.clear(field);
     await userEvent.type(field, "7{Enter}");
 
     await waitFor(() => expect(tauri.updateProfileSettings).toHaveBeenCalled());
     const [, patch] = vi.mocked(tauri.updateProfileSettings).mock.calls[0];
     expect(patch.recording?.diskSpaceThresholdGb).toBe(7);
-    await waitFor(() =>
-      expect(announce).toHaveBeenCalledWith(m.profile_settings_saved({ name: "Jazz" }), "polite"),
-    );
+    expect(announce).not.toHaveBeenCalled();
   });
 
-  it("дві швидкі зміни підряд — один запис і рівно одне оголошення", async () => {
+  it("дві швидкі зміни підряд — один запис", async () => {
     renderDialog();
     await screen.findByRole("tablist");
     const threshold = screen.getByLabelText(m.settings_disk_threshold());
@@ -196,11 +197,8 @@ describe("ProfileSettingsDialog — редагування", () => {
 
       await vi.advanceTimersByTimeAsync(300);
 
-      // Дебаунс злив обидві зміни в один запис — отже й одне оголошення,
-      // а не жодного (стара тиша) і не два.
+      // Дебаунс злив обидві зміни в один запис.
       expect(tauri.updateProfileSettings).toHaveBeenCalledTimes(1);
-      await vi.waitFor(() => expect(announce).toHaveBeenCalledTimes(1));
-      expect(announce).toHaveBeenCalledWith(m.profile_settings_saved({ name: "Jazz" }), "polite");
       const [, patch] = vi.mocked(tauri.updateProfileSettings).mock.calls[0];
       expect(patch.recording?.diskSpaceThresholdGb).toBe(7);
       expect(patch.recording?.schedulePadBeforeMin).toBe(3);

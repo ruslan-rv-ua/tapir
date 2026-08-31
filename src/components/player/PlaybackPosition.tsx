@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { RefObject } from "react";
 import { ProgressBar, Slider, SliderThumb, SliderTrack } from "react-aria-components";
 import { useStore } from "@nanostores/react";
@@ -7,6 +7,7 @@ import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import { formatTimeParts } from "../../lib/time";
+import { useSliderThumbInput } from "../../hooks/useSliderThumbInput";
 
 interface PlaybackPositionProps {
   inputRef?: RefObject<HTMLInputElement | null>;
@@ -23,23 +24,24 @@ export function PlaybackPosition({ inputRef, onNavigate }: PlaybackPositionProps
   const announce = useAnnounce();
   // Ref mirrors dragPos for synchronous access in event handlers (React state is stale in closures).
   const dragPosRef = useRef<number | null>(null);
-
-  // Patch tabIndex after every render — slider conditionally mounts, so ref.current
-  // becomes available at an unpredictable render. No dep array ensures we patch
-  // whenever the input is present.
-  useEffect(() => {
-    const input = inputRef?.current;
-    if (!input) return;
-    input.tabIndex = -1;
-  });
+  const pos = dragPos ?? positionMs ?? 0;
+  // One variable, two carriers (ADR 2026-08-31 §6): the visible number below and
+  // the one the screen reader reads off the thumb. Formatting twice would drift
+  // apart silently.
+  const positionText = formatTime(pos);
+  const thumbInputRef = useSliderThumbInput(positionText, inputRef);
 
   if (state === "stopped" || !source) return null;
 
   if (source.type === "file") {
-    const storePos = positionMs ?? 0;
     const dur = durationMs ?? 0;
-    if (dur === 0) return null;
-    const pos = dragPos ?? storePos;
+
+    // Duration unknown — no slider to draw (a track needs a maximum), but the
+    // position itself still has to be on screen.
+    if (dur === 0) {
+      return <div className="text-sm text-slate-400 tabular-nums">{positionText}</div>;
+    }
+
     return (
       <Slider
         aria-label={m.playback_position()}
@@ -66,8 +68,7 @@ export function PlaybackPosition({ inputRef, onNavigate }: PlaybackPositionProps
             aria-hidden="true"
           />
           <SliderThumb
-            inputRef={inputRef}
-            aria-valuetext={formatTime(pos)}
+            inputRef={thumbInputRef}
             onKeyDown={(e) => {
               if (e.key === 'ArrowLeft') {
                 e.preventDefault(); e.stopPropagation();
@@ -101,6 +102,11 @@ export function PlaybackPosition({ inputRef, onNavigate }: PlaybackPositionProps
             className="w-3 h-3 rounded-full bg-white top-1/2 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1 forced-colors:bg-[ButtonText]"
           />
         </SliderTrack>
+        {/* aria-hidden: the thumb already speaks this exact string, so a second
+            copy in the accessibility tree would only be read twice. */}
+        <span aria-hidden="true" className="text-sm text-slate-400 tabular-nums shrink-0">
+          {positionText}
+        </span>
       </Slider>
     );
   }

@@ -32,6 +32,8 @@ When a file ends, **Auto-play next track** — profile settings, tab **Playback*
 
 To hear that without walking into the player zone, press `F9` — anywhere in the window, and the focus stays where it is. For a broadcast Tapir names the station and the current track (when the station sends one), for a file the name and the position, and when nothing plays it says so. A muted output is added at the end of the answer.
 
+The position in a file and the volume level stand as numbers beside their bars — 2 min 14 sec and 45%. The position is there even when the file's duration is unknown and there is no bar.
+
 **Output** shows the current device. Change it, or rescan after plugging something in, in the app settings, tab **Audio**.
 
 When nothing is playing, Tapir can pick up whatever you listened to last: a station goes back on air, while a file resumes from its saved position or starts over — that choice is **Resume file** in the profile settings, tab **Playback**. It does not do so by default: to have it pick up the last source at startup, switch on **Resume last playback on startup** on the same tab. This never affects a pause: a paused file continues where it stopped.
