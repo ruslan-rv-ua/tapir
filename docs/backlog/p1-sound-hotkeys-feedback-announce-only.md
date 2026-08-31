@@ -10,7 +10,7 @@ target: 0.1.0
 updated: 2026-08-31
 a11y: false
 depends_on: []
-blocks: []
+blocks: [volume-hotkey-no-feedback]
 touches:
   - src/components/player/PlaybackPosition.tsx
   - src/components/player/VolumeSlider.tsx

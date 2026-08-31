@@ -26,9 +26,9 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [volume-hotkey-no-feedback](p1-volume-hotkey-no-feedback.md) | P1 | planned | **draft** | **M** | — | — (`Ctrl+Alt+Up/Down` мовчать в обидві сторони; механізм не обрано, зачіпає `muteControl`) |
+| [volume-hotkey-no-feedback](p1-volume-hotkey-no-feedback.md) | P1 | planned | **blocked** | **M** | [sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md) | — (огрилено 2026-08-31: канал `player-announce` `kind: "volume"`, одна репліка на відпусканні, `F9` називає рівень, тоста немає; чекає видимого числа від батьківського) |
 | [transport-skip-silent-failure](p1-transport-skip-silent-failure.md) | P1 | planned | **draft** | **M** | — | — (невдале «попередній / наступний» мовчить із глобальної клавіші й не називає причини з кнопки; поверхню не обрано) |
-| [sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md) | P1 | planned | ready | S | — | — (ухвалює [ADR про видимий носій](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) — правило успадкують наступні записи) |
+| [sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md) | P1 | planned | ready | S | — | [volume-hotkey-no-feedback](p1-volume-hotkey-no-feedback.md) (ухвалює [ADR про видимий носій](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) — правило успадкують наступні записи; видиме число гучності є передумовою дочірнього) |
 | [about-app-info](p1-about-app-info.md) | P1 | planned | ready | S | — | — (довідка веде до звіту про проблему, а версії взяти нізвідки) |
 | [webview-zoom-hotkeys](p1-webview-zoom-hotkeys.md) | P1 | planned | ready | S | — | — (прогалина доступності для слабозорих; перший крок — вимірювання, не правка) |
 | [hotkey-registration-silent-at-startup](p1-hotkey-registration-silent-at-startup.md) | P1 | planned | ready | S | — | — (механізм повідомлення вже є, працює лише на одному з двох шляхів) |
