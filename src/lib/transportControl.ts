@@ -62,7 +62,7 @@ async function reportSkipFailure(
   if (focused) {
     const reasonText =
       reason === "unsupported" ? m.stream_play_unsupported() : m.playback_error();
-    addToast(`${name}: ${reasonText}`, "error");
+    addToast(name ? `${name}: ${reasonText}` : reasonText, "error");
   } else {
     await tauri.notifyTransportFailure(name, reason).catch(console.error);
   }

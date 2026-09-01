@@ -262,7 +262,7 @@ pub fn notify_stop_all(app: &tauri::AppHandle, stopped: usize) {
 
 /// Причина невдалого prev/next — закритий набір, а не сирий рядок через межу
 /// процесів (ADR native-layer-localisation §2: одна подія — один ключ). Енум,
-/// а не bool: третя причина розширить перелік, а не перевернe прапорець.
+/// а не bool: третя причина розширить перелік, а не переверне прапорець.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TransportFailureReason {
