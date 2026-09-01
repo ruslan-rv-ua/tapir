@@ -19,14 +19,14 @@ semver; `unscheduled` — наприкінці.
 > не бреше й не мовчить: мертві налаштування прибрані, мовчазні відмови дістають видиму
 > поверхню, хибні мітки виправлені, обидві локалі повні, масштаб інтерфейсу працює.
 > Нових можливостей версія не додає — три записи типу `feature` тут закривають
-> прогалини, а не розширюють функціонал. 14 записів: 12 × S, 2 × M.
+> прогалини, а не розширюють функціонал. 14 записів: 12 × S, 1 × M, 1 × L.
 
 Порядок рядків у секціях — за пріоритетом, а в межах пріоритету **більші першими**:
 саме вони визначають, чи версія закриється, тож беруться раніше за дрібні.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [transport-skip-silent-failure](p1-transport-skip-silent-failure.md) | P1 | planned | **draft** | **M** | — | — (невдале «попередній / наступний» мовчить із глобальної клавіші й не називає причини з кнопки; поверхню не обрано) |
+| [transport-skip-silent-failure](p1-transport-skip-silent-failure.md) | P1 | planned | ready | **L** | — | [transport-boundary-silent-in-background](p2-transport-boundary-silent-in-background.md) (огрилено 2026-09-01: правило вибору поверхні виїхало в окремий ADR) |
 | [about-app-info](p1-about-app-info.md) | P1 | planned | ready | S | — | — (довідка веде до звіту про проблему, а версії взяти нізвідки) |
 | [webview-zoom-hotkeys](p1-webview-zoom-hotkeys.md) | P1 | planned | ready | S | — | — (прогалина доступності для слабозорих; перший крок — вимірювання, не правка) |
 | [hotkey-registration-silent-at-startup](p1-hotkey-registration-silent-at-startup.md) | P1 | planned | ready | S | — | — (механізм повідомлення вже є, працює лише на одному з двох шляхів) |
@@ -45,7 +45,7 @@ semver; `unscheduled` — наприкінці.
 
 > **Тема — фічі з готовим дизайном.** Записи, де рішення вже ухвалені (`type: planned`)
 > і лишилася реалізація, включно з останньою незакритою фазою застосунку —
-> **3H Post-processing**. 8 записів: 4 × S, 3 × M, 1 × L.
+> **3H Post-processing**. 9 записів: 5 × S, 3 × M, 1 × L.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
@@ -57,6 +57,7 @@ semver; `unscheduled` — наприкінці.
 | [command-palette-phase-4](p2-command-palette-phase-4.md) | P2 | planned | **blocked** | S | [command-palette-phase-3](p1-command-palette-phase-3.md) | — |
 | [focus-active-item-on-playback-start](p2-focus-active-item-on-playback-start.md) | P2 | idea | draft | S | — | — |
 | [streams-list-search](p2-streams-list-search.md) | P2 | idea | draft | S | — | — (гачок уже стоїть: `ZoneEntry.focusSearch?()` із [search-focus-hotkey](done/p2-search-focus-hotkey.md); зникне репліка «на цьому екрані немає пошуку») |
+| [transport-boundary-silent-in-background](p2-transport-boundary-silent-in-background.md) | P2 | planned | draft | S | [transport-skip-silent-failure](p1-transport-skip-silent-failure.md) | — (у вікні носій є — кнопки на межі `disabled`; у фоні натискання на краю списку не лишає сліду) |
 
 ## v0.3.0
 
