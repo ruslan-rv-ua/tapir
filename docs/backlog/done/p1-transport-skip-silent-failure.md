@@ -3,11 +3,12 @@ slug: transport-skip-silent-failure
 title: "«Попередній / наступний» не каже, чому не заграло — а з глобальної клавіші мовчить зовсім"
 priority: P1
 type: planned
-status: ready
+status: done
 effort: L
 kind: bug
 target: 0.1.0
 updated: 2026-09-01
+completed: 2026-09-01
 a11y: true
 depends_on: []
 blocks: [transport-boundary-silent-in-background]
@@ -33,36 +34,37 @@ notes:
   - "a11y: true лишається. Вихід вихідної редакції («обравши тост, прапорець можна зняти») закрився: рішення додає мовну подію на глобальній клавіші (seek-start) і кладе нативний тост на шлях, який його не мав."
   - "Заводиться новий ADR: правило «вухо, вікно, система» ширше за цей запис і описує п'ять наявних випадків фонового відгуку, а не лише цей."
   - "Хвіст: межа списку у фоні носія не має — окремим p2-записом, свідомо не тут."
-  - "2026-09-01: реалізовано (гілка feature/transport-skip-silent-failure), усі гейти зелені; лишився тільки NVDA-прогін за docs/testing/nvda-transport-skip-silent-failure.md."
+  - "2026-09-01: реалізовано (гілка feature/transport-skip-silent-failure), усі гейти зелені."
+  - "2026-09-01: ПРИЙНЯТО — NVDA-прогін пройдено чисто, усі 8 сценаріїв, зауважень немає. Чекліст docs/testing/nvda-transport-skip-silent-failure.md видалено при прийманні."
 ---
 
 # «Попередній / наступний» не каже, чому не заграло — а з глобальної клавіші мовчить зовсім
 
 > **Контекст:** знайдено на code-review
-> [unknown-format-falls-back-to-mp3](done/p1-unknown-format-falls-back-to-mp3.md),
+> [unknown-format-falls-back-to-mp3](p1-unknown-format-falls-back-to-mp3.md),
 > огрилено 2026-09-01. Рішення ухвалені — читати «Прийняті рішення» перед кодом.
 
 ## Опис
 
 `executeTransportSkip` ковтає будь-яку невдачу IPC у `console.error` і виносить її назовні
-лише необов'язковим хуком ([transportControl.ts:64](../../src/lib/transportControl.ts:64)).
+лише необов'язковим хуком ([transportControl.ts:64](../../../src/lib/transportControl.ts:64)).
 Хук передає **один** із двох викликачів:
 
 - **кнопки панелі плеєра** — `onError: () => announce(m.playback_error(), "assertive")`
-  ([PlayerPanel.tsx:178](../../src/components/player/PlayerPanel.tsx:178)): «Помилка
+  ([PlayerPanel.tsx:178](../../../src/components/player/PlayerPanel.tsx:178)): «Помилка
   відтворення», без причини й **без видимого носія**;
 - **глобальна клавіша** — `executeTransportSkip(trigger)` без хуків узагалі
-  ([App.tsx:425](../../src/App.tsx:425)): не відбувається нічого. Ні звуку, ні тексту, ні
+  ([App.tsx:425](../../../src/App.tsx:425)): не відбувається нічого. Ні звуку, ні тексту, ні
   оголошення. Попередній трек грає далі, і єдина ознака — що не змінилось нічого.
 
 Відповідь на це питання в застосунку вже є, за сто рядків вище: авто-перехід між файлами на
-тій самій невдачі показує **тост** ([App.tsx:322](../../src/App.tsx:322),
+тій самій невдачі показує **тост** ([App.tsx:322](../../../src/App.tsx:322),
 `addToast(m.playback_error(), "error")`). Тобто дві гілки одного модуля розходяться в
 поверхні на однаковій події.
 
-Прогалина стала помітнішою після [unknown-format-falls-back-to-mp3](done/p1-unknown-format-falls-back-to-mp3.md):
+Прогалина стала помітнішою після [unknown-format-falls-back-to-mp3](p1-unknown-format-falls-back-to-mp3.md):
 черга прев/некст іде по **видимому списку потоків**
-([playbackNeighbors.ts](../../src/stores/playbackNeighbors.ts) читає `$visibleStreams`), а
+([playbackNeighbors.ts](../../../src/stores/playbackNeighbors.ts) читає `$visibleStreams`), а
 непідтримуваний потік у ньому лишається — його не ховають і кнопку «Запис» йому не вимикають.
 Тож «наступний» тепер регулярно впирається в потік, який відмовляє **одразу**, і саме тоді
 мовчання найдорожче: раніше на цьому місці була хоч п'ятнадцятисекундна пауза, після якої
@@ -73,16 +75,16 @@ notes:
 Чотири факти переставили рамку запису, і в описі їх бракувало:
 
 - **Сховане вікно — штатний стан, а не крайній випадок.** Закриття вікна ховає його в трей
-  ([lib.rs:243](../../src-tauri/src/lib.rs:243)), `--minimize` стартує в треї
-  ([lib.rs:161](../../src-tauri/src/lib.rs:161)). У цьому стані **ні тост, ні оголошення не
+  ([lib.rs:243](../../../src-tauri/src/lib.rs:243)), `--minimize` стартує в треї
+  ([lib.rs:161](../../../src-tauri/src/lib.rs:161)). У цьому стані **ні тост, ні оголошення не
   спостережувані взагалі**: обидві поверхні живуть усередині вебв'ю.
 - **Викликачів фонової клавіші двоє, а не один.** Крім `prev_track` / `next_track`
-  ([shortcuts.rs:187](../../src-tauri/src/shortcuts.rs:187)) ту саму подію `transport-skip`
+  ([shortcuts.rs:187](../../../src-tauri/src/shortcuts.rs:187)) ту саму подію `transport-skip`
   емітить **SMTC** — мультимедійні клавіші клавіатури
-  ([smtc.rs:239](../../src-tauri/src/smtc.rs:239)).
+  ([smtc.rs:239](../../../src-tauri/src/smtc.rs:239)).
 - **Подія `stream-unsupported` цей шлях не покриває.** `play_stream` на непідтримуваному
   потоці лише повертає `Err("unsupported_codec")`
-  ([player_commands.rs:30](../../src-tauri/src/commands/player_commands.rs:30)) — жодної події
+  ([player_commands.rs:30](../../../src-tauri/src/commands/player_commands.rs:30)) — жодної події
   не шле. Тост, який показує `handleStreamUnsupported`, сюди не приходить.
 - **Мовчазних виходів у функції не один, а чотири** — див. §6.
 
@@ -94,9 +96,9 @@ notes:
 вікно попереду» лікував би сценарій, якого в цієї клавіші майже немає. Категорія вже названа з
 формулюванням, що дослівно описує цей випадок: «Відповідь на фоновий хоткей», яка **свідомо
 ніколи не гейтиться**, бо «сліду не лишає ніде»
-([notify.rs:154](../../src-tauri/src/tray/notify.rs:154)).
+([notify.rs:154](../../../src-tauri/src/tray/notify.rs:154)).
 
-Аргумент [volume-hotkey §1](done/p1-volume-hotkey-no-feedback.md) («у фоні німо») сюди не
+Аргумент [volume-hotkey §1](p1-volume-hotkey-no-feedback.md) («у фоні німо») сюди не
 переноситься, і не тому, що слабший, — він **перевернутий**. Там фонову тишу купував звук:
 гучність людина отримує вухом одразу. Тут вухо не дає нічого: попередній трек грає далі, і цей
 самий спостережуваний нуль означає ще й легітимну межу списку.
@@ -107,7 +109,7 @@ notes:
 ### 2. Поверхню обирає фокус вікна, і вона живе всередині модуля
 
 Одне правило на обидва шляхи: вікно у фокусі — `addToast`; ні — нативний тост. Гейт на боці
-викликача, як це вже формулює [notify.rs:174](../../src-tauri/src/tray/notify.rs:174).
+викликача, як це вже формулює [notify.rs:174](../../../src-tauri/src/tray/notify.rs:174).
 
 Три причини саме за фокусом, а не за тригером:
 
@@ -122,7 +124,7 @@ notes:
 
 Наслідок: `announce(m.playback_error(), "assertive")` із PlayerPanel **прибирається** —
 `ToastContainer` уже є live region (`role="log" aria-live="polite"`,
-[ToastContainer.tsx:11](../../src/components/common/ToastContainer.tsx:11)), і два канали дали б
+[ToastContainer.tsx:11](../../../src/components/common/ToastContainer.tsx:11)), і два канали дали б
 дубль.
 
 Відхилено: **вибір за тригером** — глобальну клавішу тиснуть і при відкритому вікні, і тоді
@@ -140,7 +142,7 @@ notes:
 
 - **Ця розвилка вже пройдена в сусідній гілці того самого модуля**: авто-перехід має дослівний
   коментар *«Skip-on-error guard: never loop through broken files — just stop»*
-  ([App.tsx:322](../../src/App.tsx:322)). Пропуск вирівняв би транспорт у протилежний бік.
+  ([App.tsx:322](../../../src/App.tsx:322)). Пропуск вирівняв би транспорт у протилежний бік.
 - **Ціна кроку не нульова, а п'ятнадцятисекундна.** Миттєво відмовляє лише `unsupported_codec`;
   мертвий URL коштує повний таймаут.
 - **Пропуск ламає властивість, обрану навмисно.** `$playbackNeighbors` читає `$visibleStreams`
@@ -162,7 +164,7 @@ notes:
 кшталт `stream not found: …`. У плашці Windows, що приїхала у відповідь на клавішу, це шум.
 Індустрія тут одностайна: APNs передає `loc-key` і `loc-args`, FCM — `*_loc_key`, тобто **ключ
 і аргументи, ніколи не відрендерений рядок**. Те саме каже
-[ADR native-layer-localisation §2](../decisions/2026-08-17-native-layer-localisation.md):
+[ADR native-layer-localisation §2](../../decisions/2026-08-17-native-layer-localisation.md):
 «одна подія — один ключ, навіть коли поверхонь дві».
 
 Ціна названа чесно: транспорт звужує деталь порівняно з трьома наявними поверхнями Play.
@@ -176,14 +178,14 @@ notes:
 ### 5. Ціль називається на обох поверхнях
 
 - вікно: `name: причина` — той самий ідіом, що вже вживає `handleStreamError`
-  ([App.tsx:229](../../src/App.tsx:229));
+  ([App.tsx:229](../../../src/App.tsx:229));
 - трей: `title` = ім'я цілі, `body` = причина — той самий ідіом, що вже вживає
-  `notify_track_change` ([notify.rs:225](../../src-tauri/src/tray/notify.rs:225)).
+  `notify_track_change` ([notify.rs:225](../../../src-tauri/src/tray/notify.rs:225)).
 
 У фоні людина натиснула клавішу з іншого застосунку: списку не видно, що було «наступним» —
 невідомо. «Помилка відтворення» без імені відповідає на «чи спрацювало», але не на «з чим».
 Коштує це **нуль нових рядків у `messages/`**: ім'я — дані, а не текст для перекладу, і
-`sourceName()` ([playbackAnnounce.ts](../../src/lib/playbackAnnounce.ts)) уже вміє дістати його
+`sourceName()` ([playbackAnnounce.ts](../../../src/lib/playbackAnnounce.ts)) уже вміє дістати його
 з обох видів цілі. Заодно `HotkeyFeedback` перестає марнувати заголовок на назву застосунку,
 яку Windows і так малює над тостом.
 
@@ -193,10 +195,10 @@ notes:
 
 | # | Вихід | Рішення |
 |---|---|---|
-| 1 | `if (pending) return` ([:44](../../src/lib/transportControl.ts:44)) | мовчить далі |
-| 2 | `action.kind === "none"` ([:50](../../src/lib/transportControl.ts:50)) | мовчить далі |
-| 3 | `seek-start` без хука ([:58](../../src/lib/transportControl.ts:58)) | **закривається** |
-| 4 | `catch` без хука ([:64](../../src/lib/transportControl.ts:64)) | **закривається** |
+| 1 | `if (pending) return` ([:44](../../../src/lib/transportControl.ts:44)) | мовчить далі |
+| 2 | `action.kind === "none"` ([:50](../../../src/lib/transportControl.ts:50)) | мовчить далі |
+| 3 | `seek-start` без хука ([:58](../../../src/lib/transportControl.ts:58)) | **закривається** |
+| 4 | `catch` без хука ([:64](../../../src/lib/transportControl.ts:64)) | **закривається** |
 
 **№3 — той самий дефект, що й №4**, просто не названий у тексті: «Плеєр перезапущено»
 промовляє лише панель, а глобальна клавіша мовчить. Критерій сформульований як «третій викликач
@@ -216,15 +218,15 @@ notes:
   **тиша почала означати «межа»**.
 
 Дрібний рефактор, який це вмикає: `announce()` як функція в
-[announcer.ts](../../src/stores/announcer.ts) — близнюк `addToast()`, щоб `src/lib/` не смикав
+[announcer.ts](../../../src/stores/announcer.ts) — близнюк `addToast()`, щоб `src/lib/` не смикав
 `.set()` руками. `useAnnounce` стає обгорткою над нею.
 
 ### 7. Заводиться новий ADR — правило ширше за цей запис
 
 §2 ухвалило не деталь, а **правило**, на яке посилатимуться далі. Такого в проєкті не було:
-[ADR 2026-08-31](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) каже, що носій
+[ADR 2026-08-31](../../decisions/2026-08-31-visible-carrier-for-announced-facts.md) каже, що носій
 **потрібен**, але мовчазно припускає вікно;
-[ADR 2026-08-17](../decisions/2026-08-17-tray-toast-categories.md) каже, **якої категорії**
+[ADR 2026-08-17](../../decisions/2026-08-17-tray-toast-categories.md) каже, **якої категорії**
 нативний тост, але не коли він доречний.
 
 Правило виявилось **тришаровим** і описує всі п'ять наявних випадків фонового відгуку:
@@ -289,14 +291,14 @@ ADR наступний читач бере з `volume-hotkey §1` протиле
 сталося»; заводити статтю про симптом, який щойно перестав існувати, означає документувати
 минулу версію (плюс там 976 із 1000 слів). **`background.md`** — його абзац про сповіщення
 описує **вмикані прапорцями** категорії, а `HotkeyFeedback` не гейтиться ніколи
-([notify.rs:168](../../src-tauri/src/tray/notify.rs:168)): читач шукав би прапорець, якого
+([notify.rs:168](../../../src-tauri/src/tray/notify.rs:168)): читач шукав би прапорець, якого
 немає.
 
 ### 11. Команда IPC — вузька й типізована
 
 `notify_transport_failure(name, reason)`, де `reason` — serde-енум `Unsupported | Error`. Rust
 сам обирає `Key`, сам кладе `name` у заголовок. У `keys!`
-([i18n.rs:114](../../src-tauri/src/i18n.rs:114)) додається два варіанти — `playback_error` і
+([i18n.rs:114](../../../src-tauri/src/i18n.rs:114)) додається два варіанти — `playback_error` і
 `stream_play_unsupported`; нових рядків у `messages/` немає.
 
 - **Енум, а не `bool unsupported`** — прапорець із двох станів завжди дешевший сьогодні й
@@ -312,7 +314,7 @@ stringly-typed пошук через межу процесів, обходить
 
 ### 12. `CONTEXT.md` — четвертий пункт
 
-Секція §«Оголошення, сповіщення і видимий носій» ([CONTEXT.md:270](../../CONTEXT.md:270))
+Секція §«Оголошення, сповіщення і видимий носій» ([CONTEXT.md:270](../../../CONTEXT.md:270))
 відкривається словами «Три способи, якими Tapir щось повідомляє». Правило §7 ставить перед усіма
 трьома четвертий канал — **сам звук**, — і саме на ньому тримається пояснення, чому гучність у
 фоні мовчить законно, а невдалий skip ні.
@@ -335,11 +337,11 @@ stringly-typed пошук через межу процесів, обходить
 - [x] `SkipHooks` містить лише `beforeExecute`; німим третій викликач стати не може
 - [x] `announce()` є функцією в `src/stores/announcer.ts`, `useAnnounce` — обгортка над нею
 - [x] Нова команда вузька й типізована; `keys!` має два нові варіанти, `messages/` — нуль нових рядків
-- [x] Новий ADR «Три поверхні відповіді: вухо, вікно, система» написано й перехресно злінковано з обох наявних ADR і `AGENTS.md` — [2026-09-01-response-surfaces-ear-window-system](../decisions/2026-09-01-response-surfaces-ear-window-system.md)
+- [x] Новий ADR «Три поверхні відповіді: вухо, вікно, система» написано й перехресно злінковано з обох наявних ADR і `AGENTS.md` — [2026-09-01-response-surfaces-ear-window-system](../../decisions/2026-09-01-response-surfaces-ear-window-system.md)
 - [x] `CONTEXT.md` §«Оголошення, сповіщення і видимий носій» має четвертий пункт і посилання на новий ADR
 - [x] `docs/help/{uk,en}/player.md` оновлено; `troubleshooting.md` і `background.md` не чіпані
-- [x] Заведено окремий p2-запис — [transport-boundary-silent-in-background](p2-transport-boundary-silent-in-background.md)
-- [ ] NVDA-прогін пройдено — два стани вікна на два емітери, плюс перевірка тиші на межі: чекліст [nvda-transport-skip-silent-failure](../testing/nvda-transport-skip-silent-failure.md)
+- [x] Заведено окремий p2-запис — [transport-boundary-silent-in-background](../p2-transport-boundary-silent-in-background.md)
+- [x] NVDA-прогін пройдено — два стани вікна на два емітери, плюс перевірка тиші на межі: 8 сценаріїв, 2026-09-01, зауважень немає (чекліст видалено на прийманні)
 - [x] `pnpm test`, `pnpm vite:build`, `cargo test` зелені
 
 ## Свідомо не робимо
@@ -349,14 +351,14 @@ stringly-typed пошук через межу процесів, обходить
 - **`playRefusalMessage` не звужуємо** — його три поверхні лишаються з сирим текстом причини;
   аргумент на його користь правдивий саме там (§4).
 - **`ToastContainer` не робимо assertive** — це рішення масштабу застосунку (§8).
-- **Межу списку у фоні не озвучуємо** — інший клас («межа», не «невдача»), винесено в [transport-boundary-silent-in-background](p2-transport-boundary-silent-in-background.md).
+- **Межу списку у фоні не озвучуємо** — інший клас («межа», не «невдача»), винесено в [transport-boundary-silent-in-background](../p2-transport-boundary-silent-in-background.md).
 - **Тости за прецедентом більше не додаємо** — правило тепер живе в ADR (§7).
 
 ## Документи
 
-- [unknown-format-falls-back-to-mp3](done/p1-unknown-format-falls-back-to-mp3.md) — звідки знахідка; додав відмову, на яку транспорт тепер натикається
-- [ADR 2026-08-31 — видимий носій](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) §2, §5 — чому оголошення саме по собі поверхнею не є
-- [ADR 2026-08-17 — категорії тостів трею](../decisions/2026-08-17-tray-toast-categories.md) — звідки `HotkeyFeedback` і чому вона не гейтиться
-- [ADR 2026-08-17 — локалізація нативного шару](../decisions/2026-08-17-native-layer-localisation.md) §2 — «одна подія — один ключ, навіть коли поверхонь дві»
-- [sound-hotkeys-feedback-announce-only](done/p1-sound-hotkeys-feedback-announce-only.md), [volume-hotkey-no-feedback](done/p1-volume-hotkey-no-feedback.md) — та сама родина; §1 другого пояснює, чому там фонова тиша законна
+- [unknown-format-falls-back-to-mp3](p1-unknown-format-falls-back-to-mp3.md) — звідки знахідка; додав відмову, на яку транспорт тепер натикається
+- [ADR 2026-08-31 — видимий носій](../../decisions/2026-08-31-visible-carrier-for-announced-facts.md) §2, §5 — чому оголошення саме по собі поверхнею не є
+- [ADR 2026-08-17 — категорії тостів трею](../../decisions/2026-08-17-tray-toast-categories.md) — звідки `HotkeyFeedback` і чому вона не гейтиться
+- [ADR 2026-08-17 — локалізація нативного шару](../../decisions/2026-08-17-native-layer-localisation.md) §2 — «одна подія — один ключ, навіть коли поверхонь дві»
+- [sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md), [volume-hotkey-no-feedback](p1-volume-hotkey-no-feedback.md) — та сама родина; §1 другого пояснює, чому там фонова тиша законна
 - Код: `src/lib/transportControl.ts`, `src/App.tsx`, `src/components/player/PlayerPanel.tsx`, `src/stores/announcer.ts`, `src-tauri/src/tray/notify.rs`, `src-tauri/src/i18n.rs`

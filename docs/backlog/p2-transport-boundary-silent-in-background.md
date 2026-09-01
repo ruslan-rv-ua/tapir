@@ -27,7 +27,7 @@ notes:
 # Межа списку у фоні не має носія — «наступний» на краю мовчить так само, як незареєстрована клавіша
 
 > **Контекст:** знайдено під час grilling
-> [transport-skip-silent-failure](p1-transport-skip-silent-failure.md) §6, винесено окремо.
+> [transport-skip-silent-failure](done/p1-transport-skip-silent-failure.md) §6, винесено окремо.
 > Поверхню обирати не треба — треба вирішити, чи потрібен відгук узагалі.
 
 ## Опис
@@ -88,7 +88,7 @@ notes:
 
 ## Документи
 
-- [transport-skip-silent-failure](p1-transport-skip-silent-failure.md) §6 — звідки знахідка; там же контракт чотирьох мовчазних виходів
+- [transport-skip-silent-failure](done/p1-transport-skip-silent-failure.md) §6 — звідки знахідка; там же контракт чотирьох мовчазних виходів
 - [ADR 2026-08-31 — видимий носій](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) §1, §3 — чому цей випадок опинився поза межею
 - [volume-hotkey-no-feedback](done/p1-volume-hotkey-no-feedback.md) §3—§4 — прецедент «одна репліка на серію натискань»
 - [hotkey-registration-silent-at-startup](p1-hotkey-registration-silent-at-startup.md) — сусідній симптом тієї самої тиші

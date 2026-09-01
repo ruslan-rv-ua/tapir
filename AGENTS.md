@@ -109,7 +109,6 @@ All project documentation lives in `docs/`. Key files:
 
 **Manual testing** (`docs/testing/`):
 - [test-streams.md](docs/testing/test-streams.md) — тестові URL радіо-потоків
-- [nvda-transport-skip-silent-failure.md](docs/testing/nvda-transport-skip-silent-failure.md) — чекліст NVDA-прогону запису `transport-skip-silent-failure`
 
 Чеклісти NVDA-прогону (`docs/testing/nvda-<slug>.md`) створюються для записів беклогу
 з `a11y: true` і видаляються на прийманні — метод і шаблон живуть у скілі
