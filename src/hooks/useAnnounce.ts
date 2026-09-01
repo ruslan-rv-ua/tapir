@@ -1,8 +1,6 @@
-import { useCallback } from "react";
-import { $announcer } from "../stores/announcer";
+import { announce } from "../stores/announcer";
 
-export function useAnnounce(): (message: string, priority?: "polite" | "assertive") => void {
-  return useCallback((message: string, priority: "polite" | "assertive" = "polite") => {
-    $announcer.set({ message, priority });
-  }, []);
+export function useAnnounce(): typeof announce {
+  // Module function, stable identity — safe in dependency arrays.
+  return announce;
 }

@@ -306,6 +306,7 @@ pub fn run() {
             commands::player_commands::get_player_status,
             commands::player_commands::list_output_devices,
             commands::player_commands::set_output_device,
+            commands::player_commands::notify_transport_failure,
             commands::wishlist_commands::get_wishlist,
             commands::wishlist_commands::get_wishlist_matches,
             commands::wishlist_commands::add_to_wishlist,

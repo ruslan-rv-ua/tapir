@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { Song } from "../types/song";
 import type { LogLevel } from "./logLevel";
 
@@ -336,6 +337,28 @@ export async function listOutputDevices(): Promise<AudioDevice[]> {
 }
 export async function setOutputDevice(name: string | null): Promise<void> {
   return invoke("set_output_device", { name });
+}
+
+/** Why a transport skip refused, as a closed two-value set — mirrors the Rust
+ *  `TransportFailureReason`. A key crosses the process boundary, never a
+ *  rendered string (ADR native-layer-localisation §2). */
+export type TransportFailureReason = "unsupported" | "error";
+
+/** Native `HotkeyFeedback` toast for a failed prev/next while the window is in
+ *  the background. `name` is the skip's target — the webview owns the naming
+ *  rule (`sourceName`), Rust owns the key choice. */
+export async function notifyTransportFailure(
+  name: string,
+  reason: TransportFailureReason,
+): Promise<void> {
+  return invoke("notify_transport_failure", { name, reason });
+}
+
+/** Is our window the OS-foreground window? Focus, not visibility: NVDA reads
+ *  the live region only in the foreground window, so a visible-but-unfocused
+ *  window must get the native toast, not the in-window one. */
+export async function isWindowFocused(): Promise<boolean> {
+  return getCurrentWindow().isFocused();
 }
 
 // ── Wishlist/Ignorelist types ─────────────────────────────────────────────

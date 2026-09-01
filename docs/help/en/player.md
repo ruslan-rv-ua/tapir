@@ -22,6 +22,8 @@ On both sliders `←` and `→` move to the next player control instead of chang
 
 Both stay inside whatever is playing: streams during a broadcast, recordings during a file. Tapir never crosses between them. The order is the one on the matching screen right now, so filtering or sorting Recordings changes where **Next track** lands. While you listen to a station in the Station Browser, both are unavailable.
 
+When the neighbouring track fails to play — the station refuses, or the connection breaks — Tapir names what did not play and why, and playback stays where it was: next means one step, not a search for the first one that works. With the window in the background the message arrives as a system notification.
+
 **Previous track** normally steps back. Set **“Previous” restarts the track if played longer than (seconds, 0 = off)** in the app settings, tab **Audio**, and past that point it restarts the current file instead. Broadcasts ignore it.
 
 When a file ends, **Auto-play next track** — profile settings, tab **Playback**, on by default — starts the next one. At the end of the list playback stops; Tapir does not loop.

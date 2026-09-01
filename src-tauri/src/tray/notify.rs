@@ -260,6 +260,39 @@ pub fn notify_stop_all(app: &tauri::AppHandle, stopped: usize) {
     show_toast(app, ToastKind::HotkeyFeedback, &i18n::t(Key::AppName), &body);
 }
 
+/// Причина невдалого prev/next — закритий набір, а не сирий рядок через межу
+/// процесів (ADR native-layer-localisation §2: одна подія — один ключ). Енум,
+/// а не bool: третя причина розширить перелік, а не перевернe прапорець.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TransportFailureReason {
+    /// `unsupported_codec`: єдина причина, яку застосунок знає достеменно.
+    Unsupported,
+    /// Решта невдач Play — деталь лишається в console/log.
+    Error,
+}
+
+fn transport_failure_body(reason: TransportFailureReason) -> String {
+    i18n::t(match reason {
+        TransportFailureReason::Unsupported => Key::StreamPlayUnsupported,
+        TransportFailureReason::Error => Key::PlaybackError,
+    })
+}
+
+/// Toast for a failed prev/next while the window is out of focus.
+///
+/// `ToastKind::HotkeyFeedback` — без гейта: попередній трек грає далі, тож
+/// вухо тут не відповідає нічого, і цей тост — єдиний слід натискання.
+/// `title` = ім'я цілі, `body` = причина — ідіом `notify_track_change`;
+/// назву застосунку Windows і так малює над тостом.
+pub fn notify_transport_failure(
+    app: &tauri::AppHandle,
+    name: &str,
+    reason: TransportFailureReason,
+) {
+    show_toast(app, ToastKind::HotkeyFeedback, name, &transport_failure_body(reason));
+}
+
 // --- Balloon-дублікати подій scheduled-* (Phase 3D §5.5) ---
 // Тексти не «дзеркалять» live region, а беруть **ті самі ключі**: одна подія —
 // один текст, розійтися нема чому. StoppedByUser не дублюється: ручну зупинку
@@ -350,6 +383,32 @@ mod tests {
             tray_notifications_scheduled: false,
         };
         assert!(is_enabled(ToastKind::HotkeyFeedback, &ui));
+    }
+
+    /// Обидві причини — тими самими ключами, що їх бачить вікно (Paraglide),
+    /// в обох локалях: одна подія — один ключ, навіть коли поверхонь дві.
+    #[test]
+    fn transport_failure_body_names_the_reason_in_both_locales() {
+        with_locale(Locale::Uk, || {
+            assert_eq!(
+                transport_failure_body(TransportFailureReason::Unsupported),
+                "Tapir не відтворює кодек цього потоку"
+            );
+            assert_eq!(
+                transport_failure_body(TransportFailureReason::Error),
+                "Помилка відтворення"
+            );
+        });
+        with_locale(Locale::En, || {
+            assert_eq!(
+                transport_failure_body(TransportFailureReason::Unsupported),
+                "Tapir does not play this stream’s codec"
+            );
+            assert_eq!(
+                transport_failure_body(TransportFailureReason::Error),
+                "Playback error"
+            );
+        });
     }
 
     #[test]

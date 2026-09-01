@@ -39,6 +39,7 @@ See [docs/architecture.md](docs/architecture.md) for module structure and data f
 
 - **Accessibility-first**: every UI element must work with NVDA/JAWS/Narrator. Use React Aria Components, ARIA landmarks, `aria-live` regions. See [docs/accessibility.md](docs/accessibility.md).
 - **Visible carrier**: whatever `announce()` says about a user action, the screen must also carry — as text a person reads, never as an `aria-*` attribute alone. A fact with no visible carrier is fixed one of two ways: put it on screen, or drop it from the announcement. The rule is one-directional (a visible change owes no announcement) and covers user actions only. Rule, rejected alternatives and its limits: [ADR 2026-08-31](docs/decisions/2026-08-31-visible-carrier-for-announced-facts.md); vocabulary: [CONTEXT.md](CONTEXT.md) §«Оголошення, сповіщення і видимий носій».
+- **Response surfaces — ear, window, system**: sound itself is the first feedback channel; when it answers (volume moved, track audibly restarted), the background owes nothing extra. When it doesn't, window focus picks the surface: focused → in-window toast/announcement, unfocused → native `HotkeyFeedback` toast. Focus, not visibility — NVDA reads live regions only in the foreground window. Rule and the five covered cases: [ADR 2026-09-01](docs/decisions/2026-09-01-response-surfaces-ear-window-system.md).
 - **Portable**: single EXE, no installer. Data stored in `data/` next to the executable. See `src-tauri/src/portable.rs`.
 - **Window decorations**: `decorations: true` is required (NVDA mouse tracking — Tauri #12901).
 - **i18n**: Ukrainian first, English second. Uses Paraglide.js (compile-time, type-safe). Messages in `src/i18n/messages/{uk,en}.json`.
@@ -108,6 +109,7 @@ All project documentation lives in `docs/`. Key files:
 
 **Manual testing** (`docs/testing/`):
 - [test-streams.md](docs/testing/test-streams.md) — тестові URL радіо-потоків
+- [nvda-transport-skip-silent-failure.md](docs/testing/nvda-transport-skip-silent-failure.md) — чекліст NVDA-прогону запису `transport-skip-silent-failure`
 
 Чеклісти NVDA-прогону (`docs/testing/nvda-<slug>.md`) створюються для записів беклогу
 з `a11y: true` і видаляються на прийманні — метод і шаблон живуть у скілі

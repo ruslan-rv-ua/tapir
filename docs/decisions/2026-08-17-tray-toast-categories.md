@@ -6,7 +6,9 @@
 - **Контекст:** беклог — [tray-notifications-label-scope](../backlog/done/p1-tray-notifications-label-scope.md),
   знайдено під час grilling [help-automation](../backlog/done/p1-help-automation.md);
   словник — [CONTEXT.md](../../CONTEXT.md) §«Сповіщення в треї»; межа глобальне/профільне —
-  [ADR 2026-08-08](2026-08-08-global-vs-profile-settings-boundary.md); код —
+  [ADR 2026-08-08](2026-08-08-global-vs-profile-settings-boundary.md); коли нативний тост
+  взагалі доречний (цей ADR каже лише, якої він категорії) —
+  [ADR 2026-09-01 «вухо, вікно, система»](2026-09-01-response-surfaces-ear-window-system.md); код —
   [notify.rs](../../src-tauri/src/tray/notify.rs), [timer.rs](../../src-tauri/src/scheduler/timer.rs).
 
 ## Проблема

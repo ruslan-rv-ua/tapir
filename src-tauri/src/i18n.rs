@@ -120,6 +120,9 @@ keys! { Key, ALL,
     ReasonStartFailed      => "schedule_reason_start_failed",
     ReasonClockChange      => "schedule_reason_clock_change",
     ReasonUnsupportedCodec => "schedule_reason_unsupported_codec",
+    // — невдалий prev/next: ті самі ключі, що читає вікно —
+    PlaybackError          => "playback_error",
+    StreamPlayUnsupported  => "stream_play_unsupported",
 }
 
 keys! { PluralKey, ALL,

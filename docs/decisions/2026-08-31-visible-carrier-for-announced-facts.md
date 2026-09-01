@@ -7,6 +7,8 @@
   знайдено під час grilling [help-muted-playback-symptom](../backlog/done/p2-help-muted-playback-symptom.md);
   словник — [CONTEXT.md](../../CONTEXT.md) §«Оголошення, сповіщення і видимий носій»;
   модель для фонового шару — [ADR 2026-08-17](2026-08-17-tray-toast-categories.md);
+  де відповідь живе, коли вікно не у фокусі (цей ADR мовчазно припускає вікно), —
+  [ADR 2026-09-01 «вухо, вікно, система»](2026-09-01-response-surfaces-ear-window-system.md);
   принцип універсального дизайну — [help-content-polish](../backlog/done/p1-help-content-polish.md);
   код — [LiveAnnouncer.tsx](../../src/components/common/LiveAnnouncer.tsx),
   [ToastContainer.tsx](../../src/components/common/ToastContainer.tsx).

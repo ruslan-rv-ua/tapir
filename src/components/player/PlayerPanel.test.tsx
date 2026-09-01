@@ -4,6 +4,7 @@ import { render, fireEvent } from "@testing-library/react";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 import { $announcer } from "../../stores/announcer";
+import { $toasts } from "../../stores/toasts";
 import { $settings } from "../../stores/settings";
 import { PlayerPanel } from "./PlayerPanel";
 import { $muteState, $playerStatus } from "../../stores/player";
@@ -32,6 +33,9 @@ vi.mock("../../lib/tauri", () => ({
   resumePlayback: vi.fn().mockResolvedValue(undefined),
   stopPlayback: vi.fn().mockResolvedValue(undefined),
   seekPlayback: vi.fn().mockResolvedValue(undefined),
+  notifyTransportFailure: vi.fn().mockResolvedValue(undefined),
+  // A clicked panel button implies a focused window.
+  isWindowFocused: vi.fn().mockResolvedValue(true),
 }));
 
 // Isolate prev/next logic from the slider children (which mount react-aria sliders).
@@ -110,6 +114,8 @@ afterEach(() => {
   $songsStation.set(null);
   $songsSort.set("date");
   $settings.set(null);
+  $announcer.set(null);
+  $toasts.set([]);
 });
 
 describe("PlayerPanel — prev/next enabled states", () => {
@@ -264,14 +270,17 @@ describe("PlayerPanel — mute button", () => {
 });
 
 describe("PlayerPanel — prev/next error handling", () => {
-  it("announces a playback error when the skip IPC rejects", async () => {
+  it("raises a visible toast naming the target when the skip IPC rejects — and does not announce twice", async () => {
     vi.mocked(tauri.playStream).mockRejectedValueOnce(new Error("IPC fail"));
     playingStream("s2");
     const { getByRole } = renderPanel();
     fireEvent.click(getByRole("button", { name: m.player_next() }));
     await vi.waitFor(() => {
-      expect($announcer.get()?.message).toBe(m.playback_error());
+      expect($toasts.get()[0]?.message).toBe(`s3: ${m.playback_error()}`);
     });
+    // ToastContainer is a live region already; the panel's own assertive
+    // announce would be a duplicate (record §2), so it is gone.
+    expect($announcer.get()?.message).not.toBe(m.playback_error());
   });
 });
 

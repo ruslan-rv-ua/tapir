@@ -120,6 +120,19 @@ pub async fn list_output_devices() -> Result<Vec<AudioDevice>, String> {
         .map_err(|e| e.to_string())
 }
 
+/// Нативний тост для невдалого prev/next, коли вікно не у фокусі. Вузька й
+/// типізована навмисно: причина — serde-енум, ключ обирає Rust, а ім'я цілі
+/// передає вебв'ю — власник правила іменування один (`sourceName`), і команда
+/// не дає підняти довільний тост трею.
+#[tauri::command]
+pub fn notify_transport_failure(
+    name: String,
+    reason: crate::tray::notify::TransportFailureReason,
+    app: AppHandle,
+) {
+    crate::tray::notify::notify_transport_failure(&app, &name, reason);
+}
+
 #[tauri::command]
 pub async fn set_output_device(
     name: Option<String>,

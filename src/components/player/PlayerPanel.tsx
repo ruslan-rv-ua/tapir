@@ -168,16 +168,16 @@ export const PlayerPanel = forwardRef<
   // the button and Ctrl+M are the same gesture with two triggers.
   const handleMute = () => toggleMute(announce);
 
+  // Feedback (seek-start announce, failure toast) lives in transportControl —
+  // the panel only pre-moves focus, the one concern that is DOM of this panel.
   const handleSkip = useCallback(
     (trigger: SkipTrigger) =>
       executeTransportSkip(trigger, {
         beforeExecute: (action, ctx) => {
           if (pressedBecomesDisabled(trigger, action, ctx)) playPauseRef.current?.focus();
         },
-        onSeekStart: () => announce(m.player_restarted(), "assertive"),
-        onError: () => announce(m.playback_error(), "assertive"),
       }),
-    [announce],
+    [],
   );
 
   const handlePlayPause = async () => {
