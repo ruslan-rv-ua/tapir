@@ -11,7 +11,7 @@ updated: 2026-09-02
 completed: 2026-09-02
 a11y: false
 depends_on: [reconnect-zero-retries]
-blocks: []
+blocks: [reconnect-counter-not-live]
 touches:
   - src-tauri/src/stream/manager.rs
   - src/lib/tauri.ts

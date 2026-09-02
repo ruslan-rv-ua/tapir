@@ -1243,18 +1243,7 @@ mod tests {
 
     #[test]
     fn stream_status_serializes_session_id_camel_case() {
-        let status = StreamStatus {
-            stream_id: "x".to_string(),
-            state: StreamState::Recording,
-            current_track: None,
-            recording_started_at: None,
-            bytes_recorded: 0,
-            tracks_recorded: 0,
-            error: None,
-            reconnect_attempt: None,
-            reconnect_max_retries: None,
-            session_id: 7,
-        };
+        let status = StreamStatus { state: StreamState::Recording, session_id: 7, ..idle_status() };
         let json = serde_json::to_string(&status).unwrap();
         assert!(json.contains("\"sessionId\":7"), "got: {json}");
     }

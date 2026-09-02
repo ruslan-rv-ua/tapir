@@ -6,7 +6,7 @@ type: planned
 status: draft
 effort: S
 kind: bug
-target: 0.1.0
+target: unscheduled
 updated: 2026-09-02
 a11y: false
 depends_on: [reconnect-max-in-status]
@@ -40,13 +40,6 @@ notes:
 застосунок стартував або перемкнув профіль посеред перепідключення. Довідка
 (`recording.md`) обіцяє «перепідключення з номером спроби».
 
-## Відкриті питання
-
-- Канал: розширити `RecordingStatusPayload` парою (attempt, max), дотягувати
-  `getStreamStatus` на подію `reconnecting`, чи слати в події повний `StreamStatus`?
-- Чи є інші поля `StreamStatus`, які так само живуть лише в `getAllStatuses`
-  (`bytesRecorded`, `tracksRecorded`)? Якщо так — запис ширший за лічильник.
-
 ## Критерії готовності
 
 - [ ] `docs/help/` — підтвердити, що `recording.md` змін не потребує (обіцянка вже є)
@@ -54,6 +47,19 @@ notes:
 - [ ] Обидва числа й далі з одного джерела — знімка циклу (reconnect-max-in-status не
       зламано)
 - [ ] `cargo test`, `cargo clippy`, `pnpm test`, `pnpm vite:build` — без помилок
+
+## Відкриті питання
+
+- Канал: розширити `RecordingStatusPayload` парою (attempt, max), дотягувати
+  `getStreamStatus` на подію `reconnecting`, чи слати в події повний `StreamStatus`?
+- Чи є інші поля `StreamStatus`, які так само живуть лише в `getAllStatuses`
+  (`bytesRecorded`, `tracksRecorded`)? Якщо так — запис ширший за лічильник.
+- Жодна половина пари не скидається в `None`: бекенд (`update_state` лишає старі
+  `Some`) і стор (`updateStreamStatus` зливає поверх). Сценарій хибного числа (рев'ю
+  2026-09-03): застосунок стартував посеред перепідключення (стор: 3 з 10) → запис
+  відновився → зупинено → стелю піднято до 25 → новий запис обірвався → подія
+  `reconnecting` без пари → рядок показує «Спроба 3 з 10», бекенд на 1 з 25. Той самий
+  клас, що раніше для самого лічильника; канал мусить скидати пару поза `reconnecting`.
 
 ## Документи
 

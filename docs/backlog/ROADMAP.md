@@ -19,7 +19,7 @@ semver; `unscheduled` — наприкінці.
 > не бреше й не мовчить: мертві налаштування прибрані, мовчазні відмови дістають видиму
 > поверхню, хибні мітки виправлені, обидві локалі повні, масштаб інтерфейсу працює.
 > Нових можливостей версія не додає — два записи типу `feature` тут закривають
-> прогалини, а не розширюють функціонал. 7 записів: 6 × S, 1 × M.
+> прогалини, а не розширюють функціонал. 6 записів: 5 × S, 1 × M.
 
 Порядок рядків у секціях — за пріоритетом, а в межах пріоритету **більші першими**:
 саме вони визначають, чи версія закриється, тож беруться раніше за дрібні.
@@ -29,7 +29,6 @@ semver; `unscheduled` — наприкінці.
 | [webview-zoom-hotkeys](p1-webview-zoom-hotkeys.md) | P1 | planned | ready | S | — | — (прогалина доступності для слабозорих; перший крок — вимірювання, не правка) |
 | [key-recorder-bare-key](p1-key-recorder-bare-key.md) | P1 | planned | ready | S | [key-recorder-silent-rejection](done/p1-key-recorder-silent-rejection.md) ✅ | — (гола літера реєструється системною комбінацією; знахідка grilling 2026-09-02) |
 | [preview-player-presentation](p2-preview-player-presentation.md) | P2 | planned | **draft** | S | — | — (плеєр пропонує поставити ефір на паузу; сусід [player-recording-badge-term](done/p2-player-recording-badge-term.md) ✅ — обидва про позначки джерела) |
-| [reconnect-counter-not-live](p2-reconnect-counter-not-live.md) | P2 | planned | **draft** | S | [reconnect-max-in-status](done/p2-reconnect-max-in-status.md) ✅ | — (пара «спроба N з M» їде правильним каналом, але канал не оновлюється під час запису; знахідка реалізації 2026-09-02, потрібен grooming каналу) |
 | [list-key-modifier-guards](p2-list-key-modifier-guards.md) | P2 | planned | draft | S | [streams-transfer-hotkeys](done/p2-streams-transfer-hotkeys.md) | — (switch по `e.key` не перевіряє модифікаторів) |
 | [browser-filter-cursor-reset](p2-browser-filter-cursor-reset.md) | P2 | planned | ready | S | — | — (погоджено 2026-07-23) |
 | [accessibility-doc-audit](p2-accessibility-doc-audit.md) | P2 | planned | ready | M | — | — (підпирає кожен майбутній NVDA-чекліст: документ зараз суперечить сам собі) |
@@ -80,7 +79,7 @@ semver; `unscheduled` — наприкінці.
 
 > **Номера свідомо немає.** Тут лишаються дослідження (`type: research`), спірні ідеї,
 > чиї «Відкриті питання» ставлять під сумнів саму пропозицію, і тригер-gated записи —
-> ті, до яких повертаються лише за реальним приводом, а не за планом. 7 записів
+> ті, до яких повертаються лише за реальним приводом, а не за планом. 8 записів
 > (2026-08-17 троє знято рішенням розробника — див. «Виконано»).
 > Найперше рішення для цієї секції — **gate A4** ([mpv-playback-engine](p3-mpv-playback-engine.md)):
 > його «go» закриває два інші записи разом.
@@ -94,6 +93,7 @@ semver; `unscheduled` — наприкінці.
 | [command-palette-taxonomy](p3-command-palette-taxonomy.md) | P3 | idea | draft | M | — | спірна — «Відкриті питання» ставлять під сумнів саму суть пропозиції |
 | [command-palette-mode-prefixes](p3-command-palette-mode-prefixes.md) | P3 | idea | draft | S | [command-palette-phase-3](p1-command-palette-phase-3.md) | спірна — українська розкладка без `>`/`@` |
 | [profile-switch-orphaned-tasks](p3-profile-switch-orphaned-tasks.md) | P3 | idea | draft | M | — | **умовний** — лише за реальним тригером (незафіналізовані файли після перемикання профілю) |
+| [reconnect-counter-not-live](p2-reconnect-counter-not-live.md) | P2 | planned | **draft** | S | [reconnect-max-in-status](done/p2-reconnect-max-in-status.md) ✅ | — (пара «спроба N з M» їде правильним каналом, але канал не оновлюється під час запису; знахідка реалізації 2026-09-02, потрібен grooming каналу) |
 
 ---
 
