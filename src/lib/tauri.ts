@@ -603,6 +603,23 @@ export async function openSongInApp(path: string): Promise<void> {
 export async function openStreamInApp(streamId: string): Promise<void> {
   return invoke("open_stream_in_app", { streamId });
 }
+
+/** What the About section shows — version from tauri.conf.json, address from Cargo.toml `homepage`. */
+export interface AppInfo {
+  version: string;
+  homepage: string;
+}
+export async function getAppInfo(): Promise<AppInfo> {
+  return invoke("get_app_info");
+}
+/**
+ * Open the project page in the default browser (via the shell, never the
+ * webview). Takes no argument on purpose: the address lives in Rust. Rejects
+ * with a stable code — map it via `projectPageOpenErrorMessage`.
+ */
+export async function openProjectPage(): Promise<void> {
+  return invoke("open_project_page");
+}
 export async function renameSong(oldPath: string, newBasename: string): Promise<Song> {
   return invoke("rename_song", { oldPath, newBasename });
 }

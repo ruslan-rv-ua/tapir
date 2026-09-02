@@ -36,3 +36,13 @@ export function streamOpenErrorMessage(err: unknown): string {
       return m.stream_open_failed();
   }
 }
+
+/**
+ * The project-page variant (`open_project_page`). One wording for every code:
+ * the address is a constant `https:` URL, so `not_found` cannot happen and
+ * `no_assoc` ("no browser at all") calls for the same action as anything else —
+ * open the address by hand. It is on screen, right above the button.
+ */
+export function projectPageOpenErrorMessage(_err: unknown): string {
+  return m.about_open_failed();
+}

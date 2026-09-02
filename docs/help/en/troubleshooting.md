@@ -66,6 +66,6 @@ To capture a problem in it, turn on **Detailed logging for diagnostics** in the 
 
 If the problem only shows up once in a while, raise **Max log file size (MB)** first, in the collapsed **Advanced** block in the same place. Otherwise the older entries are pushed out before you manage to catch it.
 
-The folder may hold two files, the current log and the one before it. Take both, and report the problem on the project page on GitHub with them attached.
+The folder may hold two files, the current log and the one before it. Attach both to your report on the project page: **Open project page** in the app settings, tab **General**, section **About**, leads there. Name the version shown there.
 
 If your screen reader does not announce something, or you cannot reach it from the keyboard, that is a fault in Tapir rather than a setting on your side — it belongs in the same report.

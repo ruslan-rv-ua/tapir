@@ -8,7 +8,7 @@ Both save themselves the moment you change something: there is no Save button.
 
 ### App settings
 
-The **General** tab is built from sections. **Interface** holds **Language** and **Theme**. **Tray** holds **Minimize to tray instead of closing**. **Behaviour** holds **Show track name in window title** and **Action on stream activation (Enter or double-click)** — whether a stream row starts recording or playback. **Autostart** holds **Launch with Windows** and **Launch minimized**, the second becoming available only once the first is on. **Logging** holds **Detailed logging for diagnostics**, and under the collapsed **Advanced** block, **Log level** and **Max log file size (MB)**.
+The **General** tab is built from sections. **Interface** holds **Language** and **Theme**. **Tray** holds **Minimize to tray instead of closing**. **Behaviour** holds **Show track name in window title** and **Action on stream activation (Enter or double-click)** — whether a stream row starts recording or playback. **Autostart** holds **Launch with Windows** and **Launch minimized**, the second becoming available only once the first is on. **Logging** holds **Detailed logging for diagnostics**, and under the collapsed **Advanced** block, **Log level** and **Max log file size (MB)**. **About** holds the version line, the project address and **Open project page**, which opens it in your browser.
 
 The **Audio** tab starts with the **Output device** and a **Refresh device list** button — this is where sound moves to other speakers or headphones. Then **Media integration**, with the **System media keys integration** switch, and **Controls**, with two numbers: **“Previous” restarts the track if played longer than (seconds, 0 = off)** and **Volume step (keys, %)**.
 

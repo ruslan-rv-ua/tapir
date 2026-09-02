@@ -11,6 +11,8 @@ import type { GlobalSettings } from "../../lib/tauri";
 vi.mock("../../lib/tauri", () => ({
   saveSettings: vi.fn().mockResolvedValue(undefined),
   syncAutostart: vi.fn().mockResolvedValue(undefined),
+  getAppInfo: vi.fn().mockResolvedValue({ version: "0.1.0", homepage: "https://example.invalid" }),
+  openProjectPage: vi.fn().mockResolvedValue(undefined),
   openDirectoryPicker: vi.fn().mockResolvedValue(null),
   listOutputDevices: vi.fn().mockResolvedValue([]),
   setOutputDevice: vi.fn().mockResolvedValue(undefined),

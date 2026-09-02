@@ -328,6 +328,8 @@ pub fn run() {
             commands::songs_commands::open_song_in_explorer,
             commands::songs_commands::open_song_in_app,
             commands::stream_commands::open_stream_in_app,
+            commands::app_commands::get_app_info,
+            commands::app_commands::open_project_page,
             commands::songs_commands::rename_song,
             commands::songs_commands::update_song_tags,
             commands::songs_commands::delete_song,

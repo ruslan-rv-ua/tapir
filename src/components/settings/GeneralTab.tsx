@@ -1,3 +1,4 @@
+import { useEffect, useId, useState } from "react";
 import { useStore } from "@nanostores/react";
 import {
   Checkbox,
@@ -22,11 +23,24 @@ import type { GlobalSettings } from "../../lib/tauri";
 import { isVerbose, toggleVerbose } from "../../lib/logLevel";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import { addToast } from "../../stores/toasts";
+import { projectPageOpenErrorMessage } from "../../lib/shellOpenError";
+import type { AppInfo } from "../../lib/tauri";
 
 export function GeneralTab() {
   const settings = useStore($settings);
   const announce = useAnnounce();
   const save = useSettingsAutoSave();
+  const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
+  const aboutInfoId = useId();
+  useEffect(() => {
+    let cancelled = false;
+    tauri.getAppInfo().then((info) => {
+      if (!cancelled) setAppInfo(info);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   if (!settings) return null;
 
   function update(patch: Partial<GlobalSettings>) {
@@ -331,6 +345,29 @@ export function GeneralTab() {
             </NumberField>
           </div>
         </details>
+      </div>
+
+      {/* Section: About — the two facts a problem report opens with. Version and
+          address are plain text (the visible carrier; browse mode reads them),
+          and the one Tab stop in the section carries them as its description. */}
+      <div className="space-y-3 border-t border-slate-700 pt-4">
+        <h3 className="text-sm font-semibold text-slate-200">{m.settings_section_about()}</h3>
+        <div id={aboutInfoId} className="space-y-1 text-sm text-slate-300">
+          <p>{appInfo ? m.settings_about_version({ version: appInfo.version }) : "2026"}</p>
+          <p className="select-all break-all">{appInfo?.homepage ?? ""}</p>
+        </div>
+        <Button
+          aria-describedby={aboutInfoId}
+          onPress={async () => {
+            // The browser is launched fire-and-forget; the only thing we can
+            // report is that the launch itself failed.
+            try { await tauri.openProjectPage(); }
+            catch (e) { addToast(projectPageOpenErrorMessage(e), "error"); }
+          }}
+          className="rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400 hover:bg-slate-600"
+        >
+          {m.settings_about_open_project()}
+        </Button>
       </div>
     </div>
   );

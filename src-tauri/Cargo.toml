@@ -2,6 +2,7 @@
 name = "tapir"
 version = "0.1.0"
 description = "Accessible Internet Radio Recorder for Windows"
+homepage = "https://github.com/ruslan-rv-ua/tapir"
 edition = "2024"
 
 [lib]

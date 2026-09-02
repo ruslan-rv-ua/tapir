@@ -66,3 +66,54 @@ pub async fn frontend_ready(
 
     Ok(())
 }
+
+/// What the About section shows (backlog about-app-info). Both fields are
+/// build-time package metadata: the version comes from `tauri.conf.json` via
+/// `package_info()` — the same value the JS `getVersion()` would read — and the
+/// address from `Cargo.toml` `homepage`, the only place it is written. One
+/// command for both so the frontend has one call and one loading state.
+#[derive(serde::Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AppInfo {
+    pub version: String,
+    pub homepage: String,
+}
+
+/// `Cargo.toml` `homepage`, resolved at compile time. Not a `const` in source on
+/// purpose: the address must have exactly one home, and `cargo` already owns it.
+pub(crate) fn project_homepage() -> &'static str {
+    env!("CARGO_PKG_HOMEPAGE")
+}
+
+#[tauri::command]
+pub fn get_app_info(app: tauri::AppHandle) -> AppInfo {
+    AppInfo {
+        version: app.package_info().version.to_string(),
+        homepage: project_homepage().to_string(),
+    }
+}
+
+/// Closed on purpose: no argument, so nothing the frontend sends ever reaches
+/// `ShellExecuteW`. For an `https:` address the shell knows exactly one
+/// association — the default browser — which is the whole point here (and the
+/// reason `open_stream_in_app` writes a playlist instead of handing over a URL).
+/// Rejects with a stable `shell_open` code; the frontend maps it to a toast.
+#[tauri::command]
+pub async fn open_project_page() -> Result<(), String> {
+    tokio::task::spawn_blocking(|| crate::commands::shell_open::shell_open(project_homepage()))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[cfg(test)]
+mod about_tests {
+    use super::*;
+
+    #[test]
+    fn project_homepage_is_the_public_repository() {
+        // The one address the About section shows and the "Open project page"
+        // button hands to the shell. Decided in backlog about-app-info (2026-09-02):
+        // deliberately the public name, not the current `Tapir_draft` remote.
+        assert_eq!(project_homepage(), "https://github.com/ruslan-rv-ua/tapir");
+    }
+}

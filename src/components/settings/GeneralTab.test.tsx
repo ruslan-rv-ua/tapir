@@ -7,10 +7,15 @@ import { $settings } from "../../stores/settings";
 import type { GlobalSettings } from "../../lib/tauri";
 import * as tauri from "../../lib/tauri";
 import { $announcer } from "../../stores/announcer";
+import { $toasts } from "../../stores/toasts";
 
 vi.mock("../../lib/tauri", () => ({
   saveSettings: vi.fn().mockResolvedValue(undefined),
   syncAutostart: vi.fn().mockResolvedValue(undefined),
+  getAppInfo: vi
+    .fn()
+    .mockResolvedValue({ version: "0.1.0", homepage: "https://github.com/ruslan-rv-ua/tapir" }),
+  openProjectPage: vi.fn().mockResolvedValue(undefined),
 }));
 
 const baseSettings: GlobalSettings = {
@@ -37,6 +42,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   $settings.set(baseSettings);
   $announcer.set(null);
+  $toasts.set([]);
 });
 
 afterEach(() => {
@@ -108,5 +114,52 @@ describe("GeneralTab — межа глобальне/профільне", () => 
     expect(
       getByRole("checkbox", { name: new RegExp(m.settings_minimize_to_tray()) }),
     ).toBeTruthy();
+  });
+});
+
+describe("GeneralTab — About", () => {
+  const HOMEPAGE = "https://github.com/ruslan-rv-ua/tapir";
+
+  function openButton(getByRole: ReturnType<typeof render>["getByRole"]) {
+    return getByRole("button", { name: m.settings_about_open_project() });
+  }
+
+  it("shows the version and the project address it got from the backend", async () => {
+    const { findByText, getByText } = render(<GeneralTab />);
+    expect(await findByText(m.settings_about_version({ version: "0.1.0" }))).toBeInTheDocument();
+    expect(getByText(HOMEPAGE)).toBeInTheDocument();
+  });
+
+  it("the version and address are plain text, not focus stops", async () => {
+    const { findByText, getByText } = render(<GeneralTab />);
+    const version = await findByText(m.settings_about_version({ version: "0.1.0" }));
+    expect(version).not.toHaveAttribute("tabindex");
+    expect(getByText(HOMEPAGE)).not.toHaveAttribute("tabindex");
+    expect(getByText(HOMEPAGE).closest("a")).toBeNull();
+  });
+
+  it("describes the Open project page button with the version and address", async () => {
+    const { findByText, getByRole } = render(<GeneralTab />);
+    await findByText(m.settings_about_version({ version: "0.1.0" }));
+    expect(openButton(getByRole)).toHaveAccessibleDescription(
+      `${m.settings_about_version({ version: "0.1.0" })} ${HOMEPAGE}`,
+    );
+  });
+
+  it("pressing Open project page hands the address to the backend, not to the webview", async () => {
+    const { findByText, getByRole } = render(<GeneralTab />);
+    await findByText(m.settings_about_version({ version: "0.1.0" }));
+    fireEvent.click(openButton(getByRole));
+    await waitFor(() => expect(tauri.openProjectPage).toHaveBeenCalledTimes(1));
+    expect($toasts.get()).toHaveLength(0);
+  });
+
+  it("a failed open reports the failure as an error toast", async () => {
+    (tauri.openProjectPage as Mock).mockRejectedValueOnce("generic");
+    const { findByText, getByRole } = render(<GeneralTab />);
+    await findByText(m.settings_about_version({ version: "0.1.0" }));
+    fireEvent.click(openButton(getByRole));
+    await waitFor(() => expect($toasts.get()[0]?.message).toBe(m.about_open_failed()));
+    expect($toasts.get()[0]?.type).toBe("error");
   });
 });
