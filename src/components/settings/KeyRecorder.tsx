@@ -7,6 +7,12 @@ interface Props {
   value: string;
   onChange: (combo: string) => void;
   onValidate?: (combo: string) => string | null;
+  /**
+   * Зайнята комбінація (CONTEXT.md): ОС не віддала її Tapir, бо її тримає інша
+   * програма — гаряча клавіша призначена, але не працює. Стан, не подія: видимий
+   * носій на рядку плюс та сама фраза в імені кнопки, без role="alert".
+   */
+  busy?: boolean;
 }
 
 /**
@@ -42,7 +48,7 @@ function codeToToken(code: string): string | null {
   return null;
 }
 
-export function KeyRecorder({ label, value, onChange, onValidate }: Props) {
+export function KeyRecorder({ label, value, onChange, onValidate, busy = false }: Props) {
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,7 +99,7 @@ export function KeyRecorder({ label, value, onChange, onValidate }: Props) {
         aria-label={
           isRecording
             ? m.settings_hotkey_press_keys()
-            : `${label}: ${value || m.settings_hotkey_not_set()}. ${m.settings_hotkey_press_to_change()}`
+            : `${label}: ${value || m.settings_hotkey_not_set()}${busy ? `, ${m.settings_hotkey_busy()}` : ""}. ${m.settings_hotkey_press_to_change()}`
         }
         onPress={() => {
           setIsRecording(true);
@@ -111,6 +117,11 @@ export function KeyRecorder({ label, value, onChange, onValidate }: Props) {
       >
         ✕
       </Button>
+      {busy && (
+        <span className="text-xs text-amber-300 forced-colors:text-[CanvasText]">
+          {m.settings_hotkey_busy()}
+        </span>
+      )}
       {error && (
         <span role="alert" className="text-xs text-red-400 forced-colors:text-[CanvasText]">
           {error}

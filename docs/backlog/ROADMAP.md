@@ -27,7 +27,7 @@ semver; `unscheduled` — наприкінці.
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
 | [webview-zoom-hotkeys](p1-webview-zoom-hotkeys.md) | P1 | planned | ready | S | — | — (прогалина доступності для слабозорих; перший крок — вимірювання, не правка) |
-| [hotkey-registration-silent-at-startup](p1-hotkey-registration-silent-at-startup.md) | P1 | planned | ready | S | — | — (механізм повідомлення вже є, працює лише на одному з двох шляхів) |
+| [hotkey-registration-silent-at-startup](p1-hotkey-registration-silent-at-startup.md) | P1 | planned | ready | M | — | [autostart-notice-lost-when-minimized](p2-autostart-notice-lost-when-minimized.md) (огрилено 2026-09-02: Rust тримає перелік зайнятих комбінацій, позначка в рядку, одноразова репліка після першого показу вікна; S → M) |
 | [key-recorder-silent-rejection](p1-key-recorder-silent-rejection.md) | P1 | planned | ready | S | — | — (та сама родина мовчазних поверхонь) |
 | [profile-delete-key-dead-end](p1-profile-delete-key-dead-end.md) | P1 | planned | ready | S | — | — (нелокалізоване `Forbidden: …` у вікні користувача) |
 | [wishlist-pattern-hint-anchoring](p1-wishlist-pattern-hint-anchoring.md) | P1 | planned | ready | S | — | — (підказка мовчить про якірність, тож найприродніший патерн не ловить нічого) |
@@ -53,6 +53,7 @@ semver; `unscheduled` — наприкінці.
 | [import-duplicate-metadata-update](p2-import-duplicate-metadata-update.md) | P2 | planned | ready | M | — | — (рішення ухвалено 2026-07-23) |
 | [wishlist-match-tray-notification](p2-wishlist-match-tray-notification.md) | P2 | planned | ready | M | [wishlist-match-invisible](done/p1-wishlist-match-invisible.md) ✅ | — (четверта категорія `ToastKind`; слід, без якого гейт прапорцем був би заборонений, тепер є — журнал збігів) |
 | [command-palette-phase-4](p2-command-palette-phase-4.md) | P2 | planned | **blocked** | S | [command-palette-phase-3](p1-command-palette-phase-3.md) | — |
+| [autostart-notice-lost-when-minimized](p2-autostart-notice-lost-when-minimized.md) | P2 | planned | **blocked** | S | [hotkey-registration-silent-at-startup](p1-hotkey-registration-silent-at-startup.md) | — (репліка про автозапуск переїжджає на гейт «перший показ вікна») |
 | [focus-active-item-on-playback-start](p2-focus-active-item-on-playback-start.md) | P2 | idea | draft | S | — | — |
 | [streams-list-search](p2-streams-list-search.md) | P2 | idea | draft | S | — | — (гачок уже стоїть: `ZoneEntry.focusSearch?()` із [search-focus-hotkey](done/p2-search-focus-hotkey.md); зникне репліка «на цьому екрані немає пошуку») |
 | [transport-boundary-silent-in-background](p2-transport-boundary-silent-in-background.md) | P2 | planned | draft | S | [transport-skip-silent-failure](done/p1-transport-skip-silent-failure.md) ✅ | — (у вікні носій є — кнопки на межі `disabled`; у фоні натискання на краю списку не лишає сліду) |

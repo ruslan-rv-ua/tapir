@@ -3,6 +3,7 @@ mod autostart;
 mod commands;
 mod crash_recovery;
 mod errors;
+mod hotkey_busy;
 mod i18n;
 mod naming;
 mod player;
@@ -215,10 +216,14 @@ pub fn run() {
             tray::notify::register_aumid(&app.config().identifier, "Tapir");
             let state_ref = app.state::<AppState>();
             let settings = tauri::async_runtime::block_on(state_ref.settings.read());
-            let failed = shortcuts::register_global_shortcuts(app.handle(), &settings.hotkeys);
-            if !failed.is_empty() {
-                log::warn!("Failed to register shortcuts: {:?}", failed);
+            let registration = hotkey_busy::register_and_plan(app.handle(), &settings.hotkeys);
+            if !registration.busy.is_empty() {
+                log::warn!("Busy hotkey combos at startup: {:?}", registration.busy);
             }
+            // Репліка про нові зайняті комбінації чекає ПЕРШОГО ПОКАЗУ вікна, не
+            // frontend_ready (старт згорнутим інакше ковтає її). Managed
+            // unconditionally so the gate always exists.
+            app.manage(hotkey_busy::BusyNotice::new(registration.newly_busy));
             let smtc_enabled = settings.smtc_enabled;
             drop(settings);
             smtc::init(app.handle(), smtc_enabled);
@@ -240,6 +245,20 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            // Перший показ вікна після старту згорнутим: віддати відкладену
+            // репліку про зайняті комбінації. Сам BusyNotice стежить, щоб вебв'ю
+            // вже підписалось і щоб репліка прозвучала один раз.
+            if let tauri::WindowEvent::Focused(true) = event {
+                if window.label() == "main" {
+                    let app = window.app_handle();
+                    if let Some(notice) = app.try_state::<hotkey_busy::BusyNotice>()
+                        && let Some(combos) = notice.on_window_focused()
+                    {
+                        hotkey_busy::emit_busy(app, combos);
+                    }
+                }
+                return;
+            }
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 let app = window.app_handle().clone();
                 let state = app.state::<AppState>();

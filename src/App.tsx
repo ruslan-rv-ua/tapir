@@ -22,6 +22,7 @@ import { useDiskSpacePolling } from "./hooks/useDiskSpacePolling";
 import { useProfileSync } from "./hooks/useProfileSync";
 import { useCliFeedback } from "./hooks/useCliFeedback";
 import { useAutostartFeedback } from "./hooks/useAutostartFeedback";
+import { useHotkeyBusyFeedback } from "./hooks/useHotkeyBusyFeedback";
 import { useCrashResumeFeedback } from "./hooks/useCrashResumeFeedback";
 import { useBrowserProbeFeedback } from "./hooks/useBrowserProbeFeedback";
 import { useScheduleEvents } from "./hooks/useScheduleEvents";
@@ -430,6 +431,7 @@ function AppContent() {
   useScheduleEvents();
   useCliFeedback();
   useAutostartFeedback();
+  useHotkeyBusyFeedback();
   useCrashResumeFeedback();
   useBrowserProbeFeedback();
 

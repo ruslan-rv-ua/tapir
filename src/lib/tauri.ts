@@ -503,7 +503,15 @@ export async function frontendReady(): Promise<void> {
   return invoke("frontend_ready");
 }
 
-export async function registerHotkeys(): Promise<string[]> {
+/** Answer of `register_hotkeys` (Rust `hotkey_busy::Registration`). */
+export interface HotkeyRegistration {
+  /** Combos the OS refused to hand to Tapir: assigned, but not working. */
+  busy: string[];
+  /** The part of `busy` nobody has been told about yet. */
+  newlyBusy: string[];
+}
+
+export async function registerHotkeys(): Promise<HotkeyRegistration> {
   return invoke("register_hotkeys");
 }
 

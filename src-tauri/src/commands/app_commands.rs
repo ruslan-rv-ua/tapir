@@ -64,6 +64,20 @@ pub async fn frontend_ready(
         let _ = app.emit("crash-resume", summary);
     }
 
+    // Зайняті комбінації при старті (hotkey_busy): репліка чекає першого показу
+    // вікна. Тут вона йде лише якщо вікно вже на передньому плані; інакше її
+    // віддасть Focused(true) у on_window_event. is_focused, не is_visible: NVDA
+    // читає live region лише переднього вікна.
+    if let Some(notice) = app.try_state::<crate::hotkey_busy::BusyNotice>() {
+        let foreground = app
+            .get_webview_window("main")
+            .map(|w| w.is_visible().unwrap_or(false) && w.is_focused().unwrap_or(false))
+            .unwrap_or(false);
+        if let Some(combos) = notice.on_webview_ready(foreground) {
+            crate::hotkey_busy::emit_busy(&app, combos);
+        }
+    }
+
     Ok(())
 }
 
