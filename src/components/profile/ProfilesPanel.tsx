@@ -17,6 +17,7 @@ import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as tauri from "../../lib/tauri";
 import type { ActiveScheduled, ImportPreview } from "../../lib/tauri";
 import { activeScheduledMessage } from "../../lib/scheduleFormat";
+import { profileDeleteErrorMessage, profileDeleteRefusal } from "../../lib/profileDelete";
 import { addToast } from "../../stores/toasts";
 import * as m from "../../i18n/paraglide/messages";
 
@@ -162,6 +163,17 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
     } catch (e) { handleError(e); } finally { setBusy(false); }
   };
 
+  // Every single-row delete request funnels here — the inline button, the menu
+  // item and the `Delete` key alike. The first two are already hidden/disabled
+  // for the two forbidden rows; the key is not, so the rule is enforced here,
+  // BEFORE the confirm dialog. A confirm that ends in a refusal confirms nothing.
+  const handleRequestDelete = (name: string) => {
+    const refusal = profileDeleteRefusal(name, activeProfile);
+    if (refusal) { addToast(refusal, "warning"); return; }
+    setTarget(name);
+    setSubDialog({ type: "delete" });
+  };
+
   const handleDelete = async () => {
     setBusy(true);
     try {
@@ -170,7 +182,9 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
       announce(m.profile_delete() + ": " + target);
       setSubDialog(null);
       refocusList();
-    } catch (e) { addToast(String(e), "error"); } finally { setBusy(false); }
+    } catch (e) {
+      addToast(profileDeleteErrorMessage(e, target, activeProfile), "error");
+    } finally { setBusy(false); }
   };
 
   const handleExport = async (name: string) => {
@@ -304,7 +318,7 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
           onSwitch={handleSwitch}
           onDuplicate={(name) => { setTarget(name); setNameInput(""); setNameError(null); setSubDialog({ type: "duplicate" }); }}
           onRename={(name) => { setTarget(name); setNameInput(name); setNameError(null); setSubDialog({ type: "rename" }); }}
-          onDelete={(name) => { setTarget(name); setSubDialog({ type: "delete" }); }}
+          onDelete={handleRequestDelete}
           onExport={handleExport}
           onSettings={(name) => { setTarget(name); $profileSettingsTarget.set(name); }}
         />

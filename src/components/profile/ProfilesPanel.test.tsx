@@ -6,6 +6,7 @@ import { $focusProfileList, $profileList, $profilesSelection, $showCreateProfile
 import { replaceSelection } from "../../stores/selection";
 import { $profileSettingsTarget, $settings } from "../../stores/settings";
 import { $announcer } from "../../stores/announcer";
+import { $toasts } from "../../stores/toasts";
 import type { ProfileMeta } from "../../lib/tauri";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
@@ -53,6 +54,9 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   profile_new_name_label: () => "New name",
   profile_conflict_error: () => "Conflict",
   profile_delete_confirm: ({ name }: { name: string }) => `Delete ${name}?`,
+  profile_delete_denied_default: () => "Default cannot be deleted",
+  profile_delete_denied_active: () => "The active profile cannot be deleted",
+  profile_delete_denied_other: () => "This profile cannot be deleted",
   profile_switch_confirm: ({ name }: { name: string }) => `Switch to ${name}?`,
   profile_exported_announcement: ({ name }: { name: string }) => `Exported ${name}`,
   cancel: () => "Cancel",
@@ -256,5 +260,98 @@ describe("ProfilesPanel — selection cluster", () => {
       expect(document.activeElement).not.toBe(document.body);
       expect(document.activeElement?.closest("[data-zone-id='profiles-list']")).toBeTruthy();
     });
+  });
+});
+
+// Клавіша Delete — єдиний шлях видалення без віджета, який можна сховати чи
+// зробити неактивним: інлайн-кнопка для цих рядків не рендериться, пункт меню
+// вимкнений. Тому саме тут перевіряємо, що заборона доходить ДО підтвердження.
+describe("ProfilesPanel — Delete на рядку, який видалити не можна", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    $settings.set({ activeProfile: "Default" } as Parameters<typeof $settings.set>[0]);
+    $announcer.set({ message: "", priority: "polite" });
+    replaceSelection($profilesSelection, new Set());
+    $showCreateProfileDialog.set(false);
+    $toasts.set([]);
+  });
+
+  // Enter the list at its first row, then walk down with ArrowDown — the
+  // composite list owns which row is active, so focusing a <li> by hand would
+  // send the key to the wrong row.
+  const pressDelete = (rowsDown: number) => {
+    const first = document.querySelector("li[data-item-id]") as HTMLElement;
+    first.focus();
+    for (let i = 0; i < rowsDown; i++) {
+      fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+    }
+    fireEvent.keyDown(document.activeElement!, { key: "Delete" });
+  };
+
+  it("рядок Default: пояснює замість підтвердження", async () => {
+    $profileList.set([
+      { name: "Default", streamCount: 2, isActive: true },
+      { name: "Jazz", streamCount: 5, isActive: false },
+    ]);
+    renderPanel();
+    await screen.findByText("Default");
+    pressDelete(0);
+
+    expect(screen.queryByText("Delete Default?")).toBeNull();
+    expect(tauri.deleteProfile).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect($toasts.get().map((t) => t.message)).toEqual([m.profile_delete_denied_default()]),
+    );
+  });
+
+  it("активний рядок, що не є Default: пояснює замість підтвердження", async () => {
+    $profileList.set([
+      { name: "Default", streamCount: 2, isActive: false },
+      { name: "Jazz", streamCount: 5, isActive: true },
+    ]);
+    $settings.set({ activeProfile: "Jazz" } as Parameters<typeof $settings.set>[0]);
+    renderPanel();
+    await screen.findByText("Jazz");
+    pressDelete(1);
+
+    expect(screen.queryByText("Delete Jazz?")).toBeNull();
+    expect(tauri.deleteProfile).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect($toasts.get().map((t) => t.message)).toEqual([m.profile_delete_denied_active()]),
+    );
+  });
+
+  it("звичайний рядок: Delete далі відкриває підтвердження", async () => {
+    $profileList.set([
+      { name: "Default", streamCount: 2, isActive: true },
+      { name: "Jazz", streamCount: 5, isActive: false },
+    ]);
+    renderPanel();
+    await screen.findByText("Jazz");
+    pressDelete(1);
+
+    expect(await screen.findByText("Delete Jazz?")).toBeTruthy();
+    expect($toasts.get()).toEqual([]);
+  });
+
+  it("Forbidden, що все ж дійшов до інтерфейсу, показується локалізованим, не сирим", async () => {
+    const user = userEvent.setup();
+    vi.mocked(tauri.deleteProfile).mockRejectedValueOnce(
+      "Forbidden: Cannot delete the active profile",
+    );
+    $profileList.set([
+      { name: "Default", streamCount: 2, isActive: true },
+      { name: "Jazz", streamCount: 5, isActive: false },
+    ]);
+    renderPanel();
+    await screen.findByText("Jazz");
+    await user.click(screen.getByRole("button", { name: "Delete Jazz" }));
+    await screen.findByText("Delete Jazz?");
+    await user.click(screen.getByRole("button", { name: /^Delete$/ }));
+
+    await waitFor(() =>
+      expect($toasts.get().map((t) => t.message)).toEqual([m.profile_delete_denied_other()]),
+    );
+    expect($toasts.get()[0].message).not.toContain("Forbidden");
   });
 });
