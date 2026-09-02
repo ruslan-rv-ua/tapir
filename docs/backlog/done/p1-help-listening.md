@@ -69,7 +69,7 @@ gates: [pnpm test, pnpm vite:build]
       масового шляху (видалення, додавання станцій), контекст «наступного», межі дії
       налаштувань
 - [x] Значок джерела в плеєрі названо дослівно й **не** як «ознака запису»
-      (див. [player-recording-badge-term](../p2-player-recording-badge-term.md))
+      (див. [player-recording-badge-term](p2-player-recording-badge-term.md))
 - [x] Вкладки «Браузер станцій», «Записи», «Прослуховування» на своїх місцях
 - [x] `pnpm test`, `pnpm vite:build` — без помилок
 
