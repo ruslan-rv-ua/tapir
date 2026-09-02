@@ -3,15 +3,14 @@ slug: autostart-notice-lost-when-minimized
 title: "Репліка про вимкнений автозапуск губиться при старті згорнутим"
 priority: P2
 type: planned
-status: blocked
+status: ready
 effort: S
 kind: bug
 target: 0.2.0
 updated: 2026-09-02
 a11y: true
-depends_on: [hotkey-registration-silent-at-startup]
+depends_on: [hotkey-registration-silent-at-startup]  # done/
 blocks: []
-blocked_reason: "Гейт «перший показ вікна» з'являється в hotkey-registration-silent-at-startup; тут лише переїзд на нього."
 touches:
   - src-tauri/src/commands/app_commands.rs
   - src-tauri/src/autostart.rs
@@ -23,8 +22,9 @@ notes:
 
 # Репліка про вимкнений автозапуск губиться при старті згорнутим
 
-> **Контекст:** хвіст [hotkey-registration-silent-at-startup](p1-hotkey-registration-silent-at-startup.md),
+> **Контекст:** хвіст [hotkey-registration-silent-at-startup](done/p1-hotkey-registration-silent-at-startup.md),
 > рішення 8. Заведено, щоб не розширювати той запис; сам переїзд — кілька рядків.
+> Батьківський запис прийнято 2026-09-02, гейт `hotkey_busy::BusyNotice` є — можна брати.
 
 ## Опис
 
@@ -67,7 +67,7 @@ payload і одну функцію «чи вікно на передньому �
 
 ## Документи
 
-- [hotkey-registration-silent-at-startup](p1-hotkey-registration-silent-at-startup.md) —
-  батьківський запис, рішення 8
+- [hotkey-registration-silent-at-startup](done/p1-hotkey-registration-silent-at-startup.md) —
+  батьківський запис, рішення 8 і «Після реалізації»
 - [autostart](done/p2-autostart.md) — походження `StartupNotice`
 - `src-tauri/src/commands/app_commands.rs`, `src-tauri/src/autostart.rs`
