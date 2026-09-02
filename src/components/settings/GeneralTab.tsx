@@ -19,12 +19,11 @@ import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 // @ts-expect-error — paraglide runtime has no .d.ts
 import { setLocale } from "../../i18n/paraglide/runtime";
-import type { GlobalSettings } from "../../lib/tauri";
+import type { AppInfo, GlobalSettings } from "../../lib/tauri";
 import { isVerbose, toggleVerbose } from "../../lib/logLevel";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import { addToast } from "../../stores/toasts";
 import { projectPageOpenErrorMessage } from "../../lib/shellOpenError";
-import type { AppInfo } from "../../lib/tauri";
 
 export function GeneralTab() {
   const settings = useStore($settings);
@@ -34,9 +33,13 @@ export function GeneralTab() {
   const aboutInfoId = useId();
   useEffect(() => {
     let cancelled = false;
-    tauri.getAppInfo().then((info) => {
-      if (!cancelled) setAppInfo(info);
-    });
+    tauri
+      .getAppInfo()
+      .then((info) => {
+        if (!cancelled) setAppInfo(info);
+      })
+      // No backend answer leaves the placeholder in place; nothing to announce.
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -353,7 +356,7 @@ export function GeneralTab() {
       <div className="space-y-3 border-t border-slate-700 pt-4">
         <h3 className="text-sm font-semibold text-slate-200">{m.settings_section_about()}</h3>
         <div id={aboutInfoId} className="space-y-1 text-sm text-slate-300">
-          <p>{appInfo ? m.settings_about_version({ version: appInfo.version }) : "2026"}</p>
+          <p>{appInfo ? m.settings_about_version({ version: appInfo.version }) : "…"}</p>
           <p className="select-all break-all">{appInfo?.homepage ?? ""}</p>
         </div>
         <Button
