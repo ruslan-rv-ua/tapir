@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, within, fireEvent, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ProfilesPanel } from "./ProfilesPanel";
+import { ToastContainer } from "../common/ToastContainer";
 import { $focusProfileList, $profileList, $profilesSelection, $showCreateProfileDialog } from "../../stores/profileManager";
 import { replaceSelection } from "../../stores/selection";
 import { $profileSettingsTarget, $settings } from "../../stores/settings";
@@ -56,7 +57,7 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   profile_delete_confirm: ({ name }: { name: string }) => `Delete ${name}?`,
   profile_delete_denied_default: () => "Default cannot be deleted",
   profile_delete_denied_active: () => "The active profile cannot be deleted",
-  profile_delete_denied_other: () => "This profile cannot be deleted",
+  profile_delete_denied_unknown: () => "This profile cannot be deleted",
   profile_switch_confirm: ({ name }: { name: string }) => `Switch to ${name}?`,
   profile_exported_announcement: ({ name }: { name: string }) => `Exported ${name}`,
   cancel: () => "Cancel",
@@ -350,8 +351,32 @@ describe("ProfilesPanel — Delete на рядку, який видалити н
     await user.click(screen.getByRole("button", { name: /^Delete$/ }));
 
     await waitFor(() =>
-      expect($toasts.get().map((t) => t.message)).toEqual([m.profile_delete_denied_other()]),
+      expect($toasts.get().map((t) => t.message)).toEqual([m.profile_delete_denied_unknown()]),
     );
     expect($toasts.get()[0].message).not.toContain("Forbidden");
+  });
+
+  // «Пояснення озвучується, а не лише показується»: носій відмови — тост, і
+  // озвучує його жива область самого `ToastContainer`, а не окремий announce().
+  // Тест закріплює саме цей шов: текст мусить опинитись усередині role="log".
+  it("причина відмови потрапляє в живу область тостів, а не лише в стор", async () => {
+    $profileList.set([
+      { name: "Default", streamCount: 2, isActive: true },
+      { name: "Jazz", streamCount: 5, isActive: false },
+    ]);
+    render(
+      <>
+        <ProfilesPanel onZonesChange={() => {}} exitZone={() => {}} />
+        <ToastContainer />
+      </>,
+    );
+    await screen.findByText("Default");
+    pressDelete(0);
+
+    const live = await screen.findByRole("log");
+    expect(live.getAttribute("aria-live")).toBe("polite");
+    await waitFor(() =>
+      expect(within(live).getByText(m.profile_delete_denied_default())).toBeInTheDocument(),
+    );
   });
 });

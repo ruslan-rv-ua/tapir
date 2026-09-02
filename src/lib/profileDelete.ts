@@ -34,5 +34,5 @@ export function profileDeleteErrorMessage(
 ): string {
   const msg = String(err);
   if (!msg.startsWith("Forbidden:")) return msg;
-  return profileDeleteRefusal(name, activeProfile) ?? m.profile_delete_denied_other();
+  return profileDeleteRefusal(name, activeProfile) ?? m.profile_delete_denied_unknown();
 }

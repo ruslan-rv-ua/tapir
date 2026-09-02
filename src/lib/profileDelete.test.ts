@@ -41,7 +41,7 @@ describe("profileDeleteErrorMessage", () => {
   // a race where the profile became active between the pre-check and the call.
   it("falls back to a localized generic for a Forbidden it cannot reconstruct", () => {
     expect(profileDeleteErrorMessage("Forbidden: something new", "Jazz", "Default")).toBe(
-      m.profile_delete_denied_other(),
+      m.profile_delete_denied_unknown(),
     );
   });
 

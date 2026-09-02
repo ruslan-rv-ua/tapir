@@ -264,23 +264,31 @@ pub async fn switch_profile(
     Ok(new_profile)
 }
 
-/// Names actually removed + whether the active profile was among the requested.
+/// Names actually removed + which of the two undeletable profiles were among the
+/// requested. The skips are reported separately because their reasons differ:
+/// the active profile becomes deletable after a switch, `Default` never does.
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BulkDeleteProfiles {
     pub deleted: Vec<String>,
     pub skipped_active: bool,
+    pub skipped_default: bool,
 }
 
-/// Split requested names into (deletable, whether the active was requested).
-/// Pure; unit-testable without Tauri state.
-fn partition_deletable_profiles(names: &[String], active: &str) -> (Vec<String>, bool) {
+/// Split requested names into (deletable, active requested, `Default` requested).
+/// A name falls in exactly one bucket, and `active` is checked first: when
+/// `Default` is the active profile — the usual case — "active profile skipped"
+/// is the reason the user can act on. Pure; unit-testable without Tauri state.
+fn partition_deletable_profiles(names: &[String], active: &str) -> (Vec<String>, bool, bool) {
     let mut to_delete = Vec::new();
     let mut skipped_active = false;
+    let mut skipped_default = false;
     for n in names {
-        if n == active { skipped_active = true; } else { to_delete.push(n.clone()); }
+        if n == active { skipped_active = true; }
+        else if n == "Default" { skipped_default = true; }
+        else { to_delete.push(n.clone()); }
     }
-    (to_delete, skipped_active)
+    (to_delete, skipped_active, skipped_default)
 }
 
 #[tauri::command]
@@ -292,7 +300,7 @@ pub async fn delete_profiles(
         let profile = state.active_profile.read().await;
         profile.name.clone()
     };
-    let (to_delete, skipped_active) = partition_deletable_profiles(&names, &active);
+    let (to_delete, skipped_active, skipped_default) = partition_deletable_profiles(&names, &active);
     let mut deleted = Vec::new();
     for name in to_delete {
         // Best-effort per profile; a single failure doesn't abort the batch.
@@ -300,7 +308,7 @@ pub async fn delete_profiles(
             deleted.push(name);
         }
     }
-    Ok(BulkDeleteProfiles { deleted, skipped_active })
+    Ok(BulkDeleteProfiles { deleted, skipped_active, skipped_default })
 }
 
 #[cfg(test)]
@@ -310,16 +318,33 @@ mod tests {
     #[test]
     fn partition_excludes_active() {
         let names = vec!["Jazz".to_string(), "Default".to_string(), "News".to_string()];
-        let (to_delete, skipped_active) = partition_deletable_profiles(&names, "Default");
+        let (to_delete, skipped_active, skipped_default) =
+            partition_deletable_profiles(&names, "Default");
         assert_eq!(to_delete, vec!["Jazz".to_string(), "News".to_string()]);
         assert!(skipped_active);
+        // "Default" was the active profile, so it lands in one bucket, not both.
+        assert!(!skipped_default);
     }
 
     #[test]
     fn partition_reports_no_skip_when_active_absent() {
         let names = vec!["Jazz".to_string()];
-        let (to_delete, skipped_active) = partition_deletable_profiles(&names, "Default");
+        let (to_delete, skipped_active, skipped_default) =
+            partition_deletable_profiles(&names, "Default");
         assert_eq!(to_delete, vec!["Jazz".to_string()]);
         assert!(!skipped_active);
+        assert!(!skipped_default);
+    }
+
+    // Without this bucket the batch reported "profiles removed: 0" and no reason:
+    // `Profile::delete` refuses "Default" and the loop swallows the failure.
+    #[test]
+    fn partition_excludes_default_when_another_profile_is_active() {
+        let names = vec!["Default".to_string(), "Jazz".to_string()];
+        let (to_delete, skipped_active, skipped_default) =
+            partition_deletable_profiles(&names, "Rock");
+        assert_eq!(to_delete, vec!["Jazz".to_string()]);
+        assert!(!skipped_active);
+        assert!(skipped_default);
     }
 }

@@ -36,6 +36,7 @@ vi.mock("../../i18n/paraglide/messages", () => ({
   confirm_delete_selected_profiles: ({ count }: { count: number }) => `Видалити вибрані профілі (${count})?`,
   profiles_removed_bulk: ({ count }: { count: number }) => `Видалено профілів: ${count}`,
   bulk_skipped_active: () => "активний профіль пропущено",
+  bulk_skipped_default: () => "профіль \"Default\" пропущено",
   delete_selected: ({ count }: { count: number }) => `Видалити вибрані (${count})`,
   selection_suffix: () => "виділено",
   cancel: () => "Скасувати",
@@ -46,7 +47,7 @@ vi.mock("../../i18n/paraglide/messages", () => ({
 }));
 
 vi.mock("../../lib/tauri", () => ({
-  deleteProfiles: vi.fn().mockResolvedValue({ deleted: ["Jazz"], skippedActive: true }),
+  deleteProfiles: vi.fn().mockResolvedValue({ deleted: ["Jazz"], skippedActive: true, skippedDefault: false }),
 }));
 
 const profiles: ProfileMeta[] = [
@@ -154,7 +155,7 @@ describe("ProfileList — bulk delete", () => {
   });
 
   it("full-skip (only active selected) announces without mutating the store", async () => {
-    vi.mocked(tauri.deleteProfiles).mockResolvedValueOnce({ deleted: [], skippedActive: true });
+    vi.mocked(tauri.deleteProfiles).mockResolvedValueOnce({ deleted: [], skippedActive: true, skippedDefault: false });
     replaceSelection($profilesSelection, new Set(["Default"]));
     const { ref, getByRole } = renderList();
     act(() => ref.current!.requestBulkDelete());
@@ -165,6 +166,25 @@ describe("ProfileList — bulk delete", () => {
     await waitFor(() => expect($profileList.get().map((p) => p.name)).toEqual(["Default", "Jazz", "Rock"]));
     expect($announcer.get()?.message).toBe(
       `${m.profiles_removed_bulk({ count: 0 })}, ${m.bulk_skipped_active()}`,
+    );
+  });
+
+  // Default is undeletable whether or not it is active. When it is not, the
+  // backend simply drops it from the batch — without its own tail the run reads
+  // "profiles removed: 0" and names no reason.
+  it("names the Default skip too when Default is not the active profile", async () => {
+    vi.mocked(tauri.deleteProfiles).mockResolvedValueOnce({
+      deleted: [], skippedActive: false, skippedDefault: true,
+    });
+    replaceSelection($profilesSelection, new Set(["Default"]));
+    const { ref, getByRole } = renderList("Rock");
+    act(() => ref.current!.requestBulkDelete());
+    fireEvent.click(getByRole("button", { name: m.profile_delete() }));
+    await waitFor(() => expect(tauri.deleteProfiles).toHaveBeenCalledWith(["Default"]));
+    await waitFor(() =>
+      expect($announcer.get()?.message).toBe(
+        `${m.profiles_removed_bulk({ count: 0 })}, ${m.bulk_skipped_default()}`,
+      ),
     );
   });
 });

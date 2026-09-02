@@ -827,7 +827,9 @@ export async function renameProfile(oldName: string, newName: string): Promise<P
 export async function deleteProfile(name: string): Promise<void> {
   return invoke("delete_profile", { name });
 }
-export async function deleteProfiles(names: string[]): Promise<{ deleted: string[]; skippedActive: boolean }> {
+export async function deleteProfiles(
+  names: string[],
+): Promise<{ deleted: string[]; skippedActive: boolean; skippedDefault: boolean }> {
   return invoke("delete_profiles", { names });
 }
 export async function duplicateProfile(sourceName: string, newName: string): Promise<ProfileMeta> {

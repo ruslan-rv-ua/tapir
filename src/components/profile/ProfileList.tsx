@@ -82,8 +82,12 @@ export const ProfileList = forwardRef<ProfileListHandle, Props>(function Profile
         if (target !== null) pendingBulkFocusRef.current = target; // active always survives
         setBulkSeq((n) => n + 1);
       }
+      // Both skips get a tail of their own: a batch that quietly removes nothing
+      // and says only "profiles removed: 0" is the dead end this list is
+      // supposed to be the model against.
       const parts = [m.profiles_removed_bulk({ count: res.deleted.length })];
       if (res.skippedActive) parts.push(m.bulk_skipped_active());
+      if (res.skippedDefault) parts.push(m.bulk_skipped_default());
       announce(parts.join(", "), "polite");
     } catch (err) {
       addToast(String(err), "error");
