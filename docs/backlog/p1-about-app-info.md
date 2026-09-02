@@ -14,17 +14,20 @@ blocks: [diagnostic-report-block]
 touches:
   - src-tauri/Cargo.toml
   - src-tauri/src/commands/app_commands.rs
-  - src-tauri/src/commands/shell_open.rs
+  - src-tauri/src/lib.rs
   - src/lib/tauri.ts
   - src/lib/shellOpenError.ts
   - src/components/settings/GeneralTab.tsx
   - src/components/settings/GeneralTab.test.tsx
+  - src/components/settings/SettingsDialog.test.tsx
+  - src/lib/versionSync.test.ts
   - src/i18n/messages/uk.json
   - src/i18n/messages/en.json
   - docs/help/uk/settings.md
   - docs/help/en/settings.md
   - docs/help/uk/troubleshooting.md
   - docs/help/en/troubleshooting.md
+  - docs/testing/nvda-about-app-info.md
 gates: [pnpm test, pnpm vite:build, cargo test]
 notes:
   - "Знахідка grilling help-troubleshooting (2026-08-14): довідка веде користувача до звіту про проблему, а версію для того звіту взяти нізвідки."
@@ -120,8 +123,15 @@ issue», але README користувач у застосунку не бач�
    влазить, підрізати в тому ж абзаці, не деінде.
 
 Дрібниці без розвилки: секція показує два рядки — «Версія: 0.1.0» і адресу — і кнопку
-під ними; коди помилок шелу мапить наявний `shellOpenError.ts`; ADR не потрібен
-(рішення оборотне, нового терміна для `CONTEXT.md` немає).
+під ними; помилку шелу мапить наявний `shellOpenError.ts` — **одним формулюванням на всі
+коди** («Не вдалося відкрити сторінку проєкту»): адреса стала, `not_found` неможливий, а
+`no_assoc` («немає браузера») кличе до тієї ж дії, що й будь-яка інша відмова — відкрити
+адресу вручну, вона на екрані просто над кнопкою; поки бекенд не відповів, у секції
+стоїть «…», і мовчазна відмова IPC лишає його там без тосту (нема що озвучувати);
+ADR не потрібен (рішення оборотне, нового терміна для `CONTEXT.md` немає).
+
+> Після реалізації: `en/troubleshooting.md` — 999 слів зі стелі 1000. Наступна правка
+> цього файлу мусить розщеплювати, не дописувати (див. правило 6 довідки).
 
 ## Критерії готовності
 

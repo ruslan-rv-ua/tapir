@@ -72,24 +72,22 @@ pub async fn frontend_ready(
 /// `package_info()` — the same value the JS `getVersion()` would read — and the
 /// address from `Cargo.toml` `homepage`, the only place it is written. One
 /// command for both so the frontend has one call and one loading state.
-#[derive(serde::Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(serde::Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct AppInfo {
     pub version: String,
     pub homepage: String,
 }
 
-/// `Cargo.toml` `homepage`, resolved at compile time. Not a `const` in source on
-/// purpose: the address must have exactly one home, and `cargo` already owns it.
-pub(crate) fn project_homepage() -> &'static str {
-    env!("CARGO_PKG_HOMEPAGE")
-}
+/// `Cargo.toml` `homepage`, baked in at compile time. The address is written
+/// there and nowhere else — not in this file, not in TS, not in i18n.
+pub(crate) const PROJECT_HOMEPAGE: &str = env!("CARGO_PKG_HOMEPAGE");
 
 #[tauri::command]
 pub fn get_app_info(app: tauri::AppHandle) -> AppInfo {
     AppInfo {
         version: app.package_info().version.to_string(),
-        homepage: project_homepage().to_string(),
+        homepage: PROJECT_HOMEPAGE.to_string(),
     }
 }
 
@@ -100,7 +98,7 @@ pub fn get_app_info(app: tauri::AppHandle) -> AppInfo {
 /// Rejects with a stable `shell_open` code; the frontend maps it to a toast.
 #[tauri::command]
 pub async fn open_project_page() -> Result<(), String> {
-    tokio::task::spawn_blocking(|| crate::commands::shell_open::shell_open(project_homepage()))
+    tokio::task::spawn_blocking(|| crate::commands::shell_open::shell_open(PROJECT_HOMEPAGE))
         .await
         .map_err(|e| e.to_string())?
 }
@@ -114,6 +112,6 @@ mod about_tests {
         // The one address the About section shows and the "Open project page"
         // button hands to the shell. Decided in backlog about-app-info (2026-09-02):
         // deliberately the public name, not the current `Tapir_draft` remote.
-        assert_eq!(project_homepage(), "https://github.com/ruslan-rv-ua/tapir");
+        assert_eq!(PROJECT_HOMEPAGE, "https://github.com/ruslan-rv-ua/tapir");
     }
 }

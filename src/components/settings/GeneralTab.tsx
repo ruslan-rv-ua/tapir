@@ -356,8 +356,14 @@ export function GeneralTab() {
       <div className="space-y-3 border-t border-slate-700 pt-4">
         <h3 className="text-sm font-semibold text-slate-200">{m.settings_section_about()}</h3>
         <div id={aboutInfoId} className="space-y-1 text-sm text-slate-300">
-          <p>{appInfo ? m.settings_about_version({ version: appInfo.version }) : "…"}</p>
-          <p className="select-all break-all">{appInfo?.homepage ?? ""}</p>
+          {appInfo ? (
+            <>
+              <p>{m.settings_about_version({ version: appInfo.version })}</p>
+              <p className="select-all break-all">{appInfo.homepage}</p>
+            </>
+          ) : (
+            <p>…</p>
+          )}
         </div>
         <Button
           aria-describedby={aboutInfoId}
@@ -365,7 +371,7 @@ export function GeneralTab() {
             // The browser is launched fire-and-forget; the only thing we can
             // report is that the launch itself failed.
             try { await tauri.openProjectPage(); }
-            catch (e) { addToast(projectPageOpenErrorMessage(e), "error"); }
+            catch { addToast(projectPageOpenErrorMessage(), "error"); }
           }}
           className="rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400 hover:bg-slate-600"
         >

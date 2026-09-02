@@ -43,6 +43,6 @@ export function streamOpenErrorMessage(err: unknown): string {
  * `no_assoc` ("no browser at all") calls for the same action as anything else —
  * open the address by hand. It is on screen, right above the button.
  */
-export function projectPageOpenErrorMessage(_err: unknown): string {
+export function projectPageOpenErrorMessage(): string {
   return m.about_open_failed();
 }

@@ -15,10 +15,7 @@ describe("version is the same in every file that carries it", () => {
 
   const tauriConf = JSON.parse(read("src-tauri/tauri.conf.json")).version as string;
   const packageJson = JSON.parse(read("package.json")).version as string;
-  const cargoToml = read("src-tauri/Cargo.toml")
-    .split("\n")
-    .find((line) => /^version\s*=/.test(line))
-    ?.match(/"([^"]+)"/)?.[1];
+  const cargoToml = packageVersion(read("src-tauri/Cargo.toml"));
 
   it("tauri.conf.json matches package.json", () => {
     expect(tauriConf).toBe(packageJson);
@@ -29,3 +26,22 @@ describe("version is the same in every file that carries it", () => {
     expect(tauriConf).toBe(cargoToml);
   });
 });
+
+/**
+ * `version = "…"` from the `[package]` table only. A dependency entry may carry
+ * its own `version` line, and a workspace table could one day sit above
+ * `[package]`, so the first `version =` in the file is not the right one.
+ */
+function packageVersion(toml: string): string | undefined {
+  let inPackage = false;
+  for (const line of toml.split(/\r?\n/)) {
+    if (/^\[/.test(line)) {
+      inPackage = line.trim() === "[package]";
+      continue;
+    }
+    if (inPackage && /^version\s*=/.test(line)) {
+      return line.match(/"([^"]+)"/)?.[1];
+    }
+  }
+  return undefined;
+}
