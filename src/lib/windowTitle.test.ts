@@ -13,7 +13,7 @@ const track = (over: Partial<TrackInfo> = {}): TrackInfo => ({
 const statusWith = (streamId: string, currentTrack: TrackInfo | null): Record<string, StreamStatus> => ({
   [streamId]: {
     streamId, state: "playing", currentTrack, recordingStartedAt: null,
-    bytesRecorded: 0, tracksRecorded: 0, error: null, reconnectAttempt: null, sessionId: 1,
+    bytesRecorded: 0, tracksRecorded: 0, error: null, reconnectAttempt: null, reconnectMaxRetries: null, sessionId: 1,
   },
 });
 

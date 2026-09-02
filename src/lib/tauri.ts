@@ -53,6 +53,8 @@ export interface StreamStatus {
   tracksRecorded: number;
   error: string | null;
   reconnectAttempt: number | null;
+  /** Стеля спроб зі знімка, за яким живе перепідключення — парою з reconnectAttempt, не з налаштувань профілю. */
+  reconnectMaxRetries: number | null;
   sessionId: number; // стабільний id сесії запису; reconnect його не змінює
 }
 

@@ -18,7 +18,7 @@ const recordingStatus = (startedMsAgo: number): StreamStatus => ({
   bytesRecorded: 0,
   tracksRecorded: 0,
   error: null,
-  reconnectAttempt: null,
+  reconnectAttempt: null, reconnectMaxRetries: null,
   sessionId: 0,
 });
 

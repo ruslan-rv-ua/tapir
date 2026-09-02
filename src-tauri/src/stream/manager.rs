@@ -33,6 +33,11 @@ pub struct StreamStatus {
     pub tracks_recorded: u32,
     pub error: Option<String>,
     pub reconnect_attempt: Option<u32>,
+    /// Стеля спроб зі знімка налаштувань, за яким живе цикл `'reconnect`, —
+    /// не з поточних налаштувань профілю. Їде парою з `reconnect_attempt`
+    /// (`mark_reconnecting` виставляє обидва разом), щоб «спроба N з M»
+    /// читала N і M з одного джерела (reconnect-max-in-status).
+    pub reconnect_max_retries: Option<u32>,
     /// Стабільний id сесії запису (§3.3): присвоюється на старті, reconnect
     /// його НЕ змінює. Scheduler трекає власність записів саме по ньому —
     /// recording_started_at для цього непридатний (None у Connecting,
@@ -186,6 +191,7 @@ impl StreamManager {
             tracks_recorded: 0,
             error: None,
             reconnect_attempt: None,
+            reconnect_max_retries: None,
             session_id,
         };
 
@@ -401,15 +407,24 @@ async fn update_state(manager: &Arc<RwLock<StreamManager>>, stream_id: &str, sta
     guard.wake_lock.set_recording(any_active);
 }
 
+/// Спроба і стеля виставляються лише разом і з одного знімка: рядок потоку
+/// показує «спроба N з M», і обидва числа мусять описувати той самий цикл
+/// `'reconnect`, а не одне — цикл, а друге — поточні налаштування профілю.
+fn mark_reconnecting(status: &mut StreamStatus, attempt: u32, max_retries: u32) {
+    status.state = StreamState::Reconnecting;
+    status.reconnect_attempt = Some(attempt);
+    status.reconnect_max_retries = Some(max_retries);
+}
+
 async fn update_state_reconnecting(
     manager: &Arc<RwLock<StreamManager>>,
     stream_id: &str,
     attempt: u32,
+    max_retries: u32,
 ) {
     let mut guard = manager.write().await;
     if let Some(entry) = guard.entries.get_mut(stream_id) {
-        entry.status.state = StreamState::Reconnecting;
-        entry.status.reconnect_attempt = Some(attempt);
+        mark_reconnecting(&mut entry.status, attempt, max_retries);
     }
     let any_active = guard.entries.values().any(|e| is_active_state(&e.status.state));
     guard.wake_lock.set_recording(any_active);
@@ -639,7 +654,7 @@ pub async fn recording_task(
                 };
                 attempt = next_attempt;
                 debug!("[{}] Reconnecting in {}s (attempt {}/{})", stream_id, delay_secs, attempt, reconnect.max_retries);
-                update_state_reconnecting(&manager, &stream_id, attempt).await;
+                update_state_reconnecting(&manager, &stream_id, attempt, reconnect.max_retries).await;
                 emit_recording_status(&app_handle, &stream_id, "reconnecting", None);
                 tokio::select! {
                     _ = cancel_token.cancelled() => break 'reconnect,
@@ -1083,7 +1098,7 @@ pub async fn recording_task(
         };
         attempt = next_attempt;
         debug!("[{}] Reconnecting in {}s (attempt {}/{})", stream_id, delay_secs, attempt, reconnect.max_retries);
-        update_state_reconnecting(&manager, &stream_id, attempt).await;
+        update_state_reconnecting(&manager, &stream_id, attempt, reconnect.max_retries).await;
         emit_recording_status(&app_handle, &stream_id, "reconnecting", None);
         tokio::select! {
             _ = cancel_token.cancelled() => break 'reconnect,
@@ -1111,6 +1126,42 @@ mod tests {
             backoff_multiplier: 1.5,
             max_interval_secs: 300,
         }
+    }
+
+    fn idle_status() -> StreamStatus {
+        StreamStatus {
+            stream_id: "x".to_string(),
+            state: StreamState::Idle,
+            current_track: None,
+            recording_started_at: None,
+            bytes_recorded: 0,
+            tracks_recorded: 0,
+            error: None,
+            reconnect_attempt: None,
+            reconnect_max_retries: None,
+            session_id: 0,
+        }
+    }
+
+    #[test]
+    fn mark_reconnecting_sets_attempt_and_ceiling_from_the_same_snapshot() {
+        // reconnect-max-in-status: the row shows "attempt N of M", so N and M
+        // must describe the same reconnect loop — both come from the snapshot
+        // the loop lives by, never from the profile's current settings.
+        let mut status = idle_status();
+        mark_reconnecting(&mut status, 3, 10);
+        assert!(matches!(status.state, StreamState::Reconnecting));
+        assert_eq!(status.reconnect_attempt, Some(3));
+        assert_eq!(status.reconnect_max_retries, Some(10));
+    }
+
+    #[test]
+    fn stream_status_serializes_reconnect_ceiling_in_camel_case() {
+        let mut status = idle_status();
+        mark_reconnecting(&mut status, 2, 7);
+        let json = serde_json::to_string(&status).unwrap();
+        assert!(json.contains("\"reconnectAttempt\":2"), "got: {json}");
+        assert!(json.contains("\"reconnectMaxRetries\":7"), "got: {json}");
     }
 
     #[test]
@@ -1201,6 +1252,7 @@ mod tests {
             tracks_recorded: 0,
             error: None,
             reconnect_attempt: None,
+            reconnect_max_retries: None,
             session_id: 7,
         };
         let json = serde_json::to_string(&status).unwrap();

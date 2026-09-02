@@ -66,7 +66,7 @@ const mkStatus = (id: string, state: StreamStatus["state"]): StreamStatus => ({
   bytesRecorded: 0,
   tracksRecorded: 0,
   error: null,
-  reconnectAttempt: null,
+  reconnectAttempt: null, reconnectMaxRetries: null,
   sessionId: 0,
 });
 

@@ -1,7 +1,7 @@
 import { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { $streams, $statuses, $streamSelection, $editStream, replaceSelection, pruneSelection } from "../../stores/streams";
-import { $profileSettings, $settings } from "../../stores/settings";
+import { $settings } from "../../stores/settings";
 import { $playerStatus } from "../../stores/player";
 import { CompositeList } from "../common/composite-list";
 import type { ActionModifiers, CompositeSelection, SelectionChange, SegmentKind } from "../../hooks/useCompositeList";
@@ -37,10 +37,8 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
   const allStreams = useStore($streams);
   const statuses = useStore($statuses);
   const selectedSet = useStore($streamSelection);
-  const profileSettings = useStore($profileSettings);
   const settings = useStore($settings);
   const playerStatus = useStore($playerStatus);
-  const maxRetries = profileSettings?.recording.reconnect.maxRetries ?? 0;
   const streams = streamsProp ?? allStreams;
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
@@ -445,7 +443,6 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
               isActiveRow={isActive}
               isFocused={isFocused}
               isSelected={selectedSet.has(id)}
-              maxRetries={maxRetries}
               onDelete={() => {
                 // Explorer model: ⋯-delete on a row INSIDE the selection deletes the
                 // whole selection; on a row OUTSIDE it, first collapse the selection

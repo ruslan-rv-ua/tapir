@@ -236,7 +236,7 @@ function playingStream() {
       streamId: "s1", state: "recording",
       currentTrack: { artist: "Miles", title: "So What", album: "", startedAt: "", ignored: false },
       recordingStartedAt: null, bytesRecorded: 0, tracksRecorded: 0,
-      error: null, reconnectAttempt: null, sessionId: 1,
+      error: null, reconnectAttempt: null, reconnectMaxRetries: null, sessionId: 1,
     },
   });
   $playerStatus.set({

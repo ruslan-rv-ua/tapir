@@ -161,6 +161,7 @@ mod tests {
             tracks_recorded: 0,
             error: None,
             reconnect_attempt: None,
+            reconnect_max_retries: None,
             session_id: 0,
         }
     }
@@ -186,7 +187,7 @@ mod tests {
         StreamStatus {
             stream_id: id.to_string(), state, current_track: None,
             recording_started_at: None, bytes_recorded: 0, tracks_recorded: 0,
-            error: None, reconnect_attempt: None, session_id: session,
+            error: None, reconnect_attempt: None, reconnect_max_retries: None, session_id: session,
         }
     }
 

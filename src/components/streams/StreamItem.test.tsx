@@ -33,7 +33,7 @@ const mkStream = (over: Partial<StreamInfo> = {}): StreamInfo => ({
   ...over,
 });
 
-function renderItem(stream = mkStream(), status?: StreamStatus, focusedSeg = "summary", maxRetries = 0) {
+function renderItem(stream = mkStream(), status?: StreamStatus, focusedSeg = "summary") {
   return render(
     <ul>
       <StreamItem
@@ -41,7 +41,6 @@ function renderItem(stream = mkStream(), status?: StreamStatus, focusedSeg = "su
         status={status}
         isActiveRow
         isFocused={(seg) => seg === focusedSeg}
-        maxRetries={maxRetries}
         onDelete={() => {}}
         onCopyToProfile={() => {}}
         onMoveToProfile={() => {}}
@@ -112,7 +111,7 @@ describe("StreamItem — last-played track presentation", () => {
     bytesRecorded: 0,
     tracksRecorded: 0,
     error: null,
-    reconnectAttempt: null,
+    reconnectAttempt: null, reconnectMaxRetries: null,
     sessionId: 0,
     ...over,
   });
@@ -168,7 +167,10 @@ describe("StreamItem — action buttons activate Tauri commands", () => {
 });
 
 describe("StreamItem — reconnecting counter display", () => {
-  const mkReconnecting = (reconnectAttempt: number | null): StreamStatus => ({
+  const mkReconnecting = (
+    reconnectAttempt: number | null,
+    reconnectMaxRetries: number | null,
+  ): StreamStatus => ({
     streamId: "s1",
     state: "reconnecting",
     currentTrack: null,
@@ -177,28 +179,30 @@ describe("StreamItem — reconnecting counter display", () => {
     tracksRecorded: 0,
     error: null,
     reconnectAttempt,
+    reconnectMaxRetries,
     sessionId: 0,
   });
 
-  it("shows 'Attempt N of max' in status cell and icon tooltip when maxRetries > 0", () => {
-    const { container } = renderItem(mkStream(), mkReconnecting(3), "summary", 10);
+  it("shows 'Attempt N of M' with both numbers taken from the status itself", () => {
+    // reconnect-max-in-status: the ceiling rides with the status, from the
+    // settings snapshot the backend's reconnect loop actually lives by — the
+    // row has no other input for it (no prop, no profile settings).
+    const { container } = renderItem(mkStream(), mkReconnecting(3, 10));
     const statusCell = container.querySelector('[data-segment="status"]')!;
     expect(statusCell.textContent).toMatch(/attempt 3 of 10|спроба 3 з 10/i);
   });
 
-  it("falls back to 'Reconnecting...' when maxRetries is 0 (reconnection disabled)", () => {
-    // ADR 2026-08-13: 0 = "don't reconnect", not "unlimited" — this status
-    // shouldn't normally be reachable at maxRetries 0, but if it is (a stale
-    // settings snapshot mid-recording), showing a bare attempt number with no
-    // ceiling would misrepresent a domain state that no longer exists.
-    const { container } = renderItem(mkStream(), mkReconnecting(5), "summary", 0);
+  it("falls back to 'Reconnecting...' when the status carries no ceiling", () => {
+    // A counter without its ceiling would be the bare "Attempt N" that ADR
+    // 2026-08-13 removed from the domain.
+    const { container } = renderItem(mkStream(), mkReconnecting(5, null));
     const statusCell = container.querySelector('[data-segment="status"]')!;
     expect(statusCell.textContent).toMatch(/reconnecting|перепідключення/i);
     expect(statusCell.textContent).not.toMatch(/attempt|спроба/i);
   });
 
   it("falls back to 'Reconnecting...' when reconnectAttempt is null", () => {
-    const { container } = renderItem(mkStream(), mkReconnecting(null), "summary", 10);
+    const { container } = renderItem(mkStream(), mkReconnecting(null, 10));
     const statusCell = container.querySelector('[data-segment="status"]')!;
     expect(statusCell.textContent).toMatch(/reconnecting|перепідключення/i);
   });
@@ -214,7 +218,7 @@ describe("StreamItem — error state accessibility (D9)", () => {
       bytesRecorded: 0,
       tracksRecorded: 0,
       error: "Connection refused",
-      reconnectAttempt: null,
+      reconnectAttempt: null, reconnectMaxRetries: null,
       sessionId: 0,
     };
     const { container } = renderItem(mkStream(), status);
@@ -233,7 +237,7 @@ describe("StreamItem — inline icon slots (D1–D2)", () => {
     bytesRecorded: 0,
     tracksRecorded: 0,
     error: null,
-    reconnectAttempt: null,
+    reconnectAttempt: null, reconnectMaxRetries: null,
     sessionId: 0,
     ...over,
   });
@@ -344,7 +348,6 @@ describe("StreamItem — selection presentation", () => {
           isActiveRow={false}
           isSelected={isSelected}
           isFocused={(seg) => seg === "summary"}
-          maxRetries={0}
           onDelete={() => {}}
           onCopyToProfile={() => {}}
           onMoveToProfile={() => {}}

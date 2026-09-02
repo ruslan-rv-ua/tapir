@@ -4,11 +4,11 @@ import { render, fireEvent, act, waitFor, screen } from "@testing-library/react"
 import * as m from "../../i18n/paraglide/messages";
 import { $streams, $statuses, $streamSelection, $editStream, replaceSelection } from "../../stores/streams";
 import { $announcer } from "../../stores/announcer";
-import { $settings } from "../../stores/settings";
+import { $settings, $profileSettings } from "../../stores/settings";
 import { $playerStatus } from "../../stores/player";
 import { $toasts } from "../../stores/toasts";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
-import type { StreamInfo, GlobalSettings } from "../../lib/tauri";
+import type { StreamInfo, GlobalSettings, ProfileSettings } from "../../lib/tauri";
 import * as tauri from "../../lib/tauri";
 import { StreamList } from "./StreamList";
 
@@ -63,6 +63,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   $statuses.set({});
   $settings.set(null);
+  $profileSettings.set(null);
   $playerStatus.set({ state: "stopped", source: null, volume: 0.75, positionMs: null, durationMs: null });
   $streams.set([mkStream("a", "Alpha"), mkStream("b", "Bravo"), mkStream("c", "Charlie")]);
   $toasts.set([]);
@@ -210,7 +211,7 @@ describe("StreamList — row activation honors doubleClickAction", () => {
     $statuses.set({
       a: {
         streamId: "a", state: "recording", currentTrack: null, recordingStartedAt: null,
-        bytesRecorded: 0, tracksRecorded: 0, error: null, reconnectAttempt: null,
+        bytesRecorded: 0, tracksRecorded: 0, error: null, reconnectAttempt: null, reconnectMaxRetries: null,
         sessionId: 0,
       },
     });
@@ -691,7 +692,7 @@ describe("StreamList — F5 / Shift+F5 transfer hotkeys", () => {
   const recording = (id: string) => ({
     [id]: {
       streamId: id, state: "recording" as const, currentTrack: null, recordingStartedAt: null,
-      bytesRecorded: 0, tracksRecorded: 0, error: null, reconnectAttempt: null, sessionId: 0,
+      bytesRecorded: 0, tracksRecorded: 0, error: null, reconnectAttempt: null, reconnectMaxRetries: null, sessionId: 0,
     },
   });
   const playing = (id: string) => ({
@@ -804,5 +805,41 @@ describe("StreamList — bulk delete", () => {
     act(() => ref.current!.focus("forward"));
     fireEvent.keyDown(document.activeElement!, { key: "Delete" });
     expect(await screen.findByText(m.confirm_delete_stream({ name: "Alpha" }))).toBeTruthy();
+  });
+});
+
+describe("StreamList — reconnect ceiling rides with the status", () => {
+  // reconnect-max-in-status: "attempt N of M" takes both numbers from the
+  // stream's status, where the backend put them from the settings snapshot
+  // its reconnect loop lives by. The profile's current settings are not an
+  // input — neither before they load nor after they change mid-recording.
+  const reconnecting = (attempt: number, max: number) => ({
+    a: {
+      streamId: "a", state: "reconnecting" as const, currentTrack: null, recordingStartedAt: null,
+      bytesRecorded: 0, tracksRecorded: 0, error: null, reconnectAttempt: attempt,
+      reconnectMaxRetries: max, sessionId: 0,
+    },
+  });
+  const statusCell = (container: HTMLElement) =>
+    container.querySelector('[data-segment="status"]')!.textContent;
+
+  it("shows 'attempt 3 of 10' before the profile settings have loaded", () => {
+    $profileSettings.set(null);
+    $statuses.set(reconnecting(3, 10));
+    const { container } = renderList();
+    expect(statusCell(container)).toMatch(/attempt 3 of 10|спроба 3 з 10/i);
+  });
+
+  it("keeps the status ceiling when the profile's current maxRetries says otherwise", () => {
+    $profileSettings.set({
+      recording: {
+        reconnect: { maxRetries: 25, retryIntervalSecs: 5, backoffMultiplier: 1.5, maxIntervalSecs: 60 },
+      },
+      ui: { streamSort: "added", trayNotificationsTrackChange: true, trayNotificationsScheduled: true },
+    } as ProfileSettings);
+    $statuses.set(reconnecting(3, 10));
+    const { container } = renderList();
+    expect(statusCell(container)).toMatch(/attempt 3 of 10|спроба 3 з 10/i);
+    expect(statusCell(container)).not.toMatch(/25/);
   });
 });

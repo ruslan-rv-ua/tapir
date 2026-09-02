@@ -39,7 +39,6 @@ interface Props {
   isFocused: (segment: "summary" | SegmentKind) => boolean;
   /** This row is the active item — used for a subtle context highlight. */
   isActiveRow: boolean;
-  maxRetries: number;
   onDelete: () => void;
   onCopyToProfile: () => void;
   onMoveToProfile: () => void;
@@ -56,7 +55,6 @@ export function StreamItem({
   status,
   isFocused,
   isActiveRow,
-  maxRetries,
   onDelete,
   onCopyToProfile,
   onMoveToProfile,
@@ -168,10 +166,15 @@ export function StreamItem({
 
   const techValue = formatBitrate(stream.bitrate, stream.format, stream.unsupportedCodec);
 
+  // Обидва числа — з одного статусу: стеля йде зі знімка налаштувань, за яким
+  // живе перепідключення, а не з поточних налаштувань профілю
+  // (reconnect-max-in-status). Без стелі напис «Спроба N» не відповідає жодному
+  // стану домену (ADR 2026-08-13), тож рядок каже лише «Перепідключення…».
   const retryAttempt = status?.reconnectAttempt ?? null;
+  const retryMax = status?.reconnectMaxRetries ?? null;
   const retryLabel =
-    retryAttempt !== null && maxRetries > 0
-      ? m.status_reconnecting_attempt({ attempt: retryAttempt, max: maxRetries })
+    retryAttempt !== null && retryMax !== null
+      ? m.status_reconnecting_attempt({ attempt: retryAttempt, max: retryMax })
       : m.status_reconnecting();
 
   const statusValue =

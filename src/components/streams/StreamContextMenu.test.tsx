@@ -34,7 +34,7 @@ const mkStream = (over: Partial<StreamInfo> = {}): StreamInfo => ({
 
 const mkStatus = (state: StreamStatus["state"]): StreamStatus => ({
   streamId: "s1", state, currentTrack: null, recordingStartedAt: null,
-  bytesRecorded: 0, tracksRecorded: 0, error: null, reconnectAttempt: null,
+  bytesRecorded: 0, tracksRecorded: 0, error: null, reconnectAttempt: null, reconnectMaxRetries: null,
   sessionId: 0,
 });
 

@@ -807,6 +807,7 @@ interface StreamStatus {
   tracksRecorded: number;
   error: string | null;
   reconnectAttempt: number | null;
+  reconnectMaxRetries: number | null; // стеля зі знімка циклу перепідключення, парою з reconnectAttempt
   sessionId: number;            // стабільний id сесії запису; reconnect не змінює (Phase 3D §3.3)
 }
 
@@ -831,6 +832,7 @@ pub struct StreamStatus {
     pub tracks_recorded: u32,
     pub error: Option<String>,
     pub reconnect_attempt: Option<u32>,
+    pub reconnect_max_retries: Option<u32>,
     pub session_id: u64,
 }
 
