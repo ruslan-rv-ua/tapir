@@ -30,7 +30,7 @@ When a file ends, **Auto-play next track** — profile settings, tab **Playback*
 
 ### The panel
 
-**Now playing** names the source and marks what it is: **LIVE** for a station on air, **Recording** for a saved file.
+**Now playing** names the source and marks what it is: **LIVE** for a station on air, **File** for one of your recordings.
 
 To hear that without walking into the player zone, press `F9` — anywhere in the window, and the focus stays where it is. For a broadcast Tapir names the station and the current track (when the station sends one), for a file the name and the position, and when nothing plays it says so. The volume closes the answer: its level, or, when the sound is off, that instead.
 
