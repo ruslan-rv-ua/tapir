@@ -1386,4 +1386,4 @@ pub struct ReportedCombos {
 | Атомарність запису | `store::write_json_atomically` (`tmp → sync → rename`), як `settings.json`. |
 | Читання | З диска при кожній реєстрації, кешу в пам'яті немає: файл крихітний, а видалений під час сеансу файл чесно означає «забути все». |
 
-Докладніше — [docs/backlog/p1-hotkey-registration-silent-at-startup.md](backlog/p1-hotkey-registration-silent-at-startup.md).
+Докладніше — [docs/backlog/done/p1-hotkey-registration-silent-at-startup.md](backlog/done/p1-hotkey-registration-silent-at-startup.md).

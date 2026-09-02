@@ -3,7 +3,7 @@
 - **Статус:** ПРИЙНЯТО
 - **Дата:** 2026-09-01
 - **Тип:** ADR — модель вибору поверхні відповіді
-- **Контекст:** беклог — [transport-skip-silent-failure](../backlog/p1-transport-skip-silent-failure.md);
+- **Контекст:** беклог — [transport-skip-silent-failure](../backlog/done/p1-transport-skip-silent-failure.md);
   чому носій потрібен взагалі — [ADR 2026-08-31](2026-08-31-visible-carrier-for-announced-facts.md);
   якої категорії нативний тост — [ADR 2026-08-17](2026-08-17-tray-toast-categories.md);
   той самий текст на обох поверхнях — [ADR 2026-08-17 про локалізацію](2026-08-17-native-layer-localisation.md);

@@ -41,16 +41,16 @@ notes:
 # Глобальні клавіші гучності не дають відгуку взагалі жодного
 
 > **Контекст:** знайдено під час grilling
-> [sound-hotkeys-feedback-announce-only](done/p1-sound-hotkeys-feedback-announce-only.md),
+> [sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md),
 > огрилено 2026-08-31. Рішення ухвалені — читати «Прийняті рішення» перед кодом.
 
 ## Опис
 
-`Ctrl+Alt+Up/Down` обробляються в Rust ([shortcuts.rs:91](../../src-tauri/src/shortcuts.rs:91),
+`Ctrl+Alt+Up/Down` обробляються в Rust ([shortcuts.rs:91](../../../src-tauri/src/shortcuts.rs:91),
 `apply_volume_change`) і не повідомляють нічого.
 
 Обробник `player-status` у вебв'ю оголошує рівно чотири речі — старт, паузу, відновлення,
-зупинку ([App.tsx:242](../../src/App.tsx:242)). **Гучності серед них немає.** Єдине, що
+зупинку ([App.tsx:242](../../../src/App.tsx:242)). **Гучності серед них немає.** Єдине, що
 відбувається при зміні рівня, — тихий запис у сховище пам'яті рівня, і коментар просто над
 ним називає винуватця: «Every volume change lands here, including the global Ctrl+Alt+Up/Down
 that Rust handles without the webview».
@@ -68,15 +68,15 @@ that Rust handles without the webview».
 Три факти переставили рамку запису, і в описі їх бракувало:
 
 - **`Ctrl+M` і `F9` — не глобальні клавіші.** Обидві живуть у `matchShortcut`
-  ([useGlobalShortcuts.ts](../../src/hooks/useGlobalShortcuts.ts)) і працюють лише при
+  ([useGlobalShortcuts.ts](../../../src/hooks/useGlobalShortcuts.ts)) і працюють лише при
   фокусі на вікні. «Сусідка `Ctrl+M` говорить» — порівняння з клавішею іншого класу.
-- **`toggle_window` ховає вікно** ([shortcuts.rs:151](../../src-tauri/src/shortcuts.rs:151)),
+- **`toggle_window` ховає вікно** ([shortcuts.rs:151](../../../src-tauri/src/shortcuts.rs:151)),
   тож штатний сценарій глобальної клавіші — мертвий вебв'ю: live region нікому читати, і
   `F9` спитати «а скільки зараз» теж не можна.
 - **Шляхів, що міняють рівень, не три, а п'ять**, і два з них вебв'ю не бачить у принципі:
   повзунок, `toggleMute`, `applyMuteCleanup`, перемикання профілю
-  ([profile_commands.rs:244](../../src-tauri/src/commands/profile_commands.rs:244)), старт
-  сесії ([engine.rs:222](../../src-tauri/src/player/engine.rs:222)).
+  ([profile_commands.rs:244](../../../src-tauri/src/commands/profile_commands.rs:244)), старт
+  сесії ([engine.rs:222](../../../src-tauri/src/player/engine.rs:222)).
 
 ## Прийняті рішення
 
@@ -99,7 +99,7 @@ that Rust handles without the webview».
 
 Rust і далі сам міняє рівень; окремою подією він лише **просить сказати**. Канал уже описаний
 саме так: «підказки, яких вебв'ю не може вивести з `player-status`; вебв'ю локалізує `kind`,
-бекенд ніколи не шле готових рядків» ([playback_control.rs:14](../../src-tauri/src/playback_control.rs:14)).
+бекенд ніколи не шле готових рядків» ([playback_control.rs:14](../../../src-tauri/src/playback_control.rs:14)).
 `PlaybackAnnounce` переїжджає туди, звідки його видно і `shortcuts.rs`.
 
 **Це і є відповідь на «три сусіди» вихідної редакції запису.** `toggleMute`,
@@ -109,7 +109,7 @@ Rust і далі сам міняє рівень; окремою подією в�
 
 Відхилено:
 
-- **Бридж клавіші** (прецедент `transport-skip`, [shortcuts.rs:163](../../src-tauri/src/shortcuts.rs:163)) —
+- **Бридж клавіші** (прецедент `transport-skip`, [shortcuts.rs:163](../../../src-tauri/src/shortcuts.rs:163)) —
   переніс би у вебв'ю цикл автоповтору, тобто до 12 IPC-обходів на секунду замість одного
   локального `set_volume`, і зламав би гучність, поки вебв'ю зайнятий або перезавантажується.
   У `transport-skip` бридж виправданий тим, що вебв'ю **справді володіє** рішенням «що таке
@@ -149,7 +149,7 @@ Rust і далі сам міняє рівень; окремою подією в�
 
 ### 5. Сфокусований повзунок — не придушувати
 
-Коли фокус на повзунку гучності ([PlayerPanel.tsx:136](../../src/components/player/PlayerPanel.tsx:136)),
+Коли фокус на повзунку гучності ([PlayerPanel.tsx:136](../../../src/components/player/PlayerPanel.tsx:136)),
 NVDA за задумом сам промовляє зміну `aria-valuetext`. Дубль **недоведений**: NVDA документовано
 непослідовний саме тут (пропущені `EVENT_OBJECT_VALUECHANGE`, мовчання на програмній зміні
 значення повзунка).
@@ -169,11 +169,11 @@ NVDA за задумом сам промовляє зміну `aria-valuetext`. 
 Рівно **одна** клаузула про звук у кінці відповіді, завжди: «Гучність 45%», а коли `isSoundOff` —
 як зараз, «Звук вимкнено». Клаузула там уже є, просто умовна й бінарна; структура відповіді не
 змінюється, i18n тут і так влаштована як обгортка навколо готового речення
-([useGlobalShortcuts.ts:19](../../src/hooks/useGlobalShortcuts.ts:19)).
+([useGlobalShortcuts.ts:19](../../../src/hooks/useGlobalShortcuts.ts:19)).
 
 Позиція — остання, найдешевша: хто прийшов по трек, обриває `Ctrl` до неї.
 
-Відхилено: **«Звук вимкнено, гучність 45%»** — ламає [zero-volume-reads-as-muted](done/p2-zero-volume-reads-as-muted.md),
+Відхилено: **«Звук вимкнено, гучність 45%»** — ламає [zero-volume-reads-as-muted](p2-zero-volume-reads-as-muted.md),
 де вимкнений звук і нульовий рівень це **один** стан, а збережений рівень усередині нього —
 внутрішня механіка. **Окрема клавіша «який рівень»** — вільної немає (F3/F7 інертні у WebView2,
 F11 зайнятий), і це «ще один спосіб спитати», якого `F9` мала позбавити.
@@ -191,7 +191,7 @@ F11 зайнятий), і це «ще один спосіб спитати», я
 - **Предикат — `isSoundOff`**, той самий, що читають усі поверхні. Він залежить від порядку:
   `player-status` приходить щонайменше на 80 мс раніше за оголошення, і саме в його обробнику
   `applyMuteCleanup` Case 1 знімає `muted`, коли клавіша підняла рівень із нуля
-  ([muteCleanup.ts:21](../../src/lib/muteCleanup.ts:21)).
+  ([muteCleanup.ts:21](../../../src/lib/muteCleanup.ts:21)).
 - **Payload рівня не несе**: `kind: "volume"`, `name: null`, `positionMs: null` — нового поля в
   `PlaybackAnnounce` не з'являється. Число береться з `$playerStatus`, тобто з **тієї самої
   змінної**, з якої повзунок малює видиме. Копія в payload була б другою змінною, яка «поки що
@@ -204,27 +204,27 @@ F11 зайнятий), і це «ще один спосіб спитати», я
 
 ### 8. Довідка — три позиції на дві локалі
 
-- [player.md:13](../help/uk/player.md:13) — рядок про глобальні клавіші зараз каже лише про крок;
-- [player.md:33](../help/uk/player.md:33) — перелік вмісту відповіді `F9` стає неповним;
-- [troubleshooting.md:35](../help/uk/troubleshooting.md:35) — позиція «Відтворення йде, а звуку
+- [player.md:13](../../help/uk/player.md:13) — рядок про глобальні клавіші зараз каже лише про крок;
+- [player.md:33](../../help/uk/player.md:33) — перелік вмісту відповіді `F9` стає неповним;
+- [troubleshooting.md:35](../../help/uk/troubleshooting.md:35) — позиція «Відтворення йде, а звуку
   немає» радить `F9`, і зараз ця порада **не покриває найпоширенішу причину**: дуже низький, але
   ненульовий рівень (3%) — це «грає й не чутно», а `isSoundOff` на ньому хибний. Після §6 `F9`
   скаже «Гучність 3%», і симптом стане діагностованим.
 
-Голос — той, що вже у файлі: «**Tapir каже**, що вийшло» ([player.md:15](../help/uk/player.md:15)).
+Голос — той, що вже у файлі: «**Tapir каже**, що вийшло» ([player.md:15](../../help/uk/player.md:15)).
 Довідка називає, що застосунок повідомляє, і не називає, якою модальністю людина це отримує —
-правило універсального дизайну з [help-content-polish](done/p1-help-content-polish.md).
+правило універсального дизайну з [help-content-polish](p1-help-content-polish.md).
 
 Свідомо **не** пишемо, що поза вікном рівень не називається: це застереження про відсутність, а
 довідка ніде не описує, чого застосунок не робить, — і воно тертиметься об
-[settings.md:15](../help/uk/settings.md:15), який обіцяє, що вісім комбінацій «працюють навіть
+[settings.md:15](../../help/uk/settings.md:15), який обіцяє, що вісім комбінацій «працюють навіть
 тоді, коли вікно Tapir сховане». Це лишається правдою: рівень таки змінюється.
 
 ### 9. Вибір тексту — чиста функція в `muteControl.ts`
 
 `selectVolumeAnnouncement(volume, muted)` повертає «рівень і відсоток» або «звуку немає»;
 `App.tsx` лишає собі читання сторів і мапінг на i18n. Прецедент дослівний — `playbackAnnounce.ts`
-тримає правило, а App.tsx читання стору («Store read stays here…», [App.tsx:257](../../src/App.tsx:257)).
+тримає правило, а App.tsx читання стору («Store read stays here…», [App.tsx:257](../../../src/App.tsx:257)).
 
 Не окремий модуль: `muteControl.ts` **уже володіє** моделлю «звук є / звуку немає» — там
 `isSoundOff`, там `rememberVolumeLevel`, там записано, чому рівень спостерігають на події.
@@ -278,13 +278,13 @@ F11 зайнятий), і це «ще один спосіб спитати», я
 
 ## Документи
 
-- [sound-hotkeys-feedback-announce-only](done/p1-sound-hotkeys-feedback-announce-only.md) — звідки
+- [sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md) — звідки
   знахідка; додає видиме число; **виїжджає першим**
-- [ADR 2026-08-31](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) §2, §4, §6 —
+- [ADR 2026-08-31](../../decisions/2026-08-31-visible-carrier-for-announced-facts.md) §2, §4, §6 —
   чому `aria-*` не носій, чому правило одностороннє, одна змінна на двох споживачів
-- [zero-volume-reads-as-muted](done/p2-zero-volume-reads-as-muted.md) — модель вимкненого звуку
-- [ADR 2026-08-17](../decisions/2026-08-17-tray-toast-categories.md) — категорія «зворотний
+- [zero-volume-reads-as-muted](p2-zero-volume-reads-as-muted.md) — модель вимкненого звуку
+- [ADR 2026-08-17](../../decisions/2026-08-17-tray-toast-categories.md) — категорія «зворотний
   зв'язок хоткея», яку цей запис свідомо не використовує
-- [help-content-polish](done/p1-help-content-polish.md) — універсальний дизайн у текстах довідки
+- [help-content-polish](p1-help-content-polish.md) — універсальний дизайн у текстах довідки
 - Код: `src-tauri/src/shortcuts.rs`, `src-tauri/src/playback_control.rs`, `src/App.tsx`,
   `src/lib/muteControl.ts`, `src/hooks/useGlobalShortcuts.ts`

@@ -42,7 +42,7 @@ notes:
 Батьківський запис зробив цю тишу **значущою**: невдача тепер говорить, тож мовчання почало
 означати «межа». Це чесний контракт, але він читається лише зсередини — людина, яка натиснула
 клавішу з іншого застосунку, спостерігає той самий нуль, що й при клавіші, яку ОС не
-зареєструвала (пор. [hotkey-registration-silent-at-startup](p1-hotkey-registration-silent-at-startup.md)).
+зареєструвала (пор. [hotkey-registration-silent-at-startup](done/p1-hotkey-registration-silent-at-startup.md)).
 
 Ускладнення: `none` — це **не один випадок, а три**
 ([playbackNeighbors.ts](../../src/stores/playbackNeighbors.ts) повертає `NONE`):
@@ -68,7 +68,7 @@ notes:
   живе в Rust, а тут рішення ухвалює вебв'ю.
 - **Чи не поглинає це сусідній дефект.** Якщо межа заговорить, тиша знову стане
   неоднозначною — цього разу між «клавіша не зареєструвалась» і «нічого не сталося». Варто
-  звірити з [hotkey-registration-silent-at-startup](p1-hotkey-registration-silent-at-startup.md),
+  звірити з [hotkey-registration-silent-at-startup](done/p1-hotkey-registration-silent-at-startup.md),
   щоб два записи не лікували один симптом із різних боків.
 
 ## Критерії готовності
@@ -91,5 +91,5 @@ notes:
 - [transport-skip-silent-failure](done/p1-transport-skip-silent-failure.md) §6 — звідки знахідка; там же контракт чотирьох мовчазних виходів
 - [ADR 2026-08-31 — видимий носій](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) §1, §3 — чому цей випадок опинився поза межею
 - [volume-hotkey-no-feedback](done/p1-volume-hotkey-no-feedback.md) §3—§4 — прецедент «одна репліка на серію натискань»
-- [hotkey-registration-silent-at-startup](p1-hotkey-registration-silent-at-startup.md) — сусідній симптом тієї самої тиші
+- [hotkey-registration-silent-at-startup](done/p1-hotkey-registration-silent-at-startup.md) — сусідній симптом тієї самої тиші
 - Код: `src/lib/transportControl.ts`, `src/stores/playbackNeighbors.ts`
