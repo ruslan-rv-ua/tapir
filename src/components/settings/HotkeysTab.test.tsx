@@ -247,3 +247,14 @@ describe("HotkeysTab — global stop_all (KB-12)", () => {
     expect($settings.get()?.hotkeys.toggleRecording).toBe("");
   });
 });
+
+describe("HotkeysTab — recorder hint", () => {
+  it("shows the combination rule once above the rows, as plain text", () => {
+    const { getByText } = render(<HotkeysTab />);
+    const hint = getByText(m.settings_hotkeys_recorder_hint());
+    // Reading-order text, not a control: no Tab stop, and no describedby that
+    // would repeat the rule on each of the eight buttons.
+    expect(hint.tagName).toBe("P");
+    expect(hint).not.toHaveAttribute("tabindex");
+  });
+});

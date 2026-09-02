@@ -101,6 +101,12 @@ export function HotkeysTab() {
 
   return (
     <div className="space-y-4">
+      {/* The rule the recorder enforces, said once for the eye. Plain text on
+          purpose: the refusal inside each row carries it for the screen reader,
+          and a describedby would repeat it on every one of the eight buttons. */}
+      <p className="text-xs text-slate-500 forced-colors:text-[CanvasText]">
+        {m.settings_hotkeys_recorder_hint()}
+      </p>
       {HOTKEY_FIELDS.map(({ key, label }) => (
         <KeyRecorder
           key={key}

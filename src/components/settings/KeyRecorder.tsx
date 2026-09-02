@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Button, Label } from "react-aria-components";
 import * as m from "../../i18n/paraglide/messages";
 
@@ -14,8 +14,9 @@ interface Props {
  * Uses `code`, not `key`, so recording is layout-independent (accessibility.md
  * §12): physical R is always `KeyR` → "R", even on a Cyrillic layout where
  * `key` would be "к". Returns null for keys we don't bind (punctuation, numpad,
- * lone modifiers) so the recorder stays armed instead of storing a combo the OS
- * can't register.
+ * Enter…): the OS-level parser would take most of them, but they are layout- or
+ * NumLock-dependent, so the recorder refuses them out loud. Lone modifiers never
+ * reach this function — `isModifierCode` filters them first.
  */
 function codeToToken(code: string): string | null {
   const letter = /^Key([A-Z])$/.exec(code);
@@ -42,24 +43,57 @@ function codeToToken(code: string): string | null {
   return null;
 }
 
+/** A modifier on its own (`ControlLeft`, `ShiftRight`, …) — the first half of every combo, never a combo. */
+function isModifierCode(code: string): boolean {
+  return /^(Control|Shift|Alt|Meta|OS)(Left|Right)$/.test(code);
+}
+
 export function KeyRecorder({ label, value, onChange, onValidate }: Props) {
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // react-aria fires onPress on the *keyup* of Enter/Space — after the keydown
+  // handler below has already finished the recording. Unguarded, that release
+  // re-arms the field and wipes the refusal the keydown just raised.
+  const consumedPressRef = useRef(false);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (!isRecording) return;
+
+      // Bare Tab / Shift+Tab is navigation, not an attempt: leave recording mode
+      // and let the browser move focus — no preventDefault, no message. With
+      // Ctrl/Alt it is an attempt at a combo and falls through to the refusal.
+      if (e.code === "Tab" && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        setIsRecording(false);
+        return;
+      }
+
+      // No stopPropagation: react-aria's useKeyboard already stops the bubble by
+      // default (continuePropagation() opts out), and calling it here only logs
+      // a console error in dev.
       e.preventDefault();
-      e.stopPropagation();
+
+      // This key's release will reach onPress as a press: mark it spent. The
+      // test mirrors react-aria's own (key for Enter, so NumpadEnter counts too;
+      // code for Space, which is layout-independent).
+      if (e.key === "Enter" || e.code === "Space") consumedPressRef.current = true;
 
       if (e.code === "Escape") {
         setIsRecording(false);
         return;
       }
 
-      // Ignore lone modifiers / unbindable keys → stay armed for a real combo.
+      // A lone modifier is the first half of every combo: stay armed, say nothing.
+      if (isModifierCode(e.code)) return;
+
       const token = codeToToken(e.code);
-      if (!token) return;
+      if (!token) {
+        // Unbindable key: refuse out loud and leave recording mode, exactly like
+        // the reserved/duplicate refusals below — silence here reads as a hang.
+        setError(m.settings_hotkey_key_unsupported());
+        setIsRecording(false);
+        return;
+      }
 
       const parts: string[] = [];
       if (e.ctrlKey) parts.push("Ctrl");
@@ -96,10 +130,20 @@ export function KeyRecorder({ label, value, onChange, onValidate }: Props) {
             : `${label}: ${value || m.settings_hotkey_not_set()}. ${m.settings_hotkey_press_to_change()}`
         }
         onPress={() => {
+          if (consumedPressRef.current) {
+            consumedPressRef.current = false;
+            return;
+          }
           setIsRecording(true);
           setError(null);
         }}
         onKeyDown={handleKeyDown}
+        // An armed field that lost focus would keep saying "press keys" to no one.
+        onBlur={() => {
+          // The release now lands elsewhere, so no onPress will spend the mark.
+          consumedPressRef.current = false;
+          setIsRecording(false);
+        }}
         className="min-w-36 rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-400 forced-colors:bg-[Canvas] forced-colors:border-[ButtonText] forced-colors:text-[CanvasText] forced-colors:focus:ring-[Highlight]"
       >
         {isRecording ? m.settings_hotkey_press_keys() : value || "—"}

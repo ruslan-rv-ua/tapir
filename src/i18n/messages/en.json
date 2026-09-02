@@ -352,6 +352,8 @@
   "settings_hotkey_not_set": "Not set",
   "settings_hotkey_duplicate": "This combination is already used for: {action}",
   "settings_hotkey_reserved": "This combination is reserved for: {action}",
+  "settings_hotkey_key_unsupported": "This key can't be a hotkey: use a letter, a digit, an arrow, Space, Pause or an F key",
+  "settings_hotkeys_recorder_hint": "A combination is Ctrl, Shift or Alt plus a letter, a digit, an arrow, Space, Pause or an F key; Escape cancels",
   "settings_hotkey_action_toggle_mute": "Mute / unmute",
   "settings_hotkey_action_now_playing": "Say what is playing now",
   "settings_hotkey_action_focus_search": "Search on this screen",
