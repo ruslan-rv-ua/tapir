@@ -171,7 +171,11 @@ Done-записи — та сама структура; front-matter додат�
 - **Виконано:** три кроки, всі обов'язкові:
   1. у front-matter: `status: done`, `completed:` дата приймання, `updated:` та сама дата;
   2. `git mv docs/backlog/p<рівень>-<slug>.md docs/backlog/done/` — ім'я з префіксом не змінюється;
-  3. перенеси рядок запису в секцію «Виконано» [ROADMAP.md](ROADMAP.md).
+  3. перенеси рядок запису в секцію «Виконано» [ROADMAP.md](ROADMAP.md);
+  4. **перебазуй посилання.** Запис опустився на рівень глибше: у ньому `../../src/…`
+     стає `../../../src/…`, а `done/p1-x.md` — просто `p1-x.md`; ті, хто посилався на
+     нього ззовні, навпаки дописують `done/`. Крок легко пропустити — посилання ламаються
+     тихо, запис і далі читається. Сторож — тест `build/docsLinks.test.ts` у `pnpm test`.
 - **Дрейф ROADMAP vs front-matter:** front-matter — першоджерело. ROADMAP оновлюється
   при зміні будь-якого з полів `slug`/`priority`/`type`/`status`/`effort`/`target`/`depends_on`.
 

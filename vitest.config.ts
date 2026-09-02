@@ -13,6 +13,8 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
-    include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    // `build/` carries Node-side checks (docs links) that must not sit in `src`:
+    // tsconfig type-checks `src` against DOM types only, without `@types/node`.
+    include: ["src/**/*.{test,spec}.{ts,tsx}", "build/**/*.test.ts"],
   },
 });
