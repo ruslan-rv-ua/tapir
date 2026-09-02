@@ -26,7 +26,7 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [about-app-info](p1-about-app-info.md) | P1 | planned | ready | S | — | — (довідка веде до звіту про проблему, а версії взяти нізвідки) |
+| [about-app-info](p1-about-app-info.md) | P1 | planned | ready | S | — | [diagnostic-report-block](p3-diagnostic-report-block.md) (огрилено 2026-09-02: секція «Про програму» у Загальних, адреса з Cargo.toml homepage) |
 | [webview-zoom-hotkeys](p1-webview-zoom-hotkeys.md) | P1 | planned | ready | S | — | — (прогалина доступності для слабозорих; перший крок — вимірювання, не правка) |
 | [hotkey-registration-silent-at-startup](p1-hotkey-registration-silent-at-startup.md) | P1 | planned | ready | S | — | — (механізм повідомлення вже є, працює лише на одному з двох шляхів) |
 | [key-recorder-silent-rejection](p1-key-recorder-silent-rejection.md) | P1 | planned | ready | S | — | — (та сама родина мовчазних поверхонь) |
@@ -62,7 +62,7 @@ semver; `unscheduled` — наприкінці.
 
 > **Тема — комфорт.** Ідеї (`type: idea`) з ясною цінністю, але без ухваленого дизайну:
 > кожну треба спершу обговорити (режим **ОБГОВОРЕННЯ** за алгоритмом
-> [README](README.md#алгоритм-для-агента)), і лише потім планувати. 13 записів.
+> [README](README.md#алгоритм-для-агента)), і лише потім планувати. 14 записів.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
@@ -79,6 +79,7 @@ semver; `unscheduled` — наприкінці.
 | [player-station-image](p3-player-station-image.md) | P3 | idea | draft | S | — | — |
 | [context-menu-at-cursor](p3-context-menu-at-cursor.md) | P3 | idea | draft | S | — | — |
 | [lastfm-scrobbling](p3-lastfm-scrobbling.md) | P3 | idea | draft | M | — | — |
+| [diagnostic-report-block](p3-diagnostic-report-block.md) | P3 | idea | draft | S | [about-app-info](p1-about-app-info.md) | — (хвіст about-app-info: збірка Windows, версія WebView2, кнопка «Скопіювати відомості для звіту») |
 
 ## unscheduled
 
