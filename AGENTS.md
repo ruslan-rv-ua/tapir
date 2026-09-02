@@ -109,7 +109,6 @@ All project documentation lives in `docs/`. Key files:
 
 **Manual testing** (`docs/testing/`):
 - [test-streams.md](docs/testing/test-streams.md) — тестові URL радіо-потоків
-- [nvda-key-recorder-silent-rejection.md](docs/testing/nvda-key-recorder-silent-rejection.md) — NVDA-прогін: рекордер гарячих клавіш відмовляє вголос (P1 `key-recorder-silent-rejection`)
 
 Чеклісти NVDA-прогону (`docs/testing/nvda-<slug>.md`) створюються для записів беклогу
 з `a11y: true` і видаляються на прийманні — метод і шаблон живуть у скілі

@@ -774,7 +774,7 @@ notes:
      ([KeyRecorder.tsx:20](../../../src/components/settings/KeyRecorder.tsx:20)) — виглядає як
      зависання. Формулювати **позитивно** (з чого комбінація складається), а не переліком
      заборон. Дефект самого рекордера — запис
-     [key-recorder-silent-rejection](../p1-key-recorder-silent-rejection.md) —
+     [key-recorder-silent-rejection](p1-key-recorder-silent-rejection.md) —
      **закрито 2026-09-02**: непридатна клавіша дістає відмову текстом, і поле виходить
      із режиму запису; «ігнорує мовчки» вище — історія;
   3. комбінацію прийнято, але її забрала інша програма — це вже поведінка, і живе в

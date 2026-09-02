@@ -68,7 +68,7 @@ notes:
 
 ## Документи
 
-- [key-recorder-silent-rejection](p1-key-recorder-silent-rejection.md) — механізм відмови,
+- [key-recorder-silent-rejection](done/p1-key-recorder-silent-rejection.md) — механізм відмови,
   рішення 8
 - [keyboard-shortcuts.md](../keyboard-shortcuts.md) — правило дефолтів №4 і абзац про
   `F13`–`F24`/`Pause`

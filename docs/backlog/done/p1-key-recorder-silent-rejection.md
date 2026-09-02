@@ -3,12 +3,13 @@ slug: key-recorder-silent-rejection
 title: "Рекордер гарячих клавіш мовчки ігнорує непридатну клавішу"
 priority: P1
 type: planned
-status: ready
+status: done
 effort: S
 kind: bug
 target: 0.1.0
 a11y: true
 updated: 2026-09-02
+completed: 2026-09-02
 depends_on: []
 blocks: [key-recorder-bare-key]
 touches:
@@ -25,6 +26,7 @@ touches:
 gates: [pnpm test, pnpm vite:build]
 notes:
   - "Знахідка grilling help-config (2026-08-13). Той самий клас, що wishlist-pattern-hint-anchoring: поле мовчить про власне правило."
+  - "Прийнято 2026-09-02: NVDA-прогін 8/8 без розбіжностей; чекліст видалено на прийманні, рішення живуть тут."
   - "Огрилено 2026-09-02: 9 рішень. Попутно знайдено повторне озброєння від keyup (react-aria onPress) — лікується тут — і голу клавішу як глобальну комбінацію — винесено в key-recorder-bare-key."
 ---
 
@@ -32,17 +34,17 @@ notes:
 
 > **Контекст:** знайдено під час grilling `help-config`, коли розбиралися три різні
 > причини, з яких комбінація «не приймається». Дві з них пояснені текстом, третя —
-> ні, і саме вона виглядає як поломка. **Огрилено 2026-09-02** — рішення нижче;
-> коду ще немає.
+> ні, і саме вона виглядає як поломка. **Огрилено, реалізовано й прийнято 2026-09-02**
+> (NVDA-прогін 8/8) — рішення нижче.
 
 ## Опис
 
 `KeyRecorder` перетворює `KeyboardEvent.code` на токен комбінації, і набір придатних
 кодів обмежений: літери `A`–`Z`, цифри `0`–`9`, стрілки, `Space`, `Pause`, `F1`–`F24`
-([KeyRecorder.tsx:20-43](../../src/components/settings/KeyRecorder.tsx:20)). Усе інше —
+([KeyRecorder.tsx:20-43](../../../src/components/settings/KeyRecorder.tsx:20)). Усе інше —
 пунктуація, `Enter`, numpad, самі модифікатори — повертає `null`, і обробник просто
 виходить, лишаючи рекордер у режимі запису
-([KeyRecorder.tsx:60](../../src/components/settings/KeyRecorder.tsx:60)).
+([KeyRecorder.tsx:60](../../../src/components/settings/KeyRecorder.tsx:60)).
 
 Для користувача це виглядає так: кнопку натиснуто, поле каже «Натисніть клавіші…»,
 людина тисне `Ctrl+Shift+;` — і **нічого не відбувається**. Ні комбінації, ні відмови,
@@ -52,7 +54,7 @@ notes:
 
 - зарезервована комбінація → «Цю комбінацію зарезервовано для: {дія}»;
 - дублікат → «Цю комбінацію вже використано для: {дія}»
-  ([HotkeysTab.tsx:84-100](../../src/components/settings/HotkeysTab.tsx:84)).
+  ([HotkeysTab.tsx:84-100](../../../src/components/settings/HotkeysTab.tsx:84)).
 
 Тобто механізм показу відмови вже стоїть поруч і використовується двічі; бракує третього
 виклику.
@@ -73,13 +75,13 @@ notes:
 ## Рішення (grilling 2026-09-02)
 
 1. **Після відмови «клавіша не підходить» рекордер виходить із режиму запису**, як дві
-   сусідні відмови ([KeyRecorder.tsx:79](../../src/components/settings/KeyRecorder.tsx:79)
+   сусідні відмови ([KeyRecorder.tsx:79](../../../src/components/settings/KeyRecorder.tsx:79)
    виконується і при помилці валідації). Три відмови — одна поведінка; `Tab`/`Escape`
    одразу знову працюють; повторна відмова з тим самим текстом **чутна**, бо повторне
    озброєння робить `setError(null)` і вузол `alert` перемонтовується. Відкинуто «лишатися
    озброєним»: друга непридатна клавіша поспіль давала б тишу (той самий текст у тому
    самому вузлі — див. коментар у
-   [HotkeysTab.tsx:42](../../src/components/settings/HotkeysTab.tsx:42)), а для того, хто
+   [HotkeysTab.tsx:42](../../../src/components/settings/HotkeysTab.tsx:42)), а для того, хто
    відмови не зрозумів, вигляд «зависло» лишався б.
 2. **Відмова в тому самому `role="alert"` + один статичний рядок-підказка над вісьмома
    рядками вкладки**, у порядку читання, не фокусований, без `aria-describedby`. Підказка —
@@ -104,7 +106,7 @@ notes:
    a note of what does work"). Позитивний перелік лишається: довідка відповідає «як це
    працює» до відкриття екрана, підказка — «що тиснути» на самому екрані. «Два види
    комбінацій» не чіпаємо — ті два про комбінації, цей про клавішу. Рядок «ігнорує
-   мовчки» у мапі покриття [help-content-polish](done/p1-help-content-polish.md) дістає
+   мовчки» у мапі покриття [help-content-polish](p1-help-content-polish.md) дістає
    позначку, що дефект закрито: мапа — живий довідник, який AGENTS.md велить читати перед
    правкою довідки, а не журнал. Стеля не тисне: en 589/1000 слів.
 6. **Термін для користувача зафіксовано в CONTEXT.md** (секція «Гаряча клавіша», записана
@@ -123,11 +125,11 @@ notes:
    `onPressStart` (той самий keydown і записує, і озброює) і нативний `<button>` (click від
    `Space` теж на keyup).
 8. **Гола клавіша як глобальна комбінація — окремий запис**
-   [key-recorder-bare-key](p1-key-recorder-bare-key.md). Поле приймає `Q` без модифікаторів
+   [key-recorder-bare-key](../p1-key-recorder-bare-key.md). Поле приймає `Q` без модифікаторів
    і Tapir реєструє її системно; підказка з рішення 2 каже «Ctrl, Shift або Alt плюс…»,
    хоча поле цього не вимагає. Там своя розвилка (які голі клавіші законні — реєстр свідомо
    дозволяє `Pause` і `F13`–`F24`), тут — лише ця нотатка.
-9. **`a11y: true`, NVDA-чеклист** ([nvda-key-recorder-silent-rejection.md](../testing/nvda-key-recorder-silent-rejection.md)).
+9. **`a11y: true`, NVDA-чеклист** (`docs/testing/nvda-key-recorder-silent-rejection.md`, видалено на прийманні).
    П'ять ключових перевірок: відмова чутна; друга відмова поспіль чутна; `Tab` з
    озброєного поля йде далі мовчки; відмова на `Enter` лишається після відпускання
    клавіші; після `Ctrl+Space` поле не озброєне знову. Три з п'яти — знахідки цього
@@ -166,17 +168,17 @@ ADR не потрібен: рішення оборотні й без конте�
 - [x] `settings.md` uk/en: одне речення замінено (рішення 5), позитивний перелік лишився
 - [x] Рядок «ігнорує мовчки» в мапі покриття `help-content-polish` позначено як закритий
       цим записом
-- [ ] NVDA-чеклист [nvda-key-recorder-silent-rejection.md](../testing/nvda-key-recorder-silent-rejection.md)
-      (8 сценаріїв, рішення 9) пройдено
+- [x] NVDA-чеклист `docs/testing/nvda-key-recorder-silent-rejection.md` (8 сценаріїв,
+      рішення 9) пройдено 2026-09-02 без розбіжностей; файл видалено на прийманні
 - [x] `pnpm vite:build`, `pnpm test` — без помилок
 
 ## Документи
 
-- [help-config](done/p1-help-config.md) — довідка описує обмеження позитивним переліком
-- [help-content-polish](done/p1-help-content-polish.md) — мапа `settings.md`, три види
+- [help-config](p1-help-config.md) — довідка описує обмеження позитивним переліком
+- [help-content-polish](p1-help-content-polish.md) — мапа `settings.md`, три види
   відмови
-- [CONTEXT.md](../../CONTEXT.md) — «Гаряча клавіша» (термін для користувача)
-- [key-recorder-bare-key](p1-key-recorder-bare-key.md) — гола клавіша, окремий запис
-- [ADR про асиметрію конфігурованості](../decisions/2026-06-07-shortcut-configurability-asymmetry.md) —
+- [CONTEXT.md](../../../CONTEXT.md) — «Гаряча клавіша» (термін для користувача)
+- [key-recorder-bare-key](../p1-key-recorder-bare-key.md) — гола клавіша, окремий запис
+- [ADR про асиметрію конфігурованості](../../decisions/2026-06-07-shortcut-configurability-asymmetry.md) —
   чому саме ці вісім комбінацій перепризначаються
 - `src/components/settings/KeyRecorder.tsx`, `src/components/settings/HotkeysTab.tsx`
