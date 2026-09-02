@@ -28,7 +28,8 @@ semver; `unscheduled` — наприкінці.
 |------|---|-----|------|---------|---------------|-------------|
 | [webview-zoom-hotkeys](p1-webview-zoom-hotkeys.md) | P1 | planned | ready | S | — | — (прогалина доступності для слабозорих; перший крок — вимірювання, не правка) |
 | [hotkey-registration-silent-at-startup](p1-hotkey-registration-silent-at-startup.md) | P1 | planned | ready | S | — | — (механізм повідомлення вже є, працює лише на одному з двох шляхів) |
-| [key-recorder-silent-rejection](p1-key-recorder-silent-rejection.md) | P1 | planned | ready | S | — | — (та сама родина мовчазних поверхонь) |
+| [key-recorder-silent-rejection](p1-key-recorder-silent-rejection.md) | P1 | planned | ready | S | — | key-recorder-bare-key (та сама родина мовчазних поверхонь; огрилено 2026-09-02) |
+| [key-recorder-bare-key](p1-key-recorder-bare-key.md) | P1 | planned | ready | S | key-recorder-silent-rejection | — (гола літера реєструється системною комбінацією; знахідка grilling 2026-09-02) |
 | [profile-delete-key-dead-end](p1-profile-delete-key-dead-end.md) | P1 | planned | ready | S | — | — (нелокалізоване `Forbidden: …` у вікні користувача) |
 | [wishlist-pattern-hint-anchoring](p1-wishlist-pattern-hint-anchoring.md) | P1 | planned | ready | S | — | — (підказка мовчить про якірність, тож найприродніший патерн не ловить нічого) |
 | [settings-labels-wording](p2-settings-labels-wording.md) | P2 | planned | ready | S | — | — (дві мітки: локалі обіцяють різне, латиниця посеред українського рядка) |
