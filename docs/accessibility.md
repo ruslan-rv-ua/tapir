@@ -762,7 +762,7 @@ ProfileSettingsDialog (role="dialog", aria-label="Налаштування пр�
 │   └── <details>: Перепідключення (4 × NumberField)
 │
 ├── TabPanel: Відтворення
-│   ├── Checkbox: Автовідтворення при запуску (+ опис через aria-describedby)
+│   ├── Checkbox: Відновлювати останнє відтворення при запуску (+ опис через aria-describedby)
 │   ├── Select: Відновлювати файл (З останньої позиції / З початку)
 │   └── Checkbox: Автоматично відтворювати наступний трек
 │

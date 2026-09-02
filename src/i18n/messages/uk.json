@@ -565,7 +565,7 @@
   "profile_settings": "Налаштування профілю…",
   "profile_settings_named": "Налаштування профілю {name}",
   "profile_settings_title": "Налаштування профілю: {name}",
-  "profile_autoplay_label": "Автовідтворення при запуску",
+  "profile_autoplay_label": "Відновлювати останнє відтворення при запуску",
   "profile_autoplay_hint": "При наступному запуску одразу почне грати те, що звучало в цьому профілі востаннє. Звук накладеться на мовлення NVDA, яке озвучує вікно.",
   "profile_settings_tab_interface": "Інтерфейс",
   "profile_settings_tab_postprocess": "Постобробка",
