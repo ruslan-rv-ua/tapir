@@ -13,13 +13,15 @@ import uk from "./messages/uk.json";
  * "Recording" beside a file name says the wrong thing exactly when it costs the
  * most: while some stream *is* being recorded, it reads as "this one is".
  *
- * Guarded over the JSON rather than through `m.*()`: paraglide compiles one
- * locale per run, and both locales carried the process word.
+ * Guarded over the JSON rather than through `m.*()`: vitest runs without the
+ * paraglide plugin, so the compiled messages can lag behind the JSON, and the
+ * JSON is what a translator edits. Both locales carried the process word.
  *
- * The stem is taken from `settings_tab_recording`, the tab that really is about
- * the process — that keeps the test honest about which word it bans. What it
- * cannot pin is that the replacement is the *right* word for a file; that half
- * is held by prose — `docs/help/*\/player.md` quotes the badge verbatim.
+ * The stem is hard-coded per locale and checked against `settings_tab_recording`,
+ * the tab that really is about the process — that keeps the test honest about
+ * which word it bans. What it cannot pin is that the replacement is the *right*
+ * word for a file; that half is held by prose — `docs/help/*\/player.md` quotes
+ * the badge verbatim.
  */
 const LOCALES = {
   uk: { badge: uk.player_recording_badge, processTab: uk.settings_tab_recording, stem: /запис/iu },
