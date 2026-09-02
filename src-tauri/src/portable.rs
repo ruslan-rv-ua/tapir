@@ -24,6 +24,13 @@ pub fn state_path() -> PathBuf {
     data_dir().join("state.json")
 }
 
+/// Пам'ять «про зайнятість яких комбінацій уже сказано» (hotkey_busy). Окремий
+/// файл: у settings.json це виглядало б як налаштування, якого немає, у state.json
+/// стало б зобов'язанням для писаря crash-recovery.
+pub fn hotkeys_reported_path() -> PathBuf {
+    data_dir().join("hotkeys-reported.json")
+}
+
 pub fn profiles_dir() -> PathBuf {
     data_dir().join("profiles")
 }

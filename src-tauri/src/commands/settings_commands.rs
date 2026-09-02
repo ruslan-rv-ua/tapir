@@ -1,7 +1,6 @@
 use crate::app_state::AppState;
 use crate::settings::{GlobalSettings, HotkeyMap};
 use crate::store::Commit;
-use crate::shortcuts;
 
 #[tauri::command]
 pub async fn get_settings(state: tauri::State<'_, AppState>) -> Result<GlobalSettings, String> {
@@ -49,12 +48,16 @@ pub async fn save_settings(
 pub async fn register_hotkeys(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+) -> Result<crate::hotkey_busy::Registration, String> {
     let settings = state.settings.read().await;
     let hotkeys = settings.hotkeys.clone();
     drop(settings);
-    let failed = shortcuts::register_global_shortcuts(&app, &hotkeys);
-    Ok(failed)
+    // Той самий шлях, що при старті. Про `newly_busy` тут не емітимо — вкладка
+    // оголошує КОЖНУ нововиявлену комбінацію сама (щойно змінену наполегливо,
+    // знайдену при монтуванні ввічливо), тож помітити їх доставленими можна одразу.
+    let registration = crate::hotkey_busy::register_and_plan(&app, &hotkeys);
+    crate::hotkey_busy::record_delivered(&registration.newly_busy);
+    Ok(registration)
 }
 
 /// Default Tier-1 hotkey combos. Pure lookup for the Settings → Hotkeys

@@ -148,7 +148,9 @@ ADR не потрібен: рішення оборотні й без конте�
   «Ця клавіша не підходить: потрібна літера, цифра, стрілка, Space, Pause або F‑клавіша» /
   "This key can't be a hotkey: use a letter, a digit, an arrow, Space, Pause or an F key".
 - Чотири наявні рядки: «Прибрати комбінацію: {action}», «Комбінацію прибрано»,
-  «Комбінацію змінено: {combo}», «Не вдалося зареєструвати комбінацію {combo}».
+  «Комбінацію змінено: {combo}»; четвертий, `settings_hotkey_registration_failed`, при
+  злитті з [hotkey-registration-silent-at-startup](p1-hotkey-registration-silent-at-startup.md)
+  дістав його формулювання «Комбінацію {combo} зайняла інша програма» — теж «комбінація».
 
 ## Критерії готовності
 

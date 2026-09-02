@@ -18,7 +18,7 @@ Tapir can also raise a notification when the track changes — that is switched 
 
 Eight combinations work in any application, not only in Tapir: toggle recording, toggle playback, change the volume, show or hide the window, stop all recording, and skip to the previous or next. The current combinations are listed in the app settings, on the **Hotkeys** tab, which is also where you assign them.
 
-Another program may take a combination first; Tapir then never receives it and the action simply does nothing. The cure is to assign a different combination.
+Another program may take a combination first; Tapir then never receives it and the action simply does nothing. Tapir says so once when it starts, naming the combination and the action, and on the **Hotkeys** tab that row reads “taken by another program”. The cure is to assign a different combination.
 
 The system media keys on your keyboard and the buttons on a headset control playback exactly as the player buttons do. Turn off **System media keys integration** in the app settings, on the **Audio** tab, and Tapir disappears from the system playback overlay, handing the keys back to whichever player had them before.
 

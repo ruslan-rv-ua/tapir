@@ -48,7 +48,7 @@ Tapir names the reason. Usually Windows has no program registered for that kind 
 
 ### A global hotkey did nothing
 
-Another program may have claimed the combination first, and then Tapir never receives it at all. Assign a different one in the app settings, tab **Hotkeys**.
+Another program claimed the combination. Tapir says so once at startup; the app settings, tab **Hotkeys**, mark it “taken by another program”; assign a different one.
 
 ### The station catalogue is unreachable
 

@@ -10,7 +10,7 @@ import { $announcer } from "../../stores/announcer";
 
 vi.mock("../../lib/tauri", () => ({
   saveSettings: vi.fn().mockResolvedValue(undefined),
-  registerHotkeys: vi.fn().mockResolvedValue([]),
+  registerHotkeys: vi.fn().mockResolvedValue({ busy: [], newlyBusy: [] }),
   defaultHotkeys: vi.fn().mockResolvedValue({
     toggleRecording: "Ctrl+Shift+R",
     togglePlayback: "Ctrl+Shift+P",
@@ -34,6 +34,7 @@ const baseSettings: GlobalSettings = {
   autostart: false,
   autostartMinimized: true,
   prevRestartThresholdMs: 0,
+  volumeStepPercent: 5,
   smtcEnabled: true,
   hotkeys: {
     toggleRecording: "",
@@ -143,8 +144,11 @@ describe("HotkeysTab — провал реєстрації комбінації"
     fireEvent.keyDown(button, { code: "KeyJ", key: "j", ctrlKey: true, shiftKey: true });
   }
 
+  const free = { busy: [], newlyBusy: [] };
+  const busyJ = { busy: ["Ctrl+Shift+J"], newlyBusy: ["Ctrl+Shift+J"] };
+
   it("оголошує наполегливо, що щойно призначена комбінація не зареєструвалась", async () => {
-    (tauri.registerHotkeys as Mock).mockResolvedValue(["Ctrl+Shift+J"]);
+    (tauri.registerHotkeys as Mock).mockResolvedValueOnce(free).mockResolvedValue(busyJ);
     const { getByRole } = render(<HotkeysTab />);
     record(getByRole);
 
@@ -157,7 +161,11 @@ describe("HotkeysTab — провал реєстрації комбінації"
   });
 
   it("той самий провал удруге звучить удруге", async () => {
-    (tauri.registerHotkeys as Mock).mockResolvedValue(["Ctrl+Shift+J"]);
+    // Монтування: вільно. Перша спроба: J нова. Друга: J зайнята, але вже не новина.
+    (tauri.registerHotkeys as Mock)
+      .mockResolvedValueOnce(free)
+      .mockResolvedValueOnce(busyJ)
+      .mockResolvedValue({ busy: ["Ctrl+Shift+J"], newlyBusy: [] });
     const { getByRole } = render(<HotkeysTab />);
     const { seen, unsub } = announcements();
     const failure = m.settings_hotkey_registration_failed({ combo: "Ctrl+Shift+J" });
@@ -171,7 +179,10 @@ describe("HotkeysTab — провал реєстрації комбінації"
   });
 
   it("мовчить про чужий давній провал, коли користувач змінює іншу комбінацію", async () => {
-    (tauri.registerHotkeys as Mock).mockResolvedValue(["Ctrl+Shift+J"]);
+    (tauri.registerHotkeys as Mock)
+      .mockResolvedValueOnce(free)
+      .mockResolvedValueOnce(busyJ)
+      .mockResolvedValue({ busy: ["Ctrl+Shift+J"], newlyBusy: [] });
     const { getByRole } = render(<HotkeysTab />);
     const { seen, unsub } = announcements();
     const failure = m.settings_hotkey_registration_failed({ combo: "Ctrl+Shift+J" });
@@ -187,7 +198,8 @@ describe("HotkeysTab — провал реєстрації комбінації"
     fireEvent.click(playback);
     fireEvent.keyDown(playback, { code: "KeyU", key: "u", ctrlKey: true, altKey: true });
 
-    await waitFor(() => expect(tauri.registerHotkeys).toHaveBeenCalledTimes(2));
+    // Три реєстрації: перевірка при монтуванні, потім дві зміни.
+    await waitFor(() => expect(tauri.registerHotkeys).toHaveBeenCalledTimes(3));
     expect(seen.filter((a) => a.message === failure)).toHaveLength(1);
     expect(seen.at(-1)?.message).toBe(m.settings_hotkey_changed({ combo: "Ctrl+Alt+U" }));
 
@@ -256,5 +268,71 @@ describe("HotkeysTab — recorder hint", () => {
     // would repeat the rule on each of the eight buttons.
     expect(hint.tagName).toBe("P");
     expect(hint).not.toHaveAttribute("tabindex");
+  });
+});
+
+// Зайнята комбінація (hotkey-registration-silent-at-startup): «яка комбінація
+// призначена» — налаштування, «чи вона працює зараз» — стан, який знає лише Rust.
+// Вкладка не тримає своєї копії: при кожному монтуванні перереєструє комбінації —
+// це і є «перевір ще раз», яка знімає позначку, коли конфлікт зник.
+describe("HotkeysTab — зайнята комбінація", () => {
+  const assigned = {
+    ...baseSettings,
+    hotkeys: { ...baseSettings.hotkeys, toggleRecording: "Ctrl+Shift+R", togglePlayback: "Ctrl+Shift+P" },
+  };
+
+  it("при монтуванні перереєструє й позначає зайнятий рядок, не зберігаючи нічого", async () => {
+    $settings.set(assigned);
+    // R зайнята, але про неї вже казали (при старті) — вкладка мовчить.
+    (tauri.registerHotkeys as Mock).mockResolvedValue({ busy: ["Ctrl+Shift+R"], newlyBusy: [] });
+    const { getByRole, getAllByText } = render(<HotkeysTab />);
+
+    await waitFor(() => expect(tauri.registerHotkeys).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(getAllByText(m.settings_hotkey_busy())).toHaveLength(1));
+    expect(recordButton(getByRole)).toHaveAccessibleName(
+      expect.stringContaining(m.settings_hotkey_busy()),
+    );
+    expect(tauri.saveSettings).not.toHaveBeenCalled();
+    // Позначка — носій стану, не подія: про вже відоме вкладка мовчить.
+    expect($announcer.get()).toBeNull();
+  });
+
+  it("нововиявлену при монтуванні зайняту комбінацію оголошує ввічливо", async () => {
+    // Перше виявлення не мовчить ніде: пам'ять «уже повідомлено» помічається
+    // саме тому, що вкладка це озвучує (спека, «Після реалізації»).
+    $settings.set(assigned);
+    (tauri.registerHotkeys as Mock).mockResolvedValue({
+      busy: ["Ctrl+Shift+R"],
+      newlyBusy: ["Ctrl+Shift+R"],
+    });
+    const { getAllByText } = render(<HotkeysTab />);
+    await waitFor(() => expect(getAllByText(m.settings_hotkey_busy())).toHaveLength(1));
+    expect($announcer.get()).toEqual({
+      message: m.settings_hotkey_registration_failed({ combo: "Ctrl+Shift+R" }),
+      priority: "polite",
+    });
+  });
+
+  it("зниклий конфлікт: перереєстрація при монтуванні повертає порожній перелік — позначки немає", async () => {
+    $settings.set(assigned);
+    (tauri.registerHotkeys as Mock).mockResolvedValue({ busy: [], newlyBusy: [] });
+    const { queryByText } = render(<HotkeysTab />);
+    await waitFor(() => expect(tauri.registerHotkeys).toHaveBeenCalledTimes(1));
+    expect(queryByText(m.settings_hotkey_busy())).toBeNull();
+  });
+
+  it("провал щойно призначеної комбінації позначає її рядок, а блоку під рядками немає", async () => {
+    (tauri.registerHotkeys as Mock)
+      .mockResolvedValueOnce({ busy: [], newlyBusy: [] })
+      .mockResolvedValue({ busy: ["Ctrl+Shift+J"], newlyBusy: ["Ctrl+Shift+J"] });
+    const { getByRole, getAllByText, queryByText } = render(<HotkeysTab />);
+    const button = recordButton(getByRole);
+    fireEvent.click(button);
+    fireEvent.keyDown(button, { code: "KeyJ", key: "j", ctrlKey: true, shiftKey: true });
+
+    await waitFor(() => expect(getAllByText(m.settings_hotkey_busy())).toHaveLength(1));
+    expect(
+      queryByText(m.settings_hotkey_registration_failed({ combo: "Ctrl+Shift+J" })),
+    ).toBeNull();
   });
 });

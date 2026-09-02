@@ -183,3 +183,31 @@ describe("KeyRecorder — accessible names", () => {
     ).toBeInTheDocument();
   });
 });
+
+// Зайнята комбінація (CONTEXT.md): гаряча клавіша призначена, але не працює —
+// ОС не віддала комбінацію, її тримає інша програма. Позначка — видимий носій
+// стану на самому рядку, тож вона стан, а не alert.
+describe("KeyRecorder — зайнята комбінація", () => {
+  it("shows the busy marker by the combo and folds it into the button name", () => {
+    const { getByRole, getByText, queryByRole } = render(
+      <KeyRecorder label={LABEL} value="Ctrl+Shift+R" onChange={vi.fn()} busy />,
+    );
+    expect(getByText(m.settings_hotkey_busy())).toBeVisible();
+    const button = getByRole("button", { name: (name: string) => name.startsWith(LABEL) });
+    expect(button).toHaveAccessibleName(
+      `${LABEL}: Ctrl+Shift+R, ${m.settings_hotkey_busy()}. ${m.settings_hotkey_press_to_change()}`,
+    );
+    expect(queryByRole("alert")).toBeNull();
+  });
+
+  it("a free combo carries no marker", () => {
+    const { queryByText, getByRole } = render(
+      <KeyRecorder label={LABEL} value="Ctrl+Shift+R" onChange={vi.fn()} />,
+    );
+    expect(queryByText(m.settings_hotkey_busy())).toBeNull();
+    const button = getByRole("button", { name: (name: string) => name.startsWith(LABEL) });
+    expect(button).toHaveAccessibleName(
+      `${LABEL}: Ctrl+Shift+R. ${m.settings_hotkey_press_to_change()}`,
+    );
+  });
+});
