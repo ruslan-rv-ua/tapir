@@ -241,7 +241,7 @@
   "edit_pattern": "Edit pattern",
   "remove_pattern": "Remove pattern",
   "pattern_label": "Pattern",
-  "pattern_hint": "Use * for any characters, ? for one character",
+  "pattern_hint": "A pattern must match the whole title: Tycho* works, Tycho does not. * stands for any characters, ? for one",
   "add_to_wishlist": "Add to wishlist",
   "add_to_ignorelist": "Add to ignorelist",
   "stream_actions": "Actions for {name}",

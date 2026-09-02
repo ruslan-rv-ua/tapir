@@ -115,6 +115,16 @@ mod tests {
         assert!(!wildcard_match("Bonobo*", "Tycho - Dive"));
     }
 
+    /// The pair the field hint promises (`pattern_hint` in `messages/*.json`):
+    /// matching is anchored to the whole string, so the bare artist name — the
+    /// most natural pattern a person writes — catches nothing. Turning this into
+    /// substring matching would make that hint lie.
+    #[test]
+    fn anchored_to_the_whole_string_not_a_substring() {
+        assert!(!wildcard_match("Tycho", "Tycho - Dive"));
+        assert!(wildcard_match("Tycho*", "Tycho - Dive"));
+    }
+
     #[test]
     fn question_wildcard() {
         assert!(wildcard_match("?ycho", "Tycho"));
