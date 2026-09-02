@@ -727,7 +727,7 @@ SettingsDialog (role="dialog", aria-label="Налаштування")   ← ТІ
 │
 ├── TabPanel: Загальні
 │   ├── Select: Мова · Select: Тема
-│   ├── Checkbox: Згортати до tray замість закриття
+│   ├── Checkbox: Згортати до трею замість закриття
 │   ├── Checkbox: Назва треку в заголовку
 │   ├── Checkbox: Автозапуск з Windows (+ Запускати згорнутим)
 │   └── Select: Дія при активації потоку (Enter / подвійний клік)
