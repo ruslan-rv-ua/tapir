@@ -72,7 +72,7 @@ backoff не росте **ніколи**. Тобто «необмежено» і
    > **поточні** ([StreamList.tsx:42](../../../src/components/streams/StreamList.tsx:42), `?? 0`).
    > Причина видалення інша: напис «Спроба 4» без стелі більше не відповідає жодному
    > стану домену. Розсинхрон як клас закриває окремий запис
-   > [reconnect-max-in-status](../p2-reconnect-max-in-status.md).
+   > [reconnect-max-in-status](p2-reconnect-max-in-status.md).
 3. **Дефолт `max_retries` = 10.** З наявним backoff (5 с, ×1.5, стеля 300 с) —
    ≈40 хвилин наполегливості: досить, щоб пережити мигання мережі й збій провайдера,
    замало, щоб зависнути назавжди на мертвій станції.
@@ -123,7 +123,7 @@ backoff не росте **ніколи**. Тобто «необмежено» і
 ## Документи
 
 - [ADR: семантика спроби перепідключення](../../decisions/2026-08-13-reconnect-attempt-semantics.md) — чому нуль вимикає, чому лічильник скидається на першому байті
-- [reconnect-max-in-status](../p2-reconnect-max-in-status.md) — відщеплено тут: бекенд віддає стелю разом зі статусом
+- [reconnect-max-in-status](p2-reconnect-max-in-status.md) — відщеплено тут: бекенд віддає стелю разом зі статусом
 - [help-recording](p1-help-recording.md) — запис, під час якого знайдено; містить звірені з кодом числа перепідключення
 - `src-tauri/src/stream/manager.rs` — цикл `'reconnect` і `compute_backoff_delay`
 - `src/components/profile/ProfileRecordingTab.tsx` — поля налаштувань перепідключення
