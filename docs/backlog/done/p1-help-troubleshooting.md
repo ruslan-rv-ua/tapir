@@ -232,4 +232,4 @@ notes:
 - `src/components/common/helpContent.ts` — фолбек локалі, який ховає розсинхрон
 - `src-tauri/src/lib.rs` — конфігурація журналу (рівень, розмір, ротація)
 - [unknown-format-falls-back-to-mp3](p1-unknown-format-falls-back-to-mp3.md) — знахідка сесії
-- [about-app-info](../p1-about-app-info.md) — знахідка сесії (версія й адреса проєкту для звіту)
+- [about-app-info](p1-about-app-info.md) — знахідка сесії (версія й адреса проєкту для звіту)

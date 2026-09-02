@@ -3,11 +3,12 @@ slug: about-app-info
 title: "Застосунок ніде не показує ні своєї версії, ні адреси проєкту"
 priority: P1
 type: planned
-status: ready
+status: done
 effort: S
 kind: feature
 target: 0.1.0
 updated: 2026-09-02
+completed: 2026-09-02
 a11y: true
 depends_on: []
 blocks: [diagnostic-report-block]
@@ -40,7 +41,7 @@ notes:
 > **Контекст:** знайдено під час grilling `help-troubleshooting`, коли писався
 > ескалаційний вихід довідки — «зберіть журнал і повідомте про проблему».
 > Огрилено 2026-09-02: усі розвилки закрито, нижче — рішення. Читати спершу
-> «Рішення», потім «Критерії готовності».
+> «Рішення», потім «Критерії готовності». Прийнято 2026-09-02 після NVDA-прогону (7/7).
 
 ## Опис
 
@@ -74,7 +75,7 @@ issue», але README користувач у застосунку не бач�
   `StreamList` (копіювання URL потоку). `shell_open` (`commands/shell_open.rs`) віддає
   рядок `ShellExecuteW("open")`, а для `https://` шел знає рівно одну асоціацію —
   браузер за замовчуванням. Це саме те, чого запис
-  [open-stream-with-default-app](done/p1-open-stream-with-default-app.md) уникав для
+  [open-stream-with-default-app](p1-open-stream-with-default-app.md) уникав для
   потоків, і саме те, що потрібно тут.
 - Поточний git-remote — `github.com/ruslan-rv-ua/Tapir_draft`; публічна адреса
   проєкту, яку показуватиме застосунок, — інша (див. рішення 2).
@@ -107,11 +108,11 @@ issue», але README користувач у застосунку не бач�
    "../package.json"` у конфігу Tauri) не стали: `Cargo.toml` усе одно лишався б.
 6. **Обсяг — лише назва, версія, адреса.** Збірка Windows і версія WebView2, а також
    кнопка «Скопіювати відомості для звіту» — окремим записом
-   [diagnostic-report-block](p3-diagnostic-report-block.md), який цей запис розблоковує:
+   [diagnostic-report-block](../p3-diagnostic-report-block.md), який цей запис розблоковує:
    там потрібна ще одна команда в Rust, а цей запис S і стоїть у 0.1.0.
 7. **Клавіатура: текст статичний, кнопка описана версією.** Версія й адреса фокуса не
    приймають (носій факту — видимий текст, як велить
-   [ADR про видимий носій](../decisions/2026-08-31-visible-carrier-for-announced-facts.md)),
+   [ADR про видимий носій](../../decisions/2026-08-31-visible-carrier-for-announced-facts.md)),
    а кнопка отримує `aria-describedby` на абзац із версією й адресою: Tab у секції
    зупиняється рівно один раз і несе версію. Полів «лише для читання» не заводиться.
    До заголовка `h3` у режимі огляду ведуть клавіші `H`.
@@ -152,20 +153,20 @@ ADR не потрібен (рішення оборотне, нового тер�
 - [x] `docs/help/{uk,en}/settings.md`: у переліку секцій вкладки «Загальні» є
       «Про програму»; `docs/help/{uk,en}/troubleshooting.md`: ескалаційна позиція веде
       до кнопки й просить назвати версію; `en/troubleshooting.md` ≤ 1000 слів
-- [ ] NVDA-чекліст [nvda-about-app-info.md](../testing/nvda-about-app-info.md) пройдено: заголовок секції
+- [x] NVDA-чекліст пройдено 2026-09-02 (7 сценаріїв, без розбіжностей; файл видалено на прийманні): заголовок секції
       досяжний по `H`, версія читається в режимі огляду, Tab зупиняється в секції один
       раз і озвучує кнопку з версією, після натискання фокус лишається на кнопці
 - [x] `pnpm test`, `pnpm vite:build`, `cargo test` — без помилок
 
 ## Документи
 
-- [help-troubleshooting](done/p1-help-troubleshooting.md) — знахідка сесії; ескалаційна
+- [help-troubleshooting](p1-help-troubleshooting.md) — знахідка сесії; ескалаційна
   позиція довідки, задля якої версія й потрібна
-- [open-stream-with-default-app](done/p1-open-stream-with-default-app.md) — розділ
+- [open-stream-with-default-app](p1-open-stream-with-default-app.md) — розділ
   «Чому не просто URL»: шел для `https://` знає лише браузер; тут це і є бажана поведінка
-- [webview-reload-guard](done/p2-webview-reload-guard.md) — чому webview не можна
+- [webview-reload-guard](p2-webview-reload-guard.md) — чому webview не можна
   випускати з застосунку; `useWebviewGuard` посилань не стереже
-- [ADR про видимий носій](../decisions/2026-08-31-visible-carrier-for-announced-facts.md)
-- [diagnostic-report-block](p3-diagnostic-report-block.md) — що свідомо винесено
+- [ADR про видимий носій](../../decisions/2026-08-31-visible-carrier-for-announced-facts.md)
+- [diagnostic-report-block](../p3-diagnostic-report-block.md) — що свідомо винесено
 - `src-tauri/Cargo.toml`, `src-tauri/src/commands/shell_open.rs`,
   `src/components/settings/GeneralTab.tsx`, `src/lib/shellOpenError.ts`
