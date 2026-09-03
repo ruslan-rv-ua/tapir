@@ -6,8 +6,8 @@ type: planned
 status: ready
 effort: S
 kind: feature
-target: 0.1.0
-updated: 2026-08-17
+target: 0.3.0
+updated: 2026-09-03
 a11y: true
 depends_on: []
 blocks: []
@@ -18,6 +18,7 @@ gates: [pnpm test, pnpm vite:build]
 notes:
   - "Знахідка grilling'у webview-reload-guard (2026-08-07): той запис відхиляв системний вимикач акселераторів заради «важливого для слабозорих зуму» — а зуму немає, бо zoomHotkeysEnabled у tauri.conf.json відсутній"
   - "Дефолт zoomHotkeysEnabled у Tauri v2 — false; підтвердити локально не вдалося (немає реєстру crates на машині), тому перший крок — заміряти поточну поведінку в прод-збірці, а не одразу правити конфіг"
+  - "2026-09-03: перенесено з 0.1.0 у 0.3.0 — запис лишається planned/ready, обговорення не потребує"
   - "Плагін tauri-plugin-window-state зберігає геометрію вікна, але не рівень зуму — якщо збереження між сесіями потрібне, це окрема робота (IPC + профіль/налаштування)"
 ---
 

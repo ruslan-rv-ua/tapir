@@ -46,7 +46,7 @@ notes:
   ([hotkeys-expansion](p2-hotkeys-expansion.md)) її й далі містить. Але вішати на неї
   саме повний екран більше не планується — якщо колись візьмуть, то під іншу дію.
 - Більше площі для слабозорих лишається за масштабом
-  ([webview-zoom-hotkeys](../p1-webview-zoom-hotkeys.md), P1 у 0.1.0) — це тепер
+  ([webview-zoom-hotkeys](../p1-webview-zoom-hotkeys.md), P1 у 0.3.0) — це тепер
   єдиний шлях до цієї потреби.
 
 ## Опис
