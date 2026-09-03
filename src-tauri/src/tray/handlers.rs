@@ -17,24 +17,26 @@ pub fn on_tray_icon_event(tray: &TrayIcon, event: TrayIconEvent) {
 
 pub fn on_menu_event(app: &AppHandle, event: MenuEvent) {
     use crate::tray::menu::{
-        MENU_ID_QUIT, MENU_ID_STOP_ALL, MENU_ID_STOP_PLAYBACK,
-        MENU_ID_TOGGLE_PLAYBACK, MENU_ID_TOGGLE_WINDOW,
+        MENU_ID_PRIMARY_PLAYBACK, MENU_ID_QUIT, MENU_ID_STOP_ALL, MENU_ID_STOP_PLAYBACK,
+        MENU_ID_TOGGLE_WINDOW,
     };
     match event.id().as_ref() {
-        id if id == MENU_ID_TOGGLE_PLAYBACK => spawn_toggle_playback(app),
-        id if id == MENU_ID_STOP_PLAYBACK   => spawn_stop_playback(app),
-        id if id == MENU_ID_STOP_ALL        => spawn_stop_all(app),
-        id if id == MENU_ID_TOGGLE_WINDOW   => toggle_window_visibility(app),
-        id if id == MENU_ID_QUIT            => handle_quit(app),
+        id if id == MENU_ID_PRIMARY_PLAYBACK => spawn_primary_playback(app),
+        id if id == MENU_ID_STOP_PLAYBACK    => spawn_stop_playback(app),
+        id if id == MENU_ID_STOP_ALL         => spawn_stop_all(app),
+        id if id == MENU_ID_TOGGLE_WINDOW    => toggle_window_visibility(app),
+        id if id == MENU_ID_QUIT             => handle_quit(app),
         _ => {}
     }
 }
 
-fn spawn_toggle_playback(app: &AppHandle) {
+fn spawn_primary_playback(app: &AppHandle) {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
-        // Same entry point as Ctrl+Shift+K: stream=stop, file=pause/resume,
-        // cold=resume-last, shared debounce.
+        // Same entry point as Ctrl+Shift+K: live=stop, file=pause/resume,
+        // cold=resume-last, shared debounce. The menu item's own word follows
+        // the same split (`playback_items`), so it never promises a pause the
+        // live branch would not honour.
         crate::playback_control::toggle_playback(&app).await;
     });
 }

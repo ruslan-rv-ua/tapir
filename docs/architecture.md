@@ -897,8 +897,8 @@ Tapir/                                  (base_dir)
 | Пункт | ID | Тип | Умова видимості | Дія |
 |-------|----|-----|-----------------|-----|
 | Зараз грає: … | `now-playing` | `MenuItem` (disabled) | `PlayerStatus.state == Playing` | — |
-| Грати / Пауза | `toggle-playback` | `MenuItem` | завжди | `invoke("toggle_playback")` |
-| Зупинити | `stop-playback` | `MenuItem` | `state != Stopped` | `invoke("stop_playback")` |
+| Грати / Пауза / Зупинити | `primary-playback` | `MenuItem` | завжди (неактивний, коли нічого не грає) | `invoke("toggle_playback")` |
+| Зупинити | `stop-playback` | `MenuItem` | грає або на паузі **файл** | `invoke("stop_playback")` |
 | Записи: {n} | `recording-info` | `MenuItem` (disabled) | `active_recordings > 0` | — |
 | Зупинити всі записи | `stop-all` | `MenuItem` | `active_recordings > 0` | `invoke("stop_all_recordings")` |
 | Показати/Приховати | `toggle-window` | `MenuItem` | завжди | `window.show()` / `window.hide()` |
@@ -932,7 +932,7 @@ fn rebuild_tray_menu(
 
     // Playback controls
     let play_label = if player.state == PlaybackState::Playing { "Пауза" } else { "Грати" };
-    items.push(Box::new(MenuItem::with_id(app, "toggle-playback", play_label, true, None::<&str>)?));
+    items.push(Box::new(MenuItem::with_id(app, "primary-playback", play_label, true, None::<&str>)?));
 
     if player.state != PlaybackState::Stopped {
         items.push(Box::new(MenuItem::with_id(app, "stop-playback", "Зупинити", true, None::<&str>)?));
@@ -980,7 +980,7 @@ fn rebuild_tray_menu(
 // Menu item clicks
 .on_menu_event(|app, event| {
     match event.id().as_ref() {
-        "toggle-playback" => { /* invoke toggle_playback command */ }
+        "primary-playback" => { /* invoke toggle_playback command */ }
         "stop-playback"   => { /* invoke stop_playback command */ }
         "stop-all"        => { /* invoke stop_all_recordings command */ }
         "toggle-window"   => { /* show/hide main window */ }

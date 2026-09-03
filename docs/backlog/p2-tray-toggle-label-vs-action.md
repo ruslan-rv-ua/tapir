@@ -15,6 +15,7 @@ touches:
   - src-tauri/src/tray/menu.rs
   - src-tauri/src/tray/mod.rs
   - src-tauri/src/tray/handlers.rs
+  - docs/architecture.md
   - docs/help/uk/background.md
   - docs/help/en/background.md
 gates: [cargo test, cargo clippy, pnpm test, pnpm vite:build]
@@ -276,16 +277,16 @@ ADR не заводимо: з трьох умов провалюється пе�
 
 ## Критерії готовності
 
-- [ ] Поки грає живе джерело, у меню рівно **один** пункт зупинки, і зветься він «Зупинити»
-- [ ] У меню немає двох пунктів з однаковим текстом у жодному зі станів
-- [ ] `MenuPlayback` замінив `PlaybackState` у знімку; комбінація «на паузі й живе»
+- [x] Поки грає живе джерело, у меню рівно **один** пункт зупинки, і зветься він «Зупинити»
+- [x] У меню немає двох пунктів з однаковим текстом у жодному зі станів
+- [x] `MenuPlayback` замінив `PlaybackState` у знімку; комбінація «на паузі й живе»
       нерепрезентовна
-- [ ] `playback_items` — чиста, з табличним тестом, що називає всі чотири стани поіменно
-- [ ] Константа зветься за роллю (`ID_PRIMARY_PLAYBACK`), не за однією з поведінок
-- [ ] Файл поводиться як раніше: «Пауза» / «Грати» плюс окрема «Зупинити»
-- [ ] `docs/help/background.md` оновлено в обох локалях; `player.md` свідомо без змін
-- [ ] NVDA-прогін пройдено (5 сценаріїв)
-- [ ] `cargo test`, `cargo clippy`, `pnpm test`, `pnpm vite:build` зелені
+- [x] `playback_items` — чиста, з табличним тестом, що називає всі чотири стани поіменно
+- [x] Константа зветься за роллю (`ID_PRIMARY_PLAYBACK`), не за однією з поведінок
+- [x] Файл поводиться як раніше: «Пауза» / «Грати» плюс окрема «Зупинити»
+- [x] `docs/help/background.md` оновлено в обох локалях; `player.md` свідомо без змін
+- [ ] NVDA-прогін пройдено — [чекліст](../testing/nvda-tray-toggle-label-vs-action.md), 5 сценаріїв
+- [x] `cargo test`, `cargo clippy`, `pnpm test`, `pnpm vite:build` зелені
 
 ## Документи
 

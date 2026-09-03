@@ -10,7 +10,7 @@ If anything is recording when you quit, Tapir says how many recordings are activ
 
 A left click hides the window when it is visible and brings it back when it is not. Hover over the icon to see what is playing and how many streams are recording, without opening the window at all.
 
-The icon's menu changes with the state. From it you can pause or resume playback, stop it, stop all recordings, show or hide the window, and quit. Items with nothing to act on are simply not shown: there is nothing to stop while nothing is playing.
+The icon's menu changes with the state. From it you can control playback — just as the player's primary control does — stop all recordings, show or hide the window, and quit. Items with nothing to act on are either hidden or left inactive: there is nothing to stop while nothing is playing.
 
 Tapir can also raise a notification when the track changes — that is switched on per profile, in its settings on the **Interface** tab. The checkbox next to it governs notifications about scheduled recordings; those belong to the section "Schedule".
 
