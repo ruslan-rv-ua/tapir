@@ -26,7 +26,7 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [tray-toggle-label-vs-action](p2-tray-toggle-label-vs-action.md) | P2 | planned | **draft** | S | [preview-player-presentation](done/p2-preview-player-presentation.md) ✅ | — (пункт трея зветься «Пауза», а живий звук зупиняє; батьківський запис закрито 2026-09-03) |
+| [tray-toggle-label-vs-action](p2-tray-toggle-label-vs-action.md) | P2 | planned | ready | S | [preview-player-presentation](done/p2-preview-player-presentation.md) ✅ | [tray-cannot-resume-last](p2-tray-cannot-resume-last.md) (огрилено 2026-09-03: для живого джерела в меню лишається один пункт «Зупинити», `a11y` піднято до true) |
 | [list-key-modifier-guards](p2-list-key-modifier-guards.md) | P2 | planned | draft | S | [streams-transfer-hotkeys](done/p2-streams-transfer-hotkeys.md) | — (switch по `e.key` не перевіряє модифікаторів) |
 | [browser-filter-cursor-reset](p2-browser-filter-cursor-reset.md) | P2 | planned | ready | S | — | — (погоджено 2026-07-23) |
 
@@ -55,7 +55,9 @@ semver; `unscheduled` — наприкінці.
 > кожну треба спершу обговорити (режим **ОБГОВОРЕННЯ** за алгоритмом
 > [README](README.md#алгоритм-для-агента)), і лише потім планувати. Виняток —
 > [webview-zoom-hotkeys](p1-webview-zoom-hotkeys.md): це `planned`/`ready`, перенесений
-> сюди з 0.1.0, обговорення не потребує. 15 записів.
+> сюди з 0.1.0, обговорення не потребує. Два записи трея — `planned`/`draft`, заведені
+> грилінгом [tray-toggle-label-vs-action](p2-tray-toggle-label-vs-action.md): їм потрібен
+> **GROOMING**, а не обговорення. 17 записів.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
@@ -69,11 +71,13 @@ semver; `unscheduled` — наприкінці.
 | [stream-manual-reorder](p2-stream-manual-reorder.md) | P2 | idea | draft | M | — | — |
 | [track-log-only-mode](p2-track-log-only-mode.md) | P2 | idea | draft | M | — | — |
 | [wishlist-conditions](p2-wishlist-conditions.md) | P2 | idea | draft | L | — | — (перетинається з [post-processing](p1-post-processing.md) у частині «дії після запису» — звіряти після 0.2.0, інакше два механізми на одну задачу) |
+| [tray-cannot-resume-last](p2-tray-cannot-resume-last.md) | P2 | planned | draft | S | [tray-toggle-label-vs-action](p2-tray-toggle-label-vs-action.md) | — (знахідка grilling 2026-09-03: пункт трея сірий, хоча `Ctrl+Shift+K` у тому самому стані відновлює останнє джерело) |
 | [recording-stats](p3-recording-stats.md) | P3 | idea | draft | S | — | — |
 | [player-station-image](p3-player-station-image.md) | P3 | idea | draft | S | — | — |
 | [context-menu-at-cursor](p3-context-menu-at-cursor.md) | P3 | idea | draft | S | — | — |
 | [lastfm-scrobbling](p3-lastfm-scrobbling.md) | P3 | idea | draft | M | — | — |
 | [diagnostic-report-block](p3-diagnostic-report-block.md) | P3 | idea | draft | S | [about-app-info](done/p1-about-app-info.md) | — (хвіст about-app-info: збірка Windows, версія WebView2, кнопка «Скопіювати відомості для звіту») |
+| [tray-now-playing-source-prefix](p3-tray-now-playing-source-prefix.md) | P3 | planned | draft | S | — | — (знахідка grilling 2026-09-03: «Зараз грає: Файл: track.mp3» і префікс «Станція:», що відрізняє прев'ю від ефіру) |
 
 ## unscheduled
 
