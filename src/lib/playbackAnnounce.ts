@@ -1,4 +1,5 @@
 import type { PlayerStatus, PlaybackSource, StreamInfo, StreamStatus, TrackInfo } from "./tauri";
+import { isLiveSource } from "./playbackSource";
 
 export type PlaybackAnnouncement =
   | { kind: "started"; name: string }
@@ -113,8 +114,7 @@ export function trackLabel(track: TrackInfo | null | undefined): string | null {
  */
 export type PlaybackDescription =
   | { kind: "nothing" }
-  | { kind: "stream"; station: string; track: string | null }
-  | { kind: "preview"; name: string }
+  | { kind: "live"; station: string; track: string | null }
   | { kind: "file"; name: string; positionMs: number | null; paused: boolean };
 
 /**
@@ -122,9 +122,15 @@ export type PlaybackDescription =
  * `selectPlaybackAnnouncement`, which answers "what just changed?".
  *
  * Total by construction: every state × source pair yields a description, even
- * the two the running app cannot reach (a live stream and a preview have no
- * pause — the player's primary control stops them). `muted` comes back as its
- * own field because it describes the OUTPUT, not the source.
+ * the two the running app cannot reach (live sound has no pause — the player's
+ * primary control stops it). `muted` comes back as its own field because it
+ * describes the OUTPUT, not the source.
+ *
+ * Live sound has ONE kind, whichever path it came in by: F9 must not be able to
+ * say about a catalogue station something the player panel does not show, and
+ * after the two were made identical on screen there is nothing left to say
+ * apart. A variant nobody renders differently is an invitation to render it
+ * differently (ADR 2026-08-31 §2).
  *
  * `muted` is the sound-off STATE (`muteControl.isSoundOff`), not the toggle
  * field: silence reached by dropping the level to zero gets the same clause.
@@ -144,22 +150,23 @@ export function describePlayback(input: {
     return { description: { kind: "nothing" }, muted };
   }
 
-  if (source.type === "stream") {
-    // The track lives in the stream's own status, not in $playerStatus; a
-    // station that sends no ICY metadata — or only half of one — is a legal
-    // case, not a failure, and `trackLabel` collapses both to null.
+  if (isLiveSource(source)) {
+    // The track is the one thing the two live paths differ in, and only a
+    // profile stream can have one: it lives in that stream's own status, not in
+    // $playerStatus. A station that sends no ICY metadata — or only half of one
+    // — is a legal case, not a failure, and `trackLabel` collapses both to
+    // null. A catalogue station never gets a track at all: the engine emits no
+    // `track-changed` for an empty stream id.
     return {
       description: {
-        kind: "stream",
+        kind: "live",
         station: sourceName(source, streams),
-        track: trackLabel(statuses[source.streamId]?.currentTrack),
+        track: source.type === "stream"
+          ? trackLabel(statuses[source.streamId]?.currentTrack)
+          : null,
       },
       muted,
     };
-  }
-
-  if (source.type === "preview") {
-    return { description: { kind: "preview", name: source.name }, muted };
   }
 
   return {

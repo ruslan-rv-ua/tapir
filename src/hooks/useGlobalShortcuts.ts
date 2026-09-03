@@ -33,13 +33,15 @@ function nowPlayingMessage(description: PlaybackDescription, sound: VolumeAnnoun
     case "nothing":
       sentence = m.f9_nothing();
       break;
-    case "stream":
+    // One pair of keys for both live paths — the air of a profile stream and a
+    // station played from the catalogue. A key of its own for the catalogue is
+    // what was removed, not a difference: the two read alike today, and while a
+    // separate key existed any edit to a locale could give the catalogue its
+    // own word — spoken with nothing on screen to carry it (ADR 2026-08-31 §2).
+    case "live":
       sentence = description.track
-        ? m.f9_stream({ station: description.station, track: description.track })
-        : m.f9_stream_no_track({ station: description.station });
-      break;
-    case "preview":
-      sentence = m.f9_preview({ name: description.name });
+        ? m.f9_live({ station: description.station, track: description.track })
+        : m.f9_live_no_track({ station: description.station });
       break;
     case "file": {
       // An unknown position is spoken as "0:00" rather than dropped: §4 of the

@@ -28,6 +28,7 @@ import * as m from "../../i18n/paraglide/messages";
 import { executeTransportSkip, type SkipTrigger } from "../../lib/transportControl";
 import { isSoundOff, toggleMute } from "../../lib/muteControl";
 import { sourceName } from "../../lib/playbackAnnounce";
+import { isLiveSource } from "../../lib/playbackSource";
 
 /**
  * Will the just-pressed skip button resolve to "none" after `action` applies?
@@ -91,12 +92,22 @@ export const PlayerPanel = forwardRef<
   const trackDisplay = source?.type === "stream"
     ? (currentTrack ? `${currentTrack.artist} — ${currentTrack.title}` : "—")
     : "";
+  // null, not "—": only a profile stream has a `StreamInfo` to read a bitrate
+  // from, and the row below simply omits the number for anything else. (A dash
+  // can still come out of `formatBitrate` itself — that one means "the stream
+  // has not been checked yet", which is a value on its way.)
   const bitrateDisplay = currentStream
     ? formatBitrate(currentStream.bitrate, currentStream.format, currentStream.unsupportedCodec)
-    : "—";
+    : null;
   const durationMs = playerStatus.durationMs;
   const hasTrackName = source?.type === 'stream' && !!currentTrack;
-  const isStream = source?.type === 'stream';
+  // The question the controls ask is "is this live sound?", never "is this a
+  // stream of the profile?" — a station played from the catalogue answers yes
+  // to the first and no to the second, and used to be offered a Pause that
+  // silently worked. `source.type === "stream"` above stays where the question
+  // really is about a profile stream: the ICY track, the bitrate, the
+  // `StreamInfo` a catalogue station has none of. See lib/playbackSource.ts.
+  const isLive = isLiveSource(source);
   const hasPositionSlider = source?.type === 'file' && (durationMs ?? 0) > 0;
 
   const neighbors = useStore($playbackNeighbors);
@@ -125,16 +136,16 @@ export const PlayerPanel = forwardRef<
   const stops = useMemo((): FocusStop[] => [
     { ref: sourceNameRef,                                                enabled: isActive },
     { ref: trackNameRef,                                                 enabled: isActive && hasTrackName },
-    { ref: bitrateRowRef,                                                enabled: isActive && isStream },
+    { ref: bitrateRowRef,                                                enabled: isActive && isLive },
     { ref: prevRef      as RefObject<HTMLElement | null>,                enabled: canPrev },
     { ref: playPauseRef as RefObject<HTMLElement | null>,                enabled: isActive },
-    { ref: stopRef      as RefObject<HTMLElement | null>,                enabled: isActive && !isStream },
+    { ref: stopRef      as RefObject<HTMLElement | null>,                enabled: isActive && !isLive },
     { ref: nextRef      as RefObject<HTMLElement | null>,                enabled: canNext },
     { ref: muteRef      as RefObject<HTMLElement | null>,                enabled: isActive },
     { ref: positionInputRef as unknown as RefObject<HTMLElement | null>, enabled: isActive && hasPositionSlider },
     { ref: outputDeviceRef,                                              enabled: isActive },
     { ref: volumeInputRef   as unknown as RefObject<HTMLElement | null>, enabled: isActive },
-  ], [isActive, hasTrackName, isStream, hasPositionSlider, canPrev, canNext]);
+  ], [isActive, hasTrackName, isLive, hasPositionSlider, canPrev, canNext]);
 
   const { onRootKeyDown, enterZone, navigate } = usePlayerZoneNav(appRef, stops, exitZone);
 
@@ -182,8 +193,8 @@ export const PlayerPanel = forwardRef<
 
   const handlePlayPause = async () => {
     try {
-      if (isStream) {
-        // A live stream can't be meaningfully paused (the buffer goes stale and
+      if (isLive) {
+        // Live sound can't be meaningfully paused (the buffer goes stale and
         // you lag the broadcast), so the primary control stops it — same
         // semantics as Ctrl+Shift+K, the tray toggle and the SMTC keys.
         await tauri.stopPlayback();
@@ -284,13 +295,20 @@ export const PlayerPanel = forwardRef<
                   )
                 ) : null}
               </div>
-              {source.type === "stream" && (
+              {/* The row of the live source: the LIVE badge always, the bitrate
+                  only when there is a `StreamInfo` to read it from. A catalogue
+                  station gets no dash in its place — "—" says "not here yet",
+                  and here it would never come (ADR 2026-08-31 §2). The same
+                  `isLive` gates the row here and its focus stop above (under
+                  the `isActive` all stops share), so the stop can no longer
+                  point at an element the panel never drew. */}
+              {isLive && (
                 <div
                   ref={bitrateRowRef}
                   tabIndex={-1}
                   className="flex items-center gap-2 text-sm text-slate-500 flex-wrap rounded outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
                 >
-                  <span>{bitrateDisplay}</span>
+                  {bitrateDisplay && <span>{bitrateDisplay}</span>}
                   <LiveBadge />
                 </div>
               )}
@@ -318,16 +336,16 @@ export const PlayerPanel = forwardRef<
 
             <Button
               ref={playPauseRef}
-              // For a live stream the primary control is a Stop (pause is
+              // For live sound the primary control is a Stop (pause is
               // meaningless); for a file it toggles Play/Pause.
-              aria-label={isStream ? m.stop_stream_playback() : isPlaying ? m.pause() : m.play()}
+              aria-label={isLive ? m.stop_stream_playback() : isPlaying ? m.pause() : m.play()}
               isDisabled={!isActive}
               onPress={handlePlayPause}
               // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
               tabIndex={-1}
               className="w-[52px] h-[52px] rounded-2xl bg-blue-700 border border-transparent flex items-center justify-center hover:bg-blue-600 focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:bg-[Highlight] forced-colors:text-[HighlightText] forced-colors:disabled:text-[GrayText]"
             >
-              {isStream ? (
+              {isLive ? (
                 <Square aria-hidden={true} size={20} />
               ) : isPlaying ? (
                 <Pause aria-hidden={true} size={20} />
@@ -336,9 +354,9 @@ export const PlayerPanel = forwardRef<
               )}
             </Button>
 
-            {/* Streams stop via the primary control above; a second Stop would be
-                a redundant, identically-labelled button for screen-reader users. */}
-            {!isStream && (
+            {/* Live sound stops via the primary control above; a second Stop
+                would be a redundant, identically-labelled button. */}
+            {!isLive && (
               <Button
                 ref={stopRef}
                 aria-label={m.stop()}

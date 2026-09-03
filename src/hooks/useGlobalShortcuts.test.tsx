@@ -245,6 +245,16 @@ function playingStream() {
   });
 }
 
+/** A catalogue station playing straight from the Browser, not added anywhere. */
+function playingPreview() {
+  $streams.set([]);
+  $statuses.set({});
+  $playerStatus.set({
+    state: "playing", source: { type: "preview", url: "http://x/live", name: "Radio X" },
+    volume: 0.6, positionMs: null, durationMs: null,
+  });
+}
+
 function renderWithField() {
   render(
     <Harness>
@@ -399,7 +409,7 @@ describe("useGlobalShortcuts — F9 (what is playing)", () => {
     // The sound clause is unconditional (§6), so every F9 answer carries it.
     expect($announcer.get()?.message).toBe(
       m.f9_volume({
-        sentence: m.f9_stream({ station: "Jazz FM", track: "Miles — So What" }),
+        sentence: m.f9_live({ station: "Jazz FM", track: "Miles — So What" }),
         level: m.volume_level({ percent: 60 }),
       }),
     );
@@ -414,7 +424,21 @@ describe("useGlobalShortcuts — F9 (what is playing)", () => {
     fireEvent.keyDown(field, { code: "F9" });
     expect($announcer.get()?.message).toBe(
       m.f9_volume({
-        sentence: m.f9_stream_no_track({ station: "Jazz FM" }),
+        sentence: m.f9_live_no_track({ station: "Jazz FM" }),
+        level: m.volume_level({ percent: 60 }),
+      }),
+    );
+  });
+
+  // The catalogue station goes through the very same key as a trackless
+  // broadcast — it has no branch of its own left to drift.
+  it("answers for a catalogue station exactly as for a station with no track", () => {
+    playingPreview();
+    const field = renderWithField();
+    fireEvent.keyDown(field, { code: "F9" });
+    expect($announcer.get()?.message).toBe(
+      m.f9_volume({
+        sentence: m.f9_live_no_track({ station: "Radio X" }),
         level: m.volume_level({ percent: 60 }),
       }),
     );
@@ -449,7 +473,7 @@ describe("useGlobalShortcuts — F9 (what is playing)", () => {
     const field = renderWithField();
     fireEvent.keyDown(field, { code: "F9" });
     expect($announcer.get()?.message).toBe(
-      m.f9_muted({ sentence: m.f9_stream({ station: "Jazz FM", track: "Miles — So What" }) }),
+      m.f9_muted({ sentence: m.f9_live({ station: "Jazz FM", track: "Miles — So What" }) }),
     );
   });
 
@@ -461,7 +485,7 @@ describe("useGlobalShortcuts — F9 (what is playing)", () => {
     const message = $announcer.get()!.message;
     expect(message).toBe(
       m.f9_volume({
-        sentence: m.f9_stream({ station: "Jazz FM", track: "Miles — So What" }),
+        sentence: m.f9_live({ station: "Jazz FM", track: "Miles — So What" }),
         level: m.volume_level({ percent: 45 }),
       }),
     );
@@ -494,7 +518,7 @@ describe("useGlobalShortcuts — F9 (what is playing)", () => {
     const field = renderWithField();
     fireEvent.keyDown(field, { code: "F9" });
     expect($announcer.get()?.message).toBe(
-      m.f9_muted({ sentence: m.f9_stream({ station: "Jazz FM", track: "Miles — So What" }) }),
+      m.f9_muted({ sentence: m.f9_live({ station: "Jazz FM", track: "Miles — So What" }) }),
     );
   });
 

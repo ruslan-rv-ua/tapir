@@ -222,7 +222,8 @@ station, and the previous and next controls do nothing while it plays.»
 - [ ] `F9` і екран узгоджені: гілки прев'ю немає ні в типі, ні в ключах
 - [ ] `docs/help/` оновлено: `browser.md` в обох локалях; `player.md` свідомо без змін
 - [ ] CONTEXT.md має §«Живе джерело»
-- [ ] NVDA-прогін за чеклістом пройдено (див. нижче)
+- [ ] NVDA-прогін за чеклістом пройдено —
+      [nvda-preview-player-presentation.md](../testing/nvda-preview-player-presentation.md)
 - [ ] `pnpm test`, `pnpm vite:build` зелені
 
 ## NVDA
@@ -232,10 +233,12 @@ station, and the previous and next controls do nothing while it plays.»
 — зона тепер порожніє, і `usePlayerZoneNav` із неї виходить. Саме на цьому класі вже двічі
 ловили дефекти.
 
-Чекліст `docs/testing/nvda-preview-player-presentation.md` — за скілом
-`writing-nvda-checklists`, приблизно вісім пунктів: старт проби з Браузера, обхід зони плеєра
-**стрілками** (не Tab — roving focus), назва головної кнопки, куди йде фокус після зупинки,
-`F9` на прев'ю, медіаклавіша `Pause`. Видаляється на прийманні.
+Чекліст [nvda-preview-player-presentation.md](../testing/nvda-preview-player-presentation.md)
+написано за скілом `writing-nvda-checklists` — вісім сценаріїв: головна кнопка на пробі,
+відсутність окремої «Зупинити», новий рядок живого джерела, куди йде фокус після зупинки
+(×5 повторів), ефір потоку як дзеркальний випадок, медіаклавіша `Pause`, файл як недоторканий
+шлях, `F9`. Обхід зони плеєра — **стрілками** (не Tab — roving focus).
+Видаляється на прийманні.
 
 ## Документи
 

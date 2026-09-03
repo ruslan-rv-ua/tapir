@@ -12,7 +12,7 @@ Without filters the screen shows **Popular Stations** — a fixed batch, with no
 
 ### Listening before you commit
 
-`Shift+Enter`, or the listen button on the row, plays a station without adding it. Press it again to stop. This is a quick sample: Tapir does not remember it, and the previous and next controls do nothing while it plays.
+`Shift+Enter`, or the listen button on the row, plays a station without adding it. Press it again to stop. In the player this is ordinary live radio: Tapir does not remember the station, and the previous and next controls do nothing while it plays.
 
 A row marked **Unavailable** either failed the catalogue's own last check, or failed to play for you just now. The first is external information and may be out of date — the station may work fine. The second lasts only until the list reloads. Either way you can still add it.
 

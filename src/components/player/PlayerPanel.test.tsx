@@ -103,6 +103,18 @@ function playingFile(path: string) {
   });
 }
 
+/** A catalogue station playing straight from the Browser, added to nothing. */
+function playingPreview() {
+  $streams.set([]);
+  $playerStatus.set({
+    state: "playing",
+    source: { type: "preview", url: "http://x/live", name: "Radio X" },
+    volume: 0.75,
+    positionMs: null,
+    durationMs: null,
+  });
+}
+
 beforeEach(() => vi.clearAllMocks());
 
 afterEach(() => {
@@ -207,6 +219,54 @@ describe("PlayerPanel — primary transport is source-aware", () => {
     expect(tauri.stopPlayback).not.toHaveBeenCalled();
     // A file keeps its dedicated Stop button.
     expect(getByRole("button", { name: m.stop() })).toBeEnabled();
+  });
+});
+
+describe("PlayerPanel — a catalogue station is live sound, like the air", () => {
+  // The defect this closes: the panel asked "is it a stream?" and a station
+  // played from the catalogue answered no, so it was offered a Pause — and the
+  // Pause worked. The buffer went stale while the station carried on.
+  it("stops from the primary control, and never offers a pause", () => {
+    playingPreview();
+    const { getByRole, queryByRole } = renderPanel();
+    expect(queryByRole("button", { name: m.pause() })).toBeNull();
+    fireEvent.click(getByRole("button", { name: m.stop_stream_playback() }));
+    expect(tauri.stopPlayback).toHaveBeenCalledTimes(1);
+    expect(tauri.pausePlayback).not.toHaveBeenCalled();
+  });
+
+  it("has no second Stop button, exactly like the air", () => {
+    playingPreview();
+    const { queryByRole } = renderPanel();
+    expect(queryByRole("button", { name: m.stop() })).toBeNull();
+  });
+
+  it("carries the LIVE badge — the one mark both live paths share", () => {
+    playingPreview();
+    const { getByText } = renderPanel();
+    expect(getByText(m.live_stream_short())).toBeInTheDocument();
+  });
+
+  // "—" means "not here yet". A catalogue station has no StreamInfo to take a
+  // bitrate from and never will, so the row shows the badge alone rather than
+  // a dash that can never become a number (record §2).
+  it("shows no placeholder it can never fill", () => {
+    playingPreview();
+    const { getByText, getByRole } = renderPanel();
+    const row = getByText(m.live_stream_short()).closest("[tabindex]")!;
+    expect(row).toHaveAttribute("tabindex", "-1");
+    expect(row.textContent).toBe(m.live_stream_short());
+    // Neither the track nor the bitrate leaves a dash behind: a catalogue
+    // station gets no `track-changed` and no `StreamInfo`, ever.
+    expect(getByRole("group", { name: m.player_now_playing() }).textContent)
+      .not.toContain("—");
+  });
+
+  it("keeps the bitrate for a profile stream, which does have one", () => {
+    playingStream("s2");
+    const { getByText } = renderPanel();
+    expect(getByText("192 kbps · MP3")).toBeInTheDocument();
+    expect(getByText(m.live_stream_short())).toBeInTheDocument();
   });
 });
 

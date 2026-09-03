@@ -217,12 +217,14 @@ fn handle_button(app: &AppHandle, button: SystemMediaTransportControlsButton) {
                     log::debug!("SMTC: pause ignored (debounce)");
                     return;
                 }
-                // A live stream can't be meaningfully paused — the buffer goes
-                // stale and you lag the broadcast on resume — so Pause on a stream
-                // stops it, consistent with the Ctrl+Shift+K / tray toggle. Files
-                // pause normally.
+                // Live sound can't be meaningfully paused — the buffer goes
+                // stale and you lag the broadcast on resume — so Pause stops it,
+                // consistent with the primary player control, Ctrl+Shift+K and
+                // the tray toggle. A station played from the catalogue counts as
+                // live too (`is_live`), which is why this asks the predicate and
+                // not the `Stream` variant. Files pause normally.
                 let status = state.player.get_status().await;
-                if matches!(status.source, Some(PlaybackSource::Stream { .. })) {
+                if status.source.as_ref().is_some_and(PlaybackSource::is_live) {
                     let _ = state.player.stop_playback(&app).await;
                 } else {
                     let _ = state.player.pause_playback(&app).await;

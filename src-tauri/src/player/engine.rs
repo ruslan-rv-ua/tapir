@@ -31,6 +31,26 @@ pub enum PlaybackSource {
     Preview { url: String, name: String },
 }
 
+impl PlaybackSource {
+    /// Is this LIVE sound — going on right now, with no position? Two paths
+    /// lead here: the air of a profile stream, and a station played straight
+    /// from the catalogue without adding it (`Preview`). They differ in where
+    /// they came from, never in how they behave: no seeking, no pause, every
+    /// primary control STOPS them. A saved `File` is the opposite — it has a
+    /// position, it pauses, it resumes where it stopped.
+    ///
+    /// The mirror in the webview is `isLiveSource` (src/lib/playbackSource.ts);
+    /// keep the two in step. Asking "is it a `Stream`?" instead is right only
+    /// for what a catalogue station never has — an ICY track, a bitrate, a
+    /// stream id to persist. Model: CONTEXT.md §«Живе джерело».
+    pub fn is_live(&self) -> bool {
+        match self {
+            PlaybackSource::Stream { .. } | PlaybackSource::Preview { .. } => true,
+            PlaybackSource::File { .. } => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioDevice {
@@ -396,23 +416,21 @@ impl PlayerEngine {
         let session = self.session.lock().await;
         let s = session.as_ref().ok_or_else(|| anyhow::anyhow!("not playing"))?;
 
-        match &s.source {
-            PlaybackSource::Stream { .. } | PlaybackSource::Preview { .. } => {
-                return Err(anyhow::anyhow!("seek unavailable for live stream"));
-            }
-            PlaybackSource::File { .. } => {
-                s.player
-                    .try_seek(std::time::Duration::from_millis(position_ms))
-                    .map_err(|e| anyhow::anyhow!("seek failed: {e}"))?;
-                let dur = s.duration_ms.unwrap_or(0);
-                drop(session);
-                if let Err(e) = app.emit("player-progress", PlayerProgressPayload {
-                    position_ms,
-                    duration_ms: dur,
-                }) {
-                    log::warn!("Player: failed to emit player-progress: {e}");
-                }
-            }
+        // Live sound has no position to seek to — the same reason its primary
+        // control stops instead of pausing.
+        if s.source.is_live() {
+            return Err(anyhow::anyhow!("seek unavailable for live sound"));
+        }
+        s.player
+            .try_seek(std::time::Duration::from_millis(position_ms))
+            .map_err(|e| anyhow::anyhow!("seek failed: {e}"))?;
+        let dur = s.duration_ms.unwrap_or(0);
+        drop(session);
+        if let Err(e) = app.emit("player-progress", PlayerProgressPayload {
+            position_ms,
+            duration_ms: dur,
+        }) {
+            log::warn!("Player: failed to emit player-progress: {e}");
         }
         Ok(())
     }
@@ -1017,6 +1035,15 @@ mod tests {
         // round-trips back to the same variant
         let back: PlaybackSource = serde_json::from_str(&json).unwrap();
         assert!(matches!(back, PlaybackSource::Preview { .. }));
+    }
+
+    // Names every variant, deliberately: `is_live` is a table over the whole
+    // enum, and a variant added later must be answered for here too.
+    #[test]
+    fn is_live_answers_for_every_source() {
+        assert!(PlaybackSource::Stream { stream_id: "s1".into() }.is_live());
+        assert!(PlaybackSource::Preview { url: "http://x".into(), name: "X".into() }.is_live());
+        assert!(!PlaybackSource::File { path: "rec/a.mp3".into() }.is_live());
     }
 
     #[test]

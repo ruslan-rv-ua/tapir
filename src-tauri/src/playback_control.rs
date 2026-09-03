@@ -46,11 +46,15 @@ fn emit_resuming(app: &AppHandle, name: String, position_ms: u64) {
 }
 
 /// What `toggle_playback` should do for a given live status. Branch by source
-/// **type first** (impl-decision #4): a `Stream` is stopped whether Playing or
-/// Paused — resuming a live buffer is meaningless (you'd replay a stale buffer
-/// and lag the broadcast). A `Paused + Stream` state can still arise at runtime
-/// (the player-panel Pause button and the SMTC Pause key both pause a live
-/// stream), so this arm handles it explicitly and resolves it to stop.
+/// **type first** (impl-decision #4): live sound — a `Stream` or a `Preview` —
+/// is stopped whatever the state, because resuming it is meaningless (you'd
+/// replay a stale buffer and lag the broadcast). Only a `File` reads the state
+/// at all.
+///
+/// Nothing in the app pauses live sound any more: the player's primary control,
+/// this toggle and the SMTC `Pause` key all stop it (`PlaybackSource::is_live`).
+/// The `Paused` arm therefore belongs to `File` alone — a paused live source is
+/// unreachable, and the two stop arms below would resolve it anyway.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum ToggleAction {
     StopStream,

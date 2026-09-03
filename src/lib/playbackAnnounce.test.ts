@@ -142,17 +142,22 @@ describe("describePlayback", () => {
   });
 
   // 3 sources × 3 states. Two of the nine are unreachable in the running app
-  // (a live stream and a preview cannot be paused) — they are here so the
-  // function stays total and no state can leak `undefined` into speech.
+  // (live sound cannot be paused) — they are here so the function stays total
+  // and no state can leak `undefined` into speech.
+  //
+  // A stream and a catalogue station share ONE kind, `live`: F9 has no branch
+  // for the catalogue any more, because the screen has none either. The only
+  // difference left is the track, and it is a fact about the source, not a
+  // shape of its own.
   it("stream playing → station + current track", () => {
     expect(describe_("playing", stream("s1")).description)
-      .toEqual({ kind: "stream", station: "Jazz FM", track: "Miles — So What" });
+      .toEqual({ kind: "live", station: "Jazz FM", track: "Miles — So What" });
   });
 
   it("stream playing without ICY metadata → station, no track", () => {
     expect(describePlayback({
       status: st("playing", stream("s1")), statuses: {}, streams, muted: false,
-    }).description).toEqual({ kind: "stream", station: "Jazz FM", track: null });
+    }).description).toEqual({ kind: "live", station: "Jazz FM", track: null });
   });
 
   // The Rust ICY parser only splits on " - ", so a station that sends a bare
@@ -163,7 +168,7 @@ describe("describePlayback", () => {
     };
     expect(describePlayback({
       status: st("playing", stream("s1")), statuses: half, streams, muted: false,
-    }).description).toEqual({ kind: "stream", station: "Jazz FM", track: "So What" });
+    }).description).toEqual({ kind: "live", station: "Jazz FM", track: "So What" });
   });
 
   it("stream playing with an empty artist AND title → no track at all", () => {
@@ -172,26 +177,29 @@ describe("describePlayback", () => {
     };
     expect(describePlayback({
       status: st("playing", stream("s1")), statuses: empty, streams, muted: false,
-    }).description).toEqual({ kind: "stream", station: "Jazz FM", track: null });
+    }).description).toEqual({ kind: "live", station: "Jazz FM", track: null });
   });
 
   it("stream paused reads as playing (a broadcast has no pause)", () => {
     expect(describe_("paused", stream("s1")).description)
-      .toEqual({ kind: "stream", station: "Jazz FM", track: "Miles — So What" });
+      .toEqual({ kind: "live", station: "Jazz FM", track: "Miles — So What" });
   });
 
   it("stream stopped → nothing", () => {
     expect(describe_("stopped", stream("s1")).description).toEqual({ kind: "nothing" });
   });
 
-  it("preview playing → the catalogue name", () => {
+  // A catalogue station is described exactly as the air, with no track: the
+  // engine emits no `track-changed` for an empty stream id, so one can never
+  // arrive. `null`, not "—": the dash would promise a value that is coming.
+  it("preview playing → the same live kind, without a track", () => {
     expect(describe_("playing", preview("Radio X")).description)
-      .toEqual({ kind: "preview", name: "Radio X" });
+      .toEqual({ kind: "live", station: "Radio X", track: null });
   });
 
   it("preview paused reads as playing (stops like the air, without a position)", () => {
     expect(describe_("paused", preview("Radio X")).description)
-      .toEqual({ kind: "preview", name: "Radio X" });
+      .toEqual({ kind: "live", station: "Radio X", track: null });
   });
 
   it("preview stopped → nothing", () => {
