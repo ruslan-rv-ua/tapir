@@ -19,14 +19,15 @@ semver; `unscheduled` — наприкінці.
 > не бреше й не мовчить: мертві налаштування прибрані, мовчазні відмови дістають видиму
 > поверхню, хибні мітки виправлені, обидві локалі повні.
 > Нових можливостей версія не додає — єдиний запис типу `feature` тут закриває
-> прогалину, а не розширює функціонал. 4 записи: 4 × S.
+> прогалину, а не розширює функціонал. 4 записи: 1 × M + 3 × S.
 
 Порядок рядків у секціях — за пріоритетом, а в межах пріоритету **більші першими**:
 саме вони визначають, чи версія закриється, тож беруться раніше за дрібні.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [preview-player-presentation](p2-preview-player-presentation.md) | P2 | planned | **draft** | S | — | — (плеєр пропонує поставити ефір на паузу; сусід [player-recording-badge-term](done/p2-player-recording-badge-term.md) ✅ — обидва про позначки джерела) |
+| [preview-player-presentation](p2-preview-player-presentation.md) | P2 | planned | ready | M | — | [tray-toggle-label-vs-action](p2-tray-toggle-label-vs-action.md) (плеєр ставить прев'ю на паузу; огрилено 2026-09-03) |
+| [tray-toggle-label-vs-action](p2-tray-toggle-label-vs-action.md) | P2 | planned | **draft** | S | [preview-player-presentation](p2-preview-player-presentation.md) | — (пункт трея зветься «Пауза», а живий звук зупиняє) |
 | [list-key-modifier-guards](p2-list-key-modifier-guards.md) | P2 | planned | draft | S | [streams-transfer-hotkeys](done/p2-streams-transfer-hotkeys.md) | — (switch по `e.key` не перевіряє модифікаторів) |
 | [browser-filter-cursor-reset](p2-browser-filter-cursor-reset.md) | P2 | planned | ready | S | — | — (погоджено 2026-07-23) |
 
