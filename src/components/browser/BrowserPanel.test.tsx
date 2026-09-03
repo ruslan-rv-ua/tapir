@@ -10,6 +10,7 @@ import {
 } from "../../stores/browser";
 import { searchStationsIpc } from "../../lib/tauri";
 import { $announcer } from "../../stores/announcer";
+import { $toasts } from "../../stores/toasts";
 import { replaceSelection } from "../../stores/selection";
 import type { StationResult } from "../../lib/tauri";
 import { BrowserPanel } from "./BrowserPanel";
@@ -151,4 +152,110 @@ it("«Load more» keeps the remembered row", async () => {
 
   act(() => results.focus("forward"));
   expect(activeRow()).toBe("s2");
+});
+
+/** Two results on screen with a third waiting in the catalogue. */
+async function withMoreToLoad(onZonesChange: ReturnType<typeof vi.fn>) {
+  const results = (await zonesOf(onZonesChange)).find((z) => z.id === "browser-results")!;
+  vi.mocked(searchStationsIpc).mockResolvedValueOnce([mk("s1"), mk("s2"), mk("s3")]);
+  await act(async () => {
+    updateSearchParam("query", "jazz");
+    updateSearchParam("limit", 2);
+    await searchStations($searchParams.get());
+  });
+  return results;
+}
+
+const trailingBtn = () => document.querySelector<HTMLButtonElement>("[data-trailing-stop]");
+
+// The bug this record is about: the button was visible but no keyboard path led
+// to it — arrows walked rows only, and Tab meant "leave the zone".
+it("reaches and presses «Load more» with the keyboard alone", async () => {
+  const onZonesChange = vi.fn();
+  render(<BrowserPanel onZonesChange={onZonesChange} exitZone={vi.fn()} />);
+  const results = await withMoreToLoad(onZonesChange);
+
+  act(() => results.focus("forward"));
+  fireEvent.keyDown(document.activeElement!, { key: "End" });
+  expect(activeRow()).toBe("s2"); // End stops at the last ROW
+  fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+  expect(document.activeElement).toBe(trailingBtn());
+
+  // Enter on a native button IS a click; the list does not synthesize anything.
+  vi.mocked(searchStationsIpc).mockResolvedValueOnce([mk("s3"), mk("s4"), mk("s5")]);
+  await act(async () => { fireEvent.click(trailingBtn()!); });
+
+  expect(activeRow()).toBe("s3"); // the first row that just arrived
+  fireEvent.keyDown(document.activeElement!, { key: "ArrowUp" });
+  expect(activeRow()).toBe("s2"); // …and the rows before it are still there
+});
+
+it("keeps the list, the cursor and the zone while a batch is in flight", async () => {
+  const onZonesChange = vi.fn();
+  render(<BrowserPanel onZonesChange={onZonesChange} exitZone={vi.fn()} />);
+  const results = await withMoreToLoad(onZonesChange);
+
+  act(() => results.focus("forward"));
+  fireEvent.keyDown(document.activeElement!, { key: "End" });
+  fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+
+  let release!: (v: StationResult[]) => void;
+  vi.mocked(searchStationsIpc).mockImplementationOnce(
+    () => new Promise<StationResult[]>((resolve) => { release = resolve; }),
+  );
+  await act(async () => { fireEvent.click(trailingBtn()!); });
+
+  // Mid-flight: rows still rendered, cursor still on the button, F6 still has a
+  // zone element to land on — the three things the shared loading flag took away.
+  expect(document.querySelectorAll('li[data-segment="summary"]')).toHaveLength(2);
+  expect(document.activeElement).toBe(trailingBtn());
+  expect(trailingBtn()!.textContent).toBe(m.browser_load_more_busy());
+  expect(trailingBtn()!.getAttribute("aria-busy")).toBe("true");
+  expect(results.el).toBeTruthy();
+
+  await act(async () => { release([mk("s3"), mk("s4"), mk("s5")]); });
+  expect(activeRow()).toBe("s3");
+});
+
+it("an empty batch keeps the cursor in the list and says there is nothing more", async () => {
+  const onZonesChange = vi.fn();
+  render(<BrowserPanel onZonesChange={onZonesChange} exitZone={vi.fn()} />);
+  const results = await withMoreToLoad(onZonesChange);
+
+  act(() => results.focus("forward"));
+  fireEvent.keyDown(document.activeElement!, { key: "End" });
+  fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+
+  vi.mocked(searchStationsIpc).mockResolvedValueOnce([]);
+  await act(async () => { fireEvent.click(trailingBtn()!); });
+
+  expect(activeRow()).toBe("s2"); // the last row, never <body>
+  expect(document.activeElement).not.toBe(document.body);
+  expect($announcer.get()?.message).toBe(m.browser_no_more_results());
+  expect(trailingBtn()).toBeNull(); // the button's absence carries the same fact
+});
+
+it("a failed batch keeps the results and leaves the cursor on the button", async () => {
+  const onZonesChange = vi.fn();
+  render(<BrowserPanel onZonesChange={onZonesChange} exitZone={vi.fn()} />);
+  const results = await withMoreToLoad(onZonesChange);
+
+  act(() => results.focus("forward"));
+  fireEvent.keyDown(document.activeElement!, { key: "End" });
+  fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+
+  $toasts.set([]);
+  vi.mocked(searchStationsIpc).mockRejectedValueOnce(new Error("offline"));
+  await act(async () => { fireEvent.click(trailingBtn()!); });
+
+  expect(document.querySelectorAll('li[data-segment="summary"]')).toHaveLength(2);
+  expect(document.activeElement).toBe(trailingBtn());
+  expect($toasts.get().map((t) => t.type)).toEqual(["error"]);
+});
+
+it("Popular Stations has no trailing stop at all", async () => {
+  const onZonesChange = vi.fn();
+  render(<BrowserPanel onZonesChange={onZonesChange} exitZone={vi.fn()} />);
+  await zonesOf(onZonesChange);
+  expect(trailingBtn()).toBeNull();
 });

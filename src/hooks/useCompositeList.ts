@@ -1,6 +1,7 @@
 import { useCallback, useLayoutEffect, useRef, useState, useEffect } from 'react';
 import type React from 'react'; // for React.KeyboardEvent type
 import { isInModal } from '../lib/shortcutGuard';
+import { announce } from '../stores/announcer';
 
 export type SegmentKind =
   | 'summary'
@@ -122,10 +123,35 @@ export interface SelectionChange {
   selected?: boolean;
 }
 
+/**
+ * The single trailing action a list may end with — "Load more" under the browser
+ * results is the only one today. Deliberately a DESCRIBED ACTION, not arbitrary
+ * markup: the list renders the button and owns everything that happens after it
+ * is pressed, so the next such control cannot re-invent the rules
+ * (ADR 2026-09-03 §4, docs/decisions/2026-09-03-trailing-stop-crosses-only-on-down.md).
+ */
+export interface TrailingStop {
+  /** Visible label. The consumer swaps it while `busy` — there is no second slot. */
+  label: string;
+  /**
+   * A batch is in flight. Busy-ness rides on the label and `aria-busy`; the
+   * button must NEVER become natively `disabled` — `disabled` on the focused
+   * element throws focus to <body>, which is this very bug from the other side
+   * (precedent: dialog-focus-after-async-warning).
+   */
+  busy?: boolean;
+  /** Fetch the next batch. A REJECTION means "failed": focus stays on the button. */
+  onActivate: () => void | Promise<void>;
+  /** Spoken when the activation brought no new rows. */
+  exhaustedMessage: string;
+}
+
 interface UseCompositeListOptions<T extends CompositeListItem> {
   /** Zone identifier — reserved for zone-system registration (Task 4 wires this up). */
   zoneId: string;
   items: T[];
+  /** Present ⇒ the list ends with one trailing action stop after the last row. */
+  trailingStop?: TrailingStop;
   onTabOut: (forward: boolean) => void;
   onAction: (
     type: ActionType,
@@ -150,6 +176,21 @@ type ActionId =
   | "enter" | "space" | "delete" | "edit" | "edit-content" | "tab" | "copy" | "selectToggle"
   | "selectRangeUp" | "selectRangeDown" | "selectAll" | "clearSelection"
   | "transfer-copy" | "transfer-move";
+
+/**
+ * Intents that address the ROW under the cursor. On the trailing stop there is
+ * no row, so each one goes silent — and silent WITHOUT consume(), so the key
+ * travels on to the global registries (ADR 2026-09-03 §2; the precedent is
+ * Escape in an empty list). Left/Right belong here too: they move WITHIN a row.
+ *
+ * Not listed, on purpose: `selectAll` and `clearSelection` act on the ZONE and
+ * keep working (the selection is still on screen), and `enter`/`space` belong to
+ * the button itself.
+ */
+const ROW_SCOPED_INTENTS: ReadonlySet<ActionId> = new Set<ActionId>([
+  "left", "right", "copy", "selectToggle",
+  "delete", "edit", "edit-content", "transfer-copy", "transfer-move",
+]);
 
 /**
  * Map a keyboard event to a single list intent, or null to let it bubble.
@@ -234,6 +275,7 @@ function resolveKeyAction(e: React.KeyboardEvent): ActionId | null {
  */
 export function useCompositeList<T extends CompositeListItem>({
   items,
+  trailingStop,
   onTabOut,
   onAction,
   onEmpty,
@@ -244,6 +286,14 @@ export function useCompositeList<T extends CompositeListItem>({
     items.length > 0 ? items[0].id : null,
   );
   const [activeSegment, setActiveSegment] = useState<SegmentKind>('summary');
+  // The cursor sits on the trailing stop. `activeItemId` is deliberately LEFT
+  // pointing at the row the cursor came from: Up returns there, the focus memory
+  // never learns about the stop (ADR §3), and if the stop vanishes underneath
+  // (hasMore flips) the cursor simply falls back onto its row rather than
+  // leaving the list with no tabIndex=0 stop at all — hence the derived flag
+  // below, which every reader uses instead of the raw state.
+  const [onTrailing, setOnTrailing] = useState(false);
+  const cursorOnTrailing = onTrailing && trailingStop != null;
 
   const memoryRef = useRef<FocusMemory>({
     itemId: items[0]?.id ?? '',
@@ -252,6 +302,8 @@ export function useCompositeList<T extends CompositeListItem>({
     scrollTop: 0,
   });
   const listRef = useRef<HTMLUListElement | null>(null);
+  /** The trailing stop's <button>, when the list renders one. */
+  const trailingRef = useRef<HTMLButtonElement | null>(null);
   // Focus anchor for the empty-state region (rendered instead of the <ul> when
   // there are no rows). Lets restoreFocus land the zone on the empty message so
   // cycleZone doesn't skip a row-less list — see restoreFocus below.
@@ -280,6 +332,11 @@ export function useCompositeList<T extends CompositeListItem>({
   selectionRef.current = selection;
   const onSelectionChangeRef = useRef(onSelectionChange);
   onSelectionChangeRef.current = onSelectionChange;
+  // Read after an await, when the render-time values are a batch out of date.
+  const trailingStopRef = useRef(trailingStop);
+  trailingStopRef.current = trailingStop;
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
 
   // Range anchor (id) + snapshot of the selection when the anchor was (re)set.
   const anchorRef = useRef<string | null>(null);
@@ -406,12 +463,28 @@ export function useCompositeList<T extends CompositeListItem>({
       // programmatic focusItem after a bulk op) is a deliberate position — stop
       // the re-seed effect from pinning the active row to items[0].
       userNavigatedRef.current = true;
+      // Every landing is on a ROW, so it is also the single way off the
+      // trailing stop: Up, Home/End, Page*, Shift-extend and focusItem all
+      // funnel through here and none of them has to remember to clear the flag.
+      setOnTrailing(false);
       setActiveItemId(itemId);
       setActiveSegment(segment);
       pendingFocusRef.current = { itemId, segment };
     },
     [],
   );
+
+  /**
+   * Move the cursor onto the trailing stop. `activeItemId` stays on the row we
+   * came from (see the state declaration), so the focus memory is untouched and
+   * Up has somewhere to return to.
+   */
+  const moveToTrailing = useCallback(() => {
+    userNavigatedRef.current = true;
+    setOnTrailing(true);
+    // tabIndex only flips on the next render; programmatic focus does not wait.
+    trailingRef.current?.focus();
+  }, []);
 
   /** Programmatically move focus to a specific item's segment (default summary). */
   const focusItem = useCallback(
@@ -456,6 +529,26 @@ export function useCompositeList<T extends CompositeListItem>({
         return;
       }
 
+      if (cursorOnTrailing) {
+        // The stop is a native <button>: the browser activates it, and the hook
+        // must not also synthesize a row action for the row it came from.
+        if (action === "enter" || action === "space") return;
+        // No row under the cursor → the row-scoped intents have nothing to act
+        // on. See ROW_SCOPED_INTENTS for why they stay silent without consume().
+        if (ROW_SCOPED_INTENTS.has(action)) {
+          // …with one thing still to suppress: to the browser Ctrl+Space is a
+          // Space, and a focused <button> activates on it. "Silent" has to mean
+          // the batch does not fire, so the DEFAULT is prevented while
+          // propagation is left alone — the key still reaches the global
+          // registries, which is what the no-consume rule protects.
+          if (action === "selectToggle") e.preventDefault();
+          return;
+        }
+        // Everything else falls through: Ctrl+A and Escape still own the zone,
+        // and the vertical moves below read `activeItemId` — still the row the
+        // cursor came from — to find their way back onto a row.
+      }
+
       // Ctrl/Cmd+C → generic "copy" for the active row; the consumer decides what
       // to copy. List-scoped on purpose (a registry match would hijack Ctrl+C in
       // text fields across the whole section).
@@ -478,8 +571,14 @@ export function useCompositeList<T extends CompositeListItem>({
       switch (action) {
         case "up": {
           consume();
-          if (currentIdx > 0) {
-            const id = items[currentIdx - 1].id;
+          // Off the trailing stop, back onto the last row — the only way in was
+          // Down from it, so that is where "back" means (ADR §1).
+          const id = cursorOnTrailing
+            ? items[items.length - 1]?.id
+            : currentIdx > 0
+              ? items[currentIdx - 1].id
+              : undefined;
+          if (id != null) {
             moveFocus(id, "summary");
             if (selectionRef.current) setAnchor(id);
           }
@@ -488,11 +587,17 @@ export function useCompositeList<T extends CompositeListItem>({
 
         case "down": {
           consume();
+          if (cursorOnTrailing) break; // already the last stop
           if (currentIdx < items.length - 1) {
             const id = items[currentIdx + 1].id;
             moveFocus(id, "summary");
             if (selectionRef.current) setAnchor(id);
+            break;
           }
+          // Past the last row. Down is the ONLY key that crosses into the
+          // trailing stop — End/PageDown/Shift+↓ mean "row" literally and stay
+          // on rows (ADR §1, which also records why).
+          if (trailingStopRef.current) moveToTrailing();
           break;
         }
 
@@ -660,8 +765,78 @@ export function useCompositeList<T extends CompositeListItem>({
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeItemId, activeSegment, items, moveFocus, toggleSelection, setAnchor, rangeIds],
+    [activeItemId, activeSegment, items, cursorOnTrailing, moveFocus, moveToTrailing, toggleSelection, setAnchor, rangeIds],
   );
+
+  /* ---------------------------------------------------------------- */
+  /* Trailing stop activation                                          */
+  /* ---------------------------------------------------------------- */
+
+  /**
+   * What the pending activation needs to settle: the row count when it fired,
+   * and its wording. The wording is captured HERE rather than read afterwards —
+   * an exhausted list drops the trailing stop in the very commit that resolves
+   * it, so by then the descriptor holding the message is already gone.
+   */
+  const appendBaseRef = useRef<{ base: number; exhaustedMessage: string } | null>(null);
+  // Bumped when the action RESOLVES, so focus settles in a commit where the new
+  // rows are already in the DOM. A ref alone cannot do this: the "nothing new
+  // arrived" outcome changes nothing React would re-render for.
+  const [appendTick, setAppendTick] = useState(0);
+
+  /**
+   * Enter, Space and a click all land here — one behaviour, no modality to tell
+   * apart. The three outcomes and where each leaves the cursor are the list's
+   * business, not the consumer's (ADR §4).
+   */
+  const activateTrailing = useCallback(async () => {
+    const stop = trailingStopRef.current;
+    if (!stop || stop.busy) return; // busy is the guard `disabled` is not allowed to be
+    appendBaseRef.current = {
+      base: itemsRef.current.length,
+      exhaustedMessage: stop.exhaustedMessage,
+    };
+    try {
+      await stop.onActivate();
+    } catch {
+      // Failed: rows and cursor untouched, focus stays on the button that failed.
+      // Saying so is the consumer's job — it owns the wording of its failure.
+      appendBaseRef.current = null;
+      return;
+    }
+    setAppendTick((n) => n + 1);
+  }, []);
+
+  useLayoutEffect(() => {
+    const pending = appendBaseRef.current;
+    if (pending == null) return;
+    appendBaseRef.current = null;
+    const rows = itemsRef.current;
+    if (rows.length === 0) return;
+    // Focus the row NOW as well as queueing it: the trailing stop can unmount in
+    // this very commit (the last batch turns "load more" off), and without this
+    // focus would visit <body> in between.
+    const land = (id: string) => {
+      moveFocus(id, 'summary');
+      listRef.current
+        ?.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(id)}"][data-segment="summary"]`)
+        ?.focus();
+    };
+    if (rows.length > pending.base) {
+      // New rows are inserted BEFORE the button, so staying on the button would
+      // mean standing behind everything that just arrived. No announcement: the
+      // landed row is itself the answer, and a second voice on the same event
+      // would talk over it (ADR 2026-08-31 on visible carriers).
+      land(rows[pending.base].id);
+      return;
+    }
+    // Nothing new. The button is about to disappear, and its two states — there
+    // or not — are the only carrier this fact has inside a role="application"
+    // list, so the fact is spoken as well.
+    land(rows[rows.length - 1].id);
+    if (pending.exhaustedMessage) announce(pending.exhaustedMessage, 'polite');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appendTick]);
 
   // Delegated mouse selection on the <ul> (only active when `selection` is set),
   // mirroring onContextMenu. All gestures move DOM focus to the clicked row, so
@@ -767,6 +942,7 @@ export function useCompositeList<T extends CompositeListItem>({
   const resetCursor = useCallback(() => {
     if (listRef.current?.contains(document.activeElement)) return;
     userNavigatedRef.current = false;
+    setOnTrailing(false);
     // Move the roving tabIndex=0 stop NOW rather than waiting for the re-seed
     // effect: a native Tab into the list goes straight to that stop, and between
     // a changed query and the results landing there is a window — half a second
@@ -780,13 +956,15 @@ export function useCompositeList<T extends CompositeListItem>({
   /** isFocused(itemId, segment) → true iff this element should have tabIndex=0 */
   const isFocused = useCallback(
     (itemId: string, segment: SegmentKind): boolean =>
-      activeItemId === itemId && activeSegment === segment,
-    [activeItemId, activeSegment],
+      !cursorOnTrailing && activeItemId === itemId && activeSegment === segment,
+    [activeItemId, activeSegment, cursorOnTrailing],
   );
 
   /** Called when zone receives focus from outside (Tab/F6 entry). */
   const restoreFocus = useCallback(
     (_direction: 'forward' | 'backward') => {
+      // Entry always lands on a row: the memory never learned the stop (ADR §3).
+      setOnTrailing(false);
       if (items.length === 0) {
         // No rows to land on. Focus the empty-state region (CompositeList renders
         // it as a focusable [data-zone-id] anchor) so the zone still ACCEPTS focus
@@ -839,5 +1017,9 @@ export function useCompositeList<T extends CompositeListItem>({
     [items],
   );
 
-  return { listRef, emptyRef, onKeyDownCapture, onContextMenu, onClick, isFocused, restoreFocus, resetCursor, focusItem, activeItemId, activeSegment };
+  return {
+    listRef, emptyRef, trailingRef, onKeyDownCapture, onContextMenu, onClick,
+    isFocused, isTrailingFocused: cursorOnTrailing, activateTrailing,
+    restoreFocus, resetCursor, focusItem, activeItemId, activeSegment,
+  };
 }

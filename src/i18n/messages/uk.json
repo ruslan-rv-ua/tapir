@@ -48,6 +48,8 @@
   "browser_probe_failed_many": "Не відповіли {count} з {checked} доданих потоків. Станції залишилися у списку.",
   "browser_added": "✓ Додано",
   "browser_load_more": "Завантажити ще",
+  "browser_load_more_busy": "Завантаження…",
+  "browser_no_more_results": "Більше результатів немає",
   "browser_column_name": "Назва",
   "browser_column_country": "Країна",
   "browser_column_codec": "Кодек",

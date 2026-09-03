@@ -8,7 +8,20 @@ import * as m from "../i18n/paraglide/messages";
 // --- State ---
 
 export const $searchResults = atom<StationResult[]>([]);
+/**
+ * A NEW selection is being fetched — the list on screen is about to be replaced,
+ * so the screen shows a loading card INSTEAD of it. Appending has its own flag
+ * ($appendLoading) precisely because it must not do that: taking the <ul> away
+ * mid-append drops the cursor to <body> and the results zone with it.
+ */
 export const $searchLoading = atom<boolean>(false);
+/** A further batch is in flight. The list stays on screen; only the button is busy. */
+export const $appendLoading = atom<boolean>(false);
+/**
+ * A NEW selection failed. Appending never sets this: an error card here would
+ * take away the 50 results already on screen — a failed extra batch is reported
+ * as a toast instead (searchStations below).
+ */
 export const $searchError = atom<string | null>(null);
 export const $searchParams = atom<SearchParams>({
   limit: 50,
@@ -41,21 +54,45 @@ export function isAppendingResults(params: SearchParams): boolean {
   return (params.offset ?? 0) > 0;
 }
 
+/**
+ * Fetch a batch. Two different events share this function and must not share
+ * their loading/error surfaces: REPLACING the selection may take the list away,
+ * APPENDING to it may not. `isAppendingResults` is the one place that tells them
+ * apart. Rejects only on an append failure — the caller (the trailing stop) uses
+ * that to keep focus on the button it pressed.
+ */
 export async function searchStations(params: SearchParams): Promise<void> {
-  $searchLoading.set(true);
-  $searchError.set(null);
+  const appending = isAppendingResults(params);
+  const limit = params.limit ?? 50;
+  if (appending) {
+    $appendLoading.set(true);
+  } else {
+    $searchLoading.set(true);
+    $searchError.set(null);
+  }
   try {
-    const results = await searchStationsIpc(params);
-    if (isAppendingResults(params)) {
+    // Ask the catalogue for one MORE than we will show: whether that extra
+    // record came back IS the answer to "is there more", instead of the guess
+    // "a full batch probably means more" (which produced an empty final page).
+    // The +1 lives strictly here — `limit` in SearchParams means "how many to
+    // show", and loadMore's offset still steps by exactly `limit`.
+    const batch = await searchStationsIpc({ ...params, limit: limit + 1 });
+    const results = batch.slice(0, limit);
+    if (appending) {
       $searchResults.set([...$searchResults.get(), ...results]);
     } else {
       $searchResults.set(results);
     }
-    $hasMore.set(results.length === (params.limit ?? 50));
+    $hasMore.set(batch.length > limit);
   } catch (e) {
+    if (appending) {
+      addToast(String(e), "error");
+      throw e;
+    }
     $searchError.set(String(e));
   } finally {
-    $searchLoading.set(false);
+    if (appending) $appendLoading.set(false);
+    else $searchLoading.set(false);
   }
 }
 

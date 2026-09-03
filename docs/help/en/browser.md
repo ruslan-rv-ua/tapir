@@ -8,7 +8,9 @@ Type a station name or genre into the search box. **Country**, **Language**, **C
 
 Two gestures clear things, and they clear different amounts. Clearing the search box — `Escape` or its clear button — removes the text only; country, language, codec and bitrate stay, and the list stays filtered by them. **Reset filters** drops everything and returns you to the popular list; it appears only while a filter is set.
 
-Without filters the screen shows **Popular Stations** — a fixed batch, with nothing more to load. Search results arrive in batches, and **Load more** appears as long as the catalogue keeps returning full ones.
+Without filters the screen shows **Popular Stations** — a fixed batch, with nothing more to load. Search results arrive in batches instead, and **Load more** sits at the end of the list for as long as the catalogue still holds a station past the ones on screen.
+
+**Load more** is the last stop in the list, one step below the final result: `↓` from that result reaches it, `↑` goes back. `End` still means "the last result", so from the middle of the list that is `End`, then `↓`. Pressing it leaves the results where they are — only the button itself reports that it is working — and then puts the cursor on the first station of the new batch, with everything you already had above it. If the catalogue turns out to have nothing left, Tapir says so, the cursor goes back to the last result, and the button disappears.
 
 ### Listening before you commit
 

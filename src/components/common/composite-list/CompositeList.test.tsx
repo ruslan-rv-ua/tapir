@@ -224,10 +224,44 @@ describe("CompositeList", () => {
     expect(onAction).toHaveBeenCalledWith("primary", "a", "action-menu");
   });
 
-  it("renders the footer after the rows inside the <ul>", () => {
-    const { container } = renderList({ footer: <li data-testid="footer">more</li> });
+  it("renders the trailing stop as a native button after the rows, inside the <ul>", () => {
+    const onActivate = vi.fn();
+    const { container } = renderList({
+      trailingStop: { label: "Load more", onActivate, exhaustedMessage: "No more" },
+    });
     const ul = container.querySelector("ul")!;
-    expect(ul.querySelector('[data-testid="footer"]')).toBeTruthy();
+    const btn = ul.querySelector<HTMLButtonElement>("[data-trailing-stop]")!;
+    expect(btn.tagName).toBe("BUTTON");
+    expect(btn.textContent).toBe("Load more");
+    // After every row, and reachable only as a roving stop.
+    expect(ul.lastElementChild!.contains(btn)).toBe(true);
+    expect(btn.tabIndex).toBe(-1);
+    // Never natively disabled — that would throw focus to <body> mid-batch.
+    expect(btn.hasAttribute("disabled")).toBe(false);
+  });
+
+  it("has no trailing stop when the consumer declares none", () => {
+    const { container, onTabOut, ref } = renderList();
+    expect(container.querySelector("[data-trailing-stop]")).toBeNull();
+    // …and the list without one behaves exactly as before: Tab leaves the zone.
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: "End" });
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+    expect(activeAttrs()).toEqual({ id: "b", seg: "summary" });
+    fireEvent.keyDown(document.activeElement!, { key: "Tab" });
+    expect(onTabOut).toHaveBeenCalledWith(true);
+  });
+
+  it("carries busy on the label and aria-busy, and a click while busy does nothing", () => {
+    const onActivate = vi.fn();
+    const { container } = renderList({
+      trailingStop: { label: "Loading…", busy: true, onActivate, exhaustedMessage: "No more" },
+    });
+    const btn = container.querySelector<HTMLButtonElement>("[data-trailing-stop]")!;
+    expect(btn.getAttribute("aria-busy")).toBe("true");
+    expect(btn.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(btn);
+    expect(onActivate).not.toHaveBeenCalled();
   });
 
   it("exposes extra imperative methods via imperativeExtra", () => {

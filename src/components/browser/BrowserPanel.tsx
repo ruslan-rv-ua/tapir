@@ -7,7 +7,7 @@ import { ScreenZone } from "../layout/ScreenZone";
 import { SelectionToolbar } from "../common/SelectionToolbar";
 import { ListCard } from "../common/ListCard";
 import {
-  $searchResults, $searchLoading, $searchError,
+  $searchResults, $searchLoading, $appendLoading, $searchError,
   $popularStations, $popularLoading, $popularError,
   $hasMore, $isSearchActive, $stationSelection, $searchParams,
   loadFilters, loadPopularStations, loadMore, isAppendingResults,
@@ -26,6 +26,7 @@ interface Props {
 export function BrowserPanel({ onZonesChange, exitZone }: Props) {
   const searchResults = useStore($searchResults);
   const searchLoading = useStore($searchLoading);
+  const appendLoading = useStore($appendLoading);
   const searchError = useStore($searchError);
   const popularStations = useStore($popularStations);
   const popularLoading = useStore($popularLoading);
@@ -171,10 +172,12 @@ export function BrowserPanel({ onZonesChange, exitZone }: Props) {
         <StationList
           ref={resultsCallbackRef}
           stations={stations}
+          mode={showSearchResults ? "search" : "popular"}
           loading={loading}
           error={error}
-          hasMore={showSearchResults ? hasMore : false}
-          onLoadMore={showSearchResults ? loadMore : undefined}
+          hasMore={hasMore}
+          loadingMore={appendLoading}
+          onLoadMore={loadMore}
           emptyMessage={emptyMessage}
           exitZone={(forward) => exitZone("browser-results", forward)}
         />

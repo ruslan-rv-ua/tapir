@@ -19,16 +19,26 @@ export type StationListHandle = CompositeListHandle & { requestBulkAdd: () => vo
 
 interface Props {
   stations: StationResult[];
+  /**
+   * Which of the screen's two lists this is. "popular" is a fixed showcase —
+   * finite, with nothing more to fetch — so it has no trailing "Load more" stop;
+   * search results are paged and do. Passed as a MODE rather than by leaving the
+   * paging props out upstream, so the absence of the button reads as a decision
+   * here instead of as a forgotten prop in BrowserPanel.
+   */
+  mode: "search" | "popular";
   loading: boolean;
   error: string | null;
   hasMore: boolean;
-  onLoadMore?: () => void;
+  /** A further batch is in flight (search mode only). */
+  loadingMore?: boolean;
+  onLoadMore?: () => Promise<void>;
   emptyMessage: string;
   exitZone: (forward: boolean) => void;
 }
 
 export const StationList = forwardRef<StationListHandle, Props>(
-  ({ stations, loading, error, hasMore, onLoadMore, emptyMessage, exitZone }, ref) => {
+  ({ stations, mode, loading, error, hasMore, loadingMore, onLoadMore, emptyMessage, exitZone }, ref) => {
     const streams = useStore($streams);
     const announce = useAnnounce();
     const [failedPreview, setFailedPreview] = useState<Set<string>>(new Set());
@@ -144,14 +154,18 @@ export const StationList = forwardRef<StationListHandle, Props>(
         error={error ? <ListCardState role="alert" className="text-red-400">{error}</ListCardState> : undefined}
         emptyLabel={emptyMessage}
         empty={<ListCardState role="status">{emptyMessage}</ListCardState>}
-        footer={
-          hasMore && onLoadMore ? (
-            <li>
-              <button onClick={onLoadMore} className="w-full py-2 text-sm text-slate-400 hover:bg-slate-800">
-                {m.browser_load_more()}
-              </button>
-            </li>
-          ) : undefined
+        // Popular Stations is a fixed showcase: no further batches exist, so it
+        // has no trailing stop at all. Search results do, for as long as the
+        // catalogue still has a record past the ones on screen.
+        trailingStop={
+          mode === "search" && hasMore && onLoadMore
+            ? {
+                label: loadingMore ? m.browser_load_more_busy() : m.browser_load_more(),
+                busy: loadingMore,
+                onActivate: onLoadMore,
+                exhaustedMessage: m.browser_no_more_results(),
+              }
+            : undefined
         }
         // Enter on the whole-row summary adds the station (primary action).
         // Shift+Enter toggles the preview (app-wide "Shift = listen" convention) by

@@ -7,6 +7,7 @@ import {
   type SegmentKind,
   type CompositeSelection,
   type SelectionChange,
+  type TrailingStop,
 } from "../../../hooks/useCompositeList";
 import type { ZoneEntry } from "../../../hooks/useZoneNavigation";
 
@@ -53,8 +54,13 @@ export interface CompositeListProps {
    * row-less list lands there and NVDA announces it). Defaults to `ariaLabel`.
    */
   emptyLabel?: string;
-  /** Render after the rows, inside the <ul> (e.g. a "Load more" control). */
-  footer?: ReactNode;
+  /**
+   * One trailing action stop after the last row ("Load more"). Not a markup
+   * slot: the list renders the button, drives Down/Up across the boundary and
+   * decides where the cursor goes afterwards — see TrailingStop and
+   * docs/decisions/2026-09-03-trailing-stop-crosses-only-on-down.md.
+   */
+  trailingStop?: TrailingStop;
   /** Augment the imperative handle with extra methods (must be pure over `api`). */
   imperativeExtra?: (api: {
     focusItem: (itemId: string, segment?: SegmentKind) => void;
@@ -81,14 +87,17 @@ function CompositeListInner<H extends ZoneEntry = ZoneEntry>(
     error,
     empty,
     emptyLabel,
-    footer,
+    trailingStop,
     imperativeExtra,
     selection,
     onSelectionChange,
   } = props;
 
-  const { listRef, emptyRef, onKeyDownCapture, onContextMenu, onClick, isFocused, restoreFocus, resetCursor, focusItem, activeItemId } =
-    useCompositeList({ zoneId, items, onTabOut, onAction, onEmpty, selection, onSelectionChange });
+  const {
+    listRef, emptyRef, trailingRef, onKeyDownCapture, onContextMenu, onClick,
+    isFocused, isTrailingFocused, activateTrailing,
+    restoreFocus, resetCursor, focusItem, activeItemId,
+  } = useCompositeList({ zoneId, items, trailingStop, onTabOut, onAction, onEmpty, selection, onSelectionChange });
 
   /**
    * Wraps focusItem so that the DOM element is focused immediately, even when
@@ -170,7 +179,24 @@ function CompositeListInner<H extends ZoneEntry = ZoneEntry>(
           isFocused: (segment) => isFocused(it.id, segment),
         }),
       )}
-      {footer}
+      {trailingStop && (
+        <li>
+          <button
+            ref={trailingRef}
+            type="button"
+            data-trailing-stop=""
+            // Roving stop, exactly like a row. Never `disabled`: while the batch
+            // is in flight the label and aria-busy carry that, because disabling
+            // the focused element would drop focus to <body>.
+            tabIndex={isTrailingFocused ? 0 : -1}
+            aria-busy={trailingStop.busy || undefined}
+            onClick={() => void activateTrailing()}
+            className="w-full py-2 text-sm text-slate-400 hover:bg-slate-800"
+          >
+            {trailingStop.label}
+          </button>
+        </li>
+      )}
     </ul>
   );
 }

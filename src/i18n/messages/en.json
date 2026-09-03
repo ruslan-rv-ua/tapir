@@ -48,6 +48,8 @@
   "browser_probe_failed_many": "{count} of {checked} added streams did not respond. The stations were kept in your list.",
   "browser_added": "✓ Added",
   "browser_load_more": "Load more",
+  "browser_load_more_busy": "Loading more…",
+  "browser_no_more_results": "No more results",
   "browser_column_name": "Name",
   "browser_column_country": "Country",
   "browser_column_codec": "Codec",

@@ -55,6 +55,7 @@ function renderList() {
     <StationList
       ref={ref}
       stations={stations()}
+      mode="search"
       loading={false}
       error={null}
       hasMore={false}
@@ -120,7 +121,7 @@ it("bulk-adds the selection, announces the summary, and does NOT move focus", as
   const stns = [mk("u1"), mk("u2")];
   replaceSelection($stationSelection, new Set(["u1", "u2"]));
   const ref = createRef<StationListHandle>();
-  render(<StationList ref={ref} stations={stns} loading={false} error={null} hasMore={false}
+  render(<StationList ref={ref} stations={stns} mode="search" loading={false} error={null} hasMore={false}
     emptyMessage="empty" exitZone={vi.fn()} />);
   const before = document.activeElement;
   await act(async () => { ref.current!.requestBulkAdd(); });
@@ -131,4 +132,45 @@ it("bulk-adds the selection, announces the summary, and does NOT move focus", as
     ),
   );
   expect(document.activeElement).toBe(before); // focus untouched
+});
+
+describe("StationList — the trailing stop", () => {
+  const renderMode = (mode: "search" | "popular", over: Record<string, unknown> = {}) =>
+    render(
+      <StationList
+        stations={[mk("u1"), mk("u2")]}
+        mode={mode}
+        loading={false}
+        error={null}
+        hasMore
+        onLoadMore={vi.fn().mockResolvedValue(undefined)}
+        emptyMessage="empty"
+        exitZone={vi.fn()}
+        {...over}
+      />,
+    );
+
+  it("offers «Load more» under search results that have more to give", () => {
+    const { container } = renderMode("search");
+    const btn = container.querySelector("[data-trailing-stop]")!;
+    expect(btn.textContent).toBe(m.browser_load_more());
+  });
+
+  it("never offers it under Popular Stations — a fixed showcase pages nowhere", () => {
+    const { container } = renderMode("popular");
+    expect(container.querySelector("[data-trailing-stop]")).toBeNull();
+  });
+
+  it("drops it once the catalogue has nothing past the rows on screen", () => {
+    const { container } = renderMode("search", { hasMore: false });
+    expect(container.querySelector("[data-trailing-stop]")).toBeNull();
+  });
+
+  it("says it is working through its label, not by going disabled", () => {
+    const { container } = renderMode("search", { loadingMore: true });
+    const btn = container.querySelector<HTMLButtonElement>("[data-trailing-stop]")!;
+    expect(btn.textContent).toBe(m.browser_load_more_busy());
+    expect(btn.getAttribute("aria-busy")).toBe("true");
+    expect(btn.hasAttribute("disabled")).toBe(false);
+  });
 });

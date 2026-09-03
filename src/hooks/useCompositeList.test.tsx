@@ -1,6 +1,7 @@
-import type { KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useCallback, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, fireEvent, act, screen } from "@testing-library/react";
+import { $announcer } from "../stores/announcer";
 import {
   useCompositeList,
   type CompositeListItem,
@@ -8,6 +9,7 @@ import {
   type ActionType,
   type ActionModifiers,
   type SelectionChange,
+  type TrailingStop,
 } from "./useCompositeList";
 
 /* ------------------------------------------------------------------ */
@@ -30,6 +32,7 @@ interface HarnessProps {
   onParentKeyDown?: (e: ReactKeyboardEvent) => void;
   selectionRef?: { current: Set<string> };
   onSelectionChange?: (c: SelectionChange) => void;
+  trailingStop?: TrailingStop;
 }
 
 function Harness({
@@ -41,6 +44,7 @@ function Harness({
   onParentKeyDown,
   selectionRef,
   onSelectionChange,
+  trailingStop,
 }: HarnessProps) {
   const selection = selectionRef
     ? {
@@ -51,9 +55,13 @@ function Harness({
       }
     : undefined;
 
-  const { listRef, onKeyDownCapture, onContextMenu, onClick, isFocused, restoreFocus, resetCursor } = useCompositeList({
+  const {
+    listRef, trailingRef, onKeyDownCapture, onContextMenu, onClick,
+    isFocused, isTrailingFocused, activateTrailing, restoreFocus, resetCursor,
+  } = useCompositeList({
     zoneId: "test",
     items,
+    trailingStop,
     onTabOut,
     onAction,
     onEmpty,
@@ -108,6 +116,21 @@ function Harness({
             )}
           </li>
         ))}
+        {/* Mirrors what CompositeList renders for a trailing stop. */}
+        {trailingStop && (
+          <li>
+            <button
+              ref={trailingRef}
+              type="button"
+              data-testid="trailing"
+              tabIndex={isTrailingFocused ? 0 : -1}
+              aria-busy={trailingStop.busy || undefined}
+              onClick={() => void activateTrailing()}
+            >
+              {trailingStop.label}
+            </button>
+          </li>
+        )}
       </ul>
     </div>
   );
@@ -861,5 +884,286 @@ describe("selection — mouse gestures on the <ul>", () => {
     render(<Harness items={makeItems()} selectionRef={selectionRef} />);
     fireEvent.click(stop("a", "action-play"), { bubbles: true });
     expect([...selectionRef.current]).toEqual(["a"]); // unchanged
+  });
+});
+
+/* ================================================================== */
+/* Trailing stop — the rules live here, not on the one screen that     */
+/* currently has a footer (ADR 2026-09-03 §5).                         */
+/* ================================================================== */
+
+const trailing = (over: Partial<TrailingStop> = {}): TrailingStop => ({
+  label: "Load more",
+  onActivate: vi.fn(),
+  exhaustedMessage: "No more results",
+  ...over,
+});
+
+const trailingBtn = () => screen.getByTestId("trailing");
+
+/**
+ * Walk the cursor to the last row. `focusStart` alone only moves DOM focus —
+ * the hook's active item stays where it was seeded, which is not the state any
+ * of these rules are about.
+ */
+function goLastRow(firstId = "a") {
+  focusStart(firstId);
+  press("End");
+}
+
+describe("trailing stop — reaching it and leaving it", () => {
+  it("Down from the last row lands on the stop, Up goes back to that row", () => {
+    render(<Harness items={makeItems()} trailingStop={trailing()} />);
+    focusStart("a");
+    press("End");
+    expectActive("c", "summary");
+
+    press("ArrowDown");
+    expect(document.activeElement).toBe(trailingBtn());
+
+    press("ArrowUp");
+    expectActive("c", "summary");
+  });
+
+  it("Down on the stop stays put — it is the last stop", () => {
+    render(<Harness items={makeItems()} trailingStop={trailing()} />);
+    goLastRow();
+    press("ArrowDown");
+    press("ArrowDown");
+    expect(document.activeElement).toBe(trailingBtn());
+  });
+
+  it("Down past the last row does nothing when the list has no trailing stop", () => {
+    render(<Harness items={makeItems()} />);
+    goLastRow();
+    press("ArrowDown");
+    expectActive("c", "summary");
+  });
+
+  it("End, PageDown and Shift+ArrowDown do NOT cross the boundary", () => {
+    const selectionRef = { current: new Set<string>() };
+    render(<Harness items={makeItems()} selectionRef={selectionRef} trailingStop={trailing()} />);
+
+    focusStart("a");
+    press("End");
+    expectActive("c", "summary"); // the last ROW, not the stop
+
+    press("Home");
+    press("PageDown");
+    press("PageDown");
+    press("PageDown");
+    expectActive("c", "summary"); // PageDown clamps at the last row
+
+    press("ArrowDown", { shiftKey: true });
+    expectActive("c", "summary"); // and Shift-extend stops there too
+  });
+
+  it("takes the roving tabIndex=0 with it, so a native Tab lands on the stop", () => {
+    render(<Harness items={makeItems()} trailingStop={trailing()} />);
+    goLastRow();
+    press("ArrowDown");
+    expect(trailingBtn().tabIndex).toBe(0);
+    expect(stop("c", "summary").tabIndex).toBe(-1);
+
+    press("ArrowUp");
+    expect(trailingBtn().tabIndex).toBe(-1);
+    expect(stop("c", "summary").tabIndex).toBe(0);
+  });
+
+  it("re-entry lands on the row the cursor came from — the memory never learns the stop", () => {
+    render(<Harness items={makeItems()} trailingStop={trailing()} />);
+    goLastRow();
+    press("ArrowDown");
+    expect(document.activeElement).toBe(trailingBtn());
+
+    act(() => (document.activeElement as HTMLElement).blur());
+    fireEvent.click(screen.getByTestId("restore"));
+    expectActive("c", "summary");
+  });
+});
+
+describe("trailing stop — what the cursor takes with it", () => {
+  /** Walk to the stop the only way that exists, then forget the trip. */
+  function goToStop(extra: Partial<HarnessProps> = {}) {
+    const onAction = vi.fn();
+    const onParentKeyDown = vi.fn();
+    render(
+      <Harness
+        items={makeItems()}
+        onAction={onAction}
+        onParentKeyDown={onParentKeyDown}
+        trailingStop={trailing()}
+        {...extra}
+      />,
+    );
+    goLastRow();
+    press("ArrowDown");
+    onParentKeyDown.mockClear();
+    return { onAction, onParentKeyDown };
+  }
+
+  const ROW_KEYS: [string, string, KeyboardEventInit][] = [
+    ["Delete", "Delete", {}],
+    ["F2", "F2", {}],
+    ["F4", "F4", {}],
+    ["F5", "F5", {}],
+    ["Shift+F5", "F5", { shiftKey: true }],
+    ["Ctrl+Space", " ", { code: "Space", ctrlKey: true }],
+    ["Ctrl+C", "c", { code: "KeyC", ctrlKey: true }],
+    ["ArrowLeft", "ArrowLeft", {}],
+    ["ArrowRight", "ArrowRight", {}],
+  ];
+
+  it.each(ROW_KEYS)("%s is silent on the stop and is NOT swallowed", (_label, key, init) => {
+    const selectionRef = { current: new Set<string>() };
+    const { onAction, onParentKeyDown } = goToStop({ selectionRef });
+    press(key, init);
+    expect(onAction).not.toHaveBeenCalled();
+    expect(selectionRef.current.size).toBe(0);
+    expect(document.activeElement).toBe(trailingBtn()); // cursor unmoved
+    // Not consumed — the key travels on to the handlers above the list.
+    expect(onParentKeyDown).toHaveBeenCalled();
+  });
+
+  it("Ctrl+Space does not let the browser press the button", () => {
+    goToStop();
+    // fireEvent returns false when preventDefault was called. Propagation is
+    // untouched (asserted above); only the native activation is suppressed.
+    const notPrevented = fireEvent.keyDown(trailingBtn(), {
+      key: " ", code: "Space", ctrlKey: true, bubbles: true,
+    });
+    expect(notPrevented).toBe(false);
+  });
+
+  it("plain Space is left alone so the button activates natively", () => {
+    goToStop();
+    const notPrevented = fireEvent.keyDown(trailingBtn(), {
+      key: " ", code: "Space", bubbles: true,
+    });
+    expect(notPrevented).toBe(true);
+  });
+
+  it("Ctrl+A still selects every visible row from the stop", () => {
+    const selectionRef = { current: new Set<string>() };
+    goToStop({ selectionRef });
+    press("a", { code: "KeyA", ctrlKey: true });
+    expect([...selectionRef.current].sort()).toEqual(["a", "b", "c"]);
+  });
+
+  it("Escape still clears the selection from the stop", () => {
+    const selectionRef = { current: new Set<string>(["a", "b"]) };
+    goToStop({ selectionRef });
+    press("Escape");
+    expect(selectionRef.current.size).toBe(0);
+  });
+
+  it("Enter and Space are left to the button itself", () => {
+    const { onAction } = goToStop();
+    press("Enter");
+    press(" ", { code: "Space" });
+    expect(onAction).not.toHaveBeenCalled();
+  });
+
+  it("Tab still exits the zone from the stop", () => {
+    const onTabOut = vi.fn();
+    goToStop({ onTabOut });
+    press("Tab");
+    expect(onTabOut).toHaveBeenCalledWith(true);
+  });
+});
+
+describe("trailing stop — activation", () => {
+  const rows = (n: number): CompositeListItem[] =>
+    Array.from({ length: n }, (_, i) => ({ id: `r${i}`, segments: [] }));
+
+  /**
+   * A list that pages like the real one: the activation resolves first, the rows
+   * arrive with it, and only then does the list decide where the cursor goes.
+   * `grownTo === null` is the empty batch; `fails` is the rejected one.
+   */
+  function Paged({ grownTo, fails, spy }: { grownTo?: number; fails?: boolean; spy: () => void }) {
+    const [count, setCount] = useState(3);
+    const [exhausted, setExhausted] = useState(false);
+    const items = useMemo(() => rows(count), [count]);
+    const onActivate = useCallback(async () => {
+      spy();
+      await Promise.resolve();
+      if (fails) throw new Error("network");
+      if (grownTo != null) setCount(grownTo);
+      // Nothing came back, so the stop stops existing — as the real store does
+      // by dropping hasMore. It is gone in the very commit that resolves the
+      // activation, which is why the list must settle on what it captured.
+      else setExhausted(true);
+    }, [grownTo, fails, spy]);
+    return (
+      <Harness
+        items={items}
+        trailingStop={
+          exhausted ? undefined : { label: "Load more", onActivate, exhaustedMessage: "No more results" }
+        }
+      />
+    );
+  }
+
+  /** Walk to the stop and press it. */
+  async function activate() {
+    goLastRow("r0");
+    press("ArrowDown");
+    expect(document.activeElement).toBe(trailingBtn());
+    await act(async () => { fireEvent.click(trailingBtn()); });
+  }
+
+  it("lands on the FIRST new row after a batch arrives", async () => {
+    const spy = vi.fn();
+    render(<Paged grownTo={5} spy={spy} />);
+    await activate();
+    expect(spy).toHaveBeenCalledTimes(1);
+    expectActive("r3", "summary"); // items[oldLength] — not the last row
+  });
+
+  it("a growing batch says nothing — the landed row is the answer", async () => {
+    $announcer.set(null);
+    render(<Paged grownTo={5} spy={vi.fn()} />);
+    await activate();
+    expect($announcer.get()).toBeNull();
+  });
+
+  it("an empty batch lands on the last row and says so", async () => {
+    $announcer.set(null);
+    render(<Paged spy={vi.fn()} />);
+    await activate();
+    expectActive("r2", "summary");
+    expect(document.activeElement).not.toBe(document.body);
+    expect($announcer.get()?.message).toBe("No more results");
+    // The button is gone: its absence is the standing carrier of the same fact.
+    expect(screen.queryByTestId("trailing")).toBeNull();
+  });
+
+  it("a failed batch leaves the cursor on the button and says nothing here", async () => {
+    $announcer.set(null);
+    render(<Paged fails spy={vi.fn()} />);
+    await activate();
+    expect(document.activeElement).toBe(trailingBtn());
+    expect($announcer.get()).toBeNull();
+  });
+
+  it("stays focusable while busy and ignores a second activation", async () => {
+    const onActivate = vi.fn(async () => {});
+    render(
+      <Harness
+        items={rows(3)}
+        trailingStop={{ label: "Loading…", busy: true, onActivate, exhaustedMessage: "No more results" }}
+      />,
+    );
+    goLastRow("r0");
+    press("ArrowDown");
+    const btn = trailingBtn();
+    expect(document.activeElement).toBe(btn);
+    expect(btn.hasAttribute("disabled")).toBe(false); // never natively disabled
+    expect(btn.getAttribute("aria-busy")).toBe("true");
+
+    await act(async () => { fireEvent.click(btn); });
+    expect(onActivate).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(btn); // focus never left
   });
 });

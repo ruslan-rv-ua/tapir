@@ -7,7 +7,7 @@ status: ready
 effort: M
 kind: bug
 target: 0.1.0
-updated: 2026-09-03
+updated: 2026-09-04
 a11y: true
 depends_on: []
 blocks: []
@@ -22,6 +22,9 @@ touches:
   - src/components/browser/BrowserPanel.test.tsx
   - src/stores/browser.ts
   - src/stores/browser.test.ts
+  - src/components/common/composite-list/index.ts
+  - src/i18n/messages/en.json
+  - src/i18n/messages/uk.json
   - docs/help/en/browser.md
   - docs/help/uk/browser.md
 gates: [pnpm test, pnpm vite:build]
@@ -32,6 +35,9 @@ notes:
   - "Сьогодні `footer` CompositeList використовує ЛИШЕ StationList, але механізм спільний — будь-який майбутній футер успадкує ваду. Тому сторожі стоять у спільному компоненті, а не на екрані браузера"
   - "Сусід по тому самому switch — p2-list-key-modifier-guards (модифікатори при F2/Delete). Правила ортогональні; хто піде другим, побачить сторожа першого"
   - "effort M лишається: більша частина — не сам стоп, а дванадцять перевірок у чотирьох тестових файлах плюс два різні стани завантаження в моках BrowserPanel"
+  - "2026-09-04: реалізовано на гілці bugfix/load-more-unreachable-by-keyboard, гейти зелені (1097 тестів, vite:build). Чекає NVDA-прогону — чекліст docs/testing/nvda-load-more-unreachable-by-keyboard.md, 10 сценаріїв"
+  - "2026-09-04, з рев'ю: Ctrl+Space на стопі мусить preventDefault (без stopPropagation) — для браузера це Space, і сфокусована <button> активується нативно на keyup, тобто «мовчить» перетворилось би на «тихо вантажить ще одну порцію». jsdom нативної активації кнопки не має, тож автотест цього не бачив би — ловиться лише думанням про Blink"
+  - "2026-09-04, знайдено рев'ю і НЕ виправлено (арифметику loadMore запис заморозив): невдале дописування лишає offset піднятим, тож повторне натискання просить наступну сторінку і мовчки пропускає ту, що впала. Окремий запис"
 ---
 
 # Браузер станцій: кнопку «Завантажити ще» не можна натиснути з клавіатури
@@ -174,7 +180,8 @@ nothing more to load»). Але відсутність футера мусить
 - [ ] Сторожі: правила — у `CompositeList`/`useCompositeList`, факти — у
       `stores/browser.test.ts`, конкретика — у `StationList`/`BrowserPanel`.
 - [ ] NVDA-прогін: шлях до кнопки, повернення до списку після довантаження,
-      порожня порція, повернення в зону з кнопки через `F6`.
+      порожня порція, повернення в зону з кнопки через `F6` —
+      [nvda-load-more-unreachable-by-keyboard](../testing/nvda-load-more-unreachable-by-keyboard.md).
 
 ## Відкриті питання
 
