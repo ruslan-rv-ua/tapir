@@ -18,14 +18,15 @@ semver; `unscheduled` — наприкінці.
 > **Тема — чесний інтерфейс.** Усе вже побудоване доводиться до стану, у якому воно
 > не бреше й не мовчить: мертві налаштування прибрані, мовчазні відмови дістають видиму
 > поверхню, хибні мітки виправлені, обидві локалі повні.
-> Нових можливостей версія не додає. Лишилось 2 записи: 1 × S, 1 × M.
+> Нових можливостей версія не додає. Лишилось 3 записи: 2 × S, 1 × M.
 
 Порядок рядків у секціях — за пріоритетом, а в межах пріоритету **більші першими**:
 саме вони визначають, чи версія закриється, тож беруться раніше за дрібні.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [load-more-unreachable-by-keyboard](p1-load-more-unreachable-by-keyboard.md) | P1 | planned | ready | M | — | — (огрилено 2026-09-03: футер стає завершальним стопом списку, привіз [ADR про завершальний стоп](../decisions/2026-09-03-trailing-stop-crosses-only-on-down.md) і термін «Стоп» у CONTEXT.md; попутно лікує дві суміжні вади — дописування й помилка дописування зносять `<ul>` через спільний `searchLoading`/`searchError`) |
+| [load-more-unreachable-by-keyboard](p1-load-more-unreachable-by-keyboard.md) | P1 | planned | ready | M | — | [load-more-retry-skips-failed-page](p2-load-more-retry-skips-failed-page.md) (огрилено 2026-09-03: футер стає завершальним стопом списку, привіз [ADR про завершальний стоп](../decisions/2026-09-03-trailing-stop-crosses-only-on-down.md) і термін «Стоп» у CONTEXT.md; попутно лікує дві суміжні вади — дописування й помилка дописування зносять `<ul>` через спільний `searchLoading`/`searchError`) |
+| [load-more-retry-skips-failed-page](p2-load-more-retry-skips-failed-page.md) | P2 | planned | draft | S | [load-more-unreachable-by-keyboard](p1-load-more-unreachable-by-keyboard.md) | — (знахідка рев'ю 2026-09-04: невдале дописування лишає `offset` піднятим, тож повтор мовчки пропускає порцію; розвилка з трьох варіантів, один із них чіпає `isAppendingResults` — грилити перед реалізацією) |
 | [list-key-modifier-guards](p2-list-key-modifier-guards.md) | P2 | planned | draft | S | [streams-transfer-hotkeys](done/p2-streams-transfer-hotkeys.md) | — (switch по `e.key` не перевіряє модифікаторів; той самий `switch`, що й у [load-more-unreachable-by-keyboard](p1-load-more-unreachable-by-keyboard.md) — правила ортогональні, хто піде другим, побачить сторожа першого) |
 
 ## v0.2.0
