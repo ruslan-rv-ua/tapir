@@ -1,11 +1,18 @@
 # Специфікація доступності Tapir
 
-> **Версія:** 0.1 (draft) | **Версія продукту:** 0.1.0  
+> **Версія:** 0.2 | **Версія продукту:** 0.1.0  
 > **Стандарти:** WCAG 2.1 AA (адаптовано для desktop), UI Automation  
 > **Скрінрідери:** NVDA 2023+, JAWS 2023+, Windows Narrator  
 > **Технології:** React Aria Components, WebView2 (Chromium ARIA → UIA mapping)
 
-> **Примітка (2026-04-23):** описи `StreamTable`, `ResultsTable`, `WishlistTable`, `SongsTable` і `ScheduleTable` у цьому документі відображають поточний або історичний table/grid-підхід. Для refactor зонної навігації та композиційних списків пріоритет мав `docs/FRD-navigation.md` (видалено).
+> **Звірено з кодом 2026-09-03** (беклог `accessibility-doc-audit`). До того документ
+> місцями описував задум, а не реалізацію: ескізи `role="grid"` / `TableView`, поле пошуку
+> потоків, `formatOptions` на повзунках. Усі структури ролей нижче тепер описують те, що
+> в коді.
+>
+> **Конвенція.** Блок, що починається з **«Заплановано, не реалізовано»**, описує намір,
+> якого в коді немає, — його не можна цитувати як вимогу до наявної поведінки. Усе решта
+> — опис реалізації; розійшлося з кодом — правда в коді, а рядок тут баг документа.
 
 ---
 
@@ -19,6 +26,9 @@
 - **Логічний** tab order відповідає візуальному порядку
 - **Live regions** для усіх динамічних змін, що потребують уваги
 - **`decorations: true`** — обов'язково (NVDA mouse tracking bug Tauri #12901)
+- **Видимий носій**: усе, що `announce()` говорить про дію користувача, мусить бути й на
+  екрані текстом — `aria-*` не рахується
+  ([ADR 2026-08-31](decisions/2026-08-31-visible-carrier-for-announced-facts.md))
 
 ### 1.2. Windows High Contrast
 
@@ -42,35 +52,47 @@ Tailwind `forced-colors:` для всіх кастомних компонент�
 ### 1.3. Screen Magnifier (Windows Magnifier, ZoomText)
 
 - Фокус-tracking: кожен елемент при фокусуванні має бути повністю видимим (уникати `overflow:hidden` без `overflow:auto`)
-- Activity Bar (48px) — при zoom 400% іконки можуть виходити за межі. Мінімальна ширина — 48px навіть при zoom
-- StreamTable рядки — мінімальна висота рядка 40px
-- Не використовувати тільки колір для передачі інформації (статус REC — і колір, і текст "REC", і пульсація)
-- Компоненти що потребують `forced-colors:` при High Contrast:
-  - `StatusIcon` (кольорові dot-індикатори)
-  - Badge на Activity Bar іконці
+- Activity Bar — рядок секції має мінімальну висоту 58px (`min-h-[58px]`), іконка 42×42
+- Не використовувати тільки колір для передачі інформації (стан запису — і колір, і текст, і пульсація)
+- Компоненти, що потребують `forced-colors:` при High Contrast:
+  - статусні іконки рядка потоку (`StreamItem`)
+  - рядки/картки списків (`CompositeRow`, `ListCard`) — межі й підсвітка виділення
   - Toast контейнер (background/border)
-  - Slider thumb / Progress track
+  - Slider thumb / track (`VolumeSlider`, `PlaybackPosition`)
 
 ### 1.4. LiveAnnouncer — централізовані оголошення
 
-Один `aria-live` контейнер для усього застосунку. React Aria `@react-aria/live-announcer` або кастомний:
+Один компонент на застосунок ([LiveAnnouncer.tsx](../src/components/common/LiveAnnouncer.tsx))
+з двома регіонами — `polite` і `assertive`:
 
 ```tsx
-// Два контейнери: polite + assertive
-<div data-live-announcer="true" aria-live="polite" aria-atomic="true" className="sr-only" />
-<div data-live-announcer="true" aria-live="assertive" aria-atomic="true" className="sr-only" />
+<div data-live-announcer="true" role="log" aria-live="polite"    aria-relevant="additions" className="sr-only" />
+<div data-live-announcer="true" role="log" aria-live="assertive" aria-relevant="additions" className="sr-only" />
 ```
 
-**Важливо:** `data-live-announcer="true"` обов'язковий. React Aria `Modal` через
-`ariaHideOutside` ставить `aria-hidden` на все поза модалом, окрім елементів з цим
-атрибутом — без нього всі `announce()` німі, поки відкритий будь-який діалог.
+**Кожне повідомлення — новий вузол** у регіоні (`appendChild`), не заміна тексту на
+наявному. Заміна німа, коли повідомлення дослівно повторює попереднє: браузер зводить
+очистку й запис в одне оновлення дерева доступності, підсумковий текст регіону не
+змінюється, і NVDA нема про що звітувати. Вузол живе 7 с (`MESSAGE_TTL_MS`), потім
+знімається — щоб browse mode не збирав історію сесії. Звідси ж і `role="log"` без
+`aria-atomic`: атомарний лог перечитував би повідомлення, які ще не встигли зникнути.
+
+**`data-live-announcer="true"` обов'язковий.** React Aria `Modal` через `ariaHideOutside`
+ставить `aria-hidden` на все поза модалом, окрім елементів із цим атрибутом — без нього
+всі `announce()` німі, поки відкритий будь-який діалог.
+
+**Другий канал — тости** ([ToastContainer.tsx](../src/components/common/ToastContainer.tsx)):
+видимий `role="log" aria-live="polite"`. Різниця не в терміновості, а в носії: тост видно
+на екрані, `announce()` — ні. Факт, який більше нічим не показати, іде тостом.
 
 **Правила пріоритету:**
 
-| Priority | `aria-live` | Коли використовувати |
-|---|---|---|
-| `polite` | `polite` | Track changed, profile changed, reconnecting |
-| `assertive` | `assertive` | Recording started/stopped, errors, wishlist match, disk space |
+| Priority | Коли використовувати |
+|---|---|
+| `polite` | фоновий факт, який не відповідає на щойно натиснуту клавішу: старт/стоп запису, збережений трек, зміна профілю, підсумки масових дій |
+| `assertive` | відповідь на дію користувача (гучність, транспорт, F9), помилки, збіг із wishlist, події планувальника |
+
+Повний перелік подій — §11.1.
 
 ---
 
@@ -79,408 +101,416 @@ Tailwind `forced-colors:` для всіх кастомних компонент�
 ### 2.1. Landmarks
 
 ```html
-<header role="banner">        → Window title + global status
-<nav role="navigation"         → Activity Bar (ліва панель секцій)
-     aria-label="Секції застосунку">
-<main role="main">             → Active section content
-<footer role="contentinfo">    → Status bar (recording count, disk space, longest recording)
-<div role="complementary">     → Player controls bar
+<nav aria-label="Головна навігація">   → Activity Bar (ліва панель секцій)
+<main>                                 → активна секція
+  <div role="region" aria-label="…">   → корінь секції (Потоки, Браузер, …)
+  <div role="complementary"            → PlayerPanel
+       aria-label="Програвач">
+  <footer>                             → StatusBar
 ```
+
+Банера (`role="banner"`) немає: у вікні немає рядка заголовка застосунку — заголовок несе
+саме вікно ОС (§2.2). `<main>` і `<footer>` беруть ролі `main` / `contentinfo` з тегів,
+явних `role` на них не ставимо.
 
 ### 2.2. Window title
 
-Динамічний `document.title`:
+`document.title` не використовується — заголовок ставиться через Tauri
+(`getCurrentWindow().setTitle`) з [App.tsx](../src/App.tsx):
 
-- Без запису: `Tapir`
-- З записом: `● 3 записи — Tapir`
-- З відтворенням: `▶ Artist - Title — Tapir`
-- Комбінація: `▶ Artist - Title ● 3 записи — Tapir`
+- вимкнено «Назва треку в заголовку» **або** нічого не грає: `Tapir`
+- інакше: `<що грає> · Tapir`, де «що грає» дає
+  [windowTitleLabel](../src/lib/windowTitle.ts) — `Artist — Title` для потоку, ім'я файлу
+  без розширення для файлу, назва прослуховування для preview
+
+Кількість активних записів у заголовок **не** виводиться: цей факт живе в StatusBar (§14)
+і в метриках екрана «Потоки».
 
 ### 2.3. Tab порядок (головне вікно)
 
 ```
-[Activity Bar] → [Section Content] → [Player Controls] → [Status Bar]
+[Activity Bar] → [зони активної секції] → [Player] → [Status Bar]
 ```
 
-> У Фазі 1 зона `Player Controls` відсутня і пропускається: `[Activity Bar] → [Section Content] → [Status Bar]`.
+Це той самий порядок, що й цикл F6 (§2.3.1): `orderedZonesRef` у
+[App.tsx](../src/App.tsx) — один список для обох. Зона програвача участі не втрачає, але
+відмовляється від фокуса, коли нічого не грає, і цикл іде далі.
 
-Activity Bar — вертикальна навігація секцій (Arrow Up/Down).
-Пряма навігація: Ctrl+1…5 (Streams, Browser, Songs, Schedule, Wishlist).
-Ctrl+, — відкрити діалог налаштувань.
+Activity Bar — вертикальна навігація секцій стрілками (roving focus, порядок:
+профіль → 5 секцій → Довідка → Налаштування).
+Пряма навігація: **`Alt+0`…`Alt+5`** — `Alt+0` Профілі, далі Потоки, Браузер, Wishlist,
+Розклад, Записи. Цифра ↔ секція живуть однією таблицею
+([sections.ts](../src/lib/sections.ts)), тож розійтись не можуть.
+`Ctrl+,` — налаштування програми, `Ctrl+Shift+,` — налаштування профілю, `F1` — довідка.
 
-Активний nav item має `aria-current="page"`, оновлюється динамічно при зміні секції (JavaScript).
+Активний пункт має **`aria-pressed`**, не `aria-current`: кнопки Activity Bar — це
+перемикачі стану вікна, а не посилання на сторінки.
 
 ### 2.3.1. Zone navigation (F6 / Shift+F6)
 
 Навігація між основними зонами вікна (Windows стандарт, знайомий NVDA/JAWS користувачам).
 
 ```
-F6:       Activity Bar → Section Content → Player → Status Bar → (cycle)
+F6:       Activity Bar → зони секції → Player → Status Bar → (cycle)
 Shift+F6: зворотній напрямок
 ```
 
 Поведінка:
 - Запам'ятовує останній сфокусований елемент у кожній зоні (roving focus)
-- Пропускає приховані зони (Player, якщо нічого не відтворюється)
-- Оголошує назву зони через LiveAnnouncer (`assertive`): «Програвач», «Потоки», «Статус»
-- Реалізація: звичайний `window.addEventListener("keydown", ...)` у frontend; це **не** global shortcut і працює лише коли фокус у вікні Tapir
-- Не працює всередині модальних діалогів (focus trap)
-- При спробі F6 у відкритому діалозі — ігнорується (focus trap активний). NVDA не оголошує зону.
+- **Гарантія прогресу централізована:** `cycleZone`
+  ([useZoneNavigation.ts](../src/hooks/useZoneNavigation.ts)) просить кожну наступну зону
+  взяти фокус і перевіряє `document.activeElement`; зона, що фокус не взяла (порожній
+  список, програвач у стані `stopped`, застарілий `ZoneEntry` після ремонтування),
+  пропускається — за один повний оберт
+- **Назву зони оголошує сама зона, не цикл.** Явний `announce()` мають лише Програвач і
+  Статус (`polite`) — решта зон — це `ScreenZone` з `role` + `aria-label`, і NVDA читає
+  ім'я зони сама, коли фокус заходить усередину. Другий `announce` там дав би подвійне
+  озвучення
+- Реалізація: `window.addEventListener("keydown", …, { capture: true })` у frontend; це
+  **не** global shortcut і працює лише коли фокус у вікні Tapir
+- Не працює всередині модальних діалогів: `isInModal()` глушить і F6, і Tab-вихід із зони
+
 ### 2.4. Command Palette (Ctrl+K)
 
-- `role="dialog"`, `aria-label="Command Palette"`
-- Внутрі: combobox pattern (input + listbox)
-- Escape — закрити, фокус повертається на попередній елемент
-- Fuzzy search: секції, станції, пісні, налаштування
-- Live region: `aria-live="polite"` — кількість результатів
+- `role="dialog"` + `aria-modal="true"`, `aria-label="Командна палітра"`
+- Внутрі: combobox pattern — `<input role="combobox" aria-controls aria-activedescendant>`
+  + `role="listbox"` з `role="option"`; DOM-фокус лишається в полі
+- Escape — закрити, фокус повертається на елемент, який палітру відкрив
+- **Фільтр — підрядок, не fuzzy**, і шукає він по **командах**, не по контенту застосунку:
+  додати/імпортувати/експортувати потік, налаштування профілю, записати все, зупинити все
+  і по одному пункту «почати/зупинити запис» на кожен потік (`sublabel` — назва потоку)
+- Кількість результатів оголошується `polite` із дебаунсом 300 мс — і лише коли запит
+  непорожній (на відкритті NVDA і так читає діалог)
 - Повний перелік клавіатурних шорткатів застосунку — [keyboard-shortcuts.md](keyboard-shortcuts.md)
 
-### 2.5. Profile Switcher [Phase 4]
+### 2.5. Profile Switcher
 
-> У Фазі 1 елемент присутній лише як disabled placeholder з поясненням "Буде доступно у Фазі 4".
-
-- Кнопка внизу Activity Bar: `aria-label="Переключити профіль: {name}"`, `aria-haspopup="listbox"`
-- Popover: React Aria `Popover` + `ListBox` (`selectionMode="single"`)
-- `ListBox` (`aria-label="Профілі"`) — семантично точний для "вибір одного з кількох профілів"
-- Keyboard: Arrow Up/Down між ListBoxItem, Enter/Space — вибір, Escape — закрити
-- Внизу Popover: `<Button onPress={() => openSettings("profiles")}>{m.manageProfiles()}</Button>`
-- Escape — закрити, фокус повертається на кнопку
+Перемикача-попапа немає. Профіль живе **окремою секцією**, а верх Activity Bar — кнопка
+входу в неї:
 
 ```tsx
-<MenuTrigger>
-  <Button aria-label={m.switchProfile({ name: activeProfile })}>
-    <ProfileBadge name={activeProfile} />
-  </Button>
-  <Popover>
-    <ListBox
-      aria-label={m.profiles()}
-      selectionMode="single"
-      selectedKeys={[activeProfile]}
-      onSelectionChange={handleSwitch}
-    >
-      {profiles.map(p => (
-        <ListBoxItem key={p.name}>{p.name}</ListBoxItem>
-      ))}
-    </ListBox>
-    <Separator />
-    <Button onPress={() => openSettings("profiles")}>{m.manageProfiles()}</Button>
-  </Popover>
-</MenuTrigger>
+<Button
+  aria-label={`${m.profile_manager_open()} — ${activeProfile}`}
+  aria-pressed={activeSection === "profiles"}
+>
+  <strong>Профіль</strong>
+  <span>{activeProfile}</span>
+</Button>
 ```
+
+Ім'я активного профілю — частина `aria-label` кнопки, тож воно чути на кожному проході
+Activity Bar, без заходу в секцію. Перемикання, створення, перейменування, дублювання,
+видалення й імпорт/експорт — усередині секції «Профілі»
+([ProfilesPanel](../src/components/profile/ProfilesPanel.tsx), §9.3). Кнопка має `Alt+0`.
 
 ---
 
 ## 3. Секція: Потоки (Streams)
 
-> **Реалізація (звірено 2026-06-14):** фактичний список потоків — **не** `role="grid"`
-> `TableView` з чекбоксами (ескізи §3.1–§3.6 — історичний table/grid-підхід, див. ноту
-> 2026-04-23 вгорі документа), а `role="application"` з роумінг-фокусом
-> ([`useCompositeList`](../src/hooks/useCompositeList.ts) / `CompositeList`). Тож
-> комірки `P`/`R`/`Space=toggle selection`/`Ctrl+F`-пошук із §3.2 — застарілі.
->
-> **Модель виділення (multi-select)** проєктується окремо — джерело правди:
-> беклог `p1-bulk-stream-operations` (реалізовано; запис видалено до появи `done/`) +
-> spec віхи A.
-> Коротко з її §A6:
-> - **Єдиний канал оголошень виділення** — усі повідомлення (одиничний toggle,
->   зведене «Виділено N», «Виділення знято», «Видалено N») йдуть **лише** через
->   центральний `LiveAnnouncer` (§1.4, `announce`). Тулбар-лічильник «{n} вибрано» —
->   **візуальний span БЕЗ `aria-live`**: окремий live-регіон на ньому дав би подвійне
->   озвучення поверх центрального announcer'а.
-> - **Pointer-жести** (клік / Ctrl+Click) рухають DOM-фокус, тож рядок читається сам —
->   їх явним `announce` **не** дублюємо; клавіатурний одиничний toggle (`Ctrl+Space`)
->   фокус не рухає → оголошується явно.
-> - Стан виділеного рядка кодується **суфіксом «, виділено»** в accessible name
->   (список `role="application"`/`listitem` не підтримує `aria-selected`) + CSS-підсвітка.
+Список потоків — **не** таблиця. Це composite list:
+[`CompositeList`](../src/components/common/composite-list/CompositeList.tsx) з
+`role="application"` і роумінг-фокусом
+([`useCompositeList`](../src/hooks/useCompositeList.ts)); кожен рядок — `<li>` з явним
+`role="listitem"` (під `role="application"` неявна роль губиться),
+`aria-roledescription="потік"` і повним `aria-label` рядка. Та сама конструкція обслуговує
+всі списки застосунку — станції, записи, патерни, збіги, розклади, профілі.
+
+**Модель виділення (multi-select):**
+- **Єдиний канал оголошень виділення** — усі повідомлення (одиничний toggle,
+  зведене «Виділено N», «Виділення знято», «Видалено N») йдуть **лише** через
+  центральний `LiveAnnouncer` (§1.4). Тулбар-лічильник «{n} вибрано» —
+  **візуальний span БЕЗ `aria-live`**: окремий live-регіон на ньому дав би подвійне
+  озвучення поверх центрального announcer'а.
+- **Pointer-жести** (клік / Ctrl+Click) рухають DOM-фокус, тож рядок читається сам —
+  їх явним `announce` **не** дублюємо; клавіатурний одиничний toggle (`Ctrl+Space`)
+  фокус не рухає → оголошується явно.
+- Стан виділеного рядка кодується **суфіксом «, виділено»** в accessible name
+  (список `role="application"`/`listitem` не підтримує `aria-selected`) + CSS-підсвітка.
 
 ### 3.1. Структура
 
 ```
-StreamsPanel
-├── SearchField (aria-label="Пошук потоків", Ctrl+F)
-├── StreamTable (role="grid", aria-label="Список потоків")
-│   ├── Header Row (role="row")
-│   │   ├── Column: Статус (role="columnheader", aria-sort)
-│   │   ├── Column: Станція
-│   │   ├── Column: Трек
-│   │   ├── Column: Бітрейт
-│   │   └── Column: Тривалість запису
-│   └── Data Rows (role="row")
-│       └── Cells (role="gridcell")
-├── Toolbar (role="toolbar", aria-label="Дії з потоками")
-│   ├── Text: "{n} вибрано" (звичайний span, БЕЗ aria-live — оголошення йде єдиним каналом, див. ноту під §3; показується при selectionCount > 0)
-│   ├── Button: Додати потік
-│   ├── Button: Видалити вибрані (isDisabled={selectionCount === 0})
-│   └── Button: Зупинити всі записи
+StreamsPanel (role="region", aria-label="Потоки")
+├── Метрики (4 × role="status", aria-atomic)
+│   └── У профілі · Активні · Потребує уваги · Вільно
+├── ScreenZone id="streams-toolbar" (role="application", aria-label="Дії потоку")
+│   ├── ScreenHeader: заголовок екрана + Додати (0) + Імпорт (1) + Експорт (2)
+│   └── Ряд дій:
+│       ├── Button: Виділити все / Зняти виділення            (3)
+│       ├── MenuTrigger: Дії з виділеними (N)                 (4)
+│       ├── Text: "{n} вибрано" — span БЕЗ aria-live, лише при selectionCount > 0
+│       ├── Button: Записати все / Записати виділені (N)      (5)
+│       ├── Button: Зупинити запис / Зупинити виділені (N)    (6)
+│       ├── role="group" aria-label="Фільтр потоків": 3 чипи  (7–9, aria-pressed)
+│       └── role="group" aria-label="Сортування": 2 чипи      (10–11, aria-pressed)
+└── ListCard
+    ├── Шапка колонок — aria-hidden="true", суто візуальна
+    │   (Статус · Станція · Зараз грає · Бітрейт · Тривалість · Дії)
+    └── одне з трьох:
+        ├── StreamList (role="application", aria-label="Список потоків")
+        ├── role="region" data-zone-id="streams-empty"        ← у профілі 0 потоків
+        └── role="region" data-zone-id="streams-filter-empty" ← фільтр сховав усе
 ```
 
-### 3.2. StreamTable — ARIA Grid Pattern
+**Поля пошуку в цій секції немає.** `Ctrl+F` — глобальна клавіша (§13), і вона шукає першу
+зону з `ZoneEntry.focusSearch()`; такі зони мають лише Браузер і Записи. На екранах без
+пошуку клавіша відповідає вголос — «На цьому екрані немає пошуку» (`assertive`), — а не мовчить.
 
-React Aria `TableView` з `selectionMode="multiple"`:
+**Шапка колонок `aria-hidden`.** Заголовків колонок як семантики немає: значення кожної
+комірки їде в accessible name рядка й у `aria-label`/`aria-roledescription` сегмента
+(«192 kbps, технічна інформація»), тож візуальна шапка була б третім озвученням того
+самого. Сортування живе чипами в тулбарі, не в шапці, тож `aria-sort` нема на чому тримати.
 
-```tsx
-<TableView
-  aria-label={m.streamsTable()}    // i18n: "Список потоків"
-  selectionMode="multiple"
-  sortDescriptor={sortDescriptor}
-  onSortChange={onSortChange}
->
-  <TableHeader>
-    <Column key="select">
-      <Checkbox aria-label={m.selectAll()} />
-    </Column>
-    <Column key="status" allowsSorting>{m.columnStatus()}</Column>
-    <Column key="name" allowsSorting>{m.columnStation()}</Column>
-    <Column key="track">{m.columnTrack()}</Column>
-    <Column key="bitrate" allowsSorting>{m.columnBitrate()}</Column>
-    <Column key="duration" allowsSorting>{m.columnDuration()}</Column>
-  </TableHeader>
-  <TableBody items={streams}>
-    {(stream) => (
-      <Row key={stream.id}>
-        <Cell>
-          <Checkbox aria-label={m.selectStream({ name: stream.name })} />
-          {/* "Вибрати: Radio Paradise - Main Mix" */}
-        </Cell>
-        <Cell>
-          <StatusIcon status={stream.state} aria-label={statusLabel(stream.state)} />
-        </Cell>
-        <Cell>{stream.name}</Cell>
-        <Cell>
-          {stream.currentTrack ?? "—"}
-          {stream.currentFileName && (
-            <span className="text-xs text-slate-500 block truncate"
-                  aria-label={m.recordingFile({ name: stream.currentFileName })}>
-              {stream.currentFileName}
-            </span>
-          )}
-        </Cell>
-        <Cell>{stream.bitrate ? `${stream.bitrate} kbps` : "—"}</Cell>
-        <Cell>{stream.duration ?? "—"}</Cell>
-      </Row>
-    )}
-  </TableBody>
-</TableView>
-```
+### 3.2. Список потоків — навігація й імена
 
-**Empty state (0 потоків):**
-
-```tsx
-<TableBody items={streams} renderEmptyState={() => (
-  <div role="row">
-    <div role="gridcell" colSpan={6} className="text-center py-16 text-slate-400">
-      <p className="text-base mb-2">{m.noStreamsYet()}</p>
-      {/* "Потоків ще немає" */}
-      <p className="text-sm text-slate-500 mb-4">
-        {m.addFirstStream()}
-        {/* "Додайте перший потік, щоб розпочати запис" */}
-      </p>
-      <Button onPress={openAddDialog} autoFocus>
-        {m.addStream()}
-      </Button>
-    </div>
-  </div>
-)} />
-```
-
-`autoFocus` на кнопці — щоб NVDA одразу оголосила CTA після переходу до секції.
-
-**Клавіатурна навігація в таблиці:**
+Рядок має два рівні фокуса: **summary** (весь рядок) і **сегменти** всередині нього
+(трек, технічна інформація, статус, кнопки дій). Вертикальний рух завжди повертає на
+summary наступного рядка; горизонтальний ходить по сегментах поточного.
 
 | Клавіша | Дія |
 |---|---|
-| Arrow Up/Down | Переміщення між рядками |
-| Arrow Left/Right | Переміщення між комірками |
-| Home/End | Перший/останній рядок |
-| Space | Toggle selection |
-| Enter | Подвійний клік (запис або відтворення, за `doubleClickAction`) |
-| `P` | Відтворити потік (window-scoped shortcut у таблиці; незалежно від `doubleClickAction`) |
-| `R` | Toggle запис потоку (window-scoped shortcut у таблиці; незалежно від `doubleClickAction`) |
-| F2 | Відкрити діалог редагування потоку (`AddStreamDialog` в edit-режимі: назва й адреса; адреса read-only, поки потік записується) |
-| Delete | Видалити вибраний потік (з підтвердженням) |
-| Shift+F10 / Context Menu | Контекстне меню |
-| Ctrl+A | Вибрати всі |
+| `↑` / `↓` | Попередній / наступний рядок (на summary) |
+| `←` / `→` | Попередній / наступний сегмент усередині рядка |
+| `Home` / `End` | Перший / останній рядок |
+| `PageUp` / `PageDown` | Сторінка вгору / вниз |
+| `Ctrl+Space` | Toggle виділення рядка |
+| `Shift+↑` / `Shift+↓` | Розширити виділення від якоря |
+| `Ctrl+A` | Виділити всі |
+| `Escape` | Зняти виділення |
+| `Enter` | Дія за `doubleClickAction` профілю (запис або відтворення) |
+| `Shift+Enter` | Слухати (незалежно від `doubleClickAction`) |
+| `Ctrl+Enter` | Запис (незалежно від `doubleClickAction`) |
+| `Alt+Enter` | Відкрити у зовнішньому застосунку |
+| `Ctrl+C` | Копіювати адресу потоку |
+| `F2` | Редагувати потік (`AddStreamDialog` в edit-режимі) |
+| `F5` / `Shift+F5` | Копіювати / перенести у профіль (діє на **виділення**, не на рядок під курсором) |
+| `Delete` | Видалити (з підтвердженням) |
+| `Shift+F10` / `ContextMenu` | Контекстне меню рядка |
+| `Tab` / `Shift+Tab` | Вийти із зони до наступної / попередньої |
 
-**Accessible описи стану потоку:**
+Модифікатор, якого дія не чекає, **знімає збіг** (`null`), а не спрацьовує з порожнім
+наміром: інакше `Alt+F4` перестав би закривати вікно, а `Ctrl+F5` — доходити до
+`useWebviewGuard`.
 
-| State | `aria-label` (uk) | `aria-label` (en) |
-|---|---|---|
-| idle | Зупинено | Idle |
-| connecting | Підключення… | Connecting… |
-| recording | Записується | Recording |
-| reconnecting | Перепідключення | Reconnecting |
-| error | Помилка | Error |
+**Accessible ім'я рядка** (summary) складається в
+[StreamItem.tsx](../src/components/streams/StreamItem.tsx) за формулою
+`[стан, ]назва[, виділено]` — словами, не візуальним «REC»:
 
-### 3.3. Додавання потоку (AddStreamDialog)
+| Стан рядка | Префікс імені |
+|---|---|
+| записується і відтворюється | «Записується і відтворюється» |
+| записується | «Записується» |
+| відтворюється | «Відтворюється» |
+| `error` | «Помилка» |
+| решта | префікса немає — саме тільки ім'я потоку |
 
-React Aria `DialogTrigger` + `Modal`:
+**Сегмент «Статус» несе окреме значення** (`aria-roledescription` = «Статус потоку», а для
+запису — «Тривалість запису»):
 
-```tsx
-<DialogTrigger>
-  <Button>{m.addStream()}</Button>
-  <Modal>
-    <Dialog>
-      <Heading slot="title">{m.addStreamTitle()}</Heading>
-      <TextField label={m.streamUrl()} autoFocus isRequired />
-      <TextField label={m.streamName()} />
-      <Disclosure>
-        <DisclosureButton>{m.authOptional()}</DisclosureButton>
-        {/* "Авторизація (опціонально)" */}
-        <DisclosurePanel>
-          <TextField label={m.username()} />
-          <TextField label={m.password()} type="password" />
-        </DisclosurePanel>
-      </Disclosure>
-      <div role="group" aria-label={m.dialogActions()}>
-        <Button slot="close">{m.cancel()}</Button>
-        <Button type="submit">{m.add()}</Button>
-      </div>
-    </Dialog>
-  </Modal>
-</DialogTrigger>
-```
+| State | Значення сегмента |
+|---|---|
+| `recording` | тривалість запису, `MM:SS` |
+| `connecting` | «Підключення...» |
+| `reconnecting` | «Спроба {n} з {max}», або «Перепідключення...», якщо стелі в статусі ще немає |
+| решта (вкл. `error`) | «Очікування» — про помилку каже ім'я рядка, не цей сегмент |
 
-**Focus trap:** фокус залишається всередині діалогу. Escape закриває. Focus повертається до кнопки, що відкрила діалог.
+Обидва числа перепідключення приходять із **одного** `StreamStatus`, не з поточних
+налаштувань профілю: інакше «Спроба 3 з 5» показувала б стелю, за якою це перепідключення
+не живе.
+
+### 3.3. Додавання й редагування потоку (AddStreamDialog)
+
+React Aria `ModalOverlay` + `Modal` + `Dialog`; `Heading slot="title"` — «Додати потік» або
+«Редагувати потік».
+
+- **Порядок полів однаковий в обох режимах:** адреса, потім назва. Початковий фокус різний:
+  на адресі при додаванні, на назві при редагуванні (`F2` — це м'язова пам'ять «перейменувати»).
+- **Адреса потоку, що записується, замикається `readOnly` + `aria-disabled`, ніколи не
+  нативним `disabled`.** Нативно вимкнене поле випадає з tab-порядку: скрінрідер до нього
+  не дійшов би, опису (`aria-describedby` — «адресу не можна змінити, поки триває запис»)
+  не почув би, і адреса просто зникла б із діалогу.
+- Підказана офіційна назва станції (з probe) — окремий блок із кнопкою «Взяти офіційну назву».
+- Помилка — `role="alert"`; попередження probe/конфлікту — один `aria-live="polite"` регіон
+  на всі стани, щоб NVDA бачила зміну тексту, а не появу нового вузла.
+- **Focus trap:** фокус лишається всередині діалогу, Escape закриває, фокус повертається до
+  елемента, що відкрив діалог.
+
+> **Заплановано, не реалізовано:** полів авторизації (`username` / `password` у
+> `Disclosure`) у діалозі немає.
 
 ### 3.4. NowPlaying
 
-> **Примітка:** `NowPlaying` з `aria-live="polite"` існує тільки в `PlayerPanel` (§4.1, Phase 2), щоб уникнути подвійного оголошення screen reader.
-> У `StreamTable` поточний трек показується статично в комірці "Трек" (без `aria-live`).
+Поточний трек із `aria-live="polite"` існує тільки в `PlayerPanel` (§4.1) — щоб той самий
+факт не озвучувався двічі. У рядку списку трек показується статично, сегментом «Трек»
+(без `aria-live`), і несе два кваліфікатори просто в тексті: «Востаннє грав: …» для
+зупиненого потоку і «(ігнорується)» для треку з ignorelist.
 
 ### 3.5. First-run experience (перший запуск)
 
-Якщо `streams.length === 0` при першому старті:
-- Фокус автоматично переходить до кнопки "Додати потік" (empty state в StreamTable)
-- LiveAnnouncer оголошує (`assertive`): _"Tapir відкрито вперше. Додайте перший потік для запису."_
-- Empty state StreamTable показує CTA кнопку з `autoFocus` (див. §3.1)
-- Оголошення виконується один раз після першого mount головного вікна; повторні ререндери не повинні дублювати announcement
+Якщо після завантаження даних `streams.length === 0`:
+- LiveAnnouncer оголошує (`assertive`): _«Ласкаво просимо до Tapir. Натисніть Enter щоб
+  додати перший потік.»_ — рівно один раз, у момент завантаження списку
+- Фокус іде **в Activity Bar** (перший пункт навігації) — як і за будь-якого іншого старту;
+  окремого автофокуса на кнопці порожнього стану немає
+- Порожній стан — зона `streams-empty` (`role="region"`) з текстом «Список потоків
+  порожній.», кнопкою «Додати приклади потоків» і підказкою про командну палітру. Підказка
+  свідомо не є фокус-стопом: NVDA читає її в browse mode у порядку документа
 
 ### 3.6. Контекстне меню
 
-React Aria `Menu`:
+React Aria `MenuTrigger` + `Popover` + `Menu` (`aria-label="Контекстне меню потоку"`);
+кнопка-тригер має `aria-label="Дії для {назва}"`. Пункти (умовні — за станом рядка й
+виділенням):
 
-```tsx
-<MenuTrigger>
-  <Button aria-label={m.streamActions()}><MoreIcon /></Button>
-  <Popover>
-    <Menu aria-label={m.streamContextMenu()}>
-      <MenuItem onAction={startRecording}>{m.startRecording()}</MenuItem>
-      <MenuItem onAction={stopRecording}>{m.stopRecording()}</MenuItem>
-      <Separator />
-      <MenuItem onAction={playStream}>{m.play()}</MenuItem>
-      <Separator />
-      <MenuItem onAction={editStream}>{m.edit()}</MenuItem>
-      <MenuItem onAction={removeStream}>{m.remove()}</MenuItem>
-    </Menu>
-  </Popover>
-</MenuTrigger>
+```
+Слухати / Зупинити відтворення
+Почати запис / Зупинити запис
+Відкрити у програвачі
+Редагувати
+Додати трек у wishlist / Додати трек в ignorelist
+Копіювати адресу
+Копіювати у профіль… / Копіювати виділені (N)
+Перенести у профіль… / Перенести виділені (N)
+──────────
+Видалити / Видалити виділені (N)
 ```
 
-**Shift+F10 / ContextMenu key:** React Aria `MenuTrigger` не обробляє `Shift+F10` автоматично на `Row`. Потрібен явний обробник:
+Гліфи-маркери в тексті пунктів — `aria-hidden="true"`, тож меню читається словами.
 
-```tsx
-<Row
-  onKeyDown={(e) => {
-    if (e.key === "ContextMenu" || (e.shiftKey && e.code === "F10")) {
-      e.preventDefault();
-      openContextMenu(stream.id);
-    }
-  }}
->
-```
+**`Shift+F10` / `ContextMenu`** обробляє не `MenuTrigger`, а сам список
+([useCompositeList.ts](../src/hooks/useCompositeList.ts)): роумінг-фокус тримає рядок, а
+не кнопку меню, тож клавішу треба ловити на рівні списку й відкривати меню активного рядка.
 
 ---
 
-## 4. Секція: Програвач (Player) [Phase 2]
+## 4. Секція: Програвач (Player)
 
 ### 4.1. Структура
 
+Постійна зона внизу вікна — не окрема секція, тож у циклі F6 вона є завжди, але фокус бере
+лише коли щось грає.
+
 ```
 PlayerPanel (role="complementary", aria-label="Програвач")
-├── NowPlayingInfo
-│   ├── Station name
-│   └── Track: Artist - Title (aria-live="polite")
-├── PlaybackControls (role="toolbar", aria-label="Управління відтворенням")
-│   ├── Button: Попередній трек (aria-label)
-│   ├── Button: Play/Pause (aria-pressed для toggle)
-│   ├── Button: Зупинити (aria-label)
-│   └── Button: Наступний трек (aria-label)
-├── ProgressBar (для файлів)
-│   └── React Aria ProgressBar (aria-label="Позиція", aria-valuenow, aria-valuemin, aria-valuemax)
-└── VolumeSlider
-    └── React Aria Slider (aria-label="Гучність", 0-100%)
+└── role="application" aria-label="Програвач"        ← сюди приходить роумінг-фокус
+    ├── role="group" aria-label="Зараз грає"
+    │   ├── <h3 aria-hidden>            (візуальний заголовок панелі)
+    │   ├── aria-live="polite":
+    │   │   ├── назва джерела (станція / файл) + RecordingBadge для файлу
+    │   │   └── "Artist — Title" (лише для потоку)
+    │   └── бітрейт + LiveBadge         (лише для потоку)
+    ├── role="group" aria-label="Керування"
+    │   ├── Button: Попередній трек     (aria-label, isDisabled коли нікуди)
+    │   ├── Button: Play/Pause/Stop     ← джерело-залежна, див. §4.2
+    │   ├── Button: Зупинити            (лише для файлу)
+    │   ├── Button: Наступний трек      (aria-label, isDisabled коли нікуди)
+    │   ├── Button: Звук вимкнути/увімкнути (aria-pressed)
+    │   └── PlaybackPosition            (§4.4)
+    └── role="group" aria-label="Вивід"
+        ├── Пристрій виведення (фокус-стоп, aria-label="Пристрій: {name}")
+        └── VolumeSlider                (§4.3)
 ```
 
-Для Windows High Contrast (`forced-colors:`): thumb, track і focus ring slider мають використовувати системні кольори `ButtonText`, `ButtonFace`, `Highlight`.
+**Тулбара (`role="toolbar"`) тут немає.** Зона — `role="application"` з власною моделлю
+навігації ([usePlayerZoneNav](../src/hooks/usePlayerZoneNav.ts)): `←`/`→` ходять по
+**всіх** фокус-стопах зони (тексти й кнопки впереміш), `Home`/`End` — на перший/останній,
+`Tab` виводить із зони. Тексти (назва джерела, трек, бітрейт, пристрій) — теж фокус-стопи
+(`tabIndex={-1}`), щоб їх можна було перечитати, не вмикаючи browse mode.
 
-### 4.2. Play/Pause Toggle
+Вимкнені стопи з набору випадають: коли грає потік, немає окремої «Зупинити» і немає
+повзунка позиції; коли нічого не грає, вимкнено всі — і зона автоматично віддає фокус далі.
+
+Для Windows High Contrast (`forced-colors:`): thumb, track і focus ring повзунків
+використовують системні кольори `ButtonText`, `Canvas`, `Highlight`.
+
+### 4.2. Основна кнопка транспорту
+
+Це **звичайна `Button`, не `ToggleButton`**, і `aria-pressed` вона не має: стан читається з
+імені, яке міняється разом із дією.
 
 ```tsx
-<ToggleButton
-  aria-label={isPlaying ? m.pause() : m.play()}
-  isSelected={isPlaying}
-  onChange={togglePlayback}
+<Button
+  aria-label={isStream ? m.stop_stream_playback() : isPlaying ? m.pause() : m.play()}
+  isDisabled={!isActive}
+  onPress={handlePlayPause}
 >
-  {isPlaying ? <PauseIcon /> : <PlayIcon />}
-</ToggleButton>
+  {isStream ? <Square/> : isPlaying ? <Pause/> : <Play/>}
+</Button>
 ```
 
-NVDA/JAWS читає: "Play, toggle button, not pressed" → "Pause, toggle button, pressed".
+Кнопка **джерело-залежна** (як і `Ctrl+Shift+K`, трей-перемикач та SMTC): для **файлу** —
+Play/Pause (пауза/відновлення з позиції); для **живого потоку** — Stop (паузи в ефірі
+немає — буфер застаріває й слухач відстає). Для потоку окрема кнопка «Зупинити» не
+рендериться, щоб скрінрідер не бачив дві однакові кнопки Stop.
 
-Основна кнопка транспорту **джерело-залежна** (як і `Ctrl+Shift+K`, трей-перемикач та SMTC): для **файлу** — Play/Pause (пауза/відновлення з позиції); для **живого потоку** — Stop (паузи в ефірі немає — буфер застаріває й слухач відстає). Для потоку окрема кнопка «Зупинити» не рендериться, щоб скрінрідер не бачив дві однакові кнопки Stop.
+Оголошення переходу шле не кнопка, а обробник події `player-status` в
+[App.tsx](../src/App.tsx) — так натискання кнопки й натискання хоткея звучать однаково
+(§13, «Оголошення toggle_playback»).
+
+Кнопка **звуку** — навпаки, `aria-pressed`: стан «звук вимкнено» тримається предикатом
+`isSoundOff` (вимкнено прапорцем **або** зведено до нуля), і обидва шляхи для користувача
+однакові.
 
 ### 4.3. Volume Slider
 
-React Aria `Slider`:
+React Aria `Slider` **без `<Label>` і без `<SliderOutput>`**: ім'я дає `aria-label`, а
+значення — `aria-valuetext`, який ставиться на input повзунка через
+[useSliderThumbInput](../src/hooks/useSliderThumbInput.ts).
 
 ```tsx
-<Slider
-  aria-label={m.volume()}
-  minValue={0}
-  maxValue={100}
-  step={1}
-  value={volume}
-  onChange={setVolume}
-  formatOptions={{ style: "percent", maximumFractionDigits: 0 }}
->
-  <Label>{m.volume()}</Label>
-  <SliderOutput />   {/* "75%" — screen reader читає це */}
+<Slider aria-label={m.volume()} minValue={0} maxValue={100} step={1} value={percent} …>
   <SliderTrack>
-    <SliderThumb />
+    <SliderThumb inputRef={thumbInputRef} onKeyDown={…} />
   </SliderTrack>
+  {/* видимий носій того самого числа */}
+  <span aria-hidden="true">{volumeText}</span>
 </Slider>
 ```
 
-**Клавіші:** Arrow Left/Right (±1%), Page Up/Down (±10%), Home (0%), End (100%).
+**Чому не `formatOptions`.** `useSliderThumb` жорстко ставить `aria-valuetext` із
+`state.getThumbValueLabel(index)`, а проп із `<SliderThumb>` до input не доходить узагалі —
+тож задати текст значення ззовні не можна, тільки пропатчити атрибут. Сам
+`formatOptions` теж не шлях: `{ style: "percent" }` при `minValue=0 maxValue=100` множить
+на сто й дає «4 500 %», а для позиції треку («2 хв 14 с») потрібного формату не дає жоден
+`Intl`. Робочий варіант для гучності був би `{ style: "unit", unit: "percent" }`, але для
+пари повзунків потрібен один механізм, і це `useSliderThumbInput`.
 
-### 4.4. Playback Position (файл)
+Видимий `<span>` — `aria-hidden`: thumb уже промовляє точно той самий рядок, друга копія
+читалася б двічі. Обидва беруть число з одного `volumePercent()`, щоб не розійтись
+округленням.
 
-Для seekable файлів — `Slider` (інтерактивний), для live потоків — `ProgressBar` (read-only, `isIndeterminate`).
+**Клавіші (свідомо не типові для React Aria — зона програвача важливіша за конвенцію повзунка):**
+
+| Клавіша | Дія |
+|---|---|
+| `↑` / `↓` | Гучність ±крок профілю (за замовчуванням 5 %) |
+| `←` / `→` | Попередній / наступний **елемент зони**, не зміна значення |
+| `Home` / `End` | Перший / останній елемент зони |
+| `PageUp` / `PageDown` | **No-op** (перехоплені, щоб не спрацював дефолт браузера/RAC) |
+
+### 4.4. Playback Position
+
+Для файлу з відомою тривалістю — `Slider`; для живого потоку — `ProgressBar`
+(`aria-label="Живий потік"`, `isIndeterminate`); для файлу з невідомою тривалістю повзунка
+немає взагалі — лишається текст позиції (повзунку потрібен максимум, а позицію показати
+все одно треба).
 
 ```tsx
-{source === "file" ? (
-  <Slider
-    aria-label={m.playbackPosition()}
-    minValue={0}
-    maxValue={durationMs}
-    value={positionMs}
-    step={1000}           // 1 секунда
-    onChange={(val) => invoke("seek", { positionMs: val })}
-    formatOptions={/* MM:SS formatter */}
-  >
-    <Label>{formatTime(positionMs)}</Label>
-    <SliderOutput>{formatTime(durationMs)}</SliderOutput>
-    <SliderTrack><SliderThumb /></SliderTrack>
-  </Slider>
-) : (
-  <ProgressBar
-    aria-label={m.liveStream()}
-    isIndeterminate
-  />
-)}
+<Slider aria-label={m.playback_position()} minValue={0} maxValue={durationMs} step={5000} …>
+  <SliderTrack><SliderThumb inputRef={thumbInputRef} onKeyDown={…} onKeyUp={…} /></SliderTrack>
+  <span aria-hidden="true">{positionText}</span>
+</Slider>
 ```
 
-**Клавіші Slider:** Arrow Left/Right (±1 сек), Page Up/Down (±10 сек), Home (0:00), End (кінець).
+- **Крок — 5000 мс**, не 1000.
+- `aria-valuetext` — `m.time_format_min_sec` («2 хв 14 с»), через `useSliderThumbInput`, не
+  через `formatOptions` (§4.3).
+- Позиція **не** кладеться в `<Label>`: це стало б **іменем** повзунка, а не значенням.
+- Seek іде на `onKeyUp` для клавіатури (RAC не завжди шле `onChangeEnd`) і на `onChangeEnd`
+  для миші — обидва шляхи стережуться одним `dragPosRef`, щоб не сікнути двічі.
+
+**Клавіші** — дзеркало §4.3: `↑`/`↓` рухають позицію (±5 с), `←`/`→` і `Home`/`End` ходять
+по елементах зони, `PageUp`/`PageDown` — no-op.
 
 ---
 
@@ -489,102 +519,98 @@ React Aria `Slider`:
 ### 5.1. Структура
 
 ```
-BrowserPanel
-├── SearchForm (role="search", aria-label="Пошук станцій")
-│   ├── ComboBox: Назва станції (autocomplete)
-│   ├── Select: Формат (MP3/AAC/Усі)
-│   ├── NumberField: Мін. бітрейт
-│   └── Button: Пошук
-├── ResultsTable (role="grid", aria-label="Результати пошуку")
-│   ├── Columns: Назва, Жанр, Країна, Бітрейт, Формат
-│   └── Rows (з aria-label per row)
-└── StatusLine (aria-live="polite")
-    └── "Знайдено 42 станції" / "Пошук..." / "Нічого не знайдено"
+BrowserPanel (role="region", aria-label="Браузер станцій")
+├── ScreenZone id="browser-selection" (role="application", aria-label="Дії з вибраними станціями")
+│   └── ScreenHeader + SelectionToolbar: Виділити все (0) · Додати вибрані (N) (1)
+├── ScreenZone id="browser-search" (role="search", aria-label="Пошук і фільтри")
+│   ├── SearchField (aria-label="Назва станції або жанр...", autoFocus) — debounce
+│   ├── Select: Країна · Select: Мова · Select: Кодек
+│   ├── NumberField: Мін. бітрейт (0…320, крок 32)
+│   └── Button: Скинути фільтри   (лише коли фільтр активний)
+├── <h2>: «Популярні станції»     (поки пошук не виконано)
+└── ListCard → StationList (role="application", aria-label="Результати пошуку")
+    ├── loading: role="status" aria-live="polite"
+    ├── error:   role="alert"
+    └── empty:   role="status"
 ```
 
-**Empty states:**
-- До пошуку: "Введіть назву станції для пошуку" — focus на `SearchForm.input`
-- 0 результатів: "Нічого не знайдено за '{query}'" — кнопка "Очистити пошук"
+Кнопки «Пошук» немає — запит іде за дебаунсом при введенні. Окремого `StatusLine` теж
+немає: «Знайдено N» не оголошується, стан пошуку несуть `role="status"` / `role="alert"`
+всередині списку.
 
-### 5.2. ComboBox (пошук)
+### 5.2. Поле пошуку
 
-React Aria `ComboBox`:
+Це React Aria **`SearchField`**, не `ComboBox`: підказок-автодоповнення застосунок не
+будує, тож `listbox` пропонувати нема з чого.
 
 ```tsx
-<ComboBox
-  aria-label={m.searchStation()}
-  allowsCustomValue
-  onInputChange={setQuery}
->
-  <Label>{m.stationName()}</Label>
-  <Input />
-  <Button aria-label={m.clearSearch()}>×</Button>
-  <Popover>
-    <ListBox>
-      {suggestions.map(s => (
-        <ListBoxItem key={s.id}>{s.name}</ListBoxItem>
-      ))}
-    </ListBox>
-  </Popover>
-</ComboBox>
+<SearchField aria-label={m.browser_search_placeholder()} autoFocus onChange={…} onClear={…}>
+  <Input ref={searchInputRef} placeholder={…} />
+</SearchField>
 ```
 
-**Оголошення:** при появі suggestions NVDA/JAWS читає кількість ("5 results available"). При 0 результатах після введення — `announce(m.noSuggestions(), "polite")` ("Жодних підказок").
+`searchInputRef` — та сама точка, куди веде `Ctrl+F`: зона віддає його через
+`ZoneEntry.focusSearch()`, і якщо фокус уже там — текст виділяється
+([focusOrSelect](../src/lib/focusOrSelect.ts)).
+
+> **Заплановано, не реалізовано:** `ComboBox` із підказками назв станцій і оголошенням
+> «Жодних підказок».
 
 ### 5.3. Додавання станції з результатів
 
-При натисканні Enter або кнопки "Додати" в контекстному меню:
-
-- `announce("Станцію додано: {name}", "assertive")`
-- Focus залишається на поточному рядку
+- Одна станція: `announce("Станцію «{name}» додано", polite)`; якщо кодек не підтримується
+  — «…додано — кодек {codec} Tapir не записує». Станція, що вже є в профілі, відповідає
+  «Станцію «{name}» вже додано».
+- Виділення (`Додати вибрані`): один зведений `announce(polite)` на всю операцію.
+- **Фокус свідомо не рухається** — залишається на рядку/кнопці, з якої дію запустили.
 
 ---
 
-## 6. Секція: Збережені пісні (Saved Songs)
+## 6. Секція: Збережені записи (Saved Songs)
 
 ### 6.1. Структура
 
 ```
-SongsPanel
-├── FilterBar (role="toolbar", aria-label="Фільтри")
-│   ├── SearchField: Пошук (aria-label="Пошук пісень")
-│   ├── Select: Станція
-│   └── Select: Статус (усі / повні / неповні / wishlist)
-├── SongsTable (role="grid", aria-label="Збережені пісні")
-│   ├── Columns: Артист, Назва, Станція, Бітрейт, Тривалість, Розмір, Дата
-│   └── Sortable columns з aria-sort
-├── SongActions (role="toolbar", aria-label="Дії з піснями")
-│   ├── Button: Відтворити
-│   ├── Button: Редагувати теги
-│   ├── Button: Видалити
-│   └── Button: Показати в провіднику
-└── StatusLine (aria-live="polite")
-    └── "128 пісень, 2.4 ГБ" / "Фільтр: 15 з 128"
+SongsPanel (role="region", aria-label="Записи")
+├── ScreenZone id="songs-selection" (role="application", aria-label="Дії з вибраними піснями")
+│   └── ScreenHeader + SelectionToolbar: Виділити все (0) · Видалити вибрані (N) (1)
+├── zone id="songs-filter" (role="region", aria-label="Фільтр записів")
+│   ├── <input type="search"> — мітка в sr-only <span>
+│   ├── <select>: Станція (усі / конкретна)
+│   └── <select>: Сортування (дата / назва / артист / розмір)
+└── ListCard
+    ├── loading: role="status" · error: role="alert" · empty: role="status"
+    └── SongsList (role="application", aria-label="Список записів")
 ```
 
-**Empty state:** "Збережених пісень ще немає. Вони з'являться тут після записів."
+Зона фільтра — єдина в цій секції, що віддає `ZoneEntry.focusSearch()`, тож `Ctrl+F` на
+екрані «Записи» веде саме в поле пошуку.
+
+Окремого тулбара дій із піснею (Відтворити / Теги / Видалити / Показати в провіднику) на
+екрані немає: ці дії живуть у рядку — кнопкою «Відтворити/Зупинити» і меню рядка (§6.3).
+Рядка стану («128 пісень, 2.4 ГБ») теж немає.
 
 ### 6.2. Tag Editor Dialog
 
-```tsx
-<DialogTrigger>
-  <Button>{m.editTags()}</Button>
-  <Modal>
-    <Dialog aria-label={m.editTagsTitle()}>
-      <Heading slot="title">{m.editTagsTitle()}</Heading>
-      <TextField label={m.artist()} value={tags.artist} onChange={...} autoFocus />
-      <TextField label={m.title()} value={tags.title} onChange={...} />
-      <TextField label={m.album()} value={tags.album} onChange={...} />
-      <TextField label={m.genre()} value={tags.genre} onChange={...} />
-      <NumberField label={m.trackNumber()} value={tags.trackNumber} onChange={...} />
-      <div role="group" aria-label={m.dialogActions()}>
-        <Button slot="close">{m.cancel()}</Button>
-        <Button type="submit" onPress={saveTags}>{m.save()}</Button>
-      </div>
-    </Dialog>
-  </Modal>
-</DialogTrigger>
+Відкривається `F4` на рядку або пунктом меню «Редагувати теги…». Звичайний `Dialog` із
+`Heading slot="title"`; поля — нативні `<input>` у `<label>`:
+
 ```
+Назва (autoFocus) · Артист · Альбом · Жанр
+[Скасувати] [Зберегти]
+```
+
+Номера треку в редакторі немає. Успіх — тост «Теги оновлено», помилка — тост із текстом.
+Закриття з незбереженими змінами перепитує (`window.confirm`).
+
+### 6.3. Дії з рядком
+
+`F2` — перейменувати файл (`RenameDialog`), `F4` — редагувати теги, `Delete` — видалити.
+Меню рядка (`Shift+F10`, `aria-label` = «Дії»): Відтворити, Відкрити у програмі,
+Відкрити в Explorer, Перейменувати…, Редагувати теги…, Видалити.
+
+Видалення працює за **моделлю провідника**: якщо рядок усередині виділення — дія бере
+все виділення; якщо поза ним — виділення замінюється на цей рядок, і дія бере його одного.
 
 ---
 
@@ -593,61 +619,49 @@ SongsPanel
 ### 7.1. Структура
 
 ```
-SchedulePanel
-├── ScheduleTable (role="grid", aria-label="Заплановані записи")
-│   ├── Columns: Назва, Потік, Тип, День, Час, Тривалість, Статус
-│   └── Row: aria-label="{name}, {stream}, {day} о {time}, {duration} хв"
-├── Toolbar
-│   ├── Button: Додати запис
-│   └── Button: Увімкнути/Вимкнути
-└── StatusLine (aria-live="polite")
+SchedulePanel (role="region", aria-label="Розклад")
+├── ScreenZone id="schedule-toolbar" (role="application", aria-label="Панель дій розкладу")
+│   └── ScreenHeader + Додати (0) + SelectionToolbar: Виділити все (1) · Видалити вибрані (2)
+└── ListCard
+    ├── loading: role="status" · error: role="alert" · empty: role="status"
+    └── ScheduleTable → CompositeList (role="application", aria-label="Список розкладів")
+        └── рядок: aria-roledescription="розклад", кнопка Увімкнути/Вимкнути з aria-pressed
 ```
 
-**Empty state:** "Жодних запланованих записів" — кнопка "Додати запис" (`autoFocus`)
+Назва `ScheduleTable` — історична: усередині той самий composite list, що й скрізь, а не
+`role="grid"`.
 
 ### 7.2. ScheduleForm Dialog
 
-```tsx
-<Dialog aria-label={isEdit ? m.editSchedule() : m.addSchedule()}>
-  <Heading slot="title">{isEdit ? m.editSchedule() : m.addSchedule()}</Heading>
-  
-  <TextField label={m.recordingName()} autoFocus />
-  
-  <Select label={m.stream()} isRequired>
-    {streams.map(s => <SelectItem key={s.id}>{s.name}</SelectItem>)}
-  </Select>
-  
-  <RadioGroup label={m.scheduleType()}>
-    <Radio value="oneshot">{m.oneshot()}</Radio>
-    <Radio value="recurring">{m.recurring()}</Radio>
-  </RadioGroup>
-  
-  {/* Conditional: day selector */}
-  {type === "recurring" && (
-    <Select label={m.dayOfWeek()}>
-      <SelectItem key="0">{m.monday()}</SelectItem>
-      {/* ... */}
-    </Select>
-  )}
-  
-  {type === "oneshot" && (
-    <DatePicker label={m.date()} description="ДД.ММ.РРРР" />
-  )}
-  
-  <TimeField label={m.startTime()} isRequired />
-  <NumberField label={m.durationMinutes()} minValue={1} isRequired />
-</Dialog>
+`Dialog` із `Heading slot="title"` («Додати розклад» / «Редагувати розклад»); поля —
+нативні контролі, крім вибору потоку (React Aria `Select`):
+
+```
+Назва                       — <input type="text">, autoFocus
+Потік                       — <Select> (React Aria)
+Тип                         — <fieldset><legend>: два <input type="radio">
+                              (щотижня / одноразово)
+Дні тижня                   — <fieldset><legend> + 7 × <input type="checkbox">   (щотижня)
+Дата                        — <input type="date">                                (одноразово)
+Початок · Кінець            — два <input type="time">   ← НЕ тривалість у хвилинах
+Підказка про перехід за північ
+Увімкнено                   — <input type="checkbox">
+[Скасувати] [Зберегти]
 ```
 
-### 7.3. Статус у таблиці
+Вікно задається **парою часів**, не тривалістю; помилки валідації (порожня назва, не
+вибрано потік, не вибрано днів, немає дати, немає часу, однаковий початок і кінець) —
+окремими повідомленнями.
 
-| Enabled | Стан | Accessible текст |
-|---|---|---|
-| true | Очікує | "Увімкнено, очікує" |
-| true | Записує | "Увімкнено, записується" |
-| false | — | "Вимкнено" |
+### 7.3. Статус у рядку
 
-Toggle через `aria-pressed` кнопку або checkbox.
+| Enabled | Текст у рядку |
+|---|---|
+| `true` | «Увімкнено» |
+| `false` | «Вимкнено» |
+
+Перемикач — кнопка з `aria-pressed`, ім'я змінюється разом зі станом
+(«Увімкнути» / «Вимкнути»).
 
 ---
 
@@ -656,40 +670,44 @@ Toggle через `aria-pressed` кнопку або checkbox.
 ### 8.1. Структура
 
 ```
-WishlistPanel
-├── Tabs (внутрішні): [Wishlist] [Ignorelist]
-│   Keyboard: Arrow Left/Right між табами (React Aria Tabs стандарт)
-├── WishlistTable (role="grid", aria-label="Список бажаних пісень")
-│   ├── Columns: Патерн, Мін. бітрейт, Формат, Опції
-│   └── Row: aria-label описує весь запис
-├── Toolbar
-│   ├── Button: Додати
-│   ├── Button: Видалити вибрані
-│   ├── Button: Імпорт з файлу
-│   └── Button: Експорт у файл
-└── IgnorelistTable (аналогічно)
+WishlistPanel (role="region", aria-label="Вішліст")
+├── ScreenHeader: заголовок екрана (без дій)
+├── ScreenZone id="wishlist-controls" (role="application", aria-label="Список і дії")
+│   ├── TabList (aria-label="Вішліст"): Бажані треки · Ігноровані треки · Збіги в ефірі
+│   │   Keyboard: ←/→ між табами
+│   └── role="toolbar" aria-label="Список і дії"   (немає на вкладці «Збіги в ефірі»)
+│       ├── Button: Додати патерн              (0)
+│       ├── Button: Виділити все / Зняти       (1)
+│       └── Button: Видалити вибрані (N)       (2)
+└── TabPanel × 3 → ListCard
+    ├── «Бажані треки» / «Ігноровані треки» → PatternList (role="application")
+    │       aria-label = назва самої вкладки, не «Список патернів»
+    ├── «Збіги в ефірі» → MatchList (role="application", aria-label="Список збігів") — журнал, без дій
+    └── порожній список → role="region" з текстом порожнього стану замість списку
 ```
 
-**Empty states:**
-- Wishlist: "Wishlist порожній. Додайте патерн для автоматичного запису треків." — кнопка "Додати" (`autoFocus`)
-- Ignorelist: "Ignorelist порожній."
+Три вкладки, не дві: третя — **журнал збігів**, видимий носій події «знайдено бажану
+пісню» (§11.1). Журнал сіється на старті застосунку, а не при відкритті вкладки: збіги
+йдуть, поки вікно згорнуте.
 
-### 8.2. Додавання запису
+Кнопок імпорту/експорту патернів немає.
 
-```tsx
-<Dialog aria-label={m.addToWishlist()}>
-  <TextField label={m.pattern()} autoFocus 
-    description={m.patternHint()} />  {/* "Використовуйте * та ? для шаблонів" */}
-  <NumberField label={m.minBitrate()} />
-  <Select label={m.format()}>
-    <SelectItem key="any">{m.anyFormat()}</SelectItem>
-    <SelectItem key="mp3">MP3</SelectItem>
-    <SelectItem key="aac">AAC</SelectItem>
-  </Select>
-  <Checkbox>{m.removeAfterRecord()}</Checkbox>
-  <Checkbox>{m.addToIgnorelistAfterRecord()}</Checkbox>
-</Dialog>
+**Діалог живе поза `<Tabs>`.** `react-aria-components` `Tabs` — колекційний компонент: він
+рендерить дітей двічі, тож `createPortal` усередині нього монтує модалку двічі, і два живих
+оверлеї взаємно ховають одне одного через `ariaHideOutside` — діалог із його полем зникає
+з дерева доступності, і NVDA мовчить на відкритті. Портал мусить бути **сусідом** `<Tabs>`.
+
+### 8.2. Додавання запису (AddPatternDialog)
+
 ```
+Патерн (autoFocus) + підказка синтаксису
+[Скасувати] [Додати / Зберегти]
+```
+
+Одне поле. Мін. бітрейту, формату й прапорців «видалити після запису» / «додати в
+ignorelist після запису» в діалозі немає — форму патерна тримає підказка під полем, а її
+форму (пара «виконавець — назва») стереже
+[patternHint.test.ts](../src/i18n/patternHint.test.ts).
 
 ---
 
@@ -701,27 +719,31 @@ WishlistPanel
 підпис довелося б повторювати на кожному контролі, і він однаково не
 оголошується, поки в групу не зайти.
 
-Обидва — `role="dialog"` з `aria-label`, focus trap, Escape закриває, вертикальний
+Обидва — `Dialog` з `aria-label`, focus trap, Escape закриває, вертикальний
 `TabList` з власною міткою «Розділи налаштувань» (не `aria-label` діалогу вдруге),
 збереження автоматичне (дебаунс 300 мс) — кнопок «Підтвердити»/«Скасувати» немає.
+У шапці кожного — кнопка закриття з `aria-label="Закрити"`.
 
 Точки входу в **налаштування програми**:
-- ⚙️ gear (Activity Bar, над ProfileSwitcher)
+- ⚙️ gear — **у самому низу Activity Bar**, під кнопкою «Довідка» (профіль — навпаки, на
+  самому верху)
 - `Ctrl+,` (глобальний хоткей, toggle)
-- Command Palette → «Налаштування»
 
 Точки входу в **налаштування профілю**:
 - `Ctrl+Shift+,` — активний профіль, з будь-якої секції (toggle)
-- Command Palette → «Налаштування профілю…» — активний профіль
+- Command Palette → «Налаштування профілю» — активний профіль
 - Кнопка «Налаштування профілю «X»…» у налаштуваннях програми — вказівник на
   місці старої звички `Ctrl+,` → «Запис»
-- Контекстне меню рядка профілю (`Shift+F10`) — працює і для **неактивного**
-  профілю
+- Контекстне меню рядка профілю (`Shift+F10`) — працює і для **неактивного** профілю
+
+> **Заплановано, не реалізовано:** пункту «Налаштування» (програми) в командній палітрі
+> немає — там є лише «Налаштування профілю».
 
 ### 9.1. Структура
 
 ```
-SettingsDialog (role="dialog", aria-label="Налаштування")   ← ТІЛЬКИ глобальне
+SettingsDialog (Dialog, aria-label="Налаштування")   ← ТІЛЬКИ глобальне
+├── Heading slot="title" + Button aria-label="Закрити"
 ├── TabList (aria-label="Розділи налаштувань", orientation="vertical")
 │   └── Tabs: Загальні, Аудіо, Гарячі клавіші            (рівно три)
 │
@@ -729,11 +751,13 @@ SettingsDialog (role="dialog", aria-label="Налаштування")   ← ТІ
 │   ├── Select: Мова · Select: Тема
 │   ├── Checkbox: Згортати до трею замість закриття
 │   ├── Checkbox: Назва треку в заголовку
+│   ├── Select: Дія при активації потоку (запис / відтворення)
 │   ├── Checkbox: Автозапуск з Windows (+ Запускати згорнутим)
-│   └── Select: Дія при активації потоку (Enter / подвійний клік)
+│   ├── Логи: Checkbox «докладні логи» + <details> (рівень, макс. розмір)
+│   └── Про застосунок: версія, збірка, кнопка «Відкрити сторінку проєкту»
 │
 ├── TabPanel: Аудіо
-│   ├── Select: Пристрій виведення (з кнопкою Оновити)
+│   ├── Select: Пристрій виведення (+ Button: Оновити)
 │   ├── Checkbox: Інтеграція з медіаклавішами (SMTC)
 │   ├── NumberField: Поріг перезапуску для Prev
 │   └── NumberField: Крок гучності
@@ -747,7 +771,8 @@ SettingsDialog (role="dialog", aria-label="Налаштування")   ← ТІ
 ```
 
 ```
-ProfileSettingsDialog (role="dialog", aria-label="Налаштування профілю: X")
+ProfileSettingsDialog (Dialog, aria-label="Налаштування профілю: X")
+├── Heading slot="title" + Button aria-label="Закрити"
 ├── TabList (aria-label="Розділи налаштувань", orientation="vertical")
 │   └── Tabs: Запис, Відтворення, Інтерфейс, Постобробка   (рівно чотири)
 │
@@ -767,8 +792,8 @@ ProfileSettingsDialog (role="dialog", aria-label="Налаштування пр�
 │   └── Checkbox: Автоматично відтворювати наступний трек
 │
 ├── TabPanel: Інтерфейс
-│   ├── Select: Сортування (За назвою / За часом додавання)
-│   └── Checkbox: Сповіщення при зміні треку
+│   ├── Select: Сортування потоків
+│   └── Checkbox ×2: «Сповіщення в треї про зміну треку» / «…про плановий запис»
 │
 ├── TabPanel: Постобробка        ← aria-disabled="true", АЛЕ в навігації стрілками
 │   └── Text: пояснення, чому вкладка недоступна
@@ -784,9 +809,12 @@ react-aria прибрав би вкладку з навігації стрілк
 тож він виставляється через ref-колбек), вкладка лишається в навігації та в
 підрахунку — «вкладка 4 з 4», — а панель словами пояснює стан.
 
-**Автозбереження мусить бути чутним.** Візуального фідбеку немає взагалі, тож
-після кожного успішного запису діалог профілю оголошує «Налаштування збережено:
-X» (`polite`). Тиша тут для незрячого користувача нерозрізненна з «не збереглося».
+**Успішне автозбереження мовчить.** Раніше діалог профілю оголошував «Налаштування
+збережено: X»; правило видимого носія
+([ADR 2026-08-31](decisions/2026-08-31-visible-carrier-for-announced-facts.md) §5) цю
+репліку **зняло**: змінений контроль уже на екрані й уже прочитаний, а другого носія в
+факту «записалося» немає. Помилка запису, навпаки, лишається — і йде тостом, бо її не
+видно ніде більше.
 
 **Профіль зник із-під відкритого діалогу** (видалено або перейменовано ззовні):
 діалог закривається, причина оголошується `assertive` («Профіль «X» більше не
@@ -807,118 +835,152 @@ X» (`polite`). Тиша тут для незрячого користувача
 <div>
   <Label>{actionName}</Label>
   <Button
-    aria-label={`${actionName}: ${currentHotkey}. ${m.pressToChange()}`}
+    aria-label={isRecording
+      ? m.settings_hotkey_press_keys()
+      : `${actionName}: ${value || m.settings_hotkey_not_set()}${busy ? ", " + m.settings_hotkey_busy() : ""}. ${m.settings_hotkey_press_to_change()}`}
     onPress={startRecording}
     onKeyDown={captureKeys}
+    onBlur={disarm}            // озброєне поле без фокуса казало б «натисніть клавіші» нікому
   >
-    {isRecording ? m.pressKeys() : currentHotkey}
+    {isRecording ? m.settings_hotkey_press_keys() : value || "—"}
   </Button>
-  <Button aria-label={m.clearHotkey()} onPress={clearHotkey}>×</Button>
+  <Button aria-label={m.settings_hotkey_clear({ action: actionName })}>✕</Button>
+  {busy  && <span>{m.settings_hotkey_busy()}</span>}
+  {error && <span role="alert">…</span>}
 </div>
 ```
+
+**«Зайнято» — і в імені кнопки, і видимим написом поруч.** Відмову реєстрації видно з обох
+каналів; `role="alert"` лишається за помилкою введення, не за станом.
+
+`onPress` у react-aria спрацьовує на **keyup**, а запис комбінації ловиться на keydown —
+тож той самий Enter, яким кнопку озброїли, інакше одразу її б і роззброїв. Гасить це
+реф-прапорець, що з'їдає рівно одне наступне `onPress`.
 
 ### 9.3. Profile operations
 
 При перемиканні профілю:
 
-- Якщо є активні записи — показати `ConfirmDialog` перед `switch_profile`:
-  - Заголовок: _"Перемикання профілю"_
-  - Текст: _"Перемикання профілю зупинить {count} активних записів. Продовжити?"_
-  - Кнопка "Скасувати" — `autoFocus` (safe default)
-  - Кнопка "Перемкнути та зупинити" — `variant="destructive"`
+- Якщо є активні записи — `ConfirmDialog` перед `switch_profile`; для активного
+  **планового** запису — окремий текст із назвою розкладу й часом його кінця
 - Якщо немає активних записів — перемикання без підтвердження
-- `announce("Профіль змінено: {name}", "polite")`
-- Focus залишається на Select
+- `announce("Перемкнутися: {name}", polite)`; спроба перемкнутися на вже активний
+  профіль відповідає «Профіль уже активний»
+- Фокус лишається у списку профілів (окремого `Select` профілю в застосунку немає)
 
 При видаленні:
 
-- ConfirmDialog: "Видалити профіль '{name}'? Ця дія незворотна."
-- Focus trap в діалозі, Escape для скасування
+- **Заборона перевіряється до діалогу, а не після**: підтвердження, що закінчується
+  відмовою, не підтверджує нічого. Правило живе в
+  [profileDelete.ts](../src/lib/profileDelete.ts), усі одиночні шляхи йдуть через
+  `ProfilesPanel.handleRequestDelete`
+- ConfirmDialog: «Видалити профіль «{name}»?»; focus trap, Escape скасовує
 
 ---
 
 ## 10. Діалог підтвердження (ConfirmDialog)
 
-Уніфікований компонент для деструктивних дій:
+Уніфікований компонент для деструктивних дій
+([ConfirmDialog.tsx](../src/components/common/ConfirmDialog.tsx)):
 
 ```tsx
-<AlertDialog>
-  <Heading slot="title">{title}</Heading>
-  <Content>{message}</Content>
-  {/* Кнопка "Скасувати" першою — safe default при Enter */}
-  <Button slot="close" autoFocus>{m.cancel()}</Button>
-  <Button variant="destructive" onPress={onConfirm}>{confirmLabel}</Button>
-</AlertDialog>
+<ModalOverlay isOpen onOpenChange={…}>
+  <Modal>
+    <Dialog role="alertdialog">
+      <Heading slot="title">{title}</Heading>
+      <p>{message}</p>
+      {/* "Скасувати" першою — safe default при Enter */}
+      <button autoFocus onClick={onCancel}>{m.cancel()}</button>
+      <button onClick={onConfirm}>{confirmLabel ?? m.delete()}</button>
+    </Dialog>
+  </Modal>
+</ModalOverlay>
 ```
 
-**Focus:** `autoFocus` на "Скасувати" (safe default).  
-**Escape:** закриває без дії.  
+**Focus:** `autoFocus` на «Скасувати» (safe default).  
+**Escape / клік поза:** закриває без дії (`onOpenChange` → `onCancel`).  
 **Role:** `alertdialog` (NVDA/JAWS оголошують як alert).
+
+**Асинхронна перевірка перед підтвердженням.** Якщо діалог лишається відкритим і показує
+попередження після `await`, він мусить **явно** повернути фокус на кнопку підтвердження:
+`disabled` на час перевірки викидає фокус на `<body>`, і далі NVDA мовчить.
 
 ---
 
 ## 11. Оголошення для Screen Reader
 
+Два канали: невидимий `LiveAnnouncer` (§1.4) і видимий тост. Вибір між ними — не про
+терміновість, а про носія: факт, якого більше ніде на екрані немає, іде тостом.
+
 ### 11.1. Таблиця подій
 
-| Подія | Пріоритет | Текст (uk) |
-|---|---|---|
-| Track changed | `polite` | "Зараз грає: {artist} — {title}" |
-| Recording started | `assertive` | "Запис розпочато: {station}" |
-| Recording stopped | `assertive` | "Запис зупинено: {station}" |
-| Connection error | `assertive` | "Помилка з'єднання: {station}" |
-| Reconnecting | `polite` | "Перепідключення: {station}, спроба {n}" |
-| Reconnected | `polite` | "З'єднання відновлено: {station}" |
-| Scheduled started | `assertive` | "Плановий запис розпочато: {station}" |
-| Scheduled completed | `assertive` | "Плановий запис завершено: {station}" |
-| Wishlist match | `assertive` | "Знайдено бажану пісню: {title}" |
-| Disk space low | `assertive` | "Увага: мало місця на диску ({gb} ГБ)" |
-| Profile changed | `polite` | "Профіль змінено: {name}" |
-| Station added | `polite` | "Станцію додано: {name}" |
-| Station removed | `polite` | "Станцію видалено: {name}" |
-| Stream deleted (undo) | `polite` | "Потік \"{name}\" видалено. Скасувати — 5 сек." (undo toast з кнопкою) |
-| Song deleted | `polite` | "Пісню видалено: {name}" |
-| Tags saved | `polite` | "Теги збережено" |
-| Settings saved | `polite` | "Налаштування збережено" |
-| Search results | `polite` | "Знайдено {n} станцій" |
-| No results | `polite` | "Нічого не знайдено" |
+| Подія | Канал | Пріоритет | Текст (uk) |
+|---|---|---|---|
+| Запис розпочато | announce + тост | `polite` | «Запис розпочато: {name}» |
+| Запис зупинено | announce | `polite` | «Запис зупинено: {name}» |
+| Трек збережено | announce | `polite` | «Трек збережено: {fileName} ({name})» |
+| Помилка з'єднання | announce + тост | `assertive` | «Помилка з'єднання: {name}» |
+| Кодек не підтримується | тост | — | «{name}: кодек {codec} Tapir не записує» |
+| Відтворення почалось / пауза / відновлено / зупинено | announce | `assertive` | «Відтворення: {name}» / «Пауза — {name}» / «Відновлено — {name}» / «Зупинено — {name}» |
+| Підключення (cold start) | announce | `assertive` | «Підключення — {name}» |
+| Відновлення файлу з позиції | announce | `assertive` | «Відтворення — {name}, з {mm:ss}» |
+| Останнє відтворення недоступне | announce | `assertive` | «Останнє відтворення недоступне» |
+| Гучність (Ctrl+Alt+↑/↓) | announce | `assertive` | «Гучність {n}%» або «Звук вимкнено» |
+| Плановий запис: старт / кінець / пропущено / не стартував | announce | `assertive` | окремий ключ на кожну подію |
+| Збіг із wishlist | announce | `assertive` | «Знайдено бажаний трек: {artist} — {title} ({station})» — і рядок у журналі збігів (§8.1) |
+| Профіль перемкнено / створено / перейменовано / видалено / дубльовано / імпортовано | announce | `polite` | «{дія}: {name}», напр. «Перемкнутися: Робочий» |
+| Станцію додано | announce | `polite` | «Станцію «{name}» додано» |
+| Патерн додано / змінено / видалено | announce | `polite` | «{дія}: {pattern}» |
+| Виділення | announce | `polite` | «Виділено {n}» / «Виділення знято» / «{name}, виділено» |
+| Підсумок масової дії | announce | `polite` | «Видалено N», «Записано N», «Перенесено N» … |
+| Теги збережено | тост | — | «Теги оновлено» |
+| Запис видалено | announce | `assertive` | «Запис видалено» |
+| Кількість результатів палітри | announce | `polite` | «Результатів: {count}» |
+| Зміна треку в ефірі | **тост трею** (нативний) | — | заголовок — станція, тіло — «Artist — Title» |
+
+**Чого в таблиці навмисно немає:**
+
+- **«Зараз грає» на зміну треку** — фронтенд подію `track-changed` не озвучує: трек уже
+  видно в зоні програвача (`aria-live="polite"`) і в рядку списку, а на вимогу його читає
+  `F9`. Слухачеві поза вікном відповідає нативний тост трею (§15).
+- **«Перепідключення / З'єднання відновлено»** — стан видно в сегменті рядка (§3.2), і
+  жодного `announce` для нього немає (ключ `reconnecting` у словнику лишився невикористаним).
+- **«Мало місця на диску»** — теж лише видимий носій: метрика «Вільно» на екрані «Потоки»
+  й сегмент StatusBar із `aria-label` «Мало вільного місця: {space}».
+- **«Налаштування збережено»** — знято правилом видимого носія (§9.1).
 
 ### 11.2. Throttling
 
-Track-changed для того самого потоку throttle 3 секунди (ICY metadata іноді мерехтить).
+> **Заплановано, не реалізовано:** часового throttle (3 с) на зміну треку немає ні у
+> фронтенді, ні в Rust. Захист від мерехтіння ICY — **дедуплікація за значенням**:
+> сплітер не емітить `track-changed`, поки метадані не змінилися насправді
+> (`SplitAction::Skip` для незміненого треку).
 
 ### 11.3. Реалізація
 
 ```typescript
 // stores/announcer.ts
-import { atom } from "nanostores";
-
-interface Announcement {
+export interface AnnouncerMessage {
   message: string;
   priority: "polite" | "assertive";
-  id: number;
 }
 
-export const $announcement = atom<Announcement | null>(null);
+export const $announcer = atom<AnnouncerMessage | null>(null);
 
-let counter = 0;
-
-export function announce(message: string, priority: "polite" | "assertive" = "polite") {
-  $announcement.set({ message, priority, id: ++counter });
+// Модульна функція, не хук — щоб код у src/lib/ теж міг говорити в live region.
+// useAnnounce() — тонка обгортка над нею зі стабільною ідентичністю.
+export function announce(message: string, priority: "polite" | "assertive" = "polite"): void {
+  $announcer.set({ message, priority });
 }
-
-// hooks/useTauriAnnouncements.ts
-// Підписка на Tauri events → announce()
-listen("track-changed", (e) => {
-  announce(m.nowPlaying({ artist: e.payload.artist, title: e.payload.title }));
-});
-listen("recording-status", (e) => {
-  if (e.payload.status === "recording") {
-    announce(m.recordingStarted({ station: e.payload.stationName }), "assertive");
-  }
-  // ...
-});
 ```
+
+Лічильника `id` у повідомленні немає й не треба: повтор чутно, бо `LiveAnnouncer` на
+кожне повідомлення додає **новий вузол** у регіон (§1.4), а не переписує наявний.
+
+Підписки на події Tauri живуть не в одному хуку, а там, де в події є господар:
+`App.tsx` (`recording-status`, `player-status`, `player-announce`, `wishlist-match`,
+`transport-skip`, …), `useScheduleEvents`, `useCliFeedback`, `useAutostartFeedback`,
+`useHotkeyBusyFeedback`, `useCrashResumeFeedback`, `useBrowserProbeFeedback`.
 
 ---
 
@@ -950,6 +1012,9 @@ document.addEventListener("keydown", (e) => {
 `event.code`. Правило залишається обов'язковим для **літер і цифр**, де розкладка
 й вирішує.
 
+Той самий трюк рятує кому: `Ctrl+,` і `Ctrl+Shift+,` метчаться по `e.code === "Comma"`,
+тож українська розкладка, де кома вимагає Shift, нічого не ламає.
+
 > React Aria Components вже використовує `event.code` внутрішньо. Це правило стосується кастомних обробників.
 
 ---
@@ -960,16 +1025,23 @@ document.addEventListener("keydown", (e) => {
 |---|---|---|
 | Toggle recording | Ctrl+Shift+R | Global (працює у фоні) |
 | Toggle playback | Ctrl+Shift+K | Global |
-| Volume up (+5%) | Ctrl+Alt+Up | Global |
-| Volume down (-5%) | Ctrl+Alt+Down | Global |
+| Volume up | Ctrl+Alt+Up | Global |
+| Volume down | Ctrl+Alt+Down | Global |
 | Show/hide window | Ctrl+Shift+H | Global |
 | Stop all (зупинити весь запис) | Ctrl+Shift+S | Global |
 | Previous track | Ctrl+Alt+Left | Global |
 | Next track | Ctrl+Alt+Right | Global |
 
+Крок гучності — профільне налаштування «Крок гучності» (за замовчуванням 5 %), а не
+константа клавіші.
+
 Реалізація через `tauri-plugin-global-shortcut`. Усі клавіші налаштовуються.
 Принцип вибору дефолтів (літери на `Ctrl+Shift`, стрілки на `Ctrl+Alt`) —
 [keyboard-shortcuts.md](keyboard-shortcuts.md), розділ «Принципи вибору Tier-1 дефолтів».
+
+**Комбінація, яку не вдалося зареєструвати** (її тримає інший застосунок), доповідається
+один раз на перший показ вікна, а не мовчки ковтається: пам'ять доставлених реплік живе
+у `hotkeys-reported.json`, гейт — у `hotkey_busy::BusyNotice`.
 
 #### Оголошення toggle_playback (Ctrl+Shift+K)
 
@@ -987,7 +1059,7 @@ document.addEventListener("keydown", (e) => {
 | Останнє джерело недоступне | «Останнє відтворення недоступне» |
 
 Оголошення відповідають подіям `player-announce` (`kind`: `"stop"` / `"pause"` /
-`"resume"` / `"connecting"` / `"resuming"` / `"unavailable"` / `"error"`).
+`"resume"` / `"connecting"` / `"resuming"` / `"volume"` / `"unavailable"` / `"error"`).
 `"resuming"` — тільки cold-start-резюме файлу з позиції: озвучується **до**
 `play_file`, за тим самим патерном, що й `"connecting"` для стрімів (де-ризик +
 one-shot suppression наступного дубльованого «Відтворення: …»). Перемикач
@@ -996,35 +1068,56 @@ one-shot suppression наступного дубльованого «Відтв�
 
 ### Локальні клавіші (у вікні)
 
+Єдине джерело правди — реєстр `SHORTCUTS` ([shortcuts.ts](../src/lib/shortcuts.ts)):
+з нього ростуть і диспетч, і довідка `F1`, і список зарезервованих комбінацій, які
+KeyRecorder не дасть віддати під глобальний хоткей. Повна таблиця з контекстами —
+[keyboard-shortcuts.md](keyboard-shortcuts.md); тут — те, що визначає навігацію
+скрінрідером:
+
 | Клавіша | Scope | Дія |
 |---|---|---|
-| Escape | Modal dialog | Закрити діалог |
-| Escape | ComboBox popover | Закрити suggestions |
-| Delete | Stream table row | Видалити потік (з підтвердженням) |
-| F2 | Saved songs table row | Перейменувати |
-| Ctrl+F | Saved songs tab | Focus на пошук |
-| Ctrl+A | Any table | Вибрати всі |
-| F1 | будь-де (якщо focus не в input) | Відкрити довідку клавіатурних скорочень |
+| `F6` / `Shift+F6` | вікно (поза модалем) | Наступна / попередня зона |
+| `Alt+0`…`Alt+5` | вікно | Пряма навігація по секціях |
+| `Ctrl+K` | вікно | Командна палітра (toggle) |
+| `Ctrl+,` / `Ctrl+Shift+,` | вікно | Налаштування програми / профілю (toggle) |
+| `Ctrl+F` | вікно | Фокус у поле пошуку екрана; на екранах без пошуку — репліка вголос |
+| `Ctrl+M` | вікно | Вимкнути / увімкнути звук |
+| `F9` | вікно | Оголосити, що зараз грає |
+| `F1` | вікно | Довідка |
+| `Ctrl+N` | секція (Потоки / Профілі / Вішліст / Розклад) | Створити запис цієї секції |
+| `Escape` | модальний діалог | Закрити діалог |
+| `Escape` | список | Зняти виділення |
+| `Shift+F10` / `ContextMenu` | рядок списку | Меню рядка |
+| `Ctrl+Space` · `Ctrl+A` · `Shift+↑`/`↓` | список | Виділення |
+| `Enter` · `Shift+Enter` · `Ctrl+Enter` · `Alt+Enter` | рядок списку | Активація (див. §3.2) |
+| `F2` · `F4` · `F5` / `Shift+F5` · `Delete` · `Ctrl+C` | рядок списку | Редагувати · вміст · копіювати/перенести · видалити · копіювати адресу |
+
+`F3`, `F7` і `F11` у списку відсутні свідомо: `F11` — акселератор повноекранного режиму
+WebView2, а `F3`/`F7` лишаються вільним резервом (див. `useWebviewGuard`).
 
 ---
 
 ## 14. Status Bar
 
 ```
-StatusBar (role="contentinfo", aria-label="Статус")
-├── "Записується: 3 потоки" (або "Немає активних записів")
-├── "Диск: 45.2 ГБ вільно"
-├── "Найдовший: 02:34" (тривалість найдовшого активного запису, приховано якщо немає записів)
-└── "↓ 4.2 Mbps" (сумарна пропускна здатність, приховано якщо немає записів)
+<footer> (implicit contentinfo)
+└── role="application" aria-label="Статус"      ← роумінг-фокус, ←/→ між сегментами
+    ├── "3 записи" / "Немає записів"              aria-label="Тривалість запису: {той самий текст}"
+    ├── "45.2 ГБ"                                 aria-label="Вільно: 45.2 ГБ"
+    │                                             або "Мало вільного місця: {…}" при порозі
+    └── "02:34"                                   aria-label="Найдовший запис: 02:34"
+        (сегмент є лише поки триває хоч один запис)
 ```
 
-Кожна секція StatusBar має `aria-label`:
-- `aria-label="Активні записи"`
-- `aria-label="Вільний простір на диску"`
-- `aria-label="Тривалість найдовшого запису"`
-- `aria-label="Пропускна здатність"`
+Три сегменти, не чотири: сумарної пропускної здатності («↓ 4.2 Mbps») у рядку стану немає.
 
-Текст оновлюється через `aria-live="polite"` тільки при зміні кількості записів або критичному рівні диску.
+`aria-live` тут **немає жодного**: значення оновлюються щосекунди, поки триває запис, і
+живий регіон перетворив би рядок стану на безперервне бурмотіння. Стан читається на вимогу
+— `F6` до зони «Статус» (вона оголошує своє ім'я `polite`) і `←`/`→` по сегментах. Поріг
+диску карбується не кольором, а текстом мітки («Мало вільного місця»).
+
+Коли останній сегмент зникає (запис скінчився), роумінг-фокус повертається на перший
+сегмент — інакше він завис би на елементі, якого вже немає.
 
 ---
 
@@ -1037,8 +1130,8 @@ Tray menu — нативне контекстне меню Windows. Доступ
 ```
 Зараз грає: Radio Jazz — Miles Davis — So What      ← disabled, тільки якщо грає
 ─────────
-Грати / Пауза
-Зупинити                                              ← тільки якщо state != Stopped
+Грати / Пауза                                        ← disabled, поки стан = Stopped
+Зупинити                                             ← тільки якщо state != Stopped
 ─────────
 ● Записи: 2 активних                                 ← disabled, тільки якщо є записи
 Зупинити всі записи                                   ← тільки якщо є записи
@@ -1053,24 +1146,38 @@ Tray menu — нативне контекстне меню Windows. Доступ
 | Пункт | Screen reader оголосить | Примітка |
 |-------|------------------------|----------|
 | Зараз грає: … | "Зараз грає: {station} — {title}, недоступний" | `disabled` — NVDA додає "недоступний" |
-| Грати / Пауза | "Грати" або "Пауза" | Текст змінюється за станом |
+| Грати / Пауза | "Грати" або "Пауза" | Текст змінюється за станом; вимкнений, поки нічого не грає |
 | Зупинити | "Зупинити" | Видимий тільки при відтворенні |
 | ● Записи: N | "Записи: N активних, недоступний" | Інформаційний рядок |
 | Зупинити всі записи | "Зупинити всі записи" | Видимий тільки коли є записи |
 | Показати/Приховати | "Показати Tapir" або "Приховати Tapir" | |
-| Вихід | "Вихід" | Якщо є записи → confirm dialog |
+| Вихід | "Вихід" | Якщо є записи → нативний `MessageBox` (Yes/No, дефолт «Ні») |
 
 **Left-click на іконку:** toggle показу/приховування вікна.
 
-### Balloon tip (сповіщення)
+Тексти меню локалізуються на боці Rust із того самого `messages/*.json`, що й фронтенд
+(`i18n::t`), а локаль передається в шар трею окремо від `AppState` — див. ADR
+[native-layer-localisation](decisions/2026-08-17-native-layer-localisation.md).
 
-При зміні треку (якщо `showTrayNotifications: true`):
+### Тости (сповіщення)
 
-- **Title:** назва станції
-- **Body:** "Artist — Title"
-- Через system tray balloon API (не toast, щоб уникнути "PowerShell")
-- NVDA автоматично оголошує balloon tip як notification
-- Throttle: 3 секунди (ICY metadata flicker)
+**Це `tauri-plugin-notification`, не balloon tip.** Balloon-підхід (`Shell_NotifyIcon` +
+`NIF_INFO`) для portable-збірок тихо не працює: Windows 10+ перенаправляє такі виклики в
+toast-канал і викидає їх, коли AppUserModelID не зареєстровано. Тому Tapir реєструє AUMID
+під `HKCU\Software\Classes\AppUserModelId\…` на кожному старті (ідемпотентно) і шле
+звичайні тости — вони видно в банері й у Центрі сповіщень, і NVDA їх читає.
+
+Уся емісія проходить через одну функцію `show_toast(app, kind, title, body)`, де
+`ToastKind` — обов'язковий аргумент. Категорій три, і гейт залежить від категорії:
+
+| `ToastKind` | Що це | Гейт |
+|---|---|---|
+| `TrackChange` | зміна треку в ефірі: заголовок — станція, тіло — «Artist — Title» | профільний прапорець «Сповіщення в треї про зміну треку» |
+| `Scheduled` | події планувальника | профільний прапорець «Сповіщення в треї про плановий запис» |
+| `HotkeyFeedback` | відповідь на фоновий хоткей | **без гейта** — це єдиний слід натискання у фоні, а не ефірна балаканина |
+
+> **Заплановано, не реалізовано:** часового throttle (3 с) на тост зміни треку немає —
+> див. §11.2 про дедуплікацію за значенням.
 
 ---
 
@@ -1084,7 +1191,9 @@ Tray menu — нативне контекстне меню Windows. Доступ
 - [ ] Shift+Tab — зворотний порядок коректний
 - [ ] Focus indicator видимий на кожному елементі
 - [ ] NVDA browse mode (↓): весь вміст читається логічно
-- [ ] NVDA focus mode: таблиці навігуються Arrow keys
+- [ ] NVDA focus mode: списки навігуються стрілками, сегменти — ←/→
+- [ ] До кнопок тулбара в зоні з роумінг-фокусом ідемо **стрілками**, не Tab: Tab виводить
+      із зони й дає фальшивий провал
 - [ ] Кожна кнопка має accessible name
 - [ ] Кожен input має label
 - [ ] Діалоги trap focus
@@ -1092,25 +1201,35 @@ Tray menu — нативне контекстне меню Windows. Доступ
 - [ ] Live regions оголошують зміни
 - [ ] High Contrast: усі елементи видимі
 
+Чеклісти конкретних записів беклогу (`docs/testing/nvda-<slug>.md`) створюються для записів
+із `a11y: true` і видаляються на прийманні; метод і шаблон — скіл
+`.claude/skills/writing-nvda-checklists/`.
+
 ### 16.2. Automated checks
 
-- `eslint-plugin-jsx-a11y` — статичний аналіз ARIA
+- `pnpm test` (vitest + Testing Library) — компонентні тести перевіряють ролі, accessible
+  names і клавіатурні шляхи: `CompositeList.test.tsx` стереже `role="application"` /
+  `listitem` / `aria-roledescription`, `useCompositeList.test.tsx` — таблицю клавіш,
+  `useZoneNavigation.test.tsx` — цикл F6
+- `cargo test` — локалізація нативного шару (ключі трею й тостів існують в обох локалях)
 - React Aria — вбудовані runtime warnings для невалідних ARIA patterns
+
+> **Заплановано, не реалізовано:** `eslint-plugin-jsx-a11y` — ESLint у проєкті не
+> налаштовано взагалі.
 
 ### 16.3. Screen reader test matrix
 
 | Дія | NVDA | JAWS | Narrator |
 |---|---|---|---|
-| Tab навігація | ○ | ○ | ○ |
-| Table grid navigation | ○ | ○ | ○ |
-| Live region announcements | ○ | ○ | ○ |
-| Dialog focus trap | ○ | ○ | ○ |
-| Slider (volume) | ○ | ○ | ○ |
-| ComboBox suggestions | ○ | ○ | ○ |
-| Toggle button state | ○ | ○ | ○ |
+| Tab навігація | ✅ | ○ | ○ |
+| Навігація списком (стрілки, сегменти) | ✅ | ○ | ○ |
+| Live region announcements | ✅ | ○ | ○ |
+| Dialog focus trap | ✅ | ○ | ○ |
+| Slider (гучність, позиція) | ✅ | ○ | ○ |
+| Toggle button state | ✅ | ○ | ○ |
 | High Contrast | ○ | ○ | ○ |
 
-○ = потребує тестування при реалізації
+✅ = проходили ручні NVDA-прогони записів беклогу · ○ = потребує тестування
 
 ---
 
@@ -1119,10 +1238,17 @@ Tray menu — нативне контекстне меню Windows. Доступ
 | Проблема | Деталі | Workaround |
 |---|---|---|
 | NVDA mouse tracking | Bug Tauri #12901 — frameless window | `decorations: true` (обов'язково) |
-| NVDA IA2 vs UIA | Bug NVDA #19276 — деякі ARIA атрибути ігноруються | Рекомендувати в FAQ: `Use UI Automation when available → Yes` |
-| JAWS virtual cursor | JAWS може конфліктувати з SPA routing | React Aria focus management вирішує |
-| Toast "PowerShell" | `tauri-plugin-notification` у portable mode | Balloon tip через system tray |
 | NVDA мовчить на старті | Вікно `visible:false` показували з JS після завантаження даних → інколи webview ініціалізувався, поки вікно ще не foreground; NVDA приєднувався «у фоні» й не озвучував фокус (≈кожен 5-й запуск працював) | `show()` + `set_focus()` у Rust `setup()`, до завантаження webview (§17.1). Детальніше: [docs/notes/screenreader-startup-foreground.md](notes/screenreader-startup-foreground.md) |
+| Тост із портативної збірки не показувався | Windows 10+ перенаправляє `NIF_INFO` у toast-канал і викидає його без зареєстрованого AUMID | Реєстрація AUMID у `HKCU` на старті + `tauri-plugin-notification` (§15) |
+| Повтор того самого `announce()` німий | Заміна тексту в live region зводиться браузером в одне оновлення — підсумковий текст не змінився, NVDA мовчить | Кожне повідомлення — новий вузол у `role="log"` (§1.4) |
+| `announce()` німий при відкритому діалозі | React Aria `ariaHideOutside` ховає все поза модалом | `data-live-announcer="true"` на регіонах (§1.4) |
+| `aria-valuetext` із `<SliderThumb>` не доходить | `useSliderThumb` жорстко ставить свій `aria-valuetext` | Патч атрибута через `useSliderThumbInput` (§4.3) |
+| Модалка всередині `<Tabs>` монтується двічі | Колекційний компонент рендерить дітей двічі; два оверлеї взаємно `aria-hide` | Портал — сусід `<Tabs>`, не дитина (§8.1) |
+| Фокус на `<body>` після async-перевірки | `disabled` на час `await` викидає фокус | Діалог, що лишається відкритим, явно фокусує кнопку підтвердження (§10) |
+| JAWS virtual cursor | JAWS може конфліктувати з SPA routing | React Aria focus management вирішує |
+
+> **Заплановано, не реалізовано:** рекомендації «NVDA → Use UI Automation when available →
+> Yes» (обхід NVDA #19276) у вбудованій довідці немає.
 
 ### 17.1. Старт: вікно має бути foreground до ініціалізації webview
 

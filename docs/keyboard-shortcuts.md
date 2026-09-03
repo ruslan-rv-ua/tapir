@@ -210,8 +210,8 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 
 | Клавіша | Дія | Умова | Реалізація | Стан |
 |---|---|---|---|---|
-| `F6` / `Shift+F6` | циклічна навігація по зонах (вперед / назад), оголошення зони NVDA | поза модалем (`isInModal` — focus trap) | [useZoneNavigation.ts:58-71](../src/hooks/useZoneNavigation.ts#L58-L71) · [accessibility.md §2.3.1](accessibility.md#L109) | ✅ |
-| `Shift+F10` / `ContextMenu` | меню рядка (еквівалент ПКМ) | фокус на рядку списку | [useCompositeList.ts:342-367](../src/hooks/useCompositeList.ts#L342-L367) · [accessibility.md §3.6](accessibility.md#L333) | ✅ |
+| `F6` / `Shift+F6` | циклічна навігація по зонах (вперед / назад), оголошення зони NVDA | поза модалем (`isInModal` — focus trap) | [useZoneNavigation.ts:58-71](../src/hooks/useZoneNavigation.ts#L58-L71) · [accessibility.md §2.3.1](accessibility.md) | ✅ |
+| `Shift+F10` / `ContextMenu` | меню рядка (еквівалент ПКМ) | фокус на рядку списку | [useCompositeList.ts:342-367](../src/hooks/useCompositeList.ts#L342-L367) · [accessibility.md §3.6](accessibility.md) | ✅ |
 | `Enter` | активувати рядок (Streams: record/play за `doubleClickAction` · Browser: додати · Songs: play · Profiles: switch · Wishlist: edit) | фокус на рядку списку | [useCompositeList.ts Enter-case](../src/hooks/useCompositeList.ts) → `onAction` списку | ✅ |
 | `Shift+Enter` | **прослухати** рядок незалежно від налаштування (Streams: toggle відтворення · Browser: toggle прев'ю) | фокус на рядку Streams/Browser | модифікатори в `onAction` ([useCompositeList.ts](../src/hooks/useCompositeList.ts)); гілки: [StreamList.tsx](../src/components/streams/StreamList.tsx), [StationList.tsx](../src/components/browser/StationList.tsx) | ✅ |
 | `Ctrl+Enter` | **записати** рядок незалежно від налаштування (Streams: toggle запису · Songs: показати файл у провіднику) | фокус на рядку Streams/Songs | ↑; гілка Songs: [SongsList.tsx](../src/components/songs/SongsList.tsx) | ✅ |

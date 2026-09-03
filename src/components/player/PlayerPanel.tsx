@@ -143,8 +143,8 @@ export const PlayerPanel = forwardRef<
       // Nothing playing → take no focus and stay silent. The central zone cycler
       // (useZoneNavigation.cycleZone) sees that focus didn't move and advances to
       // the next zone on its own. Announcing here would double up with the zone
-      // that actually receives focus. See docs/accessibility.md §2.3.1:
-      // "Пропускає приховані зони (Player…)".
+      // that actually receives focus. See docs/accessibility.md §2.3.1,
+      // "Гарантія прогресу централізована".
       if (state === "stopped" || !source) return;
       announce(m.zone_player(), "polite");
       enterZone(direction);

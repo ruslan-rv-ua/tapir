@@ -411,8 +411,9 @@ main.rs
          ├─ Register Tauri event listeners (track-changed, recording-status, etc.)
          └─ Render App with ActivityBar + Content
               └─ IF streams.length === 0 (first run):
-                   announce("Tapir відкрито вперше. Додайте перший потік для запису.", "assertive")
-                   autoFocus → "Додати потік" button in StreamTable empty state
+                   announce("Ласкаво просимо до Tapir. Натисніть Enter щоб додати
+                             перший потік.", "assertive")
+                   focus → перший пункт ActivityBar (як і за будь-якого іншого старту)
 
     Примітка: точна поведінка first-run announcement описана в accessibility.md §3.5.
 ```
