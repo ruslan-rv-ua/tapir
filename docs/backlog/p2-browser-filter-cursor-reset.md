@@ -7,17 +7,19 @@ status: ready
 effort: S
 kind: feature
 target: 0.1.0
-updated: 2026-08-17
+updated: 2026-09-03
 a11y: true
 depends_on: []
 blocks: []
 touches:
   - src/hooks/useCompositeList.ts
+  - src/components/common/composite-list/CompositeList.tsx
   - src/components/browser/StationList.tsx
   - src/components/browser/BrowserPanel.tsx
+  - src/stores/browser.ts
 gates: [pnpm test, pnpm vite:build]
 notes:
-  - "Механізм: зміна фільтра/запиту (поки фокус НЕ в списку) скидає userNavigatedRef → наявний re-seed-ефект (useCompositeList.ts:295-302) знову припинає курсор до items[0]"
+  - "Механізм: зміна фільтра/запиту (поки фокус НЕ в списку) скидає userNavigatedRef → наявний re-seed-ефект (useCompositeList.ts:331-338) знову припинає курсор до items[0]"
   - "Фокус НЕ переносити в список автоматично під час набору — лише позиція курсора при наступному вході (Tab/F6)"
   - "APG: для listbox вхід через Tab → вибраний елемент, інакше перший; «пам'ять позиції» — лише для незмінного списку (grid-патерн), для нових результатів вона не рекомендована"
 ---
@@ -47,7 +49,7 @@ notes:
 рекомендовано лише для grid-подібних віджетів і незмінного вмісту.
 
 Поточний код уже робить це правильно **до першої навігації**: re-seed-ефект
-([useCompositeList.ts:295-302](../../src/hooks/useCompositeList.ts#L295-L302))
+([useCompositeList.ts:331-338](../../src/hooks/useCompositeList.ts#L331-L338))
 тримає активний рядок на `items[0]`, поки `userNavigatedRef` — false. Проблемний
 сценарій один: користувач походив по списку стрілками (`userNavigatedRef =
 true`), повернувся в поле пошуку, змінив текст — пам'ять лишається на старому
@@ -70,8 +72,12 @@ true`), повернувся в поле пошуку, змінив текст �
       поведінка, регресії немає).
 - [ ] Фокус не переноситься в список автоматично під час набору — лишається в
       полі пошуку.
-- [ ] NVDA: після зміни запиту вхід у список озвучує перший результат («…, 1 з
-      N»).
+- [ ] `docs/help/` оновлено — або зазначено, що запис видимої поведінки не змінює.
+- [ ] NVDA: після зміни запиту вхід у список озвучує перший результат. Номер
+      позиції («1 з N») у формулюванні критерію був припущенням — рядки списків
+      Tapir не несуть `aria-posinset`/`aria-setsize` і позиції не називають;
+      «перший» перевіряється порівнянням з тим, що озвучує `Home`.
+      Чекліст: [nvda-browser-filter-cursor-reset.md](../testing/nvda-browser-filter-cursor-reset.md).
 
 ## Відкриті питання
 

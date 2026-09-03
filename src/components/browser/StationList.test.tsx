@@ -1,7 +1,6 @@
 import { createRef } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent, act, waitFor } from "@testing-library/react";
-import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import type { StationResult } from "../../lib/tauri";
 import * as tauri from "../../lib/tauri";
 import { $streams } from "../../stores/streams";
@@ -51,7 +50,7 @@ beforeEach(() => {
 });
 
 function renderList() {
-  const ref = createRef<ZoneEntry>();
+  const ref = createRef<StationListHandle>();
   const utils = render(
     <StationList
       ref={ref}

@@ -742,6 +742,41 @@ export function useCompositeList<T extends CompositeListItem>({
     [items],
   );
 
+  /**
+   * Forget the remembered cursor position: the next entry (Tab/F6) lands on the
+   * first row, and the re-seed effect re-anchors the roving tabIndex=0 there as
+   * soon as the new rows arrive.
+   *
+   * For the owning screen to call when a NEW selection REPLACES the old one —
+   * a changed query or filter. The remembered row then belongs to a different
+   * result set, so "return where you were" means nothing: either the row
+   * survived by accident (entry lands mid-list, and it is unclear whether the
+   * filter did anything) or it did not (the clamp by stale index is just as
+   * arbitrary). APG says the same for listbox: entry goes to the selected item,
+   * otherwise the FIRST one; position memory is for unchanged content.
+   * Appending to the SAME selection ("Load more") must NOT call this.
+   *
+   * Focus is not moved — only where the next entry lands. And while the list
+   * currently holds focus this is a no-op: never yank a live cursor.
+   *
+   * `memoryRef` is deliberately left alone: with userNavigatedRef false nothing
+   * reads it back as a position, while a Shift+click still anchors its range on
+   * `memoryRef.current.itemId` (see onClick) — blanking it would collapse that
+   * span to the clicked row.
+   */
+  const resetCursor = useCallback(() => {
+    if (listRef.current?.contains(document.activeElement)) return;
+    userNavigatedRef.current = false;
+    // Move the roving tabIndex=0 stop NOW rather than waiting for the re-seed
+    // effect: a native Tab into the list goes straight to that stop, and between
+    // a changed query and the results landing there is a window — half a second
+    // for a debounced text search — in which it would still be the remembered row.
+    if (items.length > 0) {
+      setActiveItemId(items[0].id);
+      setActiveSegment('summary');
+    }
+  }, [items]);
+
   /** isFocused(itemId, segment) → true iff this element should have tabIndex=0 */
   const isFocused = useCallback(
     (itemId: string, segment: SegmentKind): boolean =>
@@ -804,5 +839,5 @@ export function useCompositeList<T extends CompositeListItem>({
     [items],
   );
 
-  return { listRef, emptyRef, onKeyDownCapture, onContextMenu, onClick, isFocused, restoreFocus, focusItem, activeItemId, activeSegment };
+  return { listRef, emptyRef, onKeyDownCapture, onContextMenu, onClick, isFocused, restoreFocus, resetCursor, focusItem, activeItemId, activeSegment };
 }

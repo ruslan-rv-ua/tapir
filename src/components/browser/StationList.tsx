@@ -4,16 +4,18 @@ import { $streams } from "../../stores/streams";
 import { addStation, addStations, $stationSelection } from "../../stores/browser";
 import { replaceSelection } from "../../stores/selection";
 import { useListSelection } from "../../hooks/useListSelection";
-import { CompositeList } from "../common/composite-list";
+import { CompositeList, type CompositeListHandle } from "../common/composite-list";
 import { ListCardState } from "../common/ListCard";
-import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import type { StationResult } from "../../lib/tauri";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import { addToast } from "../../stores/toasts";
 import { StationItem, getStationSegments } from "./StationItem";
 import * as m from "../../i18n/paraglide/messages";
 
-export type StationListHandle = ZoneEntry & { requestBulkAdd: () => void };
+// resetCursor comes from CompositeList: this is the one list whose whole result
+// set is replaced under the user (a changed query/filter), so BrowserPanel needs
+// to say "forget the remembered row".
+export type StationListHandle = CompositeListHandle & { requestBulkAdd: () => void };
 
 interface Props {
   stations: StationResult[];

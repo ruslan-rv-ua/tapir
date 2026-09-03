@@ -10,6 +10,16 @@ import {
 } from "../../../hooks/useCompositeList";
 import type { ZoneEntry } from "../../../hooks/useZoneNavigation";
 
+/**
+ * The base imperative handle every CompositeList exposes. `resetCursor` is opt-in
+ * for the caller's TYPE (screens that never replace their selection can keep the
+ * plain ZoneEntry), but it is always present at runtime.
+ */
+export type CompositeListHandle = ZoneEntry & {
+  /** Forget the remembered row — the next entry lands on the first one. */
+  resetCursor: () => void;
+};
+
 export interface CompositeRowRenderArgs {
   id: string;
   /** This row is the active item (subtle context highlight). */
@@ -77,7 +87,7 @@ function CompositeListInner<H extends ZoneEntry = ZoneEntry>(
     onSelectionChange,
   } = props;
 
-  const { listRef, emptyRef, onKeyDownCapture, onContextMenu, onClick, isFocused, restoreFocus, focusItem, activeItemId } =
+  const { listRef, emptyRef, onKeyDownCapture, onContextMenu, onClick, isFocused, restoreFocus, resetCursor, focusItem, activeItemId } =
     useCompositeList({ zoneId, items, onTabOut, onAction, onEmpty, selection, onSelectionChange });
 
   /**
@@ -108,11 +118,12 @@ function CompositeListInner<H extends ZoneEntry = ZoneEntry>(
           return listRef.current!;
         },
         focus: restoreFocus,
+        resetCursor,
         ...(imperativeExtra ? imperativeExtra({ focusItem: focusItemAndDom }) : {}),
       }) as unknown as H,
     // imperativeExtra is expected to be pure over the `api` argument.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [zoneId, restoreFocus, focusItemAndDom],
+    [zoneId, restoreFocus, resetCursor, focusItemAndDom],
   );
 
   if (loading != null) return <>{loading}</>;

@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, fireEvent, act } from "@testing-library/react";
 import type { ZoneEntry } from "../../../hooks/useZoneNavigation";
 import type { CompositeListItem } from "../../../hooks/useCompositeList";
-import { CompositeList, CompositeRow, CompositeSegment, CompositeAction } from "./index";
+import { CompositeList, CompositeRow, CompositeSegment, CompositeAction, type CompositeListHandle } from "./index";
 
 const ITEMS: CompositeListItem[] = [
   { id: "a", segments: ["metadata", "action-add"] },
@@ -251,5 +251,40 @@ describe("CompositeList", () => {
     expect(typeof ref.current!.focusFirst).toBe("function");
     act(() => ref.current!.focusFirst());
     expect(activeAttrs()).toEqual({ id: "a", seg: "summary" });
+  });
+
+  it("resetCursor on the handle sends the next entry back to the first row", () => {
+    // The owning screen calls this when a new result set REPLACES the old one.
+    const ref = createRef<CompositeListHandle>();
+    const make = (ids: string[]) => (
+      <CompositeList
+        ref={ref}
+        zoneId="test-list"
+        ariaLabel="Test list"
+        items={ids.map((id) => ({ id, segments: [] }))}
+        onTabOut={vi.fn()}
+        onAction={vi.fn()}
+        renderRow={({ id, isActive, isFocused }) => (
+          <CompositeRow key={id} itemId={id} isFocused={isFocused} isActiveRow={isActive} label={`Row ${id}`}>
+            {`Row ${id}`}
+          </CompositeRow>
+        )}
+      />
+    );
+    const { rerender, container } = render(make(["a", "b", "c"]));
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: "End" }); // deliberate position: "c"
+    expect(activeAttrs()).toEqual({ id: "c", seg: "summary" });
+    act(() => (document.activeElement as HTMLElement).blur());
+
+    act(() => ref.current!.resetCursor());
+    rerender(make(["x", "y"])); // the new selection arrives
+
+    // Native Tab target followed the reset...
+    const rows = container.querySelectorAll<HTMLElement>('li[data-segment="summary"]');
+    expect(rows[0].tabIndex).toBe(0);
+    // ...and so does zone entry.
+    act(() => ref.current!.focus("forward"));
+    expect(activeAttrs()).toEqual({ id: "x", seg: "summary" });
   });
 });

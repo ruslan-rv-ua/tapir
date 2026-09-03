@@ -4,7 +4,11 @@ import { useCallback, useRef } from "react";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import { useGlobalShortcuts } from "../../hooks/useGlobalShortcuts";
 import * as m from "../../i18n/paraglide/messages";
-import { $popularStations, $stationSelection } from "../../stores/browser";
+import {
+  $popularStations, $searchParams, $stationSelection,
+  loadMore, resetSearch, searchStations, updateSearchParam,
+} from "../../stores/browser";
+import { searchStationsIpc } from "../../lib/tauri";
 import { $announcer } from "../../stores/announcer";
 import { replaceSelection } from "../../stores/selection";
 import type { StationResult } from "../../lib/tauri";
@@ -27,9 +31,18 @@ function mk(uuid: string): StationResult {
 }
 
 beforeEach(() => {
+  resetSearch();
   $popularStations.set([mk("u1"), mk("u2")]);
   replaceSelection($stationSelection, new Set());
 });
+
+/** The three zones this panel registers, once the results list has a handle. */
+async function zonesOf(onZonesChange: ReturnType<typeof vi.fn>): Promise<ZoneEntry[]> {
+  await waitFor(() => expect((onZonesChange.mock.lastCall![0] as ZoneEntry[]).length).toBe(3));
+  return onZonesChange.mock.lastCall![0] as ZoneEntry[];
+}
+
+const activeRow = () => document.activeElement?.getAttribute("data-item-id") ?? null;
 
 // The Ctrl+F contract at the section level: App only ever sees the zones this
 // panel registers, so exactly one of them must offer focusSearch.
@@ -78,4 +91,64 @@ it("select-all selects all visible stations and announces the count", async () =
   fireEvent.click(getByText(m.select_all()));
   expect($stationSelection.get().size).toBe(2);
   expect($announcer.get()?.message).toBe(m.selection_count({ count: 2 }));
+});
+
+// A new query means a new set of results: the row remembered from the previous
+// one says nothing about this one, so entry starts at the best new match.
+it("a changed query sends the results cursor back to the first station", async () => {
+  const onZonesChange = vi.fn();
+  const { getByPlaceholderText } = render(<BrowserPanel onZonesChange={onZonesChange} exitZone={vi.fn()} />);
+  const results = (await zonesOf(onZonesChange)).find((z) => z.id === "browser-results")!;
+
+  act(() => results.focus("forward"));
+  fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+  expect(activeRow()).toBe("u2");
+
+  // Unchanged selection → the position memory still holds (no regression).
+  act(() => (document.activeElement as HTMLElement).blur());
+  act(() => results.focus("forward"));
+  expect(activeRow()).toBe("u2");
+
+  const input = getByPlaceholderText(m.browser_search_placeholder());
+  act(() => (input as HTMLInputElement).focus());
+  vi.mocked(searchStationsIpc).mockResolvedValueOnce([mk("s1"), mk("s2")]);
+  await act(async () => {
+    updateSearchParam("query", "jazz");
+    await searchStations($searchParams.get());
+  });
+
+  // Typing never drags focus into the list.
+  expect(document.activeElement).toBe(input);
+  // Native Tab target (the roving tabIndex=0 stop) followed the new selection…
+  const rows = document.querySelectorAll<HTMLElement>('li[data-segment="summary"]');
+  expect(rows[0].getAttribute("data-item-id")).toBe("s1");
+  expect(rows[0].tabIndex).toBe(0);
+  // …and so does zone entry.
+  act(() => results.focus("forward"));
+  expect(activeRow()).toBe("s1");
+});
+
+// "Load more" appends to the SAME selection — the remembered row still means
+// what it meant, so it survives.
+it("«Load more» keeps the remembered row", async () => {
+  const onZonesChange = vi.fn();
+  render(<BrowserPanel onZonesChange={onZonesChange} exitZone={vi.fn()} />);
+  const results = (await zonesOf(onZonesChange)).find((z) => z.id === "browser-results")!;
+
+  vi.mocked(searchStationsIpc).mockResolvedValueOnce([mk("s1"), mk("s2")]);
+  await act(async () => {
+    updateSearchParam("query", "jazz");
+    await searchStations($searchParams.get());
+  });
+
+  act(() => results.focus("forward"));
+  fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+  expect(activeRow()).toBe("s2");
+  act(() => (document.activeElement as HTMLElement).blur());
+
+  vi.mocked(searchStationsIpc).mockResolvedValueOnce([mk("s3")]);
+  await act(async () => { await loadMore(); });
+
+  act(() => results.focus("forward"));
+  expect(activeRow()).toBe("s2");
 });

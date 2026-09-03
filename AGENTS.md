@@ -109,6 +109,7 @@ All project documentation lives in `docs/`. Key files:
 
 **Manual testing** (`docs/testing/`):
 - [test-streams.md](docs/testing/test-streams.md) — тестові URL радіо-потоків
+- [nvda-browser-filter-cursor-reset.md](docs/testing/nvda-browser-filter-cursor-reset.md) — прогін для `p2-browser-filter-cursor-reset`
 
 Чеклісти NVDA-прогону (`docs/testing/nvda-<slug>.md`) створюються для записів беклогу
 з `a11y: true` і видаляються на прийманні — метод і шаблон живуть у скілі

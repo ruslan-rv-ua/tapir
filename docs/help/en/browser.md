@@ -4,7 +4,7 @@ The Station Browser searches a community catalogue of internet radio, so you can
 
 ### Searching
 
-Type a station name or genre into the search box. **Country**, **Language**, **Codec** and **Min bitrate (kbps)** narrow the results further, and each takes effect as you set it.
+Type a station name or genre into the search box. **Country**, **Language**, **Codec** and **Min bitrate (kbps)** narrow the results further, and each takes effect as you set it. Whenever the query changes the list starts over: your next entry into it lands on the first result.
 
 Two gestures clear things, and they clear different amounts. Clearing the search box — `Escape` or its clear button — removes the text only; country, language, codec and bitrate stay, and the list stays filtered by them. **Reset filters** drops everything and returns you to the popular list; it appears only while a filter is set.
 

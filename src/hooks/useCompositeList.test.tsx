@@ -51,7 +51,7 @@ function Harness({
       }
     : undefined;
 
-  const { listRef, onKeyDownCapture, onContextMenu, onClick, isFocused, restoreFocus } = useCompositeList({
+  const { listRef, onKeyDownCapture, onContextMenu, onClick, isFocused, restoreFocus, resetCursor } = useCompositeList({
     zoneId: "test",
     items,
     onTabOut,
@@ -68,6 +68,9 @@ function Harness({
       <button data-testid="outside">outside</button>
       <button data-testid="restore" onClick={() => restoreFocus("forward")}>
         restore
+      </button>
+      <button data-testid="reset-cursor" onClick={() => resetCursor()}>
+        reset
       </button>
       <ul ref={listRef} role="list" data-testid="list" onKeyDownCapture={onKeyDownCapture} onContextMenu={onContextMenu} onClick={onClick}>
         {items.map((item) => (
@@ -495,6 +498,94 @@ describe("restoreFocus (zone re-entry)", () => {
 
     act(() => screen.getByTestId("restore").click());
     // remembered id "c" gone -> clamp(prevIndex=2, len-1=1) -> "b"
+    expectActive("b", "summary");
+  });
+});
+
+describe("resetCursor (the result set was replaced)", () => {
+  it("forgets the remembered row — the next entry lands on the first one", () => {
+    render(<Harness items={makeItems()} />);
+    focusStart("a");
+    press("ArrowDown"); // b/summary — a deliberate position
+    press("ArrowRight"); // b/track
+    expectActive("b", "track");
+
+    act(() => screen.getByTestId("outside").focus());
+    act(() => screen.getByTestId("reset-cursor").click());
+
+    act(() => screen.getByTestId("restore").click());
+    expectActive("a", "summary");
+  });
+
+  it("re-anchors the roving tabIndex=0 to the first row of the NEW selection", () => {
+    // The tabIndex=0 stop is where a NATIVE Tab lands (it never goes through
+    // restoreFocus), so the re-seed must follow the reset once the new rows arrive.
+    const { rerender } = render(<Harness items={makeItems()} />);
+    focusStart("a");
+    press("End"); // c/summary
+    act(() => screen.getByTestId("outside").focus());
+
+    act(() => screen.getByTestId("reset-cursor").click());
+    const next: CompositeListItem[] = [
+      { id: "x", segments: ["track"] },
+      { id: "y", segments: ["track"] },
+    ];
+    rerender(<Harness items={next} />);
+
+    expect(stop("x", "summary").tabIndex).toBe(0);
+    expect(stop("y", "summary").tabIndex).toBe(-1);
+  });
+
+  it("does NOT move focus — a reset only changes where the NEXT entry lands", () => {
+    render(<Harness items={makeItems()} />);
+    focusStart("a");
+    press("ArrowDown");
+    act(() => screen.getByTestId("outside").focus());
+
+    act(() => screen.getByTestId("reset-cursor").click());
+    expect(document.activeElement).toBe(screen.getByTestId("outside"));
+  });
+
+  it("moves the roving tabIndex=0 stop at once, before the new rows arrive", () => {
+    // A native Tab goes straight to the tabIndex=0 stop. Between a changed query
+    // and its results there is a window (half a second for a debounced search) in
+    // which the old rows are still on screen — the stop must already have moved.
+    render(<Harness items={makeItems()} />);
+    focusStart("a");
+    press("End"); // c/summary
+    act(() => screen.getByTestId("outside").focus());
+    expect(stop("c", "summary").tabIndex).toBe(0);
+
+    act(() => screen.getByTestId("reset-cursor").click());
+    expect(stop("a", "summary").tabIndex).toBe(0);
+    expect(stop("c", "summary").tabIndex).toBe(-1);
+  });
+
+  it("leaves the range anchor usable — Shift+Click still spans, it does not collapse", () => {
+    // The pointer range reads memoryRef.current.itemId as its anchor, so a reset
+    // that blanked the focus memory would turn the next Shift+Click into a
+    // one-row selection.
+    const selectionRef = { current: new Set<string>() };
+    render(<Harness items={makeItems()} selectionRef={selectionRef} />);
+    focusStart("a");
+    press("ArrowDown"); // b/summary
+    act(() => screen.getByTestId("outside").focus());
+    act(() => screen.getByTestId("reset-cursor").click());
+
+    // The cursor now sits on the first row, so the span runs from there.
+    clickRow("c", { shiftKey: true });
+    expect([...selectionRef.current].sort()).toEqual(["a", "b", "c"]);
+  });
+
+  it("is a no-op while the list holds focus — never yank a live cursor", () => {
+    render(<Harness items={makeItems()} />);
+    focusStart("a");
+    press("ArrowDown"); // b/summary, focus still inside the list
+    act(() => screen.getByTestId("reset-cursor").click());
+    expectActive("b", "summary");
+
+    act(() => screen.getByTestId("outside").focus());
+    act(() => screen.getByTestId("restore").click());
     expectActive("b", "summary");
   });
 });

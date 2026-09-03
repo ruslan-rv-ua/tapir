@@ -29,12 +29,24 @@ export const $stationSelection = atom<Set<string>>(new Set());
 
 // --- Actions ---
 
+/**
+ * True when these params ask for MORE of the selection already on screen
+ * ("Load more"), false when they define a new one. `offset` is the only thing
+ * that says so: every filter change resets it to 0 (updateSearchParam), and
+ * loadMore is the only path that raises it. Callers that must tell "appended"
+ * from "replaced" apart — the results cursor, among them — ask here rather than
+ * re-reading the field and re-deriving the rule.
+ */
+export function isAppendingResults(params: SearchParams): boolean {
+  return (params.offset ?? 0) > 0;
+}
+
 export async function searchStations(params: SearchParams): Promise<void> {
   $searchLoading.set(true);
   $searchError.set(null);
   try {
     const results = await searchStationsIpc(params);
-    if (params.offset && params.offset > 0) {
+    if (isAppendingResults(params)) {
       $searchResults.set([...$searchResults.get(), ...results]);
     } else {
       $searchResults.set(results);
