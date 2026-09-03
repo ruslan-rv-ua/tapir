@@ -25,8 +25,8 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [load-more-unreachable-by-keyboard](p1-load-more-unreachable-by-keyboard.md) | P1 | planned | draft | M | — | — (знахідка прогону [browser-filter-cursor-reset](done/p2-browser-filter-cursor-reset.md)) |
-| [list-key-modifier-guards](p2-list-key-modifier-guards.md) | P2 | planned | draft | S | [streams-transfer-hotkeys](done/p2-streams-transfer-hotkeys.md) | — (switch по `e.key` не перевіряє модифікаторів) |
+| [load-more-unreachable-by-keyboard](p1-load-more-unreachable-by-keyboard.md) | P1 | planned | ready | M | — | — (огрилено 2026-09-03: футер стає завершальним стопом списку, привіз [ADR про завершальний стоп](../decisions/2026-09-03-trailing-stop-crosses-only-on-down.md) і термін «Стоп» у CONTEXT.md; попутно лікує дві суміжні вади — дописування й помилка дописування зносять `<ul>` через спільний `searchLoading`/`searchError`) |
+| [list-key-modifier-guards](p2-list-key-modifier-guards.md) | P2 | planned | draft | S | [streams-transfer-hotkeys](done/p2-streams-transfer-hotkeys.md) | — (switch по `e.key` не перевіряє модифікаторів; той самий `switch`, що й у [load-more-unreachable-by-keyboard](p1-load-more-unreachable-by-keyboard.md) — правила ортогональні, хто піде другим, побачить сторожа першого) |
 
 ## v0.2.0
 
