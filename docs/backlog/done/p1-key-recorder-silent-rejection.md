@@ -125,7 +125,7 @@ notes:
    `onPressStart` (той самий keydown і записує, і озброює) і нативний `<button>` (click від
    `Space` теж на keyup).
 8. **Гола клавіша як глобальна комбінація — окремий запис**
-   [key-recorder-bare-key](../p1-key-recorder-bare-key.md). Поле приймає `Q` без модифікаторів
+   [key-recorder-bare-key](p1-key-recorder-bare-key.md). Поле приймає `Q` без модифікаторів
    і Tapir реєструє її системно; підказка з рішення 2 каже «Ctrl, Shift або Alt плюс…»,
    хоча поле цього не вимагає. Там своя розвилка (які голі клавіші законні — реєстр свідомо
    дозволяє `Pause` і `F13`–`F24`), тут — лише ця нотатка.
@@ -180,7 +180,7 @@ ADR не потрібен: рішення оборотні й без конте�
 - [help-content-polish](p1-help-content-polish.md) — мапа `settings.md`, три види
   відмови
 - [CONTEXT.md](../../../CONTEXT.md) — «Гаряча клавіша» (термін для користувача)
-- [key-recorder-bare-key](../p1-key-recorder-bare-key.md) — гола клавіша, окремий запис
+- [key-recorder-bare-key](p1-key-recorder-bare-key.md) — гола клавіша, окремий запис
 - [ADR про асиметрію конфігурованості](../../decisions/2026-06-07-shortcut-configurability-asymmetry.md) —
   чому саме ці вісім комбінацій перепризначаються
 - `src/components/settings/KeyRecorder.tsx`, `src/components/settings/HotkeysTab.tsx`

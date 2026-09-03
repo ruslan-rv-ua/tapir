@@ -16,7 +16,7 @@ The **Hotkeys** tab holds eight combinations that work even while the Tapir wind
 
 ### Assigning your own combination
 
-Press the button on the row of the action you want, then press the keys; `Escape` cancels the recording. A combination is `Ctrl`, `Shift` and `Alt` in any mix, plus a letter, a digit, an arrow, `Space`, `Pause` or an `F` key — any other key is refused with a note of what does work.
+Press the button on the row of the action you want, then press the keys; `Escape` cancels the recording. A combination is `Ctrl` or `Alt` (with `Shift` added if you like) plus a letter, a digit, an arrow, `Space` or an `F` key — any other key is refused with a note of what does work. `Shift` on its own does not count as a modifier: `Shift` plus a letter is just a capital letter. Only `Pause` and `F13`–`F24` work without modifiers: no other program holds them, so they are safe system-wide; a bare key of any other kind is refused with a request for `Ctrl` or `Alt`.
 
 Two kinds of combination are refused straight away, with a reason: those reserved for actions inside the window (such as `F1`, `Ctrl+N` or `Ctrl+K`), and those already given to another action in the same list. **Reset to defaults** restores the standard values for all eight at once; the cross on a row does not restore anything, it clears the combination and leaves the action without a hotkey.
 

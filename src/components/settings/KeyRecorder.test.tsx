@@ -55,6 +55,62 @@ describe("KeyRecorder — physical-position (e.code) recording", () => {
     expect(onChange).toHaveBeenCalledWith("Pause");
   });
 
+  it("records bare F13 (physically absent keys need no modifier)", () => {
+    const { button, onChange } = arm();
+    fireEvent.keyDown(button, { code: "F13", key: "F13" });
+    expect(onChange).toHaveBeenCalledWith("F13");
+  });
+
+  it("Shift+F24 is fine: the exception keys take any modifiers or none", () => {
+    const { button, onChange } = arm();
+    fireEvent.keyDown(button, { code: "F24", key: "F24", shiftKey: true });
+    expect(onChange).toHaveBeenCalledWith("Shift+F24");
+  });
+
+  describe("a combo needs Ctrl or Alt (Shift alone is typing, not a modifier)", () => {
+    it.each([
+      ["bare letter", { code: "KeyQ", key: "q" }],
+      ["bare digit", { code: "Digit5", key: "5" }],
+      ["bare arrow", { code: "ArrowUp", key: "ArrowUp" }],
+      ["bare Space", { code: "Space", key: " " }],
+      ["bare F8 (F1–F12 collide with other programs)", { code: "F8", key: "F8" }],
+      ["bare F12", { code: "F12", key: "F12" }],
+      ["Shift+letter", { code: "KeyQ", key: "Q", shiftKey: true }],
+      ["Shift+F12", { code: "F12", key: "F12", shiftKey: true }],
+    ])("%s is refused out loud and leaves recording mode", (_name, init) => {
+      const { button, onChange, getByRole } = arm("Ctrl+Shift+P");
+      fireEvent.keyDown(button, init);
+      expect(onChange).not.toHaveBeenCalled();
+      expect(getByRole("alert")).toHaveTextContent(m.settings_hotkey_modifier_required());
+      expect(button).toHaveTextContent("Ctrl+Shift+P");
+    });
+
+    it("Alt alone satisfies the rule", () => {
+      const { button, onChange } = arm();
+      fireEvent.keyDown(button, { code: "F8", key: "F8", altKey: true });
+      expect(onChange).toHaveBeenCalledWith("Alt+F8");
+    });
+
+    it("Super counts as a modifier: the OS holds it like Ctrl", () => {
+      const { button, onChange } = arm();
+      fireEvent.keyDown(button, { code: "KeyQ", key: "q", metaKey: true });
+      expect(onChange).toHaveBeenCalledWith("Super+Q");
+    });
+
+    it("the modifier rule is checked before reserved/duplicate validation", () => {
+      const onValidate = vi.fn(() => "reserved");
+      const onChange = vi.fn();
+      const { getByRole } = render(
+        <KeyRecorder label={LABEL} value="" onChange={onChange} onValidate={onValidate} />,
+      );
+      const button = getByRole("button", { name: (name: string) => name.startsWith(LABEL) });
+      fireEvent.click(button);
+      fireEvent.keyDown(button, { code: "F1", key: "F1" });
+      expect(onValidate).not.toHaveBeenCalled();
+      expect(getByRole("alert")).toHaveTextContent(m.settings_hotkey_modifier_required());
+    });
+  });
+
   it("refuses an unsupported key with text and leaves recording mode", () => {
     const { button, onChange, getByRole } = arm("Ctrl+Shift+P");
     // Ctrl+Shift+; — punctuation is layout-dependent, so the recorder does not bind it.

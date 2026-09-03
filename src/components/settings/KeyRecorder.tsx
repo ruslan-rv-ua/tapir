@@ -49,6 +49,20 @@ function codeToToken(code: string): string | null {
   return null;
 }
 
+/**
+ * Keys that are legal on their own, system-wide. Everything else needs Ctrl or
+ * Alt (Super counts too — the OS holds it like Ctrl): a bare letter, digit,
+ * arrow or Space would fire in every program while typing, and bare F1–F12 are
+ * held by Windows and browsers (F10 menu, F11 fullscreen, F12 devtools, …).
+ * Shift alone is not a modifier — Shift+Q is a capital Q at the keyboard.
+ * F13–F24 are physically absent (programmable keyboards) and Pause is
+ * semantically playback's own key; nothing else claims them — see
+ * keyboard-shortcuts.md and backlog key-recorder-bare-key (2026-09-03).
+ */
+function isBareLegal(token: string): boolean {
+  return token === "Pause" || /^F(1[3-9]|2[0-4])$/.test(token);
+}
+
 /** A modifier on its own (`ControlLeft`, `ShiftRight`, …) — the first half of every combo, never a combo. */
 function isModifierCode(code: string): boolean {
   return /^(Control|Shift|Alt|Meta|OS)(Left|Right)$/.test(code);
@@ -97,6 +111,12 @@ export function KeyRecorder({ label, value, onChange, onValidate, busy = false }
         // Unbindable key: refuse out loud and leave recording mode, exactly like
         // the reserved/duplicate refusals below — silence here reads as a hang.
         setError(m.settings_hotkey_key_unsupported());
+        setIsRecording(false);
+        return;
+      }
+
+      if (!(e.ctrlKey || e.altKey || e.metaKey) && !isBareLegal(token)) {
+        setError(m.settings_hotkey_modifier_required());
         setIsRecording(false);
         return;
       }
