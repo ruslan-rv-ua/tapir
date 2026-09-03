@@ -25,7 +25,7 @@ notes:
 # Рядок «Зараз грає» у треї: подвійна двокрапка і зайвий префікс у прев'ю
 
 > **Контекст:** знахідка під час grilling
-> [tray-toggle-label-vs-action](p2-tray-toggle-label-vs-action.md). Запис **не огрилено** —
+> [tray-toggle-label-vs-action](done/p2-tray-toggle-label-vs-action.md). Запис **не огрилено** —
 > розвилка внизу відкрита.
 
 ## Опис
@@ -96,7 +96,7 @@ notes:
 
 ## Документи
 
-- [tray-toggle-label-vs-action](p2-tray-toggle-label-vs-action.md) — звідки знахідка
+- [tray-toggle-label-vs-action](done/p2-tray-toggle-label-vs-action.md) — звідки знахідка
 - [preview-player-presentation](done/p2-preview-player-presentation.md) §«Що вирішено» #1 — прев'ю не відрізняється від ефіру
 - [ADR 2026-08-17](../decisions/2026-08-17-native-layer-localisation.md) — локалізація нативного шару
 - [CONTEXT.md](../../CONTEXT.md) §«Живе джерело», §«Прев'ю»

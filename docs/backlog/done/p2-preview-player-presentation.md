@@ -167,7 +167,7 @@ live stream», а обидві половини вже неправдиві. П�
 
 **Мітка пункту трея сюди не входить** — це інший дефект (слово розходиться з дією, і не для
 прев'ю, а для потоків); заведено окремо як
-[tray-toggle-label-vs-action](../p2-tray-toggle-label-vs-action.md).
+[tray-toggle-label-vs-action](p2-tray-toggle-label-vs-action.md).
 
 ### 6. Довідка — один зв'язок у `browser.md`
 
@@ -231,7 +231,7 @@ station, and the previous and next controls do nothing while it plays.»
 - [sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md) — звідки знахідка
 - [player-recording-badge-term](p2-player-recording-badge-term.md) — сусідній запис про той самий
   ряд позначок джерела; **закритий**, ряд позначок уже «LIVE / Файл»
-- [tray-toggle-label-vs-action](../p2-tray-toggle-label-vs-action.md) — четверта поверхня того самого жесту
+- [tray-toggle-label-vs-action](p2-tray-toggle-label-vs-action.md) — четверта поверхня того самого жесту
 - [ADR 2026-08-31](../../decisions/2026-08-31-visible-carrier-for-announced-facts.md) §2 — узгодження `F9` з екраном
 - [ADR 2026-08-16](../../decisions/2026-08-16-silence-is-mute-or-zero-volume.md) — прецедент «предикат замість поля»
 - [CONTEXT.md](../../../CONTEXT.md) §«Живе джерело», §«Прев'ю»

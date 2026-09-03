@@ -3,11 +3,12 @@ slug: tray-toggle-label-vs-action
 title: "Пункт трея зветься «Пауза», а живий звук зупиняє"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: S
 kind: bug
 target: 0.1.0
 updated: 2026-09-03
+completed: 2026-09-03
 a11y: true
 depends_on: [preview-player-presentation]
 blocks: [tray-cannot-resume-last]
@@ -28,7 +29,7 @@ notes:
 # Пункт трея зветься «Пауза», а живий звук зупиняє
 
 > **Контекст:** знайдено під час grilling
-> [preview-player-presentation](done/p2-preview-player-presentation.md), огрилено 2026-09-03.
+> [preview-player-presentation](p2-preview-player-presentation.md), огрилено 2026-09-03.
 > Той самий жест, четверта поверхня — але дефект інший: тут розходяться **слово й дія**,
 > а не предикат. Усі розвилки закриті — читати §«Що вирішено» перед кодом.
 
@@ -42,17 +43,17 @@ let play_label = match snap.player_state {
     _ => i18n::t(Key::TrayPlay),                         // «Грати»
 };
 ```
-([menu.rs:71](../../src-tauri/src/tray/menu.rs:71))
+([menu.rs:71](../../../src-tauri/src/tray/menu.rs:71))
 
 А натискання йде в `toggle_playback` → `decide_toggle`, який для живого джерела віддає
-`StopStream` або `StopPreview` ([playback_control.rs:64](../../src-tauri/src/playback_control.rs:64)).
+`StopStream` або `StopPreview` ([playback_control.rs:64](../../../src-tauri/src/playback_control.rs:64)).
 Тобто поки грає станція, меню обіцяє «Пауза», а робить «Зупинити» — і повернутись «з паузи»
 нікуди, бо з'єднання закрито.
 
 Це **не** дефект прев'ю: він спрацьовує щоразу, коли грає будь-який живий звук, тобто в
 основному сценарії застосунку.
 
-Сусідній запис [preview-player-presentation](done/p2-preview-player-presentation.md) прибрав
+Сусідній запис [preview-player-presentation](p2-preview-player-presentation.md) прибрав
 паузу живого звуку з панелі й з медіаклавіш. Після нього трей лишається **єдиним** місцем,
 де слово «Пауза» ще стосується ефіру.
 
@@ -67,7 +68,7 @@ when actions are logical opposites which are obvious to users." Пункт-пе�
 
 Батьківський запис лікує **предикат**: `type === 'stream'` там, де питання «це живе?».
 Тут предикат ні до чого — джерела в знімку меню взагалі немає
-([`MenuSnapshot`](../../src-tauri/src/tray/mod.rs:16) несе `player_state`, `now_playing_label`,
+([`MenuSnapshot`](../../../src-tauri/src/tray/mod.rs:16) несе `player_state`, `now_playing_label`,
 `active_recordings`, `window_visible`). Дефект у тому, що мітка вибирається за станом, хоча
 дія вибирається за джерелом.
 
@@ -75,7 +76,7 @@ when actions are logical opposites which are obvious to users." Пункт-пе�
 
 ## Що вже відомо
 
-- `build_snapshot` тримає `player_status` у руках ([mod.rs:63](../../src-tauri/src/tray/mod.rs:63)),
+- `build_snapshot` тримає `player_status` у руках ([mod.rs:63](../../../src-tauri/src/tray/mod.rs:63)),
   тож дати меню ознаку живого джерела — один рядок.
 - Предикат для цього дав батьківський запис: `PlaybackSource::is_live()`. Звідси `depends_on`.
 - Ключ на «Зупинити» вже є — `Key::TrayStop` (`tray_stop`), його ж бере окремий пункт «Зупинити».
@@ -83,8 +84,8 @@ when actions are logical opposites which are obvious to users." Пункт-пе�
   `MediaPlaybackStatus`, перейменувати її не можна. Її натискання після батьківського запису
   зупиняє — це прийнята поведінка, а не дефект.
 - Комбінація «на паузі й живе» **недосяжна**: усі три шляхи до `pause_playback` під охороною —
-  панель ([PlayerPanel.tsx:196](../../src/components/player/PlayerPanel.tsx:196)), SMTC
-  ([smtc.rs:227](../../src-tauri/src/smtc.rs:227)) і арм `PauseFile`. Незахищена лише сама
+  панель ([PlayerPanel.tsx:196](../../../src/components/player/PlayerPanel.tsx:196)), SMTC
+  ([smtc.rs:227](../../../src-tauri/src/smtc.rs:227)) і арм `PauseFile`. Незахищена лише сама
   IPC-команда, до якої більше ніхто не звертається. Модель може на це спиратися.
 
 ## Що вирішено
@@ -102,7 +103,7 @@ when actions are logical opposites which are obvious to users." Пункт-пе�
 
 `persist_session_snapshot` для живого джерела не робить нічого: `Preview` він пропускає явно,
 а для `Stream` пише дискримінатор, уже виставлений на старті відтворення (це сказано в
-коментарі арма `StopStream`, [playback_control.rs:213](../../src-tauri/src/playback_control.rs:213)).
+коментарі арма `StopStream`, [playback_control.rs:213](../../../src-tauri/src/playback_control.rs:213)).
 
 Отже третій варіант мертвий — два пункти з різними словами й тотожним ефектом гірші за два
 однакові слова. А перші два дають користувачеві **однакове меню**: рівно одна «Зупинити»,
@@ -118,12 +119,12 @@ when actions are logical opposites which are obvious to users." Пункт-пе�
 - зберігається дебаунс, спільний із `Ctrl+Shift+K` і SMTC: клік у треї впритул до хоткея дає
   одну дію, а не дві;
 - лишається правдивим доккоментар «Same entry point as Ctrl+Shift+K»
-  ([handlers.rs:36](../../src-tauri/src/tray/handlers.rs:36)).
+  ([handlers.rs:36](../../../src-tauri/src/tray/handlers.rs:36)).
 
 Константа `ID_TOGGLE_PLAYBACK` перейменовується на **`ID_PRIMARY_PLAYBACK`** (разом із
 `MENU_ID_TOGGLE_PLAYBACK` і згадкою в `handlers.rs`). Без цього мінус варіанта лишався б у
 коді: пункт із id «toggle» нічого не перемикає. Нове ім'я дзеркалить «головну кнопку плеєра»
-з [CONTEXT.md](../../CONTEXT.md) §«Живе джерело» — воно називає **роль**, а не одну з двох
+з [CONTEXT.md](../../../CONTEXT.md) §«Живе джерело» — воно називає **роль**, а не одну з двох
 поведінок.
 
 ### 3. Знімок дістає власний тип стану, а не булеве поле
@@ -137,7 +138,7 @@ when actions are logical opposites which are obvious to users." Пункт-пе�
 із чотирьох арм.
 
 Булеве `is_live: bool` поруч зі станом **відхилено**: це рівно та форма, від якої стоїть
-[ADR 2026-08-16](../decisions/2026-08-16-silence-is-mute-or-zero-volume.md) — читач мусив би
+[ADR 2026-08-16](../../decisions/2026-08-16-silence-is-mute-or-zero-volume.md) — читач мусив би
 сам знати, які з шести комбінацій справжні, а компілятор мовчав би про решту.
 
 `MenuSnapshot` уже не дзеркало домену, а модель відображення (у ньому лежать
@@ -170,7 +171,7 @@ fn playback_items(p: MenuPlayback) -> PlaybackItems
 
 Один вичерпний `match`, один **табличний** тест, що називає всі чотири стани поіменно — той
 самий візерунок, що вже стоїть під `is_live` (`is_live_answers_for_every_source`,
-[engine.rs:1043](../../src-tauri/src/player/engine.rs:1043)).
+[engine.rs:1043](../../../src-tauri/src/player/engine.rs:1043)).
 
 `build_menu` лишається тонким малювальником і ANDить `now_playing` з
 `now_playing_label.is_some()`: присутність підпису — не питання стану.
@@ -196,9 +197,9 @@ fn playback_items(p: MenuPlayback) -> PlaybackItems
 пункт при зупиненому плеєрі показується, просто сірий.
 
 Відмінність «ефір зупиняється / файл стає на паузу» лишається виключно в
-[player.md:9](../help/uk/player.md:9) — правило 6 довідки, один власник пояснення.
+[player.md:9](../../help/uk/player.md:9) — правило 6 довідки, один власник пояснення.
 `background.md` каже лише, що меню робить те саме, що головна кнопка.
-[background.md:13](../help/uk/background.md:13), обидві локалі:
+[background.md:13](../../help/uk/background.md:13), обидві локалі:
 
 > Меню значка міняється разом зі станом. З нього можна керувати відтворенням — так само, як
 > головною кнопкою програвача, — зупинити всі записи, показати чи приховати вікно і вийти з
@@ -211,7 +212,7 @@ fn playback_items(p: MenuPlayback) -> PlaybackItems
 > while nothing is playing.
 
 Зворот «так само, як … програвача» у цьому файлі вже вжитий про медіа-кнопки
-([background.md:23](../help/uk/background.md:23)), тож шов не новий, а термін «головна кнопка»
+([background.md:23](../../help/uk/background.md:23)), тож шов не новий, а термін «головна кнопка»
 збігається з `player.md` і `CONTEXT.md`. Стеля не тисне: `en/background.md` — 707 слів із 1000.
 
 Друге речення свідомо каже «не показуються **або лишаються неактивними**»: це два різні
@@ -236,7 +237,7 @@ fn playback_items(p: MenuPlayback) -> PlaybackItems
 
 Словник **уже правдивий**: §«Живе джерело» дослівно каже, що «головна кнопка плеєра,
 `Ctrl+Shift+K`, **пункт трея** й системна клавіша `Pause` його зупиняють»
-([CONTEXT.md](../../CONTEXT.md)). Модель була права раніше за код — міняти в ній нічого.
+([CONTEXT.md](../../../CONTEXT.md)). Модель була права раніше за код — міняти в ній нічого.
 
 ADR не заводимо: з трьох умов провалюється перша й найважливіша — повернути «Паузу» коштує
 одного арма, ціна зміни думки близька до нуля. Правило про мітки-перемикачі при цьому не
@@ -246,13 +247,13 @@ ADR не заводимо: з трьох умов провалюється пе�
 ### 9. Три знахідки грилінгу винесено окремо
 
 - **Сірий пункт при зупиненому плеєрі.** `.enabled(!matches!(…, Stopped))`
-  ([menu.rs:78](../../src-tauri/src/tray/menu.rs:78)) — з `f9248f2` (2026-05-28), а
+  ([menu.rs:78](../../../src-tauri/src/tray/menu.rs:78)) — з `f9248f2` (2026-05-28), а
   `ToggleAction::ResumeLast` — з `ea6995c` (2026-07-17); трей після цього не переглядали.
   `Ctrl+Shift+K` на холодну відновлює останнє джерело, пункт трея — ні.
-  → [tray-cannot-resume-last](p2-tray-cannot-resume-last.md).
+  → [tray-cannot-resume-last](../p2-tray-cannot-resume-last.md).
 - **Рядок «Зараз грає».** Подвійна двокрапка («Зараз грає: Файл: track.mp3») і префікс
   «Станція:», що відрізняє прев'ю від ефіру всупереч рішенню #1 батьківського запису.
-  → [tray-now-playing-source-prefix](p3-tray-now-playing-source-prefix.md).
+  → [tray-now-playing-source-prefix](../p3-tray-now-playing-source-prefix.md).
 - **Гейти запису були неправильні** — стояло `[pnpm test, pnpm vite:build]` при суто
   Rust-правці. Виправлено в front-matter, окремого запису не потребує.
 
@@ -285,17 +286,17 @@ ADR не заводимо: з трьох умов провалюється пе�
 - [x] Константа зветься за роллю (`ID_PRIMARY_PLAYBACK`), не за однією з поведінок
 - [x] Файл поводиться як раніше: «Пауза» / «Грати» плюс окрема «Зупинити»
 - [x] `docs/help/background.md` оновлено в обох локалях; `player.md` свідомо без змін
-- [ ] NVDA-прогін пройдено — [чекліст](../testing/nvda-tray-toggle-label-vs-action.md), 5 сценаріїв
+- [x] NVDA-прогін пройдено (5 сценаріїв, 2026-09-03)
 - [x] `cargo test`, `cargo clippy`, `pnpm test`, `pnpm vite:build` зелені
 
 ## Документи
 
-- [preview-player-presentation](done/p2-preview-player-presentation.md) — батьківський запис, звідки знахідка
-- [tray-cannot-resume-last](p2-tray-cannot-resume-last.md) — знахідка грилінгу, той самий пункт меню
-- [tray-now-playing-source-prefix](p3-tray-now-playing-source-prefix.md) — знахідка грилінгу, той самий файл
-- [ADR 2026-08-16](../decisions/2026-08-16-silence-is-mute-or-zero-volume.md) — прецедент «предикат замість поля»
-- [ADR 2026-08-17](../decisions/2026-08-17-tray-toast-categories.md) — модель фонового шару
-- [CONTEXT.md](../../CONTEXT.md) §«Живе джерело»
+- [preview-player-presentation](p2-preview-player-presentation.md) — батьківський запис, звідки знахідка
+- [tray-cannot-resume-last](../p2-tray-cannot-resume-last.md) — знахідка грилінгу, той самий пункт меню
+- [tray-now-playing-source-prefix](../p3-tray-now-playing-source-prefix.md) — знахідка грилінгу, той самий файл
+- [ADR 2026-08-16](../../decisions/2026-08-16-silence-is-mute-or-zero-volume.md) — прецедент «предикат замість поля»
+- [ADR 2026-08-17](../../decisions/2026-08-17-tray-toast-categories.md) — модель фонового шару
+- [CONTEXT.md](../../../CONTEXT.md) §«Живе джерело»
 - GNOME HIG, Menus — `https://developer.gnome.org/hig/patterns/controls/menus.html`
 - Код: `src-tauri/src/tray/menu.rs`, `src-tauri/src/tray/mod.rs`,
   `src-tauri/src/tray/handlers.rs`, `src-tauri/src/playback_control.rs`

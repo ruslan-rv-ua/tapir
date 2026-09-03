@@ -28,7 +28,7 @@ notes:
 # Пункт трея сірий, коли `Ctrl+Shift+K` уміє відновити останнє джерело
 
 > **Контекст:** знахідка під час grilling
-> [tray-toggle-label-vs-action](p2-tray-toggle-label-vs-action.md). Запис **не огрилено** —
+> [tray-toggle-label-vs-action](done/p2-tray-toggle-label-vs-action.md). Запис **не огрилено** —
 > розвилки внизу відкриті.
 
 ## Опис
@@ -99,7 +99,7 @@ stream=stop, file=pause/resume, **cold=resume-last**, shared debounce»
 
 ## Документи
 
-- [tray-toggle-label-vs-action](p2-tray-toggle-label-vs-action.md) — звідки знахідка; дає шов `MenuPlayback` / `playback_items`
+- [tray-toggle-label-vs-action](done/p2-tray-toggle-label-vs-action.md) — звідки знахідка; дає шов `MenuPlayback` / `playback_items`
 - [resume-last-playback](done/p1-resume-last-playback.md) — звідки взявся `ResumeLast`
 - [ADR 2026-09-01](../decisions/2026-09-01-response-surfaces-ear-window-system.md) — вибір поверхні фонового відгуку
 - Код: `src-tauri/src/tray/menu.rs`, `src-tauri/src/tray/handlers.rs`,
