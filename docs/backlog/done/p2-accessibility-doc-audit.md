@@ -14,7 +14,7 @@ depends_on: []
 blocks: []
 touches:
   - docs/accessibility.md
-gates: []
+gates: [pnpm test]
 notes:
   - "Знайдено 2026-08-13 під час grilling запису help-recording: розділ 3.1 описує SearchField, якого в коді немає."
   - "2026-08-31 (реалізація sound-hotkeys-feedback-announce-only): розділи 4.3 і 4.4 — теж задум, не код. Деталі в тілі запису; звіряти при аудиті, окремо не відкривати."
@@ -31,7 +31,7 @@ notes:
 
 Знайдені розбіжності (розділ 3, екран «Потоки»):
 
-- [accessibility.md:200](../../accessibility.md:200) малює `SearchField (aria-label="Пошук
+- [accessibility.md](../../accessibility.md) §3.1 малював `SearchField (aria-label="Пошук
   потоків", Ctrl+F)`. **Такого елемента немає** — у `StreamsPanel.tsx` немає ні поля, ні
   стану запиту, ні `Ctrl+F` у `SHORTCUTS`. Слідами задуму лишилися два мертві ключі
   (`streams_search_label`, `zone_streams_toolbar`), які видаляє
@@ -82,7 +82,7 @@ ProfileSwitcher»). Командна палітра фільтрує **кома�
 
 **Списки.** Ескізи `TableView` / `role="grid"` замінено описом composite list; таблицю
 клавіш переписано повністю — `Space` виділенням **не** керує (це `Ctrl+Space`), зате є
-`Shift/Ctrl/Alt+Enter`, `Ctrl+C`, `F4`, `F5`/`Shift+F5`, `Escape` і правило «зайвий
+`Shift/Ctrl/Alt+Enter`, `Ctrl+C`, `F5`/`Shift+F5`, `Escape` і правило «зайвий
 модифікатор знімає збіг». `P`/`R` немає. Шапка колонок існує, але `aria-hidden`.
 
 **Оголошення (§11).** Таблиця подій розійшлася з кодом майже в кожному рядку: «Зараз
