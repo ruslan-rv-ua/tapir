@@ -26,7 +26,7 @@ notes:
 # Пункт трея зветься «Пауза», а живий звук зупиняє
 
 > **Контекст:** знайдено під час grilling
-> [preview-player-presentation](p2-preview-player-presentation.md). Той самий жест, четверта
+> [preview-player-presentation](done/p2-preview-player-presentation.md). Той самий жест, четверта
 > поверхня — але дефект інший: тут розходяться **слово й дія**, а не предикат.
 > Розвилка внизу не закрита — запис треба огрилити перед кодом.
 
@@ -50,7 +50,7 @@ let play_label = match snap.player_state {
 Це **не** дефект прев'ю: він спрацьовує щоразу, коли грає будь-який живий звук, тобто в
 основному сценарії застосунку.
 
-Сусідній запис [preview-player-presentation](p2-preview-player-presentation.md) прибирає паузу
+Сусідній запис [preview-player-presentation](done/p2-preview-player-presentation.md) прибирає паузу
 живого звуку з панелі й з медіаклавіш. Після нього трей лишається **єдиним** місцем, де слово
 «Пауза» ще стосується ефіру.
 
@@ -98,7 +98,7 @@ screen-reader users». Варіанти:
 
 ## Документи
 
-- [preview-player-presentation](p2-preview-player-presentation.md) — батьківський запис, звідки знахідка
+- [preview-player-presentation](done/p2-preview-player-presentation.md) — батьківський запис, звідки знахідка
 - [ADR 2026-08-17](../decisions/2026-08-17-tray-toast-categories.md) — модель фонового шару
 - Код: `src-tauri/src/tray/menu.rs`, `src-tauri/src/tray/mod.rs`,
   `src-tauri/src/playback_control.rs`

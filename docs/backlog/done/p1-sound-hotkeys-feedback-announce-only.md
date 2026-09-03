@@ -120,7 +120,7 @@ formatTime(pos)` іде і в видимий `<span>`, і в `aria-valuetext`. �
 
 - [wishlist-match-invisible](p1-wishlist-match-invisible.md) — збіг із вішлістом не показується
   **ніде**. Поза межею: подія станції, не дія користувача (§3 ADR).
-- [preview-player-presentation](../p2-preview-player-presentation.md) — плеєр пропонує поставити
+- [preview-player-presentation](p2-preview-player-presentation.md) — плеєр пропонує поставити
   ефір на паузу. Інший клас: дія видима, але неможлива.
 - [volume-hotkey-no-feedback](p1-volume-hotkey-no-feedback.md) — глобальні клавіші гучності
   мовчать і для скрінрідера. Дзеркальний бік, якого §4 ADR свідомо не покриває.

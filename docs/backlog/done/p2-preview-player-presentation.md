@@ -3,11 +3,12 @@ slug: preview-player-presentation
 title: "Плеєр не має єдиної історії про прослуховування — і пропонує поставити прев'ю на паузу"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: M
 kind: bug
 target: 0.1.0
 updated: 2026-09-03
+completed: 2026-09-03
 a11y: true
 depends_on: []
 blocks: [tray-toggle-label-vs-action]
@@ -34,7 +35,7 @@ notes:
 # Плеєр не має єдиної історії про прослуховування
 
 > **Контекст:** знайдено під час grilling
-> [sound-hotkeys-feedback-announce-only](done/p1-sound-hotkeys-feedback-announce-only.md),
+> [sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md),
 > огрилено 2026-09-03. Усі розвилки закриті — читати §«Що вирішено» перед кодом.
 
 ## Опис
@@ -51,18 +52,18 @@ notes:
 
 Тобто плеєр пропонує поставити ефір на паузу — а довідка прямо каже протилежне:
 «Ефір не можна осмислено поставити на паузу — ви лише переслуховували б застарілий буфер»
-([player.md:9](../help/uk/player.md:9)).
+([player.md:9](../../help/uk/player.md:9)).
 
 **Пауза при цьому не відмовляє, а спрацьовує.** `pause_playback` джерела не перевіряє
-([engine.rs:301](../../src-tauri/src/player/engine.rs:301)) — rodio слухняно стає на паузу,
+([engine.rs:301](../../../src-tauri/src/player/engine.rs:301)) — rodio слухняно стає на паузу,
 станція йде далі, буфер протухає. Клас дефекту — не «дія видима, але неможлива», а **дія
 можлива й шкідлива**.
 
-**Словник має рацію:** [CONTEXT.md](../../CONTEXT.md) §«Прев'ю» — «третій вид джерела звуку
+**Словник має рацію:** [CONTEXT.md](../../../CONTEXT.md) §«Прев'ю» — «третій вид джерела звуку
 поряд з ефіром потоку й збереженим файлом… зупиняється воно, як ефір, — без позиції».
 
 **Довідка вже обіцяє те, чого код не робить:** «Системні медіа-кнопки… керують відтворенням
-**так само, як кнопки програвача**» ([background.md:23](../help/uk/background.md:23)).
+**так само, як кнопки програвача**» ([background.md:23](../../help/uk/background.md:23)).
 
 ## Корінь
 
@@ -74,19 +75,19 @@ notes:
 | `decide_toggle` (`Ctrl+Shift+K`, пункт трея) | окремі арми `StopStream` **і** `StopPreview` | зупиняє ✅ |
 | `seek_playback` | `Stream` і `Preview` одним армом | відмовляє ✅ |
 | панель плеєра | `isStream = source?.type === 'stream'` | **ставить на паузу** ❌ |
-| SMTC / медіаклавіші | `matches!(source, Some(PlaybackSource::Stream {..}))` | **falls to else → pause** ❌ ([smtc.rs:225](../../src-tauri/src/smtc.rs:225)) |
+| SMTC / медіаклавіші | `matches!(source, Some(PlaybackSource::Stream {..}))` | **falls to else → pause** ❌ ([smtc.rs:225](../../../src-tauri/src/smtc.rs:225)) |
 
 Справжнє питання в усіх чотирьох випадках — не «це потік?», а **«це живий звук?»**.
 Прев'ю відповідає «так» на друге й «ні» на перше, і провалюється не туди.
 
 Той самий візерунок уже лагодили в цьому коді: поле `muted` замінили на предикат
 `isSoundOff`, бо «поле, яке дорівнює false, не означає, що звук є»
-([ADR 2026-08-16](../decisions/2026-08-16-silence-is-mute-or-zero-volume.md)). Тут те саме
+([ADR 2026-08-16](../../decisions/2026-08-16-silence-is-mute-or-zero-volume.md)). Тут те саме
 одним рівнем вище: `type === 'stream'` не означає «не живе».
 
 У панелі `isStream` вирішує **чотири** речі, не три: головну кнопку, наявність окремої
 «Зупинити», рядок бітрейту з бейджем — і **фокус-стоп** цього рядка
-([PlayerPanel.tsx:132](../../src/components/player/PlayerPanel.tsx:132)). Сам рядок
+([PlayerPanel.tsx:132](../../../src/components/player/PlayerPanel.tsx:132)). Сам рядок
 малюється по `source.type === "stream"`, тож просте перейменування `isStream` → `isLive`
 дало б прев'ю стоп на елементі, якого немає.
 
@@ -96,21 +97,21 @@ notes:
 
 Третього бейджа немає. Єдина практична різниця — що станцію ще не додано до профілю, — це
 факт **каталогу**, і носій у нього там уже є: кнопка рядка перемикається на «Зупинити «X»»
-([StationItem.tsx:113](../../src/components/browser/StationItem.tsx:113)). Після цієї правки
+([StationItem.tsx:113](../../../src/components/browser/StationItem.tsx:113)). Після цієї правки
 керування прев'ю й ефіром тотожне, тож бейдж повідомляв би відмінність, якої в кнопках немає.
 
 ### 2. Рядок бітрейту стає рядком живого джерела
 
 Малюється для **будь-якого** живого звуку; бейдж **LIVE** у ньому завжди, сам бітрейт — лише
 коли є `StreamInfo`, звідки його взяти. Рядка треку в прев'ю немає взагалі: `track-changed`
-для порожнього `stream_id` не шлеться ([engine.rs:763](../../src-tauri/src/player/engine.rs:763)),
+для порожнього `stream_id` не шлеться ([engine.rs:763](../../../src-tauri/src/player/engine.rs:763)),
 тож трек не з'явиться ніколи.
 
 Одна умова `isLive` керує і показом рядка, і фокус-стопом — пастка з `bitrateRowRef` зникає
 за побудовою.
 
 **Прочерків не ставимо.** «—» означає «ще не прийшло», а тут — «не буває»; за §2
-[ADR 2026-08-31](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) носій має
+[ADR 2026-08-31](../../decisions/2026-08-31-visible-carrier-for-announced-facts.md) носій має
 нести факт, а не його відсутність.
 
 ### 3. Предикат — `src/lib/playbackSource.ts`
@@ -122,7 +123,7 @@ notes:
 Писати **тотально** — перелічити всі види джерела явно (`switch` або повний
 `Record<PlaybackSource["type"], boolean>`), а не через `!== "file"`. Заперечення тихо
 зарахує будь-який майбутній вид у живі, а компілятор тут не сторож: `pnpm vite:build` — це
-рівно `vite build`, без `tsc` ([package.json:10](../../package.json:10)), та й сам `tsc`
+рівно `vite build`, без `tsc` ([package.json:10](../../../package.json:10)), та й сам `tsc`
 має давні помилки від нетипізованого paraglide. Сторожем має бути тест, який називає всі
 види поіменно.
 
@@ -130,7 +131,7 @@ Rust дістає дзеркало — `impl PlaybackSource { fn is_live(&self) 
 підписується вже наявний арм `Stream | Preview` у `seek_playback`. Питання «це живе?» дістає
 рівно одне ім'я з кожного боку IPC.
 
-Словник: новий розділ [CONTEXT.md](../../CONTEXT.md) §«Живе джерело», за формою §«Вимкнений
+Словник: новий розділ [CONTEXT.md](../../../CONTEXT.md) §«Живе джерело», за формою §«Вимкнений
 звук» — стан, у який ведуть два шляхи, а користувач зустрічає один.
 
 ### 4. `F9` більше не знає про прев'ю
@@ -153,20 +154,20 @@ Rust дістає дзеркало — `impl PlaybackSource { fn is_live(&self) 
 
 ### 5. SMTC — та сама правка, три рядки
 
-`Pause` у [smtc.rs:225](../../src-tauri/src/smtc.rs:225) переходить на `is_live()`. Без цього
+`Pause` у [smtc.rs:225](../../../src-tauri/src/smtc.rs:225) переходить на `is_live()`. Без цього
 критерій «плеєр не пропонує дій, яких для живого звуку не існує» закривався б на екрані, поки
 апаратна клавіша робить рівно те, що запис оголосив неможливим, — і обіцянка
-[background.md:23](../help/uk/background.md:23) про однакову поведінку вперше стала б хибною.
+[background.md:23](../../help/uk/background.md:23) про однакову поведінку вперше стала б хибною.
 
 Заразом переписати **застарілий** доккоментар `decide_toggle`
-([playback_control.rs:48](../../src-tauri/src/playback_control.rs:48)): він пояснює арм
+([playback_control.rs:48](../../../src-tauri/src/playback_control.rs:48)): він пояснює арм
 `Paused`, посилаючись на «the player-panel Pause button and the SMTC Pause key both pause a
 live stream», а обидві половини вже неправдиві. Після цієї правки паузи живого звуку в
 застосунку не лишається взагалі.
 
 **Мітка пункту трея сюди не входить** — це інший дефект (слово розходиться з дією, і не для
 прев'ю, а для потоків); заведено окремо як
-[tray-toggle-label-vs-action](p2-tray-toggle-label-vs-action.md).
+[tray-toggle-label-vs-action](../p2-tray-toggle-label-vs-action.md).
 
 ### 6. Довідка — один зв'язок у `browser.md`
 
@@ -174,7 +175,7 @@ live stream», а обидві половини вже неправдиві. П�
 правдиве. Бракує тільки містка — довідка зве це «швидка проба» й ніде не каже, що проба
 є ефіром, тож правило, написане для «ефіру», адресоване нікому.
 
-[browser.md:15](../help/uk/browser.md:15), обидві локалі:
+[browser.md:15](../../help/uk/browser.md:15), обидві локалі:
 
 > `Shift+Enter` або кнопка прослуховування на рядку вмикає станцію, не додаючи її. Натисніть
 > ще раз, щоб зупинити. **У плеєрі це звичайний ефір: Tapir станцію не запам'ятовує, а кнопки
@@ -211,43 +212,28 @@ station, and the previous and next controls do nothing while it plays.»
 
 ## Критерії готовності
 
-- [ ] `isLiveSource()` у `src/lib/playbackSource.ts` — тотальний, з тестом, що називає всі
+- [x] `isLiveSource()` у `src/lib/playbackSource.ts` — тотальний, з тестом, що називає всі
       види джерела поіменно; `PlaybackSource::is_live()` у Rust
-- [ ] `type === 'stream'` лишився тільки там, де питання справді про потік із профілю
+- [x] `type === 'stream'` лишився тільки там, де питання справді про потік із профілю
       (трек, бітрейт, `StreamInfo`)
-- [ ] Плеєр не пропонує дій, яких для живого звуку не існує: для прев'ю головна кнопка
+- [x] Плеєр не пропонує дій, яких для живого звуку не існує: для прев'ю головна кнопка
       зупиняє, окремої «Зупинити» немає, бейдж **LIVE** є
-- [ ] Медіаклавіша `Pause` на прев'ю зупиняє, а не ставить на паузу; доккоментар
+- [x] Медіаклавіша `Pause` на прев'ю зупиняє, а не ставить на паузу; доккоментар
       `decide_toggle` більше не описує неіснуючі шляхи
-- [ ] `F9` і екран узгоджені: гілки прев'ю немає ні в типі, ні в ключах
-- [ ] `docs/help/` оновлено: `browser.md` в обох локалях; `player.md` свідомо без змін
-- [ ] CONTEXT.md має §«Живе джерело»
-- [ ] NVDA-прогін за чеклістом пройдено —
-      [nvda-preview-player-presentation.md](../testing/nvda-preview-player-presentation.md)
-- [ ] `pnpm test`, `pnpm vite:build` зелені
-
-## NVDA
-
-Запис `a11y: true`: змінюється **набір фокус-стопів зони плеєра** для прев'ю (мінус кнопка
-«Зупинити», плюс рядок живого джерела) і **поведінка фокуса після натискання головної кнопки**
-— зона тепер порожніє, і `usePlayerZoneNav` із неї виходить. Саме на цьому класі вже двічі
-ловили дефекти.
-
-Чекліст [nvda-preview-player-presentation.md](../testing/nvda-preview-player-presentation.md)
-написано за скілом `writing-nvda-checklists` — вісім сценаріїв: головна кнопка на пробі,
-відсутність окремої «Зупинити», новий рядок живого джерела, куди йде фокус після зупинки
-(×5 повторів), ефір потоку як дзеркальний випадок, медіаклавіша `Pause`, файл як недоторканий
-шлях, `F9`. Обхід зони плеєра — **стрілками** (не Tab — roving focus).
-Видаляється на прийманні.
+- [x] `F9` і екран узгоджені: гілки прев'ю немає ні в типі, ні в ключах
+- [x] `docs/help/` оновлено: `browser.md` в обох локалях; `player.md` свідомо без змін
+- [x] CONTEXT.md має §«Живе джерело»
+- [x] NVDA-прогін пройдено (8 сценаріїв, 2026-09-03)
+- [x] `pnpm test`, `pnpm vite:build` зелені
 
 ## Документи
 
-- [sound-hotkeys-feedback-announce-only](done/p1-sound-hotkeys-feedback-announce-only.md) — звідки знахідка
-- [player-recording-badge-term](done/p2-player-recording-badge-term.md) — сусідній запис про той самий
+- [sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md) — звідки знахідка
+- [player-recording-badge-term](p2-player-recording-badge-term.md) — сусідній запис про той самий
   ряд позначок джерела; **закритий**, ряд позначок уже «LIVE / Файл»
-- [tray-toggle-label-vs-action](p2-tray-toggle-label-vs-action.md) — четверта поверхня того самого жесту
-- [ADR 2026-08-31](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) §2 — узгодження `F9` з екраном
-- [ADR 2026-08-16](../decisions/2026-08-16-silence-is-mute-or-zero-volume.md) — прецедент «предикат замість поля»
-- [CONTEXT.md](../../CONTEXT.md) §«Живе джерело», §«Прев'ю»
+- [tray-toggle-label-vs-action](../p2-tray-toggle-label-vs-action.md) — четверта поверхня того самого жесту
+- [ADR 2026-08-31](../../decisions/2026-08-31-visible-carrier-for-announced-facts.md) §2 — узгодження `F9` з екраном
+- [ADR 2026-08-16](../../decisions/2026-08-16-silence-is-mute-or-zero-volume.md) — прецедент «предикат замість поля»
+- [CONTEXT.md](../../../CONTEXT.md) §«Живе джерело», §«Прев'ю»
 - Код: `src/lib/playbackSource.ts`, `src/components/player/PlayerPanel.tsx`,
   `src/lib/playbackAnnounce.ts`, `src-tauri/src/smtc.rs`, `src-tauri/src/player/engine.rs`

@@ -130,7 +130,7 @@
 - **Прогалини, знайдені правилом, але поза його межею, винесено окремо:**
   [wishlist-match-invisible](../backlog/done/p1-wishlist-match-invisible.md) (збіг із вішлістом не
   показується ніде — подія станції, не дія користувача),
-  [preview-player-presentation](../backlog/p2-preview-player-presentation.md) (плеєр не має
+  [preview-player-presentation](../backlog/done/p2-preview-player-presentation.md) (плеєр не має
   єдиної історії про прослуховування — інший клас: дія видима, але неможлива),
   [volume-hotkey-no-feedback](../backlog/done/p1-volume-hotkey-no-feedback.md) (глобальна клавіша
   гучності мовчить і для скрінрідера — дзеркальний бік, якого §4 свідомо не покриває).
