@@ -11,7 +11,7 @@ updated: 2026-09-04
 completed: 2026-09-04
 a11y: true
 depends_on: [eslint-narrow-setup]
-blocks: []
+blocks: [zone-id-union, zone-proxy-hook]
 touches:
   - src/hooks/useZoneNavigation.ts
   - src/App.tsx
