@@ -25,7 +25,7 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [load-more-retry-skips-failed-page](p2-load-more-retry-skips-failed-page.md) | P2 | planned | draft | S | [load-more-unreachable-by-keyboard](done/p1-load-more-unreachable-by-keyboard.md) ✅ | — (знахідка рев'ю 2026-09-04: невдале дописування лишає `offset` піднятим, тож повтор мовчки пропускає порцію; розвилка з трьох варіантів, один із них чіпає `isAppendingResults` — грилити перед реалізацією) |
+| [load-more-retry-skips-failed-page](p2-load-more-retry-skips-failed-page.md) | P2 | planned | **ready** | S | [load-more-unreachable-by-keyboard](done/p1-load-more-unreachable-by-keyboard.md) ✅ | [stale-search-overwrites-results](p2-stale-search-overwrites-results.md) (огрилено 2026-09-04: `offset` перестає зберігатися взагалі — його дає довжина того, що на екрані; разом із ним зникає `isAppendingResults`, а порція дістає квиток на свої критерії. Рішення — [ADR loaded-prefix-is-the-cursor](../decisions/2026-09-04-loaded-prefix-is-the-cursor.md); гонка **замін** свідомо винесена окремо) |
 | [list-key-modifier-guards](p2-list-key-modifier-guards.md) | P2 | planned | draft | S | [streams-transfer-hotkeys](done/p2-streams-transfer-hotkeys.md) | — (switch по `e.key` не перевіряє модифікаторів; той самий `switch`, що й у [load-more-unreachable-by-keyboard](done/p1-load-more-unreachable-by-keyboard.md) — правила ортогональні, хто піде другим, побачить сторожа першого) |
 
 ## v0.2.0
@@ -81,7 +81,7 @@ semver; `unscheduled` — наприкінці.
 
 > **Номера свідомо немає.** Тут лишаються дослідження (`type: research`), спірні ідеї,
 > чиї «Відкриті питання» ставлять під сумнів саму пропозицію, і тригер-gated записи —
-> ті, до яких повертаються лише за реальним приводом, а не за планом. 8 записів
+> ті, до яких повертаються лише за реальним приводом, а не за планом. 9 записів
 > (2026-08-17 троє знято рішенням розробника — див. «Виконано»).
 > Найперше рішення для цієї секції — **gate A4** ([mpv-playback-engine](p3-mpv-playback-engine.md)):
 > його «go» закриває два інші записи разом.
@@ -96,6 +96,7 @@ semver; `unscheduled` — наприкінці.
 | [command-palette-mode-prefixes](p3-command-palette-mode-prefixes.md) | P3 | idea | draft | S | [command-palette-phase-3](p1-command-palette-phase-3.md) | спірна — українська розкладка без `>`/`@` |
 | [profile-switch-orphaned-tasks](p3-profile-switch-orphaned-tasks.md) | P3 | idea | draft | M | — | **умовний** — лише за реальним тригером (незафіналізовані файли після перемикання профілю) |
 | [reconnect-counter-not-live](p2-reconnect-counter-not-live.md) | P2 | planned | **draft** | S | [reconnect-max-in-status](done/p2-reconnect-max-in-status.md) ✅ | — (пара «спроба N з M» їде правильним каналом, але канал не оновлюється під час запису; знахідка реалізації 2026-09-02, потрібен grooming каналу) |
+| [stale-search-overwrites-results](p2-stale-search-overwrites-results.md) | P2 | planned | **draft** | S | [load-more-retry-skips-failed-page](p2-load-more-retry-skips-failed-page.md) | — (друга половина класу «стан розійшовся з екраном»: дві заміни в польоті, пізня кладе на екран результати критеріїв, яких там уже немає. Квиток із [ADR loaded-prefix-is-the-cursor](../decisions/2026-09-04-loaded-prefix-is-the-cursor.md) підходить, але заміна тягне прапорець завантаження — варіант не обрано, грилити) |
 
 ---
 
