@@ -29,11 +29,13 @@ clean:
 install:
     pnpm install
 
-# All four frontend gates. Build first: `src/i18n/paraglide/` is generated and
-# gitignored, and both the tests and tsc read it — on a fresh clone the other two
-# have nothing to resolve `messages` against until vite has compiled it. Lint runs
-# last and with `--max-warnings 0`: exhaustive-deps and a dead eslint-disable are
-# warnings by rule level, and without that flag they would never fail the gate.
+# Build first: `src/i18n/paraglide/` is generated and gitignored, and both the tests
+# and tsc read it — on a fresh clone the other two have nothing to resolve `messages`
+# against until vite has compiled it. Lint runs last and with `--max-warnings 0`:
+# exhaustive-deps and a dead eslint-disable are warnings by rule level, and without
+# that flag they would never fail the gate.
+#
+# All four frontend gates.
 check:
     pnpm vite:build
     pnpm test
