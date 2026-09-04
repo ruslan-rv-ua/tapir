@@ -17,7 +17,7 @@ touches:
   - src-tauri/src/profile.rs
   - src-tauri/src/settings.rs
   - src-tauri/Cargo.toml
-gates: [cargo test, cargo clippy, pnpm test, pnpm vite:build, pnpm typecheck]
+gates: [cargo test, cargo clippy --all-targets, pnpm test, pnpm vite:build, pnpm typecheck]
 notes:
   - "Аудит 2026-09-04: src/lib/tauri.ts має 89 обгорток invoke і дзеркальні інтерфейси всіх DTO, які тримаються синхронними з Rust лише увагою людини."
   - "tauri-specta 2.0.0-rc.25 (2026-05) сумісний з Tauri 2 і Rust 2024, але лишається RC з 2023 року; docs.rs для rc.25 не збирається; issue про вихід із RC без відповіді мейнтейнерів."

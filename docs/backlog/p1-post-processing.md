@@ -12,7 +12,7 @@ a11y: true
 depends_on: [profile-scoped-settings]
 blocks: []
 touches: [src-tauri/src/postprocess/runner.rs, src-tauri/src/commands/postprocess_commands.rs, src/components/profile/ProfileSettingsDialog.tsx]
-gates: [pnpm test, pnpm vite:build, cargo test, cargo clippy]
+gates: [pnpm test, pnpm vite:build, cargo test, cargo clippy --all-targets]
 depends_on_external: ["Phase 1 — Core Recording (✅ реалізовано)"]
 notes:
   - "P2 → P1 (2026-08-08): після profile-scoped-settings у діалозі профілю з'явиться готова, але вимкнена вкладка «Постобробка» — тобто це вже видима користувачу заглушка, а не просто відсутня фіча"

@@ -12,7 +12,7 @@ a11y: true
 depends_on: []
 blocks: []
 touches: [src-tauri/src/stream/recorder.rs, src-tauri/src/stream/manager.rs, src-tauri/src/commands/stream_commands.rs, src/components/streams/StreamItem.tsx]
-gates: [pnpm test, cargo test, cargo clippy]
+gates: [pnpm test, cargo test, cargo clippy --all-targets]
 ---
 
 # Пауза запису без відключення від потоку

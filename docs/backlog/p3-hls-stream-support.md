@@ -12,7 +12,7 @@ a11y: true
 depends_on: []
 blocks: []
 touches: [src-tauri/src/stream, src-tauri/src/player/engine.rs]
-gates: [cargo test, cargo clippy, pnpm test, pnpm vite:build]
+gates: [cargo test, cargo clippy --all-targets, pnpm test, pnpm vite:build]
 depends_on_external: ["Phase 1 (stream::connection, stream::format)", "PlayerEngine (symphonia)"]
 ---
 

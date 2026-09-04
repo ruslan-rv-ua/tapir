@@ -18,7 +18,7 @@ touches:
   - src-tauri/src/playback_control.rs
   - docs/help/uk/background.md
   - docs/help/en/background.md
-gates: [cargo test, cargo clippy, pnpm test, pnpm vite:build]
+gates: [cargo test, cargo clippy --all-targets, pnpm test, pnpm vite:build]
 notes:
   - "Знахідка grilling tray-toggle-label-vs-action (2026-09-03). Розвилки НЕ закриті — грилити перед кодом."
   - "Хронологія: .enabled() з f9248f2 (2026-05-28), ResumeLast з ea6995c (2026-07-17) — трей після цього не переглядали."

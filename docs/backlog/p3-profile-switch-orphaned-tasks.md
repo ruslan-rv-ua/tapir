@@ -12,7 +12,7 @@ a11y: true
 depends_on: []
 blocks: []
 touches: [src-tauri/src/commands/profile_commands.rs, src-tauri/src/stream/manager.rs]
-gates: [cargo test, cargo clippy]
+gates: [cargo test, cargo clippy --all-targets]
 notes: ["умовно: брати лише за реальним тригером — незафіналізовані файли після profile switch"]
 ---
 

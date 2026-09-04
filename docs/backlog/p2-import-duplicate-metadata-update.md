@@ -14,7 +14,7 @@ blocks: []
 touches:
   - src-tauri/src/commands/stream_io_commands.rs
   - src/components/streams/ImportStreamsDialog.tsx
-gates: [pnpm test, pnpm vite:build, cargo test, cargo clippy]
+gates: [pnpm test, pnpm vite:build, cargo test, cargo clippy --all-targets]
 depends_on_external: ["Phase 3J (Stream Import/Export, ✅ завершено)"]
 notes:
   - "Row.status зараз кодує «duplicate» як стан probe (ImportStreamsDialog.tsx:28) — потрібен окремий прапорець isDuplicate, бо дублікати теж почнуть зондуватись і status стане ok/error"

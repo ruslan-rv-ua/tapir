@@ -12,7 +12,7 @@ a11y: false
 depends_on: []
 blocks: []
 touches: [src-tauri/src/stream/splitter.rs, src-tauri/src/commands/settings_commands.rs, src/components/settings]
-gates: [pnpm test, cargo test, cargo clippy]
+gates: [pnpm test, cargo test, cargo clippy --all-targets]
 ---
 
 # Last.fm скробблінг — автоматична відправка прослуханих треків

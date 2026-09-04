@@ -16,7 +16,7 @@ touches:
   - src-tauri/Cargo.toml
   - src/hooks/useAutoSave.ts
   - package.json
-gates: [cargo test, cargo clippy, pnpm test, pnpm vite:build]
+gates: [cargo test, cargo clippy --all-targets, pnpm test, pnpm vite:build]
 notes:
   - "Аудит 2026-09-04: обидві заміни один в один, обидві не обов'язкові. Записано, щоб рішення «робити» або «не робити» було зафіксоване, а не переглядалося при кожному аудиті."
 ---

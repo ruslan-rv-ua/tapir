@@ -71,25 +71,14 @@ Please refer to [AGENTS.md](AGENTS.md) for a general architecture overview, buil
 
 ### Gates
 
-Two commands guard the backend, run from the repository root (or as `just check-rust`):
+`just check-rust` runs both backend gates: `cargo clippy --all-targets`, then `cargo test`.
 
-```
-cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets
-cargo test --manifest-path src-tauri/Cargo.toml
-```
-
-Clippy is a **gate, not a suggestion**. The level lives in `src-tauri/Cargo.toml`:
-
-```toml
-[lints.clippy]
-all = "deny"
-```
-
-Everything in the `clippy::all` group is therefore an error, and no call site has to
-remember `-D warnings` — an editor, a terminal and a future CI job all get the same
-verdict. `--all-targets` is what reaches test code; without it clippy never looks at
-`#[cfg(test)]` modules. Regular `cargo build` and `cargo test` are unaffected: rustc
-ignores `clippy::` lints.
+Clippy is a **gate, not a suggestion**. Its level is set once, by the `[lints.clippy]`
+section of `src-tauri/Cargo.toml`, which denies the whole `clippy::all` group. No call
+site has to remember `-D warnings`, and an editor, a terminal and a future CI job all
+reach the same verdict. `--all-targets` is what reaches test code; without it clippy
+never looks at `#[cfg(test)]` modules. Plain `cargo build` and `cargo test` are
+unaffected: rustc ignores `clippy::` lints.
 
 A lint that is genuinely wrong in one place is silenced there —
 `#[allow(clippy::…)]` with a comment saying why — never by lowering the crate-wide level.

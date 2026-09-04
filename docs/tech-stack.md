@@ -196,7 +196,7 @@ Portable-збірка не має ярлика в меню «Пуск», том�
 | Файл | Що в ньому |
 |---|---|
 | [`package.json`](../package.json) | JS-залежності, скрипти (`dev`, `build`, `test`, `typecheck`), `packageManager` |
-| [`src-tauri/Cargo.toml`](../src-tauri/Cargo.toml) | Rust-залежності, профілі `release` і `release-fast` |
+| [`src-tauri/Cargo.toml`](../src-tauri/Cargo.toml) | Rust-залежності, профілі `release` і `release-fast`, `[lints.clippy]` (рівень воріт clippy) |
 | [`src-tauri/tauri.conf.json`](../src-tauri/tauri.conf.json) | `identifier` (`ua.ruslanrv.tapir`), вікно, CSP, bundle |
 | [`src-tauri/capabilities/default.json`](../src-tauri/capabilities/default.json) | Дозволи IPC — ядро плюс чотири плагіни, які webview кличе: `dialog`, `log`, `global-shortcut`, `notification` (single-instance дозволу не потребує) |
 | [`justfile`](../justfile) | Команди збірки й ворота (`just check`) |

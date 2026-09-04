@@ -51,7 +51,9 @@ notes:
 ## Критерії готовності
 
 - [x] `docs/help/` — запис видимої поведінки не змінює
-- [x] `cargo clippy --all-targets` дає нуль попереджень
+- [x] `cargo clippy` дає нуль попереджень
+- [x] *(розширено при реалізації)* `cargo clippy --all-targets` — теж нуль: проста
+      `cargo clippy` не заглядає в `#[cfg(test)]`, де ховалась третина лінтів
 - [x] `Cargo.toml` має `[lints.clippy]` з `all = "deny"` або рівноцінне, або `justfile`
       запускає clippy з `-D warnings`; обраний спосіб описано в DEVELOPERS.md
 - [x] `docs/backlog/README.md` у прикладі `gates` називає той самий виклик

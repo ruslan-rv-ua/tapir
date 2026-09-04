@@ -17,7 +17,7 @@ touches:
   - src/components/streams/StreamContextMenu.tsx
   - src/i18n/messages/uk.json
   - src/i18n/messages/en.json
-gates: [cargo test, cargo clippy, pnpm test, pnpm vite:build]
+gates: [cargo test, cargo clippy --all-targets, pnpm test, pnpm vite:build]
 notes:
   - "Виявлено при groomingʼу full-edit-stream (2026-08-07): StreamInfo.ignorelist читається матчером, але жодна IPC-команда його не пише — усі add/remove_from_ignorelist працюють із ПРОФІЛЬНИМ списком"
   - "Готовий взірець UI — PatternList у WishlistPanel (ignorelist профілю): той самий жанр «список патернів + додати/редагувати/видалити», включно з bulk-видаленням"

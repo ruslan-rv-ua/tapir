@@ -15,7 +15,7 @@ touches:
   - src-tauri/src/tray/menu.rs
   - src/i18n/messages/uk.json
   - src/i18n/messages/en.json
-gates: [cargo test, cargo clippy, pnpm test, pnpm vite:build]
+gates: [cargo test, cargo clippy --all-targets, pnpm test, pnpm vite:build]
 notes:
   - "Знахідка grilling tray-toggle-label-vs-action (2026-09-03). Розвилка НЕ закрита — грилити перед кодом."
   - "Пункт неактивний і суто інформаційний — дії за ним немає, тому P3."

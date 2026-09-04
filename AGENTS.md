@@ -64,6 +64,7 @@ Requires: Rust toolchain, Node.js, pnpm, [just](https://github.com/casey/just).
 | `just build` | Optimized release build (slow, small binary) |
 | `just clean` | Clean Rust build artifacts |
 | `just check` | All three frontend gates: `pnpm vite:build`, `pnpm test`, `pnpm typecheck` |
+| `just check-rust` | Both backend gates: `cargo clippy --all-targets`, `cargo test` |
 
 Output binary: `src-tauri/target/release-fast/tapir.exe` (build-fast) or `src-tauri/target/release/tapir.exe` (build).
 

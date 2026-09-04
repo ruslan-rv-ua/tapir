@@ -15,7 +15,7 @@ touches:
   - src-tauri/src/stream/manager.rs
   - src/App.tsx
   - src/lib/tauri.ts
-gates: [cargo test, cargo clippy, pnpm test, pnpm vite:build]
+gates: [cargo test, cargo clippy --all-targets, pnpm test, pnpm vite:build]
 notes:
   - "Знахідка реалізації reconnect-max-in-status (2026-09-02): пара «спроба N з M» їде правильним каналом, але канал не оновлюється під час запису. Канал не обрано — потрібен grooming."
 ---

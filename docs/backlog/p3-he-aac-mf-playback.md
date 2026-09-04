@@ -12,7 +12,7 @@ a11y: true
 depends_on: []
 blocks: []
 touches: [src-tauri/src/player/engine.rs]
-gates: [cargo test, cargo clippy]
+gates: [cargo test, cargo clippy --all-targets]
 depends_on_external: ["player::engine (LiveSource)", "Windows Media Foundation (windows crate)", "#2-фікс PROBE_TIMEOUT (вже в develop)"]
 notes: ["Реалізація збережена на гілці he-aac-mf @ 74c2d90 (НЕ видаляти); архів рішень @ 64d2843 — див. [[he-aac-mf-parked]]"]
 ---

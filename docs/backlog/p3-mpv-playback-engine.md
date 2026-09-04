@@ -12,7 +12,7 @@ a11y: true
 depends_on: []
 blocks: [he-aac-mf-playback, hls-stream-support]
 touches: [src-tauri/src/player/engine.rs, src-tauri/src/smtc.rs, src-tauri/src/wake_lock.rs]
-gates: [cargo test, cargo clippy, pnpm test, pnpm vite:build]
+gates: [cargo test, cargo clippy --all-targets, pnpm test, pnpm vite:build]
 depends_on_external: ["player::engine (LiveSource, play_live, play_file, open_device_sink)", "stream::connection (ICY)", "smtc", "wake_lock", "деплой/бандлінг portable-EXE"]
 notes: ["Робити ПЕРШИМ серед декодер-записів — розвилка (PoC-gate), яка може зробити he-aac-mf-playback і hls-stream-support непотрібними; не вести MF-шлях і mpv паралельно"]
 ---

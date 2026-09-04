@@ -18,7 +18,7 @@ touches:
   - src-tauri/src/player/engine.rs
   - src/components/streams/AddStreamDialog.tsx
   - docs/data-models.md
-gates: [cargo test, cargo clippy, pnpm test, pnpm vite:build]
+gates: [cargo test, cargo clippy --all-targets, pnpm test, pnpm vite:build]
 notes:
   - "Виявлено при groomingʼу full-edit-stream (2026-08-07): поля username/password існують у StreamInfo від Phase 1, але жоден із трьох потрібних шарів не реалізований"
   - "data-models.md описує DPAPI-шифрування паролів як діюче — це drift, не факт; виправити разом із реалізацією або окремо, якщо запис так і не візьмуть"
