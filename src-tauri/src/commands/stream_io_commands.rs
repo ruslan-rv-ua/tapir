@@ -1,4 +1,4 @@
-use futures::StreamExt;
+use futures_util::StreamExt;
 use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_dialog::{DialogExt, FilePath};
 
@@ -137,7 +137,7 @@ pub async fn begin_stream_import(
 /// (first `checking`, then `ok`/`error`). Resolves when every probe is done.
 #[tauri::command]
 pub async fn validate_import_candidates(urls: Vec<String>, app: AppHandle) -> Result<(), String> {
-    futures::stream::iter(urls.into_iter().map(|url| {
+    futures_util::stream::iter(urls.into_iter().map(|url| {
         let app = app.clone();
         async move {
             let _ = app.emit(

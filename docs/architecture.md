@@ -1051,9 +1051,11 @@ connect-src ipc: http://ipc.localhost http://tauri.localhost https://*.api.radio
 
 #### Нормалізація
 
-1. Unicode NFC нормалізація (crate `unicode-normalization`)
-2. Trailing пробіли та крапки обрізаються з кожного компонента шляху
-3. Порожній результат після санітизації → замінюється на `_untitled`
+1. Trailing пробіли та крапки обрізаються з кожного компонента шляху
+2. Порожній результат після санітизації → замінюється на `_untitled`
+
+Unicode NFC-нормалізації **немає**: крейт `unicode-normalization` прибрано
+2026-09-04 як мертвий — жоден шлях коду його не викликав.
 
 #### Обмеження довжини
 
@@ -1066,8 +1068,7 @@ connect-src ipc: http://ipc.localhost http://tauri.localhost https://*.api.radio
 
 ```rust
 pub fn sanitize_filename(raw: &str) -> String {
-    let normalized = raw.nfc().collect::<String>();
-    let replaced = replace_forbidden_chars(&normalized, '_');
+    let replaced = replace_forbidden_chars(raw, '_');
     let trimmed = replaced.trim_end_matches([' ', '.'].as_ref()).to_string();
     let safe = avoid_reserved_names(&trimmed);
     if safe.is_empty() { "_untitled".to_string() } else { truncate_component(safe, 255) }

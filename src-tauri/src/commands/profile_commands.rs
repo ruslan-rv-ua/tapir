@@ -193,7 +193,7 @@ pub async fn switch_profile(
     state.player.stop_playback(&app).await.map_err(|e| e.to_string())?;
     let _ = tokio::time::timeout(
         Duration::from_secs(2),
-        futures::future::join_all(handles),
+        futures_util::future::join_all(handles),
     ).await;
 
     // Step 6-7: save volume to old profile (still the active one at this point)

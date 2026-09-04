@@ -1,4 +1,4 @@
-use futures::StreamExt;
+use futures_util::StreamExt;
 use tauri::Emitter;
 use log::warn;
 
@@ -261,7 +261,7 @@ fn spawn_probe_added(app: tauri::AppHandle, added: &[StreamInfo]) {
 
     tokio::spawn(async move {
         let checked = targets.len();
-        let failed: Vec<String> = futures::stream::iter(targets.into_iter().map(
+        let failed: Vec<String> = futures_util::stream::iter(targets.into_iter().map(
             |(name, url)| async move {
                 let verdict = crate::commands::stream_io_commands::probe_once(&url).await;
                 if verdict.ok { None } else { Some(name) }
