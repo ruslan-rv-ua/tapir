@@ -40,7 +40,7 @@ impl RadioBrowserClient {
         let client = Client::builder()
             .connect_timeout(CONNECT_TIMEOUT)
             .timeout(REQUEST_TIMEOUT)
-            .user_agent("Tapir/0.1.0")
+            .user_agent(crate::USER_AGENT)
             .build()
             .map_err(|e| RadioError::BrowserApi(e.to_string()))?;
 
@@ -79,7 +79,7 @@ impl RadioBrowserClient {
         let client = Client::builder()
             .connect_timeout(CONNECT_TIMEOUT)
             .timeout(REQUEST_TIMEOUT)
-            .user_agent("Tapir/0.1.0")
+            .user_agent(crate::USER_AGENT)
             .build()
             .expect("Failed to build HTTP client");
 

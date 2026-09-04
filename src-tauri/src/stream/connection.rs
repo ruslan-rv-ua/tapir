@@ -38,7 +38,7 @@ pub async fn connect(url: &str) -> Result<IcyConnection, RadioError> {
     let response = client
         .get(url)
         .request_icy_metadata()
-        .header("User-Agent", "Tapir/0.1.0")
+        .header("User-Agent", crate::USER_AGENT)
         .send()
         .await?
         .error_for_status()?;
