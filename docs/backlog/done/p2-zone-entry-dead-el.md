@@ -3,11 +3,12 @@ slug: zone-entry-dead-el
 title: "ZoneEntry.el — обов'язкове поле інтерфейсу, якого не читає ніхто"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: S
 kind: chore
 target: 0.1.0
 updated: 2026-09-04
+completed: 2026-09-04
 a11y: true
 depends_on: [eslint-narrow-setup]
 blocks: []
@@ -29,13 +30,13 @@ notes:
 
 # ZoneEntry.el — обов'язкове поле інтерфейсу, якого не читає ніхто
 
-> **Контекст:** хвіст [eslint-narrow-setup](done/p2-eslint-narrow-setup.md).
+> **Контекст:** хвіст [eslint-narrow-setup](p2-eslint-narrow-setup.md).
 > Механічна робота з нульовим впливом на поведінку, але в a11y-критичному коді, тому
 > окремим записом, а не побіжно.
 
 ## Опис
 
-[`ZoneEntry`](../../src/hooks/useZoneNavigation.ts) оголошує
+[`ZoneEntry`](../../../src/hooks/useZoneNavigation.ts) оголошує
 `readonly el: HTMLElement` як обов'язкове поле. Читачів у продуктивному коді **немає
 жодного**: `cycleZone` веде навігацію по `id` і `focus()`, а поточну зону знаходить
 через `document.activeElement?.closest('[data-zone-id]')`. `useGlobalShortcuts` до
@@ -78,12 +79,12 @@ get el() { return resultsListRef.current?.el as HTMLElement; }  // BrowserPanel.
       (Формулювання уточнено на реалізації: директива `react-hooks/exhaustive-deps`
       у тому ж файлі стояла до запису, вона про залежності ефекту й одна з
       тринадцяти однакових у проєкті — цей запис її не чіпає.)
-- [ ] Навігація F6 між зонами перевірена вручну: код a11y-критичний, і хоч поле
+- [x] Навігація F6 між зонами перевірена вручну: код a11y-критичний, і хоч поле
       мертве, помилка при видаленні впаде саме на перемиканні зон.
-      Чекліст — [nvda-zone-entry-dead-el.md](../testing/nvda-zone-entry-dead-el.md)
+      **NVDA-прогін проведено 2026-09-04, усі 9 сценаріїв пройдено, зауважень немає.**
 
 ## Документи
 
-- [eslint-narrow-setup](done/p2-eslint-narrow-setup.md) — звідки взявся хвіст
-- [eslint-adoption](done/p2-eslint-adoption.md) — знахідка №1 у звіті дослідження
-- [useZoneNavigation.ts](../../src/hooks/useZoneNavigation.ts) — оголошення `ZoneEntry`
+- [eslint-narrow-setup](p2-eslint-narrow-setup.md) — звідки взявся хвіст
+- [eslint-adoption](p2-eslint-adoption.md) — знахідка №1 у звіті дослідження
+- [useZoneNavigation.ts](../../../src/hooks/useZoneNavigation.ts) — оголошення `ZoneEntry`

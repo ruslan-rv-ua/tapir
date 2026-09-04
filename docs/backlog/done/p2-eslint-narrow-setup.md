@@ -73,7 +73,7 @@ ESLint 10 із пласким конфігом, рівно два класичн
 `ProfilesPanel.tsx:261` несе єдине придушення на весь проєкт —
 `@typescript-eslint/no-non-null-asserted-optional-chain` із поясненням поруч. Причина
 не в цьому рядку, а в тому, що `ZoneEntry.el` — обов'язкове поле без жодного читача:
-див. [zone-entry-dead-el](../p2-zone-entry-dead-el.md). Придушення живе рівно до того
+див. [zone-entry-dead-el](p2-zone-entry-dead-el.md). Придушення живе рівно до того
 запису. Свідомо **не** замасковане під `as HTMLElement`, як у шести сусідніх зон, —
 там та сама брехня, але невидима для лінтера.
 
@@ -89,4 +89,4 @@ ESLint 10 із пласким конфігом, рівно два класичн
 ## Документи
 
 - [eslint-adoption](p2-eslint-adoption.md) — дослідження, виміри й підстави рішення
-- [zone-entry-dead-el](../p2-zone-entry-dead-el.md) — хвіст із єдиним придушенням
+- [zone-entry-dead-el](p2-zone-entry-dead-el.md) — хвіст із єдиним придушенням
