@@ -235,8 +235,7 @@ mod tests {
 
     #[test]
     fn log_level_serde_round_trip() {
-        let mut s = GlobalSettings::default();
-        s.log_level = LogLevel::Debug;
+        let s = GlobalSettings { log_level: LogLevel::Debug, ..Default::default() };
         let json = serde_json::to_string(&s).unwrap();
         let back: GlobalSettings = serde_json::from_str(&json).unwrap();
         assert_eq!(back.log_level, LogLevel::Debug);
@@ -384,8 +383,7 @@ mod tests {
 
     #[test]
     fn smtc_enabled_false_round_trips() {
-        let mut s = GlobalSettings::default();
-        s.smtc_enabled = false;
+        let s = GlobalSettings { smtc_enabled: false, ..Default::default() };
         let json = serde_json::to_string(&s).unwrap();
         let back: GlobalSettings = serde_json::from_str(&json).unwrap();
         assert!(!back.smtc_enabled);
@@ -407,8 +405,7 @@ mod tests {
 
     #[test]
     fn autostart_minimized_false_round_trips() {
-        let mut s = GlobalSettings::default();
-        s.autostart_minimized = false;
+        let s = GlobalSettings { autostart_minimized: false, ..Default::default() };
         let json = serde_json::to_string(&s).unwrap();
         let back: GlobalSettings = serde_json::from_str(&json).unwrap();
         assert!(!back.autostart_minimized);

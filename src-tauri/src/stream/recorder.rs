@@ -65,16 +65,16 @@ impl Recorder {
         let ext = audio_format_ext(&self.format);
 
         // Build incomplete path using the incomplete template
-        let incomplete_path = sanitize::build_track_path(
-            &self.output_dir,
-            &self.settings.incomplete_file_name_template.clone(),
+        let incomplete_path = sanitize::build_track_path(sanitize::TrackPathParams {
+            output_dir: &self.output_dir,
+            template: &self.settings.incomplete_file_name_template,
             artist,
             title,
-            &self.station_name.clone(),
-            self.track_number,
-            self.settings.auto_correct_case,
-            ext,
-        );
+            station: &self.station_name,
+            track_number: self.track_number,
+            auto_correct: self.settings.auto_correct_case,
+            extension: ext,
+        });
 
         // Resolve collision on incomplete path
         let incomplete_path = sanitize::resolve_collision(&incomplete_path);
@@ -88,16 +88,16 @@ impl Recorder {
         let file = File::create(&incomplete_path).await?;
 
         // Also compute final path using the regular template (no collision yet — applied at finalize)
-        let final_path = sanitize::build_track_path(
-            &self.output_dir,
-            &self.settings.file_name_template.clone(),
+        let final_path = sanitize::build_track_path(sanitize::TrackPathParams {
+            output_dir: &self.output_dir,
+            template: &self.settings.file_name_template,
             artist,
             title,
-            &self.station_name.clone(),
-            self.track_number,
-            self.settings.auto_correct_case,
-            ext,
-        );
+            station: &self.station_name,
+            track_number: self.track_number,
+            auto_correct: self.settings.auto_correct_case,
+            extension: ext,
+        });
 
         self.track_incomplete_path = Some(incomplete_path.clone());
         self.track_final_path = Some(final_path);
@@ -128,24 +128,20 @@ impl Recorder {
         let incomplete_path = self.track_incomplete_path.take();
         let final_path = self.track_final_path.take();
 
-        // Flush and close the track file
-        if let Some(mut f) = self.track_file.take() {
-            if let Err(e) = f.flush().await {
-                // Clean up the incomplete file before propagating
-                if let Some(ref path) = incomplete_path {
-                    let _ = tokio::fs::remove_file(path).await;
-                }
-                return Err(e.into());
+        // Flush and close the track file. The handle is dropped (closed) with the
+        // `if let` chain either way — a successful flush needs no branch of its own.
+        if let Some(mut f) = self.track_file.take() && let Err(e) = f.flush().await {
+            // Clean up the incomplete file before propagating
+            if let Some(ref path) = incomplete_path {
+                let _ = tokio::fs::remove_file(path).await;
             }
-            // File dropped (closed) here
+            return Err(e.into());
         }
 
         if duration_ms < self.settings.skip_short_tracks_ms as u64 {
             // Too short — delete the incomplete file
-            if let Some(path) = &incomplete_path {
-                if path.exists() {
-                    tokio::fs::remove_file(path).await?;
-                }
+            if let Some(path) = &incomplete_path && path.exists() {
+                tokio::fs::remove_file(path).await?;
             }
             return Ok(None);
         }
@@ -196,16 +192,16 @@ impl Recorder {
         // only for the caller. We still use track_number=0 and auto_correct=false for stream files.
         let _ = date; // date is rendered inside render_template via chrono
 
-        let path = sanitize::build_track_path(
-            &self.output_dir,
-            &self.settings.stream_file_name_template.clone(),
-            "",
-            "",
+        let path = sanitize::build_track_path(sanitize::TrackPathParams {
+            output_dir: &self.output_dir,
+            template: &self.settings.stream_file_name_template,
+            artist: "",
+            title: "",
             station,
-            0,
-            false,
-            ext,
-        );
+            track_number: 0,
+            auto_correct: false,
+            extension: ext,
+        });
 
         let path = sanitize::resolve_collision(&path);
 

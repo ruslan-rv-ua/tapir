@@ -658,12 +658,12 @@ pub async fn transfer_stream_to_profile(
     //    the state rather than mere presence.
     if mode == TransferMode::Move {
         let manager = state.stream_manager.read().await;
-        if let Some(status) = manager.get_status(&stream_id) {
-            if move_blocked_by_state(&status.state) {
-                return Err(RadioError::Forbidden(
-                    "Cannot move a stream while it is active".into(),
-                ).to_string());
-            }
+        if let Some(status) = manager.get_status(&stream_id)
+            && move_blocked_by_state(&status.state)
+        {
+            return Err(RadioError::Forbidden(
+                "Cannot move a stream while it is active".into(),
+            ).to_string());
         }
     }
 

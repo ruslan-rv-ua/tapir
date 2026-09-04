@@ -236,7 +236,7 @@ impl PlayerEngine {
         let device_name = self.output_device_name.lock().await.clone();
         let device_sink = open_device_sink(device_name.as_deref())
             .context("Failed to open audio output stream")?;
-        let player = Arc::new(Player::connect_new(&device_sink.mixer()));
+        let player = Arc::new(Player::connect_new(device_sink.mixer()));
 
         let volume = *self.volume.lock().await;
         player.set_volume(volume);
@@ -770,7 +770,7 @@ impl PlayerEngine {
                 return Err(e).context("Failed to open audio output stream");
             }
         };
-        let player = Arc::new(Player::connect_new(&device_sink.mixer()));
+        let player = Arc::new(Player::connect_new(device_sink.mixer()));
         let device_sink_arc = Arc::new(std::sync::Mutex::new(Some(device_sink)));
 
         let volume = *self.volume.lock().await;

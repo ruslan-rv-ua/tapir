@@ -62,7 +62,7 @@ pub fn decide(active_count: usize) -> ToggleAction {
 fn active_targets(statuses: &[StreamStatus], filter: Option<&HashSet<String>>) -> Vec<(String, u64)> {
     statuses
         .iter()
-        .filter(|s| is_active(&s.state) && filter.map_or(true, |f| f.contains(&s.stream_id)))
+        .filter(|s| is_active(&s.state) && filter.is_none_or(|f| f.contains(&s.stream_id)))
         .map(|s| (s.stream_id.clone(), s.session_id))
         .collect()
 }

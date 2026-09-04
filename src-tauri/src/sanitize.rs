@@ -92,7 +92,7 @@ pub fn sanitize_component(name: &str) -> String {
     let sanitized: String = name.chars()
         .map(|c| if forbidden(c) { '_' } else { c })
         .collect();
-    let sanitized = sanitized.trim_end_matches(|c| c == '.' || c == ' ').to_string();
+    let sanitized = sanitized.trim_end_matches(['.', ' ']).to_string();
 
     let stem = sanitized.split('.').next().unwrap_or("").trim_end_matches(' ');
     if WINDOWS_RESERVED.iter().any(|r| r.eq_ignore_ascii_case(stem)) {
@@ -169,24 +169,40 @@ pub fn resolve_collision(path: &Path) -> PathBuf {
     }
 }
 
+/// Everything [`build_track_path`] needs. A struct rather than eight positional
+/// arguments: four of them are `&str`, so at the call site only the field names
+/// keep `artist`, `title`, `station` and `extension` apart.
+pub struct TrackPathParams<'a> {
+    /// Base output directory (absolute path).
+    pub output_dir: &'a Path,
+    /// Filename template (e.g., "%s\%a - %t").
+    pub template: &'a str,
+    /// Metadata value for %a.
+    pub artist: &'a str,
+    /// Metadata value for %t.
+    pub title: &'a str,
+    /// Metadata value for %s.
+    pub station: &'a str,
+    /// Value for the %n placeholder.
+    pub track_number: u32,
+    /// Whether to apply Title Case correction.
+    pub auto_correct: bool,
+    /// File extension without dot (e.g., "mp3").
+    pub extension: &'a str,
+}
+
 /// Full pipeline: render template → sanitize path → case correct → resolve collision.
-///
-/// `output_dir` — base output directory (absolute path)
-/// `template` — filename template (e.g., "%s\%a - %t")
-/// `artist`, `title`, `station` — metadata values
-/// `track_number` — for %n placeholder
-/// `auto_correct` — whether to apply Title Case correction
-/// `extension` — file extension without dot (e.g., "mp3")
-pub fn build_track_path(
-    output_dir: &Path,
-    template: &str,
-    artist: &str,
-    title: &str,
-    station: &str,
-    track_number: u32,
-    auto_correct: bool,
-    extension: &str,
-) -> PathBuf {
+pub fn build_track_path(params: TrackPathParams<'_>) -> PathBuf {
+    let TrackPathParams {
+        output_dir,
+        template,
+        artist,
+        title,
+        station,
+        track_number,
+        auto_correct,
+        extension,
+    } = params;
     let rendered = render_template(template, artist, title, station, track_number);
 
     // Sanitize and (optionally) case-correct per path component

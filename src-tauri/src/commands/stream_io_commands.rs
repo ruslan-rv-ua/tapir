@@ -309,7 +309,7 @@ pub async fn export_streams(
     let path = app
         .dialog()
         .file()
-        .set_file_name(&export_file_name(&profile_name, ext, scope_count))
+        .set_file_name(export_file_name(&profile_name, ext, scope_count))
         .add_filter("Playlist", &[ext])
         .blocking_save_file();
     match path {
@@ -359,9 +359,9 @@ mod tests {
         let entries = vec![entry("https://a/1", Some("Alpha")), entry("https://b/2", None)];
         let existing = vec!["https://a/1".to_string()];
         let got = build_candidates(entries, &existing);
-        assert_eq!(got[0].already_in_profile, true);
+        assert!(got[0].already_in_profile);
         assert_eq!(got[0].name, "Alpha");
-        assert_eq!(got[1].already_in_profile, false);
+        assert!(!got[1].already_in_profile);
         assert_eq!(got[1].name, "https://b/2", "name falls back to URL when no title");
     }
 

@@ -1131,7 +1131,7 @@ mod tests {
     #[test]
     fn list_sort_puts_default_first() {
         // Test the sort algorithm used by Profile::list()
-        let mut metas = vec![
+        let mut metas = [
             ProfileMeta { name: "Zebra".into(), stream_count: 0, is_active: false },
             ProfileMeta { name: "Default".into(), stream_count: 0, is_active: true },
             ProfileMeta { name: "Alpha".into(), stream_count: 0, is_active: false },
@@ -1268,9 +1268,11 @@ mod tests {
 
     #[test]
     fn clamp_schedule_padding_clamps_to_limits() {
-        let mut r = RecordingSettings::default();
-        r.schedule_pad_before_min = 31;
-        r.schedule_pad_after_min = 61;
+        let mut r = RecordingSettings {
+            schedule_pad_before_min: 31,
+            schedule_pad_after_min: 61,
+            ..Default::default()
+        };
         r.clamp_schedule_padding();
         assert_eq!(r.schedule_pad_before_min, 30);
         assert_eq!(r.schedule_pad_after_min, 60);
@@ -1278,9 +1280,11 @@ mod tests {
 
     #[test]
     fn clamp_schedule_padding_keeps_valid_values() {
-        let mut r = RecordingSettings::default();
-        r.schedule_pad_before_min = 30;
-        r.schedule_pad_after_min = 60;
+        let mut r = RecordingSettings {
+            schedule_pad_before_min: 30,
+            schedule_pad_after_min: 60,
+            ..Default::default()
+        };
         r.clamp_schedule_padding();
         assert_eq!(r.schedule_pad_before_min, 30);
         assert_eq!(r.schedule_pad_after_min, 60);

@@ -216,10 +216,8 @@ pub async fn update_schedule(
         .map_err(|e| e.to_string())??;
     // §3.5: зміна назви запис не перериває; суттєві поля — зупинка
     // з фіксацією StoppedByUser(ScheduleEdited)
-    if let Some(old) = old {
-        if crate::scheduler::core::essential_fields_changed(&old, &entry) {
-            crate::scheduler::timer::notify_schedule_changed(&app, &entry).await;
-        }
+    if let Some(old) = old && crate::scheduler::core::essential_fields_changed(&old, &entry) {
+        crate::scheduler::timer::notify_schedule_changed(&app, &entry).await;
     }
     Ok(entry)
 }

@@ -74,16 +74,14 @@ pub fn run() {
     // NOT save settings.json here. Only for an Ok parse; on Err we exit(2) in
     // .setup anyway. Existence is checked via Profile::list (Profile::load("Default")
     // would create a file as a side effect). Unknown name -> log warn + keep default.
-    if let Ok(cli) = &parsed {
-        if let Some(name) = &cli.profile {
-            let known = Profile::list(&initial_settings.active_profile)
-                .map(|metas| metas.iter().any(|m| &m.name == name))
-                .unwrap_or(false);
-            if known {
-                initial_settings.active_profile = name.clone();
-            } else {
-                log::warn!("--profile: profile '{name}' does not exist, ignoring");
-            }
+    if let Ok(cli) = &parsed && let Some(name) = &cli.profile {
+        let known = Profile::list(&initial_settings.active_profile)
+            .map(|metas| metas.iter().any(|m| &m.name == name))
+            .unwrap_or(false);
+        if known {
+            initial_settings.active_profile = name.clone();
+        } else {
+            log::warn!("--profile: profile '{name}' does not exist, ignoring");
         }
     }
 

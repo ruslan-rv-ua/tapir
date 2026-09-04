@@ -17,14 +17,14 @@ pub async fn frontend_ready(
     // plan is drained — an explicit --play/--stop-playback overrides the saved
     // autoplay policy (below), so we must know it before deciding to autoplay.
     let mut cli_controls_playback = false;
-    if let Some(startup) = app.try_state::<crate::cli::StartupPlan>() {
-        if let Some(plan) = startup.take() {
-            cli_controls_playback = crate::cli::plan_controls_playback(&plan.actions);
-            let app = app.clone();
-            tauri::async_runtime::spawn(async move {
-                crate::cli::execute(&app, plan).await;
-            });
-        }
+    if let Some(startup) = app.try_state::<crate::cli::StartupPlan>()
+        && let Some(plan) = startup.take()
+    {
+        cli_controls_playback = crate::cli::plan_controls_playback(&plan.actions);
+        let app = app.clone();
+        tauri::async_runtime::spawn(async move {
+            crate::cli::execute(&app, plan).await;
+        });
     }
 
     // Startup autoplay (resume-last-playback): reuse `resume_last` — the same path
@@ -50,10 +50,10 @@ pub async fn frontend_ready(
     // Підфаза 3I-2: якщо при старті виявлено переміщення EXE — оголосити ОДИН раз.
     // Deferred сюди (як StartupPlan): емісія до підписки webview = втрачене
     // оголошення. take() робить це ідемпотентним на reload.
-    if let Some(notice) = app.try_state::<crate::autostart::StartupNotice>() {
-        if notice.take().is_some() {
-            let _ = app.emit("autostart-deactivated", ());
-        }
+    if let Some(notice) = app.try_state::<crate::autostart::StartupNotice>()
+        && notice.take().is_some()
+    {
+        let _ = app.emit("autostart-deactivated", ());
     }
 
     // Phase 3K: підсумок crash-resume — deferred (як StartupPlan/StartupNotice).

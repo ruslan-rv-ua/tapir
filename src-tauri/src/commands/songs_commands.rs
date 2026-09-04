@@ -73,10 +73,10 @@ pub async fn rename_song(
     {
         use crate::player::engine::PlaybackSource;
         let status = state.player.get_status().await;
-        if let Some(PlaybackSource::File { path: playing }) = status.source.as_ref() {
-            if playing == &old_path {
-                return Err("Stop playback first: this file is currently playing".to_string());
-            }
+        if let Some(PlaybackSource::File { path: playing }) = status.source.as_ref()
+            && playing == &old_path
+        {
+            return Err("Stop playback first: this file is currently playing".to_string());
         }
     }
     let output_dir = {
@@ -147,10 +147,10 @@ pub async fn delete_song(
     {
         use crate::player::engine::PlaybackSource;
         let status = state.player.get_status().await;
-        if let Some(PlaybackSource::File { path: playing }) = status.source.as_ref() {
-            if playing == &path {
-                return Err("Stop playback first: this file is currently playing".to_string());
-            }
+        if let Some(PlaybackSource::File { path: playing }) = status.source.as_ref()
+            && playing == &path
+        {
+            return Err("Stop playback first: this file is currently playing".to_string());
         }
     }
     let path_clone = path.clone();

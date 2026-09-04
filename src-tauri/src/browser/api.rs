@@ -102,30 +102,20 @@ impl RadioBrowserClient {
             ("reverse".into(), params.reverse.unwrap_or(false).to_string()),
         ];
 
-        if let Some(ref q) = params.query {
-            if !q.is_empty() {
-                query.push(("name".into(), q.clone()));
-            }
+        if let Some(ref q) = params.query && !q.is_empty() {
+            query.push(("name".into(), q.clone()));
         }
-        if let Some(ref c) = params.country {
-            if !c.is_empty() {
-                query.push(("country".into(), c.clone()));
-            }
+        if let Some(ref c) = params.country && !c.is_empty() {
+            query.push(("country".into(), c.clone()));
         }
-        if let Some(ref lang) = params.language {
-            if !lang.is_empty() {
-                query.push(("language".into(), lang.clone()));
-            }
+        if let Some(ref lang) = params.language && !lang.is_empty() {
+            query.push(("language".into(), lang.clone()));
         }
-        if let Some(ref codec) = params.codec {
-            if !codec.is_empty() {
-                query.push(("codec".into(), codec.clone()));
-            }
+        if let Some(ref codec) = params.codec && !codec.is_empty() {
+            query.push(("codec".into(), codec.clone()));
         }
-        if let Some(br) = params.min_bitrate {
-            if br > 0 {
-                query.push(("bitrateMin".into(), br.to_string()));
-            }
+        if let Some(br) = params.min_bitrate && br > 0 {
+            query.push(("bitrateMin".into(), br.to_string()));
         }
 
         self.get_json("/json/stations/search", &query).await
@@ -136,10 +126,10 @@ impl RadioBrowserClient {
         // Check cache
         {
             let cache = self.filters_cache.read().await;
-            if let Some((ref filters, ref instant)) = *cache {
-                if instant.elapsed() < FILTER_CACHE_TTL {
-                    return Ok(filters.clone());
-                }
+            if let Some((ref filters, ref instant)) = *cache
+                && instant.elapsed() < FILTER_CACHE_TTL
+            {
+                return Ok(filters.clone());
             }
         }
 

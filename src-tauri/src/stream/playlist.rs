@@ -28,10 +28,10 @@ pub fn parse_pls_all(content: &str) -> Vec<ParsedEntry> {
             if let Some((n, v)) = split_indexed(rest) {
                 files.insert(n, v.trim().to_string());
             }
-        } else if let Some(rest) = line.strip_prefix("Title") {
-            if let Some((n, v)) = split_indexed(rest) {
-                titles.insert(n, v.trim().to_string());
-            }
+        } else if let Some(rest) = line.strip_prefix("Title")
+            && let Some((n, v)) = split_indexed(rest)
+        {
+            titles.insert(n, v.trim().to_string());
         }
     }
     let mut seen = HashSet::new();
@@ -64,9 +64,8 @@ pub fn parse_m3u_all(content: &str) -> Vec<ParsedEntry> {
         }
         if let Some(rest) = line.strip_prefix("#EXTINF:") {
             pending_title = rest
-                .splitn(2, ',')
-                .nth(1)
-                .map(|t| t.trim().to_string())
+                .split_once(',')
+                .map(|(_, title)| title.trim().to_string())
                 .filter(|t| !t.is_empty());
             continue;
         }

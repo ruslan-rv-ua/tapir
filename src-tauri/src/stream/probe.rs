@@ -38,7 +38,7 @@ pub async fn probe(url: &str) -> ProbeResult {
     match connection::connect(&resolved).await {
         Ok(conn) => {
             let icy_name = conn.headers.name().map(str::to_string);
-            let bitrate = conn.headers.bitrate().map(|b| b as u32);
+            let bitrate = conn.headers.bitrate();
             let (format, unsupported) =
                 format::detect(conn.content_type.as_deref(), &conn.prefix).split();
             drop(conn); // headers and first bytes are all we needed; discard the body

@@ -689,12 +689,12 @@ pub async fn recording_task(
                             .collect();
                         let s = &mut profile.streams[i];
                         if let Some(br) = icy_bitrate {
-                            s.bitrate = Some(br as u32);
+                            s.bitrate = Some(br);
                         }
                         if let Some(icy) = icy_name_val.as_ref() {
                             let meta = crate::naming::NameMeta {
                                 format: detected_format.clone(),
-                                bitrate: icy_bitrate.map(|b| b as u32),
+                                bitrate: icy_bitrate,
                             };
                             if let Some(renamed) =
                                 crate::naming::icy_rename(&s.name, &s.url, icy, &meta, &taken)
@@ -874,14 +874,14 @@ pub async fn recording_task(
                                         title: title.clone(),
                                     };
                                     let action = spl.on_metadata_change(meta);
-                                    if let splitter::SplitAction::FinalizeAndStart { completed, duration_ms, .. } = action {
-                                        if let Ok(Some(final_path)) = rec.finalize_track(&completed.artist, &completed.title, duration_ms).await {
-                                            update_tracks_recorded(&manager, &stream_id).await;
-                                            let file_name = final_path.file_name()
-                                                .map(|n| n.to_string_lossy().to_string())
-                                                .unwrap_or_default();
-                                            emit_recording_completed(&app_handle, &stream_id, &file_name, duration_ms);
-                                        }
+                                    if let splitter::SplitAction::FinalizeAndStart { completed, duration_ms, .. } = action
+                                        && let Ok(Some(final_path)) = rec.finalize_track(&completed.artist, &completed.title, duration_ms).await
+                                    {
+                                        update_tracks_recorded(&manager, &stream_id).await;
+                                        let file_name = final_path.file_name()
+                                            .map(|n| n.to_string_lossy().to_string())
+                                            .unwrap_or_default();
+                                        emit_recording_completed(&app_handle, &stream_id, &file_name, duration_ms);
                                     }
                                     // Носій — кваліфікатор у рядку потоку; окремої події
                                     // «трек проігноровано» більше немає, бо оголошувати
@@ -1112,12 +1112,13 @@ mod tests {
         // Contract check: a full behavioural test needs a Tauri AppHandle, which
         // isn't available in a unit test. Mirror the stop_all_async test and just
         // pin the signature so refactors can't silently change it.
-        let _: fn(
+        type StartAll = fn(
             &mut StreamManager,
             Vec<StreamInfo>,
             RecordingSettings,
             Arc<RwLock<StreamManager>>,
-        ) -> usize = StreamManager::start_all;
+        ) -> usize;
+        let _: StartAll = StreamManager::start_all;
     }
 
     #[test]
@@ -1131,11 +1132,12 @@ mod tests {
     fn start_recording_returns_session_id() {
         // Поведінковий тест потребує Tauri AppHandle — пінимо сигнатуру,
         // як у сусідніх тестах stop_all_async / start_all.
-        let _: fn(
+        type StartRecording = fn(
             &mut StreamManager,
             StreamInfo,
             RecordingSettings,
             Arc<RwLock<StreamManager>>,
-        ) -> Result<u64, RadioError> = StreamManager::start_recording;
+        ) -> Result<u64, RadioError>;
+        let _: StartRecording = StreamManager::start_recording;
     }
 }

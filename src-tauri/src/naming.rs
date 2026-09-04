@@ -257,7 +257,7 @@ mod tests {
 
     #[test]
     fn taken_keys_skips_the_excluded_stream() {
-        let streams = vec![
+        let streams = [
             stream("a", "http://a", "Radio X", None, None),
             stream("b", "http://b", "Radio Y", None, None),
         ];
