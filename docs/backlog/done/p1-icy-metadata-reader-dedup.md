@@ -101,4 +101,4 @@ Callback викликається з потоку читача, тож у ньо
 - [connection.rs](../../../src-tauri/src/stream/connection.rs) — `IcyConnection`, scaffold-и
 - [engine.rs](../../../src-tauri/src/player/engine.rs), [manager.rs](../../../src-tauri/src/stream/manager.rs) — два ручні цикли
 - [ADR: невідомий формат — відмовити, а не вгадати](../../decisions/2026-08-31-refuse-unknown-format-rather-than-guess.md) — чому `prefix` мусить іти першим
-- [dead-dependencies](../p2-dead-dependencies.md) — доля `unicode-normalization` залежить від рішення про NFC тут
+- [dead-dependencies](p2-dead-dependencies.md) — доля `unicode-normalization` залежить від рішення про NFC тут

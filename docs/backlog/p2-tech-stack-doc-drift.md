@@ -27,7 +27,7 @@ notes:
 
 > **Контекст:** знахідка аудиту 2026-09-04. Документ про стек описує проєкт, яким його
 > планували, а не яким зібрали. Агент, що вірить йому, шукатиме плагіни, яких немає.
-> Робити після [dead-dependencies](p2-dead-dependencies.md) і
+> Робити після [dead-dependencies](done/p2-dead-dependencies.md) і
 > [window-state-outside-data-dir](p1-window-state-outside-data-dir.md), щоб не звіряти двічі.
 
 ## Опис
