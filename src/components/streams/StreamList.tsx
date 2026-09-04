@@ -361,12 +361,12 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
   };
 
   /**
-   * Name the transfer dialog shows for a single-stream target. Takes the target
-   * as an argument: a narrowing of `transfer.target` would not survive into the
-   * `find` callback, since TypeScript re-widens property narrowings inside one.
+   * Name the transfer dialog shows for a single-stream target. Takes the id, not
+   * the target: TypeScript re-widens a property narrowing inside a callback, so
+   * `transfer.target.streamId` has to be read before the `find`, not inside it.
    */
-  const transferSubjectName = (target: TransferTarget) =>
-    target.kind === "single" ? (streams.find((s) => s.id === target.streamId)?.name ?? "") : "";
+  const streamNameById = (streamId: string) =>
+    streams.find((s) => s.id === streamId)?.name ?? "";
 
   return (
     <>
@@ -513,7 +513,7 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
             subject={
               transfer.target.kind === "bulk"
                 ? { kind: "bulk", count: selectedSet.size }
-                : { kind: "single", name: transferSubjectName(transfer.target) }
+                : { kind: "single", name: streamNameById(transfer.target.streamId) }
             }
             profiles={transfer.profiles}
             onSelect={(profileName) =>

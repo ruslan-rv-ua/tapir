@@ -21,7 +21,7 @@ touches:
   - src/components/player/PlayerPanel.tsx
   - docs/backlog/README.md
   - docs/backlog/_TEMPLATE.md
-gates: [pnpm test, pnpm vite:build, pnpm typecheck]
+gates: [pnpm test, pnpm typecheck, pnpm vite:build]
 notes:
   - "Аудит 2026-09-04: tsc дає 191 помилку, з них 126 одного класу TS7016, бо paraglide генерує JS з JSDoc, а tsconfig не має allowJs. Пробний конфіг з allowJs, lib ES2022 і @types/node лишає 60, з них 10 поза тестами."
   - "Раніше в пам'яті сесій фігурувало «близько 51 помилки»; число росте, бо ворота вимкнені й ніхто його не бачить."
