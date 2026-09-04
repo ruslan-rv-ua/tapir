@@ -1,5 +1,5 @@
 import { Tabs, TabList, Tab, TabPanel } from "react-aria-components";
-import { useEffect, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useCallback, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { useStore } from "@nanostores/react";
 import { PatternList, type PatternListHandle } from "./PatternList";
@@ -289,6 +289,31 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
     else focusActiveTab();
   }, [hasToolbar, toolbarRestore, focusActiveTab]);
 
+  // Міст Tab між вкладками і рештою зони: react-aria тримає ←/→ (перемикання
+  // вкладок), а Tab — наш. Уперед: активна кнопка тулбара, а якщо тулбара немає
+  // (журнал) — одразу наступна зона, тобто список. Назад: вихід із зони.
+  //
+  // Обробник висить на власному <div> навколо <TabList>, а не на самому
+  // <TabList>: react-aria проганяє пропси через filterDOMProps, який лишає на
+  // DOM лише id, aria-*, data-*, п'ять глобальних атрибутів і вказівникові
+  // події. Клавіатурних серед них немає, тож onKeyDown на <TabList> не доїжджав
+  // нікуди й мовчки не викликався (RAC 1.16). Обгортка ще й симетрична тулбару,
+  // який теж тримає свій обробник на власному <div role="toolbar">.
+  const tabsKeyDown = useCallback(
+    (e: ReactKeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      // Shift обирає напрямок і тому дозволений; Ctrl/Alt/Meta — ні. Ctrl+Tab
+      // — це СПРОБА гарячої клавіші, а не навігація, і зона на неї не
+      // відповідає (той самий гард, що в useCompositeList для "Tab").
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      e.preventDefault();
+      if (e.shiftKey) exitZone("wishlist-controls", false);
+      else if (hasToolbar) toolbarRestore("forward");
+      else exitZone("wishlist-controls", true);
+    },
+    [exitZone, toolbarRestore, hasToolbar],
+  );
+
   // Memoize items to prevent identity churn in PatternList → restoreFocus
   const wishlistItems = useMemo(
     () => wishlist.map((e) => ({ pattern: e.pattern, addedAt: e.addedAt })),
@@ -535,33 +560,34 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
           label={m.zone_wishlist_controls()}
           className="flex items-center gap-2 px-4 py-2"
         >
-          {/* Tab from a tab falls through to the browser: react-aria drops an
-              `onKeyDown` handed to <TabList> (filterDOMProps keeps no keyboard
-              events), so the bridge to the toolbar has to hang somewhere else —
-              see docs/backlog p2-wishlist-tabs-tab-bridge. */}
-          <TabList
-            aria-label={m.wishlist_section()}
-            className="flex flex-1 gap-1"
-          >
-            <Tab
-              id="wishlist"
-              className="rounded px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 selected:bg-blue-600 selected:text-white text-slate-400 hover:text-slate-200 forced-colors:selected:bg-[Highlight] forced-colors:selected:text-[HighlightText]"
+          {/* Обгортка існує рівно заради onKeyDown (чому не на <TabList> —
+              розбір біля tabsKeyDown вище). Для розкладки вона прозора: flex-1
+              просто їде крізь неї до вкладок. */}
+          <div className="flex flex-1" onKeyDown={tabsKeyDown}>
+            <TabList
+              aria-label={m.wishlist_section()}
+              className="flex flex-1 gap-1"
             >
-              {m.wishlist_section_title()}
-            </Tab>
-            <Tab
-              id="ignorelist"
-              className="rounded px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 selected:bg-blue-600 selected:text-white text-slate-400 hover:text-slate-200 forced-colors:selected:bg-[Highlight] forced-colors:selected:text-[HighlightText]"
-            >
-              {m.ignorelist_section_title()}
-            </Tab>
-            <Tab
-              id="matches"
-              className="rounded px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 selected:bg-blue-600 selected:text-white text-slate-400 hover:text-slate-200 forced-colors:selected:bg-[Highlight] forced-colors:selected:text-[HighlightText]"
-            >
-              {m.matches_section_title()}
-            </Tab>
-          </TabList>
+              <Tab
+                id="wishlist"
+                className="rounded px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 selected:bg-blue-600 selected:text-white text-slate-400 hover:text-slate-200 forced-colors:selected:bg-[Highlight] forced-colors:selected:text-[HighlightText]"
+              >
+                {m.wishlist_section_title()}
+              </Tab>
+              <Tab
+                id="ignorelist"
+                className="rounded px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 selected:bg-blue-600 selected:text-white text-slate-400 hover:text-slate-200 forced-colors:selected:bg-[Highlight] forced-colors:selected:text-[HighlightText]"
+              >
+                {m.ignorelist_section_title()}
+              </Tab>
+              <Tab
+                id="matches"
+                className="rounded px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 selected:bg-blue-600 selected:text-white text-slate-400 hover:text-slate-200 forced-colors:selected:bg-[Highlight] forced-colors:selected:text-[HighlightText]"
+              >
+                {m.matches_section_title()}
+              </Tab>
+            </TabList>
+          </div>
           {hasToolbar && (
           <div
             role="toolbar"

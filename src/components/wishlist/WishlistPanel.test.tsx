@@ -374,6 +374,86 @@ describe("controls zone — roving toolbar", () => {
   });
 });
 
+describe("controls zone — міст Tab між вкладками і тулбаром", () => {
+  /** Активна вкладка — та, на якій react-aria тримає `aria-selected` і `tabindex=0`. */
+  const focusActiveTab = () => {
+    const tab = screen.getByRole("tab", { selected: true });
+    act(() => tab.focus());
+    return tab;
+  };
+
+  it("Tab з активної вкладки веде на активну кнопку тулбара", async () => {
+    render(<WishlistPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
+    await waitFor(() => screen.getByText(m.select_all()));
+
+    fireEvent.keyDown(focusActiveTab(), { key: "Tab" });
+    expect(screen.getByText(m.add_pattern())).toHaveFocus();
+  });
+
+  it("Shift+Tab з активної вкладки виходить із зони назад", async () => {
+    // Саме той бік мосту, який ламався непомітно: рідний Tab уперед і так
+    // потрапляв на кнопку тулбара (у неї tabindex=0), а Shift+Tab ішов на
+    // попередній рідний стоп замість виходу із зони.
+    const exitZone = vi.fn();
+    render(<WishlistPanel onZonesChange={vi.fn()} exitZone={exitZone} />);
+    await waitFor(() => screen.getByText(m.select_all()));
+
+    fireEvent.keyDown(focusActiveTab(), { key: "Tab", shiftKey: true });
+    expect(exitZone).toHaveBeenCalledWith("wishlist-controls", false);
+  });
+
+  it("у журналі тулбара немає, тож Tab із вкладки веде одразу далі — у список", async () => {
+    const exitZone = vi.fn();
+    render(<WishlistPanel onZonesChange={vi.fn()} exitZone={exitZone} />);
+    await waitFor(() => screen.getByText(m.select_all()));
+    fireEvent.click(screen.getByRole("tab", { name: m.matches_section_title() }));
+
+    fireEvent.keyDown(focusActiveTab(), { key: "Tab" });
+    expect(exitZone).toHaveBeenCalledWith("wishlist-controls", true);
+  });
+
+  it("Tab із вкладки журналу справді приземляється в журналі (реальний шлях cycleZone)", async () => {
+    // Журнал лишається порожнім: порожній стан теж ПРИЙМАЄ фокус (CompositeList
+    // робить його якорем зони), тож приземлення видно й без жодного збігу.
+    render(<ZoneHarness />);
+    await waitFor(() => screen.getByText(m.select_all()));
+    fireEvent.click(screen.getByRole("tab", { name: m.matches_section_title() }));
+    await waitFor(() => expect(document.querySelector('[data-zone-id="wishlist-matches"]')).toBeTruthy());
+
+    fireEvent.keyDown(focusActiveTab(), { key: "Tab" });
+    expect(document.activeElement?.closest("[data-zone-id]")?.getAttribute("data-zone-id"))
+      .toBe("wishlist-matches");
+  });
+
+  it("Ctrl+Tab — спроба гарячої клавіші, а не навігація: міст на неї не відповідає", async () => {
+    // Той самий гард, що в useCompositeList для "Tab" (запис
+    // list-key-modifier-guards): Shift обирає напрямок і тому дозволений,
+    // Ctrl/Alt/Meta адресують інший шар.
+    const exitZone = vi.fn();
+    render(<WishlistPanel onZonesChange={vi.fn()} exitZone={exitZone} />);
+    await waitFor(() => screen.getByText(m.select_all()));
+
+    const tab = focusActiveTab();
+    fireEvent.keyDown(tab, { key: "Tab", ctrlKey: true });
+    fireEvent.keyDown(tab, { key: "Tab", ctrlKey: true, shiftKey: true });
+    fireEvent.keyDown(tab, { key: "Tab", altKey: true });
+    expect(exitZone).not.toHaveBeenCalled();
+    expect(tab).toHaveFocus();
+  });
+
+  it("міст забирає лише Tab — ←/→ і далі перемикають вкладки", async () => {
+    // Обробник висить на власному <div> навколо <TabList>, тож стрілки мусять
+    // дійти до react-aria незайманими.
+    render(<WishlistPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
+    await waitFor(() => screen.getByText(m.select_all()));
+
+    fireEvent.keyDown(focusActiveTab(), { key: "ArrowRight" });
+    await waitFor(() =>
+      expect(screen.getByRole("tab", { selected: true })).toHaveAccessibleName(m.ignorelist_section_title()),
+    );
+  });
+});
+
 describe("empty-state example seeding", () => {
   beforeEach(() => {
     vi.mocked(tauri.addToWishlist).mockClear();

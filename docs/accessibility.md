@@ -689,7 +689,10 @@ WishlistPanel (role="region", aria-label="Вішліст")
 ├── ScreenHeader: заголовок екрана (без дій)
 ├── ScreenZone id="wishlist-controls" (role="application", aria-label="Список і дії")
 │   ├── TabList (aria-label="Вішліст"): Бажані треки · Ігноровані треки · Збіги в ефірі
-│   │   Keyboard: ←/→ між табами
+│   │   Keyboard: ←/→ між табами; Tab → активна кнопка тулбара (а без тулбара —
+│   │   наступна зона), Shift+Tab → вихід із зони назад. Обробник мосту висить
+│   │   на власному <div> навколо TabList: react-aria не пропускає клавіатурні
+│   │   пропси на DOM, тож onKeyDown на самому TabList мовчки не викликається.
 │   └── role="toolbar" aria-label="Список і дії"   (немає на вкладці «Збіги в ефірі»)
 │       ├── Button: Додати патерн              (0)
 │       ├── Button: Виділити все / Зняти       (1)
