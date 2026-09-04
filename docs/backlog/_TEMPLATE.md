@@ -12,7 +12,7 @@ a11y: false                          # bool — чи зачіпає доступ
 depends_on: []                       # slug'и записів беклогу (вкл. done/)
 blocks: []                           # slug'и записів, які цей розблоковує
 touches: []                          # орієнтовні шляхи коду
-gates: []                            # напр. [pnpm test, pnpm vite:build]
+gates: []                            # напр. [pnpm test, pnpm typecheck, pnpm vite:build]
 # depends_on_external: []            # необов'язково: фази/код поза беклогом
 # blocked_reason: ""                 # обов'язково лише при status: blocked
 # notes: []                          # необов'язково: короткі нюанси

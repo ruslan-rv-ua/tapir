@@ -27,7 +27,7 @@ notes:
 ## Опис
 
 Ворота проєкту сьогодні: `cargo test`, `cargo clippy`, `pnpm test`, `pnpm vite:build`,
-а після [typecheck-gate](p1-typecheck-gate.md) ще `pnpm typecheck`. Усі вони
+а після [typecheck-gate](done/p1-typecheck-gate.md) ще `pnpm typecheck`. Усі вони
 запускаються локально і лише тоді, коли про них згадали. Вітка `develop` не має
 жодного механізму, який відмовився б прийняти червоний коміт.
 
@@ -56,5 +56,5 @@ notes:
 
 ## Документи
 
-- [typecheck-gate](p1-typecheck-gate.md), [clippy-warnings-zero](p2-clippy-warnings-zero.md) — ворота, які CI має запускати
+- [typecheck-gate](done/p1-typecheck-gate.md), [clippy-warnings-zero](p2-clippy-warnings-zero.md) — ворота, які CI має запускати
 - https://github.com/Swatinem/rust-cache

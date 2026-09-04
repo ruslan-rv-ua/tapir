@@ -59,6 +59,7 @@ Requires: Rust toolchain, Node.js, pnpm, [just](https://github.com/casey/just).
 | `just build-fast` | Quick release build (`release-fast` profile) |
 | `just build` | Optimized release build (slow, small binary) |
 | `just clean` | Clean Rust build artifacts |
+| `just check` | All three frontend gates: `pnpm test`, `pnpm typecheck`, `pnpm vite:build` |
 
 Output binary: `src-tauri/target/release-fast/tapir.exe` (build-fast) or `src-tauri/target/release/tapir.exe` (build).
 

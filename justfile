@@ -28,3 +28,9 @@ clean:
 # Install JS dependencies
 install:
     pnpm install
+
+# All three frontend gates: tests, type check, production build
+check:
+    pnpm test
+    pnpm typecheck
+    pnpm vite:build
