@@ -3,11 +3,12 @@ slug: wishlist-tabs-tab-bridge
 title: "Tab із вкладки списку бажань не веде в тулбар: react-aria ковтає onKeyDown на TabList"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: S
 kind: bug
 target: 0.1.0
 updated: 2026-09-04
+completed: 2026-09-04
 a11y: true
 depends_on: [typecheck-gate]
 blocks: []
@@ -23,8 +24,8 @@ notes:
 # Tab із вкладки списку бажань не веде в тулбар
 
 > **Контекст:** дефект, знайдений (не створений) записом
-> [typecheck-gate](done/p1-typecheck-gate.md). Мертвий обробник прибрано разом із
-> помилкою типів; сама поведінка так і не працює — це запис про неї.
+> [typecheck-gate](p1-typecheck-gate.md). Той запис прибрав мертвий обробник
+> разом із помилкою типів; цей — повернув саму поведінку, уже робочою.
 
 ## Опис
 
@@ -53,8 +54,8 @@ notes:
 - [x] `Shift+Tab` з активної вкладки виходить із зони назад
 - [x] тест накриває обидва напрямки (нинішні тести накривають лише вихід із тулбара)
 - [x] обробник висить там, де подія справді до нього доходить — не на `<TabList>`
-- [ ] NVDA-прогін: перехід «вкладка → тулбар → список» і назад чутно й без пасток —
-      [nvda-wishlist-tabs-tab-bridge.md](../testing/nvda-wishlist-tabs-tab-bridge.md)
+- [x] NVDA-прогін: перехід «вкладка → тулбар → список» і назад чутно й без пасток —
+      прогін 6/6 пройдено 2026-09-04, чекліст видалено на прийманні
 
 ## Рішення
 
@@ -66,7 +67,7 @@ notes:
 тож рідний `Tab` і до правки приводив туди ж. Змінилось те, що тепер це
 гарантія, а не збіг — і що на вкладці «Збіги в ефірі», де тулбара немає, `Tab`
 нарешті має куди йти. Точний опис зони поїхав у
-[accessibility.md](../accessibility.md) §8.1 — це документ для розробника, і саме
+[accessibility.md](../../accessibility.md) §8.1 — це документ для розробника, і саме
 там жила мапа клавіш цієї зони.
 
 **Обробник — на власному `<div>` навколо `<TabList>`, не на `ScreenZone`.**
@@ -84,5 +85,5 @@ notes:
 
 ## Документи
 
-- [WishlistPanel.tsx](../../src/components/wishlist/WishlistPanel.tsx) — `tabsKeyDown` і обгортка навколо `<TabList>`
-- [accessibility.md](../accessibility.md) §2.3 — зони, F6 і роль `Tab`
+- [WishlistPanel.tsx](../../../src/components/wishlist/WishlistPanel.tsx) — `tabsKeyDown` і обгортка навколо `<TabList>`
+- [accessibility.md](../../accessibility.md) §2.3 — зони, F6 і роль `Tab`
