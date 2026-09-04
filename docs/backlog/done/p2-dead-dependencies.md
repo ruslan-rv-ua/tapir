@@ -11,7 +11,7 @@ updated: 2026-09-04
 completed: 2026-09-04
 a11y: false
 depends_on: [icy-metadata-reader-dedup]
-blocks: [tech-stack-doc-drift]
+blocks: [tech-stack-doc-drift, dead-js-tauri-plugins]
 touches:
   - src-tauri/Cargo.toml
   - package.json
@@ -119,4 +119,4 @@ notes:
 ## Документи
 
 - [Cargo.toml](../../../src-tauri/Cargo.toml), [package.json](../../../package.json), [vite.config.ts](../../../vite.config.ts)
-- [tech-stack-doc-drift](../p2-tech-stack-doc-drift.md) — таблицю стеку оновлювати після цього запису
+- [tech-stack-doc-drift](p2-tech-stack-doc-drift.md) — таблицю стеку оновлювати після цього запису

@@ -1,35 +1,60 @@
 # Технологічний стек Tapir
 
-> **Версія:** 0.1 (draft) | **Версія продукту:** 0.1.0  
+> **Версія продукту:** 0.1.0 | **Звірено з кодом:** 2026-09-04  
 > **Платформа:** Windows 11+, portable EXE  
 > **Архітектура:** Tauri v2 (Rust backend + WebView2 frontend)
+
+Джерело правди про залежності — [`package.json`](../package.json) і
+[`src-tauri/Cargo.toml`](../src-tauri/Cargo.toml). Цей документ пояснює **чому** обрано
+кожен інструмент; версії тут наведені з точністю до мажорної й мусять збігатися з
+маніфестами.
 
 ---
 
 ## Зведена таблиця
 
+### Frontend (`package.json`)
+
 | Шар | Технологія | Версія | Призначення |
 |---|---|---|---|
 | **Runtime** | Tauri v2 | 2.x | Портативний EXE, WebView2, Rust backend |
-| **Frontend** | React 19 | 19.x | UI framework |
-| **UI Components** | React Aria Components | latest | Accessible headless components (Adobe) |
-| **Іконки** | lucide-react | latest | Tree-shakeable SVG іконки (ISC) |
-| **CSS** | Tailwind CSS v4 | 4.x | Стилі, forced-colors, dark mode |
-| **State** | Nanostores | latest | Tauri IPC bridge (286 bytes) |
-| **i18n** | Paraglide.js | latest | Compiler-based, uk/en |
-| **Bundler** | Vite | 8.x | Frontend build |
-| **HTTP Streaming** | reqwest | 0.13 | Async HTTP client |
-| **ICY Protocol** | icy-metadata | 0.6 | ICY заголовки (`IcyHeaders`) і розмітка ефіру (`IcyMetadataReader`) |
-| **Stream Buffer** | stream-download | 0.24 | Ring buffer для стрімів |
-| **Playback** | rodio | 0.22 | WASAPI audio output |
-| **Decoding** | symphonia | 0.5.5 | MP3 + AAC-LC decoder |
-| **Tags** | lofty | 0.23 | ID3v2 + M4A metadata |
-| **Async** | tokio | ~1.51 | Async runtime (LTS) |
-| **Logging** | tauri-plugin-log + log | 2.x / 0.4 | Файловий лог у `data/logs/`, `log::*` макроси |
-| **Win API** | windows-rs | 0.61 | Registry, toast, balloon tip |
+| **Frontend** | React | 19.x | UI framework |
+| **UI Components** | react-aria-components | 1.x | Accessible headless components (Adobe) |
+| **Іконки** | lucide-react | 1.x | Tree-shakeable SVG іконки (ISC) |
+| **CSS** | Tailwind CSS | 4.x | Стилі, forced-colors, dark mode |
+| **State** | nanostores + @nanostores/react | 0.11 / 0.8 | Міст між Tauri-подіями і React |
+| **i18n** | @inlang/paraglide-js | 2.x | Compiler-based, uk/en |
+| **Bundler** | Vite + @vitejs/plugin-react | 8.x / 6.x | Frontend build |
+| **Тести** | Vitest + @testing-library/react + jsdom | 4.x / 16.x / 29.x | `pnpm test`; поруч `@testing-library/dom` 10.x, `/jest-dom` 6.x, `/user-event` 14.x |
+| **Довідка** | unified | 11.x | Компіляція `docs/help/` у HTML на збірці — remark-parse, remark-gfm, remark-rehype, rehype-sanitize, rehype-stringify у [`build/markdownHelpPlugin.ts`](../build/markdownHelpPlugin.ts) |
+| **Типи** | TypeScript | 5.7 | `pnpm typecheck` |
+
+З боку JS імпортується лише `@tauri-apps/api` (`core`, `event`, `window`): усі плагіни
+викликаються з Rust, а webview дістає результат через IPC — див.
+[Tauri Plugins](#tauri-plugins).
+
+### Backend (`src-tauri/Cargo.toml`)
+
+| Шар | Крейт | Версія | Призначення |
+|---|---|---|---|
+| **HTTP Streaming** | reqwest | 0.13 | Async HTTP client (rustls, без OpenSSL) |
+| **ICY Protocol** | icy-metadata | 0.6 | Заголовки підключення (`IcyHeaders`) і розмітка ефіру (`IcyMetadataReader`) |
+| **Stream Buffer** | rtrb | 0.3 | Lock-free ring buffer між мережевим писарем і декодером |
+| **Playback** | rodio | 0.22 | WASAPI audio output, mixer, гучність |
+| **Decoding** | symphonia | 0.5 | MP3 + AAC-LC decoder (прямий доступ для `LiveSource`) |
+| **Tags** | lofty | 0.24 | ID3v2 + M4A metadata |
+| **CLI** | clap | 4 | Розбір argv (`cli.rs`), `derive` |
+| **Async** | tokio + tokio-util + futures-util + bytes | ~1.51 / 0.7 / 0.3 / 1 | Async runtime і потокові утиліти |
+| **Logging** | tauri-plugin-log + log | 2 / 0.4 | Файловий лог у `data/logs/`, `log::*` макроси |
+| **Win32 / WinRT** | windows | 0.62 | MessageBox підтвердження виходу, Shell (кошик, «відкрити у програмі»), WinRT Media для SMTC |
+| **Реєстр** | winreg | 0.55 | AUMID для тостів + `HKCU\…\Run` для автозапуску |
 | **Errors** | anyhow + thiserror | 1 / 2 | Error handling |
+| **Serde** | serde + serde_json | 1 / 1 | Серіалізація стану й IPC |
 | **Time** | chrono | 0.4 | Date/time з serde |
 | **Locale** | sys-locale | 0.3 | System locale detection |
+| **Ідентифікатори** | nanoid | 0.4 | Ключі потоків, записів, патернів |
+| **Файли** | walkdir | 2 | Обхід каталогів записів |
+| **Кодування** | encoding_rs | 0.8 | cp1251-fallback для старих плейлистів Winamp/SHOUTcast |
 
 ---
 
@@ -37,20 +62,34 @@
 
 ### React 19 + React Aria Components
 
-React Aria (Adobe) — єдина UI-бібліотека з документованим тестуванням проти JAWS та NVDA на Windows. Використовувані компоненти:
+React Aria (Adobe) — єдина UI-бібліотека з документованим тестуванням проти JAWS та NVDA
+на Windows. У коді використано ці компоненти (звірено з імпортами в `src/`):
 
-- **TableView** — потоки, збережені пісні, розклад (sortable)
-- **Tabs** — основна навігація
-- **DialogTrigger + Modal** — діалоги з focus trap
-- **ComboBox** — пошук станцій
-- **Slider** — гучність
-- **ProgressBar** — конвертація, позиція відтворення
-- **Menu / ContextMenu** — контекстне меню
-- **Button** — з aria-pressed для toggle
+- **Modal + ModalOverlay + Dialog + Heading** — усі діалоги з focus trap. `DialogTrigger`
+  **не** використовується: діалоги відкриваються зі стану, а не з тригера-кнопки.
+- **Tabs + TabList + Tab + TabPanel** — вкладки **всередині** екранів і діалогів: Wishlist,
+  налаштування профілю, налаштування програми, довідка `F1`. Головна навігація — не
+  вкладки, а кнопки Activity Bar із `aria-pressed` і `Alt+0`…`Alt+5`.
+- **Button** — кнопки скрізь, `aria-pressed` для перемикачів.
+- **Menu + MenuTrigger + MenuItem + Popover + Separator** — контекстні меню списків.
+- **Slider + SliderThumb + SliderTrack** — гучність і позиція відтворення.
+- **ProgressBar** — позиція в прямому ефірі, де перемотка неможлива.
+- **SearchField, TextField, Input, Label, Group** — поля форм і фільтрів.
+- **Select + SelectValue + ListBox + ListBoxItem** — випадні списки (формати, пристрої,
+  рівні логування). `ComboBox` у коді немає.
+- **NumberField** — числові поля налаштувань.
+- **Checkbox, RadioGroup + Radio** — прапорці й перемикачі форм.
+
+**Списків React Aria в застосунку немає.** `TableView` і `GridList` не використовуються:
+всі списки — станції, записи, патерни, збіги, розклади, профілі — це власний
+[`CompositeList`](../src/components/common/composite-list/CompositeList.tsx) із
+`role="application"`, роумінг-фокусом і `role="listitem"` на кожному рядку. Причини й
+клавіатурна модель — [accessibility.md](accessibility.md) §3.
 
 ### lucide-react
 
-Tree-shakeable SVG icon library (~1,500+ іконок, ISC ліцензія). Кожна іконка ~400 Б після tree-shaking. Імпорт:
+Tree-shakeable SVG icon library (~1,500+ іконок, ISC ліцензія). Кожна іконка ~400 Б після
+tree-shaking. Імпорт:
 
 ```tsx
 import { Radio, Play, Pause, Settings } from 'lucide-react';
@@ -61,38 +100,9 @@ import { Radio, Play, Pause, Settings } from 'lucide-react';
 </Button>
 ```
 
-Обрано за результатами дослідження (lucide-react: tree-shakeable SVG, ISC ліцензія, повний набір media/UI іконок).
-
-#### Маппінг іконок
-
-| Lucide іконка | Імпорт | Де використовується |
-|---|---|---|
-| `Radio` | `Radio` | Activity Bar — секція «Потоки» |
-| `Globe` | `Globe` | Activity Bar — секція «Браузер» |
-| `Music` | `Music` | Activity Bar — секція «Пісні» |
-| `Calendar` | `Calendar` | Activity Bar — секція «Розклад» |
-| `Heart` | `Heart` | Activity Bar — секція «Wishlist/Ignorelist» |
-| `Settings` | `Settings` | Activity Bar — кнопка налаштувань (⚙️) |
-| `Play` | `Play` | Player bar — відтворення |
-| `Pause` | `Pause` | Player bar — пауза |
-| `Square` | `Square` | Player bar — стоп |
-| `Circle` | `Circle` | Player bar — запис (record) |
-| `Volume2` | `Volume2` | Player bar — гучність (нормальна) |
-| `VolumeX` | `VolumeX` | Player bar — гучність (muted) |
-| `Search` | `Search` | Command Palette, пошук станцій |
-| `Plus` | `Plus` | Додати потік/розклад |
-| `Trash2` | `Trash2` | Видалити елемент |
-| `Pencil` | `Pencil` | Редагувати елемент |
-| `MoreVertical` | `MoreVertical` | Контекстне меню (kebab) |
-| `ChevronUp` | `ChevronUp` | Розгортання/згортання |
-| `ChevronDown` | `ChevronDown` | Розгортання/згортання |
-| `Download` | `Download` | Завантажити/зберегти запис |
-| `FolderOpen` | `FolderOpen` | Відкрити папку записів |
-| `List` | `List` | Перемкнути вигляд списку |
-| `Check` | `Check` | Підтвердження, вибраний елемент |
-| `X` | `X` | Закрити діалог, скасувати |
-| `Star` | `Star` | Wishlist — додати/прибрати |
-| `Ban` | `Ban` | Ignorelist — заблокувати пісню |
+Обрано за результатами дослідження: tree-shakeable SVG, ISC ліцензія, повний набір
+media/UI іконок. Перелік конкретних іконок тут **не дублюється** — він дрейфує з кожним
+новим екраном; актуальний список дає пошук імпортів `lucide-react` у `src/`.
 
 ### Tailwind CSS v4
 
@@ -103,11 +113,14 @@ import { Radio, Play, Pause, Settings } from 'lucide-react';
 
 ### Nanostores
 
-Framework-agnostic state (286 bytes). Bridge між Tauri events і React через `@nanostores/react`.
+Framework-agnostic state (286 bytes). Bridge між Tauri events і React через
+`@nanostores/react`.
 
 ### Paraglide.js
 
-Compiler-based i18n. Мінімальний runtime, tree-shakable, typesafe. Українські множини через `Intl.PluralRules` (one/few/many/other).
+Compiler-based i18n. Мінімальний runtime, tree-shakable, typesafe. Українські множини
+через `Intl.PluralRules` (one/few/many/other). Компілюється **на диск** у
+`src/i18n/paraglide/` під час `pnpm vite:build` — тому `just check` починається зі збірки.
 
 ---
 
@@ -117,319 +130,88 @@ Compiler-based i18n. Мінімальний runtime, tree-shakable, typesafe. У
 
 | Crate | Призначення |
 |---|---|
-| `reqwest` 0.13 | Async HTTP client: streaming body, TLS, proxy, basic auth |
-| `icy-metadata` 0.6 | Заголовки підключення (`IcyHeaders`) і метадані ефіру: `IcyMetadataReader` рахує metaint, знімає блоки й віддає `StreamTitle` у callback (`stream::connection`) |
-| `stream-download` 0.24 | Кільцевий буфер для нескінченних (infinite) стрімів |
+| `reqwest` 0.13 | Async HTTP client: streaming body, TLS (rustls), proxy, basic auth. `default-features = false` — без OpenSSL |
+| `icy-metadata` 0.6 | Заголовки підключення (`IcyHeaders`) і метадані ефіру: `IcyMetadataReader` рахує metaint, знімає блоки й віддає `StreamTitle` у callback ([`stream/connection.rs`](../src-tauri/src/stream/connection.rs)) |
+| `rtrb` 0.3 | Кільцевий буфер між async-писарем і блокуючим декодером ([`player/engine.rs`](../src-tauri/src/player/engine.rs)) |
 
 ### Audio
 
 | Crate | Призначення |
 |---|---|
 | `rodio` 0.22 | Playback через WASAPI (cpal), mixer, volume |
-| `symphonia` 0.5.5 | MP3 (Excellent) + AAC-LC (Great) decoder, pure Rust |
+| `symphonia` 0.5 | MP3 (Excellent) + AAC-LC (Great) decoder, pure Rust. Підключений і через фічі `rodio`, і напряму — для власного `LiveSource` |
 
-⚠️ **Обмеження:** HE-AAC (aacPlus, 32-64 kbps) не підтримується symphonia. Запис raw bytes працює, відтворення — ні.
+⚠️ **Обмеження:** HE-AAC (aacPlus, 32-64 kbps) не підтримується symphonia. Запис raw
+bytes працює, відтворення — ні.
 
 ### Tags
 
-`lofty` 0.23 — єдиний API для MP3 (ID3v2) + M4A (iTunes ilst).
+`lofty` 0.24 — єдиний API для MP3 (ID3v2) + M4A (iTunes ilst).
 
 ### PLS/M3U
 
-Ручна реалізація (~30 рядків кожен формат). Існуючі крейти застарілі.
+Ручна реалізація ([`stream/playlist.rs`](../src-tauri/src/stream/playlist.rs)). Існуючі
+крейти застарілі. cp1251-fallback для імпорту старих списків Winamp/SHOUTcast —
+`encoding_rs`.
 
 ---
 
 ## Tauri Plugins
+
+У `Cargo.toml` рівно п'ять плагінів; трей у таблиці — не плагін, а core-фіча Tauri:
 
 | Функція | Плагін / Рішення | Portable |
 |---|---|---|
 | System Tray | Tauri core (`tray-icon` feature) | ✅ |
 | Global Shortcuts | `tauri-plugin-global-shortcut` | ✅ |
 | Single Instance | `tauri-plugin-single-instance` | ✅ |
-| CLI Arguments | `tauri-plugin-cli` | ✅ |
-| Window State | `tauri-plugin-window-state` | ✅ |
-| File System (JS) | `tauri-plugin-fs` | ✅ |
-| HTTP Client (JS) | `tauri-plugin-http` | ✅ |
-| Shell / Process | `tauri-plugin-shell` | ✅ |
 | File Dialog | `tauri-plugin-dialog` | ✅ |
 | Logging | `tauri-plugin-log` | ✅ |
-| Autostart | `winreg` (HKCU\…\Run, **не** плагін) | ✅ |
-| Notifications | Tray balloon tip (Win32) | ✅ |
+| Notifications | `tauri-plugin-notification` + реєстрація AUMID (`winreg`) | ✅ |
 
-`tauri-plugin-notification` показує "PowerShell" у portable mode → використовувати balloon tip через system tray або `windows-rs`.
+Тости трею йдуть саме через плагін: Windows 10+ перенаправляє balloon-виклики
+`Shell_NotifyIconW` у toast і **мовчки викидає** їх, коли AUMID не зареєстровано.
+Portable-збірка не має ярлика в меню «Пуск», тому AUMID реєструється сама, одним ключем
+під `HKCU\Software\Classes\AppUserModelId`
+([`tray/notify.rs`](../src-tauri/src/tray/notify.rs)).
+
+### Розглянуто й відхилено
+
+| Плагін | Чому не потрібен |
+|---|---|
+| `tauri-plugin-cli` | argv розбирає `clap` у Rust (`cli.rs`) — один парсер і для власного argv, і для argv другого екземпляра |
+| `tauri-plugin-http` | HTTP ходить із Rust через `reqwest`; webview зовнішніх запитів не робить (у CSP немає жодного зовнішнього `connect-src`) |
+| `tauri-plugin-fs` | усі файли читає й пише Rust; webview отримує готові дані через IPC |
+| `tauri-plugin-shell` | «відкрити у програмі за замовчуванням» робить `ShellExecuteW`, кошик — `SHFileOperationW` (обидва з крейта `windows`); scope плагіна нічого не додає |
+| `tauri-plugin-window-state` | писав у `%APPDATA%`; геометрія тепер у `data/window.json` (`window_state.rs`) — [ADR межа портативності](decisions/2026-09-04-portable-boundary.md) |
+| `tauri-plugin-autostart` | запис `HKCU\…\Run` робимо самі (`autostart.rs`): команда залежить від `autostart_minimized`, а при переїзді EXE запис треба звіряти й гасити |
 
 ---
 
 ## Конфігурація проекту
 
-### package.json
+Файли конфігурації тут **не цитуються**: копія дрейфує при кожній правці, і читач
+однаково мусить відкрити оригінал.
 
-```json
-{
-  "name": "tapir",
-  "version": "0.1.0",
-  "scripts": {
-    "tauri": "tauri",
-    "dev": "tauri dev",
-    "build": "tauri build --no-bundle",
-    "build:fast": "tauri build --profile release-fast --no-bundle",
-    "vite:dev": "vite dev --port 1420",
-    "vite:build": "vite build"
-  },
-  "packageManager": "pnpm@10.32.1",
-  "dependencies": {
-    "@tauri-apps/api": "^2",
-    "@tauri-apps/plugin-cli": "^2",
-    "@tauri-apps/plugin-global-shortcut": "^2",
-    "@tauri-apps/plugin-fs": "^2",
-    "@tauri-apps/plugin-http": "^2",
-    "@tauri-apps/plugin-log": "^2",
-    "@tauri-apps/plugin-notification": "^2",
-    "@tauri-apps/plugin-shell": "^2",
-    "@tauri-apps/plugin-dialog": "^2",
-    "@tauri-apps/plugin-window-state": "^2",
-    "@tauri-apps/plugin-autostart": "^2",
-    "react": "^19",
-    "react-dom": "^19",
-    "react-aria-components": "^1",
-    "lucide-react": "^1",
-    "nanostores": "^0.11",
-    "@nanostores/react": "^0.8"
-  },
-  "devDependencies": {
-    "@tauri-apps/cli": "^2",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@vitejs/plugin-react-swc": "^4",
-    "vite": "^8",
-    "@tailwindcss/vite": "^4",
-    "tailwindcss": "^4",
-    "typescript": "^5.7"
-  }
-}
-```
+| Файл | Що в ньому |
+|---|---|
+| [`package.json`](../package.json) | JS-залежності, скрипти (`dev`, `build`, `test`, `typecheck`), `packageManager` |
+| [`src-tauri/Cargo.toml`](../src-tauri/Cargo.toml) | Rust-залежності, профілі `release` і `release-fast` |
+| [`src-tauri/tauri.conf.json`](../src-tauri/tauri.conf.json) | `identifier` (`ua.ruslanrv.tapir`), вікно, CSP, bundle |
+| [`src-tauri/capabilities/default.json`](../src-tauri/capabilities/default.json) | Дозволи IPC — ядро плюс чотири плагіни, які webview кличе: `dialog`, `log`, `global-shortcut`, `notification` (single-instance дозволу не потребує) |
+| [`justfile`](../justfile) | Команди збірки й ворота (`just check`) |
 
-### Cargo.toml
+Два місця, де легко помилитись:
 
-```toml
-[package]
-name = "tapir"
-version = "0.1.0"
-description = "Accessible Internet Radio Recorder for Windows"
-edition = "2024"
-
-[lib]
-name = "tapir_lib"
-crate-type = ["lib", "cdylib", "staticlib"]
-
-[build-dependencies]
-tauri-build = { version = "2", features = [] }
-
-[dependencies]
-# Tauri
-tauri = { version = "2", features = ["tray-icon"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-
-# Tauri Plugins
-tauri-plugin-single-instance = "2"
-tauri-plugin-global-shortcut = "2"
-tauri-plugin-cli = "2"
-tauri-plugin-window-state = "2"
-tauri-plugin-fs = { version = "2", features = ["watch"] }
-tauri-plugin-log = "2"
-tauri-plugin-http = "2"
-tauri-plugin-shell = "2"
-tauri-plugin-dialog = "2"
-tauri-plugin-notification = "2"
-
-# Windows registry — HKCU\…\Run для autostart + AUMID для toast (не tauri-plugin-autostart)
-winreg = "0.55"
-
-# HTTP Streaming
-reqwest = { version = "0.13", features = ["stream"] }
-icy-metadata = { version = "0.6", features = ["reqwest"] }
-stream-download = { version = "0.24", features = ["reqwest-rustls"] }
-
-# Audio
-rodio = { version = "0.22", features = ["symphonia-mp3", "symphonia-aac", "symphonia-isomp4"] }
-
-# Tags
-lofty = "0.23"
-
-# Async
-tokio = { version = "~1.51", features = ["full"] }  # ~1.51 = >=1.51.0, <2.0.0 (SemVer tilde)
-futures-util = "0.3"
-bytes = "1"
-
-# Logging
-tracing = "0.1"
-tracing-log = "0.2"
-log = "0.4"
-
-# Errors
-anyhow = "1"
-thiserror = "2"
-
-# Misc
-chrono = { version = "0.4", features = ["serde"] }
-sys-locale = "0.3"
-
-[target.'cfg(windows)'.dependencies]
-windows = { version = "0.61", features = [
-    "Win32_UI_Shell",
-    "Win32_System_Registry",
-] }
-
-[profile.release]
-opt-level = "s"
-lto = true
-codegen-units = 1
-strip = true
-panic = "abort"
-
-[profile.release-fast]
-inherits = "release"
-opt-level = 1
-lto = false
-codegen-units = 16
-strip = false
-panic = "unwind"
-```
-
-### tauri.conf.json
-
-```json
-{
-  "productName": "Tapir",
-  "version": "0.1.0",
-  "identifier": "com.tapir.app",
-  "build": {
-    "devUrl": "http://localhost:1420",
-    "frontendDist": "../dist",
-    "beforeDevCommand": "pnpm vite:dev",
-    "beforeBuildCommand": "pnpm vite:build"
-  },
-  "app": {
-    "windows": [
-      {
-        "title": "Tapir",
-        "label": "main",
-        "width": 900,
-        "height": 650,
-        "minWidth": 640,
-        "minHeight": 480,
-        "visible": false,
-        "decorations": true
-      }
-    ],
-    "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost http://tauri.localhost https://*.api.radio-browser.info"
-    }
-  },
-  "bundle": {
-    "active": true,
-    "targets": ["nsis"],
-    "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/icon.ico"
-    ]
-  },
-  "plugins": {
-    "cli": {
-      "description": "Tapir — Internet Radio Recorder",
-      "args": [
-        { "name": "datadir", "takesValue": true, "description": "Data directory path" },
-        { "name": "tempdir", "takesValue": true, "description": "Temp directory path" },
-        { "name": "profile", "takesValue": true, "description": "Profile name to load" },
-        { "name": "minimize", "description": "Start minimized" },
-        { "name": "record", "short": "r", "takesValue": true, "description": "Record stream URL" },
-        { "name": "play", "short": "p", "takesValue": true, "description": "Play stream URL" },
-        { "name": "stop-recording", "description": "Stop recording" },
-        { "name": "stop-playing", "description": "Stop playback" },
-        { "name": "wishadd", "takesValue": true, "description": "Add to wishlist" },
-        { "name": "wishremove", "takesValue": true, "description": "Remove from wishlist" }
-      ]
-    }
-  }
-}
-```
-
-### Capabilities (`src-tauri/capabilities/default.json`)
-
-Tauri v2 вимагає явних дозволів для кожного плагіна. Без capabilities плагіни не працюватимуть.
-
-```json
-{
-  "$schema": "../gen/schemas/desktop-schema.json",
-  "identifier": "default",
-  "description": "Default permissions for Tapir",
-  "windows": ["main"],
-  "permissions": [
-    "core:default",
-    "core:window:allow-close",
-    "core:window:allow-set-title",
-    "core:window:allow-minimize",
-    "core:window:allow-maximize",
-    "core:window:allow-show",
-    "core:window:allow-hide",
-    "core:event:default",
-    "cli:default",
-    "dialog:default",
-    "fs:default",
-    "global-shortcut:default",
-    "http:default",
-    "log:default",
-    "notification:default",
-    "shell:default",
-    "window-state:default",
-    "autostart:default"
-  ]
-}
-```
-
-### justfile
-
-```just
-default:
-    @just --list
-
-# Start Tauri dev server (Vite + Rust watcher)
-dev:
-    pnpm tauri dev
-
-# Production build — minimal exe, slow compile
-build:
-    pnpm tauri build --no-bundle
-
-# Fast build — larger exe, quick compile (uses [profile.release-fast] in Cargo.toml)
-build-fast:
-    pnpm tauri build --no-bundle -- --profile release-fast
-
-# Frontend-only dev server on port 1420
-vite-dev:
-    pnpm vite dev --port 1420
-
-# Frontend-only production build to /dist
-vite-build:
-    pnpm vite build
-
-# Clean Rust build artifacts
-clean:
-    cargo clean --manifest-path src-tauri/Cargo.toml
-
-# Install JS dependencies
-install:
-    pnpm install
-```
-
-`--no-bundle` пропускає створення NSIS/MSI, виробляючи standalone `.exe`.
+- **Capabilities.** Tauri v2 вимагає явного дозволу на кожну команду плагіна. Немає
+  дозволу — плагін мовчки не працює, хоча підключений у `Cargo.toml`.
+- **`--no-bundle`.** Пропускає створення NSIS/MSI, виробляючи standalone `.exe` — саме
+  той файл, який роздається користувачам.
 
 ### Синхронізація версій
 
-Три файли мають завжди мати однакову версію:
+Три файли мають завжди мати однакову версію; сторож —
+[`src/lib/versionSync.test.ts`](../src/lib/versionSync.test.ts).
 
 | Файл | Поле |
 |------|------|
@@ -449,11 +231,13 @@ install:
 
 ### React Aria забезпечує
 
-- TableView з ARIA grid pattern (sortable, keyboard navigable)
-- Live regions через `@react-aria/live-announcer`
-- Focus trap для модальних діалогів
-- Slider з aria-valuemin/max/now
-- ProgressBar з aria-valuenow
+- Focus trap і повернення фокуса для модальних діалогів
+- `Slider` з `aria-valuemin`/`max`/`now`, `ProgressBar` з `aria-valuenow`
+- Клавіатурну модель меню, вкладок і полів форм
+
+Live-регіони React Aria (`@react-aria/live-announcer`) Tapir **не** використовує: у
+застосунку власний `LiveAnnouncer` (`role="log"`, новий вузол на кожне повідомлення) —
+[accessibility.md](accessibility.md) §1.4.
 
 ---
 
@@ -464,17 +248,7 @@ install:
 | HE-AAC не декодується | Деякі 32-64 kbps станції не програються | Запис raw bytes працює; моніторити symphonia roadmap |
 | `decorations: true` | Кастомний titlebar неможливий | Стандартний Windows titlebar — прийнятно для a11y-first |
 | NVDA IA2 vs UIA | Mouse tracking обмежений без налаштувань | Документувати для користувачів |
-| Notifications portable | Toast показує "PowerShell" | Balloon tip через system tray |
-| Autostart portable | Шлях у реєстрі стає невалідним при переміщенні | Перевірка + оновлення шляху при кожному запуску |
+| Тост без AUMID | Windows мовчки викидає сповіщення portable-збірки | Одноразова реєстрація AUMID у `HKCU` при запуску (`tray/notify.rs`) |
+| Autostart portable | Шлях у реєстрі стає невалідним при переміщенні EXE | Звірка при кожному запуску; якщо EXE переїхав — автозапуск вимикається (`autostart.rs`) |
+| WebView2 у `%LOCALAPPDATA%` | Портативність неповна: профіль движка лишається на машині | Свідомо прийнято — [ADR межа портативності](decisions/2026-09-04-portable-boundary.md) |
 | symphonia MPL-2.0 | Copyleft на рівні файлів | Дозволяє комбінування; модифіковані файли мають бути відкритими |
-
----
-
-## Джерела досліджень
-
-Детальні дослідницькі звіти:
-
-- `research-tauri-webview2-accessibility.md` — WebView2 accessibility + screen readers
-- `research-rust-radio-streaming-crates.md` — Rust audio crates порівняння
-- `research-frontend-framework-accessibility.md` — вибір frontend framework
-- `research-tauri-v2-plugins-radioapp.md` — інвентаризація Tauri v2 plugins

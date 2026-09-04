@@ -16,7 +16,7 @@ This file contains advanced technical details about the Tapir application.
 - **Formats and Protocols**: Supports recording audio from ICY, Icecast, and SHOUTcast streams in MP3 and AAC formats.
 - **Metadata (ID3 / M4A)**: ID3 tags are automatically extracted from the stream metadata and written into each saved file.
 - **System Requirements**: Windows 11+ (x64). WebView2 runtime is required (present on Windows 11). The app is portable: no installer, and everything Tapir decides for itself lives in `data\` next to the executable. It is not invisible to the system, though — see *What Tapir leaves behind* below.
-- **CLI Arguments**: Launch the app with command-line arguments like `--profile`, `--start-recording`, and other flags.
+- **CLI Arguments**: Launch the app with `--record`, `--play`, `--stop-recording`, `--stop-playback`, `--wish-add`, `--wish-remove`, `--profile` or `--minimize` (plus `--help` and `--version`). Passing an action flag to an already running copy forwards it to that copy instead of starting a second instance; `--profile` and `--minimize` only apply at startup and are ignored when forwarded.
 - **Single Instance & Crash Recovery**: A dedicated mechanism ensures only one instance runs at a time. It also automatically resumes interrupted recordings on the next launch if a sudden crash occurs.
 - **Stream Export/Import**: Station lists can be imported and exported as `M3U8` / `PLS` files.
 

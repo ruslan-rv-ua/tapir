@@ -119,85 +119,102 @@ src-tauri/src/
 
 ## 3. Модульна структура (Frontend)
 
-> **Фази:** Компоненти без позначки — Фаза 1. Компоненти з позначкою — див. вказану фазу.
+Один екран — один каталог. Списки всередині екранів будує спільний
+`common/composite-list/` (`role="application"` + роумінг-фокус), **не** таблиці React
+Aria: ні `TableView`, ні `GridList` у застосунку немає. Історична назва
+`ScheduleTable.tsx` цього не міняє — усередині той самий composite list.
 
 ```
 src/
-├── index.html
-├── main.tsx                   # React entry, Tauri event listeners init
-├── App.tsx                    # Root: ActivityBar + Content layout
+├── main.tsx                   # React entry, ініціалізація слухачів Tauri
+├── App.tsx                    # Root: ActivityBar + активна секція + плеєр
 ├── components/
 │   ├── layout/
-│   │   ├── ActivityBar.tsx     # Left sidebar: section icons + ⚙️ gear + profile switcher
-│   │   ├── ScreenHeader.tsx    # Per-screen <h1> title row (+ optional actions)
-│   │   ├── ScreenZone.tsx      # Navigable zone container (id + role + a11y name)
-│   │   └── StatusBar.tsx      # Bottom: recording count, disk space, longest recording
+│   │   ├── ActivityBar.tsx    # Ліва панель: секції (Alt+0…Alt+5) + ⚙️ внизу
+│   │   ├── ScreenHeader.tsx   # Рядок заголовка екрана (<h1> + дії)
+│   │   ├── ScreenZone.tsx     # Зона навігації F6 (id + role + a11y-назва)
+│   │   └── StatusBar.tsx      # Низ вікна: три сегменти
 │   ├── streams/
-│   │   ├── StreamsPanel.tsx   # Tab panel: stream list + controls
-│   │   ├── StreamTable.tsx    # React Aria TableView (sortable, NO drag-and-drop)
-│   │   │                      # Reorder via context menu ↑/↓ (keyboard accessible)
-│   │   ├── StreamRow.tsx      # Row: status, station, track, bitrate
-│   │   └── AddStreamDialog.tsx  # Add / Edit stream (dual-mode dialog)
-│   ├── player/                          # [Phase 2]
-│   │   ├── PlayerPanel.tsx    # Playback controls bar
-│   │   ├── VolumeSlider.tsx   # React Aria Slider
-│   │   └── PlaybackPosition.tsx # Slider (file seek) / ProgressBar (live)
-│   ├── browser/                         # [Phase 3]
-│   │   ├── BrowserPanel.tsx   # Tab panel: stream browser
-│   │   ├── SearchForm.tsx     # ComboBox + filters
-│   │   └── ResultsTable.tsx   # Search results table
-│   ├── songs/                           # [Phase 4]
-│   │   ├── SongsPanel.tsx     # Tab panel: saved songs
-│   │   ├── SongsTable.tsx     # Saved songs table (sortable, filterable)
-│   │   └── TagEditor.tsx      # Edit tags dialog
-│   ├── schedule/                        # [Phase 3]
-│   │   ├── SchedulePanel.tsx  # Tab panel: scheduled recordings
-│   │   ├── ScheduleTable.tsx
-│   │   └── ScheduleForm.tsx   # Add/edit scheduled recording
-│   ├── settings/                        # [Phase 2]
-│   │   ├── SettingsDialog.tsx  # Full-screen dialog (⚙️ gear / Ctrl+,)
-│   │   ├── SettingsNav.tsx    # Left sidebar navigation within dialog
-│   │   ├── GeneralSettings.tsx
-│   │   ├── RecordingSettings.tsx
-│   │   ├── HotkeySettings.tsx
-│   │   ├── ProfileManager.tsx
-│   │   └── PostprocessSettings.tsx
-│   ├── wishlist/                        # [Phase 2]
-│   │   ├── WishlistPanel.tsx
-│   │   └── WishlistTable.tsx
+│   │   ├── StreamsPanel.tsx   # Екран «Потоки»
+│   │   ├── StreamList.tsx     # Composite list потоків
+│   │   ├── StreamItem.tsx     # Рядок: стан, станція, трек
+│   │   ├── StreamContextMenu.tsx
+│   │   ├── SelectionActionsMenu.tsx  # Дії над виділенням
+│   │   ├── AddStreamDialog.tsx       # Додати / редагувати потік
+│   │   ├── ImportStreamsDialog.tsx   # Імпорт M3U8/PLS
+│   │   ├── ExportFormatDialog.tsx    # Вибір формату експорту
+│   │   ├── StreamTransferDialog.tsx  # Перенесення між профілями
+│   │   └── FreeSpaceMetric.tsx
+│   ├── player/
+│   │   ├── PlayerPanel.tsx    # Постійна панель відтворення
+│   │   ├── VolumeSlider.tsx
+│   │   ├── PlaybackPosition.tsx  # Slider (файл) / ProgressBar (ефір)
+│   │   ├── LiveBadge.tsx
+│   │   └── RecordingBadge.tsx
+│   ├── browser/
+│   │   ├── BrowserPanel.tsx   # Екран «Браузер станцій»
+│   │   ├── SearchForm.tsx     # Пошук + фільтри (Select, не ComboBox)
+│   │   ├── StationList.tsx    # Результати + завершальний стоп «Показати ще»
+│   │   └── StationItem.tsx
+│   ├── songs/
+│   │   ├── SongsPanel.tsx     # Екран «Пісні»
+│   │   ├── SongsList.tsx
+│   │   ├── SongItem.tsx
+│   │   ├── SongsFilterBar.tsx
+│   │   ├── SongContextMenu.tsx
+│   │   ├── TagEditorDialog.tsx
+│   │   └── RenameDialog.tsx
+│   ├── schedule/
+│   │   ├── SchedulePanel.tsx  # Екран «Розклад»
+│   │   ├── ScheduleTable.tsx  # Назва історична — усередині composite list
+│   │   ├── ScheduleItem.tsx
+│   │   ├── ScheduleContextMenu.tsx
+│   │   ├── ScheduleForm.tsx   # Додати / редагувати запис розкладу
+│   │   └── formModel.ts       # Чиста модель форми (тестується окремо)
+│   ├── wishlist/
+│   │   ├── WishlistPanel.tsx  # Екран «Бажані»: вкладки патернів і збігів
+│   │   ├── PatternList.tsx
+│   │   ├── MatchList.tsx      # Журнал збігів — видимий носій події
+│   │   ├── AddPatternDialog.tsx
+│   │   └── examplePatterns.ts
+│   ├── profile/
+│   │   ├── ProfilesPanel.tsx  # Екран «Профілі»
+│   │   ├── ProfileList.tsx / ProfileItem.tsx / ProfileContextMenu.tsx
+│   │   ├── ProfileNameDialog.tsx
+│   │   └── ProfileSettingsDialog.tsx  # Вкладки: Recording, Playback, Interface
+│   ├── settings/
+│   │   ├── SettingsDialog.tsx # Діалог налаштувань програми (бічні вкладки)
+│   │   ├── GeneralTab.tsx / AudioTab.tsx / HotkeysTab.tsx
+│   │   └── KeyRecorder.tsx    # Запис комбінації клавіш
 │   └── common/
-│       ├── LiveAnnouncer.tsx  # Screen reader announcements
-│       ├── ConfirmDialog.tsx  # Accessible confirmation dialog
-│       ├── CommandPalette.tsx # Ctrl+K: fuzzy search actions, stations, songs
-│       ├── ProfileSwitcher.tsx # Profile popover [Phase 4, Phase 1: UI placeholder]
-│       ├── ToastContainer.tsx # Toast notifications (bottom-right)
-│       ├── UndoToast.tsx      # Undo toast for mild-destructive actions (delete stream, wishlist entry)
-│       ├── KeyboardShortcutsModal.tsx # F1: повна таблиця shortcuts, role="dialog"
+│       ├── composite-list/    # CompositeList, CompositeRow, CompositeSegment,
+│       │                      # CompositeAction — основа всіх списків
+│       ├── LiveAnnouncer.tsx  # role="log", новий вузол на кожне повідомлення
+│       ├── CommandPalette.tsx # Ctrl+K: фільтр команд підрядком
+│       ├── ConfirmDialog.tsx
+│       ├── HelpDialog.tsx / HelpContent.tsx / helpContent.ts  # F1, docs/help/
+│       ├── ShortcutsHelp.tsx
+│       ├── SelectionToolbar.tsx
+│       ├── ListCard.tsx
+│       ├── ToastContainer.tsx
 │       └── ErrorBoundary.tsx
-├── stores/                    # Nanostores — Tauri IPC bridge
-│   ├── streams.ts             # Stream list + recording states
-│   ├── player.ts              # Playback state [Phase 2]
-│   ├── browser.ts             # Search results [Phase 3]
-│   ├── songs.ts               # Saved songs [Phase 4]
-│   ├── schedule.ts            # Scheduled recordings [Phase 3]
-│   ├── settings.ts            # Global settings mirror
-│   ├── profile.ts             # Active profile data
-│   ├── navigation.ts          # Active section, command palette state
-│   ├── toasts.ts              # Toast notification queue
-│   └── announcer.ts           # Queue for screen reader announcements
-├── hooks/
-│   ├── useTauriEvent.ts       # listen() wrapper for React lifecycle
-│   └── useAnnounce.ts         # Announce via LiveAnnouncer
+├── stores/                    # Nanostores — дзеркало стану з Rust
+│   ├── streams.ts   player.ts   playbackNeighbors.ts   browser.ts
+│   ├── songs.ts     schedule.ts wishlist.ts            selection.ts
+│   ├── settings.ts  profile.ts  profileManager.ts      navigation.ts
+│   └── system.ts    toasts.ts   announcer.ts
+├── hooks/                     # useTauriEvent, useAnnounce, зонна навігація,
+│                              # роумінг-фокус, підписки на події Rust
+├── lib/                       # Чисті функції й типізовані обгортки invoke()
 ├── i18n/
-│   ├── messages/
-│   │   ├── en.json
-│   │   └── uk.json
-│   └── paraglide/             # Auto-generated
-├── lib/
-│   ├── tauri.ts               # Typed invoke() wrappers
-│   └── formatters.ts          # Duration, bitrate, date formatting
+│   ├── messages/{uk,en}.json  # Джерело для Paraglide і для Rust (i18n.rs)
+│   └── paraglide/             # Згенероване на збірці, у git не лежить
 └── styles.css                 # Tailwind v4 entry + custom properties
 ```
+
+`hooks/` і `lib/` навмисно не розписані поіменно: вони ростуть з кожною фічею, і копія
+переліку тут застаріває швидше за все інше. Правило пошуку: подія Rust → `hooks/use*`,
+чиста логіка й `invoke()` → `lib/`.
 
 ---
 
@@ -984,12 +1001,14 @@ fn rebuild_tray_menu(
 })
 ```
 
-#### Balloon tip (сповіщення)
+#### Тости трею (сповіщення)
 
-При зміні треку (якщо `showTrayNotifications: true`):
+При зміні треку (якщо профільний `ui.trayNotificationsTrackChange` увімкнено):
 - **Title:** назва станції
 - **Body:** "Artist — Title"
-- Через Win32 `Shell_NotifyIconW` balloon API (не toast, щоб уникнути "PowerShell" у portable mode)
+- Через `tauri-plugin-notification` (`tray/notify.rs`). Balloon tip `Shell_NotifyIconW`
+  **не** використовується: Windows 10+ перетворює його на toast і мовчки викидає, поки
+  AUMID не зареєстровано — тому AUMID пишеться в `HKCU` при запуску
 - Throttle: не частіше ніж раз на 3 секунди (ICY metadata flicker)
 
 ---
@@ -1002,22 +1021,24 @@ fn rebuild_tray_menu(
 default-src 'self';
 script-src 'self';
 style-src 'self' 'unsafe-inline';
-connect-src ipc: http://ipc.localhost http://tauri.localhost https://*.api.radio-browser.info;
+connect-src ipc: http://ipc.localhost http://tauri.localhost;
 ```
 
 - Ніяких зовнішніх скриптів
 - `unsafe-inline` для динамічних стилів (React Aria, Tailwind)
 - `ipc:` + `http://ipc.localhost` — Tauri IPC комунікація (invoke, events)
 - `http://tauri.localhost` — Tauri asset protocol
-- `connect-src` — Radio Browser API (HTTP запити з frontend)
-- Аудіо потоки йдуть через Rust, не через WebView
+- **Жодного зовнішнього хоста в `connect-src`**: webview узагалі не ходить у мережу.
+  Radio Browser API і аудіопотоки йдуть із Rust через `reqwest`
 
 ### IPC Security
 
-- Capabilities (`default.json`) — мінімальний набір дозволів
-- `tauri-plugin-shell` — scope обмежений до дозволених програм
-- `tauri-plugin-http` — URL allowlist тільки для `*.api.radio-browser.info`
-- `tauri-plugin-fs` — read/write scope обмежений
+- Capabilities (`default.json`) — мінімальний набір: ядро (`core:*`) плюс чотири плагіни,
+  до яких звертається webview: `dialog`, `log`, `global-shortcut`, `notification`. П'ятий
+  підключений плагін, `single-instance`, працює цілком у Rust і дозволу не потребує
+- Плагінів `shell`, `http`, `fs` у застосунку немає — файли, мережа й запуск програм
+  живуть у Rust, тож у webview просто нема чого дозволяти. Чому саме так —
+  [tech-stack.md](tech-stack.md), «Розглянуто й відхилено»
 
 ### Файлова безпека
 

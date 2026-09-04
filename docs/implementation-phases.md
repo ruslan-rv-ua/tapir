@@ -25,7 +25,7 @@
 | 3F | Profile Manager | Повний CRUD профілів, import/export | ✅ Complete |
 | 3G | CLI Arguments | Аргументи командного рядка | ✅ Complete |
 | 3H | Post-processing | Зовнішні програми після запису | ⬜ |
-| 3I | Polish Bundle | High Contrast, Autostart, Log rotation | ⬜ |
+| 3I | Polish Bundle | High Contrast, Autostart, Log rotation | ✅ Complete (3I-4 відхилено) |
 | 3J | Stream Import/Export | Імпорт/експорт потоків профілю (M3U8/PLS) з перевіркою | ✅ Complete |
 | 3K | Crash Recovery | clean_shutdown flag + resume записів на старті | ✅ Complete |
 

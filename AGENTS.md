@@ -2,9 +2,13 @@
 
 ## Project State
 
-Active development — **Phase 3F** (Profile Manager).
+Pre-release, working towards **0.1.0** — Post-processing (3H) is the last phase still open,
+and day-to-day work is queued **by target version in the backlog**, not by phase.
 Breaking changes are expected at any time — no migrations, no backward-compatibility guarantees.
-See [docs/implementation-phases.md](docs/implementation-phases.md) for the full roadmap.
+What 0.1.0 still needs: [docs/backlog/ROADMAP.md](docs/backlog/ROADMAP.md). The phase roadmap
+itself: [docs/implementation-phases.md](docs/implementation-phases.md).
+
+The phase table below is history — it records what each phase covered and where it landed:
 
 | Фаза | Статус | Гілка |
 |------|--------|-------|
@@ -20,7 +24,7 @@ See [docs/implementation-phases.md](docs/implementation-phases.md) for the full 
 | Phase 3F — Profile Manager | ✅ Complete | `feature/pahse-3F-profiles` |
 | Phase 3G — CLI Arguments | ✅ Complete | `feature/backlog-unimplemented-phases` |
 | Phase 3H — Post-processing | ⬜ Not started | — |
-| Phase 3I — Polish Bundle | ⬜ Not started | — |
+| Phase 3I — Polish Bundle | ✅ Complete | 3I-1…3I-3 merged to `develop`; 3I-4 rejected |
 | Phase 3J — Stream Import/Export | ✅ Complete | merged to `develop` |
 | Phase 3K — Crash Recovery | ✅ Complete | `feature/phase-3k-crash-recovery` |
 
