@@ -98,12 +98,28 @@ describe("SongsList — Enter modifiers act on the focused row", () => {
     expect(onAction).toHaveBeenCalledWith("a.mp3", "open");
   });
 
-  it("Alt+Space still plays — modifiers apply to Enter only", () => {
+  // A modified Space is not the list's key (ADR 2026-09-04 §1): it does not
+  // act, and Alt keeps its default — that is Windows' window menu, not ours.
+  it("a modified Space does nothing — and Alt+Space is not even swallowed", () => {
     const { ref, onPlay, onAction } = renderList();
     focusFirstRow(ref);
-    fireEvent.keyDown(document.activeElement!, { key: " ", altKey: true });
-    expect(onPlay).toHaveBeenCalledWith("a.mp3");
+
+    const altNotPrevented = fireEvent.keyDown(document.activeElement!, {
+      key: " ", code: "Space", altKey: true, bubbles: true,
+    });
+    fireEvent.keyDown(document.activeElement!, {
+      key: " ", code: "Space", shiftKey: true, bubbles: true,
+    });
+    expect(onPlay).not.toHaveBeenCalled();
     expect(onAction).not.toHaveBeenCalled();
+    expect(altNotPrevented).toBe(true);
+  });
+
+  it("bare Space still plays the focused row", () => {
+    const { ref, onPlay } = renderList();
+    focusFirstRow(ref);
+    fireEvent.keyDown(document.activeElement!, { key: " ", code: "Space", bubbles: true });
+    expect(onPlay).toHaveBeenCalledWith("a.mp3");
   });
 
   it("advertises Alt+Enter and Control+Enter on the row via aria-keyshortcuts", () => {

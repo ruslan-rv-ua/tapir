@@ -193,12 +193,36 @@ const ROW_SCOPED_INTENTS: ReadonlySet<ActionId> = new Set<ActionId>([
 ]);
 
 /**
+ * The slice of a KeyboardEvent this module's pure key logic reads. Narrower
+ * than React.KeyboardEvent on purpose: it lets the resolver be called with a
+ * synthesized "same key, no modifiers held" copy (see bareStroke below), and
+ * lets the modifier matrix be covered by a table test instead of dozens of hook
+ * mounts.
+ */
+type KeyStroke = Pick<
+  React.KeyboardEvent,
+  "key" | "code" | "ctrlKey" | "altKey" | "shiftKey" | "metaKey"
+>;
+
+/**
  * Map a keyboard event to a single list intent, or null to let it bubble.
  * Letters/Space use e.code (Cyrillic-layout safe); navigation/activation keys
- * use e.key. Modifiers for Enter/Space (Shift=listen, Ctrl=record) are NOT
- * encoded here — they ride along via `modifiers(e)` at dispatch time.
+ * use e.key.
+ *
+ * THE MODEL: a list key is BARE unless this function names it otherwise
+ * (ADR 2026-09-04, docs/decisions/2026-09-04-list-keys-are-bare-unless-named.md).
+ * Every combination the list owns is declared ABOVE the guard; the `switch`
+ * below the guard only ever sees a naked key. So a key added to the switch
+ * years from now inherits no combinations, and forgetting to name one fails
+ * LOUDLY — the combo does nothing, visible on the first press — instead of
+ * silently duplicating the row action under someone else's shortcut.
+ *
+ * Modifiers that ride ALONG instead of selecting the intent (on Enter:
+ * Shift = listen, Ctrl = record, Alt = hand to an external app) are still not
+ * encoded here — they travel via `modifiers(e)` at dispatch time.
  */
-function resolveKeyAction(e: React.KeyboardEvent): ActionId | null {
+function resolveKeyAction(e: KeyStroke): ActionId | null {
+  /* ---- named exceptions: the combinations the list does own ---------- */
   if (
     (e.code === "Space" || e.key === " ") &&
     (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey
@@ -209,6 +233,46 @@ function resolveKeyAction(e: React.KeyboardEvent): ActionId | null {
     if (e.key === "ArrowDown") return "selectRangeDown";
     if (e.key === "ArrowUp") return "selectRangeUp";
   }
+  // Enter takes EXACTLY ONE modifier out of {Shift, Ctrl, Alt} — or none. A
+  // PAIR is refused rather than ranked: the three lists reading `mods` each
+  // ordered their ifs differently, so nobody could say what Ctrl+Shift+Enter
+  // meant. Refusing pairs cancels the question. Concretely load-bearing:
+  // AltGr reports as ctrl+alt on European layouts (webviewAccelerators.ts
+  // already accounts for it), so AltGr+Enter used to reach the `mods.alt`
+  // branch and hand the stream to an external player. Meta carries no list
+  // action at all.
+  if (e.key === "Enter") {
+    if (e.metaKey) return null;
+    const held = Number(e.shiftKey) + Number(e.ctrlKey) + Number(e.altKey);
+    return held > 1 ? null : "enter";
+  }
+  // F5 — "copy to…" row key, Shift+F5 — "move to…". The KEY is borrowed from
+  // Norton Commander / Total Commander (where blind users learned it); the
+  // two-panel model is NOT — the destination is asked for by a dialog. Move is
+  // Shift+F5, not F6: F6 is zone navigation and a Microsoft platform convention.
+  // Shift is the only modifier that carries meaning here; it SELECTS the intent
+  // rather than riding along in modifiers(e) (the precedent is selectRange*,
+  // not Enter). That is also why F5 is named above the guard while its F2/F4
+  // neighbours are not: for them Shift means nothing, so the guard says so.
+  if (e.key === "F5") {
+    if (e.ctrlKey || e.altKey || e.metaKey) return null;
+    return e.shiftKey ? "transfer-move" : "transfer-copy";
+  }
+  // Tab leaves the zone; Shift picks the direction, read by the handler rather
+  // than encoded in the intent. Ctrl+Tab is an ATTEMPT at a shortcut, not
+  // navigation (the KeyRecorder precedent), so the list does not answer to it.
+  if (e.key === "Tab") {
+    if (e.ctrlKey || e.altKey || e.metaKey) return null;
+    return "tab";
+  }
+
+  /* ---- the guard: past this line a list key is bare, or it is not ours -- */
+  // Ctrl/Alt/Meta address other layers (the Tier-2 registry, OS hotkeys,
+  // WebView2 accelerators, Windows' own Alt+Space window menu); Shift has no
+  // foreign layer, but no declared meaning here either. Same verdict for both:
+  // not named above ⇒ not ours (ADR §1–§2).
+  if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return null;
+
   switch (e.key) {
     case "ArrowUp": return "up";
     case "ArrowDown": return "down";
@@ -219,40 +283,77 @@ function resolveKeyAction(e: React.KeyboardEvent): ActionId | null {
     case "PageUp": return "pageup";
     case "PageDown": return "pagedown";
     case "Escape": return "clearSelection";
-    case "Enter": return "enter";
+    // Enter is NOT here: it is named above the guard, bare form included, and a
+    // case for it down here would be a second listing of the same key one line
+    // below the very guard that exists to keep one listing (ADR §6).
     case "Delete": return "delete";
-    // F2 — desktop "rename/edit" row key (Explorer/VS Code/NVDA convention).
-    // Generic intent; each list decides what "edit" means (no-op if it doesn't).
-    // Modifiers decline the match, exactly as for its F4 pair below: the two are
-    // one convention (name / content) and must not answer to different rules.
-    case "F2":
-      if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return null;
-      return "edit";
-    // F4 — edit the row's CONTENT, the other half of the Total Commander / FAR
-    // pair (F2 = name, F4 = content); in Songs that is the tag editor. Any
-    // modifier DECLINES the match (null) rather than matching an empty action —
-    // the F5 precedent, and load-bearing here: null returns before consume(), so
-    // `Alt+F4` stays the system window close instead of being swallowed.
-    case "F4":
-      if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return null;
-      return "edit-content";
-    // F5 — "copy to…" row key, Shift+F5 — "move to…". The KEY is borrowed from
-    // Norton Commander / Total Commander (where blind users learned it); the
-    // two-panel model is NOT — the destination is asked for by a dialog. Move is
-    // Shift+F5, not F6: F6 is zone navigation and a Microsoft platform convention.
-    // Shift is the only modifier that carries meaning here; it selects the intent
-    // rather than riding along in modifiers(e) (the precedent is selectRange*, not
-    // Enter/Space). Ctrl/Alt/Meta DECLINE the match (null) rather than matching an
-    // empty action: null returns before consume(), so a combo the list does not own
-    // — Ctrl+F5 is WebView2's hard reload, suppressed by useWebviewGuard one layer
-    // up — is not additionally swallowed by a stopPropagation() here.
-    case "F5":
-      if (e.ctrlKey || e.altKey || e.metaKey) return null;
-      return e.shiftKey ? "transfer-move" : "transfer-copy";
-    case "Tab": return "tab";
+    // F2 — desktop "rename/edit" row key (Explorer/VS Code/NVDA convention);
+    // F4 — the row's CONTENT, the other half of the Total Commander / FAR pair
+    // (F2 = name, F4 = content), in Songs the tag editor. Generic intents: each
+    // list decides what they mean, and no-ops if it has no answer. Both used to
+    // carry a hand-written modifier guard; the shared guard above covers them,
+    // including the load-bearing case — Alt+F4 stays the system window close.
+    case "F2": return "edit";
+    case "F4": return "edit-content";
   }
   if (e.code === "Space" || e.key === " ") return "space";
   return null;
+}
+
+/**
+ * What this keystroke WOULD have meant with nothing held down. The single
+ * question the default-suppression rules below ask, and the reason they own no
+ * key list of their own: a second list would drift, and the thirteenth key
+ * added to the switch would silently miss the guard — the very trap the model
+ * above exists to close, merely moved one step further out (ADR §6).
+ */
+function bareAction(e: KeyStroke): ActionId | null {
+  return resolveKeyAction({
+    key: e.key,
+    code: e.code,
+    ctrlKey: false,
+    altKey: false,
+    shiftKey: false,
+    metaKey: false,
+  });
+}
+
+/**
+ * True when the list must swallow the browser's default for a keystroke it
+ * REFUSED. Refusing means the key travels on — no stopPropagation, so the
+ * global registries still see it — but "we did not act" must not turn into
+ * "the browser acted instead": Ctrl+End, Ctrl+Home, Shift+Space, Ctrl+Up/Down
+ * and Shift/Ctrl+Page* all scroll the nearest scrollable ancestor, which is
+ * this list's own overflow container. Scrolling without moving focus drags the
+ * viewport away from the cursor and says nothing about it (ADR §4).
+ *
+ * With Alt or Meta held the event is not touched at all: that is the OS layer,
+ * and the page has no business in it. The concrete gain is Alt+Space — the
+ * Windows window menu (Move / Size / Close), a real platform affordance the
+ * list used to steal.
+ *
+ * Only meaningful on the refusal path: a keystroke that resolves to an intent
+ * is consumed outright and never asks.
+ */
+export function suppressesDefault(e: KeyStroke): boolean {
+  if (e.altKey || e.metaKey) return false;      // OS layer — hands off (§4)
+  if (!e.ctrlKey && !e.shiftKey) return false;  // bare — resolveKeyAction had it
+  return bareAction(e) !== null;                // "would this key have been ours?"
+}
+
+/**
+ * The one exemption from the rule above: a native control (a row's action
+ * button, the trailing stop) activates on Enter/Space by itself regardless of
+ * Shift, and suppresses the scroll while doing it — so there is no viewport
+ * drift to prevent, and a guard firing first would break something that works.
+ * Navigation keys get no such exemption: focus on an action button inside a row
+ * is an ordinary cursor position (every Left/Right lands there), and Ctrl+End
+ * from it would scroll the list to the end with the cursor still on row N
+ * (ADR §5).
+ */
+function yieldsToNativeControl(e: KeyStroke): boolean {
+  const bare = bareAction(e);
+  return (bare === "enter" || bare === "space") && isNativeControl(document.activeElement);
 }
 
 /**
@@ -513,7 +614,15 @@ export function useCompositeList<T extends CompositeListItem>({
       if (isInModal()) return;
 
       const action = resolveKeyAction(e);
-      if (!action) return;
+      if (!action) {
+        // Refused — but "the list did not act" must not become "the browser
+        // acted instead". The key is NOT consumed (no stopPropagation: it goes
+        // on to the global registries), only its default is dropped, and only
+        // when the default would scroll this list out from under a cursor that
+        // never moved. See suppressesDefault / yieldsToNativeControl.
+        if (suppressesDefault(e) && !yieldsToNativeControl(e)) e.preventDefault();
+        return;
+      }
 
       if (!activeItemId) {
         if (action === "tab") {

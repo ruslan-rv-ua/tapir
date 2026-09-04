@@ -399,13 +399,35 @@ describe("StreamList — open in a media player", () => {
     );
   });
 
-  it("Alt+Space still performs the row's primary action — modifiers ride on Enter only", () => {
+  // A modified Space is not the list's key at all (ADR 2026-09-04 §1): it does
+  // not act, and it is not swallowed either. The predecessor of this test
+  // asserted that Alt+Space still recorded — true, but only because `alt` was
+  // the one modifier activateStream never read; the same test on Shift+Space
+  // would have exposed that Shift+Space listened, contradicting the docs.
+  it("a modified Space does nothing — and Alt+Space is not even swallowed", () => {
     $settings.set({ ...baseSettings, doubleClickAction: "record" });
     const { ref } = renderList();
     act(() => ref.current!.focus("forward"));
-    fireEvent.keyDown(document.activeElement!, { key: " ", code: "Space", altKey: true });
-    expect(tauri.startRecording).toHaveBeenCalledWith("a");
+
+    const altNotPrevented = fireEvent.keyDown(document.activeElement!, {
+      key: " ", code: "Space", altKey: true, bubbles: true,
+    });
+    fireEvent.keyDown(document.activeElement!, {
+      key: " ", code: "Space", shiftKey: true, bubbles: true,
+    });
+    expect(tauri.startRecording).not.toHaveBeenCalled();
+    expect(tauri.playStream).not.toHaveBeenCalled();
     expect(tauri.openStreamInApp).not.toHaveBeenCalled();
+    // Alt is the OS layer — Windows' own window menu keeps its default.
+    expect(altNotPrevented).toBe(true);
+  });
+
+  it("bare Space still performs the row's primary action", () => {
+    $settings.set({ ...baseSettings, doubleClickAction: "record" });
+    const { ref } = renderList();
+    act(() => ref.current!.focus("forward"));
+    fireEvent.keyDown(document.activeElement!, { key: " ", code: "Space", bubbles: true });
+    expect(tauri.startRecording).toHaveBeenCalledWith("a");
   });
 });
 

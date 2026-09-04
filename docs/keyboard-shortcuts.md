@@ -226,7 +226,7 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 | `Ctrl+A` | виділити всі видимі / зняти (toggle) — у **всіх** композитних списках | фокус у списку з multi-select | ↑ (`selectAll` / `clearSelection`) | ✅ |
 | `Shift+↑` / `Shift+↓` | розширити / звузити діапазон виділення від якоря — у **всіх** композитних списках | фокус у списку з multi-select | ↑ (`selectRangeUp` / `selectRangeDown`) | ✅ |
 | `F2` | редагувати / перейменувати рядок (Streams: edit/rename · Songs: перейменувати файл · Profiles: rename — заплановано) | фокус на рядку (де застосовно) | generic `edit`-інтент [useCompositeList.ts](../src/hooks/useCompositeList.ts) `resolveKeyAction`→`onAction("edit")`; гілки [StreamList.tsx](../src/components/streams/StreamList.tsx)→`$editStream`, [SongsList.tsx](../src/components/songs/SongsList.tsx)→`RenameDialog`; reserved у [shortcuts.ts](../src/lib/shortcuts.ts) | Streams ✅ · Songs ✅ · Profiles ⬜ |
-| `F4` | редагувати **вміст** рядка (Songs: редактор тегів). Конвенція Total Commander / FAR: `F2` = ім'я, `F4` = вміст. **Будь-який** модифікатор → відмова від матчу, щоб `Alt+F4` лишалась системним закриттям вікна | фокус на рядку Записів | generic `edit-content`-інтент [useCompositeList.ts](../src/hooks/useCompositeList.ts) `resolveKeyAction`→`onAction("edit-content")`; гілка [SongsList.tsx](../src/components/songs/SongsList.tsx)→`TagEditorDialog`; reserved у [shortcuts.ts](../src/lib/shortcuts.ts) | Songs ✅ · решта — не заводимо |
+| `F4` | редагувати **вміст** рядка (Songs: редактор тегів). Конвенція Total Commander / FAR: `F2` = ім'я, `F4` = вміст. **Будь-який** модифікатор → відмова від матчу (спільний гард, а не власний — див. правило нижче), щоб `Alt+F4` лишалась системним закриттям вікна | фокус на рядку Записів | generic `edit-content`-інтент [useCompositeList.ts](../src/hooks/useCompositeList.ts) `resolveKeyAction`→`onAction("edit-content")`; гілка [SongsList.tsx](../src/components/songs/SongsList.tsx)→`TagEditorDialog`; reserved у [shortcuts.ts](../src/lib/shortcuts.ts) | Songs ✅ · решта — не заводимо |
 | `F5` | копіювати в інший профіль (Streams): за наявності виділення — **усе виділення**, інакше сфокусований рядок; ціль питає `StreamTransferDialog` | фокус на рядку потоків | generic `transfer-copy`-інтент [useCompositeList.ts](../src/hooks/useCompositeList.ts) `resolveKeyAction`→`onAction("transfer-copy")`; гілка [StreamList.tsx](../src/components/streams/StreamList.tsx)→`openTransfer`; reserved у [shortcuts.ts](../src/lib/shortcuts.ts) | Streams ✅ · решта — не заводимо |
 | `Shift+F5` | перенести в інший профіль (Streams), та сама модель виділення; **одиночний** маршрут блокується на активному потоці (запис / грає через наш плеєр) з озвученою причиною — bulk ні (бекенд пропускає активні сам) | ↑ | ↑ (`transfer-move`); гард — `isRecordingLike` ([streamState.ts](../src/lib/streamState.ts)) + `$playerStatus`, та сама умова, що `moveDisabled` у [StreamContextMenu.tsx](../src/components/streams/StreamContextMenu.tsx) | Streams ✅ |
 | `Delete` | видалити рядок (з підтвердженням); за наявності виділення — масове видалення множини (Explorer-модель) — у **всіх** списках, крім browser (там немає Delete; bulk-дія browser — «Додати виділені» через тулбар/кластер, не клавіша) | фокус на рядку списку | [useCompositeList.ts:361](../src/hooks/useCompositeList.ts#L361) → `onAction("delete")` → per-list bulk handler; bulk-видалення: streams/songs/profiles/schedule; bulk-remove: patterns (wishlist/ignorelist) | одинично ✅ · bulk ✅ |
@@ -297,10 +297,39 @@ app-level шорткати додавати в реєстр `SHORTCUTS`, не в
 > зовнішньому плеєру; `Shift+Enter` там збігається з голим `Enter` (play) —
 > окремої гілки нема. На Profiles/Wishlist модифікатори свідомо не мають дії.
 >
-> Модифікатори діють **лише на `Enter`** (`primary`). `Space` (`toggle`) приходить
-> у `onAction` з тими самими модифікаторами, але списки їх ігнорують: `Alt+Space`
-> не дублює `Alt+Enter` (а `Ctrl+Space` узагалі не долітає — його забирає
-> selection-toggle у `resolveKeyAction`).
+> Модифікатори діють **лише на `Enter`**, і рівно **один** із `{Shift, Ctrl, Alt}`:
+> пара (`Ctrl+Shift+Enter`, `AltGr+Enter` = `Ctrl+Alt`), трійка чи `Meta` не
+> матчаться взагалі — інакше довелось би оголошувати пріоритет модифікаторів, а
+> `AltGr+Enter` на європейських розкладках віддавав би рядок зовнішній програмі.
+> `Space` модифікаторів **не бере**: модифікований `Space` до списку не долітає
+> (`Ctrl+Space` — це виділення, решта нічого не робить). До 2026-09-04 тут
+> стояло, що `Space` приходить у `onAction` з модифікаторами, «але списки їх
+> ігнорують» — для `Shift+Space` у Streams це було неправдою.
+
+> **Правило: клавіша списку гола, поки не названо інакше**
+> ([ADR 2026-09-04](decisions/2026-09-04-list-keys-are-bare-unless-named.md)).
+> `switch` у `resolveKeyAction` метчить лише натискання **без жодного**
+> модифікатора; кожна комбінація, яку список справді має, оголошена окремою
+> гілкою **вище** спільного гарда — сьогодні це `Ctrl+Space`, `Ctrl+C`, `Ctrl+A`,
+> `Shift+↑/↓`, `Enter` (+ один модифікатор), `Tab`/`Shift+Tab`, `F5`/`Shift+F5`.
+> Решта комбінацій навколо клавіш списку (`Ctrl+End`, `Alt+Home`, `Shift+Delete`,
+> `Ctrl+Tab`, `Alt+Space`, `Shift+Space`, `Shift+Home`/`End`) **інертні** й
+> лишаються вільними для інших шарів. Відхилена комбінація не консумиться
+> (`stopPropagation` немає — подія доходить до глобальних реєстрів), але з
+> `Ctrl`/`Shift` їй гаситься **браузерний дефолт**, бо він прокрутив би сам
+> список під нерухомим фокусом; з `Alt`/`Meta` подія не чіпається взагалі — це
+> шар ОС, і саме там живе `Alt+Space` (системне меню вікна Windows).
+>
+> Один виняток із гасіння: коли під фокусом **нативна кнопка** (кнопка дії в
+> рядку, «Завантажити ще»), `Enter`/`Space` лишаються їй — браузер активує кнопку
+> сам, і `Shift+Space` на ній працює як голий `Space`. Навігаційні клавіші
+> винятку не мають: `Ctrl+End` з кнопки всередині рядка так само нічого не
+> прокручує.
+>
+> Наслідок, який варто знати: `Shift+Home`/`End`/`Page*` **не** розширюють
+> діапазон — це борг, названий записом
+> [list-shift-range-to-edge](backlog/p2-list-shift-range-to-edge.md); `Shift+↑/↓`
+> працює.
 
 ## Tier 3 — віджетні / ARIA (не named-шорткати)
 

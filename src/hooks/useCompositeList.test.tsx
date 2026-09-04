@@ -8,6 +8,7 @@ import {
   type SegmentKind,
   type ActionType,
   type ActionModifiers,
+  suppressesDefault,
   type SelectionChange,
   type TrailingStop,
 } from "./useCompositeList";
@@ -149,7 +150,8 @@ const stop = (id: string, seg: string) =>
 function press(key: string, init: KeyboardEventInit = {}) {
   const ae = document.activeElement as HTMLElement | null;
   const target = ae && list().contains(ae) ? ae : list();
-  fireEvent.keyDown(target, { key, bubbles: true, ...init });
+  // fireEvent returns dispatchEvent's verdict: false ⇔ preventDefault was called.
+  return fireEvent.keyDown(target, { key, bubbles: true, ...init });
 }
 
 /** Dispatch a contextmenu event; returns false when preventDefault was called. */
@@ -289,7 +291,7 @@ describe("activation keys", () => {
     expect(onAction).toHaveBeenCalledWith("toggle", "a", "summary", noMods);
   });
 
-  it("passes Shift/Ctrl modifiers to onAction for Enter and Space", () => {
+  it("Enter carries exactly one of Shift/Ctrl/Alt to onAction", () => {
     const onAction = vi.fn();
     render(<Harness items={makeItems()} onAction={onAction} />);
     focusStart("a");
@@ -307,13 +309,36 @@ describe("activation keys", () => {
       ctrl: true,
       alt: false,
     });
+  });
 
-    press(" ", { shiftKey: true });
-    expect(onAction).toHaveBeenLastCalledWith("toggle", "a", "summary", {
-      shift: true,
-      ctrl: false,
-      alt: false,
-    });
+  it("Enter refuses modifier PAIRS and Meta rather than ranking them", () => {
+    const onAction = vi.fn();
+    render(<Harness items={makeItems()} onAction={onAction} />);
+    focusStart("a");
+
+    press("Enter", { ctrlKey: true, shiftKey: true });
+    press("Enter", { ctrlKey: true, altKey: true }); // AltGr on European layouts
+    press("Enter", { shiftKey: true, altKey: true });
+    press("Enter", { ctrlKey: true, shiftKey: true, altKey: true });
+    press("Enter", { metaKey: true });
+    expect(onAction).not.toHaveBeenCalled();
+  });
+
+  // Space is a plain list key: nothing above the guard names a modified one, so
+  // it never reaches onAction at all. The old test asserted the opposite for
+  // Alt+Space — the one modifier no list ever read, so it stayed green over a
+  // claim that was false for Shift+Space in Streams.
+  it("Space takes no modifiers — a modified Space is not the list's key", () => {
+    const onAction = vi.fn();
+    render(<Harness items={makeItems()} onAction={onAction} />);
+    focusStart("a");
+
+    press(" ", { code: "Space", shiftKey: true });
+    press(" ", { code: "Space", altKey: true });
+    expect(onAction).not.toHaveBeenCalled();
+
+    press(" ", { code: "Space" });
+    expect(onAction).toHaveBeenCalledWith("toggle", "a", "summary", noMods);
   });
 
   it("Enter on an info segment fires primary for that segment", () => {
@@ -465,6 +490,210 @@ describe("capture phase: consumes navigation keys, passes through the rest", () 
 
     press("Enter");
     expect(onParentKeyDown).toHaveBeenCalledTimes(1);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* A list key is bare unless named — ADR 2026-09-04                    */
+/* docs/decisions/2026-09-04-list-keys-are-bare-unless-named.md        */
+/* ------------------------------------------------------------------ */
+
+// The matrix is the TEST's job, not a human's: suppressesDefault is pure and
+// derived from resolveKeyAction, so every key × modifier pair is one call.
+describe("suppressesDefault — the key × modifier matrix", () => {
+  type Mods = Partial<Record<"ctrlKey" | "altKey" | "shiftKey" | "metaKey", boolean>>;
+  const stroke = (key: string, code: string, mods: Mods = {}) => ({
+    key,
+    code,
+    ctrlKey: false,
+    altKey: false,
+    shiftKey: false,
+    metaKey: false,
+    ...mods,
+  });
+
+  /** Every key the switch below the guard owns — 12 of them, plus Space. */
+  const LIST_KEYS: [string, string][] = [
+    ["ArrowUp", "ArrowUp"],
+    ["ArrowDown", "ArrowDown"],
+    ["ArrowLeft", "ArrowLeft"],
+    ["ArrowRight", "ArrowRight"],
+    ["Home", "Home"],
+    ["End", "End"],
+    ["PageUp", "PageUp"],
+    ["PageDown", "PageDown"],
+    ["Escape", "Escape"],
+    ["Delete", "Delete"],
+    ["F2", "F2"],
+    ["F4", "F4"],
+    [" ", "Space"],
+  ];
+
+  /** Named above the guard, so they resolve rather than being suppressed. */
+  const NAMED_KEYS: [string, string][] = [
+    ["Enter", "Enter"],
+    ["F5", "F5"],
+    ["Tab", "Tab"],
+  ];
+
+  it.each(LIST_KEYS)("suppresses Ctrl / Shift / Ctrl+Shift on %s", (key, code) => {
+    expect(suppressesDefault(stroke(key, code, { ctrlKey: true }))).toBe(true);
+    expect(suppressesDefault(stroke(key, code, { shiftKey: true }))).toBe(true);
+    expect(suppressesDefault(stroke(key, code, { ctrlKey: true, shiftKey: true }))).toBe(true);
+  });
+
+  // Every pair that contains Alt or Meta, not a sample of them: the rule is
+  // "one foreign modifier is enough to make it the OS layer's business".
+  it.each(LIST_KEYS)("never touches Alt or Meta on %s — that is the OS layer", (key, code) => {
+    expect(suppressesDefault(stroke(key, code, { altKey: true }))).toBe(false);
+    expect(suppressesDefault(stroke(key, code, { metaKey: true }))).toBe(false);
+    expect(suppressesDefault(stroke(key, code, { ctrlKey: true, altKey: true }))).toBe(false);
+    expect(suppressesDefault(stroke(key, code, { ctrlKey: true, metaKey: true }))).toBe(false);
+    expect(suppressesDefault(stroke(key, code, { shiftKey: true, altKey: true }))).toBe(false);
+    expect(suppressesDefault(stroke(key, code, { shiftKey: true, metaKey: true }))).toBe(false);
+    expect(suppressesDefault(stroke(key, code, { altKey: true, metaKey: true }))).toBe(false);
+  });
+
+  it.each([...LIST_KEYS, ...NAMED_KEYS])("leaves the bare %s alone", (key, code) => {
+    expect(suppressesDefault(stroke(key, code))).toBe(false);
+  });
+
+  // Enter/F5/Tab are named above the guard, so a Ctrl/Shift form of them either
+  // resolves (and is consumed outright) or is refused — either way this
+  // predicate is only ever consulted on the refusal path, where dropping the
+  // default is still right: Ctrl+Shift+Enter has a live browser default too.
+  it.each(NAMED_KEYS)("still answers for the named %s", (key, code) => {
+    expect(suppressesDefault(stroke(key, code, { ctrlKey: true }))).toBe(true);
+    expect(suppressesDefault(stroke(key, code, { altKey: true }))).toBe(false);
+  });
+
+  it("says nothing about keys the list never owned", () => {
+    for (const mods of [{ ctrlKey: true }, { shiftKey: true }, { altKey: true }] as Mods[]) {
+      expect(suppressesDefault(stroke("x", "KeyX", mods))).toBe(false);
+      expect(suppressesDefault(stroke("F7", "F7", mods))).toBe(false);
+      expect(suppressesDefault(stroke("Insert", "Insert", mods))).toBe(false);
+    }
+  });
+});
+
+describe("modified list keys are refused, not consumed", () => {
+  it("Ctrl+End does not move the cursor, reaches the parent, and loses its default", () => {
+    const onParentKeyDown = vi.fn();
+    render(<Harness items={makeItems()} onParentKeyDown={onParentKeyDown} />);
+    focusStart("a");
+
+    const notPrevented = press("End", { ctrlKey: true });
+    expectActive("a", "summary");
+    expect(onParentKeyDown).toHaveBeenCalledTimes(1); // no stopPropagation
+    expect(notPrevented).toBe(false); // the scroll default is dropped
+  });
+
+  it("Ctrl+End from an action button is suppressed too — the cursor is still a cursor", () => {
+    render(<Harness items={makeItems()} />);
+    focusStart("a");
+    press("ArrowRight");
+    press("ArrowRight");
+    press("ArrowRight"); // a/action-play
+    expectActive("a", "action-play");
+
+    expect(press("End", { ctrlKey: true })).toBe(false);
+    expectActive("a", "action-play");
+  });
+
+  it("Alt+Space is left entirely alone — it is the Windows window menu", () => {
+    const onAction = vi.fn();
+    const onParentKeyDown = vi.fn();
+    render(
+      <Harness items={makeItems()} onAction={onAction} onParentKeyDown={onParentKeyDown} />,
+    );
+    focusStart("a");
+
+    const notPrevented = press(" ", { code: "Space", altKey: true });
+    expect(onAction).not.toHaveBeenCalled();
+    expect(onParentKeyDown).toHaveBeenCalledTimes(1);
+    expect(notPrevented).toBe(true); // no preventDefault on the OS layer
+  });
+
+  it("Alt+Delete and Shift+Delete do not open anything", () => {
+    const onAction = vi.fn();
+    render(<Harness items={makeItems()} onAction={onAction} />);
+    focusStart("a");
+
+    press("Delete", { altKey: true });
+    press("Delete", { shiftKey: true });
+    press("Delete", { ctrlKey: true });
+    expect(onAction).not.toHaveBeenCalled();
+  });
+
+  it("Ctrl+Tab is an attempt at a shortcut, not a way out of the zone", () => {
+    const onTabOut = vi.fn();
+    const onParentKeyDown = vi.fn();
+    render(
+      <Harness items={makeItems()} onTabOut={onTabOut} onParentKeyDown={onParentKeyDown} />,
+    );
+    focusStart("a");
+
+    press("Tab", { ctrlKey: true });
+    expect(onTabOut).not.toHaveBeenCalled();
+    expect(onParentKeyDown).toHaveBeenCalledTimes(1);
+  });
+
+  it("Ctrl+F2 / Shift+F2 / Alt+F4 no longer reach the row (the shared guard replaced theirs)", () => {
+    const onAction = vi.fn();
+    render(<Harness items={makeItems()} onAction={onAction} />);
+    focusStart("a");
+
+    press("F2", { ctrlKey: true });
+    press("F2", { shiftKey: true });
+    press("F4", { altKey: true });
+    expect(onAction).not.toHaveBeenCalled();
+
+    press("F2");
+    expect(onAction).toHaveBeenCalledWith("edit", "a", "summary", noMods);
+  });
+
+  it("F5 and Shift+F5 are untouched; Ctrl+F5 still declines", () => {
+    const onAction = vi.fn();
+    render(<Harness items={makeItems()} onAction={onAction} />);
+    focusStart("a");
+
+    press("F5");
+    expect(onAction).toHaveBeenLastCalledWith("transfer-copy", "a", "summary", noMods);
+
+    press("F5", { shiftKey: true });
+    expect(onAction).toHaveBeenLastCalledWith("transfer-move", "a", "summary", {
+      shift: true,
+      ctrl: false,
+      alt: false,
+    });
+
+    onAction.mockClear();
+    press("F5", { ctrlKey: true });
+    expect(onAction).not.toHaveBeenCalled();
+  });
+
+  it("Shift+Space on an action button is left to the button (§5)", () => {
+    const onAction = vi.fn();
+    render(<Harness items={makeItems()} onAction={onAction} />);
+    focusStart("a");
+    press("ArrowRight");
+    press("ArrowRight");
+    press("ArrowRight"); // a/action-play
+
+    // Not prevented ⇒ the browser's own Space activation still happens.
+    expect(press(" ", { code: "Space", shiftKey: true })).toBe(true);
+    expect(onAction).not.toHaveBeenCalled();
+  });
+
+  it("Shift+Space on the trailing stop is left to the button too", () => {
+    const stopDesc = trailing();
+    render(<Harness items={makeItems()} trailingStop={stopDesc} />);
+    goLastRow();
+    press("ArrowDown"); // onto the trailing stop
+    expect(document.activeElement).toBe(trailingBtn());
+
+    expect(press(" ", { code: "Space", shiftKey: true })).toBe(true);
+    expect(stopDesc.onActivate).not.toHaveBeenCalled(); // the click would, not us
   });
 });
 

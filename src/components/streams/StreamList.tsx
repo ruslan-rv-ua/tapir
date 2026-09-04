@@ -421,16 +421,22 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
             return;
           }
           // Alt+Enter rides on the FOCUSED row only (like edit, unlike delete).
-          // Space deliberately ignores modifiers, so Alt+Space stays a plain
-          // play/record — mirrors SongsList.
           if (type === "primary" && segment === "summary" && mods?.alt) {
             openStreamInPlayer(itemId);
             return;
           }
           // Action buttons self-activate; only Enter/Space on the whole-row
           // summary triggers the row's primary action.
-          if ((type === "primary" || type === "toggle") && segment === "summary") {
+          if (type === "primary" && segment === "summary") {
             activateStream(itemId, mods);
+            return;
+          }
+          // Space carries no modifiers at all — a modified Space never reaches
+          // the list (ADR 2026-09-04 §1), so `mods` here is always empty and
+          // passing it on only pretended otherwise. The mouse path keeps its
+          // own mods: Shift+double-click is alive (CompositeRow → onActivate).
+          if (type === "toggle" && segment === "summary") {
+            activateStream(itemId);
           }
         }}
         renderRow={({ id, isActive, isFocused }) => {

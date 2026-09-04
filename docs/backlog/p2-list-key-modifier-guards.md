@@ -89,37 +89,43 @@ notes:
 
 ## Критерії готовності
 
-- [ ] Один гард перед `switch` у `resolveKeyAction`; винятки оголошені вище нього
-- [ ] `Enter` матчить лише з рівно одним модифікатором із `{Shift, Ctrl, Alt}`;
+- [x] Один гард перед `switch` у `resolveKeyAction`; винятки оголошені вище нього
+- [x] `Enter` матчить лише з рівно одним модифікатором із `{Shift, Ctrl, Alt}`;
       `Ctrl+Shift+Enter`, `AltGr+Enter` (= `Ctrl+Alt`), `Meta+Enter` не матчать
-- [ ] Гарди `F2`/`F4` прибрані як зайві; `F5`/`Shift+F5` живі й не зачеплені
-- [ ] `suppressesDefault(e)` **не має власного переліку клавіш** — питає `resolveKeyAction`
+- [x] Гарди `F2`/`F4` прибрані як зайві; `F5`/`Shift+F5` живі й не зачеплені
+- [x] `suppressesDefault(e)` **не має власного переліку клавіш** — питає `resolveKeyAction`
       з обнуленими модифікаторами
-- [ ] Відхилена клавіша ніколи не викликає `stopPropagation()`
-- [ ] `Alt+*` і `Meta+*` не отримують `preventDefault()` від списку взагалі
-- [ ] `Shift+Space` на кнопці дії та на завершальному стопі й далі їх активує (§5)
-- [ ] `Ctrl+End` з кнопки дії всередині рядка **не** прокручує список
-- [ ] `Shift+↑/↓` (діапазон), `Ctrl+A`, `Ctrl+C`, `Ctrl+Space`, `Escape`, `Shift+Tab`,
+- [x] Відхилена клавіша ніколи не викликає `stopPropagation()`
+- [x] `Alt+*` і `Meta+*` не отримують `preventDefault()` від списку взагалі
+      — на **шляху відмови** (§4). Три названі винятки вище гарда (`Ctrl+Space`,
+      `Ctrl+C`, `Ctrl+A`) як і раніше приймають `Meta` псевдонімом до `Ctrl`
+      (`ctrlOrMeta` — конвенція всього застосунку, [shortcuts.ts](../../src/lib/shortcuts.ts)),
+      тож `Meta+Space`/`Meta+C`/`Meta+A` досі консумляться. Це не зачіпалось
+      свідомо: звузити тут означало б розійтися з глобальним реєстром
+- [x] `Shift+Space` на кнопці дії та на завершальному стопі й далі їх активує (§5)
+- [x] `Ctrl+End` з кнопки дії всередині рядка **не** прокручує список
+- [x] `Shift+↑/↓` (діапазон), `Ctrl+A`, `Ctrl+C`, `Ctrl+Space`, `Escape`, `Shift+Tab`,
       `Shift+Enter`/`Ctrl+Enter`/`Alt+Enter` — без змін
-- [ ] `StreamList`: клавіатурна гілка `toggle` більше не передає `mods`; мишача передає
-- [ ] Табличний юніт-тест на `suppressesDefault` — матриця «клавіша × модифікатор»
+- [x] `StreamList`: клавіатурна гілка `toggle` більше не передає `mods`; мишача передає
+- [x] Табличний юніт-тест на `suppressesDefault` — матриця «клавіша × модифікатор»
       (12 клавіш × `Ctrl`/`Alt`/`Shift`/`Meta` та їхні пари)
-- [ ] Тести [StreamList.test.tsx:402](../../src/components/streams/StreamList.test.tsx) і
+- [x] Тести [StreamList.test.tsx:402](../../src/components/streams/StreamList.test.tsx) і
       [SongsList.test.tsx:101](../../src/components/songs/SongsList.test.tsx) переписані як
       твердження **про намір** («`Alt+Space` у списку не робить нічого і не гаситься»), а не
       підігнані під новий результат
-- [ ] Тест [useCompositeList.test.tsx:292](../../src/hooks/useCompositeList.test.tsx)
+- [x] Тест [useCompositeList.test.tsx:292](../../src/hooks/useCompositeList.test.tsx)
       («passes Shift/Ctrl modifiers … for Enter **and Space**») розділений: `Enter` везе,
       `Space` — ні
-- [ ] Перевірено всі шість списків на навмисну залежність від поточної поведінки
+- [x] Перевірено всі шість списків на навмисну залежність від поточної поведінки
       (grep по `onAction`-гілках) — жодна не зламана
-- [ ] [keyboard-shortcuts.md](../keyboard-shortcuts.md) виправлено: твердження про `Space` було
+- [x] [keyboard-shortcuts.md](../keyboard-shortcuts.md) виправлено: твердження про `Space` було
       хибним; додано правило «гола клавіша, якщо не названо» з посиланням на ADR
-- [ ] `docs/help/` **не** змінюється — жодна з відпущених комбінацій там не обіцяна
+- [x] `docs/help/` **не** змінюється — жодна з відпущених комбінацій там не обіцяна
       (звірено: лише `Shift+Enter`, `Ctrl+Enter`, `Delete`, `Shift+F10`, `Ctrl+Space`,
       `Shift+↑↓`, `Ctrl+A`, `Escape` — усі живі)
-- [ ] `pnpm test` без регресій, `pnpm vite:build` зелений
-- [ ] NVDA-прогін за `docs/testing/nvda-list-key-modifier-guards.md` (4 сценарії, див. нижче)
+- [x] `pnpm test` без регресій, `pnpm vite:build` зелений
+- [ ] NVDA-прогін за [nvda-list-key-modifier-guards.md](../testing/nvda-list-key-modifier-guards.md)
+      (4 сценарії, див. нижче)
 
 ## NVDA-прогін
 

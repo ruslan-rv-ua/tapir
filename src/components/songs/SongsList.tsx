@@ -130,8 +130,9 @@ export const SongsList = forwardRef<SongsListHandle, Props>(
             if (type === "edit-content") { onAction(itemId, "tags"); return; }
             if (segment !== "summary") return;
             // Modifiers ride on Enter only, and always target the FOCUSED row —
-            // unlike Delete, which fans out to the selection. Space (toggle)
-            // deliberately ignores them, so Alt+Space stays plain play.
+            // unlike Delete, which fans out to the selection. A modified Space
+            // never reaches the list at all (ADR 2026-09-04 §1), so `toggle`
+            // below is always the bare key.
             if (type === "primary" && mods.alt) { onAction(itemId, "open"); return; }
             if (type === "primary" && mods.ctrl) { onAction(itemId, "explorer"); return; }
             if (type === "primary" || type === "toggle") onPlay(itemId);
