@@ -24,6 +24,7 @@ mod stream;
 mod tags;
 mod tray;
 mod wake_lock;
+mod window_state;
 mod wishlist;
 mod browser;
 mod cli;
@@ -89,6 +90,11 @@ pub fn run() {
     // Apply the user's level only to our own crate (`tapir_lib::*`). Dependencies
     // are capped at Info: their debug/trace is noise and may leak request headers
     // or stream credentials. So "detailed logging" means detailed *app* logs.
+    // Геометрія вікна — теж до білдера, поряд із налаштуваннями: у setup вікно
+    // треба показати якомога раніше, поки діє foreground-activation grant, і
+    // звертатись там до диска (тим паче до флешки) нема коли.
+    let saved_geometry = window_state::load();
+
     let app_filter = initial_settings.log_level.to_filter();
     let dep_filter = app_filter.min(log::LevelFilter::Info);
 
@@ -118,7 +124,6 @@ pub fn run() {
         )
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .plugin(tauri_plugin_window_state::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
         .setup(move |app| {
             // Phase 3G: exit decision HERE, not before the builder. .setup is
@@ -140,12 +145,15 @@ pub fn run() {
 
             // Show and focus the main window as early as possible — while the
             // OS foreground-activation grant from the user's launch is still
-            // valid. The window is configured `visible: false` so its restored
-            // position (tauri-plugin-window-state) is applied before it appears.
+            // valid. The window is configured `visible: false` so the saved
+            // geometry is applied while it is still invisible — including
+            // maximize, which Windows performs with a call that shows the
+            // window, so doing it after show() would be a visible jump.
             // Showing it here (rather than from JS after data loads) ensures the
             // webview initializes while the window is already OS-foreground,
             // which NVDA requires to attach to the document and announce focus.
             if let Some(main_window) = app.get_webview_window("main") {
+                window_state::apply(&main_window.as_ref().window(), saved_geometry);
                 let _ = main_window.show();
                 // The webview guard (useWebviewGuard.ts) kills F5 and the native
                 // context menu, so a debug build opens devtools itself. Placed
@@ -256,6 +264,18 @@ pub fn run() {
                     {
                         hotkey_busy::emit_busy(app, combos);
                     }
+                }
+                return;
+            }
+            // Звичайний прямокутник цього сеансу. Диск не чіпаємо — запис один,
+            // при виході (window_state::save із graceful_shutdown); тут лише
+            // пам'ять, інакше вихід із розгорнутого вікна не мав би що писати.
+            if matches!(
+                event,
+                tauri::WindowEvent::Moved(_) | tauri::WindowEvent::Resized(_)
+            ) {
+                if window.label() == "main" {
+                    window_state::remember(window);
                 }
                 return;
             }

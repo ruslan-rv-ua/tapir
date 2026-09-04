@@ -102,6 +102,10 @@ impl AppState {
 pub async fn graceful_shutdown(app: &AppHandle) {
     let state = app.state::<AppState>();
 
+    // Геометрія вікна — єдиний запис за сеанс. Тут, а не в обробнику закриття:
+    // обидва шляхи виходу (кнопка вікна й «Вийти» в треї) сходяться саме сюди.
+    crate::window_state::save(app);
+
     // Phase 3K: зупинити снапшот-писаря ДО будь-яких зупинок — інакше «stopped»
     // переходи розбудять його і він перетре clean_shutdown=true нижче.
     state.snapshot.cancel.cancel();

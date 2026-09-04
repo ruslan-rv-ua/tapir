@@ -31,6 +31,14 @@ pub fn hotkeys_reported_path() -> PathBuf {
     data_dir().join("hotkeys-reported.json")
 }
 
+/// Геометрія головного вікна (розмір, позиція, розгорнутість). Окремий файл із
+/// тих самих міркувань, що й `hotkeys-reported.json`: у settings.json це
+/// виглядало б як налаштування, якого немає на екрані, у state.json стало б
+/// зобов'язанням для писаря crash-recovery.
+pub fn window_state_path() -> PathBuf {
+    data_dir().join("window.json")
+}
+
 pub fn profiles_dir() -> PathBuf {
     data_dir().join("profiles")
 }

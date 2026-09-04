@@ -375,7 +375,6 @@ main.rs
   │     .plugin(single_instance)        // 1st — обов'язково першим
   │     .plugin(cli)
   │     .plugin(global_shortcut)
-  │     .plugin(window_state)
   │     .plugin(fs)
   │     .plugin(http)
   │     .plugin(shell)
@@ -837,21 +836,24 @@ Tapir/                                  (base_dir)
 ### Window Management
 
 - `decorations: true` — **обов'язково** (accessibility: NVDA mouse tracking)
-- `visible: false` при старті → `tauri-plugin-window-state` відновлює позицію → показує вікно
+- `visible: false` при старті → `window_state::apply` відновлює геометрію → `show()` + `set_focus()`
 - Мінімізація до tray (опціонально, налаштування)
 - При закритті вікна: мінімізувати до tray (якщо увімкнено) або зупинити записи та вийти
-- **Розмір за замовчуванням**: 1200×800, maximized
-- **Мінімальний розмір**: 800×550 (UI не ламається)
+- **Розмір за замовчуванням**: 900×650 (перший запуск, поки немає `data/window.json`)
+- **Мінімальний розмір**: 640×480 (UI не ламається)
 - **Resize дозволений** (accessibility: screen magnifier, multi-monitor, Windows Snap)
-- **Window state persistence**: `tauri-plugin-window-state` зберігає розмір, позицію, maximized між сесіями
+- **Window state persistence**: `src-tauri/src/window_state.rs` зберігає розмір, позицію і
+  `maximized` у `data/window.json` — один запис за сеанс, із `graceful_shutdown`. Плагін
+  `tauri-plugin-window-state` знято: він писав у `%APPDATA%` і не має опції каталогу
+  ([ADR про межу портативності](decisions/2026-09-04-portable-boundary.md))
 
 ```json
 // tauri.conf.json → windows[0]
 {
-  "width": 1200,
-  "height": 800,
-  "minWidth": 800,
-  "minHeight": 550,
+  "width": 900,
+  "height": 650,
+  "minWidth": 640,
+  "minHeight": 480,
   "decorations": true,
   "visible": false
 }

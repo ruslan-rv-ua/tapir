@@ -46,7 +46,7 @@ Tapir is a friendly, easy-to-use Windows app for listening to and recording inte
 2. Place it in any folder you like (e.g., your Desktop or a USB drive).
 3. Run `tapir.exe`.
 
-All your recordings will go into a `recordings\` folder, and your settings will be saved in `data\`. Both folders appear right next to the app. Your system (AppData, registry) stays completely clean!
+All your recordings will go into a `recordings\` folder, and your settings will be saved in `data\`. Both folders appear right next to the app, so moving Tapir to another computer is just copying its folder — nothing is installed. Windows itself keeps a cache for the page engine that draws the app's window, so a little data does stay behind in your user profile.
 
 ---
 
