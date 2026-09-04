@@ -109,8 +109,8 @@ pub enum AirEvent {
 const AIR_BUFFER: usize = 8192;
 
 /// Стеля `metaint`, вище якої ефір не читаємо. Живі станції оголошують
-/// 8-32 КБ; більше - або зламаний заголовок, або спроба змусити нас виділити
-/// пам'ять під його розмір.
+/// 8–32 КБ; більше — або зламаний заголовок, або спроба змусити нас виділити
+/// памʼять під його розмір.
 const MAX_METAINT: usize = 1 << 20;
 
 /// Ефір без ICY-розмітки: `read` віддає саме аудіо.
@@ -242,17 +242,22 @@ impl std::io::Read for AirReader {
 
 impl IcyConnection {
     /// Збирає читач ефіру: `prefix` іде першим, metaint береться з заголовків.
-    fn into_reader(self, rt: tokio::runtime::Handle, tap: AirTap) -> IcyAudioReader {
+    ///
+    /// Разом із читачем віддає довжину буфера, якою його можна читати: обидва
+    /// числа походять з того самого metaint, інакше розмір буфера й розмітка
+    /// розійшлися б (див. [`buffer_len`]).
+    fn into_reader(self, rt: tokio::runtime::Handle, tap: AirTap) -> (IcyAudioReader, usize) {
         use futures_util::TryStreamExt;
 
         let metaint = self.headers.metadata_interval();
         let chunks = self.response.bytes_stream().map_err(std::io::Error::other);
         let inner = AirReader::new(self.prefix, Box::pin(chunks), rt, &tap);
-        IcyMetadataReader::new(inner, metaint, move |parsed| {
+        let reader = IcyMetadataReader::new(inner, metaint, move |parsed| {
             if let Some(track) = track_from_metadata(parsed) {
                 tap.mark(track);
             }
-        })
+        });
+        (reader, buffer_len(metaint.map(|m| m.get())))
     }
 }
 
@@ -272,15 +277,15 @@ where
         return;
     }
     let tap = AirTap::default();
-    let reader = conn.into_reader(rt, tap.clone());
-    pump(reader, tap, buffer_len(metaint), sink)
+    let (reader, buf_len) = conn.into_reader(rt, tap.clone());
+    pump(reader, tap, buf_len, sink)
 }
 
 /// Буфер мусить бути не меншим за `metaint`.
 ///
 /// `IcyMetadataReader`, добираючи буфер після блоку розмітки, ріже його як
 /// `buf[..next_metadata]`, а `next_metadata` доростає назад до `metaint`. Якщо
-/// буфер менший, зріз виходить за межі й читач падає - на короткому читанні,
+/// буфер менший, зріз виходить за межі й читач падає — на короткому читанні,
 /// тобто рівно на кінці ефіру. Станція з `metaint: 16000` роняла б так кожен
 /// обрив.
 fn buffer_len(metaint: Option<usize>) -> usize {
