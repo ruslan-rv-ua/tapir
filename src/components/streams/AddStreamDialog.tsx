@@ -168,10 +168,13 @@ export function AddStreamDialog() {
       // Both, when both fire: the check stands down after this submit, so a
       // warning held back now is a warning never heard. URL first — it is the
       // stream's identity.
-      const clashes = [
-        conflicts.duplicateUrlOf && m.stream_duplicate_url_warning({ name: conflicts.duplicateUrlOf }),
-        conflicts.nameCollidesWith && m.stream_name_collision_warning({ name: conflicts.nameCollidesWith }),
-      ].filter((c): c is string => !!c);
+      const clashes: string[] = [];
+      if (conflicts.duplicateUrlOf) {
+        clashes.push(m.stream_duplicate_url_warning({ name: conflicts.duplicateUrlOf }));
+      }
+      if (conflicts.nameCollidesWith) {
+        clashes.push(m.stream_name_collision_warning({ name: conflicts.nameCollidesWith }));
+      }
       if (clashes.length > 0) {
         setWarning(clashes.join(" "));
         return;

@@ -46,7 +46,6 @@ export function ProfileContextMenu({
         data-segment="action-menu"
         data-context-menu-trigger
         aria-label={m.profile_actions({ name: profile.name })}
-        title={m.profile_actions({ name: profile.name })}
         className="inline-flex shrink-0 items-center justify-center rounded bg-slate-700 px-2 py-1 text-xs text-slate-300 hover:bg-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:border forced-colors:border-[ButtonText] forced-colors:bg-[ButtonFace] forced-colors:text-[ButtonText] forced-colors:focus-visible:outline-[Highlight]"
       >
         ⋯

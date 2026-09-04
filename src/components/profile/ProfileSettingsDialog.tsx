@@ -28,6 +28,7 @@ import { SETTINGS_TAB_CLS } from "../settings/settingsTabStyle";
 import { ProfileRecordingTab } from "./ProfileRecordingTab";
 import { ProfilePlaybackTab, type PlaybackSettings } from "./ProfilePlaybackTab";
 import { ProfileInterfaceTab } from "./ProfileInterfaceTab";
+import { autoFocusTab } from "../../lib/racAutoFocus";
 
 interface Props {
   /** Profile the settings apply to — may be the inactive one. */
@@ -182,7 +183,7 @@ export function ProfileSettingsDialog({
               aria-label={m.settings_sections_label()}
               className="flex w-48 flex-col gap-1 overflow-y-auto border-r border-slate-700 px-2 py-4"
             >
-              <Tab id="recording" autoFocus className={SETTINGS_TAB_CLS}>
+              <Tab id="recording" {...autoFocusTab} className={SETTINGS_TAB_CLS}>
                 {m.settings_tab_recording()}
               </Tab>
               <Tab id="playback" className={SETTINGS_TAB_CLS}>

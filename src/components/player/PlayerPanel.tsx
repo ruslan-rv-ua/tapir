@@ -327,8 +327,7 @@ export const PlayerPanel = forwardRef<
               aria-label={m.player_prev()}
               isDisabled={!canPrev}
               onPress={() => handleSkip("prev")}
-              // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
-              tabIndex={-1}
+              excludeFromTabOrder
               className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText]"
             >
               <SkipBack aria-hidden={true} size={18} />
@@ -341,8 +340,7 @@ export const PlayerPanel = forwardRef<
               aria-label={isLive ? m.stop_stream_playback() : isPlaying ? m.pause() : m.play()}
               isDisabled={!isActive}
               onPress={handlePlayPause}
-              // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
-              tabIndex={-1}
+              excludeFromTabOrder
               className="w-[52px] h-[52px] rounded-2xl bg-blue-700 border border-transparent flex items-center justify-center hover:bg-blue-600 focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:bg-[Highlight] forced-colors:text-[HighlightText] forced-colors:disabled:text-[GrayText]"
             >
               {isLive ? (
@@ -362,8 +360,7 @@ export const PlayerPanel = forwardRef<
                 aria-label={m.stop()}
                 isDisabled={!isActive}
                 onPress={handleStop}
-                // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
-                tabIndex={-1}
+                excludeFromTabOrder
                 className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText]"
               >
                 <Square aria-hidden={true} size={18} />
@@ -375,8 +372,7 @@ export const PlayerPanel = forwardRef<
               aria-label={m.player_next()}
               isDisabled={!canNext}
               onPress={() => handleSkip("next")}
-              // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
-              tabIndex={-1}
+              excludeFromTabOrder
               className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText]"
             >
               <SkipForward aria-hidden={true} size={18} />
@@ -388,8 +384,7 @@ export const PlayerPanel = forwardRef<
               aria-pressed={isSilent}
               isDisabled={!isActive}
               onPress={handleMute}
-              // @ts-expect-error – react-aria-components Button missing tabIndex in JSX types
-              tabIndex={-1}
+              excludeFromTabOrder
               className="w-11 h-11 rounded-[14px] border border-white/[0.08] bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.07] hover:border-white/[0.18] focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-35 aria-pressed:bg-amber-500/20 aria-pressed:border-amber-400/40 aria-pressed:text-amber-400 forced-colors:border-[ButtonText] forced-colors:disabled:text-[GrayText] forced-colors:aria-pressed:bg-[Highlight] forced-colors:aria-pressed:text-[HighlightText] forced-colors:aria-pressed:border-[Highlight]"
             >
               {isSilent ? <VolumeX aria-hidden={true} size={18} /> : <Volume2 aria-hidden={true} size={18} />}

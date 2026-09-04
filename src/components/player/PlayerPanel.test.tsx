@@ -270,6 +270,22 @@ describe("PlayerPanel — a catalogue station is live sound, like the air", () =
   });
 });
 
+describe("PlayerPanel — the zone owns Tab, so no control is a native stop", () => {
+  it("keeps every transport button out of the tab order", () => {
+    // A file, not a stream: only this source draws the whole transport row —
+    // Pause and the separate Stop exist just here.
+    playingFile("b.mp3");
+    const { getByRole } = renderPanel();
+    // Arrows move between the stops and Tab leaves the zone
+    // (usePlayerZoneNav), so a native Tab must never land inside. React Aria
+    // ignores a raw `tabIndex` on <Button> — `excludeFromTabOrder` is the
+    // supported way to say this.
+    for (const name of [m.player_prev(), m.pause(), m.stop(), m.player_next(), m.player_mute_action()]) {
+      expect(getByRole("button", { name })).toHaveAttribute("tabindex", "-1");
+    }
+  });
+});
+
 describe("PlayerPanel — boundary focus", () => {
   it("anchors focus to Play/Pause when a skip lands on the last element", () => {
     playingStream("s2"); // next → s3 (last); the Next button will disable

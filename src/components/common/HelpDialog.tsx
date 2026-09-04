@@ -6,6 +6,7 @@ import * as m from "../../i18n/paraglide/messages";
 import { getHelpHtml } from "./helpContent";
 import { HelpContent } from "./HelpContent.tsx";
 import { ShortcutsHelp } from "./ShortcutsHelp";
+import { autoFocusTab } from "../../lib/racAutoFocus";
 
 const TAB_CLS =
   "cursor-pointer rounded border-l-2 border-transparent px-3 py-2 text-left text-sm text-slate-400 outline-none hover:text-slate-200 selected:border-blue-400 selected:text-slate-100 focus-visible:ring-2 focus-visible:ring-blue-400 forced-colors:text-[ButtonText] forced-colors:selected:border-[Highlight] forced-colors:selected:text-[HighlightText]";
@@ -47,7 +48,7 @@ export function HelpDialog() {
               {/* Order is fixed by the help spec and guarded by helpContent.test.ts —
                   screen tabs follow src/lib/sections.ts, the rest slot in around them.
                   Records that add a tab insert it in place; they never reorder. */}
-              <Tab id="overview" autoFocus className={TAB_CLS}>{m.help_section_overview()}</Tab>
+              <Tab id="overview" {...autoFocusTab} className={TAB_CLS}>{m.help_section_overview()}</Tab>
               <Tab id="navigation" className={TAB_CLS}>{m.help_section_navigation()}</Tab>
               <Tab id="shortcuts" className={TAB_CLS}>{m.shortcuts_help_title()}</Tab>
               <Tab id="profiles" className={TAB_CLS}>{m.help_section_profiles()}</Tab>

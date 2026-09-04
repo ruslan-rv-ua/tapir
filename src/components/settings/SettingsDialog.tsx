@@ -7,6 +7,7 @@ import { GeneralTab } from "./GeneralTab";
 import { HotkeysTab } from "./HotkeysTab";
 import { AudioTab } from "./AudioTab";
 import { SETTINGS_TAB_CLS } from "./settingsTabStyle";
+import { autoFocusTab } from "../../lib/racAutoFocus";
 
 /**
  * Application settings — **global only** (ADR 2026-08-08). Everything
@@ -54,7 +55,7 @@ export function SettingsDialog() {
               aria-label={m.settings_sections_label()}
               className="flex w-48 flex-col gap-1 overflow-y-auto border-r border-slate-700 px-2 py-4"
             >
-              <Tab id="general" autoFocus className={SETTINGS_TAB_CLS}>
+              <Tab id="general" {...autoFocusTab} className={SETTINGS_TAB_CLS}>
                 {m.settings_tab_general()}
               </Tab>
               <Tab id="audio" className={SETTINGS_TAB_CLS}>

@@ -17,7 +17,6 @@ import { $settings } from "../../stores/settings";
 import { useSettingsAutoSave } from "../../hooks/useSettingsAutoSave";
 import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
-// @ts-expect-error — paraglide runtime has no .d.ts
 import { setLocale } from "../../i18n/paraglide/runtime";
 import type { AppInfo, GlobalSettings } from "../../lib/tauri";
 import { isVerbose, toggleVerbose } from "../../lib/logLevel";

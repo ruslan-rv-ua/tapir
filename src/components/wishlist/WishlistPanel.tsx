@@ -1,6 +1,5 @@
 import { Tabs, TabList, Tab, TabPanel } from "react-aria-components";
 import { useEffect, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type React from "react";
 import { createPortal } from "react-dom";
 import { useStore } from "@nanostores/react";
 import { PatternList, type PatternListHandle } from "./PatternList";
@@ -290,21 +289,6 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
     else focusActiveTab();
   }, [hasToolbar, toolbarRestore, focusActiveTab]);
 
-  // Bridge Tab between the react-aria <TabList> (owns ←/→) and the toolbar.
-  // Tab → toolbar's active button; Shift+Tab → exit the zone backward. Arrows
-  // are left to react-aria for tab switching.
-  const tabsKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key !== "Tab") return;
-      e.preventDefault();
-      if (e.shiftKey) exitZone("wishlist-controls", false);
-      else if (hasToolbar) toolbarRestore("forward");
-      // Тулбара немає — Tab уперед іде одразу в список, а не в нікуди.
-      else exitZone("wishlist-controls", true);
-    },
-    [exitZone, toolbarRestore, hasToolbar],
-  );
-
   // Memoize items to prevent identity churn in PatternList → restoreFocus
   const wishlistItems = useMemo(
     () => wishlist.map((e) => ({ pattern: e.pattern, addedAt: e.addedAt })),
@@ -551,9 +535,12 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
           label={m.zone_wishlist_controls()}
           className="flex items-center gap-2 px-4 py-2"
         >
+          {/* Tab from a tab falls through to the browser: react-aria drops an
+              `onKeyDown` handed to <TabList> (filterDOMProps keeps no keyboard
+              events), so the bridge to the toolbar has to hang somewhere else —
+              see docs/backlog p2-wishlist-tabs-tab-bridge. */}
           <TabList
             aria-label={m.wishlist_section()}
-            onKeyDown={tabsKeyDown}
             className="flex flex-1 gap-1"
           >
             <Tab
