@@ -56,5 +56,5 @@ notes:
 
 ## Документи
 
-- [typecheck-gate](done/p1-typecheck-gate.md), [clippy-warnings-zero](p2-clippy-warnings-zero.md) — ворота, які CI має запускати
+- [typecheck-gate](done/p1-typecheck-gate.md), [clippy-warnings-zero](done/p2-clippy-warnings-zero.md) — ворота, які CI має запускати
 - https://github.com/Swatinem/rust-cache

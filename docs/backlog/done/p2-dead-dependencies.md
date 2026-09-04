@@ -68,7 +68,7 @@ notes:
 
 Гілка `chore/dead-dependencies`. Ворота зелені: `cargo test` 540, `pnpm test`
 1157/96, `cargo clippy` без нових попереджень (пре-існуючі 27/38 — предмет
-[clippy-warnings-zero](../p2-clippy-warnings-zero.md)), `pnpm vite:build` збирає.
+[clippy-warnings-zero](p2-clippy-warnings-zero.md)), `pnpm vite:build` збирає.
 `cargo machete` чистий. `just build-fast` зібрав exe (25,7 МБ, 1 хв 19 с).
 
 **Ручний прогін 2026-09-04 — пройдено.** Дев'ять кроків на портативному стенді
