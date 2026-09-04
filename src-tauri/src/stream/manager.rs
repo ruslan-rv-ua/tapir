@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::num::NonZeroUsize;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -537,19 +536,6 @@ fn plan_retry(reconnect: &ReconnectConfig, attempt: u32) -> Option<RetryPlan> {
 }
 
 // ---------------------------------------------------------------------------
-// ICY metadata parser
-// ---------------------------------------------------------------------------
-
-/// Parse `StreamTitle='...'` from ICY metadata string.
-fn parse_stream_title(meta: &str) -> Option<&str> {
-    let prefix = "StreamTitle='";
-    let start = meta.find(prefix)? + prefix.len();
-    let end = meta[start..].find('\'')?;
-    let title = &meta[start..start + end];
-    if title.is_empty() { None } else { Some(title) }
-}
-
-// ---------------------------------------------------------------------------
 // Events sent from the blocking read thread to the async task
 // ---------------------------------------------------------------------------
 
@@ -791,65 +777,17 @@ pub async fn recording_task(
         // The channel is bounded so back-pressure is automatic.
         let (tx, mut rx) = tokio::sync::mpsc::channel::<ReadEvent>(64);
 
-        let metaint: Option<NonZeroUsize> = conn.headers.metadata_interval();
-        // Перші байти вже зняті з тіла в `connect` — читач мусить віддати їх
-        // першими, інакше початок ефіру не потрапить у файл.
-        let prefix = conn.prefix;
-        // Move the reqwest Response into the blocking thread.
-        // reqwest::Response is not Send+Sync directly in all configurations; however
-        // since we are on tokio and reqwest uses tokio internally, the response is Send.
-        let response = conn.response;
-
         let blocking_handle = tokio::task::spawn_blocking(move || {
             use std::io::Read;
 
-            // Build a synchronous adapter that drives the reqwest bytes_stream
-            let rt = tokio::runtime::Handle::current();
-
-            struct ReqwestSyncReader {
-                stream: futures_util::stream::BoxStream<'static, Result<bytes::Bytes, reqwest::Error>>,
-                buf: bytes::Bytes,
-                rt: tokio::runtime::Handle,
-            }
-
-            impl Read for ReqwestSyncReader {
-                fn read(&mut self, out: &mut [u8]) -> std::io::Result<usize> {
-                    // Drain our internal buffer first
-                    if !self.buf.is_empty() {
-                        let n = out.len().min(self.buf.len());
-                        out[..n].copy_from_slice(&self.buf[..n]);
-                        self.buf = self.buf.slice(n..);
-                        return Ok(n);
-                    }
-                    // Poll next chunk from the async stream
-                    let chunk = self.rt.block_on(async {
-                        use futures_util::StreamExt;
-                        self.stream.next().await
-                    });
-                    match chunk {
-                        None => Ok(0), // EOF
-                        Some(Err(e)) => Err(std::io::Error::new(std::io::ErrorKind::Other, e)),
-                        Some(Ok(bytes)) => {
-                            let n = out.len().min(bytes.len());
-                            out[..n].copy_from_slice(&bytes[..n]);
-                            self.buf = bytes.slice(n..);
-                            Ok(n)
-                        }
-                    }
-                }
-            }
-
-            let stream_box: futures_util::stream::BoxStream<'static, Result<bytes::Bytes, reqwest::Error>> =
-                Box::pin(response.bytes_stream());
-
-            let mut reader = ReqwestSyncReader {
-                stream: stream_box,
-                buf: prefix,
-                rt,
-            };
-
-            let metaint_val = metaint.map(|m| m.get()).unwrap_or(0);
-            let mut bytes_until_meta = metaint_val;
+            // ICY-розмітку знімає читач із `connection` (там же розбирається
+            // `StreamTitle`), тут лишається саме аудіо.
+            let meta_tx = tx.clone();
+            let mut reader = conn.into_reader(tokio::runtime::Handle::current(), move |track| {
+                // Callback кличе сам читач, зі свого потоку — це той самий
+                // блокуючий потік, тож `blocking_send` тут доречний.
+                let _ = meta_tx.blocking_send(ReadEvent::MetadataChanged(track.artist, track.title));
+            });
             let mut buf = vec![0u8; 8192];
 
             loop {
@@ -857,51 +795,7 @@ pub async fn recording_task(
                     break;
                 }
 
-                if metaint_val > 0 && bytes_until_meta == 0 {
-                    // --- Read ICY metadata block ---
-                    let mut len_byte = [0u8; 1];
-                    if let Err(e) = reader.read_exact(&mut len_byte) {
-                        log::error!("[ICY reader] Failed to read metadata length: {}", e);
-                        let _ = tx.blocking_send(ReadEvent::Error(e.to_string()));
-                        break;
-                    }
-                    let meta_len = len_byte[0] as usize * 16;
-                    if meta_len > 0 {
-                        let mut meta_buf = vec![0u8; meta_len];
-                        if let Err(e) = reader.read_exact(&mut meta_buf) {
-                            log::error!("[ICY reader] Failed to read metadata: {}", e);
-                            let _ = tx.blocking_send(ReadEvent::Error(e.to_string()));
-                            break;
-                        }
-                        // Parse StreamTitle from metadata
-                        let meta_str = String::from_utf8_lossy(&meta_buf);
-                        let meta_str = meta_str.trim_end_matches('\0');
-                        log::debug!("[ICY reader] raw metadata: {:?}", meta_str);
-                        if let Some(title_str) = parse_stream_title(meta_str) {
-                            let (artist, title) = if let Some(pos) = title_str.find(" - ") {
-                                (
-                                    title_str[..pos].trim().to_string(),
-                                    title_str[pos + 3..].trim().to_string(),
-                                )
-                            } else {
-                                (String::new(), title_str.trim().to_string())
-                            };
-                            if tx.blocking_send(ReadEvent::MetadataChanged(artist, title)).is_err() {
-                                break;
-                            }
-                        }
-                    }
-                    bytes_until_meta = metaint_val;
-                }
-
-                // --- Read audio data ---
-                let max_read = if metaint_val > 0 {
-                    buf.len().min(bytes_until_meta)
-                } else {
-                    buf.len()
-                };
-
-                match reader.read(&mut buf[..max_read]) {
+                match reader.read(&mut buf) {
                     Err(e) => {
                         log::error!("[ICY reader] Read error: {}", e);
                         let _ = tx.blocking_send(ReadEvent::Error(e.to_string()));
@@ -913,9 +807,6 @@ pub async fn recording_task(
                         break;
                     }
                     Ok(n) => {
-                        if metaint_val > 0 {
-                            bytes_until_meta -= n;
-                        }
                         if tx.blocking_send(ReadEvent::AudioBytes(buf[..n].to_vec())).is_err() {
                             break;
                         }

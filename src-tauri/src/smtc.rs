@@ -37,7 +37,7 @@ pub(crate) struct SmtcMetadata {
 }
 
 /// Metadata for a station/preview. `track` = (artist, title) from ICY;
-/// title is always non-empty (guaranteed by parse_stream_title in engine.rs).
+/// title is always non-empty (guaranteed by `connection::split_stream_title`).
 pub(crate) fn compose_live_metadata(station: &str, track: Option<(&str, &str)>) -> SmtcMetadata {
     match track {
         Some((artist, title)) => SmtcMetadata {

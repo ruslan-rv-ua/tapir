@@ -19,7 +19,7 @@
 | **i18n** | Paraglide.js | latest | Compiler-based, uk/en |
 | **Bundler** | Vite | 8.x | Frontend build |
 | **HTTP Streaming** | reqwest | 0.13 | Async HTTP client |
-| **ICY Protocol** | icy-metadata | 0.6 | ICY заголовки (лише `IcyHeaders`; парсинг метаданих потоку — ручний) |
+| **ICY Protocol** | icy-metadata | 0.6 | ICY заголовки (`IcyHeaders`) і розмітка ефіру (`IcyMetadataReader`) |
 | **Stream Buffer** | stream-download | 0.24 | Ring buffer для стрімів |
 | **Playback** | rodio | 0.22 | WASAPI audio output |
 | **Decoding** | symphonia | 0.5.5 | MP3 + AAC-LC decoder |
@@ -118,7 +118,7 @@ Compiler-based i18n. Мінімальний runtime, tree-shakable, typesafe. У
 | Crate | Призначення |
 |---|---|
 | `reqwest` 0.13 | Async HTTP client: streaming body, TLS, proxy, basic auth |
-| `icy-metadata` 0.6 | Парсинг ICY заголовків підключення (`IcyHeaders`). Метадані потоку (StreamTitle) парсяться вручну через ICY протокол (metaint) |
+| `icy-metadata` 0.6 | Заголовки підключення (`IcyHeaders`) і метадані ефіру: `IcyMetadataReader` рахує metaint, знімає блоки й віддає `StreamTitle` у callback (`stream::connection`) |
 | `stream-download` 0.24 | Кільцевий буфер для нескінченних (infinite) стрімів |
 
 ### Audio

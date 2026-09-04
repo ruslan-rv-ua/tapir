@@ -273,7 +273,7 @@ User clicks "Record"
                                          ├─ Spawn tokio task: read_loop
                                          │   │
                                          │   ├─ Read chunk (metaint bytes)
-                                         │   ├─ Read ICY metadata block (ручний парсинг)
+                                         │   ├─ Read ICY metadata block (IcyMetadataReader)
                                          │   │
                                          │   ├─ IF metadata changed:
                                          │   │   ├─ Finalize current track file
