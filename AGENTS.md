@@ -61,6 +61,7 @@ Output binary: `src-tauri/target/release-fast/tapir.exe` (build-fast) or `src-ta
 ## Conventions
 
 - **Language**: respond in Ukrainian unless asked otherwise.
+- **Commit messages**: **English only** — subject line and body alike, and this outranks the rule above. The conversation stays Ukrainian; the git log does not. Commits already pushed to `origin` are left as they are — rewriting them would force-push a shared branch.
 - **Scaffolded code**: functions marked `#[allow(dead_code)]` with `Scaffold:` doc-comments are intentional stubs for upcoming phases — do not remove.
 - **Frontend state**: Nanostores (`src/stores/`), not React state, for anything shared across components.
 - **Error types**: `RadioError` enum via `thiserror` (`src-tauri/src/errors.rs`).
