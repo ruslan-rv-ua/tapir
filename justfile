@@ -29,13 +29,16 @@ clean:
 install:
     pnpm install
 
-# All three frontend gates. Build first: `src/i18n/paraglide/` is generated and
+# All four frontend gates. Build first: `src/i18n/paraglide/` is generated and
 # gitignored, and both the tests and tsc read it — on a fresh clone the other two
-# have nothing to resolve `messages` against until vite has compiled it.
+# have nothing to resolve `messages` against until vite has compiled it. Lint runs
+# last and with `--max-warnings 0`: exhaustive-deps and a dead eslint-disable are
+# warnings by rule level, and without that flag they would never fail the gate.
 check:
     pnpm vite:build
     pnpm test
     pnpm typecheck
+    pnpm lint
 
 # Both backend gates. `--all-targets` reaches test code too — that is where a
 # third of the lints hid before clippy was turned into a gate. The deny level

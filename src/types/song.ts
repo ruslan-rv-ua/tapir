@@ -13,7 +13,7 @@ export interface Song {
   isComplete: boolean;
 }
 
-export interface SongTagsUpdatedPayload extends Song {}
+export type SongTagsUpdatedPayload = Song;
 
 export interface SongDeletedPayload {
   path: string;

@@ -20,7 +20,7 @@ import { SelectionToolbar } from "../common/SelectionToolbar";
 import { useRovingFocus } from "../../hooks/useRovingFocus";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as tauri from "../../lib/tauri";
-import type { Song, SongDeletedPayload, SongRenamedPayload } from "../../types/song";
+import type { Song, SongTagsUpdatedPayload, SongDeletedPayload, SongRenamedPayload } from "../../types/song";
 import { useTauriEvent } from "../../hooks/useTauriEvent";
 import { addToast } from "../../stores/toasts";
 import { shellOpenErrorMessage } from "../../lib/shellOpenError";
@@ -112,7 +112,7 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
     onZonesChange(zones);
   }, [onZonesChange, songs.length, selRestore]);
 
-  useTauriEvent<Song>("song-tags-updated", (payload) => {
+  useTauriEvent<SongTagsUpdatedPayload>("song-tags-updated", (payload) => {
     replaceSongByPath(payload);
   });
   useTauriEvent<SongDeletedPayload>("song-deleted", (payload) => {

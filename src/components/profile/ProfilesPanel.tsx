@@ -258,6 +258,11 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
     };
     const listZone: ZoneEntry = {
       id: "profiles-list",
+      // ZoneEntry.el — обов'язкове поле, якого не читає ніхто: cycleZone веде
+      // навігацію по id і focus(), а поточну зону шукає через closest([data-zone-id]).
+      // Прибирається разом із полем у p2-zone-entry-dead-el; доти ствердження лишається
+      // видимим, а не перевдягненим у as HTMLElement, як у шести сусідніх зон.
+      // eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain
       get el() { return listRef.current?.el!; },
       focus: (dir) => listRef.current?.focus(dir),
     };

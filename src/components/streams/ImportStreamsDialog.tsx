@@ -85,7 +85,6 @@ export function ImportStreamsDialog() {
     if (toCheck.length > 0) {
       tauri.validateImportCandidates(toCheck).catch((e) => addToast(String(e), "error"));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candidates]);
 
   // Live updates from probe progress events.

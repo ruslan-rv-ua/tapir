@@ -29,6 +29,7 @@ export function AudioTab() {
       const devs = await tauri.listOutputDevices();
       setDevices(devs);
     } catch (err) {
+      console.error(err);
       addToast(m.settings_output_device_load_error(), "error");
     }
   };
@@ -53,6 +54,7 @@ export function AudioTab() {
     try {
       await tauri.setOutputDevice(name);
     } catch (err) {
+      console.error(err);
       addToast(m.settings_output_device_error(), "error");
       return;
     }

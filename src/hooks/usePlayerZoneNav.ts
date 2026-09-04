@@ -90,7 +90,7 @@ export function usePlayerZoneNav(
       }
       focusStop(idx);
     },
-    [findEnabled, focusStop, onExitZone],
+    [findEnabled, focusStop, onExitZone, stops.length],
   );
 
   /**
