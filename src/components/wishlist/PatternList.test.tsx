@@ -1,6 +1,6 @@
 // src/components/wishlist/PatternList.test.tsx
 import { createRef } from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { it, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent, act, waitFor } from "@testing-library/react";
 import * as m from "../../i18n/paraglide/messages";
 import { $patternSelection } from "../../stores/wishlist";

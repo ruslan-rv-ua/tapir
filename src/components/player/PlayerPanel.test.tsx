@@ -21,7 +21,7 @@ const baseSettings: GlobalSettings = {
   hotkeys: {
     toggleRecording: "", togglePlayback: "", volumeUp: "", volumeDown: "", toggleWindow: "", stopAll: "", prevTrack: "", nextTrack: "",
   },
-  logMaxSizeMb: 10, logLevel: "info",
+  logMaxSizeMb: 10, logLevel: "info", volumeStepPercent: 5, smtcEnabled: true,
 };
 
 // Stub the Tauri IPC layer — there is no backend in jsdom.

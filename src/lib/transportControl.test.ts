@@ -58,7 +58,7 @@ const baseSettings: GlobalSettings = {
   hotkeys: {
     toggleRecording: "", togglePlayback: "", volumeUp: "", volumeDown: "", toggleWindow: "", stopAll: "", prevTrack: "", nextTrack: "",
   },
-  logMaxSizeMb: 10, logLevel: "info",
+  logMaxSizeMb: 10, logLevel: "info", volumeStepPercent: 5, smtcEnabled: true,
 };
 
 /** Drive a 3-stream context with the given stream playing. */

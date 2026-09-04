@@ -5,13 +5,24 @@ import userEvent from "@testing-library/user-event";
 import { useEffect, useRef, useState } from "react";
 import * as m from "../../i18n/paraglide/messages";
 import { $wishlist, $ignorelist, $wishlistMatches, $patternSelection, $showAddPatternDialog } from "../../stores/wishlist";
-import type { WishlistMatch } from "../../lib/tauri";
+import type { WishlistEntry, WishlistMatch } from "../../lib/tauri";
 import { $announcer } from "../../stores/announcer";
 import { replaceSelection } from "../../stores/selection";
 import * as tauri from "../../lib/tauri";
 import { WishlistPanel } from "./WishlistPanel";
 import { useZoneNavigation, type ZoneEntry } from "../../hooks/useZoneNavigation";
 import { EXAMPLE_WISHLIST_PATTERNS, EXAMPLE_IGNORELIST_PATTERNS } from "./examplePatterns";
+
+/** A wishlist row. The panel reads the pattern and the date; the rest is per-entry
+    recording policy, and every test here leaves it at its defaults. */
+const mkEntry = (pattern: string, addedAt = "2026-07-19T00:00:00Z"): WishlistEntry => ({
+  pattern,
+  addedAt,
+  minBitrate: null,
+  format: null,
+  removeAfterRecord: false,
+  addToIgnorelistAfterRecord: false,
+});
 
 // Faithful mirror of App.tsx's zone wiring: a permanent activity-bar zone, the
 // panel's screen zones, a player zone that DECLINES focus (nothing playing —
@@ -54,7 +65,7 @@ vi.mock("../../lib/tauri", () => ({
 }));
 
 beforeEach(() => {
-  $wishlist.set([{ pattern: "*ad*", addedAt: "2026-01-01T00:00:00Z" }]);
+  $wishlist.set([mkEntry("*ad*", "2026-01-01T00:00:00Z")]);
   $ignorelist.set([]);
   replaceSelection($patternSelection, new Set());
   $showAddPatternDialog.set(false);
@@ -429,7 +440,7 @@ describe("empty-state example seeding", () => {
     $wishlist.set([]);
     vi.mocked(tauri.getWishlist).mockResolvedValueOnce([]);
     vi.mocked(tauri.addToWishlist)
-      .mockImplementationOnce(async (pattern: string) => ({ pattern, addedAt: "2026-07-19T00:00:00Z" }))
+      .mockImplementationOnce(async (pattern: string) => mkEntry(pattern))
       .mockImplementationOnce(async () => { throw new Error("boom"); });
     render(<WishlistPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
 

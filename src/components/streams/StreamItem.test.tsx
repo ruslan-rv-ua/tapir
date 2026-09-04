@@ -45,6 +45,7 @@ function renderItem(stream = mkStream(), status?: StreamStatus, focusedSeg = "su
         onCopyToProfile={() => {}}
         onMoveToProfile={() => {}}
         onCopyUrl={() => {}}
+        onOpenInPlayer={() => {}}
       />
     </ul>,
   );
@@ -352,6 +353,7 @@ describe("StreamItem — selection presentation", () => {
           onCopyToProfile={() => {}}
           onMoveToProfile={() => {}}
           onCopyUrl={() => {}}
+          onOpenInPlayer={() => {}}
         />
       </ul>,
     );

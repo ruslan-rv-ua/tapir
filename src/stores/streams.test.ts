@@ -10,8 +10,21 @@ beforeEach(() => {
   $profileSettings.set(null);
 });
 
-const mkStream = (id: string, name: string, addedAt: string): StreamInfo =>
-  ({ id, name, url: `http://${id}`, addedAt, ignorelist: [] } as StreamInfo);
+const mkStream = (id: string, name: string, addedAt: string): StreamInfo => ({
+  id,
+  name,
+  url: `http://${id}`,
+  addedAt,
+  ignorelist: [],
+  format: null,
+  unsupportedCodec: null,
+  bitrate: null,
+  icyName: null,
+  icyGenre: null,
+  icyUrl: null,
+  username: null,
+  password: null,
+});
 
 const setSort = (streamSort: "name" | "added") => {
   $settings.set({ language: "uk" } as GlobalSettings);

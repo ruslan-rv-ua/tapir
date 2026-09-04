@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { it, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
 import * as m from "../../i18n/paraglide/messages";
 import { ScheduleItem } from "./ScheduleItem";

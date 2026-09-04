@@ -30,6 +30,7 @@ const baseSettings: GlobalSettings = {
   autostartMinimized: true,
   prevRestartThresholdMs: 0,
   smtcEnabled: true,
+  volumeStepPercent: 5,
   hotkeys: {
     toggleRecording: "", togglePlayback: "", volumeUp: "", volumeDown: "",
     toggleWindow: "", stopAll: "", prevTrack: "", nextTrack: "",

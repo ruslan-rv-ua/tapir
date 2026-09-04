@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, act, screen, fireEvent } from "@testing-library/react";
 import * as tauri from "../../lib/tauri";
 import { $commandPaletteOpen } from "../../stores/navigation";
-import { $streams, $statuses, $streamSelection, replaceSelection, $exportStreamsRequest } from "../../stores/streams";
+import { $streams, $statuses, replaceSelection, $exportStreamsRequest } from "../../stores/streams";
 import { $announcer } from "../../stores/announcer";
 import * as m from "../../i18n/paraglide/messages";
 import { CommandPalette } from "./CommandPalette";

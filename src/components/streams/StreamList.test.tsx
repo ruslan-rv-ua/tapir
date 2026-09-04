@@ -7,10 +7,9 @@ import { $announcer } from "../../stores/announcer";
 import { $settings, $profileSettings } from "../../stores/settings";
 import { $playerStatus } from "../../stores/player";
 import { $toasts } from "../../stores/toasts";
-import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import type { StreamInfo, GlobalSettings, ProfileSettings } from "../../lib/tauri";
 import * as tauri from "../../lib/tauri";
-import { StreamList } from "./StreamList";
+import { StreamList, type StreamListHandle } from "./StreamList";
 
 const writeText = vi.fn().mockResolvedValue(undefined);
 
@@ -56,7 +55,7 @@ const baseSettings: GlobalSettings = {
   minimizeToTray: false, showTrackInTitle: false, doubleClickAction: "record",
   autostart: false, autostartMinimized: true, prevRestartThresholdMs: 0,
   hotkeys: { toggleRecording: "", togglePlayback: "", volumeUp: "", volumeDown: "", toggleWindow: "", stopAll: "", prevTrack: "", nextTrack: "" },
-  logMaxSizeMb: 10, logLevel: "info",
+  logMaxSizeMb: 10, logLevel: "info", volumeStepPercent: 5, smtcEnabled: true,
 };
 
 beforeEach(() => {
@@ -74,7 +73,7 @@ beforeEach(() => {
 });
 
 function renderList() {
-  const ref = createRef<ZoneEntry>();
+  const ref = createRef<StreamListHandle>();
   const exitZone = vi.fn();
   const onEmpty = vi.fn();
   const utils = render(<StreamList ref={ref} exitZone={exitZone} onEmpty={onEmpty} />);
@@ -145,7 +144,7 @@ describe("StreamList — integration with composite-list navigation", () => {
 
 describe("StreamList — row activation honors doubleClickAction", () => {
   const focusFirstRow = () => {
-    const ref = createRef<ZoneEntry>();
+    const ref = createRef<StreamListHandle>();
     render(<StreamList ref={ref} exitZone={vi.fn()} onEmpty={vi.fn()} />);
     act(() => ref.current!.focus("forward"));
   };
@@ -492,7 +491,7 @@ describe("StreamList — focus after bulk delete", () => {
   it("computes the index over the FILTERED/SORTED visible order, not the full $streams", async () => {
     // Visible = only [b, c] (a hidden by the parent's filter); remove b → focus c.
     replaceSelection(new Set(["b"]));
-    const ref = createRef<ZoneEntry>();
+    const ref = createRef<StreamListHandle>();
     render(
       <StreamList
         ref={ref}
@@ -511,7 +510,7 @@ describe("StreamList — focus after bulk delete", () => {
 describe("StreamList — imperative requestBulkDelete", () => {
   it("opens the bulk confirm from the handle (toolbar entry point)", async () => {
     replaceSelection(new Set(["a", "b"]));
-    const ref = createRef<ZoneEntry & { requestBulkDelete(): void }>();
+    const ref = createRef<StreamListHandle>();
     render(<StreamList ref={ref} exitZone={vi.fn()} onEmpty={vi.fn()} />);
     act(() => ref.current!.requestBulkDelete());
     expect(await screen.findByText(m.confirm_delete_selected({ count: 2 }))).toBeTruthy();
@@ -557,7 +556,7 @@ describe("StreamList — bulk transfer to profile", () => {
 
   it("toolbar requestBulkTransfer('move') opens the picker with the BULK title", async () => {
     replaceSelection(new Set(["a", "b"]));
-    const ref = createRef<ZoneEntry & { requestBulkTransfer(m: "copy" | "move"): void }>();
+    const ref = createRef<StreamListHandle>();
     render(<StreamList ref={ref} exitZone={vi.fn()} onEmpty={vi.fn()} />);
     await act(async () => { ref.current!.requestBulkTransfer("move"); });
     expect(await screen.findByText(m.move_selected_to_profile_title({ count: 2 }))).toBeTruthy();
@@ -566,9 +565,9 @@ describe("StreamList — bulk transfer to profile", () => {
   it("bulk move calls moveStreamsToProfile, removes only transferred rows, focuses a survivor", async () => {
     vi.mocked(tauri.moveStreamsToProfile).mockResolvedValueOnce({ transferred: ["a"], skippedRecording: 0, skippedConflict: 0 });
     replaceSelection(new Set(["a", "b"])); // b will be reported as skipped (not in transferred)
-    const ref = createRef<ZoneEntry & { requestBulkTransfer(m: "copy" | "move"): void }>();
-    const { container } = render(<StreamList ref={ref} exitZone={vi.fn()} onEmpty={vi.fn()} />);
-    act(() => (ref.current as unknown as ZoneEntry).focus("forward"));
+    const ref = createRef<StreamListHandle>();
+    render(<StreamList ref={ref} exitZone={vi.fn()} onEmpty={vi.fn()} />);
+    act(() => ref.current!.focus("forward"));
     await act(async () => { ref.current!.requestBulkTransfer("move"); });
     fireEvent.click(await screen.findByRole("button", { name: "Jazz, 0 потоків" }));
 
@@ -583,7 +582,7 @@ describe("StreamList — bulk transfer to profile", () => {
   it("bulk copy calls copyStreamsToProfile, keeps rows AND selection", async () => {
     vi.mocked(tauri.copyStreamsToProfile).mockResolvedValueOnce({ transferred: ["a", "b"], skippedRecording: 0, skippedConflict: 0 });
     replaceSelection(new Set(["a", "b"]));
-    const ref = createRef<ZoneEntry & { requestBulkTransfer(m: "copy" | "move"): void }>();
+    const ref = createRef<StreamListHandle>();
     render(<StreamList ref={ref} exitZone={vi.fn()} onEmpty={vi.fn()} />);
     await act(async () => { ref.current!.requestBulkTransfer("copy"); });
     fireEvent.click(await screen.findByRole("button", { name: "Jazz, 0 потоків" }));
@@ -596,7 +595,7 @@ describe("StreamList — bulk transfer to profile", () => {
   it("announces a reason-broken-down summary", async () => {
     vi.mocked(tauri.moveStreamsToProfile).mockResolvedValueOnce({ transferred: ["a"], skippedRecording: 1, skippedConflict: 1 });
     replaceSelection(new Set(["a", "b", "c"]));
-    const ref = createRef<ZoneEntry & { requestBulkTransfer(m: "copy" | "move"): void }>();
+    const ref = createRef<StreamListHandle>();
     render(<StreamList ref={ref} exitZone={vi.fn()} onEmpty={vi.fn()} />);
     $announcer.set(null);
     await act(async () => { ref.current!.requestBulkTransfer("move"); });

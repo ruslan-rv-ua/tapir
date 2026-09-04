@@ -387,7 +387,7 @@ describe("StreamsPanel — example-streams click flow", () => {
       fireEvent.click(addBtn());
     });
     // The success announcement names the added streams.
-    expect($announcer.get().message).toMatch(/example one/i);
+    expect($announcer.get()?.message).toMatch(/example one/i);
     // Simulate the streams-changed round-trip the mocked event bridge can't deliver.
     await act(async () => {
       $streams.set(added);
@@ -405,7 +405,7 @@ describe("StreamsPanel — example-streams click flow", () => {
       fireEvent.click(btn);
     });
     expect($toasts.get().some((t) => /offline/i.test(t.message))).toBe(true);
-    expect($announcer.get().message).toMatch(/не вдалося завантажити приклади|could not load examples/i);
+    expect($announcer.get()?.message).toMatch(/не вдалося завантажити приклади|could not load examples/i);
     const after = addBtn();
     expect(after.getAttribute("aria-disabled")).toBeNull();
     expect(document.activeElement).toBe(after);
@@ -420,7 +420,7 @@ describe("StreamsPanel — example-streams click flow", () => {
     renderPanel();
     fireEvent.click(addBtn());
     // Loading announcement fires synchronously before the await resolves.
-    expect($announcer.get().message).toMatch(/додаю приклади|adding examples/i);
+    expect($announcer.get()?.message).toMatch(/додаю приклади|adding examples/i);
     // Resolve to clean up the pending promise.
     await act(async () => { resolveAdd([]); });
   });
@@ -593,7 +593,7 @@ describe("StreamsPanel — selection toolbar cluster", () => {
     $announcer.set({ message: "", priority: "polite" });
     fireEvent.click(screen.getByRole("button", { name: m.select_all() }));
     expect([...$streamSelection.get()].sort()).toEqual(["a", "b", "c"]);
-    expect($announcer.get().message).toBe(m.selection_count({ count: 3 }));
+    expect($announcer.get()?.message).toBe(m.selection_count({ count: 3 }));
   });
 
   it("the selection menu's delete item triggers the list's bulk confirm", async () => {
@@ -790,7 +790,7 @@ describe("StreamsPanel — Record/Stop selected (C4, R6/R8)", () => {
     });
     expect(new Set(vi.mocked(tauri.startAllRecordings).mock.calls[0][0])).toEqual(new Set(["a", "b"]));
     // started 1, skipped 1 (b already recording)
-    expect($announcer.get().message).toBe(`${m.record_done({ count: 1 })}, ${m.record_skipped({ count: 1 })}`);
+    expect($announcer.get()?.message).toBe(`${m.record_done({ count: 1 })}, ${m.record_skipped({ count: 1 })}`);
   });
 
   it("Stop-selected aria-disabled when no selected stream is active (idle selection)", () => {

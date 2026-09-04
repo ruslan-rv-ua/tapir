@@ -1,6 +1,6 @@
 // src/components/schedule/ScheduleTable.test.tsx
 import { createRef } from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { it, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent, act, waitFor } from "@testing-library/react";
 import * as m from "../../i18n/paraglide/messages";
 import { $schedules, $scheduleSelection } from "../../stores/schedule";

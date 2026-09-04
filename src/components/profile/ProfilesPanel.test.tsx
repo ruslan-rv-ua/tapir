@@ -130,7 +130,7 @@ describe("ProfilesPanel", () => {
   it("has New and Import in the toolbar, not in the actions panel", async () => {
     renderPanel();
     await screen.findByText("Jazz");
-    const toolbar = document.querySelector('[data-zone-id="profiles-toolbar"]')!;
+    const toolbar = document.querySelector<HTMLElement>('[data-zone-id="profiles-toolbar"]')!;
     expect(toolbar.querySelector("button")).toBeTruthy();
     expect(within(toolbar).getByRole("button", { name: /New profile/ })).toBeInTheDocument();
     expect(within(toolbar).getByRole("button", { name: /Import/ })).toBeInTheDocument();
@@ -166,7 +166,7 @@ describe("ProfilesPanel", () => {
     const row = document.querySelector('li[data-item-id="Default"]') as HTMLElement;
     row.focus();
     fireEvent.keyDown(row, { key: "Enter" });
-    await waitFor(() => expect($announcer.get().message).toBe("Profile is already active"));
+    await waitFor(() => expect($announcer.get()?.message).toBe("Profile is already active"));
     expect(tauri.switchProfile).not.toHaveBeenCalled();
   });
 
@@ -185,7 +185,7 @@ describe("ProfilesPanel", () => {
     renderPanel();
     await screen.findByText("Jazz");
     await user.click(screen.getByRole("button", { name: "Export Jazz" }));
-    await waitFor(() => expect($announcer.get().message).toBe("Exported Jazz"));
+    await waitFor(() => expect($announcer.get()?.message).toBe("Exported Jazz"));
   });
 
   it("opens the name dialog from the toolbar New button", async () => {
@@ -226,7 +226,7 @@ describe("ProfilesPanel — selection cluster", () => {
     await user.click(screen.getByRole("button", { name: "Select all" }));
     expect([...$profilesSelection.get()].sort()).toEqual(["Default", "Jazz"]);
     await waitFor(() =>
-      expect($announcer.get().message).toBe(m.selection_count({ count: 2 })),
+      expect($announcer.get()?.message).toBe(m.selection_count({ count: 2 })),
     );
   });
 
