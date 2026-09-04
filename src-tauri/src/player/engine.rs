@@ -625,43 +625,27 @@ impl PlayerEngine {
         }
         let (read_tx, mut read_rx) = tokio::sync::mpsc::channel::<IcyEvent>(64);
 
-        // Blocking reader: ICY-розмітку знімає читач із `connection`, тут
-        // лишається саме аудіо.
+        // Blocking reader: ICY-розмітку знімає читач із `connection`, сюди
+        // приходить саме звук і назви треків на своїх межах.
         tokio::task::spawn_blocking(move || {
-            use std::io::Read;
-
-            let meta_tx = read_tx.clone();
-            let mut reader = conn.into_reader(tokio::runtime::Handle::current(), move |track| {
-                // Callback кличе сам читач, зі свого потоку — це той самий
-                // блокуючий потік, тож `blocking_send` тут доречний.
-                let _ = meta_tx.blocking_send(IcyEvent::Metadata(track.artist, track.title));
-            });
-            let mut buf = vec![0u8; 8192];
-
-            loop {
-                if read_tx.is_closed() {
-                    break;
-                }
-
-                match reader.read(&mut buf) {
-                    Err(_) => {
-                        let _ = read_tx.blocking_send(IcyEvent::Error);
-                        break;
+            connection::pump_air(conn, tokio::runtime::Handle::current(), |event| {
+                match event {
+                    connection::AirEvent::Audio(data) => {
+                        read_tx.blocking_send(IcyEvent::Audio(data)).is_ok()
                     }
-                    Ok(0) => {
+                    connection::AirEvent::Track(track) => read_tx
+                        .blocking_send(IcyEvent::Metadata(track.artist, track.title))
+                        .is_ok(),
+                    connection::AirEvent::Eof => {
                         let _ = read_tx.blocking_send(IcyEvent::Eof);
-                        break;
+                        false
                     }
-                    Ok(n) => {
-                        if read_tx
-                            .blocking_send(IcyEvent::Audio(buf[..n].to_vec()))
-                            .is_err()
-                        {
-                            break;
-                        }
+                    connection::AirEvent::Error(_) => {
+                        let _ = read_tx.blocking_send(IcyEvent::Error);
+                        false
                     }
                 }
-            }
+            });
         });
 
         // Async writer: reads IcyEvents → rtrb producer + emits track-changed

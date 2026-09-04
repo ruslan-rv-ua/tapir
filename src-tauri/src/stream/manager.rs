@@ -778,41 +778,29 @@ pub async fn recording_task(
         let (tx, mut rx) = tokio::sync::mpsc::channel::<ReadEvent>(64);
 
         let blocking_handle = tokio::task::spawn_blocking(move || {
-            use std::io::Read;
-
             // ICY-розмітку знімає читач із `connection` (там же розбирається
-            // `StreamTitle`), тут лишається саме аудіо.
-            let meta_tx = tx.clone();
-            let mut reader = conn.into_reader(tokio::runtime::Handle::current(), move |track| {
-                // Callback кличе сам читач, зі свого потоку — це той самий
-                // блокуючий потік, тож `blocking_send` тут доречний.
-                let _ = meta_tx.blocking_send(ReadEvent::MetadataChanged(track.artist, track.title));
-            });
-            let mut buf = vec![0u8; 8192];
-
-            loop {
-                if tx.is_closed() {
-                    break;
-                }
-
-                match reader.read(&mut buf) {
-                    Err(e) => {
-                        log::error!("[ICY reader] Read error: {}", e);
-                        let _ = tx.blocking_send(ReadEvent::Error(e.to_string()));
-                        break;
+            // `StreamTitle`), сюди приходить саме звук і назви треків на
+            // своїх межах.
+            connection::pump_air(conn, tokio::runtime::Handle::current(), |event| {
+                match event {
+                    connection::AirEvent::Audio(data) => {
+                        tx.blocking_send(ReadEvent::AudioBytes(data)).is_ok()
                     }
-                    Ok(0) => {
+                    connection::AirEvent::Track(track) => tx
+                        .blocking_send(ReadEvent::MetadataChanged(track.artist, track.title))
+                        .is_ok(),
+                    connection::AirEvent::Eof => {
                         log::warn!("[ICY reader] EOF (0 bytes read)");
                         let _ = tx.blocking_send(ReadEvent::Eof);
-                        break;
+                        false
                     }
-                    Ok(n) => {
-                        if tx.blocking_send(ReadEvent::AudioBytes(buf[..n].to_vec())).is_err() {
-                            break;
-                        }
+                    connection::AirEvent::Error(msg) => {
+                        log::error!("[ICY reader] Read error: {}", msg);
+                        let _ = tx.blocking_send(ReadEvent::Error(msg));
+                        false
                     }
                 }
-            }
+            });
         });
 
         // --- Async event consumer ---
