@@ -109,9 +109,17 @@ Output binary: `src-tauri/target/release-fast/tapir.exe` (build-fast) or `src-ta
 довідка тихо починає брехати, і помітить це користувач, а не тест. У беклозі це окремий
 пункт критеріїв готовності, див. [_TEMPLATE.md](docs/backlog/_TEMPLATE.md).
 
+**Документація посилається, а не цитує.** Дерева файлів, переліки команд і подій,
+поля структур, копії конфігів у документі не пишуть: це копія коду, вона розходиться
+мовчки. Документ описує рішення, межі й інваріанти, а перелік замінює вказівником на
+канонічне джерело. Правило, його межа (документи **вимог** — `accessibility.md`,
+`implementation-phases.md` — під нього не підпадають) і відкинуті альтернативи:
+[ADR 2026-09-04](docs/decisions/2026-09-04-docs-reference-rather-than-quote.md).
+Сторож — `build/docsLinks.test.ts`.
+
 All project documentation lives in `docs/`. Key files:
 
-- [architecture.md](docs/architecture.md) — system design
+- [architecture.md](docs/architecture.md) — рішення, межі й інваріанти системи (не перелік модулів)
 - [data-models.md](docs/data-models.md) — data structures and storage
 - [tech-stack.md](docs/tech-stack.md) — technology choices and rationale
 - [accessibility.md](docs/accessibility.md) — a11y requirements

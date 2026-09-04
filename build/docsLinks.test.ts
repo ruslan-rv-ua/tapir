@@ -72,3 +72,69 @@ describe("documentation links", () => {
     expect(broken).toEqual([]);
   });
 });
+
+/**
+ * A backticked path in a system-description document must exist on disk.
+ *
+ * These three documents answer "how is this built" and, since
+ * [ADR 2026-09-04](../docs/decisions/2026-09-04-docs-reference-rather-than-quote.md),
+ * they answer it by *pointing at code* instead of copying it. That trades one
+ * drift surface for another: a copied file tree rots visibly, a stale pointer
+ * rots silently — `docs/architecture.md` carried `postprocess/` for months, and
+ * the link test above never saw it, because a path in backticks is not a link.
+ *
+ * Scope is deliberately these three files and not all of `docs/`:
+ *
+ * - backlog records *name files that do not exist yet* — that is their job;
+ * - ADRs name rejected and removed things on purpose;
+ * - `docs/agents/domain.md` says "there is no `docs/adr/` directory", and being
+ *   right about an absence must not fail a test about existence.
+ *
+ * Skipped inside the three: globs and placeholders (`*`, `<…>`, `{uk,en}`) and
+ * anything under `src-tauri/target/`, which exists only after a build.
+ */
+const SYSTEM_DOCS = [
+  "docs/architecture.md",
+  "docs/tech-stack.md",
+  "docs/data-models.md",
+];
+
+/** `` `path` `` — a single-line inline code span. */
+const BACKTICKED = /`([^`\n]+)`/g;
+
+/** Repo-relative prefixes worth checking; everything else is prose. */
+const CODE_PREFIX = /^(src|src-tauri|build|docs)\//;
+
+/** `foo.rs:42` and `foo.md §3` name a place inside a file, not another file. */
+function pathPart(span: string): string {
+  return span.split(/[\s:]/)[0];
+}
+
+function isPlaceholder(path: string): boolean {
+  return /[*<>{}…]/.test(path);
+}
+
+describe("paths named in system documentation", () => {
+  it("every backticked repo path points at something that exists", () => {
+    const missing: string[] = [];
+
+    for (const rel of SYSTEM_DOCS) {
+      const file = join(ROOT, rel);
+      const text = readFileSync(file, "utf8");
+
+      for (const match of text.matchAll(BACKTICKED)) {
+        const path = pathPart(match[1]);
+        if (!CODE_PREFIX.test(path)) continue;
+        if (isPlaceholder(path)) continue;
+        if (path.startsWith("src-tauri/target/")) continue;
+
+        if (!existsSync(resolve(ROOT, path))) {
+          const line = text.slice(0, match.index).split("\n").length;
+          missing.push(`${rel}:${line} → ${path}`);
+        }
+      }
+    }
+
+    expect(missing).toEqual([]);
+  });
+});

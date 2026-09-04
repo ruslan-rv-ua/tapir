@@ -22,7 +22,7 @@
 | Файл | Що дає |
 |------|--------|
 | [`AGENTS.md`](../../AGENTS.md) | стан проєкту, ключові обмеження, команди збірки |
-| [`docs/architecture.md`](../architecture.md) | структура модулів і потік даних |
+| [`docs/architecture.md`](../architecture.md) | рішення, межі й інваріанти системи. Переліку модулів, команд і подій там **немає** свідомо — канонічне джерело це код ([ADR](../decisions/2026-09-04-docs-reference-rather-than-quote.md)) |
 | [`docs/data-models.md`](../data-models.md) | структури даних і зберігання |
 | [`docs/accessibility.md`](../accessibility.md) | a11y-вимоги (не опційні) |
 | [`docs/tech-stack.md`](../tech-stack.md) | вибір технологій і обґрунтування |

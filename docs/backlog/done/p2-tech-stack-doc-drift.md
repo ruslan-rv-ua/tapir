@@ -134,7 +134,7 @@ com.tapir.app` (справжній `ua.ruslanrv.tapir`), секція `plugins.c
 (тости трею) і `§12` (CSP і scope плагінів) поправлені за критеріями. **Решта документа
 не звірялась** — і дерево Rust у §2 з тієї ж хвороби: немає `cli.rs`, `smtc.rs`,
 `tray/`, `songs/`, `window_state.rs` і ще півтора десятка модулів, зате є неіснуючий
-`postprocess/`. Це окремий запис — [architecture-doc-drift](../p2-architecture-doc-drift.md),
+`postprocess/`. Це окремий запис — [architecture-doc-drift](p2-architecture-doc-drift.md),
 effort L.
 
 **Одна поправка до попереднього аудиту.** [accessibility-doc-audit](p2-accessibility-doc-audit.md)
@@ -184,5 +184,5 @@ JS живий лише `@tauri-apps/api`. Родич знятих `dead-dependen
 
 - [tech-stack.md](../../tech-stack.md), [architecture.md](../../architecture.md), [AGENTS.md](../../../AGENTS.md)
 - [accessibility-doc-audit](p2-accessibility-doc-audit.md) — прецедент звірки документа з кодом і формат звіту
-- [architecture-doc-drift](../p2-architecture-doc-drift.md) — решта architecture.md
+- [architecture-doc-drift](p2-architecture-doc-drift.md) — решта architecture.md
 - [dead-js-tauri-plugins](../p3-dead-js-tauri-plugins.md) — мертві JS-обгортки плагінів

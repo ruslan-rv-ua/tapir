@@ -1,40 +1,45 @@
 # Архітектура Tapir
 
-> **Версія:** 0.1 (draft) | **Версія продукту:** 0.1.0  
-> **Стек:** Tauri v2 + React 19 + React Aria + Rust  
+> **Звірено з кодом:** 2026-09-04 | **Версія продукту:** 0.1.0
+> **Стек:** Tauri v2 + React 19 + React Aria + Rust
 > **Платформа:** Windows 11+, portable EXE
 
-> **Примітка (2026-04-23):** згадки про table/grid-компоненти та стару модель списків у цьому документі описують поточну або історичну архітектуру. Для навігаційного refactor у гілці `feature/nav` джерелом істини був `docs/FRD-navigation.md` (видалено).
+> Документ описує **рішення, межі й інваріанти** — те, чого в коді не видно.
+> Переліків, які код уже містить (модулі, команди, події, поля структур, варіанти
+> enum, таблиці символів), тут немає: вони дрейфують швидше, ніж їх встигають
+> звіряти. Правило, межа його дії й відкинуті альтернативи —
+> [ADR 2026-09-04 «Документація посилається, а не цитує»](decisions/2026-09-04-docs-reference-rather-than-quote.md).
 
 ---
 
 ## 1. Огляд
 
-Tapir — двошаровий десктопний додаток, побудований на Tauri v2:
+Tapir — двошаровий десктопний додаток на Tauri v2:
 
 - **Backend (Rust)** — усе, що стосується аудіо, мережі, файлів, стану
 - **Frontend (React)** — лише UI та реактивне відображення стану
 
-Зв'язок між шарами — виключно через **Tauri IPC**: команди (frontend → backend) та події (backend → frontend).
+Зв'язок між шарами — виключно через **Tauri IPC**: команди (frontend → backend) та
+події (backend → frontend).
 
 ### Принцип: backend-first
 
 Весь стан живе в Rust. Frontend — тонкий presentation layer:
 
-- Frontend **не зберігає** стан (окрім локального UI-стану: відкриті діалоги, input values)
-- Frontend **не здійснює** HTTP-запитів (окрім тих, що напряму отримує через Tauri-конфіг → Radio Browser API)
+- Frontend **не зберігає** стан (окрім локального UI-стану: відкриті діалоги, значення полів)
+- Frontend **не ходить у мережу** — CSP це й не дозволяє (§12)
 - Frontend **не пише файли** — усі файлові операції виконуються backend
 
 ```
 ┌────────────────────────────────┐
 │   React 19 + React Aria        │  Presentation layer
 │   (WebView2 / Chromium)        │  - ARIA-розмітка, keyboard nav
-│                                │  - Nanostores (UI state mirror)
+│                                │  - Nanostores (дзеркало стану)
 └────────────┬───────────────────┘
              │ invoke() / listen()
              │ Tauri IPC (JSON serialization)
 ┌────────────▼───────────────────┐
-│   Rust Backend                  │  Application layer
+│   Rust Backend                 │  Application layer
 │   (tokio async runtime)        │  - StreamManager, Player, Scheduler
 │                                │  - Settings, Profiles, Tags
 │                                │  - File I/O, logging
@@ -45,75 +50,40 @@ Tapir — двошаровий десктопний додаток, побудо
 
 ## 2. Модульна структура (Rust Backend)
 
-```
-src-tauri/src/
-├── main.rs                    # Entry point
-├── lib.rs                     # Tauri Builder setup
-├── app_state.rs               # AppState (shared state container)
-├── commands/                  # Tauri IPC command handlers
-│   ├── mod.rs
-│   ├── stream_commands.rs     # start/stop recording, get stream status
-│   ├── player_commands.rs     # play/pause/stop, volume, device
-│   ├── browser_commands.rs    # search stations, add station
-│   ├── settings_commands.rs   # load/save settings
-│   ├── profile_commands.rs    # CRUD profiles, switch profile
-│   ├── wishlist_commands.rs   # wishlist/ignorelist operations
-│   ├── schedule_commands.rs   # CRUD scheduled recordings
-│   ├── songs_commands.rs      # list/delete/tag saved songs
-│   └── postprocess_commands.rs
-├── stream/                    # Core recording engine
-│   ├── mod.rs
-│   ├── manager.rs             # StreamManager — координатор усіх потоків
-│   ├── connection.rs          # HTTP connection + ICY metadata
-│   ├── recorder.rs            # File writer (raw bytes → stream file + tracks)
-│   ├── splitter.rs            # Track splitting by ICY metadata
-│   ├── format.rs              # Format detection (MP3/AAC)
-│   └── playlist.rs            # PLS/M3U parser
-├── player/                    # Audio playback engine
-│   ├── mod.rs
-│   └── engine.rs              # rodio + symphonia, device selection
-├── scheduler/                 # Scheduled recordings
-│   ├── mod.rs
-│   └── timer.rs               # Per-minute check loop
-├── browser/                   # Radio Browser API client
-│   ├── mod.rs
-│   └── api.rs                 # REST client for radio-browser.info
-├── tags/                      # Audio metadata
-│   ├── mod.rs
-│   └── writer.rs              # lofty wrapper (ID3 + M4A)
-├── wishlist/                  # Wishlist / Ignorelist
-│   ├── mod.rs
-│   └── matcher.rs             # Wildcard matching logic
-├── postprocess/               # Post-recording processing
-│   ├── mod.rs
-│   └── runner.rs              # External script execution
-├── settings.rs                # Global settings (data/settings.json)
-├── profile.rs                 # Profile management (.tapirprofile)
-├── portable.rs                # Portable path helpers (next to EXE)
-├── sanitize.rs                # Filename sanitization, template rendering
-└── errors.rs                  # Error types (thiserror)
-```
+Модулі живуть у `src-tauri/src/`. Точка входу — `main.rs` (тонка) і `lib.rs`, де
+збирається `tauri::Builder`: плагіни, `setup()` і `invoke_handler`. **Канонічний
+перелік команд — `generate_handler!` у `lib.rs`**; переліку модулів тут немає
+свідомо — його дає сам каталог.
 
-### Відповідальність модулів
+Шість груп, за якими шукати:
 
-| Модуль | Відповідальність | Залежності |
-|---|---|---|
-| `app_state` | Центральний контейнер стану, доступний через `tauri::State` | `stream`, `player`, `settings`, `profile` |
-| `commands/*` | Тонкі обгортки: дістають `AppState`, делегують логіку модулям, серіалізують результат | `app_state`, відповідний модуль |
-| `stream::manager` | Координує всі активні потоки; створює/зупиняє записи | `stream::connection`, `stream::recorder` |
-| `stream::connection` | HTTP з'єднання з ICY; отримує raw bytes та метадані | `reqwest`, `icy-metadata` |
-| `stream::recorder` | Пише raw bytes у файл; розділяє треки за метаданими | `stream::splitter`, `tags`, `sanitize` |
-| `stream::splitter` | Логіка розділення: коли метадані змінюються → фіналізувати попередній трек, розпочати новий | — |
-| `player::engine` | Створює sink через rodio 0.22 (`DeviceSinkBuilder`/`MixerDeviceSink`/`Player`); live playback через незалежне HTTP-з'єднання з rtrb SPSC ring buffer та `LiveSource` (symphonia); файлове відтворення через `rodio::Decoder`; volume/device | `rodio`, `symphonia`, `rtrb`, `stream::connection` |
-| `scheduler::timer` | Перевіряє заплановані записи щохвилини; делегує `stream::manager` | `stream::manager` |
-| `browser::api` | REST клієнт Radio Browser API | `reqwest` |
-| `tags::writer` | Пише ID3v2 / M4A теги після завершення запису треку | `lofty` |
-| `wishlist::matcher` | Порівнює ICY metadata з wishlist/ignorelist (wildcard) | — |
-| `postprocess::runner` | Запуск зовнішньої програми з аргументами, timeout | `tokio::process` |
-| `settings` | Read/write `data/settings.json` | `serde_json`, `portable` |
-| `profile` | Read/write `.tapirprofile` файлів; switch profile | `serde_json`, `portable` |
-| `portable` | Визначення шляху до EXE, формування шляхів для data | `std::env` |
-| `sanitize` | Санітизація імен файлів, рендеринг шаблонів `%a`, `%t`, колізії | — |
+| Група | Що всередині |
+|---|---|
+| `commands/` | Точки входу IPC. Тонкі обгортки: дістають `AppState`, делегують, серіалізують |
+| `stream/` | Запис: з'єднання з ICY, розділення на треки, писання файлів, парсер плейлистів |
+| `player/` | Відтворення: rodio + symphonia, вибір пристрою, живе джерело й файли |
+| `scheduler/`, `songs/`, `browser/`, `wishlist/`, `tags/` | Планові записи, збережені пісні, Radio Browser API, списки, теги |
+| `tray/` | Іконка, меню, нативні сповіщення |
+| Одиничні файли в корені | Наскрізні служби — див. таблицю нижче |
+
+### Модулі, які дивують
+
+Тут лише ті, чиє призначення або межа не читається з імені. Решта — очевидні
+(`settings`, `profile`, `errors`, `sanitize`, `cli`).
+
+| Модуль | Чим дивує |
+|---|---|
+| `store` | Не сховище, а **порядок записів**. `Writer<T>` роздає номери-квитки під локом стану і відпускає лок до файлової операції; знімок, старіший за вже записаний, не пишеться зовсім. Єдиний шлях запису агрегату — `AppState::commit_*` (§4) |
+| `crash_recovery` | Знімок сеансу на диску + тихий авто-resume записів після нечистого завершення. Пише окрема задача-писар |
+| `hotkey_busy` | Пам'ять про комбінації, зайняті іншими програмами. Репліку про них тримає гейт «перший показ вікна», не `frontend_ready` (§5.3) |
+| `naming` | Розрізнення однойменних потоків. Уся логіка імен — тут, не в `stream/` |
+| `i18n` | Словник **нативного** шару. Читає ті самі `src/i18n/messages/*.json`, що й Paraglide — два споживачі одного файлу ([ADR](decisions/2026-08-17-native-layer-localisation.md)) |
+| `single_instance` | Другий запуск передає аргументи першому й гине. Дозвіл на передачу фокуса береться **до** `tauri::Builder` |
+| `window_state` | Геометрія вікна в `data/window.json`, а не в `%APPDATA%` ([ADR](decisions/2026-09-04-portable-boundary.md)) |
+| `wake_lock` | Тримає систему неснучою, поки йде запис або відтворення |
+| `smtc` | Системні транспортні кнопки Windows (медіаклавіші на клавіатурі) |
+| `portable` | Корінь усіх шляхів. Усе, що Tapir вирішує, лежить поруч з EXE (§10) |
+| `playback_control`, `recording_control` | Спільний шлях дії для **всіх** викликачів: IPC, гарячої клавіші, меню трею, CLI і планувальника. Жоден із них не ходить через фронтенд |
 
 ---
 
@@ -124,192 +94,108 @@ src-tauri/src/
 Aria: ні `TableView`, ні `GridList` у застосунку немає. Історична назва
 `ScheduleTable.tsx` цього не міняє — усередині той самий composite list.
 
-```
-src/
-├── main.tsx                   # React entry, ініціалізація слухачів Tauri
-├── App.tsx                    # Root: ActivityBar + активна секція + плеєр
-├── components/
-│   ├── layout/
-│   │   ├── ActivityBar.tsx    # Ліва панель: секції (Alt+0…Alt+5) + ⚙️ внизу
-│   │   ├── ScreenHeader.tsx   # Рядок заголовка екрана (<h1> + дії)
-│   │   ├── ScreenZone.tsx     # Зона навігації F6 (id + role + a11y-назва)
-│   │   └── StatusBar.tsx      # Низ вікна: три сегменти
-│   ├── streams/
-│   │   ├── StreamsPanel.tsx   # Екран «Потоки»
-│   │   ├── StreamList.tsx     # Composite list потоків
-│   │   ├── StreamItem.tsx     # Рядок: стан, станція, трек
-│   │   ├── StreamContextMenu.tsx
-│   │   ├── SelectionActionsMenu.tsx  # Дії над виділенням
-│   │   ├── AddStreamDialog.tsx       # Додати / редагувати потік
-│   │   ├── ImportStreamsDialog.tsx   # Імпорт M3U8/PLS
-│   │   ├── ExportFormatDialog.tsx    # Вибір формату експорту
-│   │   ├── StreamTransferDialog.tsx  # Перенесення між профілями
-│   │   └── FreeSpaceMetric.tsx
-│   ├── player/
-│   │   ├── PlayerPanel.tsx    # Постійна панель відтворення
-│   │   ├── VolumeSlider.tsx
-│   │   ├── PlaybackPosition.tsx  # Slider (файл) / ProgressBar (ефір)
-│   │   ├── LiveBadge.tsx
-│   │   └── RecordingBadge.tsx
-│   ├── browser/
-│   │   ├── BrowserPanel.tsx   # Екран «Браузер станцій»
-│   │   ├── SearchForm.tsx     # Пошук + фільтри (Select, не ComboBox)
-│   │   ├── StationList.tsx    # Результати + завершальний стоп «Показати ще»
-│   │   └── StationItem.tsx
-│   ├── songs/
-│   │   ├── SongsPanel.tsx     # Екран «Пісні»
-│   │   ├── SongsList.tsx
-│   │   ├── SongItem.tsx
-│   │   ├── SongsFilterBar.tsx
-│   │   ├── SongContextMenu.tsx
-│   │   ├── TagEditorDialog.tsx
-│   │   └── RenameDialog.tsx
-│   ├── schedule/
-│   │   ├── SchedulePanel.tsx  # Екран «Розклад»
-│   │   ├── ScheduleTable.tsx  # Назва історична — усередині composite list
-│   │   ├── ScheduleItem.tsx
-│   │   ├── ScheduleContextMenu.tsx
-│   │   ├── ScheduleForm.tsx   # Додати / редагувати запис розкладу
-│   │   └── formModel.ts       # Чиста модель форми (тестується окремо)
-│   ├── wishlist/
-│   │   ├── WishlistPanel.tsx  # Екран «Бажані»: вкладки патернів і збігів
-│   │   ├── PatternList.tsx
-│   │   ├── MatchList.tsx      # Журнал збігів — видимий носій події
-│   │   ├── AddPatternDialog.tsx
-│   │   └── examplePatterns.ts
-│   ├── profile/
-│   │   ├── ProfilesPanel.tsx  # Екран «Профілі»
-│   │   ├── ProfileList.tsx / ProfileItem.tsx / ProfileContextMenu.tsx
-│   │   ├── ProfileNameDialog.tsx
-│   │   └── ProfileSettingsDialog.tsx  # Вкладки: Recording, Playback, Interface
-│   ├── settings/
-│   │   ├── SettingsDialog.tsx # Діалог налаштувань програми (бічні вкладки)
-│   │   ├── GeneralTab.tsx / AudioTab.tsx / HotkeysTab.tsx
-│   │   └── KeyRecorder.tsx    # Запис комбінації клавіш
-│   └── common/
-│       ├── composite-list/    # CompositeList, CompositeRow, CompositeSegment,
-│       │                      # CompositeAction — основа всіх списків
-│       ├── LiveAnnouncer.tsx  # role="log", новий вузол на кожне повідомлення
-│       ├── CommandPalette.tsx # Ctrl+K: фільтр команд підрядком
-│       ├── ConfirmDialog.tsx
-│       ├── HelpDialog.tsx / HelpContent.tsx / helpContent.ts  # F1, docs/help/
-│       ├── ShortcutsHelp.tsx
-│       ├── SelectionToolbar.tsx
-│       ├── ListCard.tsx
-│       ├── ToastContainer.tsx
-│       └── ErrorBoundary.tsx
-├── stores/                    # Nanostores — дзеркало стану з Rust
-│   ├── streams.ts   player.ts   playbackNeighbors.ts   browser.ts
-│   ├── songs.ts     schedule.ts wishlist.ts            selection.ts
-│   ├── settings.ts  profile.ts  profileManager.ts      navigation.ts
-│   └── system.ts    toasts.ts   announcer.ts
-├── hooks/                     # useTauriEvent, useAnnounce, зонна навігація,
-│                              # роумінг-фокус, підписки на події Rust
-├── lib/                       # Чисті функції й типізовані обгортки invoke()
-├── i18n/
-│   ├── messages/{uk,en}.json  # Джерело для Paraglide і для Rust (i18n.rs)
-│   └── paraglide/             # Згенероване на збірці, у git не лежить
-└── styles.css                 # Tailwind v4 entry + custom properties
-```
+Розкладка `src/`:
 
-`hooks/` і `lib/` навмисно не розписані поіменно: вони ростуть з кожною фічею, і копія
-переліку тут застаріває швидше за все інше. Правило пошуку: подія Rust → `hooks/use*`,
-чиста логіка й `invoke()` → `lib/`.
+| Каталог | Що всередині |
+|---|---|
+| `components/layout/` | Каркас вікна: ActivityBar, заголовок екрана, зона навігації `F6` |
+| `components/<екран>/` | По каталогу на екран: потоки, плеєр, браузер, пісні, розклад, вішліст, налаштування |
+| `components/common/` | Спільне: composite-list, діалоги, тости, live-region оголошень |
+| `stores/` | Nanostores — дзеркало стану з Rust. Спільний між компонентами стан живе тут, не в `useState` |
+| `hooks/` | Підписки на події Rust, оголошення, зонна навігація, роумінг-фокус |
+| `lib/` | Чисті функції й типізовані обгортки `invoke()`, зокрема типи payload'ів подій |
+| `i18n/messages/{uk,en}.json` | Джерело і для Paraglide, і для Rust (`i18n.rs`); `i18n/paraglide/` генерується на збірці й у git не лежить |
+
+Каталоги навмисно не розписані поіменно: вони ростуть з кожною фічею, і копія
+переліку тут застаріває швидше за все інше. Правило пошуку: **подія Rust →
+`hooks/use*`, чиста логіка й `invoke()` → `lib/`, спільний стан → `stores/`**.
 
 ---
 
 ## 4. AppState (центральний стан)
 
-```rust
-use std::sync::Arc;
-use tokio::sync::RwLock;
-
-pub struct AppState {
-    pub stream_manager: Arc<RwLock<StreamManager>>,
-    pub player: Arc<RwLock<PlayerEngine>>,       // Phase 2. Phase 1: ініціалізується no-op stub
-    pub scheduler: Arc<RwLock<Scheduler>>,        // Phase 3. Phase 1: ініціалізується no-op stub
-    pub settings: Arc<RwLock<GlobalSettings>>,
-    pub active_profile: Arc<RwLock<Profile>>,
-}
-```
+`AppState` — контейнер, який `tauri::State` роздає командам. Його поля і їхні
+обгортки — у `src-tauri/src/app_state.rs`; тут лише правила, за якими з ним
+поводяться.
 
 ### Правила доступу до стану
 
-1. **Команди** отримують `AppState` через `tauri::State<AppState>`
-2. **Блокування мінімальне**: `RwLock` з коротким scope. Ніколи не тримати lock через `.await`
-3. **Великі операції** (запис файлу, мережевий запит) — поза lock
-4. **Stream state** живе всередині `StreamManager`, не в `AppState` напряму
+1. **Команди** отримують стан через `tauri::State<AppState>`.
+2. **Блокування мінімальне**: короткий scope, і **ніколи не тримати lock через
+   `.await`**. На це правило спирається доктрина писаря в `store.rs`.
+3. **Великі операції** (запис файлу, мережевий запит) — поза lock.
+4. **Стан потоків** живе всередині `StreamManager`, не в `AppState` напряму.
+5. **Не кожне поле під `RwLock`.** Те, що синхронізоване всередині себе, лежить
+   голим `Arc` — зовнішній лок додав би другу чергу поверх наявної.
 
-```rust
-// Правильно — короткий lock
-#[tauri::command]
-async fn get_streams(state: tauri::State<'_, AppState>) -> Result<Vec<StreamInfo>, String> {
-    let manager = state.stream_manager.read().await;
-    Ok(manager.get_all_stream_info())
-    // lock звільнений тут
-}
+### Інваріант єдиного писаря
 
-// Правильно — lock тільки для отримання даних, робота поза lock
-#[tauri::command]
-async fn start_recording(
-    url: String,
-    state: tauri::State<'_, AppState>,
-    app: tauri::AppHandle,
-) -> Result<(), String> {
-    // start_recording є синхронним: лише реєструє завдання і spawn’ить async task
-    let mut manager = state.stream_manager.write().await;
-    manager.start_recording(url, app.clone()).map_err(|e| e.to_string())
-    // lock звільнений тут; фактичний запис відбувається у spawned task
-}
-```
+Два персистентні агрегати — активний профіль і глобальні налаштування — мають
+**рівно один шлях запису**: `AppState::commit_profile` і `commit_settings`. Вони
+беруть синхронне замикання, яке повертає «зберегти» або «пропустити», і віддають
+його `Writer<T>` (§2).
+
+Гарантія: **на диск ніколи не лягає знімок, старіший за вже записаний**. Механізм —
+квиток, а не утримання лока: номер береться під локом стану миттєво, лок
+відпускається, і хто дійшов до файлу з застарілим номером, не пише зовсім (агрегат
+пишеться цілком, тож новіший знімок уже містить чужу мутацію).
+
+Альтернатива «взяти дозвіл на запис ще під локом стану» відкинута: дозвіл
+асинхронний, тож очікування тримало б лок на час чужого файлового запису — рівно
+те, чого забороняє правило 2.
+
+Журнал збігів із вішлістом — свідомий виняток: буфер сесійний, на диск не йде, тож
+третього писаря немає ([ADR](decisions/2026-08-31-carriers-for-station-events.md)).
 
 ---
 
 ## 5. Потоки даних (Data Flows)
+
+Діаграм тут **дві**, і це стеля: сценарій вартий малюнка лише тоді, коли він
+критичний для головної якісної цілі або розтягнутий по багатьох модулях так, що з
+коду одним поглядом не збирається. Решту шляхів читають із коду.
 
 ### 5.1. Запис потоку
 
 ```
 Frontend                    IPC                  Rust Backend
 ────────                  ─────                ──────────────
-User clicks "Record"
-  → invoke("start_recording", {url, streamId})
+Користувач тисне "Запис"
+  → invoke("start_recording", {streamId})
                             →          StreamManager::start_recording()
                                          │
                                          ├─ reqwest GET url
                                          │   + Icy-MetaData: 1
                                          │
-                                         ├─ Parse IcyHeaders
+                                         ├─ Розбір IcyHeaders
                                          │   (name, bitrate, metaint)
                                          │
-                                         ├─ Update profile: bitrate, format,
+                                         ├─ Оновити профіль: bitrate, format,
                                          │   icy_name, icy_genre
-                                         │   (якщо name == URL → name = icy_name)
                                          │   emit("stream-info-updated", StreamInfo)
                                          │
                                          ├─ Spawn tokio task: read_loop
                                          │   │
-                                         │   ├─ Read chunk (metaint bytes)
-                                         │   ├─ Read ICY metadata block (IcyMetadataReader)
+                                         │   ├─ Читати chunk (metaint байтів)
+                                         │   ├─ Читати блок ICY (IcyMetadataReader)
                                          │   │
-                                         │   ├─ IF metadata changed:
-                                         │   │   ├─ Finalize current track file
-                                         │   │   ├─ Write tags (lofty)
-                                         │   │   ├─ Check wishlist/ignorelist (§5.5)
-                                         │   │   ├─ emit("track-changed", {streamId, title})
-                                         │   │   └─ Start new track file
+                                         │   ├─ ЯКЩО метадані змінились:
+                                         │   │   ├─ Фіналізувати поточний трек
+                                         │   │   ├─ Записати теги (lofty)
+                                         │   │   ├─ Перевірити списки (§5.4)
+                                         │   │   ├─ emit("track-changed", …)
+                                         │   │   └─ Почати новий файл треку
                                          │   │
-                                         │   ├─ Write raw bytes → stream file
-                                         │   ├─ Write raw bytes → track file
-                                         │   │
-                                         │   └─ IF playing this stream:
-                                         │       Copy bytes → playback channel (§5.2)
+                                         │   ├─ Писати raw bytes → файл ефіру
+                                         │   └─ Писати raw bytes → файл треку
                                          │
-                                         └─ Return Ok(streamId)
+                                         └─ Ok(())
                             ←
   ← listen("track-changed")
-  Update NowPlaying + LiveAnnouncer
+  Оновити «Зараз грає» + оголошення
 ```
+
+Байти запису **нікуди більше не йдуть**: плеєр їх не отримує (§5.2).
 
 #### 5.1.1. ICY metadata encoding
 
@@ -350,373 +236,164 @@ ELSE (не перший сегмент):
 > У PRD ці поля описані як `saveFirstTrack` (інвертована семантика) та `minTrackDuration`.
 > Canonical назви — з data-models.md.
 
-### 5.2. Відтворення потоку (live) [Phase 2]
+### 5.2. Живе джерело — окреме з'єднання
 
-> У Фазі 1 `StreamManager::read_loop` пише байти лише у файл(и). Tee у playback channel додається у Фазі 2 без зміни recording pipeline.
+Плеєр **ніколи не ділить байти з рекордером**. Слухати й писати той самий ефір —
+це два незалежні HTTP-з'єднання до станції.
 
-```
-StreamManager read_loop
-  │
-  ├─ raw audio bytes
-  │
-  ├─ tee → file writer
-  │
-  └─ tee → ring buffer (crossbeam channel)
-               │
-               └─ PlayerEngine reads from channel
-                    │
-                    ├─ symphonia decoder (MP3/AAC-LC → PCM)
-                    │
-                    └─ rodio Sink → WASAPI → speakers
+`PlayerEngine` відкриває власне з'єднання, складає байти у кільцевий буфер `rtrb`
+(SPSC) і віддає його `symphonia` як `LiveSource`; далі rodio → WASAPI. Тому зупинка
+запису не глушить звук, а зупинка звуку не рве запис.
 
-Frontend
-  │
-  ├─ invoke("set_volume", {level: 0.75})  →  PlayerEngine::set_volume()
-  └─ invoke("set_output_device", {name})  →  PlayerEngine::set_device()
-```
+Обміркований і **не** реалізований варіант — tee з `read_loop` у канал плеєра. Він
+економив би одне з'єднання, але зв'язував би два незалежні стани: пауза плеєра
+почала б тиснути на запис, а перепідключення запису — рвати звук.
 
-### 5.3. Завантаження додатку (Startup)
+### 5.3. Старт застосунку
+
+Найризикованіша послідовність у проєкті: порядок тут купувався окремими багами,
+і кожен крок стоїть на своєму місці не випадково.
 
 ```
-main.rs
+main.rs → lib.rs::run()
   │
-  ├─ #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-  │   // Критично: ховає вікно консолі у release збірці
+  ├─ single_instance::allow_foreground_handoff()   ← ДО Builder: плагін
+  │                                                   вб'є другий екземпляр пізніше
+  ├─ cli::parse(argv)                              ← args_os, не args (кирилиця в шляхах);
+  │                                                   НЕ виходимо тут — це може бути 2-й екземпляр
+  ├─ portable::ensure_data_dirs()                  ← до всього, що читає/пише
+  ├─ GlobalSettings::load()                        ← до Builder: плагін логів
+  │                                                   конфігурується один раз назавжди
+  ├─ i18n::set_locale()                            ← до першого, що може щось показати
+  ├─ --profile → підмінити active_profile          ← сеансовий override, settings.json НЕ пишемо
   │
-  ├─ Determine portable base path (next to EXE)
-  │
-  ├─ Read data/settings.json (or create default)
-  ├─ Read active profile .tapirprofile (or create Default.tapirprofile)
-  │
-  ├─ tauri::Builder::default()
-  │     .plugin(single_instance)        // 1st — обов'язково першим
-  │     .plugin(cli)
-  │     .plugin(global_shortcut)
-  │     .plugin(fs)
-  │     .plugin(http)
-  │     .plugin(shell)
-  │     .plugin(dialog)                  // folder/file picker
-  │     .plugin(notification)
-  │     .plugin(log)                    // logging — до setup
-  │     .setup(|app| {
-  │          // Initialize AppState
-  │          // Start Scheduler timer
-  │          // Parse CLI args (--minimize → hide to tray)
-  │          // Reconcile autostart Run entry (winreg, не plugin; deactivate if EXE moved)
-  │          // Restore previous recording sessions (if configured)
-  │          // Register global shortcuts
-  │          // Setup system tray
-  │     })
-  │     .manage(app_state)
-  │     .invoke_handler(commands)
-  │     .run()
-  │
-  └─ Frontend loads:
-       main.tsx
-         ├─ invoke("get_settings") → populate stores
-         ├─ invoke("get_profile")  → populate stores
-         ├─ invoke("get_streams")  → populate stream table
-         ├─ Register Tauri event listeners (track-changed, recording-status, etc.)
-         └─ Render App with ActivityBar + Content
-              └─ IF streams.length === 0 (first run):
-                   announce("Ласкаво просимо до Tapir. Натисніть Enter щоб додати
-                             перший потік.", "assertive")
-                   focus → перший пункт ActivityBar (як і за будь-якого іншого старту)
-
-    Примітка: точна поведінка first-run announcement описана в accessibility.md §3.5.
+  └─ tauri::Builder
+       ├─ .plugin(single_instance)   ← першим
+       ├─ .plugin(log)               ← ротація KeepSome(1): активний + один архів
+       ├─ .plugin(dialog) .plugin(global_shortcut) .plugin(notification)
+       │
+       └─ .setup(|app| {
+            ├─ Рішення про вихід за --help/--version/помилку розбору
+            │    (сюди доходить лише ПЕРШИЙ екземпляр)
+            │
+            ├─ ВІКНО — якомога раніше, поки чинний дозвіл ОС на фокус:
+            │    window_state::apply(геометрія)   ← поки вікно ще visible: false
+            │    show() → [devtools у debug] → set_focus()
+            │    Порядок критичний: webview мусить ініціалізуватись у вікні,
+            │    яке вже на передньому плані ОС — інакше NVDA не чіпляється
+            │    до документа і мовчить на старті
+            │    --minimize → hide() ПІСЛЯ того, як NVDA причепився
+            │
+            ├─ autostart::reconcile_on_startup()  ← звірити запис Run з current_exe()
+            ├─ Profile::load → AppState::new → app.manage()
+            ├─ crash_recovery: прочитати стан ПОПЕРЕДНЬОГО сеансу,
+            │    позначити новий, тихо відновити записи, підняти писаря знімків
+            ├─ tray::setup_tray + register_aumid
+            ├─ hotkey_busy::register_and_plan(hotkeys)
+            ├─ smtc::init
+            └─ Відкласти все, що говорить: StartupPlan (CLI), ResumeNotice,
+                 AutoplayGuard, BusyNotice
+          })
+       └─ .invoke_handler(generate_handler![…])    ← канонічний перелік команд
 ```
 
-### 5.4. Зміна профілю [Phase 4]
+**Два гейти відкладеного мовлення** — інваріант, який пояснює половину `setup()`:
+
+| Гейт | Хто чекає | Чому |
+|---|---|---|
+| `frontend_ready` | план CLI, підсумок відновлення після збою, автовідтворення | Webview підписується на події **після** первинного завантаження даних. Подія, надіслана раніше, зникає без сліду |
+| Перший показ вікна | репліка про зайняті комбінації (`BusyNotice`) | Старт згорнутим (`--minimize`, автозапуск) інакше ковтає її: `frontend_ready` настане, а вікна на екрані не буде |
+
+### 5.4. Вішліст / ігнор-лист — порядок перевірки
+
+При зміні метаданих ефіру списки перевіряються в такому порядку (`wishlist::matcher`):
 
 ```
-Frontend                         Rust Backend
-────────                       ──────────────
-invoke("switch_profile",
-  {name: "Music"})
-                          →    0. IF active recordings > 0:
-                                  Frontend shows ConfirmDialog
-                                  User cancels → abort
-                                  User confirms → continue
-                               1. Save current profile to .tapirprofile
-                               2. Load new profile from .tapirprofile
-                               3. Stop all active recordings (from old profile)
-                               4. Update AppState.active_profile
-                               5. emit("profile-changed", {profileData})
-                          ←
-listen("profile-changed")
-  → Replace all stores with new profile data
-  → Re-render entire UI
+1. Ігнор-лист потоку   → збіг → відкинути трек, НЕ записувати
+2. Глобальний ігнор-лист → збіг → відкинути трек, НЕ записувати
+3. Вішліст              → збіг → автоматичний запис
+4. Жодного збігу        → звичайна поведінка (пишемо, якщо ручний запис активний)
 ```
+
+**Правило:** ігнор-лист завжди має пріоритет над вішлістом. Трек, що збігся з обома,
+ігнорується.
+
+**Обґрунтування:** ігнор-лист — це явна відмова. Користувач, який додав `*jingle*`,
+очікує, що жоден джингл не запишеться, навіть якщо вішліст містить широкий патерн.
 
 ---
 
 ## 6. Tauri IPC Contract
 
-### 6.0. Глобальні гарячі клавіші → IPC
+Переліку команд і подій тут немає. Канонічні джерела:
 
-`tauri-plugin-global-shortcut` реєструє хоткеї у `setup()`. Натискання хоткея → callback у Rust → виклик відповідної команди напряму (без IPC roundtrip через frontend):
+| Що | Де |
+|---|---|
+| Команди | `generate_handler![…]` у `src-tauri/src/lib.rs` |
+| Реалізації | `src-tauri/src/commands/` |
+| Типи payload'ів подій | `src/lib/tauri.ts` — їх перевіряє `tsc` |
+| Емітери подій | `stream/manager.rs`, `player/engine.rs`, `scheduler/`, `tray/`, `cli.rs` |
 
-```rust
-// У setup:
-app.global_shortcut().on_shortcut("Ctrl+Shift+R", |app, _shortcut, event| {
-    if event.state == ShortcutState::Pressed {
-        // Визначаємо selected stream з AppState
-        // Якщо записується → stop_recording, інакше → start_recording
-        let state = app.state::<AppState>();
-        // ...toggle logic
-    }
-});
-```
+### Форма контракту
 
-Після виконання дії backend emit-ує відповідну подію (`recording-status`, `player-status` тощо), і frontend оновлюється як звичайно.
-
-### 6.1. Команди (Frontend → Backend)
-
-> У таблицях нижче `Returns` показує payload успішного `Ok(...)`. Фактичний IPC-контракт для всіх команд: `Result<T, String>`.
->
-> Імена команд вказані у snake_case (Rust). JavaScript викликає camelCase-варіант: `invoke('getStreams')`. Tauri конвертує автоматично.
-
-#### Streams & Recording
-
-| Command | Params | Returns | Опис |
-|---|---|---|---|
-| `get_streams` | — | `Vec<StreamInfo>` | Список усіх потоків з поточного профілю |
-| `add_stream` | `{url, name?, meta?}` | `StreamInfo` | Додати потік (resolve PLS/M3U). `meta` — те, що знайшов probe (`icyName`, `bitrate`, `format`, `unsupported`): іменує безіменний потік і дає суфікс при колізії |
-| `remove_stream` | `{streamId}` | `()` | Видалити потік з профілю |
-| `update_stream` | `{streamId, name, url?, meta?}` | `StreamInfo` | Редагувати потік. Без `url` — чисте перейменування (`meta` не застосовується взагалі); з `url` — resolve PLS/M3U і перезапис усіх похідних полів переданим `meta`, включно з порожніми: вони описують адресу, а не рядок. Auth і per-stream ignorelist — беклог `p3-stream-auth.md`, `p1-per-stream-ignorelist-ui.md` |
-| `start_recording` | `{streamId}` | `()` | Почати запис потоку |
-| `stop_recording` | `{streamId}` | `()` | Зупинити запис потоку |
-| `stop_all_recordings` | — | `()` | Зупинити всі записи |
-| `toggle_recording` | `{streamId}` | `()` | Увімкнути/вимкнути запис потоку |
-| `get_stream_status` | `{streamId}` | `StreamStatus` | Детальний статус одного потоку |
-
-#### Player [Phase 2]
-
-| Command | Params | Returns | Опис |
-|---|---|---|---|
-| `play_stream` | `{streamId}` | `()` | Відтворити потік (live) |
-| `play_file` | `{path}` | `()` | Відтворити записаний файл |
-| `pause_playback` | — | `()` | Пауза |
-| `stop_playback` | — | `()` | Зупинити відтворення |
-| `seek` | `{positionMs}` | `()` | Перемотка (тільки для файлів) |
-| `set_volume` | `{level}` | `()` | 0.0 — 1.0 |
-| `get_output_devices` | — | `Vec<AudioDevice>` | Список аудіо пристроїв |
-| `set_output_device` | `{deviceName}` | `()` | Вибрати пристрій виведення |
-
-#### Stream Browser [Phase 3]
-
-| Command | Params | Returns | Опис |
-|---|---|---|---|
-| `search_stations` | `{query, format?, minBitrate?}` | `Vec<StationResult>` | Пошук через Radio Browser API |
-| `add_station_from_browser` | `{station}` | `StreamInfo` | Додати знайдену станцію |
-
-#### Settings & Profiles
-
-> `get_settings` / `save_settings` — Phase 1 (мінімальний). Інші — Phase 4.
-
-| Command | Params | Returns | Опис |
-|---|---|---|---|
-| `get_settings` | — | `GlobalSettings` | Глобальні налаштування |
-| `save_settings` | `{settings}` | `()` | Зберегти глобальні налаштування |
-| `get_profile` | — | `Profile` | Активний профіль (повні дані) |
-| `list_profiles` | — | `Vec<ProfileMeta>` | Список профілів (ім'я, шлях) |
-| `switch_profile` | `{name}` | `Profile` | Перемкнути профіль |
-| `create_profile` | `{name, copyFrom?}` | `ProfileMeta` | Створити профіль |
-| `delete_profile` | `{name}` | `()` | Видалити (крім Default) |
-| `export_profile` | `{name, targetPath}` | `()` | Експорт у файл |
-| `import_profile` | `{sourcePath}` | `ProfileMeta` | Імпорт з файлу |
-
-#### Wishlist / Ignorelist [Phase 2]
-
-| Command | Params | Returns | Опис |
-|---|---|---|---|
-| `get_wishlist` | — | `Vec<WishlistEntry>` | Список бажаних треків |
-| `add_to_wishlist` | `{pattern}` | `()` | Додати (wildcard) |
-| `remove_from_wishlist` | `{pattern}` | `()` | Видалити |
-| `get_ignorelist` | — | `Vec<String>` | Список ігнорованих |
-| `add_to_ignorelist` | `{pattern}` | `()` | Додати |
-| `remove_from_ignorelist` | `{pattern}` | `()` | Видалити |
-
-#### Scheduled Recordings [Phase 3]
-
-| Command | Params | Returns | Опис |
-|---|---|---|---|
-| `get_scheduled_recordings` | — | `Vec<ScheduledRecording>` | Список запланованих |
-| `add_scheduled_recording` | `{recording}` | `ScheduledRecording` | Створити |
-| `update_scheduled_recording` | `{id, recording}` | `()` | Редагувати |
-| `delete_scheduled_recording` | `{id}` | `()` | Видалити |
-| `toggle_scheduled_recording` | `{id, enabled}` | `()` | Увімкнути/вимкнути |
-
-#### Saved Songs [Phase 4]
-
-| Command | Params | Returns | Опис |
-|---|---|---|---|
-| `get_saved_songs` | `{filter?, sort?}` | `Vec<SavedSong>` | Список збережених пісень |
-| `delete_song` | `{path, toTrash}` | `()` | Видалити файл |
-| `rename_song` | `{path, newName}` | `()` | Перейменувати |
-| `update_song_tags` | `{path, tags}` | `()` | Оновити ID3/M4A теги |
-| `open_in_explorer` | `{path}` | `()` | Показати в провіднику Windows |
-| `import_files` | `{paths}` | `Vec<SavedSong>` | Імпортувати файли |
-
-#### Postprocessing [Phase 4]
-
-| Command | Params | Returns | Опис |
-|---|---|---|---|
-| `get_postprocess_config` | — | `PostprocessConfig` | Налаштування постобробки |
-| `save_postprocess_config` | `{config}` | `()` | Зберегти |
-
-### 6.2. Події (Backend → Frontend)
-
-| Event | Payload | Коли |
-|---|---|---|
-| `track-changed` | `{streamId, artist, title, album}` | Зміна ICY метаданих у потоці |
-| `recording-status` | `{streamId, status, error?}` | Зміна стану запису (recording/stopped/error/reconnecting) |
-| `stream-info-updated` | `StreamInfo` (повна структура) | Після підключення: оновлені ICY поля (bitrate, icy_name, format, icy_genre) |
-| `recording-started` | `{streamId, fileName}` | Трек розпочато записувати |
-| `recording-completed` | `{streamId, fileName, duration}` | Трек завершено |
-| `stream-error` | `{streamId, message, willRetry, retryNumber?, maxRetries?}` | Помилка з'єднання |
-| `stream-unsupported` | `{streamId, family}` | Ефір не з тих, які Tapir пише — запис не почався (не помилка: стан не стає `error`) |
-| `player-status` | `{status, source, volume, positionMs?, durationMs?}` | Зміна стану player (playing/paused/stopped) |
-| `player-progress` | `{positionMs, durationMs}` | Оновлення позиції (для файлів) |
-| `scheduled-started` | `{recordingId, streamId}` | Плановий запис розпочався |
-| `scheduled-completed` | `{recordingId, streamId}` | Плановий запис завершився |
-| `scheduled-missed` | `{recordingId, reason}` | Пропущений запис (програма була вимкнена) |
-| `wishlist-match` | `{streamId, artist, title, pattern}` | Знайдено трек зі списку бажань |
-| `disk-space-low` | `{availableGb, thresholdGb}` | Мало місця на диску |
-| `disk-space-ok` | `{availableGb}` | Місце на диску відновлено (після disk-space-low) |
-| `profile-changed` | `{profile}` | Профіль змінено |
-| `postprocess-started` | `{fileName}` | Розпочато постобробку |
-| `postprocess-completed` | `{fileName, success, output?}` | Постобробку завершено |
-| `postprocess-error` | `{fileName, error}` | Помилка постобробки |
+- **Усі команди повертають `Result<T, String>`.** Усередині Rust ходить типізований
+  `RadioError` (§9); у `String` він перетворюється рівно на межі IPC.
+- **Імена конвертує Tauri**: Rust `snake_case` ↔ JS `camelCase`. У Rust команда
+  зветься `get_streams`, у фронтенді викликається `invoke("getStreams")`.
+- **Команди — тонкі обгортки.** Логіки в `commands/` немає: дістати стан,
+  делегувати модулю, серіалізувати. Логіка, що з'явилась у команді, — привід
+  винести її в модуль.
+- **Подія — єдиний спосіб бекенду ініціювати оновлення UI.** Фронтенд не опитує
+  бекенд у циклі; усе, що сталося без його участі (метадані ефіру, плановий запис,
+  збій з'єднання, дія з трею чи гарячої клавіші), приходить подією.
+- **Не кожна дія починається з фронтенду.** Гаряча клавіша, меню трею, CLI і
+  планувальник кличуть той самий шлях дії в Rust (`playback_control`,
+  `recording_control`), а фронтенд дізнається про результат тією ж подією, що й за
+  звичайного виклику. Тому подія — не «відповідь на invoke», а окремий контракт.
 
 ---
 
 ## 7. Модель конкурентності
 
-### Tokio Runtime
-
-Tauri v2 ініціалізує tokio runtime автоматично. **Не створювати** власний runtime.
-
-### Потоки та задачі
+Tauri v2 ініціалізує tokio runtime сам. **Власного runtime не створювати.**
 
 ```
-Main Thread (OS)
+Головний потік ОС
   │
-  ├─ Tauri app loop + WebView2 message pump
+  ├─ Цикл Tauri + черга повідомлень WebView2
   │
-  └─ tokio runtime (multi-threaded)
-       │
-       ├─ IPC handler tasks (per invoke call)
-       │
-       ├─ StreamManager
-       │   ├─ Stream 1: read_loop task (long-lived)
-       │   ├─ Stream 2: read_loop task (long-lived)
-       │   ├─ ...
-       │   └─ Stream N: read_loop task (long-lived)
-       │
-       ├─ Scheduler: interval task (per minute)
-       │
-       └─ Postprocess: queue runner task
-
-Dedicated OS Thread (rodio internal)
-  │
-  └─ Audio mixer + WASAPI output
+  └─ tokio runtime (багатопотоковий)
+       ├─ Задачі-обробники IPC (по одній на invoke)
+       ├─ StreamManager: read_loop на кожен активний запис (довгоживучі)
+       ├─ Scheduler: щохвилинна задача-інтервал
+       └─ crash_recovery: писар знімків сеансу
+                          
+Окремий потік ОС (усередині rodio)
+  └─ Мікшер + вивід WASAPI
 ```
 
-### StreamManager — керування потоками
+### StreamManager
 
-```rust
-pub struct StreamManager {
-    streams: HashMap<StreamId, StreamHandle>,
-    client: reqwest::Client,  // shared HTTP client (connection pooling)
-}
+Координує активні записи. Два інваріанти:
 
-pub struct StreamHandle {
-    pub info: StreamInfo,
-    pub status: StreamStatus,
-    pub cancel_token: CancellationToken,  // для зупинки read_loop
-    pub task_handle: JoinHandle<()>,
-}
-```
+- **Один `reqwest::Client` на всі потоки** — заради пулу з'єднань.
+- **`CancellationToken` на кожен запис** — зупинка не вбиває задачу, а просить її
+  завершитись: `read_loop` виходить із циклу й **фіналізує файл**. Вбити задачу
+  означало б лишити недописаний трек без тегів.
 
-- `CancellationToken` (з `tokio_util`) — для graceful shutdown кожного запису
-- `reqwest::Client` — один на всі потоки (внутрішнє connection pooling)
-- При `stop_recording()` — cancel token → read_loop завершується → файл фіналізується
-
-### Взаємодія Recording ↔ Player
-
-Якщо потік одночасно записується і програється:
-
-```rust
-// Запис: read_loop пише raw bytes у два місця
-loop {
-    let chunk = icy_reader.read_chunk().await?;
-    
-    // 1. Файл (завжди)
-    file_writer.write(&chunk.audio).await?;
-    
-    // 2. Playback buffer (якщо player слухає цей потік)
-    if let Some(tx) = playback_sender.as_ref() {
-        let _ = tx.try_send(chunk.audio.clone()); // non-blocking, drop if full
-    }
-}
-
-// Player: читає з ring buffer
-// PlayerEngine тримає crossbeam bounded channel receiver
-// symphonia декодує raw bytes → PCM → rodio Sink
-```
-
-#### Параметри playback channel
-
-| Параметр | Значення | Обґрунтування |
-|----------|----------|---------------|
-| Тип | `crossbeam_channel::bounded<Vec<u8>>` | Lock-free, multi-producer safe |
-| Ємність | 64 chunks | ~1–2 секунди буферу при 256 kbps (chunk ≈ metaint, зазвичай 8–32 KB) |
-| Backpressure | `try_send` — drop chunk if full | Запис не блокується; програвач може мати короткий audio skip |
-| Створення | При `play_stream(streamId)` — recorder отримує `Sender` | Sender = `Option<Sender>` в `StreamHandle` |
-| Видалення | При `stop_playback` або `stop_recording` — drop Sender/Receiver | Receiver дропається → decoder loop завершується |
-
-**Поведінка при переповненні:** `try_send` повертає `Err(Full)` — chunk втрачається. Це призводить до мікро-заїкання (~50–200 мс), що прийнятно: запис (файл) не страждає, лише прослуховування. Якщо програвач не встигає декодувати, це означає перевантаження CPU — в такому разі краще drop ніж backpressure на запис.
-
-### 5.5. Wishlist / Ignorelist — порядок перевірки
-
-При зміні ICY метаданих перевіряються списки в такому порядку:
-
-```
-1. Per-stream ignorelist  → збіг → відкинути трек, НЕ записувати
-2. Global ignorelist      → збіг → відкинути трек, НЕ записувати
-3. Wishlist               → збіг → автоматичний запис
-4. Жодного збігу          → звичайна поведінка (запис якщо ручний запис активний)
-```
-
-**Правило:** Ignorelist завжди має пріоритет над wishlist. Якщо трек збігається з обома — він ігнорується.
-
-**Обґрунтування:** Ignorelist — це explicit opt-out. Користувач, що додає "*jingle*" в ignorelist, очікує що жодні jingle-и не будуть записані, навіть якщо wishlist містить широкий патерн.
+Поля структур і сигнатури — у `src-tauri/src/stream/manager.rs`.
 
 ---
 
-## 8. Моніторинг ресурсів
+## 8. Дисковий простір
 
-### Дисковий простір
+Вільне місце перевіряється **перед стартом запису** (`check_disk_space` у
+`commands/stream_commands.rs`) проти профільного порога `disk_space_threshold_gb`;
+нуль вимикає перевірку.
 
-Перевірка вільного місця виконується:
-1. **При запуску запису** — перед `start_recording`
-2. **Щохвилини** — в рамках scheduler timer loop
-3. **При записі треку** — після фіналізації кожного track file
-
-Якщо вільного місця менше `diskSpaceThresholdGb`:
-- `emit("disk-space-low", {availableGb, thresholdGb})`
-- Зупинити всі активні записи (graceful: дописати поточний трек)
-- Логувати: `[DiskMonitor] Low disk space: {availableGb} GB < {thresholdGb} GB threshold. Recordings stopped.`
-
-**Відновлення після звільнення місця:**
-- При наступній щохвилинній перевірці, якщо місце знову ≥ `diskSpaceThresholdGb`:
-  - `emit("disk-space-ok", {availableGb})`
-- Frontend показує persistent toast (не auto-dismiss) при `disk-space-low`:
-  - Текст: "Мало місця на диску ({gb} ГБ). Записи зупинено."
-  - Кнопки: "Відкрити провідник" (показати папку recordings) | "Закрити"
-- Після `disk-space-ok` — toast замінюється на polite announcement: "Місце на диску відновлено"
-- Перезапуск записів — лише вручну (користувач повторно натискає Record)
+**Чого немає:** нагляду під час запису. Диск, який заповнився вже після старту,
+зараз не помічає ніхто — запис триває й дає обрізаний файл. Це відомий незакритий
+ризик, а не забутий опис: [p2-disk-space-monitor](backlog/p2-disk-space-monitor.md).
 
 ---
 
@@ -726,487 +403,126 @@ loop {
 
 | Шар | Підхід |
 |---|---|
-| Internal Rust | `thiserror` — типізовані помилки з контекстом |
-| Tauri Commands | `Result<T, String>` — Tauri серіалізує `Err(String)` як помилку для JS |
-| Stream errors | Автоперепідключення + `emit("stream-error")` → UI показує статус |
-| Frontend | `try/catch` навколо `invoke()`, помилка → toast/alert |
+| Всередині Rust | `thiserror` — типізований `RadioError` з контекстом (`src-tauri/src/errors.rs`) |
+| Команди Tauri | `Result<T, String>` — типізована помилка стає рядком рівно на межі IPC |
+| Помилки потоку | Автоперепідключення + `stream-error` → UI показує статус |
+| Frontend | `try/catch` навколо `invoke()`, помилка → тост |
 
-### Типи помилок (Rust)
-
-```rust
-#[derive(thiserror::Error, Debug)]
-pub enum RadioError {
-    #[error("Connection failed: {0}")]
-    ConnectionFailed(#[from] reqwest::Error),
-    
-    #[error("Stream {stream_id} not found")]
-    StreamNotFound { stream_id: String },
-    
-    #[error("File I/O error: {0}")]
-    FileError(#[from] std::io::Error),
-    
-    #[error("Invalid URL: {0}")]
-    InvalidUrl(String),
-    
-    #[error("Profile '{name}' not found")]
-    ProfileNotFound { name: String },
-    
-    #[error("Cannot delete default profile")]
-    CannotDeleteDefault,
-    
-    #[error("Playback error: {0}")]
-    PlaybackError(String),
-    
-    #[error("Tag writing error: {0}")]
-    TagError(#[from] lofty::error::LoftyError),
-}
-
-// Конвертація для Tauri IPC
-impl From<RadioError> for String {
-    fn from(err: RadioError) -> String {
-        err.to_string()
-    }
-}
-```
+Варіанти `RadioError` не перелічені: enum один, він у `errors.rs`, і компілятор не
+дасть послатись на неіснуючий варіант — на відміну від цього документа.
 
 ### Перепідключення при втраті з'єднання
 
-```rust
-pub struct ReconnectConfig {
-    pub max_retries: u32,      // 0 = infinite
-    pub retry_interval_secs: u32,
-    pub backoff_multiplier: f32,
-    pub max_interval_secs: u32,
-}
+Обрив з'єднання не зупиняє запис: `read_loop` переходить у `Reconnecting`, чекає
+інтервал і пробує знову. Інтервал росте на множник до стелі; вичерпані спроби
+переводять потік у `Error`.
 
-// У read_loop:
-// 1. Connection drop → emit("recording-status", Reconnecting)
-// 2. Wait interval → retry connection
-// 3. Success → emit("recording-status", Recording), continue
-// 4. Max retries → emit("recording-status", Error), stop
-```
+Два інваріанти, куплені окремо:
+
+- **Стеля спроб їде в статусі парою з номером спроби.** Номер без стелі («спроба 3»)
+  не каже нічого; писар пари один — `mark_reconnecting`.
+- **Що саме рахується спробою** — [ADR 2026-08-13](decisions/2026-08-13-reconnect-attempt-semantics.md).
+
+Ефір, формат якого Tapir не пише, — **не помилка**: подія `stream-unsupported`,
+статус не стає `Error`, спроба не витрачається
+([ADR](decisions/2026-08-31-refuse-unknown-format-rather-than-guess.md)).
+
+Поля налаштувань перепідключення — `ReconnectConfig` у `src-tauri/src/profile.rs`.
 
 ---
 
 ## 10. Портативне зберігання даних
 
-### Визначення base path
+**Усе, що Tapir вирішує, лежить у `data/` поруч з EXE** — налаштування, профілі,
+логи, записи, геометрія вікна, стан сеансу, пам'ять про зайняті комбінації.
+Корінь визначає `src-tauri/src/portable.rs`; будувати шляхи повз нього не можна.
 
-```rust
-// portable.rs
-use std::path::{Path, PathBuf};
+Машина при цьому **не** лишається недоторканою: профіль WebView2 і два ключі
+реєстру живуть зовні, названі й обґрунтовані в
+[ADR 2026-09-04 «Межа портативності»](decisions/2026-09-04-portable-boundary.md).
+**Будь-який новий файл поза `data/` — дефект, а не ще один виняток.**
 
-pub fn base_dir() -> Result<PathBuf, String> {
-    let exe = std::env::current_exe()
-        .map_err(|e| format!("cannot determine exe path: {e}"))?;
-    exe.parent()
-        .map(|p| p.to_path_buf())
-        .ok_or_else(|| "exe has no parent dir".to_string())
-}
-
-pub fn data_dir() -> Result<PathBuf, String> {
-    Ok(base_dir()?.join("data"))
-}
-
-pub fn settings_path() -> Result<PathBuf, String> {
-    Ok(data_dir()?.join("settings.json"))
-}
-
-pub fn profiles_dir() -> Result<PathBuf, String> {
-    Ok(data_dir()?.join("profiles"))
-}
-
-pub fn logs_dir() -> Result<PathBuf, String> {
-    Ok(data_dir()?.join("logs"))
-}
-
-pub fn default_recordings_dir() -> Result<PathBuf, String> {
-    Ok(data_dir()?.join("recordings"))
-}
-```
-
-### Файлова структура на диску
-
-```
-Tapir/                                  (base_dir)
-├── tapir.exe
-└── data/                               (data_dir)
-    ├── settings.json                   (global settings)
-    ├── profiles/
-    │   ├── Default.tapirprofile            (JSON, default profile)
-    │   └── Music.tapirprofile              (JSON, user profile)
-    ├── logs/
-    │   └── tapir.log                   (rotated)
-    └── recordings/                     (default, configurable per profile)
-        ├── SomaFM Groove Salad/
-        │   ├── Tycho - A Walk.mp3
-        │   ├── Bonobo - Kerala.mp3
-        │   └── stream_2026-04-10.mp3     (stream file)
-        └── Jazz FM/
-            └── ...
-```
+Розкладка файлів на диску й формати — [data-models.md](data-models.md).
 
 ---
 
 ## 11. Вікно та System Tray
 
-### Window Management
+### Вікно
 
-- `decorations: true` — **обов'язково** (accessibility: NVDA mouse tracking)
-- `visible: false` при старті → `window_state::apply` відновлює геометрію → `show()` + `set_focus()`
-- Мінімізація до tray (опціонально, налаштування)
-- При закритті вікна: мінімізувати до tray (якщо увімкнено) або зупинити записи та вийти
-- **Розмір за замовчуванням**: 900×650 (перший запуск, поки немає `data/window.json`)
-- **Мінімальний розмір**: 640×480 (UI не ламається)
-- **Resize дозволений** (accessibility: screen magnifier, multi-monitor, Windows Snap)
-- **Window state persistence**: `src-tauri/src/window_state.rs` зберігає розмір, позицію і
-  `maximized` у `data/window.json` — один запис за сеанс, із `graceful_shutdown`. Плагін
-  `tauri-plugin-window-state` знято: він писав у `%APPDATA%` і не має опції каталогу
-  ([ADR про межу портативності](decisions/2026-09-04-portable-boundary.md))
+- `decorations: true` — **обов'язково**: без системної рамки NVDA неправильно
+  відстежує мишу (Tauri #12901).
+- Стартує `visible: false`; геометрія накладається, поки вікно невидиме, і лише
+  потім `show()` + `set_focus()`. Причина й порядок — §5.3.
+- **Resize дозволений** — екранна лупа, кілька моніторів, Windows Snap.
+- Розміри за замовчуванням і мінімальні — у `tauri.conf.json`.
+- Геометрія переживає перезапуск через `window_state.rs` → `data/window.json`.
+  Плагін `tauri-plugin-window-state` знято: він писав у `%APPDATA%` і не має опції
+  каталогу ([ADR](decisions/2026-09-04-portable-boundary.md)).
+- Закриття вікна: згорнути в трей (якщо ввімкнено) або зупинити записи й вийти.
 
-```json
-// tauri.conf.json → windows[0]
-{
-  "width": 900,
-  "height": 650,
-  "minWidth": 640,
-  "minHeight": 480,
-  "decorations": true,
-  "visible": false
-}
-```
+### Трей
 
-### System Tray
-
-#### Tooltip
-
-Динамічний tooltip відображає поточний стан:
-
-| Стан | Tooltip |
-|------|---------|
-| Idle | `Tapir` |
-| Playing | `Tapir — ▶ {station}` |
-| Recording (n) | `Tapir — ● {n} записів` |
-| Playing + Recording | `Tapir — ▶ {station} · ● {n} записів` |
-
-#### Контекстне меню (right-click)
-
-```
-Зараз грає: {station} — {title}        ← disabled label, тільки якщо state == Playing
-──────────
-⏯ Грати / Пауза                        ← toggle, enabled тільки якщо lastStreamId != null
-⏹ Зупинити                              ← enabled тільки якщо state != Stopped
-──────────
-● Записи: {n} активних                  ← disabled label, тільки якщо n > 0
-Зупинити всі записи                      ← тільки якщо n > 0
-──────────
-Показати Tapir / Приховати Tapir         ← toggle за window.isVisible()
-──────────
-Вихід
-```
-
-| Пункт | ID | Тип | Умова видимості | Дія |
-|-------|----|-----|-----------------|-----|
-| Зараз грає: … | `now-playing` | `MenuItem` (disabled) | `PlayerStatus.state == Playing` | — |
-| Грати / Пауза / Зупинити | `primary-playback` | `MenuItem` | завжди (неактивний, коли нічого не грає) | `invoke("toggle_playback")` |
-| Зупинити | `stop-playback` | `MenuItem` | грає або на паузі **файл** | `invoke("stop_playback")` |
-| Записи: {n} | `recording-info` | `MenuItem` (disabled) | `active_recordings > 0` | — |
-| Зупинити всі записи | `stop-all` | `MenuItem` | `active_recordings > 0` | `invoke("stop_all_recordings")` |
-| Показати/Приховати | `toggle-window` | `MenuItem` | завжди | `window.show()` / `window.hide()` |
-| Вихід | `quit` | `MenuItem` | завжди | Якщо є активні записи → `ConfirmDialog`, інакше `app.exit(0)` |
-
-#### Динамічне оновлення меню
-
-Tray menu перебудовується при зміні стану:
-- `player-status` event → оновити "Зараз грає", toggle "Грати/Пауза", видимість "Зупинити"
-- `recording-status` event → оновити кількість записів, видимість "Зупинити всі"
-- `window.onCloseRequested` / `window.onFocusChanged` → toggle "Показати/Приховати"
-
-```rust
-fn rebuild_tray_menu(
-    app: &AppHandle,
-    player: &PlayerStatus,
-    active_recordings: usize,
-    window_visible: bool,
-) -> tauri::Result<()> {
-    let tray = app.tray_by_id("main").unwrap();
-    let mut items: Vec<Box<dyn IsMenuItem>> = Vec::new();
-
-    // Now Playing (conditional)
-    if player.state == PlaybackState::Playing {
-        if let Some(ref source) = player.source {
-            let label = format!("Зараз грає: {}", now_playing_label(app, source));
-            items.push(Box::new(MenuItem::with_id(app, "now-playing", &label, false, None::<&str>)?));
-            items.push(Box::new(Separator::new(app)?));
-        }
-    }
-
-    // Playback controls
-    let play_label = if player.state == PlaybackState::Playing { "Пауза" } else { "Грати" };
-    items.push(Box::new(MenuItem::with_id(app, "primary-playback", play_label, true, None::<&str>)?));
-
-    if player.state != PlaybackState::Stopped {
-        items.push(Box::new(MenuItem::with_id(app, "stop-playback", "Зупинити", true, None::<&str>)?));
-    }
-
-    items.push(Box::new(Separator::new(app)?));
-
-    // Recording info (conditional)
-    if active_recordings > 0 {
-        let rec_label = format!("● Записи: {} активних", active_recordings);
-        items.push(Box::new(MenuItem::with_id(app, "recording-info", &rec_label, false, None::<&str>)?));
-        items.push(Box::new(MenuItem::with_id(app, "stop-all", "Зупинити всі записи", true, None::<&str>)?));
-        items.push(Box::new(Separator::new(app)?));
-    }
-
-    // Window toggle
-    let toggle_label = if window_visible { "Приховати Tapir" } else { "Показати Tapir" };
-    items.push(Box::new(MenuItem::with_id(app, "toggle-window", toggle_label, true, None::<&str>)?));
-
-    items.push(Box::new(Separator::new(app)?));
-    items.push(Box::new(MenuItem::with_id(app, "quit", "Вихід", true, None::<&str>)?));
-
-    let menu = Menu::with_items(app, &items.iter().map(|i| i.as_ref()).collect::<Vec<_>>())?;
-    tray.set_menu(Some(menu))?;
-    Ok(())
-}
-```
-
-#### Обробка кліків
-
-```rust
-// Left click — toggle window visibility
-.on_tray_icon_event(|tray, event| {
-    if let TrayIconEvent::Click { button: MouseButton::Left, .. } = event {
-        let window = tray.app_handle().get_webview_window("main").unwrap();
-        if window.is_visible().unwrap_or(false) {
-            let _ = window.hide();
-        } else {
-            let _ = window.show();
-            let _ = window.set_focus();
-        }
-    }
-})
-
-// Menu item clicks
-.on_menu_event(|app, event| {
-    match event.id().as_ref() {
-        "primary-playback" => { /* invoke toggle_playback command */ }
-        "stop-playback"   => { /* invoke stop_playback command */ }
-        "stop-all"        => { /* invoke stop_all_recordings command */ }
-        "toggle-window"   => { /* show/hide main window */ }
-        "quit"            => { /* confirm if recordings active, then app.exit(0) */ }
-        _ => {}
-    }
-})
-```
-
-#### Тости трею (сповіщення)
-
-При зміні треку (якщо профільний `ui.trayNotificationsTrackChange` увімкнено):
-- **Title:** назва станції
-- **Body:** "Artist — Title"
-- Через `tauri-plugin-notification` (`tray/notify.rs`). Balloon tip `Shell_NotifyIconW`
-  **не** використовується: Windows 10+ перетворює його на toast і мовчки викидає, поки
-  AUMID не зареєстровано — тому AUMID пишеться в `HKCU` при запуску
-- Throttle: не частіше ніж раз на 3 секунди (ICY metadata flicker)
+- **Меню перебудовується на зміну стану**, а не будується раз. Що показувати й коли
+  — `src-tauri/src/tray/menu.rs`.
+- **Підписи меню й тостів беруться з нативного словника** (`i18n.rs`), не з
+  фронтенду: трей живе й тоді, коли вікна на екрані немає
+  ([ADR](decisions/2026-08-17-native-layer-localisation.md)).
+- **Тости — через `tauri-plugin-notification`, з AUMID у `HKCU`.** Balloon tip
+  `Shell_NotifyIconW` не годиться: Windows 10+ перетворює його на toast і мовчки
+  викидає, поки AUMID не зареєстровано.
+- Категорія тоста вимикається прапорцем лише тоді, коли подія лишає інший слід
+  ([ADR](decisions/2026-08-17-tray-toast-categories.md)).
 
 ---
 
 ## 12. Security
 
-### CSP (Content Security Policy)
+### CSP
 
-```
-default-src 'self';
-script-src 'self';
-style-src 'self' 'unsafe-inline';
-connect-src ipc: http://ipc.localhost http://tauri.localhost;
-```
+Webview **узагалі не ходить у мережу**: у `connect-src` немає жодного зовнішнього
+хоста, лише IPC і asset-протокол Tauri. Radio Browser API і аудіопотоки йдуть із
+Rust через `reqwest`. Зовнішніх скриптів немає; `unsafe-inline` лишений тільки для
+стилів (React Aria, Tailwind). Сам рядок політики — `tauri.conf.json`.
 
-- Ніяких зовнішніх скриптів
-- `unsafe-inline` для динамічних стилів (React Aria, Tailwind)
-- `ipc:` + `http://ipc.localhost` — Tauri IPC комунікація (invoke, events)
-- `http://tauri.localhost` — Tauri asset protocol
-- **Жодного зовнішнього хоста в `connect-src`**: webview узагалі не ходить у мережу.
-  Radio Browser API і аудіопотоки йдуть із Rust через `reqwest`
+### IPC
 
-### IPC Security
+Capabilities (`src-tauri/capabilities/default.json`) — мінімальний набір: ядро
+плюс ті плагіни, до яких звертається webview. Плагінів `shell`, `http`, `fs` у
+застосунку немає: файли, мережа й запуск програм живуть у Rust, тож у webview нема
+чого дозволяти. Чому саме так — [tech-stack.md](tech-stack.md), «Розглянуто й
+відхилено».
 
-- Capabilities (`default.json`) — мінімальний набір: ядро (`core:*`) плюс чотири плагіни,
-  до яких звертається webview: `dialog`, `log`, `global-shortcut`, `notification`. П'ятий
-  підключений плагін, `single-instance`, працює цілком у Rust і дозволу не потребує
-- Плагінів `shell`, `http`, `fs` у застосунку немає — файли, мережа й запуск програм
-  живуть у Rust, тож у webview просто нема чого дозволяти. Чому саме так —
-  [tech-stack.md](tech-stack.md), «Розглянуто й відхилено»
+### Імена файлів
 
-### Файлова безпека
+Політика одна: **Tapir ніколи не падає на поганому імені — він завжди віддає
+придатне**. Заборонений символ **замінюється**, а не зрізається (зрізання зліпило б
+різні назви в одну); зарезервоване ім'я Windows дістає суфікс; порожній результат
+стає `_untitled`; колізія дістає числовий суфікс без перезапису; надто довге ім'я
+обрізається зі збереженням розширення. Шляхи з `..` відхиляються.
 
-- Path traversal prevention: відхиляти шляхи з `..`
-- Колізії імен: числовий суфікс `_2`, `_3` (без перезапису)
+Unicode NFC-нормалізації **немає** — крейт прибрано 2026-09-04 як мертвий: жоден
+шлях коду його не викликав.
 
-### sanitize.rs — детальна специфікація
-
-#### Заборонені символи
-
-Замінюються на `_`:
-
-| Символ | Опис |
-|--------|------|
-| `\` | backslash (дозволений лише як роздільник теки у шаблоні) |
-| `/` | slash |
-| `:` | colon |
-| `*` | asterisk |
-| `?` | question mark |
-| `"` | double quote |
-| `<` | less than |
-| `>` | greater than |
-| `\|` | pipe |
-| `\0`–`\x1F` | control characters |
-
-#### Зарезервовані імена Windows
-
-Наступні імена (без урахування регістру, з або без розширення) додають суфікс `_`:
-
-`CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`
-
-Приклад: `CON.mp3` → `CON_.mp3`, `nul` → `nul_`
-
-#### Нормалізація
-
-1. Trailing пробіли та крапки обрізаються з кожного компонента шляху
-2. Порожній результат після санітизації → замінюється на `_untitled`
-
-Unicode NFC-нормалізації **немає**: крейт `unicode-normalization` прибрано
-2026-09-04 як мертвий — жоден шлях коду його не викликав.
-
-#### Обмеження довжини
-
-- Максимальна довжина одного компонента (ім'я файлу або теки): **255** символів
-- Якщо довше → обрізати до 251 + зберегти розширення (до 4 символів)
-- Максимальна довжина повного шляху: **259** символів (Windows MAX_PATH - 1)
-- Якщо повний шлях перевищує ліміт → обрізати компонент файлу, зберігаючи розширення
-
-#### Алгоритм
-
-```rust
-pub fn sanitize_filename(raw: &str) -> String {
-    let replaced = replace_forbidden_chars(raw, '_');
-    let trimmed = replaced.trim_end_matches([' ', '.'].as_ref()).to_string();
-    let safe = avoid_reserved_names(&trimmed);
-    if safe.is_empty() { "_untitled".to_string() } else { truncate_component(safe, 255) }
-}
-
-pub fn resolve_collision(path: &Path) -> PathBuf {
-    if !path.exists() { return path.to_path_buf(); }
-    let stem = path.file_stem().unwrap().to_str().unwrap();
-    let ext = path.extension().map(|e| format!(".", e.to_str().unwrap())).unwrap_or_default();
-    for i in 2.. {
-        let candidate = path.with_file_name(format!("{stem}_{i}{ext}"));
-        if !candidate.exists() { return candidate; }
-    }
-    unreachable!()
-}
-```
-
-#### Рендеринг шаблонів
-
-| Токен | Значення | Санітизація |
-|-------|----------|-------------|
-| `%a` | artist | sanitize_filename |
-| `%t` | title | sanitize_filename |
-| `%l` | album | sanitize_filename |
-| `%s` | station name | sanitize_filename |
-| `%n` | track number (sequential, per recording session) | digits only |
-| `%d` | date `YYYY-MM-DD` | safe as-is |
-| `%time` | time `HH-MM-SS` | safe as-is (дефіси замість двокрапок) |
-
-Кожен токен санітизується окремо, потім збирається повний шлях. `\` у шаблоні інтерпретується як роздільник теки. Після збірки — перевірка загальної довжини шляху.
+Перелік символів, зарезервованих імен і лімітів — `src-tauri/src/sanitize.rs`
+(15 тестів). Синтаксис шаблонів імен для користувача — [довідка](help/uk/templates.md).
 
 ---
 
-## 13. Доступність (Architectural Patterns)
+## 13. Доступність
 
-### Screen Reader Announcements
+Архітектурних патернів доступності цей документ не описує — вони мають власників:
 
-Централізований компонент `LiveAnnouncer`:
+| Що | Де |
+|---|---|
+| Вимоги до кожного екрана, оголошення, відомі обмеження | [accessibility.md](accessibility.md) |
+| Реєстр гарячих клавіш (першоджерело) | [keyboard-shortcuts.md](keyboard-shortcuts.md) |
+| Видимий носій промовленого факту | [ADR 2026-08-31](decisions/2026-08-31-visible-carrier-for-announced-facts.md) |
+| Вибір поверхні відгуку: вухо, вікно, система | [ADR 2026-09-01](decisions/2026-09-01-response-surfaces-ear-window-system.md) |
 
-```tsx
-// components/common/LiveAnnouncer.tsx
-// Єдиний aria-live контейнер для всіх dynamic announcements
-
-// stores/announcer.ts
-import { atom } from 'nanostores';
-
-interface Announcement {
-  message: string;
-  priority: 'polite' | 'assertive';
-}
-
-export const $announcement = atom<Announcement | null>(null);
-
-export function announce(message: string, priority: 'polite' | 'assertive' = 'polite') {
-  $announcement.set({ message, priority });
-}
-```
-
-### Що оголошується для screen reader
-
-| Подія | Рівень | Текст |
-|---|---|---|
-| Track changed | `polite` | "Зараз грає: {artist} — {title}" |
-| Recording started | `assertive` | "Запис розпочато: {station}" |
-| Recording stopped | `assertive` | "Запис зупинено: {station}" |
-| Connection error | `assertive` | "Помилка з'єднання: {station}" |
-| Reconnecting | `polite` | "Перепідключення: {station}, спроба {n}" |
-| Scheduled recording started | `assertive` | "Плановий запис розпочато: {station}" |
-| Scheduled recording completed | `assertive` | "Плановий запис завершено: {station}" |
-| Wishlist match | `assertive` | "Знайдено бажану пісню: {title}" |
-| Disk space low | `assertive` | "Увага: мало місця на диску ({gb} ГБ)" |
-| Profile changed | `polite` | "Профіль змінено: {name}" |
-
-### Keyboard Navigation
-
-```
-Tab order (main window):
-  [Activity Bar] → [Section Content] → [Player Controls] → [Status Bar]
-
-Zone navigation (F6 / Shift+F6):
-    F6 — наступна зона: Activity Bar → Section Content → Player → Status Bar (cycle; Player пропускається у Фазі 1 або коли прихований)
-  Shift+F6 — попередня зона
-  • Запам'ятовує останній фокусований елемент у кожній зоні
-    • Пропускає приховані або неімплементовані зони (Player прихований якщо нічого не грає або ще не реалізований у поточній фазі)
-  • Оголошує назву зони через LiveAnnouncer (assertive)
-  • Не працює всередині діалогів (Settings, AddStream)
-
-Within Activity Bar:
-  Arrow Up/Down — перемикання секцій
-  Ctrl+1...Ctrl+5 — пряма навігація (5 робочих секцій)
-
-Global:
-  Ctrl+K — Command Palette (fuzzy search actions, stations, songs)
-  Ctrl+, — Налаштування (повноекранний діалог)
-
-Within Streams Section:
-  [Stream Table] → [Add Stream Button] → [Start All Button]
-
-Within Stream Table:
-  Arrow Up/Down — рядки
-  Arrow Left/Right — стовпці
-  Enter — подвійний клік (запис або відтворення)
-  Space — toggle recording
-  Delete — видалити потік
-  Context Menu key — контекстне меню
-
-Global hotkeys (configurable):
-  Ctrl+Shift+R — Start/stop recording (active profile)
-  Ctrl+Shift+K — Toggle playback (source-aware: stream → stop; file → pause/resume at position; cold start → resume last source)
-  Ctrl+Alt+Up — Volume up
-  Ctrl+Alt+Down — Volume down
-  Ctrl+Shift+H — Show/hide window
-  Ctrl+Shift+S — Stop all recordings
-  Ctrl+Alt+Left/Right — Previous/next track
-```
+Єдине, що належить саме архітектурі: **вікно мусить бути на передньому плані ОС до
+того, як ініціалізується webview** — інакше NVDA не чіпляється до документа. Це
+формує порядок у `setup()` (§5.3), а не розмітку.
 
 ---
 
@@ -1214,49 +530,32 @@ Global hotkeys (configurable):
 
 | Рішення | Чому | Що втрачаємо |
 |---|---|---|
-| `decorations: true` | NVDA mouse tracking працює коректно | Кастомний title bar неможливий |
-| React 19 (не Svelte 5) | React Aria — єдина бібліотека з JAWS/NVDA тестуванням | Більший бандл (~80–130 KB gzip vs ~30–50 KB) |
-| Запис raw bytes (без decode) | Мінімальне CPU для 20+ потоків | Не можемо нормалізувати рівень гучності під час запису |
-| symphonia (без HE-AAC v2/AAC-ELD; HE-AAC v1 підтримується) | Pure Rust, без FFmpeg dependency | Деякі станції 32-64 kbps не програються (але записуються нормально) |
-| Portable data layout | Файли поряд з EXE, працює з флешки | `current_exe()` може повернути різні шляхи через symlinks |
-| Один лог-файл | Простота, зрозумілість для користувача | Менш зручний аналіз окремих підсистем (можна компенсувати prefixed записами) |
+| `decorations: true` | NVDA коректно відстежує мишу | Кастомний title bar неможливий |
+| React 19 (не Svelte 5) | React Aria — єдина бібліотека з тестуванням на JAWS/NVDA | Більший бандл |
+| Запис raw bytes (без декодування) | Мінімальний CPU на багатьох потоках | Не можемо нормалізувати гучність під час запису |
+| symphonia (без HE-AAC v2/AAC-ELD) | Pure Rust, без залежності від FFmpeg | Частина станцій 32–64 kbps не програється (але записується) |
+| Portable-розкладка | Працює з флешки | `current_exe()` може віддати різні шляхи через symlink |
+| Один лог на всі підсистеми | Простота для користувача | Аналіз окремої підсистеми менш зручний — компенсується префіксами |
+| Плеєр і рекордер — окремі з'єднання (§5.2) | Стани не зв'язані: пауза не тисне на запис | Два з'єднання до станції замість одного |
 
 ---
 
 ## 15. Діаграма залежностей модулів
 
-```
-                    ┌──────────────┐
-                    │  commands/*  │  (Tauri IPC entry points)
-                    └──────┬───────┘
-                           │ delegates to
-          ┌────────────────┼──────────────────┐
-          │                │                  │
-    ┌─────▼─────┐   ┌─────▼─────┐    ┌──────▼──────┐
-    │  stream/  │   │  player/  │    │  scheduler/ │
-    │  manager  │   │  engine   │    │  timer      │
-    └─────┬─────┘   └─────┬─────┘    └──────┬──────┘
-          │               │                  │
-    ┌─────▼─────┐   ┌─────▼─────┐           │
-    │ connection│   │   rodio   │    uses stream/manager
-    │  recorder │   │ symphonia │    to start/stop recordings
-    │  splitter │   └───────────┘
-    └─────┬─────┘
-          │
-    ┌─────▼─────┐   ┌───────────┐   ┌───────────┐
-    │   tags/   │   │ wishlist/ │   │ postproc/ │
-    │  writer   │   │ matcher   │   │  runner   │
-    └───────────┘   └───────────┘   └───────────┘
-          │                                │
-    ┌─────▼─────────────────────────────────▼────┐
-    │  settings  │  profile  │  portable  │  sanitize  │
-    └────────────────────────────────────────────────────┘
-```
+Знято 2026-09-04: ASCII-граф дублював §2 і містив модуль, якого в коді немає.
+Групи модулів і те, чим вони дивують, — §2; залежності від крейтів — `Cargo.toml`;
+модель задач — §7.
 
 ---
 
-## 16. Рекомендації щодо подальших документів
+## 16. Суміжні документи
 
-1. **Data Models** — JSON schemas для `GlobalSettings`, `Profile`, `StreamInfo`, `SavedSong`, `ScheduledRecording`
-2. **Accessibility Spec** — ARIA-розмітка для кожного екрану (Streams, Player, Browser, Songs, Schedule, Settings)
-3. **Implementation Plan** — фази MVP → v1 з конкретними milestones
+| Документ | Що дає |
+|---|---|
+| [data-models.md](data-models.md) | Структури даних, формати файлів, розкладка на диску |
+| [tech-stack.md](tech-stack.md) | Вибір технологій і обґрунтування, зокрема відхилені |
+| [accessibility.md](accessibility.md) | Вимоги доступності — не опційні |
+| [keyboard-shortcuts.md](keyboard-shortcuts.md) | Реєстр гарячих клавіш — першоджерело |
+| [implementation-phases.md](implementation-phases.md) | Фазовий roadmap, зокрема незакрита фаза 3H |
+| [decisions/](decisions/) | ADR: рішення, їхні межі й відкинуті альтернативи |
+| [backlog/README.md](backlog/README.md) | Черга задач і формат записів |

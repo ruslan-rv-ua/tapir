@@ -114,7 +114,7 @@ pub struct PlayerSession {
 
 ## Документи
 
-- [README.md:126](../../../README.md#L126) · [docs/accessibility.md:919](../../accessibility.md#L919) · [docs/architecture.md:1193](../../architecture.md#L1193) · [docs/data-models.md:52](../../data-models.md#L52) (і :985, §3.7 PlayerSession :621) · [docs/keyboard-shortcuts.md:43](../../keyboard-shortcuts.md#L43)
+- [README.md:126](../../../README.md#L126) · [docs/accessibility.md:919](../../accessibility.md#L919) · [docs/architecture.md](../../architecture.md) (§13 переїхав у `keyboard-shortcuts.md` 2026-09-04) · [docs/data-models.md:52](../../data-models.md#L52) (і :985, §3.7 PlayerSession :621) · [docs/keyboard-shortcuts.md:43](../../keyboard-shortcuts.md#L43)
 - Код: [src-tauri/src/shortcuts.rs](../../../src-tauri/src/shortcuts.rs) (`toggle_playback`), [src-tauri/src/settings.rs](../../../src-tauri/src/settings.rs) (`default_hk_toggle_playback` + тести), [src-tauri/src/player/engine.rs](../../../src-tauri/src/player/engine.rs) (`PlaybackSource`, stop/play_live/play_file/seek), [src-tauri/src/profile.rs](../../../src-tauri/src/profile.rs) (`PlayerSession`), [src-tauri/src/app_state.rs](../../../src-tauri/src/app_state.rs), [src-tauri/src/tray/](../../../src-tauri/src/tray/)
 - Пам'ять: [[global-hotkey-defaults-decision]], [[nvda-startup-foreground]], [[live-region-inside-modals]]
 
