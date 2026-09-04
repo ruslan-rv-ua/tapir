@@ -22,7 +22,7 @@ notes:
 # Мертві залежності: stream-download, unicode-normalization, cpal, paraglide-vite
 
 > **Контекст:** знахідка аудиту 2026-09-04. Кілька залежностей компілюються, але коду
-> не служать. Залежить від [icy-metadata-reader-dedup](p1-icy-metadata-reader-dedup.md):
+> не служать. Залежить від [icy-metadata-reader-dedup](done/p1-icy-metadata-reader-dedup.md):
 > там вирішується, чи потрібна NFC-нормалізація метаданих.
 
 ## Опис
@@ -31,10 +31,9 @@ notes:
 
 - `stream-download = "0.24"` з features `reqwest-rustls`: у `src-tauri/src` жодного
   `stream_download`. Крейт тягне власний стек буферизації в кожну збірку даремно.
-- `unicode-normalization = "0.1"`: єдиний виклик `.nfc()` стоїть у
-  `connection::decode_icy_metadata`, яка позначена `allow(dead_code)` і нізвідки не
-  викликається. Якщо запис про ICY-читач NFC не задіє, крейт іде геть разом зі
-  scaffold-ом.
+- `unicode-normalization = "0.1"`: **умову знято 2026-09-04** — запис про ICY-читач
+  NFC не задіяв і scaffold `decode_icy_metadata` видалив разом із єдиним викликом
+  `.nfc()`. У `src-tauri/src` жодного `unicode_normalization` немає; крейт іде геть.
 - `cpal = "0.15"` як пряма залежність: код звертається лише до `rodio::cpal`, який
   rodio реекспортує. Прибрати й переконатися, що версія cpal у lock-файлі не
   змінилась, а `list_output_devices` і `open_device_sink` компілюються.

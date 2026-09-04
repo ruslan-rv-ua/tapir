@@ -3,11 +3,12 @@ slug: icy-metadata-reader-dedup
 title: "ICY-читач один раз: IcyMetadataReader замість двох ручних циклів"
 priority: P1
 type: planned
-status: ready
+status: done
 effort: M
 kind: bug
 target: 0.1.0
 updated: 2026-09-04
+completed: 2026-09-04
 a11y: false
 depends_on: []
 blocks: [dead-dependencies]
@@ -20,27 +21,28 @@ gates: [cargo test, cargo clippy]
 notes:
   - "Аудит 2026-09-04: цикл metaint і структура ReqwestSyncReader продубльовані в плеєрі й рекордері, розбір StreamTitle існує в трьох копіях. Крейт icy-metadata 0.6 уже в залежностях і має IcyMetadataReader."
   - "Обидва живі парсери ріжуть назву на першому апострофі: «Don't Stop» стає «Don». Це баг у назвах файлів, у wishlist-збігах і в тому, що чує людина."
+  - "Закрито 2026-09-04 після ручного прогону на живому ефірі (SomaFM, metaint 16000): та сама пара в плеєрі й рекордері, межа треку на місці, обрив без падіння."
 ---
 
 # ICY-читач один раз: IcyMetadataReader замість двох ручних циклів
 
 > **Контекст:** знахідка аудиту «велосипеди й костилі» 2026-09-04. Рішення ухвалено:
 > замінити два ручні цикли на `IcyMetadataReader` з крейта, який уже підключено.
-> Читати першими [connection.rs](../../src-tauri/src/stream/connection.rs) і секцію
+> Читати першими [connection.rs](../../../src-tauri/src/stream/connection.rs) і секцію
 > «Технічні деталі» нижче.
 
 ## Опис
 
 Розбір ефіру Icecast/SHOUTcast написано двічі, рядок у рядок:
 
-- [engine.rs#L611](../../src-tauri/src/player/engine.rs#L611) — `play_live`: структура
+- [engine.rs](../../../src-tauri/src/player/engine.rs) — `play_live`: структура
   `ReqwestSyncReader`, лічильник `bytes_until_meta`, читання блоку `len * 16`, вкладена
   функція `parse_stream_title`;
-- [manager.rs#L794](../../src-tauri/src/stream/manager.rs#L794) — `recording_task`: та
+- [manager.rs](../../../src-tauri/src/stream/manager.rs) — `recording_task`: та
   сама структура, той самий цикл, своя `parse_stream_title` у
-  [manager.rs#L544](../../src-tauri/src/stream/manager.rs#L544).
+  [manager.rs](../../../src-tauri/src/stream/manager.rs).
 
-Третя копія розбору лежить у [connection.rs#L110](../../src-tauri/src/stream/connection.rs#L110)
+Третя копія розбору лежить у [connection.rs](../../../src-tauri/src/stream/connection.rs)
 як scaffold під `allow(dead_code)` разом із `decode_icy_metadata`, яку ніхто не викликає.
 
 Крейт `icy-metadata` 0.6 підключено, але з нього беруться лише `IcyHeaders` і
@@ -58,21 +60,21 @@ notes:
 
 ## Критерії готовності
 
-- [ ] `docs/help/` — підтвердити, що [recording.md](../help/en/recording.md) змін не
+- [x] `docs/help/` — підтвердити, що [recording.md](../../help/en/recording.md) змін не
       потребує: видима поведінка та сама, назви лише перестають обрізатися
-- [ ] Лічильник metaint і читання блоку метаданих існують у коді **один** раз, і це
+- [x] Лічильник metaint і читання блоку метаданих існують у коді **один** раз, і це
       `IcyMetadataReader`; `grep bytes_until_meta` порожній
-- [ ] `ReqwestSyncReader` оголошено один раз у спільному модулі, обидва споживачі
-      беруть його звідти
-- [ ] Розбір `StreamTitle` існує один раз, з тестами; серед тестів є `Don't Stop`,
+- [x] Читач оголошено один раз у спільному модулі — під іменем `AirReader`, і
+      обидва споживачі беруть його не прямо, а через `connection::pump_air`
+- [x] Розбір `StreamTitle` існує один раз, з тестами; серед тестів є `Don't Stop`,
       `Artist - Title`, порожня назва, назва без ` - `, хвіст із `\0`
-- [ ] Перші байти з `connect` (поле `prefix`) і далі йдуть у читач першими: ADR
+- [x] Перші байти з `connect` (поле `prefix`) і далі йдуть у читач першими: ADR
       «невідомий формат» не зламано, `format::detect` бачить ті самі байти
-- [ ] Плеєр і рекордер дістають ту саму пару artist/title з того самого блоку; події
+- [x] Плеєр і рекордер дістають ту саму пару artist/title з того самого блоку; події
       `track-changed`, SMTC і сплітер працюють як раніше
-- [ ] Scaffold-функції в `connection.rs` (`decode_icy_metadata`, `parse_stream_title`)
+- [x] Scaffold-функції в `connection.rs` (`decode_icy_metadata`, `parse_stream_title`)
       або задіяні, або видалені разом із `allow(dead_code)`
-- [ ] `cargo test`, `cargo clippy` без помилок
+- [x] `cargo test`, `cargo clippy` без помилок
 
 ## Прийняті рішення
 
@@ -96,7 +98,7 @@ Callback викликається з потоку читача, тож у ньо
 
 ## Документи
 
-- [connection.rs](../../src-tauri/src/stream/connection.rs) — `IcyConnection`, scaffold-и
-- [engine.rs](../../src-tauri/src/player/engine.rs), [manager.rs](../../src-tauri/src/stream/manager.rs) — два ручні цикли
-- [ADR: невідомий формат — відмовити, а не вгадати](../decisions/2026-08-31-refuse-unknown-format-rather-than-guess.md) — чому `prefix` мусить іти першим
-- [dead-dependencies](p2-dead-dependencies.md) — доля `unicode-normalization` залежить від рішення про NFC тут
+- [connection.rs](../../../src-tauri/src/stream/connection.rs) — `IcyConnection`, scaffold-и
+- [engine.rs](../../../src-tauri/src/player/engine.rs), [manager.rs](../../../src-tauri/src/stream/manager.rs) — два ручні цикли
+- [ADR: невідомий формат — відмовити, а не вгадати](../../decisions/2026-08-31-refuse-unknown-format-rather-than-guess.md) — чому `prefix` мусить іти першим
+- [dead-dependencies](../p2-dead-dependencies.md) — доля `unicode-normalization` залежить від рішення про NFC тут
