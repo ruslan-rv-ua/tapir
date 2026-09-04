@@ -3,14 +3,15 @@ slug: paraglide-native-plurals
 title: "Множина через варіанти Paraglide замість суфіксів ключів і п'яти Intl.PluralRules"
 priority: P2
 type: research
-status: ready
+status: done
 effort: M
 kind: chore
 target: 0.1.0
 updated: 2026-09-04
+completed: 2026-09-04
 a11y: false
 depends_on: []
-blocks: []
+blocks: [plural-form-single-source, crash-resume-plural-english-rules]
 touches:
   - src/i18n/messages/uk.json
   - src/i18n/messages/en.json
@@ -19,10 +20,12 @@ touches:
   - src/components/songs/SongsPanel.tsx
   - src/components/layout/StatusBar.tsx
   - src/components/profile/ProfileItem.tsx
+  - src/components/streams/StreamTransferDialog.tsx
   - src/hooks/useCrashResumeFeedback.ts
   - package.json
 gates: [cargo test, pnpm test, pnpm vite:build]
 notes:
+  - "Дослідження закрито 2026-09-04: рекомендація (в), звіт у секції «Результати дослідження». Наслідки — plural-form-single-source і crash-resume-plural-english-rules."
   - "Аудит 2026-09-04: 14 родин ключів із суфіксами _zero/_one/_few/_many; Intl.PluralRules створюється в п'яти компонентах із запасним document.documentElement.lang || uk; Rust тримає власне правило CLDR для uk і мапить en у one/many."
   - "Paraglide JS 2.x підтримує варіанти з селектором plural у форматі повідомлень inlang; проєкт на 2.15.3, у реєстрі 2.25.0."
   - "Ті самі JSON читає Rust-шар трею (ADR native-layer-localisation). Масивна форма варіантів зламає його парсер, і cargo test це впіймає: перед міграцією потрібне рішення для другого споживача."
@@ -30,9 +33,11 @@ notes:
 
 # Множина через варіанти Paraglide замість суфіксів ключів і п'яти Intl.PluralRules
 
-> **Контекст:** знахідка аудиту 2026-09-04. Форми множини реалізовано власною
-> конвенцією поверх Paraglide, хоча Paraglide 2 має варіанти з `plural`. Дослідження:
-> чи покриває нативний механізм усі випадки Tapir, і що робити з Rust-споживачем.
+> **Контекст:** виконано. Обрано варіант **(в)** — один хелпер, JSON і `i18n.rs`
+> недоторкані. Читати одразу «Результати дослідження» в кінці: опис вище описує стан
+> на момент постановки і в трьох місцях **розходиться з кодом** (шість сайтів, не
+> п'ять; запасне значення англійське, не `"uk"`; одинадцять справжніх родин, не
+> чотирнадцять) — розбіжності розібрані у звіті.
 
 ## Опис
 
@@ -47,7 +52,7 @@ notes:
   джерелами локалі: `settings?.language`, `document.documentElement.lang`, `getLocale()`
   і запасне `"uk"`. Один і той самий алгоритм у п'яти копіях із трьома різними
   входами.
-- **Rust** ([i18n.rs](../../src-tauri/src/i18n.rs)) читає ті самі JSON і має власне
+- **Rust** ([i18n.rs](../../../src-tauri/src/i18n.rs)) читає ті самі JSON і має власне
   правило `one / few / many` для `uk` та `one / many` для `en`, плюс окремий випадок
   `zero` як «випадок застосунку, а не форма мови».
 
@@ -58,36 +63,37 @@ Paraglide 2 підтримує варіанти в самому повідомл
 
 ## Що з'ясувати
 
-- [ ] Чи дає inlang-формат точний збіг за значенням `count=0` поруч із категоріями
+- [x] Чи дає inlang-формат точний збіг за значенням `count=0` поруч із категоріями
       множини, щоб зберегти окремий текст для нуля («Запис не йшов»), або нуль
       доведеться розводити в коді
-- [ ] Англійська: CLDR дає `one / other`, а поточні ключі `_many`; при міграції
+- [x] Англійська: CLDR дає `one / other`, а поточні ключі `_many`; при міграції
       `en` мусить дістати `other`, і Rust-мапінг `en` у `many` теж
-- [ ] Rust-споживач: `i18n::parse` десеріалізує JSON у `HashMap<String, String>` і
+- [x] Rust-споживач: `i18n::parse` десеріалізує JSON у `HashMap<String, String>` і
       впаде на масиві. Варіанти: (а) навчити `i18n.rs` читати форму варіантів для
       своїх чотирьох родин; (б) мігрувати лише родини, яких Rust не читає, а
       `record_all_announce`, `tray_stop_all`, `active_recordings` і
       `tray_quit_confirm_scheduled` лишити на суфіксах; (в) не мігрувати, а звести
       п'ять `Intl.PluralRules` в один хелпер `pluralize(key, count)`
-- [ ] Оновлення `@inlang/paraglide-js` з 2.15.3 до 2.25.0: чи змінився вихідний код
+- [x] Оновлення `@inlang/paraglide-js` з 2.15.3 до 2.25.0: чи змінився вихідний код
       для `messages.js` і `runtime.js` так, що це зачіпає `typecheck-gate`
-- [ ] Чи бачить `pnpm test` нові ключі без перегенерації (відома пастка: vitest без
+- [x] Чи бачить `pnpm test` нові ключі без перегенерації (відома пастка: vitest без
       плагіна paraglide читає те, що лежить на диску)
 
 ## Критерії готовності
 
-- [ ] `docs/help/` — запис видимої поведінки не змінює
-- [ ] Звіт у цьому записі з відповідями на кожне питання вище і рекомендацією
+- [x] `docs/help/` — запис видимої поведінки не змінює
+- [x] Звіт у цьому записі з відповідями на кожне питання вище і рекомендацією
       серед (а), (б), (в)
-- [ ] Якщо рекомендація (а) або (б): окремий запис `type: planned` з переліком родин
-      і планом для `i18n.rs`; сторож `every_plural_family_has_all_four_forms_in_both_locales`
-      переписується під нову форму
-- [ ] Якщо (в): той самий запис, але без змін у JSON
+- [x] ~~Якщо рекомендація (а) або (б)~~ — не застосовно, обрано (в): `i18n.rs` і
+      сторож `every_plural_family_has_all_four_forms_in_both_locales` лишаються як є
+- [x] Якщо (в): той самий запис, але без змін у JSON —
+      [plural-form-single-source](../p2-plural-form-single-source.md); попутну живу ваду
+      винесено окремо в [crash-resume-plural-english-rules](../p2-crash-resume-plural-english-rules.md)
 
 ## Документи
 
-- [ADR: локалізація нативного шару](../decisions/2026-08-17-native-layer-localisation.md) — чому Rust читає ті самі JSON
-- [i18n.rs](../../src-tauri/src/i18n.rs) — правило множини й тест на чотири форми
+- [ADR: локалізація нативного шару](../../decisions/2026-08-17-native-layer-localisation.md) — чому Rust читає ті самі JSON
+- [i18n.rs](../../../src-tauri/src/i18n.rs) — правило множини й тест на чотири форми
 - документація варіантів inlang: https://github.com/opral/paraglide-js/blob/main/docs/variants.md
 
 ## Результати дослідження (2026-09-04)
@@ -139,8 +145,8 @@ const uk_streams_count = (i) => {const countPlural = registry.plural("uk", i?.co
 `5→потоків`, `21→потік`, `22→потоки`. Подвійне порівняння з числом і рядком — це рівно
 той фікс, який приїхав у **2.15.3** («Fix numeric input match inference so generated
 message typings accept both numeric and string literal forms»), тобто поточні виклики зі
-`String(count)` ([SongsPanel.tsx:138](../../src/components/songs/SongsPanel.tsx:138),
-[useCrashResumeFeedback.ts:30](../../src/hooks/useCrashResumeFeedback.ts:30)) працювали б
+`String(count)` ([SongsPanel.tsx:138](../../../src/components/songs/SongsPanel.tsx:138),
+[useCrashResumeFeedback.ts:30](../../../src/hooks/useCrashResumeFeedback.ts:30)) працювали б
 без правок. Тип входу лишається `NonNullable<unknown>`, бо `count` має catchall у решті
 варіантів (`jsdoc-types.js::resolveInputType`) — `typecheck` не звужується.
 
@@ -164,17 +170,17 @@ message typings accept both numeric and string literal forms»), тобто по
 цілими числами вона недосяжна.
 
 Наслідки при міграції: `en`-варіанти отримують `countPlural=*` замість `_many`, а
-`plural_suffix` у Rust ([i18n.rs:155](../../src-tauri/src/i18n.rs:155)) — `Locale::En =>
+`plural_suffix` у Rust ([i18n.rs:155](../../../src-tauri/src/i18n.rs:155)) — `Locale::En =>
 if n == 1 { "one" } else { "other" }` разом із тестом `english_plural_is_one_or_many`
-([i18n.rs:253](../../src-tauri/src/i18n.rs:253)). Зауваження на полях:
+([i18n.rs:253](../../../src-tauri/src/i18n.rs:253)). Зауваження на полях:
 `profile_stream_count` **уже** живе на `_other`, а не на `_zero`
-([uk.json](../../src/i18n/messages/uk.json)), тобто одна з чотирнадцяти родин має іншу
+([uk.json](../../../src/i18n/messages/uk.json)), тобто одна з чотирнадцяти родин має іншу
 форму, ніж описано в записі.
 
 ### 3. Rust-споживач: варіант (б) у нинішньому формулюванні неможливий
 
 `parse` десеріалізує **цілий файл** у `HashMap<String, String>`
-([i18n.rs:63](../../src-tauri/src/i18n.rs:63)) і падає на першому ж масиві — байдуже,
+([i18n.rs:63](../../../src-tauri/src/i18n.rs:63)) і падає на першому ж масиві — байдуже,
 читає Rust цей ключ чи ні. Перевірено окремим крейтом на `serde_json` 1:
 
 ```
@@ -185,9 +191,9 @@ HashMap<String,Value>:  OK
 Тобто **не існує підмножини родин, яку можна мігрувати, не торкаючись `i18n.rs`**.
 Оскільки `parse` викликається з `OnceLock` при першому ж `lookup`, паніка накриває всі
 нативні поверхні, а в тестах — не один сторож, а кожен тест, який заходить в i18n:
-`every_key_exists_in_both_locales` ([i18n.rs:215](../../src-tauri/src/i18n.rs:215)),
+`every_key_exists_in_both_locales` ([i18n.rs:215](../../../src-tauri/src/i18n.rs:215)),
 `every_plural_family_has_all_four_forms_in_both_locales`
-([i18n.rs:228](../../src-tauri/src/i18n.rs:228)), `locale_switches_the_string`, плюс
+([i18n.rs:228](../../../src-tauri/src/i18n.rs:228)), `locale_switches_the_string`, плюс
 тести трею через `menu.rs` і `notify.rs`.
 
 Мінімальний обсяг «навчити Rust читати варіанти» (варіант (а)):
@@ -212,13 +218,13 @@ HashMap<String,Value>:  OK
    застосунку — а він там і в налаштуваннях, і в станах), або власним матчером за
    специфічністю, який **свідомо розходиться** з семантикою paraglide. Друга реалізація
    того самого алгоритму — рівно той клас розбіжності, проти якого написано
-   [ADR](../decisions/2026-08-17-native-layer-localisation.md).
+   [ADR](../../decisions/2026-08-17-native-layer-localisation.md).
 
 Rust читає чотири родини, але лише три — через `t_plural` (`PluralKey`:
 `record_all_announce`, `tray_stop_all`, `active_recordings`,
-[i18n.rs:128](../../src-tauri/src/i18n.rs:128)); `tray_quit_confirm_scheduled_one/_many`
+[i18n.rs:128](../../../src-tauri/src/i18n.rs:128)); `tray_quit_confirm_scheduled_one/_many`
 живуть як звичайні `Key` і обираються за `len() == 1`
-([tray/notify.rs:65](../../src-tauri/src/tray/notify.rs:65)), а не за числом.
+([tray/notify.rs:65](../../../src-tauri/src/tray/notify.rs:65)), а не за числом.
 
 ### 4. Оновлення 2.15.3 → 2.25.0: для цієї задачі не потрібне
 
@@ -239,22 +245,22 @@ Rust читає чотири родини, але лише три — через
   новий файл усередині `src/`, який бачить `tsconfig.include: ["src", "build"]`.
 - **2.24.0/2.24.1**: перехід на `@inlang/sdk` v3 (+ Lix WASM). Найбільший ризик бампа —
   саме тут: плагіни підтягуються з jsDelivr за `@latest`
-  ([settings.json](../../project.inlang/settings.json)), і сумісність кешованого
+  ([settings.json](../../../project.inlang/settings.json)), і сумісність кешованого
   `plugin.inlang.messageFormat` із SDK v3 з першоджерела не встановлена.
 - **peerDependencies 2.25.0**: `vite >= 5.0.0` і `typescript >= 5.6`, обидва `optional`.
   Проєкт на `vite ^8` і `typescript ^5.7` — проходить.
 - **2.21.0** (`emitTsDeclarations` під TypeScript 7) і **2.22.0/2.23.0**
   (`experimentalPerLocaleBuild`) проєкту не стосуються: жодна з цих опцій у
-  [vite.config.ts](../../vite.config.ts) не ввімкнена.
+  [vite.config.ts](../../../vite.config.ts) не ввімкнена.
 
 Форма виклику `paraglideVitePlugin({ project, outdir })` не змінювалась.
 
 ### 5. `pnpm test` нових ключів не бачить — пастка реальна
 
-**Підтверджено з конфігів.** [vitest.config.ts](../../vitest.config.ts) свідомо не
+**Підтверджено з конфігів.** [vitest.config.ts](../../../vitest.config.ts) свідомо не
 підключає плагін paraglide (коментар там же), тож тести резолвлять те, що вже лежить у
-`src/i18n/paraglide/`. Тека в [.gitignore](../../.gitignore) — на чистому клоні її немає
-взагалі, тому [justfile](../../justfile) ставить `pnpm vite:build` **першим** у `check`.
+`src/i18n/paraglide/`. Тека в [.gitignore](../../../.gitignore) — на чистому клоні її немає
+взагалі, тому [justfile](../../../justfile) ставить `pnpm vite:build` **першим** у `check`.
 Новий або перейменований ключ без перегенерації дає `TypeError` у тесті й `TS2339` у
 `typecheck`.
 
@@ -273,19 +279,19 @@ Rust читає чотири родини, але лише три — через
 ### Розбіжності з описом запису
 
 - **Не п'ять `Intl.PluralRules`, а шість.** Пропущено
-  [StreamTransferDialog.tsx:10](../../src/components/streams/StreamTransferDialog.tsx:10)
+  [StreamTransferDialog.tsx:10](../../../src/components/streams/StreamTransferDialog.tsx:10)
   (`getLocale()`), якого немає й у `touches:`. Решта:
-  [StatusBar.tsx:58](../../src/components/layout/StatusBar.tsx:58),
-  [ProfileItem.tsx:39](../../src/components/profile/ProfileItem.tsx:39),
-  [SongsPanel.tsx:130](../../src/components/songs/SongsPanel.tsx:130),
-  [StreamsPanel.tsx:89](../../src/components/streams/StreamsPanel.tsx:89),
-  [useCrashResumeFeedback.ts:18](../../src/hooks/useCrashResumeFeedback.ts:18).
+  [StatusBar.tsx:58](../../../src/components/layout/StatusBar.tsx:58),
+  [ProfileItem.tsx:39](../../../src/components/profile/ProfileItem.tsx:39),
+  [SongsPanel.tsx:130](../../../src/components/songs/SongsPanel.tsx:130),
+  [StreamsPanel.tsx:89](../../../src/components/streams/StreamsPanel.tsx:89),
+  [useCrashResumeFeedback.ts:18](../../../src/hooks/useCrashResumeFeedback.ts:18).
 - **Запасне значення — не `"uk"`, а `"en"`.** `document.documentElement.lang || "uk"`
-  ніколи не бере праву гілку: [index.html](../../index.html) віддає `<html lang="en">`,
-  а перезаписує його лише [App.tsx:146](../../src/App.tsx:146) **після** того, як
+  ніколи не бере праву гілку: [index.html](../../../index.html) віддає `<html lang="en">`,
+  а перезаписує його лише [App.tsx:146](../../../src/App.tsx:146) **після** того, як
   резолвиться `getSettings()`.
 - **З цього виростає жива вада.** `useCrashResumeFeedback` кличеться на першому рендері
-  [App.tsx:435](../../src/App.tsx:435) і мемоїзує правила з `deps: []` — тобто назавжди
+  [App.tsx:435](../../../src/App.tsx:435) і мемоїзує правила з `deps: []` — тобто назавжди
   фіксує **англійські** правила. Українцю `select(3)` дає `other`, ланцюжок тернарників
   падає в `_many`, і замість «Відновлено 3 записи» звучить «3 записів». `StatusBar` від
   цього застрахований (створює правила щорендеру), `SongsPanel` — фактично теж
@@ -301,7 +307,7 @@ Rust читає чотири родини, але лише три — через
   `useCrashResumeFeedback` **форму** обирає `document.documentElement.lang` /
   `settings.language`, а **текст** дістає `m.*()`, тобто `getLocale()` зі стратегією
   `["cookie","globalVariable","baseLocale"]` (`baseLocale = "uk"`), яку виставляє лише
-  [GeneralTab.tsx:56](../../src/components/settings/GeneralTab.tsx:56). Це два незалежні
+  [GeneralTab.tsx:56](../../../src/components/settings/GeneralTab.tsx:56). Це два незалежні
   входи в одне речення.
 
 ### Рекомендація
