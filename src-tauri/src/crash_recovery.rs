@@ -59,11 +59,9 @@ impl SessionState {
         self.save_to(&crate::portable::state_path())
     }
 
-    /// Атомарний запис — спільний писар зі [`crate::store`]. Саме тут потрібен
-    /// його fsync перед rename: без нього при втраті живлення NTFS може
-    /// зафіксувати rename раніше за дані tmp-файлу → обрізаний state.json →
-    /// «битий» файл і порожній снапшот саме в сценарії, заради якого фіча існує.
-    /// Порядок описано в `store.rs` і живе там в одному екземплярі.
+    /// Атомарний запис — спільний писар зі [`crate::store`]. Порядок
+    /// «sync до rename» і причина, чому він критичний саме для цього файлу,
+    /// описані там і живуть в одному екземплярі.
     pub fn save_to(&self, path: &Path) -> Result<(), RadioError> {
         crate::store::write_json_atomically(path, "json.tmp", self)
     }
