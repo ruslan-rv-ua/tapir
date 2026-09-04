@@ -18,12 +18,31 @@ semver; `unscheduled` — наприкінці.
 > **Тема — чесний інтерфейс.** Усе вже побудоване доводиться до стану, у якому воно
 > не бреше й не мовчить: мертві налаштування прибрані, мовчазні відмови дістають видиму
 > поверхню, хибні мітки виправлені, обидві локалі повні.
-> Нових можливостей версія не додає. **Записів не лишилось** — черга порожня, усі
-> закриті в секції «Виконано» нижче. Чи вважати віху завершеною і тегувати збірку —
-> рішення розробника, беклог цього сам не оголошує.
+> Нових можливостей версія не додає. Черга **знову не порожня**: аудит «велосипеди й
+> костилі» 2026-09-04 додав 13 записів про місця, де код або документація брешуть самі
+> собі, у тому самому дусі теми: обрізані назви треків, файл у AppData всупереч README,
+> вимкнені ворота типів, мертві залежності, застарілий опис стеку. Три P1, сім P2,
+> три P3; серед них два дослідження й одна ідея. Чи вважати віху завершеною і тегувати
+> збірку, вирішує розробник після цієї черги.
 
 Порядок рядків у секціях — за пріоритетом, а в межах пріоритету **більші першими**:
 саме вони визначають, чи версія закриється, тож беруться раніше за дрібні.
+
+| Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
+|------|---|-----|------|---------|---------------|-------------|
+| [window-state-outside-data-dir](p1-window-state-outside-data-dir.md) | P1 | planned | **draft** | M | — | [tech-stack-doc-drift](p2-tech-stack-doc-drift.md) (плагін пише `.window-state.json` у `%APPDATA%`, README обіцяє чистий AppData; варіант заміни не обрано, грилити; a11y через стартову послідовність show → focus) |
+| [icy-metadata-reader-dedup](p1-icy-metadata-reader-dedup.md) | P1 | planned | ready | M | — | [dead-dependencies](p2-dead-dependencies.md) (два ручні цикли metaint і три копії розбору `StreamTitle`; крейт `icy-metadata` уже в залежностях; заразом зникає обрізання «Don't Stop» до «Don») |
+| [typecheck-gate](p1-typecheck-gate.md) | P1 | planned | ready | M | — | [ci-pipeline](p3-ci-pipeline.md) (tsc дає 191 помилку, 126 з них через відсутній `allowJs`; після конфігу 60, з них 10 у коді застосунку; tsc повертається у ворота) |
+| [tech-stack-doc-drift](p2-tech-stack-doc-drift.md) | P2 | planned | ready | M | [window-state-outside-data-dir](p1-window-state-outside-data-dir.md), [dead-dependencies](p2-dead-dependencies.md) | — (tech-stack.md перелічує плагіни, яких немає, і цитує чужий ідентифікатор; AGENTS.md каже «Phase 3F») |
+| [paraglide-native-plurals](p2-paraglide-native-plurals.md) | P2 | research | ready | M | — | — (14 родин суфіксів `_zero/_one/_few/_many` і п'ять `Intl.PluralRules` замість варіантів Paraglide; Rust читає ті самі JSON, тож потрібне рішення для другого споживача) |
+| [eslint-adoption](p2-eslint-adoption.md) | P2 | research | ready | M | — | — (чотири `eslint-disable` без ESLint; `jsx-a11y` як автоматична частина a11y-рев'ю, або чесне «лінтера не буде») |
+| [dead-dependencies](p2-dead-dependencies.md) | P2 | planned | ready | S | [icy-metadata-reader-dedup](p1-icy-metadata-reader-dedup.md) | [tech-stack-doc-drift](p2-tech-stack-doc-drift.md) (`stream-download` без жодного використання, `unicode-normalization` лише в scaffold, `cpal` через rodio, deprecated `paraglide-vite`) |
+| [small-code-duplications](p2-small-code-duplications.md) | P2 | planned | ready | S | — | — (`User-Agent: Tapir/0.1.0` у чотирьох місцях поза сторожем versionSync; другий писар tmp → sync → rename у crash_recovery) |
+| [clippy-warnings-zero](p2-clippy-warnings-zero.md) | P2 | planned | ready | S | — | [ci-pipeline](p3-ci-pipeline.md) (32 попередження, 18 з них `collapsible_if`; clippy у воротах зелений при будь-якій кількості, бо без `-D warnings`) |
+| [tauri-conf-version-source](p2-tauri-conf-version-source.md) | P2 | planned | **draft** | S | — | — (`"version": "../package.json"` лишає два джерела версії замість трьох; рішення розробника) |
+| [tauri-specta-bindings](p3-tauri-specta-bindings.md) | P3 | research | ready | **L** | — | — (925 рядків `tauri.ts` руками проти генерації з Rust; RC з 2023 року; тригер: справжній баг дрейфу типів) |
+| [ci-pipeline](p3-ci-pipeline.md) | P3 | idea | draft | M | [typecheck-gate](p1-typecheck-gate.md), [clippy-warnings-zero](p2-clippy-warnings-zero.md) | — (жодного workflow; тригер: контриб'ютор або тег) |
+| [optional-library-swaps](p3-optional-library-swaps.md) | P3 | planned | **draft** | S | — | — (`wildmatch` і `use-debounce` один в один; питання смаку, зафіксувати «так» або «ні») |
 
 ## v0.2.0
 
