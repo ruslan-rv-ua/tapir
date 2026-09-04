@@ -237,15 +237,14 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   const selectAllBtnRef = useRef<HTMLButtonElement | null>(null);
   const deleteSelectedBtnRef = useRef<HTMLButtonElement | null>(null);
   // Empty-state zone (no patterns in the active tab). A plain hand-rolled
-  // region with NO keydown capture — mirrors StreamsPanel's streams-empty zone
-  // (StreamsPanel.tsx:676+). Unlike the reverted emptyExtra slot, this is never
-  // inside CompositeList, so there is no onKeyDownCapture to trap Tab before it
-  // reaches the CTA button.
+  // region with NO keydown capture — mirrors StreamsPanel's streams-empty zone.
+  // Unlike the reverted emptyExtra slot, this is never inside CompositeList, so
+  // there is no onKeyDownCapture to trap Tab before it reaches the CTA button.
   const addExampleBtnRef = useRef<HTMLButtonElement | null>(null);
   // Set by a remove/bulk-remove that empties the active list — the CTA isn't
   // mounted yet at that point, so a deferred effect (below, near activeItems)
   // focuses it once the empty zone commits. Mirrors StreamsPanel's
-  // pendingFocusEmptyZone (StreamsPanel.tsx:291).
+  // pendingFocusEmptyZone.
   const pendingFocusEmptyZone = useRef(false);
 
   // Тулбар належить спискам патернів: у журналі додавати нема куди, а
@@ -479,7 +478,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
       zones.push(matchListProxyRef.current);
     } else if (activeItems.length === 0) {
       // Replaces the list zone while the active list is empty — the CTA button
-      // is the focus target directly (mirrors StreamsPanel.tsx:342-347), which
+      // is the focus target directly (mirrors StreamsPanel's streams-empty zone), which
       // is what makes it keyboard-reachable via F6/Tab.
       zones.push({
         id: "wishlist-empty",
@@ -496,7 +495,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   // Shared empty-state zone. Both tabs render the same shape via this helper;
   // handleAddExamples branches on activeTab, and only the active tab's empty
   // zone or PatternList is mounted at any one time (never both — StreamsPanel
-  // parity, StreamsPanel.tsx:676+).
+  // parity).
   const renderEmptyZone = (emptyMessage: string) => (
     <div
       data-zone-id="wishlist-empty"

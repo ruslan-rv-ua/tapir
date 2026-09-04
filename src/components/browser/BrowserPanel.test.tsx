@@ -211,7 +211,10 @@ it("keeps the list, the cursor and the zone while a batch is in flight", async (
   expect(document.activeElement).toBe(trailingBtn());
   expect(trailingBtn()!.textContent).toBe(m.browser_load_more_busy());
   expect(trailingBtn()!.getAttribute("aria-busy")).toBe("true");
-  expect(document.querySelector('ul[data-zone-id="browser-results"]')).toBeTruthy();
+  // The zone check reads exactly what cycleZone reads — closest([data-zone-id])
+  // off the focused element — so it fails the way F6 would if the list went away.
+  expect(document.activeElement!.closest("[data-zone-id]")?.getAttribute("data-zone-id"))
+    .toBe("browser-results");
 
   await act(async () => { release([mk("s3"), mk("s4"), mk("s5")]); });
   expect(activeRow()).toBe("s3");
