@@ -37,6 +37,14 @@ use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_log::{Target, TargetKind, RotationStrategy};
 
+/// Як Tapir представляється станціям і Radio Browser.
+///
+/// Версія береться з крейта, а не з літерала: `versionSync.test.ts` тримає
+/// `Cargo.toml`, `tauri.conf.json` і `package.json` рівними, і `env!` доносить
+/// ту саму версію сюди. Захардкожений рядок у місці запиту жоден сторож не
+/// бачить — після підняття версії він мовчки почав би брехати.
+pub(crate) const USER_AGENT: &str = concat!("Tapir/", env!("CARGO_PKG_VERSION"));
+
 pub fn run() {
     // Phase 3E: relax the foreground lock as early as possible. In a second
     // instance this hands the foreground grant to the first instance before the

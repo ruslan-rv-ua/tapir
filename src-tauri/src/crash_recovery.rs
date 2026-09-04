@@ -10,6 +10,7 @@ use tauri::{AppHandle, Manager};
 use tokio_util::sync::CancellationToken;
 
 use crate::app_state::AppState;
+use crate::errors::RadioError;
 use crate::profile::StreamInfo;
 use crate::stream::manager::StreamStatus;
 
@@ -54,25 +55,17 @@ impl SessionState {
         }
     }
 
-    pub fn save(&self) -> Result<(), std::io::Error> {
+    pub fn save(&self) -> Result<(), RadioError> {
         self.save_to(&crate::portable::state_path())
     }
 
-    /// Атомарний запис (temp → rename) — той самий підхід, що `Profile::save`,
-    /// плюс fsync перед rename: без нього при втраті живлення NTFS може
+    /// Атомарний запис — спільний писар зі [`crate::store`]. Саме тут потрібен
+    /// його fsync перед rename: без нього при втраті живлення NTFS може
     /// зафіксувати rename раніше за дані tmp-файлу → обрізаний state.json →
     /// «битий» файл і порожній снапшот саме в сценарії, заради якого фіча існує.
-    pub fn save_to(&self, path: &Path) -> Result<(), std::io::Error> {
-        let tmp = path.with_extension("json.tmp");
-        let json = serde_json::to_string_pretty(self)?;
-        {
-            use std::io::Write;
-            let mut f = std::fs::File::create(&tmp)?;
-            f.write_all(json.as_bytes())?;
-            f.sync_all()?;
-        }
-        std::fs::rename(&tmp, path)?;
-        Ok(())
+    /// Порядок описано в `store.rs` і живе там в одному екземплярі.
+    pub fn save_to(&self, path: &Path) -> Result<(), RadioError> {
+        crate::store::write_json_atomically(path, "json.tmp", self)
     }
 }
 

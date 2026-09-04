@@ -3,11 +3,13 @@ import fs from "node:fs";
 import path from "node:path";
 
 /**
- * The app version is written in three places and read by two different
+ * The app version is written in three places and read by three different
  * consumers: `tauri.conf.json` feeds `package_info()` (what the About section
- * shows), while `Cargo.toml` feeds `CARGO_PKG_VERSION` (what `tapir --version`
- * prints). Nothing else keeps them equal — this test is the guard, so a bump
- * that forgets one file fails here instead of shipping two versions.
+ * shows), while `Cargo.toml` feeds `CARGO_PKG_VERSION` — read both by
+ * `tapir --version` and by the `Tapir/<version>` User-Agent every outbound
+ * request carries (`USER_AGENT` in `src-tauri/src/lib.rs`). Nothing else keeps
+ * them equal — this test is the guard, so a bump that forgets one file fails
+ * here instead of shipping two versions.
  */
 describe("version is the same in every file that carries it", () => {
   const root = process.cwd();
