@@ -12,7 +12,9 @@ function tabIds(): string[] {
     path.join(process.cwd(), "src/components/common/HelpDialog.tsx"),
     "utf-8",
   );
-  return Array.from(dialogSrc.matchAll(/<Tab id="([^"]+)"/g)).map((m) => m[1]);
+  // The word boundary after Tab keeps <TabPanel> out; the id need not be the
+  // first attribute, nor on the same line as the tag.
+  return Array.from(dialogSrc.matchAll(/<Tab\b[^>]*?\sid="([^"]+)"/g)).map((m) => m[1]);
 }
 
 describe("getHelpHtml", () => {

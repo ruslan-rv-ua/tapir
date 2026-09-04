@@ -17,16 +17,27 @@ touches:
   - package.json
   - justfile
   - build/helpContent.test.ts
-  - src/components/settings/GeneralTab.tsx
   - src/components/player/PlayerPanel.tsx
+  - src/components/settings/GeneralTab.tsx
+  - src/components/settings/SettingsDialog.tsx
+  - src/components/common/HelpDialog.tsx
+  - src/components/profile/ProfileSettingsDialog.tsx
+  - src/components/profile/ProfileContextMenu.tsx
+  - src/components/streams/StreamContextMenu.tsx
+  - src/components/streams/StreamList.tsx
+  - src/components/streams/AddStreamDialog.tsx
+  - src/components/wishlist/WishlistPanel.tsx
+  - AGENTS.md
+  - docs/accessibility.md
   - docs/backlog/README.md
   - docs/backlog/_TEMPLATE.md
+  - docs/backlog/ROADMAP.md
 gates: [pnpm test, pnpm typecheck, pnpm vite:build]
 notes:
   - "Аудит 2026-09-04: tsc дає 191 помилку, з них 126 одного класу TS7016, бо paraglide генерує JS з JSDoc, а tsconfig не має allowJs. Пробний конфіг з allowJs, lib ES2022 і @types/node лишає 60, з них 10 поза тестами."
   - "Раніше в пам'яті сесій фігурувало «близько 51 помилки»; число росте, бо ворота вимкнені й ніхто його не бачить."
   - "Підсумок: після конфігу лишилось 44, не 60 — переїзд helpContent.test.ts і target ES2022 зняли більше, ніж передбачав пробний прогін. Нуль досягнуто."
-  - "Три з десяти «косметичних» помилок виявились мертвим кодом, який react-aria ніколи не доносив до DOM (`title`, `onKeyDown` на TabList, `tabIndex` на Button). Кнопки плеєра через це стояли з tabindex=0 всупереч власній моделі зони — виправлено на `excludeFromTabOrder`; це єдина зміна поведінки в записі."
+  - "Три з десяти «косметичних» помилок виявились мертвим кодом, який react-aria ніколи не доносив до DOM (`title`, `onKeyDown` на TabList, `tabIndex` на Button). Кнопки плеєра через це стояли з tabindex=0 всупереч власній моделі зони — виправлено на `excludeFromTabOrder`; це єдина зміна поведінки в записі. Дзеркальний випадок — `autoFocus` на `<Tab>`, який RAC навпаки доносить (через `useFocusable`), лишився під `@ts-expect-error` на трьох місцях: директива почервоніє, коли RAC додасть тип, а каст мовчав би."
 ---
 
 # Повернути tsc у ворота: allowJs, ES2022, @types/node і 60 помилок до нуля
