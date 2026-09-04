@@ -26,7 +26,7 @@ notes:
 # Браузер станцій: повторне «Завантажити ще» після збою пропускає порцію
 
 > **Контекст:** знахідка рев'ю
-> [load-more-unreachable-by-keyboard](p1-load-more-unreachable-by-keyboard.md)
+> [load-more-unreachable-by-keyboard](done/p1-load-more-unreachable-by-keyboard.md)
 > (2026-09-04). Спосіб виправлення **не обраний** — див. «Розвилка».
 
 ## Опис
@@ -102,7 +102,7 @@ notes:
 
 ## Документи
 
-- [load-more-unreachable-by-keyboard](p1-load-more-unreachable-by-keyboard.md) —
+- [load-more-unreachable-by-keyboard](done/p1-load-more-unreachable-by-keyboard.md) —
   запис, рев'ю якого знайшло ваду, і той, що заморозив арифметику `loadMore`
 - [browser-filter-cursor-reset](done/p2-browser-filter-cursor-reset.md) — правило
   курсора, що читає `offset` через `isAppendingResults`

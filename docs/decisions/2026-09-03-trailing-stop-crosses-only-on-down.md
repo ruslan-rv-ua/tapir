@@ -3,7 +3,7 @@
 - **Статус:** ПРИЙНЯТО
 - **Дата:** 2026-09-03
 - **Тип:** ADR — модель навігації в списках
-- **Контекст:** беклог — [load-more-unreachable-by-keyboard](../backlog/p1-load-more-unreachable-by-keyboard.md);
+- **Контекст:** беклог — [load-more-unreachable-by-keyboard](../backlog/done/p1-load-more-unreachable-by-keyboard.md);
   словник — [CONTEXT.md](../../CONTEXT.md) §«Навігаційні терміни», термін **Стоп**;
   код — [useCompositeList.ts](../../src/hooks/useCompositeList.ts) (`resolveKeyAction` і
   `switch (action)`), [CompositeList.tsx](../../src/components/common/composite-list/CompositeList.tsx);

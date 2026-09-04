@@ -3,11 +3,12 @@ slug: load-more-unreachable-by-keyboard
 title: "Браузер станцій: кнопку «Завантажити ще» не можна натиснути з клавіатури"
 priority: P1
 type: planned
-status: ready
+status: done
 effort: M
 kind: bug
 target: 0.1.0
 updated: 2026-09-04
+completed: 2026-09-04
 a11y: true
 depends_on: []
 blocks: [load-more-retry-skips-failed-page]
@@ -35,7 +36,7 @@ notes:
   - "Сьогодні `footer` CompositeList використовує ЛИШЕ StationList, але механізм спільний — будь-який майбутній футер успадкує ваду. Тому сторожі стоять у спільному компоненті, а не на екрані браузера"
   - "Сусід по тому самому switch — p2-list-key-modifier-guards (модифікатори при F2/Delete). Правила ортогональні; хто піде другим, побачить сторожа першого"
   - "effort M лишається: більша частина — не сам стоп, а дванадцять перевірок у чотирьох тестових файлах плюс два різні стани завантаження в моках BrowserPanel"
-  - "2026-09-04: реалізовано на гілці bugfix/load-more-unreachable-by-keyboard, гейти зелені (1097 тестів, vite:build). Чекає NVDA-прогону — чекліст docs/testing/nvda-load-more-unreachable-by-keyboard.md, 10 сценаріїв"
+  - "2026-09-04: реалізовано, гейти зелені (1093 тести, vite:build). NVDA-прогін пройдено 10/10 без розбіжностей, чекліст видалено при прийманні"
   - "2026-09-04, з рев'ю: Ctrl+Space на стопі мусить preventDefault (без stopPropagation) — для браузера це Space, і сфокусована <button> активується нативно на keyup, тобто «мовчить» перетворилось би на «тихо вантажить ще одну порцію». jsdom нативної активації кнопки не має, тож автотест цього не бачив би — ловиться лише думанням про Blink"
   - "2026-09-04, знайдено рев'ю і НЕ виправлено (арифметику loadMore запис заморозив): невдале дописування лишає offset піднятим, тож повторне натискання просить наступну сторінку і мовчки пропускає ту, що впала. Заведено окремим записом p2-load-more-retry-skips-failed-page"
 ---
@@ -43,10 +44,10 @@ notes:
 # Браузер станцій: кнопку «Завантажити ще» не можна натиснути з клавіатури
 
 > **Контекст:** знахідка під час прогону
-> [browser-filter-cursor-reset](done/p2-browser-filter-cursor-reset.md)
+> [browser-filter-cursor-reset](p2-browser-filter-cursor-reset.md)
 > (2026-09-03). Вада наявна від появи кнопки, до курсора стосунку не має.
 > Огрилено 2026-09-03 — спосіб реалізації **обраний**, читати спершу
-> [ADR про завершальний стоп](../decisions/2026-09-03-trailing-stop-crosses-only-on-down.md).
+> [ADR про завершальний стоп](../../decisions/2026-09-03-trailing-stop-crosses-only-on-down.md).
 
 ## Опис
 
@@ -55,7 +56,7 @@ notes:
 Три факти, що складають ваду:
 
 1. Кнопка рендериться як `footer` списку — усередині `<ul>`, окремим `<li>`
-   ([StationList.tsx:147-155](../../src/components/browser/StationList.tsx#L147-L155)).
+   ([StationList.tsx:147-155](../../../src/components/browser/StationList.tsx#L147-L155)).
 2. Вона не несе `data-item-id` / `data-segment`, тож roving-навігація
    `useCompositeList` про неї не знає: стрілки ходять лише по `items`.
 3. `Tab` у списку завжди означає «вийти із зони». Гілка `action === "tab"`
@@ -82,7 +83,7 @@ notes:
 1. **Дописування зносить список.** `searchStations` піднімає `$searchLoading`
    і для append теж, а `CompositeList` при непорожньому пропі `loading` рендерить
    картку **замість** `<ul>`
-   ([CompositeList.tsx:129](../../src/components/common/composite-list/CompositeList.tsx#L129)).
+   ([CompositeList.tsx:129](../../../src/components/common/composite-list/CompositeList.tsx#L129)).
    На час IPC список зникає, фокус падає на `<body>`, а `resultsProxyRef.el`
    стає `undefined` — `F6` у цю мить теж не працює.
 2. **Помилка дописування зносить результати.** Те саме з `error`: невдалий
@@ -92,8 +93,8 @@ notes:
 ## Рішення
 
 Кнопка стає **завершальним стопом** списку — терміни в
-[CONTEXT.md](../../CONTEXT.md) §«Навігаційні терміни», правила навігації в
-[ADR 2026-09-03](../decisions/2026-09-03-trailing-stop-crosses-only-on-down.md).
+[CONTEXT.md](../../../CONTEXT.md) §«Навігаційні терміни», правила навігації в
+[ADR 2026-09-03](../../decisions/2026-09-03-trailing-stop-crosses-only-on-down.md).
 
 **Контракт.** `CompositeList` більше не приймає довільну розмітку футера:
 проп `footer?: ReactNode` замінюється на дію — назва, ознака зайнятості й
@@ -147,41 +148,41 @@ notes:
 змінитись між двома запитами.
 
 **Популярні станції** лишаються без змін — скінченна вітрина, футера немає
-(це вже записано в [en/browser.md](../help/en/browser.md): «a fixed batch, with
+(це вже записано в [en/browser.md](../../help/en/browser.md): «a fixed batch, with
 nothing more to load»). Але відсутність футера мусить читатись як **рішення** в
 самому `StationList`, а не як забутий проп у `BrowserPanel`.
 
 ## Критерії готовності
 
-- [ ] Кнопку «Завантажити ще» можна досягти й активувати **лише з клавіатури** —
+- [x] Кнопку «Завантажити ще» можна досягти й активувати **лише з клавіатури** —
       без миші й без об'єктної навігації скрінрідера.
-- [ ] `Down` з останнього рядка веде на кнопку, `Up` — назад на останній рядок.
-- [ ] `End`, `PageDown` і `Shift+↓` межу **не** перетинають: `End` і далі веде на
+- [x] `Down` з останнього рядка веде на кнопку, `Up` — назад на останній рядок.
+- [x] `End`, `PageDown` і `Shift+↓` межу **не** перетинають: `End` і далі веде на
       останній рядок.
-- [ ] Курсор на кнопці: `Ctrl+A` і `Escape` працюють; `Delete`, `F2`, `F4`, `F5`,
+- [x] Курсор на кнопці: `Ctrl+A` і `Escape` працюють; `Delete`, `F2`, `F4`, `F5`,
       `Ctrl+Space`, `Ctrl+C` не викликають `onAction` і не з'їдають клавішу.
-- [ ] `Tab` у решті списків не змінився: `Tab` так само виводить із зони на всіх
+- [x] `Tab` у решті списків не змінився: `Tab` так само виводить із зони на всіх
       чотирьох екранах зі списками, і список **без** футера поводиться як раніше.
-- [ ] Дописування не зносить `<ul>`: список лишається на екрані, зайнятий лише
+- [x] Дописування не зносить `<ul>`: список лишається на екрані, зайнятий лише
       футер, кнопка не стає нативно `disabled`.
-- [ ] Помилка дописування дає тост і лишає список та фокус недоторканими.
-- [ ] Після довантаження фокус на першому новому рядку; позиція курсора не
+- [x] Помилка дописування дає тост і лишає список та фокус недоторканими.
+- [x] Після довантаження фокус на першому новому рядку; позиція курсора не
       губиться (правило з
-      [browser-filter-cursor-reset](done/p2-browser-filter-cursor-reset.md)).
-- [ ] Порожня порція: фокус на останньому рядку плюс репліка «Більше результатів
+      [browser-filter-cursor-reset](p2-browser-filter-cursor-reset.md)).
+- [x] Порожня порція: фокус на останньому рядку плюс репліка «Більше результатів
       немає»; фокус не потрапляє на `<body>`.
-- [ ] `hasMore` виводиться з `limit + 1`, зайвий запис у списку не показується.
-- [ ] Футер не з'являється на «Популярних станціях», і це видно з `StationList`.
-- [ ] `docs/help/` оновлено — `browser.md` в обох локалях: як дійти до кнопки,
+- [x] `hasMore` виводиться з `limit + 1`, зайвий запис у списку не показується.
+- [x] Футер не з'являється на «Популярних станціях», і це видно з `StationList`.
+- [x] `docs/help/` оновлено — `browser.md` в обох локалях: як дійти до кнопки,
       куди стане курсор після довантаження, що станеться, якщо продовження не
       виявиться. Речення «appears as long as the catalogue keeps returning full
       ones» переписується — воно описує прибраний здогад. `navigation.md` **не**
       чіпаємо: власник опису — екран, поки футер один.
-- [ ] Сторожі: правила — у `CompositeList`/`useCompositeList`, факти — у
+- [x] Сторожі: правила — у `CompositeList`/`useCompositeList`, факти — у
       `stores/browser.test.ts`, конкретика — у `StationList`/`BrowserPanel`.
-- [ ] NVDA-прогін: шлях до кнопки, повернення до списку після довантаження,
-      порожня порція, повернення в зону з кнопки через `F6` —
-      [nvda-load-more-unreachable-by-keyboard](../testing/nvda-load-more-unreachable-by-keyboard.md).
+- [x] NVDA-прогін: шлях до кнопки, повернення до списку після довантаження,
+      порожня порція, повернення в зону з кнопки через `F6`. Пройдено
+      2026-09-04, 10 сценаріїв, розбіжностей немає.
 
 ## Відкриті питання
 
@@ -199,16 +200,16 @@ nothing more to load»). Але відсутність футера мусить
 
 ## Документи
 
-- [ADR 2026-09-03 — завершальний стоп](../decisions/2026-09-03-trailing-stop-crosses-only-on-down.md)
+- [ADR 2026-09-03 — завершальний стоп](../../decisions/2026-09-03-trailing-stop-crosses-only-on-down.md)
   — межа `Down` і власність «рядок / зона», плюс відхилені варіанти
-- [ADR 2026-08-31 — видимий носій](../decisions/2026-08-31-visible-carrier-for-announced-facts.md)
+- [ADR 2026-08-31 — видимий носій](../../decisions/2026-08-31-visible-carrier-for-announced-facts.md)
   — чому успіх мовчить, а носієм репліки є сама кнопка
-- [CONTEXT.md](../../CONTEXT.md) §«Навігаційні терміни» — термін **Стоп**
-- [browser-filter-cursor-reset](done/p2-browser-filter-cursor-reset.md) — запис,
+- [CONTEXT.md](../../../CONTEXT.md) §«Навігаційні терміни» — термін **Стоп**
+- [browser-filter-cursor-reset](p2-browser-filter-cursor-reset.md) — запис,
   під час прогону якого ваду знайдено
-- [list-key-modifier-guards](p2-list-key-modifier-guards.md) — сусід по тому
+- [list-key-modifier-guards](../p2-list-key-modifier-guards.md) — сусід по тому
   самому `switch`, ортогональне правило
-- [accessibility.md](../accessibility.md)
+- [accessibility.md](../../accessibility.md)
 - `src/hooks/useCompositeList.ts` — `resolveKeyAction`, гілка `action === "tab"`
 - `src/components/common/composite-list/CompositeList.tsx` — проп `footer`
 - `src/stores/browser.ts` — `searchStations`, `loadMore`, `isAppendingResults`
