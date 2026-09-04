@@ -181,7 +181,7 @@ pub async fn resolve_playlist_url(url: &str) -> Result<String, RadioError> {
         .build()?;
     let content = client
         .get(url)
-        .header("User-Agent", "Tapir/0.1.0")
+        .header("User-Agent", crate::USER_AGENT)
         .send()
         .await?
         .error_for_status()?
