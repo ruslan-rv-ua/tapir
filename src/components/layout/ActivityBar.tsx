@@ -34,7 +34,6 @@ interface Props {
 export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
   const activeSection = useStore($activeSection);
   const settings = useStore($settings);
-  const navRef = useRef<HTMLElement | null>(null);
 
   // Roving order: [profile, streams, browser, wishlist, schedule, songs, help, settings]
   const profileRef = useRef<HTMLButtonElement | null>(null);
@@ -67,7 +66,6 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
 
   useImperativeHandle(ref, () => ({
     id: "activity-bar",
-    get el() { return navRef.current!; },
     focus: (_direction) => {
       // moveTo syncs the roving tabindex, but it focuses via a state-change-driven
       // layout effect that bails when the index is unchanged — which is the common
@@ -80,7 +78,6 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
 
   return (
     <nav
-      ref={navRef}
       aria-label={m.main_navigation()}
       data-zone-id="activity-bar"
       className="flex w-56 flex-col gap-1 border-r border-slate-700 bg-slate-900 py-2 px-2"

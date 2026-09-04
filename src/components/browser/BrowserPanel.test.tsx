@@ -211,7 +211,7 @@ it("keeps the list, the cursor and the zone while a batch is in flight", async (
   expect(document.activeElement).toBe(trailingBtn());
   expect(trailingBtn()!.textContent).toBe(m.browser_load_more_busy());
   expect(trailingBtn()!.getAttribute("aria-busy")).toBe("true");
-  expect(results.el).toBeTruthy();
+  expect(document.querySelector('ul[data-zone-id="browser-results"]')).toBeTruthy();
 
   await act(async () => { release([mk("s3"), mk("s4"), mk("s5")]); });
   expect(activeRow()).toBe("s3");

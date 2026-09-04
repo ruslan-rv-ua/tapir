@@ -37,10 +37,10 @@ function ZoneHarness() {
 
   useEffect(() => {
     orderedZonesRef.current = [
-      { id: "activity-bar", get el() { return activityRef.current!; }, focus: () => activityRef.current?.focus() },
+      { id: "activity-bar", focus: () => activityRef.current?.focus() },
       ...screenZones,
-      { id: "player", get el() { return document.body; }, focus: () => {} }, // declines (stopped)
-      { id: "status-bar", get el() { return statusRef.current!; }, focus: () => statusRef.current?.focus() },
+      { id: "player", focus: () => {} }, // declines (stopped)
+      { id: "status-bar", focus: () => statusRef.current?.focus() },
     ];
   }, [screenZones]);
 

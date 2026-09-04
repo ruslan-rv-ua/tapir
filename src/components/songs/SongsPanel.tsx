@@ -60,12 +60,10 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
   // handle — the same pattern App.tsx uses for permanent zones.
   const listProxyRef = useRef<ZoneEntry>({
     id: "songs-list",
-    get el() { return listRef.current?.el as HTMLElement; },
     focus: (dir) => listRef.current?.focus(dir),
   });
 
   // Selection toolbar roving zone (two stops)
-  const selectionZoneRef = useRef<HTMLDivElement | null>(null);
   const selectAllBtn = useRef<HTMLButtonElement | null>(null);
   const deleteSelectedBtn = useRef<HTMLButtonElement | null>(null);
   const selectionRefs = useMemo(() => [selectAllBtn, deleteSelectedBtn], []);
@@ -104,7 +102,6 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
   useEffect(() => {
     const zones: ZoneEntry[] = [{
       id: "songs-selection",
-      get el() { return selectionZoneRef.current!; },
       focus: selRestore,
     }];
     if (filterRef.current) zones.push(filterRef.current);
@@ -211,7 +208,6 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
     <div role="region" aria-label={m.songs_section()} className="flex flex-1 flex-col overflow-hidden">
       {/* songs-selection zone: header title + selection toolbar (two roving stops) */}
       <ScreenZone
-        ref={selectionZoneRef}
         id="songs-selection"
         role="application"
         label={m.zone_songs_selection()}

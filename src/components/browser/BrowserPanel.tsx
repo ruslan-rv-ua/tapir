@@ -65,7 +65,6 @@ export function BrowserPanel({ onZonesChange, exitZone }: Props) {
   // zones).
   const resultsProxyRef = useRef<ZoneEntry>({
     id: "browser-results",
-    get el() { return resultsListRef.current?.el as HTMLElement; },
     focus: (dir) => resultsListRef.current?.focus(dir),
   });
 
@@ -79,7 +78,6 @@ export function BrowserPanel({ onZonesChange, exitZone }: Props) {
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selection.has(id));
 
   // Selection toolbar roving zone (two stops)
-  const selectionZoneRef = useRef<HTMLDivElement | null>(null);
   const selectAllBtn = useRef<HTMLButtonElement | null>(null);
   const addSelectedBtn = useRef<HTMLButtonElement | null>(null);
   const selectionRefs = useMemo(() => [selectAllBtn, addSelectedBtn], []);
@@ -125,7 +123,6 @@ export function BrowserPanel({ onZonesChange, exitZone }: Props) {
   useEffect(() => {
     const zones: ZoneEntry[] = [{
       id: "browser-selection",
-      get el() { return selectionZoneRef.current!; },
       focus: selRestore,
     }];
     if (searchZoneRef.current) zones.push(searchZoneRef.current);
@@ -137,7 +134,6 @@ export function BrowserPanel({ onZonesChange, exitZone }: Props) {
     <div role="region" aria-label={m.browser_section()} className="flex flex-1 flex-col overflow-hidden">
       {/* browser-selection zone: header title + selection toolbar (two roving stops) */}
       <ScreenZone
-        ref={selectionZoneRef}
         id="browser-selection"
         role="application"
         label={m.zone_browser_selection()}

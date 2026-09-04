@@ -4,8 +4,6 @@ import { isInModal } from '../lib/shortcutGuard';
 export interface ZoneEntry {
   /** Must match the element's data-zone-id attribute. */
   id: string;
-  /** The root DOM element carrying data-zone-id. */
-  readonly el: HTMLElement;
   /** Called to give focus to this zone. */
   focus(direction: 'forward' | 'backward'): void;
   /**

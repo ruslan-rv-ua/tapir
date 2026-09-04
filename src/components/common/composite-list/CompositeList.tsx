@@ -123,9 +123,6 @@ function CompositeListInner<H extends ZoneEntry = ZoneEntry>(
     () =>
       ({
         id: zoneId,
-        get el() {
-          return listRef.current!;
-        },
         focus: restoreFocus,
         resetCursor,
         ...(imperativeExtra ? imperativeExtra({ focusItem: focusItemAndDom }) : {}),

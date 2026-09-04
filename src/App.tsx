@@ -73,17 +73,14 @@ function AppContent() {
   // (e.g. PlayerPanel recreates restoreFocusPlayer when playback state changes).
   const activityBarProxyRef = useRef<ZoneEntry>({
     id: "activity-bar",
-    get el() { return activityBarZoneRef.current!.el; },
     focus: (dir) => activityBarZoneRef.current?.focus(dir),
   });
   const playerProxyRef = useRef<ZoneEntry>({
     id: "player",
-    get el() { return playerZoneRef.current!.el; },
     focus: (dir) => playerZoneRef.current?.focus(dir),
   });
   const statusBarProxyRef = useRef<ZoneEntry>({
     id: "status-bar",
-    get el() { return statusBarZoneRef.current!.el; },
     focus: (dir) => statusBarZoneRef.current?.focus(dir),
   });
 

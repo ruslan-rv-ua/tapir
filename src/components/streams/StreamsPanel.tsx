@@ -230,7 +230,6 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   // ── Toolbar zone refs (12 items) ──────────────────────────
   // Move/Copy/Delete-selected collapsed into one menu stop (selectionMenuBtn),
   // so the roving array is fixed at 12 (was 14) — see SelectionActionsMenu.
-  const toolbarZoneRef = useRef<HTMLDivElement | null>(null);
   const addBtn            = useRef<HTMLButtonElement | null>(null);
   const importBtn         = useRef<HTMLButtonElement | null>(null);
   const exportBtn         = useRef<HTMLButtonElement | null>(null);
@@ -275,16 +274,13 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   // handle. See zone-navigation-stable-proxies; mirrors SongsPanel/SchedulePanel.
   const streamListProxyRef = useRef<ZoneEntry>({
     id: "streams-list",
-    get el() { return streamListRef.current?.el as HTMLElement; },
     focus: (dir) => streamListRef.current?.focus(dir),
   });
 
   // ── Filter-empty zone (streams exist but filter hides them) ─────
-  const filterEmptyZoneRef = useRef<HTMLDivElement | null>(null);
   const resetFilterBtnRef  = useRef<HTMLButtonElement | null>(null);
 
   // ── Empty-profile zone (no streams at all) ──────────────────────
-  const emptyZoneRef = useRef<HTMLDivElement | null>(null);
   const addExamplesBtnRef = useRef<HTMLButtonElement | null>(null);
   const [loadingExamples, setLoadingExamples] = useState(false);
   const pendingFocusFirstRow = useRef(false);
@@ -337,20 +333,17 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   useEffect(() => {
     const toolbarZone: ZoneEntry = {
       id: "streams-toolbar",
-      get el() { return toolbarZoneRef.current!; },
       focus: toolbarRestore,
     };
     const zones: ZoneEntry[] = [toolbarZone];
     if (isEmpty) {
       zones.push({
         id: "streams-empty",
-        get el() { return emptyZoneRef.current!; },
         focus: () => addExamplesBtnRef.current?.focus(),
       });
     } else if (filterHidesAll) {
       zones.push({
         id: "streams-filter-empty",
-        get el() { return filterEmptyZoneRef.current!; },
         focus: () => resetFilterBtnRef.current?.focus(),
       });
     } else if (streamListRef.current) {
@@ -500,7 +493,6 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
       {/* IMPORTANT: Both rows must live inside ScreenZone so mixed-boundary-handoff
           sees all 14 interactive items (indices 0–13). The heading is structural, not focusable. */}
       <ScreenZone
-        ref={toolbarZoneRef}
         id="streams-toolbar"
         role="application"
         label={m.zone_streams_actions()}
@@ -682,7 +674,6 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
           {/* ── Empty hint OR stream list zone OR filter-empty zone ── */}
           {isEmpty ? (
             <div
-              ref={emptyZoneRef}
               data-zone-id="streams-empty"
               role="region"
               aria-label={m.streams_empty_hint()}
@@ -709,7 +700,6 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
             </div>
           ) : filterHidesAll ? (
             <div
-              ref={filterEmptyZoneRef}
               data-zone-id="streams-filter-empty"
               role="region"
               aria-label={m.streams_filter_empty()}

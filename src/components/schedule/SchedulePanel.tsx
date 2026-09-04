@@ -42,7 +42,6 @@ export function SchedulePanel({ onZonesChange, exitZone }: Props) {
   // тримати мертвий ZoneEntry, інакше F6 мовчки глухне (патерн SongsPanel).
   const tableProxyRef = useRef<ZoneEntry>({
     id: "schedule-list",
-    get el() { return tableRef.current?.el as HTMLElement; },
     focus: (dir) => tableRef.current?.focus(dir),
   });
 
@@ -72,7 +71,6 @@ export function SchedulePanel({ onZonesChange, exitZone }: Props) {
   useEffect(() => () => { replaceSelection($scheduleSelection, new Set()); }, []);
 
   // ── Toolbar zone (три кнопки: Add, SelectAll, DeleteSelected) ──
-  const toolbarZoneRef = useRef<HTMLDivElement | null>(null);
   const addBtn = useRef<HTMLButtonElement | null>(null);
   const selectAllBtn = useRef<HTMLButtonElement | null>(null);
   const deleteSelectedBtn = useRef<HTMLButtonElement | null>(null);
@@ -91,7 +89,6 @@ export function SchedulePanel({ onZonesChange, exitZone }: Props) {
   useEffect(() => {
     const toolbarZone: ZoneEntry = {
       id: "schedule-toolbar",
-      get el() { return toolbarZoneRef.current!; },
       focus: toolbarRestore,
     };
     const zones: ZoneEntry[] = [toolbarZone];
@@ -151,7 +148,6 @@ export function SchedulePanel({ onZonesChange, exitZone }: Props) {
     <div role="region" aria-label={m.schedule_section()} className="flex flex-1 flex-col overflow-hidden">
       {/* ── Toolbar zone ── */}
       <ScreenZone
-        ref={toolbarZoneRef}
         id="schedule-toolbar"
         role="application"
         label={m.zone_schedule_toolbar()}

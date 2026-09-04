@@ -40,7 +40,6 @@ export const SearchForm = forwardRef<ZoneEntry, SearchFormProps>(function Search
 
   useImperativeHandle(ref, () => ({
     id: "browser-search",
-    get el() { return containerRef.current!; },
     focus: restoreFocus,
     focusSearch,
   }), [restoreFocus, focusSearch]);

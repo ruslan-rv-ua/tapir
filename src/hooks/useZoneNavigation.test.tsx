@@ -21,9 +21,6 @@ function makeZone(
   document.body.appendChild(div);
   const entry: ZoneEntry = {
     id,
-    get el() {
-      return div;
-    },
     focus: opts.dead ? () => {} : () => button.focus(),
   };
   return { entry, button };

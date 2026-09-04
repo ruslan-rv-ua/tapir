@@ -30,7 +30,6 @@ export const StatusBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
         ? m.metric_free_space_low({ space: freeText })
         : `${m.metric_free_space()}: ${freeText}`;
   const [tick, setTick] = useState(0);
-  const footerRef = useRef<HTMLElement | null>(null);
   const seg0Ref = useRef<HTMLDivElement | null>(null);
   const seg1Ref = useRef<HTMLDivElement | null>(null);
   const seg2Ref = useRef<HTMLDivElement | null>(null);
@@ -86,9 +85,6 @@ export const StatusBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
     ref,
     () => ({
       id: "status-bar",
-      get el() {
-        return footerRef.current!;
-      },
       focus: restoreFocusWithAnnounce,
     }),
     [restoreFocusWithAnnounce],
@@ -96,7 +92,6 @@ export const StatusBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
 
   return (
     <footer
-      ref={footerRef}
       data-zone-id="status-bar"
       className="flex items-center gap-4 border-t border-slate-700 px-4 py-1.5 text-sm text-slate-400 forced-colors:border-[ButtonText] forced-colors:text-[CanvasText]"
       onKeyDown={onKeyDown}

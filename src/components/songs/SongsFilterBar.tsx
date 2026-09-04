@@ -43,7 +43,6 @@ export const SongsFilterBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) =
 
   useImperativeHandle(ref, () => ({
     id: "songs-filter",
-    get el() { return containerRef.current!; },
     focus: restoreFocus,
     focusSearch,
   }), [restoreFocus, focusSearch]);

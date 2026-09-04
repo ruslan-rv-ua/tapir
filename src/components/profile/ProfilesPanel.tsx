@@ -234,7 +234,6 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
   useEffect(() => () => { replaceSelection($profilesSelection, new Set()); }, []);
 
   // ── Toolbar zone (4 items) ──
-  const toolbarZoneRef = useRef<HTMLDivElement | null>(null);
   const newBtn = useRef<HTMLButtonElement | null>(null);
   const importBtn = useRef<HTMLButtonElement | null>(null);
   const selectAllBtn = useRef<HTMLButtonElement | null>(null);
@@ -253,17 +252,10 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
   useEffect(() => {
     const toolbarZone: ZoneEntry = {
       id: "profiles-toolbar",
-      get el() { return toolbarZoneRef.current!; },
       focus: toolbarRestore,
     };
     const listZone: ZoneEntry = {
       id: "profiles-list",
-      // ZoneEntry.el — обов'язкове поле, якого не читає ніхто: cycleZone веде
-      // навігацію по id і focus(), а поточну зону шукає через closest([data-zone-id]).
-      // Прибирається разом із полем у p2-zone-entry-dead-el; доти ствердження лишається
-      // видимим, а не перевдягненим у as HTMLElement, як у шести сусідніх зон.
-      // eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain
-      get el() { return listRef.current?.el!; },
       focus: (dir) => listRef.current?.focus(dir),
     };
     onZonesChange([toolbarZone, listZone]);
@@ -275,7 +267,6 @@ export function ProfilesPanel({ onZonesChange, exitZone }: Props) {
     <div className="flex flex-1 flex-col overflow-hidden" role="region" aria-label={m.profile_name()}>
       {/* ── Toolbar zone ── */}
       <ScreenZone
-        ref={toolbarZoneRef}
         id="profiles-toolbar"
         role="application"
         label={m.zone_profiles_toolbar()}

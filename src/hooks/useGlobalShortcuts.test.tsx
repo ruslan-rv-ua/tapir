@@ -29,7 +29,6 @@ function Harness({ children, zones = [] }: { children?: ReactNode; zones?: ZoneE
 /** A zone with no search field — the ordinary case (lists, toolbars). */
 const plainZone = (id: string, focus = vi.fn()): ZoneEntry => ({
   id,
-  el: document.createElement("div"),
   focus,
 });
 

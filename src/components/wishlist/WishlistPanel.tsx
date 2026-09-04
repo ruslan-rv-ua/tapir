@@ -241,7 +241,6 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   // (StreamsPanel.tsx:676+). Unlike the reverted emptyExtra slot, this is never
   // inside CompositeList, so there is no onKeyDownCapture to trap Tab before it
   // reaches the CTA button.
-  const emptyZoneRef = useRef<HTMLDivElement | null>(null);
   const addExampleBtnRef = useRef<HTMLButtonElement | null>(null);
   // Set by a remove/bulk-remove that empties the active list — the CTA isn't
   // mounted yet at that point, so a deferred effect (below, near activeItems)
@@ -453,7 +452,6 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   // pattern App.tsx uses for permanent zones).
   const patternListProxyRef = useRef<ZoneEntry>({
     id: "wishlist-list",
-    get el() { return patternListRef.current?.el as HTMLElement; },
     focus: (dir) => patternListRef.current?.focus(dir),
   });
 
@@ -462,7 +460,6 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   // ефект реєстрації не перезапускається.
   const matchListProxyRef = useRef<ZoneEntry>({
     id: "wishlist-matches",
-    get el() { return matchListRef.current?.el as HTMLElement; },
     focus: (dir) => matchListRef.current?.focus(dir),
   });
 
@@ -472,7 +469,6 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   useEffect(() => {
     const controlsZone: ZoneEntry = {
       id: "wishlist-controls",
-      get el() { return controlsRef.current!; },
       focus: (dir) => (dir === "forward" ? focusActiveTab() : focusControlsBackward()),
     };
     const zones: ZoneEntry[] = [controlsZone];
@@ -487,7 +483,6 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
       // is what makes it keyboard-reachable via F6/Tab.
       zones.push({
         id: "wishlist-empty",
-        get el() { return emptyZoneRef.current!; },
         focus: () => addExampleBtnRef.current?.focus(),
       });
     } else if (patternListRef.current) {
@@ -504,7 +499,6 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
   // parity, StreamsPanel.tsx:676+).
   const renderEmptyZone = (emptyMessage: string) => (
     <div
-      ref={emptyZoneRef}
       data-zone-id="wishlist-empty"
       role="region"
       aria-label={emptyMessage}

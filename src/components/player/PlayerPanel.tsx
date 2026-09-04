@@ -117,7 +117,6 @@ export const PlayerPanel = forwardRef<
   const canPrev = isActive && resolveTransportAction("prev", transportCtx).kind !== "none";
   const canNext = isActive && resolveTransportAction("next", transportCtx).kind !== "none";
 
-  const playerRootRef = useRef<HTMLDivElement>(null);
   const prevRef = useRef<HTMLButtonElement>(null);
   const playPauseRef = useRef<HTMLButtonElement>(null);
   const nextRef = useRef<HTMLButtonElement>(null);
@@ -167,9 +166,6 @@ export const PlayerPanel = forwardRef<
     ref,
     () => ({
       id: "player",
-      get el() {
-        return playerRootRef.current!;
-      },
       focus: restoreFocusPlayer,
     }),
     [restoreFocusPlayer]
@@ -237,7 +233,6 @@ export const PlayerPanel = forwardRef<
 
   return (
     <div
-      ref={playerRootRef}
       role="complementary"
       aria-label={m.player_panel_label()}
       data-zone-id="player"
