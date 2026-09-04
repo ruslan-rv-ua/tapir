@@ -196,7 +196,7 @@ notes:
 - **A4. Гард модифікаторів — лише для F5.** `switch` по `e.key` сьогодні не має
   гарду взагалі (`Ctrl+F2` → `edit`, `Alt+Delete` → `delete`). Вирівнювання
   F2/Delete/Enter — це зміна поведінки в чотирьох списках, винесена в
-  [list-key-modifier-guards](../p2-list-key-modifier-guards.md).
+  [list-key-modifier-guards](p2-list-key-modifier-guards.md).
 - **A5. `aria-keyshortcuts` — усі три токени.** Рядок потоку вже обробляє
   `Alt+Enter`, але не рекламує нічого; `SongItem` свою пару рекламує. Оголосити
   `"F5 Shift+F5 Alt+Enter"` і переписати наявний тест
@@ -492,7 +492,7 @@ KeyRecorder. Два дієслова на одну дію коштували б 
 ## Поза скоупом
 
 - **Гард модифікаторів для `F2`/`Delete`/`Enter`** — зміна поведінки в шести
-  списках, окремий запис [list-key-modifier-guards](../p2-list-key-modifier-guards.md) (A4).
+  списках, окремий запис [list-key-modifier-guards](p2-list-key-modifier-guards.md) (A4).
 - **Симетрія клавіатура↔меню в семантиці виділення** (`size > 0` vs `.has(id)`)
   — свідомо лишається розбіжною (A6).
 - **`F5`/`Shift+F5` в інших списках** (пісні, профілі, розклад, патерни,
@@ -630,7 +630,7 @@ KeyRecorder. Два дієслова на одну дію коштували б 
 - Реєстр: [docs/keyboard-shortcuts.md](../../keyboard-shortcuts.md) (Tier 2′ +
   примітка гарду, §9)
 - Залежність: [p2-webview-reload-guard.md](p2-webview-reload-guard.md)
-- Відгалуження: [p2-list-key-modifier-guards.md](../p2-list-key-modifier-guards.md) (A4)
+- Відгалуження: [p2-list-key-modifier-guards.md](p2-list-key-modifier-guards.md) (A4)
 - [Total Commander: F5 (Copy) / F6 (Move)](https://ghisler.ch/board/viewtopic.php?t=18963) ·
   [Norton Commander shortcuts](https://www.winnc.com/norton_commander_keyboard_shortcuts/)
 - [Microsoft: Keyboard accessibility — F6 pane navigation](https://learn.microsoft.com/en-us/windows/apps/design/accessibility/keyboard-accessibility) ·

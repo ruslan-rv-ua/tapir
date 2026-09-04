@@ -3,11 +3,12 @@ slug: list-key-modifier-guards
 title: "Списки: навігаційні клавіші, Delete, Enter і Space спрацьовують із будь-яким модифікатором"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: S
 kind: bug
 target: 0.1.0
 updated: 2026-09-04
+completed: 2026-09-04
 a11y: true
 depends_on: []
 blocks: [list-shift-range-to-edge]
@@ -30,14 +31,14 @@ notes:
 # Списки: навігаційні клавіші, `Delete`, `Enter` і `Space` спрацьовують із будь-яким модифікатором
 
 > **Контекст:** знахідка ревізії
-> [streams-transfer-hotkeys](done/p2-streams-transfer-hotkeys.md) (2026-08-07, A4).
+> [streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md) (2026-08-07, A4).
 > Огрилено 2026-09-04 — рішення в
-> [ADR «Клавіші списку голі, поки не названо інакше»](../decisions/2026-09-04-list-keys-are-bare-unless-named.md),
+> [ADR «Клавіші списку голі, поки не названо інакше»](../../decisions/2026-09-04-list-keys-are-bare-unless-named.md),
 > читати першим.
 
 ## Опис
 
-`resolveKeyAction` у [useCompositeList.ts](../../src/hooks/useCompositeList.ts) має два стилі
+`resolveKeyAction` у [useCompositeList.ts](../../../src/hooks/useCompositeList.ts) має два стилі
 метчингу. Комбінації з модифікаторами (`Ctrl+Space`, `Ctrl+C`, `Ctrl+A`, `Shift+↑/↓`)
 перевіряються явно. Фінальний `switch (e.key)` і фолбек на `Space` — **не перевіряють
 модифікатори взагалі**.
@@ -58,9 +59,9 @@ notes:
 зайнята), але це прихована міна: будь-який майбутній Tier-2 хоткей на `Ctrl`+функційна або
 `Alt`+навігаційна клавіша мовчки продублює дію рядка.
 
-Окремо варте уваги — **`Shift+Space` у потоках**. [keyboard-shortcuts.md:300](../keyboard-shortcuts.md),
-[StreamList.tsx:424](../../src/components/streams/StreamList.tsx) і
-[SongsList.tsx:134](../../src/components/songs/SongsList.tsx) стверджують: «модифікатори діють
+Окремо варте уваги — **`Shift+Space` у потоках**. [keyboard-shortcuts.md:300](../../keyboard-shortcuts.md),
+[StreamList.tsx:424](../../../src/components/streams/StreamList.tsx) і
+[SongsList.tsx:134](../../../src/components/songs/SongsList.tsx) стверджують: «модифікатори діють
 лише на `Enter`, `Space` їх ігнорує». `StreamList` віддає `mods` у `activateStream`, а той читає
 `mods?.shift` — тобто `Shift+Space` слухає. Тест був написаний на `Alt+Space`, тобто рівно на
 той модифікатор, якого `activateStream` не читає: зелений тест над хибним твердженням.
@@ -84,7 +85,7 @@ notes:
    Мишача гілка (`CompositeRow.onActivate`, `Shift`+подвійний клік) передає далі — вона жива.
 
 **Поза обсягом:** розширення діапазону `Shift+Home`/`End` — окремий запис
-[list-shift-range-to-edge](p2-list-shift-range-to-edge.md); звуження типу `onAction` по
+[list-shift-range-to-edge](../p2-list-shift-range-to-edge.md); звуження типу `onAction` по
 `ActionType` — коментар у коді там, де прибирається мертве читання, без запису в беклозі.
 
 ## Критерії готовності
@@ -99,7 +100,7 @@ notes:
 - [x] `Alt+*` і `Meta+*` не отримують `preventDefault()` від списку взагалі
       — на **шляху відмови** (§4). Три названі винятки вище гарда (`Ctrl+Space`,
       `Ctrl+C`, `Ctrl+A`) як і раніше приймають `Meta` псевдонімом до `Ctrl`
-      (`ctrlOrMeta` — конвенція всього застосунку, [shortcuts.ts](../../src/lib/shortcuts.ts)),
+      (`ctrlOrMeta` — конвенція всього застосунку, [shortcuts.ts](../../../src/lib/shortcuts.ts)),
       тож `Meta+Space`/`Meta+C`/`Meta+A` досі консумляться. Це не зачіпалось
       свідомо: звузити тут означало б розійтися з глобальним реєстром
 - [x] `Shift+Space` на кнопці дії та на завершальному стопі й далі їх активує (§5)
@@ -109,23 +110,24 @@ notes:
 - [x] `StreamList`: клавіатурна гілка `toggle` більше не передає `mods`; мишача передає
 - [x] Табличний юніт-тест на `suppressesDefault` — матриця «клавіша × модифікатор»
       (12 клавіш × `Ctrl`/`Alt`/`Shift`/`Meta` та їхні пари)
-- [x] Тести [StreamList.test.tsx:402](../../src/components/streams/StreamList.test.tsx) і
-      [SongsList.test.tsx:101](../../src/components/songs/SongsList.test.tsx) переписані як
+- [x] Тести [StreamList.test.tsx:402](../../../src/components/streams/StreamList.test.tsx) і
+      [SongsList.test.tsx:101](../../../src/components/songs/SongsList.test.tsx) переписані як
       твердження **про намір** («`Alt+Space` у списку не робить нічого і не гаситься»), а не
       підігнані під новий результат
-- [x] Тест [useCompositeList.test.tsx:292](../../src/hooks/useCompositeList.test.tsx)
+- [x] Тест [useCompositeList.test.tsx:292](../../../src/hooks/useCompositeList.test.tsx)
       («passes Shift/Ctrl modifiers … for Enter **and Space**») розділений: `Enter` везе,
       `Space` — ні
 - [x] Перевірено всі шість списків на навмисну залежність від поточної поведінки
       (grep по `onAction`-гілках) — жодна не зламана
-- [x] [keyboard-shortcuts.md](../keyboard-shortcuts.md) виправлено: твердження про `Space` було
+- [x] [keyboard-shortcuts.md](../../keyboard-shortcuts.md) виправлено: твердження про `Space` було
       хибним; додано правило «гола клавіша, якщо не названо» з посиланням на ADR
 - [x] `docs/help/` **не** змінюється — жодна з відпущених комбінацій там не обіцяна
       (звірено: лише `Shift+Enter`, `Ctrl+Enter`, `Delete`, `Shift+F10`, `Ctrl+Space`,
       `Shift+↑↓`, `Ctrl+A`, `Escape` — усі живі)
 - [x] `pnpm test` без регресій, `pnpm vite:build` зелений
-- [ ] NVDA-прогін за [nvda-list-key-modifier-guards.md](../testing/nvda-list-key-modifier-guards.md)
-      (4 сценарії, див. нижче)
+- [x] NVDA-прогін пройдено 2026-09-04 — усі 4 сценарії, зауважень немає.
+      `Alt+Space` справді доходить до системного меню вікна: WebView2 його не з'їдає,
+      тобто єдине набуття §4 підтверджене на живому застосунку
 
 ## NVDA-прогін
 
@@ -141,9 +143,9 @@ notes:
 
 ## Документи
 
-- ADR: [2026-09-04-list-keys-are-bare-unless-named.md](../decisions/2026-09-04-list-keys-are-bare-unless-named.md)
+- ADR: [2026-09-04-list-keys-are-bare-unless-named.md](../../decisions/2026-09-04-list-keys-are-bare-unless-named.md)
 - Код: `src/hooks/useCompositeList.ts` (`resolveKeyAction`, гард, `suppressesDefault`)
 - Сусідній ADR по тому самому `switch`:
-  [2026-09-03-trailing-stop-crosses-only-on-down.md](../decisions/2026-09-03-trailing-stop-crosses-only-on-down.md)
-- Джерело: [p2-streams-transfer-hotkeys.md](done/p2-streams-transfer-hotkeys.md) (A4)
-- Хвіст: [p2-list-shift-range-to-edge.md](p2-list-shift-range-to-edge.md)
+  [2026-09-03-trailing-stop-crosses-only-on-down.md](../../decisions/2026-09-03-trailing-stop-crosses-only-on-down.md)
+- Джерело: [p2-streams-transfer-hotkeys.md](p2-streams-transfer-hotkeys.md) (A4)
+- Хвіст: [p2-list-shift-range-to-edge.md](../p2-list-shift-range-to-edge.md)

@@ -207,7 +207,7 @@ nothing more to load»). Але відсутність футера мусить
 - [CONTEXT.md](../../../CONTEXT.md) §«Навігаційні терміни» — термін **Стоп**
 - [browser-filter-cursor-reset](p2-browser-filter-cursor-reset.md) — запис,
   під час прогону якого ваду знайдено
-- [list-key-modifier-guards](../p2-list-key-modifier-guards.md) — сусід по тому
+- [list-key-modifier-guards](p2-list-key-modifier-guards.md) — сусід по тому
   самому `switch`, ортогональне правило
 - [accessibility.md](../../accessibility.md)
 - `src/hooks/useCompositeList.ts` — `resolveKeyAction`, гілка `action === "tab"`

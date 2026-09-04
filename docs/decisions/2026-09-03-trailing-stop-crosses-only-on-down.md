@@ -7,7 +7,7 @@
   словник — [CONTEXT.md](../../CONTEXT.md) §«Навігаційні терміни», термін **Стоп**;
   код — [useCompositeList.ts](../../src/hooks/useCompositeList.ts) (`resolveKeyAction` і
   `switch (action)`), [CompositeList.tsx](../../src/components/common/composite-list/CompositeList.tsx);
-  сусідній запис по тому самому `switch` — [list-key-modifier-guards](../backlog/p2-list-key-modifier-guards.md);
+  сусідній запис по тому самому `switch` — [list-key-modifier-guards](../backlog/done/p2-list-key-modifier-guards.md);
   поверхня відгуку — [ADR про видимий носій](2026-08-31-visible-carrier-for-announced-facts.md).
 
 ## Проблема
@@ -132,7 +132,7 @@
   ставить сторожів у спільний компонент, і це стеля: тест бачить, що `End` не перетинає межу,
   але не бачить, чи наступний екран узагалі скористався `footerAction` замість власної
   розмітки. Цю половину перевіряє людина на рев'ю, і межа названа тут навмисно.
-- **§2 і [list-key-modifier-guards](../backlog/p2-list-key-modifier-guards.md) правлять той
+- **§2 і [list-key-modifier-guards](../backlog/done/p2-list-key-modifier-guards.md) правлять той
   самий `switch` із різних боків.** Той запис — про модифікатори (`Ctrl+F2` сьогодні
   перейменовує рядок), цей — про відсутність рядка під курсором. Правила ортогональні й не
   конфліктують; хто піде другим, побачить сторожа першого.

@@ -3,7 +3,7 @@
 - **Статус:** ПРИЙНЯТО
 - **Дата:** 2026-09-04
 - **Тип:** ADR — модель клавіатури в списках
-- **Контекст:** беклог — [list-key-modifier-guards](../backlog/p2-list-key-modifier-guards.md),
+- **Контекст:** беклог — [list-key-modifier-guards](../backlog/done/p2-list-key-modifier-guards.md),
   джерело знахідки — [streams-transfer-hotkeys](../backlog/done/p2-streams-transfer-hotkeys.md) (A4);
   код — [useCompositeList.ts](../../src/hooks/useCompositeList.ts) (`resolveKeyAction`);
   сусідній ADR по тому самому `switch` — [завершальний стоп](2026-09-03-trailing-stop-crosses-only-on-down.md);

@@ -33,7 +33,7 @@ notes:
 [ADR про включення сфокусованого рядка](../decisions/2026-06-21-shift-range-includes-focused-row.md)).
 Розширення **до краю** — `Shift+Home` і `Shift+End` — не вміє.
 
-До [list-key-modifier-guards](p2-list-key-modifier-guards.md) ці клавіші робили дещо гірше за
+До [list-key-modifier-guards](done/p2-list-key-modifier-guards.md) ці клавіші робили дещо гірше за
 «нічого»: `Shift+End` стрибав у кінець списку **і перевстановлював якір**, тобто мовчки
 знищував діапазон, який людина щойно будувала через `Shift+↓`. Той запис зробив їх інертними
 саме для того, щоб фічу потім **додавали**, а не перевчали від неї.
@@ -73,4 +73,4 @@ notes:
 - ADR: [2026-09-04-list-keys-are-bare-unless-named.md](../decisions/2026-09-04-list-keys-are-bare-unless-named.md) (§2)
 - ADR: [2026-06-21-shift-range-includes-focused-row.md](../decisions/2026-06-21-shift-range-includes-focused-row.md)
 - Код: `src/hooks/useCompositeList.ts` (`selectRangeUp`/`selectRangeDown`, `anchorRef`, `anchorBaseRef`)
-- Батьківський запис: [p2-list-key-modifier-guards.md](p2-list-key-modifier-guards.md)
+- Батьківський запис: [p2-list-key-modifier-guards.md](done/p2-list-key-modifier-guards.md)
