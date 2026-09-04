@@ -36,3 +36,10 @@ check:
     pnpm vite:build
     pnpm test
     pnpm typecheck
+
+# Both backend gates. `--all-targets` reaches test code too — that is where a
+# third of the lints hid before clippy was turned into a gate. The deny level
+# itself lives in `src-tauri/Cargo.toml`, so no `-D warnings` here.
+check-rust:
+    cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets
+    cargo test --manifest-path src-tauri/Cargo.toml

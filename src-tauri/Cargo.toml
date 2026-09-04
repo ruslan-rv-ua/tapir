@@ -9,6 +9,12 @@ edition = "2024"
 name = "tapir_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
+# Clippy is a gate, not a suggestion. The level lives here rather than in a
+# `-D warnings` flag on one call site, so a bare `cargo clippy` is the same gate
+# for everyone — editor, terminal, future CI. See DEVELOPERS.md.
+[lints.clippy]
+all = "deny"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

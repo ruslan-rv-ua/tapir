@@ -60,7 +60,7 @@
 | `depends_on` | array | slug'и записів беклогу | лише записи цієї папки (вкл. `done/`) |
 | `blocks` | array | slug'и записів беклогу | які записи розблоковує цей |
 | `touches` | array | шляхи коду | орієнтовний scope для агента |
-| `gates` | array | команди | три ворота фронтенду: `[pnpm test, pnpm typecheck, pnpm vite:build]` (усі разом — `just check`) |
+| `gates` | array | команди | ворота фронтенду: `[pnpm test, pnpm typecheck, pnpm vite:build]` (усі разом — `just check`); ворота бекенду: `[cargo test, cargo clippy --all-targets]` (усі разом — `just check-rust`) |
 
 Необов'язкові поля:
 
