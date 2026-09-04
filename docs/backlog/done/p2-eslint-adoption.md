@@ -3,14 +3,15 @@ slug: eslint-adoption
 title: "ESLint у проєкті: react-hooks і jsx-a11y або прибрати мертві eslint-disable"
 priority: P2
 type: research
-status: ready
+status: done
 effort: M
 kind: chore
 target: 0.1.0
 updated: 2026-09-04
+completed: 2026-09-04
 a11y: true
 depends_on: []
-blocks: []
+blocks: [eslint-narrow-setup, zone-entry-dead-el]
 touches:
   - package.json
   - src/components/common/composite-list/CompositeList.tsx
@@ -35,13 +36,17 @@ notes:
 
 # ESLint у проєкті: react-hooks і jsx-a11y або прибрати мертві eslint-disable
 
-> **Контекст:** знахідка аудиту 2026-09-04. Дослідження з двома чесними виходами:
-> завести ESLint із двома плагінами або визнати, що лінтера не буде, і прибрати
-> коментарі, які до нього звертаються. Результат: звіт і рішення розробника.
+> **Контекст:** виконано. Обрано **третій вихід**: ESLint заведено, але **без обох
+> плагінів, заради яких запис і створювався** — jsx-a11y не окупається, а react-hooks
+> узято лише з двома класичними правилами. Читати одразу «Результати дослідження» в
+> кінці: опис вище описує стан на момент постановки і в трьох місцях розходиться з
+> кодом (директив чотирнадцять, не чотири; шум jsx-a11y — не «частина правил», а всі
+> знахідки) — розбіжності розібрані у звіті. Реалізація —
+> [eslint-narrow-setup](p2-eslint-narrow-setup.md).
 
 ## Опис
 
-У [package.json](../../package.json) немає ні `eslint`, ні конфігу. При цьому чотири
+У [package.json](../../../package.json) немає ні `eslint`, ні конфігу. При цьому чотири
 файли несуть `// eslint-disable-next-line react-hooks/exhaustive-deps`: автор кожного
 свідомо пропустив залежність ефекту й попередив лінтер, якого немає. Ці коментарі
 документують намір, але не перевіряються.
@@ -75,15 +80,17 @@ notes:
 - [x] `docs/help/` — запис видимої поведінки не змінює
 - [x] Звіт у цьому записі: кількість порушень за правилами, три найцінніші знахідки,
       рекомендація «заводити» або «не заводити»
-- [ ] Якщо рішення «заводити»: окремий запис `type: planned` з конфігом, скриптом
-      `pnpm lint` і місцем у `gates:`
-- [ ] Якщо рішення «не заводити»: чотири коментарі `eslint-disable-next-line`
-      замінено звичайними коментарями з тим самим поясненням
+- [x] Якщо рішення «заводити»: окремий запис `type: planned` з конфігом, скриптом
+      `pnpm lint` і місцем у `gates:` — [eslint-narrow-setup](p2-eslint-narrow-setup.md)
+- [x] ~~Якщо рішення «не заводити»: чотири коментарі `eslint-disable-next-line`
+      замінено звичайними коментарями~~ — не застосовно, ESLint заведено. Із
+      чотирнадцяти директив прибрано одну мертву; тринадцять лишились і **тепер
+      перевіряються**
 
 ## Документи
 
-- [accessibility-doc-audit](done/p2-accessibility-doc-audit.md) — де вперше зафіксовано відсутність ESLint
-- [accessibility.md](../accessibility.md) — які правила a11y проєкт тримає вручну
+- [accessibility-doc-audit](p2-accessibility-doc-audit.md) — де вперше зафіксовано відсутність ESLint
+- [accessibility.md](../../accessibility.md) — які правила a11y проєкт тримає вручну
 
 ## Результати дослідження (2026-09-04)
 
@@ -163,7 +170,7 @@ notes:
 **jsx-a11y: 0 справжніх проблем із 38.** 27 зауважень у продуктивному коді, 7 — у
 тестових фікстурах. Кожне простежене до вже ухваленого й перевіреного NVDA рішення:
 `no-autofocus` (16) — це `autoFocus` на першому полі діалогів, поіменно описаний у
-[accessibility.md](../accessibility.md) (рядки 332, 541, 614, 655, 721, 918);
+[accessibility.md](../../accessibility.md) (рядки 332, 541, 614, 655, 721, 918);
 п'ять зауважень — на `role="application"`, яка існує рівно для того, щоб автор сам
 вів клавіатуру. Тобто **відповідь на питання запису «які з них шум від композитних
 списків і `role="application"`» — виміряна: 100 %.** Прогноз запису («доведеться
@@ -172,12 +179,12 @@ notes:
 
 **Два зауваження jsx-a11y — не шум, а активна шкода:**
 
-- `no-redundant-roles` на [CompositeRow.tsx:61](../../src/components/common/composite-list/CompositeRow.tsx:61)
-  вимагає прибрати `role="listitem"` з `<li>`. [accessibility.md:216-221](../accessibility.md)
+- `no-redundant-roles` на [CompositeRow.tsx:61](../../../src/components/common/composite-list/CompositeRow.tsx:61)
+  вимагає прибрати `role="listitem"` з `<li>`. [accessibility.md:216-221](../../accessibility.md)
   пояснює протилежне: роль стоїть явно саме тому, що **під `role="application"`
   неявна роль губиться**. Лінтер не бачить ролі батьківського `<ul>` і радить
   зламати семантику.
-- `no-static-element-interactions` на [WishlistPanel.tsx:566](../../src/components/wishlist/WishlistPanel.tsx:566)
+- `no-static-element-interactions` на [WishlistPanel.tsx:566](../../../src/components/wishlist/WishlistPanel.tsx:566)
   свариться на **виправлення** реального NVDA-бага (комміт `4104038`). Дефектом був
   `onKeyDown` на `<TabList>` від react-aria — там плагін мовчав; правильний ремонт
   переніс обробник на сирий `<div>` — і саме на нього плагін лається. На цьому
@@ -205,7 +212,7 @@ notes:
 
 1. **П'ять випадків**, коли react-aria проковтнув пропс через `filterDOMProps`
    (`tabIndex`, `title`, `onKeyDown`, `aria-disabled`, `aria-valuetext`). Це клас
-   **API бібліотеки**, і ловить його не лінтер, а `tsc`: [p1-typecheck-gate](done/p1-typecheck-gate.md)
+   **API бібліотеки**, і ловить його не лінтер, а `tsc`: [p1-typecheck-gate](p1-typecheck-gate.md)
    фіксує, що троє з десяти «косметичних» помилок типів були мертвим кодом.
 2. Фокус, що падає в `<body>` — чистий рантайм.
 3. Репліка, задушена `aria-hidden` або перевикористанням вузла — теж рантайм.
@@ -232,13 +239,13 @@ notes:
 
 - **13 директив справді щось глушать** — тобто це перевірені винятки, а не забобон.
   Найчастіше придушення (4 з 14) спирається на «`onZonesChange` стабільний», і це
-  **фактично правда**: [App.tsx:126](../../src/App.tsx:126) — `useCallback` з `[]`.
-- **1 директива застаріла** — [ImportStreamsDialog.tsx:88](../../src/components/streams/ImportStreamsDialog.tsx:88)
+  **фактично правда**: [App.tsx:126](../../../src/App.tsx:126) — `useCallback` з `[]`.
+- **1 директива застаріла** — [ImportStreamsDialog.tsx:88](../../../src/components/streams/ImportStreamsDialog.tsx:88)
   не глушить нічого; список залежностей повний.
-- **1 порушення ніколи не було придушене** — [usePlayerZoneNav.ts:93](../../src/hooks/usePlayerZoneNav.ts:93),
+- **1 порушення ніколи не було придушене** — [usePlayerZoneNav.ts:93](../../../src/hooks/usePlayerZoneNav.ts:93),
   `useCallback` без `stops.length`.
 - **10 із 14 мають письмове обґрунтування поруч.** Чотири голі — усі в
-  [useCompositeList.ts](../../src/hooks/useCompositeList.ts) (рядки 526, 876, 947, 1125).
+  [useCompositeList.ts](../../../src/hooks/useCompositeList.ts) (рядки 526, 876, 947, 1125).
 
 **Обмеження впровадження, знайдене принагідно:** ці 14 директив перетворюються на
 **14 твердих помилок** `Definition for rule 'react-hooks/exhaustive-deps' was not
@@ -251,7 +258,7 @@ typescript-eslint **не можна підключити першими** — `r
 Чесно наперед: **жодна не є дефектом, який користувач відчує сьогодні.** Найгучніші
 набори дали нуль справжніх проблем. Це і є головний результат.
 
-1. **[ProfilesPanel.tsx:261](../../src/components/profile/ProfilesPanel.tsx:261) —
+1. **[ProfilesPanel.tsx:261](../../../src/components/profile/ProfilesPanel.tsx:261) —
    `listRef.current?.el!`, за яким стоїть мертве поле інтерфейсу.**
    `@typescript-eslint/no-non-null-asserted-optional-chain` вказав на одну брехню
    компілятору, а за нею знайшлося більше: **`ZoneEntry.el` не читає ніхто.**
@@ -262,8 +269,8 @@ typescript-eslint **не можна підключити першими** — `r
    Обов'язкове поле, заради якого **близько двадцяти** місць пишуть гетер із `!` або
    `as HTMLElement`, не має споживача. Прибрати `el` із `ZoneEntry` — і всі двадцять
    небезпечних ствердень зникнуть разом із ним.
-2. **[AudioTab.tsx:31](../../src/components/settings/AudioTab.tsx:31) і
-   [:55](../../src/components/settings/AudioTab.tsx:55) — дві проковтнуті помилки.**
+2. **[AudioTab.tsx:31](../../../src/components/settings/AudioTab.tsx:31) і
+   [:55](../../../src/components/settings/AudioTab.tsx:55) — дві проковтнуті помилки.**
    Обидва `catch (err)` прив'язують `err` і викидають його: користувач бачить
    загальне «не вдалося», а причина відмови аудіопристрою не потрапляє ні в тост, ні
    в лог. Це відхилення від власної конвенції — по `src` 38 місць зі `String(err)` і
