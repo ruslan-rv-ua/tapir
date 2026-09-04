@@ -11,7 +11,7 @@ updated: 2026-09-04
 completed: 2026-09-04
 a11y: false
 depends_on: []
-blocks: [ci-pipeline, wishlist-tabs-tab-bridge]
+blocks: [ci-pipeline, wishlist-tabs-tab-bridge, player-transport-tab-order]
 touches:
   - tsconfig.json
   - package.json

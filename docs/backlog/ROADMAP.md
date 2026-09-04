@@ -31,6 +31,7 @@ semver; `unscheduled` — наприкінці.
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
 | [tech-stack-doc-drift](p2-tech-stack-doc-drift.md) | P2 | planned | ready | M | [window-state-outside-data-dir](done/p1-window-state-outside-data-dir.md) ✅, [dead-dependencies](done/p2-dead-dependencies.md) ✅ | — (tech-stack.md перелічує плагіни, яких немає, і цитує чужий ідентифікатор; AGENTS.md каже «Phase 3F») |
+| [player-transport-tab-order](p2-player-transport-tab-order.md) | P2 | planned | ready | S | [typecheck-gate](done/p1-typecheck-gate.md) ✅ | — (коду писати не треба: п'ять кнопок транспорту вийшли з рідного порядку `Tab`, потрібен лише ручний прогін) |
 | [wishlist-tabs-tab-bridge](p2-wishlist-tabs-tab-bridge.md) | P2 | planned | ready | S | [typecheck-gate](done/p1-typecheck-gate.md) ✅ | — (`onKeyDown` на `<TabList>` react-aria не доносить до DOM, тож `Tab` із вкладки списку бажань ніколи не йшов у тулбар; знахідка typecheck-gate) |
 | [paraglide-native-plurals](p2-paraglide-native-plurals.md) | P2 | research | ready | M | — | — (14 родин суфіксів `_zero/_one/_few/_many` і п'ять `Intl.PluralRules` замість варіантів Paraglide; Rust читає ті самі JSON, тож потрібне рішення для другого споживача) |
 | [eslint-adoption](p2-eslint-adoption.md) | P2 | research | ready | M | — | — (чотири `eslint-disable` без ESLint; `jsx-a11y` як автоматична частина a11y-рев'ю, або чесне «лінтера не буде») |
