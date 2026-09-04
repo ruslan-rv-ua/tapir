@@ -29,8 +29,10 @@ clean:
 install:
     pnpm install
 
-# All three frontend gates: tests, type check, production build
+# All three frontend gates. Build first: `src/i18n/paraglide/` is generated and
+# gitignored, and both the tests and tsc read it — on a fresh clone the other two
+# have nothing to resolve `messages` against until vite has compiled it.
 check:
+    pnpm vite:build
     pnpm test
     pnpm typecheck
-    pnpm vite:build
