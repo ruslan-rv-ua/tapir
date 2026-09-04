@@ -9,11 +9,11 @@ import {
   updateSearchParam,
   resetSearch,
 } from "../../stores/browser";
+import type { SearchCriteria } from "../../stores/browser";
 import { useFocusBoundary } from "../../hooks/useFocusBoundary";
 import { focusOrSelect } from "../../lib/focusOrSelect";
 import { ScreenZone } from "../layout/ScreenZone";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
-import type { SearchParams } from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 
 interface SearchFormProps {
@@ -56,8 +56,8 @@ export const SearchForm = forwardRef<ZoneEntry, SearchFormProps>(function Search
   }, []);
 
   // Immediate search on filter change
-  const handleFilterChange = useCallback(<K extends keyof typeof params>(key: K, value: string) => {
-    updateSearchParam(key, (value || undefined) as SearchParams[K]);
+  const handleFilterChange = useCallback(<K extends keyof SearchCriteria>(key: K, value: string) => {
+    updateSearchParam(key, (value || undefined) as SearchCriteria[K]);
     clearTimeout(debounceRef.current);
     setTimeout(() => searchStations($searchParams.get()), 0);
   }, []);

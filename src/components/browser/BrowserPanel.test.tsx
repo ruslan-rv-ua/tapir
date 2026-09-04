@@ -253,6 +253,42 @@ it("a failed batch keeps the results and leaves the cursor on the button", async
   expect($toasts.get().map((t) => t.type)).toEqual(["error"]);
 });
 
+// A batch that lands into criteria the person has already changed is not theirs
+// any more, and the list must hear that as "nothing was appended". Anything else
+// is read as a successful EMPTY append: the list would speak "nothing more" —
+// false, there is more — and pull focus out of the field being typed in.
+it("a batch landing after the criteria changed neither speaks nor moves focus", async () => {
+  const onZonesChange = vi.fn();
+  const { getByPlaceholderText } = render(
+    <BrowserPanel onZonesChange={onZonesChange} exitZone={vi.fn()} />,
+  );
+  const results = await withMoreToLoad(onZonesChange);
+
+  act(() => results.focus("forward"));
+  fireEvent.keyDown(document.activeElement!, { key: "End" });
+  fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+
+  let release!: (batch: StationResult[]) => void;
+  vi.mocked(searchStationsIpc).mockImplementationOnce(
+    () => new Promise<StationResult[]>((resolve) => { release = resolve; }),
+  );
+  await act(async () => { fireEvent.click(trailingBtn()!); });
+
+  // …and while it is in the air, the person types on: a different result set.
+  const input = getByPlaceholderText(m.browser_search_placeholder());
+  act(() => (input as HTMLInputElement).focus());
+  act(() => { updateSearchParam("query", "blues"); });
+  $announcer.set(null);
+  $toasts.set([]);
+
+  await act(async () => { release([mk("s3"), mk("s4"), mk("s5")]); });
+
+  expect(document.activeElement).toBe(input); // still typing, undisturbed
+  expect($announcer.get()).toBeNull(); // nothing to say about a set they left
+  expect(document.querySelectorAll('li[data-segment="summary"]')).toHaveLength(2);
+  expect($toasts.get()).toHaveLength(0);
+});
+
 it("Popular Stations has no trailing stop at all", async () => {
   const onZonesChange = vi.fn();
   render(<BrowserPanel onZonesChange={onZonesChange} exitZone={vi.fn()} />);

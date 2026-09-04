@@ -9,7 +9,7 @@ import * as m from "../i18n/paraglide/messages";
 
 export const $searchResults = atom<StationResult[]>([]);
 /**
- * A NEW selection is being fetched — the list on screen is about to be replaced,
+ * A NEW result set is being fetched — the list on screen is about to be replaced,
  * so the screen shows a loading card INSTEAD of it. Appending has its own flag
  * ($appendLoading) precisely because it must not do that: taking the <ul> away
  * mid-append drops the cursor to <body> and the results zone with it.
@@ -18,12 +18,20 @@ export const $searchLoading = atom<boolean>(false);
 /** A further batch is in flight. The list stays on screen; only the button is busy. */
 export const $appendLoading = atom<boolean>(false);
 /**
- * A NEW selection failed. Appending never sets this: an error card here would
+ * A NEW result set failed. Appending never sets this: an error card here would
  * take away the 50 results already on screen — a failed extra batch is reported
- * as a toast instead (searchStations below).
+ * as a toast instead (loadMore below).
  */
 export const $searchError = atom<string | null>(null);
-export const $searchParams = atom<SearchParams>({
+/**
+ * What the result set IS — query, filters, order, batch size. Where reading of it
+ * has got to is deliberately not here: that position is the length of the prefix
+ * already on screen ($searchResults), counted at request time, so it cannot drift
+ * away from what the person sees. ADR 2026-09-04 «прочитаний початок і є курсор
+ * пагінації»; vocabulary — CONTEXT.md §«Пошук станцій».
+ */
+export type SearchCriteria = Omit<SearchParams, "offset">;
+export const $searchParams = atom<SearchCriteria>({
   limit: 50,
   order: "clickcount",
 });
@@ -43,67 +51,79 @@ export const $stationSelection = atom<Set<string>>(new Set());
 // --- Actions ---
 
 /**
- * True when these params ask for MORE of the selection already on screen
- * ("Load more"), false when they define a new one. `offset` is the only thing
- * that says so: every filter change resets it to 0 (updateSearchParam), and
- * loadMore is the only path that raises it. Callers that must tell "appended"
- * from "replaced" apart — the results cursor, among them — ask here rather than
- * re-reading the field and re-deriving the rule.
+ * One request for a batch of the result set — shared by the two events that ask
+ * for one, replacing and appending. Asks the catalogue for one MORE record than it
+ * will show: whether that extra record came back IS the answer
+ * to "is there more", instead of the guess "a full batch probably means more"
+ * (which produced an empty final page). The +1 lives strictly here — `limit` in
+ * SearchCriteria means "how many to show".
  */
-export function isAppendingResults(params: SearchParams): boolean {
-  return (params.offset ?? 0) > 0;
+async function fetchBatch(
+  criteria: SearchCriteria,
+  offset: number,
+): Promise<{ results: StationResult[]; hasMore: boolean }> {
+  const limit = criteria.limit ?? 50;
+  const batch = await searchStationsIpc({ ...criteria, offset, limit: limit + 1 });
+  return { results: batch.slice(0, limit), hasMore: batch.length > limit };
 }
 
 /**
- * Fetch a batch. Two different events share this function and must not share
- * their loading/error surfaces: REPLACING the selection may take the list away,
- * APPENDING to it may not. `isAppendingResults` is the one place that tells them
- * apart. Rejects only on an append failure — the caller (the trailing stop) uses
- * that to keep focus on the button it pressed.
+ * REPLACE the result set: a new query, filter or order. May take the list off the
+ * screen (loading card, error card) precisely because the rows on it no longer
+ * mean anything. Never rejects — the failure is already on screen as $searchError.
  */
-export async function searchStations(params: SearchParams): Promise<void> {
-  const appending = isAppendingResults(params);
-  const limit = params.limit ?? 50;
-  if (appending) {
-    $appendLoading.set(true);
-  } else {
-    $searchLoading.set(true);
-    $searchError.set(null);
-  }
+export async function searchStations(criteria: SearchCriteria): Promise<void> {
+  $searchLoading.set(true);
+  $searchError.set(null);
   try {
-    // Ask the catalogue for one MORE than we will show: whether that extra
-    // record came back IS the answer to "is there more", instead of the guess
-    // "a full batch probably means more" (which produced an empty final page).
-    // The +1 lives strictly here — `limit` in SearchParams means "how many to
-    // show", and loadMore's offset still steps by exactly `limit`.
-    const batch = await searchStationsIpc({ ...params, limit: limit + 1 });
-    const results = batch.slice(0, limit);
-    if (appending) {
-      $searchResults.set([...$searchResults.get(), ...results]);
-    } else {
-      $searchResults.set(results);
-    }
-    $hasMore.set(batch.length > limit);
+    const { results, hasMore } = await fetchBatch(criteria, 0);
+    $searchResults.set(results);
+    $hasMore.set(hasMore);
   } catch (e) {
-    if (appending) {
-      addToast(String(e), "error");
-      throw e;
-    }
     $searchError.set(String(e));
   } finally {
-    if (appending) $appendLoading.set(false);
-    else $searchLoading.set(false);
+    $searchLoading.set(false);
   }
 }
 
+/**
+ * Rejection value for a batch that landed into criteria nobody is reading any more.
+ * It never reaches a person: the trailing stop reads ANY rejection as "nothing was
+ * appended, leave the rows and the cursor alone", which is exactly what a foreign
+ * batch deserves — resolving would make it read the press as a successful EMPTY
+ * append and say "there is nothing more" about a result set that has plenty.
+ */
+class ForeignBatch extends Error {
+  constructor() {
+    super("batch landed into criteria that have since changed");
+  }
+}
+
+/**
+ * APPEND the next batch of the SAME result set. Must not take the list away — the
+ * cursor is standing in those rows — so a failure is a toast, and the state is
+ * left exactly as it was: the next press asks for the very same page again.
+ * Rejects so the caller (the trailing stop) can keep focus on the button it pressed.
+ */
 export async function loadMore(): Promise<void> {
-  const params = $searchParams.get();
-  const newParams = {
-    ...params,
-    offset: (params.offset ?? 0) + (params.limit ?? 50),
-  };
-  $searchParams.set(newParams);
-  await searchStations(newParams);
+  const criteria = $searchParams.get();
+  const offset = $searchResults.get().length;
+  // The batch belongs to the criteria it flew out with. If they changed while it
+  // was in the air — landed or failed — it is about a result set nobody is looking
+  // at, and there is nothing to tell someone already reading another one.
+  const stillOurs = () => $searchParams.get() === criteria;
+  $appendLoading.set(true);
+  try {
+    const { results, hasMore } = await fetchBatch(criteria, offset);
+    if (!stillOurs()) throw new ForeignBatch();
+    $searchResults.set([...$searchResults.get(), ...results]);
+    $hasMore.set(hasMore);
+  } catch (e) {
+    if (stillOurs()) addToast(String(e), "error");
+    throw e;
+  } finally {
+    $appendLoading.set(false);
+  }
 }
 
 export async function loadFilters(): Promise<void> {
@@ -140,11 +160,11 @@ export async function addStations(stations: StationResult[]): Promise<StreamInfo
   return addStationsFromBrowser(stations);
 }
 
-export function updateSearchParam<K extends keyof SearchParams>(
+export function updateSearchParam<K extends keyof SearchCriteria>(
   key: K,
-  value: SearchParams[K],
+  value: SearchCriteria[K],
 ): void {
-  $searchParams.set({ ...$searchParams.get(), [key]: value, offset: 0 });
+  $searchParams.set({ ...$searchParams.get(), [key]: value });
   replaceSelection($stationSelection, new Set()); // new result set → drop selection
 }
 

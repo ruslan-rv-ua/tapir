@@ -23,7 +23,7 @@ notes:
 # Браузер станцій: пізня заміна затирає свіжішу вибірку
 
 > **Контекст:** знахідка грилінгу
-> [load-more-retry-skips-failed-page](p2-load-more-retry-skips-failed-page.md) (2026-09-04).
+> [load-more-retry-skips-failed-page](done/p2-load-more-retry-skips-failed-page.md) (2026-09-04).
 > Спосіб виправлення **не обраний** — див. «Розвилка».
 
 ## Опис
@@ -43,7 +43,7 @@ notes:
    про розбіжність не каже.
 
 Клас той самий, що в
-[load-more-retry-skips-failed-page](p2-load-more-retry-skips-failed-page.md): стан
+[load-more-retry-skips-failed-page](done/p2-load-more-retry-skips-failed-page.md): стан
 розходиться з екраном мовчки. Але половина інша — там дописування, тут заміна.
 
 ## Чому не полагоджено разом
@@ -88,7 +88,7 @@ notes:
 
 ## Документи
 
-- [load-more-retry-skips-failed-page](p2-load-more-retry-skips-failed-page.md) — перша
+- [load-more-retry-skips-failed-page](done/p2-load-more-retry-skips-failed-page.md) — перша
   половина класу, закрита
 - [ADR 2026-09-04 — прочитаний початок і є курсор пагінації](../decisions/2026-09-04-loaded-prefix-is-the-cursor.md) —
   механізм-кандидат і причина, чому заміну винесли окремо

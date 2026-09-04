@@ -10,7 +10,7 @@ import {
   $searchResults, $searchLoading, $appendLoading, $searchError,
   $popularStations, $popularLoading, $popularError,
   $hasMore, $isSearchActive, $stationSelection, $searchParams,
-  loadFilters, loadPopularStations, loadMore, isAppendingResults,
+  loadFilters, loadPopularStations, loadMore,
 } from "../../stores/browser";
 import { replaceSelection } from "../../stores/selection";
 import { useRovingFocus } from "../../hooks/useRovingFocus";
@@ -105,20 +105,17 @@ export function BrowserPanel({ onZonesChange, exitZone }: Props) {
   // Browser has no filter bar → unmount-clear only (no filter-change effect).
   useEffect(() => () => { replaceSelection($stationSelection, new Set()); }, []);
 
-  // A changed query or filter REPLACES the result set; "Load more" appends to it.
-  // Only the first case forgets the remembered row — why that is the right rule
-  // is on resetCursor in useCompositeList, and who counts as "appending" is
-  // isAppendingResults in the store. Focus is not moved: the user keeps typing.
+  // A changed query or filter REPLACES the result set, and the remembered row no
+  // longer means anything — why that is the right rule is on resetCursor in
+  // useCompositeList. Every change of the criteria is such a case: "Load more"
+  // appends to the SAME result set and writes nothing here, so it never wakes
+  // this listener. Focus is not moved: the user keeps typing.
   //
   // Subscribed imperatively instead of with useStore: the query changes on every
   // keystroke, and re-rendering the whole results list per character is a price
   // this cursor rule has no reason to charge.
   useEffect(
-    () =>
-      $searchParams.listen((params) => {
-        if (isAppendingResults(params)) return;
-        resultsListRef.current?.resetCursor();
-      }),
+    () => $searchParams.listen(() => resultsListRef.current?.resetCursor()),
     [],
   );
 
