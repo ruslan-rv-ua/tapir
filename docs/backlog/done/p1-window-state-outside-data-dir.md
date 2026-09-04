@@ -3,11 +3,12 @@ slug: window-state-outside-data-dir
 title: "Геометрія вікна пишеться в AppData замість data/"
 priority: P1
 type: planned
-status: ready
+status: done
 effort: M
 kind: bug
 target: 0.1.0
 updated: 2026-09-04
+completed: 2026-09-04
 a11y: true
 depends_on: []
 blocks: [tech-stack-doc-drift]
@@ -33,7 +34,7 @@ notes:
 
 > **Контекст:** знахідка аудиту 2026-09-04, огрилено того ж дня. Рішення ухвалені,
 > запис готовий до реалізації. Правило, за яким одні файли переїжджають у `data\`, а
-> інші лишаються в AppData, живе в [ADR про межу портативності](../decisions/2026-09-04-portable-boundary.md) —
+> інші лишаються в AppData, живе в [ADR про межу портативності](../../decisions/2026-09-04-portable-boundary.md) —
 > читати перед роботою.
 
 ## Опис
@@ -62,7 +63,7 @@ AppData, і є причиною правки: чистим AppData однако�
 1. **Формат — п'ять полів:** `width`, `height`, `x`, `y` (завжди звичайного, не
    розгорнутого вікна) і `maximized`. Не зберігаємо `visible` (це рішення поточного
    запуску: `--minimize` і трей), `fullscreen` (режим
-   [відхилено 2026-08-17](done/p3-window-fullscreen-f11.md)), `decorated` (константа,
+   [відхилено 2026-08-17](p3-window-fullscreen-f11.md)), `decorated` (константа,
    вимога NVDA mouse tracking) і пару запасних координат `prev_x`/`prev_y` (плагіну
    вони потрібні лише тому, що він не розрізняє переїзд від розгортання).
 2. **Шлях — `portable::window_state_path()`**, окремим файлом, як
@@ -93,34 +94,33 @@ AppData, і є причиною правки: чистим AppData однако�
 
 ## Критерії готовності
 
-- [ ] `docs/help/` — запис видимої поведінки не змінює; перевірити, що
-      [settings.md](../help/en/settings.md) і [background.md](../help/en/background.md)
+- [x] `docs/help/` — запис видимої поведінки не змінює; перевірити, що
+      [settings.md](../../help/en/settings.md) і [background.md](../../help/en/background.md)
       не називають місць зберігання, які стають неправдою
-- [ ] Розмір, позиція і `maximized` відновлюються з `data\window.json`; після виходу
+- [x] Розмір, позиція і `maximized` відновлюються з `data\window.json`; після виходу
       застосунок не створює в `%APPDATA%` каталогу `ua.ruslanrv.tapir` заново
-- [ ] Вікно, збережене на моніторі, якого зараз немає, відкривається по центру
+- [x] Вікно, збережене на моніторі, якого зараз немає, відкривається по центру
       головного монітора; вікно, більше за поточний екран, обрізається до робочої області
-- [ ] Стартова послідовність показу й фокусу вікна не змінена: NVDA озвучує головне
+- [x] Стартова послідовність показу й фокусу вікна не змінена: NVDA озвучує головне
       вікно при запуску, як описано в
-      [screenreader-startup-foreground.md](../notes/screenreader-startup-foreground.md)
-- [ ] `tauri-plugin-window-state` прибрано з `Cargo.toml`, `lib.rs` і
+      [screenreader-startup-foreground.md](../../notes/screenreader-startup-foreground.md)
+- [x] `tauri-plugin-window-state` прибрано з `Cargo.toml`, `lib.rs` і
       `capabilities/default.json`
-- [ ] README.md втратив обіцянку чистої системи й має одне чесне речення без жаргону;
+- [x] README.md втратив обіцянку чистої системи й має одне чесне речення без жаргону;
       DEVELOPERS.md називає всі три сліди: кеш WebView2, `AppUserModelId`, `Run`
-- [ ] architecture.md більше не описує плагін як механізм збереження стану вікна
-- [ ] NVDA-прогін старту за чеклістом
-      [nvda-window-state-outside-data-dir.md](../testing/nvda-window-state-outside-data-dir.md)
-      (8 сценаріїв: озвучений старт, геометрія в `data/`, розгорнуте вікно,
-      `--minimize`, координати поза екраном, п'ять перезапусків, вихід зі
-      згорнутого вікна, згортання в трей)
-- [ ] `cargo test`, `cargo clippy`, `pnpm test`, `pnpm vite:build` без помилок
+- [x] architecture.md більше не описує плагін як механізм збереження стану вікна
+- [x] NVDA-прогін старту проведено 2026-09-04, усі 8 сценаріїв пройдено
+      (озвучений старт, геометрія в `data/`, розгорнуте вікно, `--minimize`,
+      координати поза екраном, п'ять перезапусків, вихід зі згорнутого вікна,
+      згортання в трей) — зауважень немає
+- [x] `cargo test`, `cargo clippy`, `pnpm test`, `pnpm vite:build` без помилок
 
 ## Документи
 
-- [ADR: межа портативності](../decisions/2026-09-04-portable-boundary.md) — що живе в `data\`, а що ні, і чому `EBWebView` лишається
-- [portable.rs](../../src-tauri/src/portable.rs) — усі шляхи `data/`
-- [store.rs](../../src-tauri/src/store.rs) — `write_json_atomically`
-- [hotkey_busy.rs](../../src-tauri/src/hotkey_busy.rs) — зразок маленького файлу під `data/`
-- [lib.rs](../../src-tauri/src/lib.rs) — стартова послідовність
-- [screenreader-startup-foreground.md](../notes/screenreader-startup-foreground.md) — чому старт чутливий до NVDA
+- [ADR: межа портативності](../../decisions/2026-09-04-portable-boundary.md) — що живе в `data\`, а що ні, і чому `EBWebView` лишається
+- [portable.rs](../../../src-tauri/src/portable.rs) — усі шляхи `data/`
+- [store.rs](../../../src-tauri/src/store.rs) — `write_json_atomically`
+- [hotkey_busy.rs](../../../src-tauri/src/hotkey_busy.rs) — зразок маленького файлу під `data/`
+- [lib.rs](../../../src-tauri/src/lib.rs) — стартова послідовність
+- [screenreader-startup-foreground.md](../../notes/screenreader-startup-foreground.md) — чому старт чутливий до NVDA
 - upstream: https://github.com/tauri-apps/plugins-workspace/issues/3020 і PR https://github.com/tauri-apps/plugins-workspace/pull/3022

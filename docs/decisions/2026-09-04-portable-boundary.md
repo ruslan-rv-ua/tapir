@@ -3,7 +3,7 @@
 - **Статус:** ПРИЙНЯТО
 - **Дата:** 2026-09-04
 - **Тип:** ADR — межа обіцянки portable-режиму
-- **Контекст:** беклог — [window-state-outside-data-dir](../backlog/p1-window-state-outside-data-dir.md);
+- **Контекст:** беклог — [window-state-outside-data-dir](../backlog/done/p1-window-state-outside-data-dir.md);
   чому старт вікна чутливий — [screenreader-startup-foreground.md](../notes/screenreader-startup-foreground.md);
   код — [portable.rs](../../src-tauri/src/portable.rs), [window_state.rs](../../src-tauri/src/window_state.rs).
 
