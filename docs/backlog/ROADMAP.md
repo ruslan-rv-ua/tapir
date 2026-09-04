@@ -30,7 +30,7 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [window-state-outside-data-dir](p1-window-state-outside-data-dir.md) | P1 | planned | **draft** | M | — | [tech-stack-doc-drift](p2-tech-stack-doc-drift.md) (плагін пише `.window-state.json` у `%APPDATA%`, README обіцяє чистий AppData; варіант заміни не обрано, грилити; a11y через стартову послідовність show → focus) |
+| [window-state-outside-data-dir](p1-window-state-outside-data-dir.md) | P1 | planned | ready | M | — | [tech-stack-doc-drift](p2-tech-stack-doc-drift.md) (огрилено 2026-09-04: геометрія переїжджає в `data/window.json` власним кодом, плагін знято; кеш WebView2 свідомо лишається в AppData — [ADR](../decisions/2026-09-04-portable-boundary.md); чекає NVDA-прогону старту) |
 | [typecheck-gate](p1-typecheck-gate.md) | P1 | planned | ready | M | — | [ci-pipeline](p3-ci-pipeline.md) (tsc дає 191 помилку, 126 з них через відсутній `allowJs`; після конфігу 60, з них 10 у коді застосунку; tsc повертається у ворота) |
 | [tech-stack-doc-drift](p2-tech-stack-doc-drift.md) | P2 | planned | ready | M | [window-state-outside-data-dir](p1-window-state-outside-data-dir.md), [dead-dependencies](done/p2-dead-dependencies.md) ✅ | — (tech-stack.md перелічує плагіни, яких немає, і цитує чужий ідентифікатор; AGENTS.md каже «Phase 3F») |
 | [paraglide-native-plurals](p2-paraglide-native-plurals.md) | P2 | research | ready | M | — | — (14 родин суфіксів `_zero/_one/_few/_many` і п'ять `Intl.PluralRules` замість варіантів Paraglide; Rust читає ті самі JSON, тож потрібне рішення для другого споживача) |
