@@ -122,9 +122,9 @@ notes:
 («Огляд і перші кроки» / "Overview & first steps") — саме той інваріант, який гарантує
 конвенція розмітки №3:
 
-- [helpContent.test.ts:8](../../../src/components/common/helpContent.test.ts) — «Ласкаво просимо»
-- [helpContent.test.ts:14](../../../src/components/common/helpContent.test.ts) — "Welcome to Tapir"
-- [helpContent.test.ts:22](../../../src/components/common/helpContent.test.ts) — фолбек локалі
+- [helpContent.test.ts:8](../../../build/helpContent.test.ts) — «Ласкаво просимо»
+- [helpContent.test.ts:14](../../../build/helpContent.test.ts) — "Welcome to Tapir"
+- [helpContent.test.ts:22](../../../build/helpContent.test.ts) — фолбек локалі
 - [HelpDialog.test.tsx:25](../../../src/components/common/HelpDialog.test.tsx) — `getByText(/Ласкаво просимо/)`
 
 Тест `it("resolves the stub sections")` (`en`/`recording` → "coming soon") **не чіпати**:

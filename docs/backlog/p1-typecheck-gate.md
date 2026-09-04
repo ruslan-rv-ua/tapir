@@ -54,7 +54,7 @@ Paraglide 2 компілює повідомлення у `src/i18n/paraglide/*.j
 під `lib: ES2020`, `Element` замість `HTMLElement`, невикористані імпорти.
 
 Окрема група з 13 помилок припадає на
-[helpContent.test.ts](../../src/components/common/helpContent.test.ts): він читає
+[helpContent.test.ts](../../build/helpContent.test.ts): він читає
 `node:fs` і `process`, а `tsconfig` перевіряє `src` лише проти DOM-типів. За
 конвенцією полиця для коду, якому потрібен Node, це `build/` (там уже живе
 `docsLinks.test.ts`, і `vitest.config.ts` його підхоплює).
@@ -87,5 +87,5 @@ Paraglide 2 компілює повідомлення у `src/i18n/paraglide/*.j
 ## Документи
 
 - [tsconfig.json](../../tsconfig.json), [vitest.config.ts](../../vitest.config.ts)
-- [helpContent.test.ts](../../src/components/common/helpContent.test.ts) — кандидат на переїзд у `build/`
+- [helpContent.test.ts](../../build/helpContent.test.ts) — кандидат на переїзд у `build/`
 - документація Paraglide про TypeScript-типи згенерованого коду: https://inlang.com/m/gerre34r/library-inlang-paraglideJs

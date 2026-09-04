@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import fs from "fs";
 import path from "path";
-import { getHelpHtml } from "./helpContent";
+import { getHelpHtml } from "../src/components/common/helpContent";
 
 /** The generated tab — the one `<Tab id>` with no markdown file behind it. */
 const GENERATED_TAB = "shortcuts";

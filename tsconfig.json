@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
+    "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "bundler",
@@ -11,10 +11,17 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
+    // Paraglide compiles messages to `src/i18n/paraglide/*.js` with types in JSDoc.
+    // Without `allowJs` every import of them is a TS7016 wall (126 of them) that
+    // hides every real error behind it. `checkJs` stays off: the generated code is
+    // not ours to fix.
+    "allowJs": true,
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  // `build/` holds the Node-side tooling and its tests (vite plugin, docs links,
+  // help content) — type-checked here so `pnpm typecheck` covers them too.
+  "include": ["src", "build"]
 }
