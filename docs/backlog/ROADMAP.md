@@ -25,7 +25,7 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [list-key-modifier-guards](p2-list-key-modifier-guards.md) | P2 | planned | draft | S | [streams-transfer-hotkeys](done/p2-streams-transfer-hotkeys.md) | — (switch по `e.key` не перевіряє модифікаторів; той самий `switch`, що й у [load-more-unreachable-by-keyboard](done/p1-load-more-unreachable-by-keyboard.md) — правила ортогональні, хто піде другим, побачить сторожа першого) |
+| [list-key-modifier-guards](p2-list-key-modifier-guards.md) | P2 | planned | ready | S | [streams-transfer-hotkeys](done/p2-streams-transfer-hotkeys.md) | [list-shift-range-to-edge](p2-list-shift-range-to-edge.md) (огрилено 2026-09-04, 11 рішень → [ADR «клавіші списку голі, поки не названо інакше»](../decisions/2026-09-04-list-keys-are-bare-unless-named.md); опис був застарілий — `F2`/`F4`/`F5` гарди вже мають; справжня знахідка — `Shift+Space` у потоках слухає всупереч докам, а `Alt+Space` краде системне меню вікна) |
 
 ## v0.2.0
 
@@ -54,7 +54,10 @@ semver; `unscheduled` — наприкінці.
 > [webview-zoom-hotkeys](p1-webview-zoom-hotkeys.md): це `planned`/`ready`, перенесений
 > сюди з 0.1.0, обговорення не потребує. Два записи трея — `planned`/`draft`, заведені
 > грилінгом [tray-toggle-label-vs-action](done/p2-tray-toggle-label-vs-action.md): їм потрібен
-> **GROOMING**, а не обговорення. 17 записів.
+> **GROOMING**, а не обговорення. Так само
+> [list-shift-range-to-edge](p2-list-shift-range-to-edge.md) — хвіст грилінгу
+> [list-key-modifier-guards](p2-list-key-modifier-guards.md), з ясною клавішею й відкритим
+> обсягом. 18 записів.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
@@ -75,6 +78,7 @@ semver; `unscheduled` — наприкінці.
 | [lastfm-scrobbling](p3-lastfm-scrobbling.md) | P3 | idea | draft | M | — | — |
 | [diagnostic-report-block](p3-diagnostic-report-block.md) | P3 | idea | draft | S | [about-app-info](done/p1-about-app-info.md) | — (хвіст about-app-info: збірка Windows, версія WebView2, кнопка «Скопіювати відомості для звіту») |
 | [tray-now-playing-source-prefix](p3-tray-now-playing-source-prefix.md) | P3 | planned | draft | S | — | — (знахідка grilling 2026-09-03: «Зараз грає: Файл: track.mp3» і префікс «Станція:», що відрізняє прев'ю від ефіру) |
+| [list-shift-range-to-edge](p2-list-shift-range-to-edge.md) | P2 | planned | draft | S | [list-key-modifier-guards](p2-list-key-modifier-guards.md) | — (хвіст грилінгу 2026-09-04: `Shift+↑/↓` є, `Shift+Home`/`End` немає; батьківський запис зробив їх інертними саме щоб фічу додавали, а не перевчали від неї) |
 
 ## unscheduled
 

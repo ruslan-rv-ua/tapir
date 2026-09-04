@@ -1,73 +1,143 @@
 ---
 slug: list-key-modifier-guards
-title: "Списки: клавіші F2/Delete/Enter спрацьовують із будь-яким модифікатором"
+title: "Списки: навігаційні клавіші, Delete, Enter і Space спрацьовують із будь-яким модифікатором"
 priority: P2
 type: planned
-status: draft
+status: ready
 effort: S
 kind: bug
 target: 0.1.0
-updated: 2026-08-17
+updated: 2026-09-04
 a11y: true
 depends_on: []
-blocks: []
+blocks: [list-shift-range-to-edge]
 touches:
   - src/hooks/useCompositeList.ts
   - src/hooks/useCompositeList.test.tsx
+  - src/components/streams/StreamList.tsx
+  - src/components/streams/StreamList.test.tsx
+  - src/components/songs/SongsList.test.tsx
+  - docs/keyboard-shortcuts.md
+  - docs/testing/nvda-list-key-modifier-guards.md
 gates: [pnpm test, pnpm vite:build]
 notes:
-  - "Знахідка ревізії streams-transfer-hotkeys (grilling, 2026-08-07). Не вигадана проблема: switch по e.key у resolveKeyAction не перевіряє модифікатори взагалі, тож Ctrl+F2 сьогодні перейменовує рядок, а Alt+Delete відкриває діалог видалення"
-  - "Свідомо НЕ виправлено разом із F5: це зміна поведінки в усіх чотирьох списках (streams, songs, browser, wishlist), і всередині запису про transfer вона б потонула. F5 отримав власний гард, тому в switch тимчасово співіснують два стилі — це навмисно, див. A4 там"
-  - "Перед реалізацією перевірити, чи якийсь список не покладається на поточну поведінку навмисно (напр. Shift+Delete як «видалити без підтвердження») — швидкий grep по onAction-гілках"
+  - "Огрилено 2026-09-04, 11 рішень. Рішення винесені в ADR 2026-09-04-list-keys-are-bare-unless-named; тут — лише те, що робить цей запис"
+  - "Опис до 2026-09-04 був застарілий: F2/F4 дістали власні гарди ще 4a8f2c5 (2026-08-14), F5 — свій; тобто «Ctrl+F2 сьогодні перейменовує рядок» неправда вже на момент, коли це писалося. Живі приклади в описі нижче звірені з HEAD"
+  - "Списків не чотири, а шість: streams, songs, browser, wishlist, profiles (ProfileList), schedule (ScheduleTable)"
+  - "Ревізія скасувала «NVDA-прогін не потрібен» із попередньої версії запису: Alt+Space після зміни вперше доходить до системного меню вікна, тобто твердження «не рухає фокус» стало непідтвердженим"
 ---
 
-# Списки: клавіші F2/Delete/Enter спрацьовують із будь-яким модифікатором
+# Списки: навігаційні клавіші, `Delete`, `Enter` і `Space` спрацьовують із будь-яким модифікатором
 
 > **Контекст:** знахідка ревізії
-> [streams-transfer-hotkeys](done/p2-streams-transfer-hotkeys.md) (2026-08-07,
-> прийнято 2026-08-09). Виявлено при звірці критеріїв F5 з фактичним кодом хука.
+> [streams-transfer-hotkeys](done/p2-streams-transfer-hotkeys.md) (2026-08-07, A4).
+> Огрилено 2026-09-04 — рішення в
+> [ADR «Клавіші списку голі, поки не названо інакше»](../decisions/2026-09-04-list-keys-are-bare-unless-named.md),
+> читати першим.
 
 ## Опис
 
-`resolveKeyAction` у [useCompositeList.ts](../../src/hooks/useCompositeList.ts)
-має два різні стилі метчингу. Комбінації з модифікаторами (`Ctrl+Space`,
-`Ctrl+C`, `Ctrl+A`, `Shift+Arrow`) перевіряються явно й акуратно. А фінальний
-`switch (e.key)` — `ArrowUp`…`Delete`, `F2`, `Enter`, `Tab` — **не перевіряє
-модифікатори взагалі**. Наслідки, живі сьогодні:
+`resolveKeyAction` у [useCompositeList.ts](../../src/hooks/useCompositeList.ts) має два стилі
+метчингу. Комбінації з модифікаторами (`Ctrl+Space`, `Ctrl+C`, `Ctrl+A`, `Shift+↑/↓`)
+перевіряються явно. Фінальний `switch (e.key)` і фолбек на `Space` — **не перевіряють
+модифікатори взагалі**.
 
-- `Ctrl+F2` / `Alt+F2` → `edit` (відкриває перейменування рядка);
-- `Alt+Delete` / `Shift+Delete` → `delete` (відкриває діалог видалення);
-- те саме для навігаційних клавіш — `Alt+Home` стрибає на початок списку
-  замість того, щоб дійти до застосунку.
+Живе на HEAD (звірено 2026-09-04):
 
-Практична шкода невелика (жодна з цих комбінацій зараз нічим іншим не зайнята),
-але це прихована міна: будь-який майбутній Tier-2 хоткей на `Ctrl`+функційна
-або `Alt`+навігаційна клавіша мовчки продублює дію рядка.
+| натискання | що робить сьогодні | чому це неправильно |
+|---|---|---|
+| `Ctrl+End`, `Alt+Home`, `Ctrl+↑/↓` | стрибок по списку | комбінація не належить списку, але споживається `consume()` |
+| `Alt+Delete`, `Shift+Delete` | відкриває діалог видалення | жоден зі списків `mods` на `delete` не читає |
+| `Ctrl+Tab` | вихід із зони | `Ctrl+Tab` — це спроба, не навігація (прецедент `KeyRecorder`) |
+| `Shift+Space` **у потоках** | **слухає замість запису** | доки й коментарі стверджують протилежне |
+| `Alt+Space` | дія рядка, системне меню вікна не відкривається | краде платформну клавішу Windows |
+| `Ctrl+Shift+Enter` | «слухати» в потоках, «Провідник» у піснях, нічого в браузері | три різні таблиці пріоритету, жодна не оголошена |
 
-## Чому окремо
+`F2`, `F4` і `F5` вже мають власні гарди — три гарди з **двома різними** наборами модифікаторів
+і без спільного правила. Практична шкода сьогодні мала (жодна з цих комбінацій нічим іншим не
+зайнята), але це прихована міна: будь-який майбутній Tier-2 хоткей на `Ctrl`+функційна або
+`Alt`+навігаційна клавіша мовчки продублює дію рядка.
 
-`streams-transfer-hotkeys` додав `F5` **із** явним гардом модифікаторів, бо
-`Ctrl+F5` — це hard reload WebView2 і пускати його в діалог не можна. Тобто в
-одному `switch` тепер співіснують два стилі. Вирівнювати решту клавіш там же
-означало б зміну поведінки в чотирьох списках усередині запису про transfer —
-свідомо відкладено (рішення A4 того запису).
+Окремо варте уваги — **`Shift+Space` у потоках**. [keyboard-shortcuts.md:300](../keyboard-shortcuts.md),
+[StreamList.tsx:424](../../src/components/streams/StreamList.tsx) і
+[SongsList.tsx:134](../../src/components/songs/SongsList.tsx) стверджують: «модифікатори діють
+лише на `Enter`, `Space` їх ігнорує». `StreamList` віддає `mods` у `activateStream`, а той читає
+`mods?.shift` — тобто `Shift+Space` слухає. Тест був написаний на `Alt+Space`, тобто рівно на
+той модифікатор, якого `activateStream` не читає: зелений тест над хибним твердженням.
+
+## Що робить цей запис
+
+Реалізує §1–§6 ADR у `resolveKeyAction` і прибирає наслідки в двох списках. Коротко:
+
+1. Один гард перед `switch`: **будь-який** модифікатор → `null`. Винятки живуть **вище** гарда
+   (`Ctrl+Space`, `Ctrl+C`, `Ctrl+A`, `Shift+↑/↓`, `Enter`, `Tab`, `F5`/`Shift+F5`).
+2. `Enter` бере **рівно один** модифікатор із `{Shift, Ctrl, Alt}`; пари, трійки й `Meta`
+   відхиляються.
+3. Гарди `F2`/`F4` стають зайвими і прибираються — їх покриває спільний гард. Гард `F5`
+   лишається (там `Shift` осмислений), але переїжджає **вище** спільного.
+4. Новий чистий предикат `suppressesDefault(e)`, **похідний** від `resolveKeyAction`: гасить
+   браузерний дефолт відхиленої клавіші через `preventDefault()` **без** `stopPropagation()`, і
+   лише коли модифікатори суто `Ctrl`/`Shift`. `Alt`/`Meta` не чіпаються взагалі.
+5. Гард поступається нативному контролю **лише** на `Enter`/`Space` (кнопка дії, завершальний
+   стоп); навігаційні клавіші гасяться незалежно від того, що під фокусом.
+6. `StreamList` перестає передавати `mods` у `activateStream` із клавіатурної гілки `toggle`.
+   Мишача гілка (`CompositeRow.onActivate`, `Shift`+подвійний клік) передає далі — вона жива.
+
+**Поза обсягом:** розширення діапазону `Shift+Home`/`End` — окремий запис
+[list-shift-range-to-edge](p2-list-shift-range-to-edge.md); звуження типу `onAction` по
+`ActionType` — коментар у коді там, де прибирається мертве читання, без запису в беклозі.
 
 ## Критерії готовності
 
-- [ ] `switch (e.key)` матчить лише коли `!e.ctrlKey && !e.altKey && !e.metaKey`
-      (окрім гілок, де модифікатор осмислений — `Shift+Arrow` уже обробляється
-      вище, `Enter`/`Space` навмисно везуть модифікатори через `modifiers(e)`)
-- [ ] `Shift` для `Enter`/`Space`/`Delete`/`F2` не ламається — перевірити, що
-      наявні гілки `mods?.shift` (listen/record, `Alt+Enter`) живі
-- [ ] Перевірено всі чотири списки на навмисну залежність від поточної
-      поведінки (grep по `onAction`-гілках) — жодна не зламана
-- [ ] Тести в `useCompositeList.test.tsx` на кожну пару «клавіша × модифікатор»,
-      що має пройти повз хук
-- [ ] `pnpm test` без регресій
-- [ ] NVDA-прогін **не потрібен**: зміна прибирає реакції, нічого не оголошує
-      і не рухає фокус. Якщо ревізія покаже інше — завести чекліст
+- [ ] Один гард перед `switch` у `resolveKeyAction`; винятки оголошені вище нього
+- [ ] `Enter` матчить лише з рівно одним модифікатором із `{Shift, Ctrl, Alt}`;
+      `Ctrl+Shift+Enter`, `AltGr+Enter` (= `Ctrl+Alt`), `Meta+Enter` не матчать
+- [ ] Гарди `F2`/`F4` прибрані як зайві; `F5`/`Shift+F5` живі й не зачеплені
+- [ ] `suppressesDefault(e)` **не має власного переліку клавіш** — питає `resolveKeyAction`
+      з обнуленими модифікаторами
+- [ ] Відхилена клавіша ніколи не викликає `stopPropagation()`
+- [ ] `Alt+*` і `Meta+*` не отримують `preventDefault()` від списку взагалі
+- [ ] `Shift+Space` на кнопці дії та на завершальному стопі й далі їх активує (§5)
+- [ ] `Ctrl+End` з кнопки дії всередині рядка **не** прокручує список
+- [ ] `Shift+↑/↓` (діапазон), `Ctrl+A`, `Ctrl+C`, `Ctrl+Space`, `Escape`, `Shift+Tab`,
+      `Shift+Enter`/`Ctrl+Enter`/`Alt+Enter` — без змін
+- [ ] `StreamList`: клавіатурна гілка `toggle` більше не передає `mods`; мишача передає
+- [ ] Табличний юніт-тест на `suppressesDefault` — матриця «клавіша × модифікатор»
+      (12 клавіш × `Ctrl`/`Alt`/`Shift`/`Meta` та їхні пари)
+- [ ] Тести [StreamList.test.tsx:402](../../src/components/streams/StreamList.test.tsx) і
+      [SongsList.test.tsx:101](../../src/components/songs/SongsList.test.tsx) переписані як
+      твердження **про намір** («`Alt+Space` у списку не робить нічого і не гаситься»), а не
+      підігнані під новий результат
+- [ ] Тест [useCompositeList.test.tsx:292](../../src/hooks/useCompositeList.test.tsx)
+      («passes Shift/Ctrl modifiers … for Enter **and Space**») розділений: `Enter` везе,
+      `Space` — ні
+- [ ] Перевірено всі шість списків на навмисну залежність від поточної поведінки
+      (grep по `onAction`-гілках) — жодна не зламана
+- [ ] [keyboard-shortcuts.md](../keyboard-shortcuts.md) виправлено: твердження про `Space` було
+      хибним; додано правило «гола клавіша, якщо не названо» з посиланням на ADR
+- [ ] `docs/help/` **не** змінюється — жодна з відпущених комбінацій там не обіцяна
+      (звірено: лише `Shift+Enter`, `Ctrl+Enter`, `Delete`, `Shift+F10`, `Ctrl+Space`,
+      `Shift+↑↓`, `Ctrl+A`, `Escape` — усі живі)
+- [ ] `pnpm test` без регресій, `pnpm vite:build` зелений
+- [ ] NVDA-прогін за `docs/testing/nvda-list-key-modifier-guards.md` (4 сценарії, див. нижче)
+
+## NVDA-прогін
+
+Вузький: чекліст пишеться навколо **знахідок ревізії**, а не критеріїв запису. Матриця
+«клавіша × модифікатор» — робота тесту, не людини.
+
+1. **`Alt+Space` у списку.** Що станеться з фокусом: системне меню вікна, нічого, чи щось третє.
+   Це єдине набуття запису і єдине місце, де код не дає відповіді.
+2. **`Shift+Space` на кнопці дії та на «Завантажити ще»** — кнопка мусить спрацювати (§5).
+3. **`Ctrl+End` і `Shift+Space` на довгому списку** — список **не** повзе під нерухомим фокусом.
+4. **`Shift+↓` (діапазон) і `Shift+Enter` у потоках** — не постраждали; `Shift+Space` у потоках
+   більше не слухає.
 
 ## Документи
 
-- Код: `src/hooks/useCompositeList.ts` (`resolveKeyAction`, фінальний `switch`)
+- ADR: [2026-09-04-list-keys-are-bare-unless-named.md](../decisions/2026-09-04-list-keys-are-bare-unless-named.md)
+- Код: `src/hooks/useCompositeList.ts` (`resolveKeyAction`, гард, `suppressesDefault`)
+- Сусідній ADR по тому самому `switch`:
+  [2026-09-03-trailing-stop-crosses-only-on-down.md](../decisions/2026-09-03-trailing-stop-crosses-only-on-down.md)
 - Джерело: [p2-streams-transfer-hotkeys.md](done/p2-streams-transfer-hotkeys.md) (A4)
+- Хвіст: [p2-list-shift-range-to-edge.md](p2-list-shift-range-to-edge.md)
