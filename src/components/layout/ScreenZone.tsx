@@ -1,5 +1,6 @@
 import { forwardRef } from "react";
 import type { ReactNode, KeyboardEventHandler } from "react";
+import type { ZoneId } from "../../hooks/useZoneNavigation";
 
 /**
  * Container for a navigable screen zone. Enforces the invariant that every zone
@@ -15,7 +16,7 @@ import type { ReactNode, KeyboardEventHandler } from "react";
  */
 interface ScreenZoneProps {
   /** Unique; mirrored to data-zone-id and used by the zone cycler. */
-  id: string;
+  id: ZoneId;
   /** Accessible name announced when focus enters the zone. Required by design. */
   label: string;
   role: "application" | "search" | "group";

@@ -14,7 +14,7 @@ import { ScreenZone } from "../layout/ScreenZone";
 import { SelectionToolbar } from "../common/SelectionToolbar";
 import { useRovingFocus } from "../../hooks/useRovingFocus";
 import { useAnnounce } from "../../hooks/useAnnounce";
-import type { ZoneEntry } from "../../hooks/useZoneNavigation";
+import type { ZoneEntry, ZoneId } from "../../hooks/useZoneNavigation";
 import * as tauri from "../../lib/tauri";
 import type { ScheduleDto, ScheduledRecording } from "../../lib/tauri";
 import { addToast } from "../../stores/toasts";
@@ -22,7 +22,7 @@ import * as m from "../../i18n/paraglide/messages";
 
 interface Props {
   onZonesChange: (zones: ZoneEntry[]) => void;
-  exitZone: (fromId: string, forward: boolean) => void;
+  exitZone: (fromId: ZoneId, forward: boolean) => void;
 }
 
 export function SchedulePanel({ onZonesChange, exitZone }: Props) {

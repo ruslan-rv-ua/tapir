@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 import type { RefObject } from "react";
-import { useZoneNavigation, type ZoneEntry } from "./useZoneNavigation";
+import { useZoneNavigation, type ZoneEntry, type ZoneId } from "./useZoneNavigation";
 
 /**
  * Build a real DOM zone (a `[data-zone-id]` container with a focusable button)
@@ -20,7 +20,8 @@ function makeZone(
   div.appendChild(button);
   document.body.appendChild(div);
   const entry: ZoneEntry = {
-    id,
+    // Named for the scenario, not for a screen: the cast opts out of ZoneId on purpose.
+    id: id as ZoneId,
     focus: opts.dead ? () => {} : () => button.focus(),
   };
   return { entry, button };

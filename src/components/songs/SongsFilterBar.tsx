@@ -41,7 +41,7 @@ export const SongsFilterBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) =
   // be the station or sort <select>.
   const focusSearch = useCallback(() => focusOrSelect(searchInputRef.current), []);
 
-  useImperativeHandle(ref, () => ({
+  useImperativeHandle(ref, (): ZoneEntry => ({
     id: "songs-filter",
     focus: restoreFocus,
     focusSearch,

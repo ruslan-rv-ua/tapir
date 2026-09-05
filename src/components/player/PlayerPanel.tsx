@@ -164,7 +164,7 @@ export const PlayerPanel = forwardRef<
 
   useImperativeHandle(
     ref,
-    () => ({
+    (): ZoneEntry => ({
       id: "player",
       focus: restoreFocusPlayer,
     }),

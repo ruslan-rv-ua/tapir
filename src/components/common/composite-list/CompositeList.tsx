@@ -9,7 +9,7 @@ import {
   type SelectionChange,
   type TrailingStop,
 } from "../../../hooks/useCompositeList";
-import type { ZoneEntry } from "../../../hooks/useZoneNavigation";
+import type { ZoneEntry, ZoneId } from "../../../hooks/useZoneNavigation";
 
 /**
  * The base imperative handle every CompositeList exposes. `resetCursor` is opt-in
@@ -30,7 +30,8 @@ export interface CompositeRowRenderArgs {
 }
 
 export interface CompositeListProps {
-  zoneId: string;
+  /** Mirrored to data-zone-id on the zone container and registered as ZoneEntry.id. */
+  zoneId: ZoneId;
   ariaLabel: string;
   items: CompositeListItem[];
   onTabOut: (forward: boolean) => void;
@@ -97,7 +98,7 @@ function CompositeListInner<H extends ZoneEntry = ZoneEntry>(
     listRef, emptyRef, trailingRef, onKeyDownCapture, onContextMenu, onClick,
     isFocused, isTrailingFocused, activateTrailing,
     restoreFocus, resetCursor, focusItem, activeItemId,
-  } = useCompositeList({ zoneId, items, trailingStop, onTabOut, onAction, onEmpty, selection, onSelectionChange });
+  } = useCompositeList({ items, trailingStop, onTabOut, onAction, onEmpty, selection, onSelectionChange });
 
   /**
    * Wraps focusItem so that the DOM element is focused immediately, even when

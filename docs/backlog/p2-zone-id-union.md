@@ -121,12 +121,12 @@ fromIdx = idx < 0 ? (forward ? -1 : zones.length) : idx;
 
 ## Що зробити
 
-- [ ] `ZoneId` (21 літерал) і аугментація `HTMLAttributes` у `useZoneNavigation.ts`;
+- [x] `ZoneId` (21 літерал) і аугментація `HTMLAttributes` у `useZoneNavigation.ts`;
       `ZoneEntry.id: ZoneId`, `exitZone(fromId: ZoneId, …)`
-- [ ] `ScreenZone.id`, `CompositeList.zoneId` і шість панельних пропсів `exitZone` → `ZoneId`
-- [ ] `StationList`: одна константа замість двох літералів
-- [ ] Зняти `zoneId` з опцій `useCompositeList` разом із коментарем і рядком у тесті
-- [ ] Касти в `useZoneNavigation.test` (`makeZone`) і `CompositeList.test` (одна константа)
+- [x] `ScreenZone.id`, `CompositeList.zoneId` і шість панельних пропсів `exitZone` → `ZoneId`
+- [x] `StationList`: одна константа замість двох літералів
+- [x] Зняти `zoneId` з опцій `useCompositeList` разом із коментарем і рядком у тесті
+- [x] Касти в `useZoneNavigation.test` (`makeZone`) і `CompositeList.test` (одна константа)
 
 ## Критерії готовності
 

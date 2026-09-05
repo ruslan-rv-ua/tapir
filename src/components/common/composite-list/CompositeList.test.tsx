@@ -1,7 +1,7 @@
 import { createRef } from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, fireEvent, act } from "@testing-library/react";
-import type { ZoneEntry } from "../../../hooks/useZoneNavigation";
+import type { ZoneEntry, ZoneId } from "../../../hooks/useZoneNavigation";
 import type { CompositeListItem } from "../../../hooks/useCompositeList";
 import { CompositeList, CompositeRow, CompositeSegment, CompositeAction, type CompositeListHandle } from "./index";
 
@@ -10,6 +10,9 @@ const ITEMS: CompositeListItem[] = [
   { id: "b", segments: ["metadata", "action-add"] },
 ];
 
+// Not a real screen zone: the cast opts out of the ZoneId union on purpose.
+const TEST_ZONE = "test-list" as ZoneId;
+
 function renderList(extra: Record<string, unknown> = {}) {
   const ref = createRef<ZoneEntry>();
   const onTabOut = vi.fn();
@@ -17,7 +20,7 @@ function renderList(extra: Record<string, unknown> = {}) {
   const utils = render(
     <CompositeList
       ref={ref}
-      zoneId="test-list"
+      zoneId={TEST_ZONE}
       ariaLabel="Test list"
       items={ITEMS}
       onTabOut={onTabOut}
@@ -116,7 +119,7 @@ describe("CompositeList", () => {
     const make = (order: string[]) => (
       <CompositeList
         ref={ref}
-        zoneId="test-list"
+        zoneId={TEST_ZONE}
         ariaLabel="Test list"
         items={order.map((id) => ({ id, segments: [] }))}
         onTabOut={vi.fn()}
@@ -151,7 +154,7 @@ describe("CompositeList", () => {
     const make = (order: string[]) => (
       <CompositeList
         ref={ref}
-        zoneId="test-list"
+        zoneId={TEST_ZONE}
         ariaLabel="Test list"
         items={order.map((id) => ({ id, segments: [] }))}
         onTabOut={vi.fn()}
@@ -185,7 +188,7 @@ describe("CompositeList", () => {
     const { container, queryByText } = render(
       <CompositeList
         ref={ref}
-        zoneId="test-list"
+        zoneId={TEST_ZONE}
         ariaLabel="Test list"
         items={[]}
         onTabOut={vi.fn()}
@@ -203,7 +206,7 @@ describe("CompositeList", () => {
     const { container, queryByText } = render(
       <CompositeList
         ref={ref}
-        zoneId="test-list"
+        zoneId={TEST_ZONE}
         ariaLabel="Test list"
         items={ITEMS}
         onTabOut={vi.fn()}
@@ -269,7 +272,7 @@ describe("CompositeList", () => {
     render(
       <CompositeList
         ref={ref}
-        zoneId="test-list"
+        zoneId={TEST_ZONE}
         ariaLabel="Test list"
         items={ITEMS}
         onTabOut={vi.fn()}
@@ -293,7 +296,7 @@ describe("CompositeList", () => {
     const make = (ids: string[]) => (
       <CompositeList
         ref={ref}
-        zoneId="test-list"
+        zoneId={TEST_ZONE}
         ariaLabel="Test list"
         items={ids.map((id) => ({ id, segments: [] }))}
         onTabOut={vi.fn()}
