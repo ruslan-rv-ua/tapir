@@ -3,11 +3,12 @@ slug: single-version-source
 title: "Версію несе лише Cargo.toml: три джерела версії стають одним"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: S
 kind: chore
 target: 0.1.0
 updated: 2026-09-05
+completed: 2026-09-05
 a11y: false
 depends_on: []
 blocks: []
@@ -41,17 +42,17 @@ notes:
 
 `Cargo.toml`, навпаки, — власник де-факто вже сьогодні. З `CARGO_PKG_VERSION` живляться:
 
-- User-Agent `Tapir/<версія>` на кожному вихідному запиті — [lib.rs:46](../../src-tauri/src/lib.rs:46);
-- прапорець `--version` — [cli.rs:25](../../src-tauri/src/cli.rs:25); версію він бере з тієї самої
+- User-Agent `Tapir/<версія>` на кожному вихідному запиті — [lib.rs:46](../../../src-tauri/src/lib.rs:46);
+- прапорець `--version` — [cli.rs:25](../../../src-tauri/src/cli.rs:25); версію він бере з тієї самої
   константи, але **не показує нічого**: застосунок виходить кодом 0 без консольного тексту
-  ([lib.rs:139](../../src-tauri/src/lib.rs:139)), і так само в debug;
+  ([lib.rs:139](../../../src-tauri/src/lib.rs:139)), і так само в debug;
 - **рядкові** властивості exe `FileVersion` і `ProductVersion` — дефолти
   `tauri-winres`, які `tauri-build` не перезаписує ніколи (він міняє лише числові
   `FILEVERSION`/`PRODUCTVERSION`, і тільки якщо `version` у конфізі є).
 
 Поле `version` у `tauri.conf.json` не обов'язкове: за його відсутності версію беруть
 із `CARGO_PKG_VERSION` — `tauri-codegen` для `package_info()` (те, що показує «Про
-програму» через [get_app_info](../../src-tauri/src/commands/app_commands.rs)), а
+програму» через [get_app_info](../../../src-tauri/src/commands/app_commands.rs)), а
 `tauri-cli` для бандла (`config.version.clone().unwrap_or_else(|| cargo_package_settings.version…)`).
 Тож достатньо прибрати поле з обох файлів — і всі споживачі до одного починають
 читати `Cargo.toml`.
@@ -89,23 +90,48 @@ notes:
 
 ## Критерії готовності
 
-- [ ] `docs/help/` — запис видимої поведінки не змінює
-- [ ] `src-tauri/tauri.conf.json` не має поля `version`
-- [ ] `package.json` не має поля `version` і має `"private": true`
-- [ ] `src/lib/versionSync.test.ts` видалено; на його місці `build/versionSource.test.ts`
+- [x] `docs/help/` — запис видимої поведінки не змінює
+- [x] `src-tauri/tauri.conf.json` не має поля `version`
+- [x] `package.json` не має поля `version` і має `"private": true`
+- [x] `src/lib/versionSync.test.ts` видалено; на його місці `build/versionSource.test.ts`
       із трьома перевірками: конфіг мовчить, маніфест мовчить, `Cargo.toml`
       `[package].version` є і є semver (розбір TOML береться з чинного тесту — він
       навмисне читає `version` лише з таблиці `[package]`)
-- [ ] коментар цього тесту — єдиний власник пояснення: чому `Cargo.toml`, чому обидва
+- [x] коментар цього тесту — єдиний власник пояснення: чому `Cargo.toml`, чому обидва
       інші файли мовчать і чому відхилено `"version": "../package.json"`
-- [ ] `docs/tech-stack.md`: секція «Синхронізація версій» (синхронізувати вже нічого)
+- [x] `docs/tech-stack.md`: секція «Синхронізація версій» (синхронізувати вже нічого)
       стає «Версія застосунку» — одне речення про власника й посилання на сторожа
-- [ ] ручна перевірка, одноразова: `just build-fast` → «Про програму» показує версію, і та
-      сама стоїть у властивостях exe (вкладка «Подробиці»)
+- [x] ручна перевірка, одноразова: `just build-fast` зібрав exe, властивості якого
+      («Подробиці») показують `0.1.0` і рядками, і числами. «Про програму» підтверджено
+      **не оком, а разовою пробою** `generate_context!`: `package_info().version` = `0.1.0`
+      без поля в конфізі; пробу відкочено, у код вона не входить
+
+## Стан реалізації
+
+Зроблено 2026-09-05, коміти `f1d779a` (грумінг) і `71318dd` (реалізація).
+
+Поле `version` знято з `tauri.conf.json` і з `package.json`; останній дістав
+`"private": true`. Сторож переїхав: `src/lib/versionSync.test.ts` →
+`build/versionSource.test.ts`, три перевірки замість двох, і його коментар тепер —
+єдиний власник пояснення. `docs/tech-stack.md` дістав секцію «Версія застосунку»
+замість таблиці трьох файлів.
+
+Ворота зелені всі: `pnpm test` 1179/1179, `pnpm typecheck`, `pnpm lint`,
+`cargo test` 551/551, `just build-fast`. Перенесення тесту зламало три вхідні
+посилання із закритого `p2-small-code-duplications` — `docsLinks.test.ts` їх
+упіймав, посилання перебазовано (дві прозові згадки лишились історичними, без
+посилання, бо описують стан на той час).
+
+**Побічна знахідка, що виправила сам запис.** Критерій вимагав побачити версію у
+`tapir --version` — а той не показує нічого: `lib.rs` виходить кодом 0 без
+`e.print()`, і в debug теж. Хибне твердження стояло в коментарі старого
+`versionSync.test.ts` і механічно перекочувало в новий; виправлено в обох місцях.
+Ширша вада — CLI мовчить і на `--help` — винесена окремо:
+[cli-answers-only-with-exit-code](../p3-cli-answers-only-with-exit-code.md).
 
 ## Документи
 
 - https://github.com/tauri-apps/tauri/discussions/6347 — підтвердження, що `version` приймає шлях до `package.json`
 - https://github.com/tauri-apps/tauri/issues/15264 — відкрите прохання про команду `tauri version`
-- [tech-stack.md](../tech-stack.md) — секція «Синхронізація версій», яку цей запис переписує
-- [docsLinks.test.ts](../../build/docsLinks.test.ts) — сусід по полиці `build/`, взірець форми
+- [tech-stack.md](../../tech-stack.md) — секція «Синхронізація версій», яку цей запис переписує
+- [docsLinks.test.ts](../../../build/docsLinks.test.ts) — сусід по полиці `build/`, взірець форми
