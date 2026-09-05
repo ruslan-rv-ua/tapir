@@ -1,7 +1,7 @@
 # tauri-specta: чи міняти ручний `tauri.ts` на згенеровані bindings
 
 > Дослідницька нотатка зі спайком до запису беклогу
-> [p3-tauri-specta-bindings](../backlog/p3-tauri-specta-bindings.md).
+> [p3-tauri-specta-bindings](../backlog/done/p3-tauri-specta-bindings.md).
 > Дата: 2026-09-05. Гілка спайку: `spike/tauri-specta` (коміти `2c2a944`, `0e577db`),
 > не зливати. Tauri 2.10.3, Rust 2024 / rustc 1.94.0, Windows 11.
 >
