@@ -3,11 +3,12 @@ slug: zone-proxy-hook
 title: "Дев'ять стабільних проксі зон — один і той самий тризрядковий об'єкт"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: S
 kind: chore
 target: 0.1.0
 updated: 2026-09-05
+completed: 2026-09-05
 a11y: true
 depends_on: [zone-entry-dead-el]
 blocks: []
@@ -28,7 +29,7 @@ notes:
 
 # Дев'ять стабільних проксі зон — один і той самий тризрядковий об'єкт
 
-> **Контекст:** хвіст [zone-entry-dead-el](done/p2-zone-entry-dead-el.md).
+> **Контекст:** хвіст [zone-entry-dead-el](p2-zone-entry-dead-el.md).
 > Механічна робота з нульовим впливом на поведінку, але в a11y-критичному коді —
 > як і батьківський запис, тому окремим записом, а не побіжно.
 
@@ -38,11 +39,12 @@ notes:
 демонтується (список у стані loading/error/empty), лишає в `App` мертвий
 `ZoneEntry`, чий `focus()` нічого не робить, і F6 мовчки глухне. Проксі
 створюється один раз і завжди делегує **поточному** хендлу. Рішення правильне;
-див. [wishlist-stale-list-ref](done/p1-wishlist-stale-list-ref.md).
+див. [wishlist-stale-list-ref](p1-wishlist-stale-list-ref.md) (сам випадок
+Songs-рескану, що його підтвердив, — коміт e00262a).
 
 Поки `ZoneEntry` мав поле `el`, кожен проксі був чотирирядковим і кожен по-своєму
 брехав компілятору в геттері. Зі зняттям поля
-([zone-entry-dead-el](done/p2-zone-entry-dead-el.md)) від них лишилось **по три
+([zone-entry-dead-el](p2-zone-entry-dead-el.md)) від них лишилось **по три
 однакові рядки, дев'ять разів у шести файлах**:
 
 ```tsx
@@ -52,7 +54,7 @@ const listProxyRef = useRef<ZoneEntry>({
 });
 ```
 
-Дев'ять місць: [App.tsx](../../src/App.tsx) ×3 (постійні зони),
+Дев'ять місць: [App.tsx](../../../src/App.tsx) ×3 (постійні зони),
 `BrowserPanel`, `SchedulePanel`, `SongsPanel`, `StreamsPanel`,
 `WishlistPanel` ×2 (патерни й журнал збігів).
 
@@ -65,7 +67,7 @@ const listProxyRef = useRef<ZoneEntry>({
 ## Що зробити
 
 - [x] Завести `useZoneProxy(id, ref)` поруч із `ZoneEntry`
-      ([useZoneNavigation.ts](../../src/hooks/useZoneNavigation.ts)) — там, де
+      ([useZoneNavigation.ts](../../../src/hooks/useZoneNavigation.ts)) — там, де
       живе тип, який він повертає. Хук повертає сам `ZoneEntry`, а не реф до
       нього: об'єкт створюється раз на екземпляр компонента, тож його можна
       класти в залежності ефекту реєстрації — нічого не перезапускається, а
@@ -88,14 +90,15 @@ const listProxyRef = useRef<ZoneEntry>({
 - [x] Пояснення механізму проксі живе рівно в одному місці — док-коментар
       `useZoneProxy`; він же каже, що проксі несе лише `focus` (зони з полем
       пошуку реєструють хендл напряму), як і раніше
-- [ ] Навігація F6 між зонами перевірена вручну: та сама підстава, що в
+- [x] Навігація F6 між зонами перевірена вручну: та сама підстава, що в
       батьківському записі — код a11y-критичний, і помилка при заміні впаде саме
       на перемиканні зон, найпомітніше на екранах, де список демонтується
       (порожній фільтр, порожній профіль, вкладка журналу).
-      Чекліст — [nvda-zone-proxy-hook.md](../testing/nvda-zone-proxy-hook.md)
+      **NVDA-прогін проведено 2026-09-05, усі 7 сценаріїв пройдено, зауважень
+      немає.**
 
 ## Документи
 
-- [zone-entry-dead-el](done/p2-zone-entry-dead-el.md) — звідки взявся хвіст
-- [useZoneNavigation.ts](../../src/hooks/useZoneNavigation.ts) — `ZoneEntry` і `cycleZone`
-- [accessibility.md](../accessibility.md) — вимоги до зонової навігації
+- [zone-entry-dead-el](p2-zone-entry-dead-el.md) — звідки взявся хвіст
+- [useZoneNavigation.ts](../../../src/hooks/useZoneNavigation.ts) — `ZoneEntry`, `useZoneProxy` і `cycleZone`
+- [accessibility.md](../../accessibility.md) — вимоги до зонової навігації
