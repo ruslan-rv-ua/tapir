@@ -101,3 +101,9 @@ We care deeply about making Tapir accessible for everyone! If you find any issue
 ## For Developers & Advanced Users
 
 If you are looking for technical details, such as supported protocols, CLI arguments, advanced Wishlist syntax, or build instructions, please read **[DEVELOPERS.md](DEVELOPERS.md)**.
+
+---
+
+## License
+
+Tapir is released under the **MIT License** — see [LICENSE](LICENSE). Use it, change it, ship it; keep the copyright notice, and it comes with no warranty.
