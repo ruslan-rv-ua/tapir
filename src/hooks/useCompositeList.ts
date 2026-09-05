@@ -147,8 +147,6 @@ export interface TrailingStop {
 }
 
 interface UseCompositeListOptions<T extends CompositeListItem> {
-  /** Zone identifier — reserved for zone-system registration (Task 4 wires this up). */
-  zoneId: string;
   items: T[];
   /** Present ⇒ the list ends with one trailing action stop after the last row. */
   trailingStop?: TrailingStop;

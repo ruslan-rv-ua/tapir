@@ -83,7 +83,7 @@ export const StatusBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
 
   useImperativeHandle(
     ref,
-    () => ({
+    (): ZoneEntry => ({
       id: "status-bar",
       focus: restoreFocusWithAnnounce,
     }),

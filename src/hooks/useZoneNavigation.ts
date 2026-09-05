@@ -1,9 +1,66 @@
 import { RefObject, useCallback, useEffect, useRef } from 'react';
 import { isInModal } from '../lib/shortcutGuard';
 
+/**
+ * Every zone the F6 / Tab cycle can visit — the three permanent ones first,
+ * then each screen's zones in cycle order.
+ *
+ * One identifier is spelled in three places that nothing else ties together:
+ * the `ZoneEntry` registration, the zone container in the DOM (`data-zone-id`,
+ * via ScreenZone / CompositeList or written by hand) and the `exitZone(id, …)`
+ * call at the zone boundary. `cycleZone` treats an unknown `fromId` as "no
+ * current zone" and restarts from the first zone, so a typo never throws — Tab
+ * just lands in the wrong place. This union is what makes such a typo fail at
+ * `pnpm typecheck` instead. History: docs/backlog/done/p2-zone-id-union.md.
+ *
+ * One trap: a handle built inline in `useImperativeHandle(ref, () => ({ id: … }))`
+ * widens the literal to `string` before React's `R extends T` constraint is
+ * checked, so the error lands on the whole object and names no zone. The five
+ * such handles spell the return type — `(): ZoneEntry => ({ … })` — to keep the
+ * literal contextually typed; do the same for the next one.
+ */
+export type ZoneId =
+  | 'activity-bar'
+  | 'player'
+  | 'status-bar'
+  | 'streams-toolbar'
+  | 'streams-list'
+  | 'streams-empty'
+  | 'streams-filter-empty'
+  | 'wishlist-controls'
+  | 'wishlist-list'
+  | 'wishlist-matches'
+  | 'wishlist-empty'
+  | 'browser-search'
+  | 'browser-selection'
+  | 'browser-results'
+  | 'songs-selection'
+  | 'songs-filter'
+  | 'songs-list'
+  | 'schedule-toolbar'
+  | 'schedule-list'
+  | 'profiles-toolbar'
+  | 'profiles-list';
+
+/**
+ * Extends the check to hand-written zone containers. `ScreenZone` and
+ * `CompositeList` type their own prop, but seven zones put `data-zone-id`
+ * straight on an element (`<nav>`, `<footer>`, the player root, the songs
+ * filter bar, three empty states). A `data-*` attribute is unchecked only while
+ * it is undeclared: declaring it on React's `HTMLAttributes` makes TypeScript
+ * check the literal on every intrinsic element — and reject a plain `string`
+ * there, which is what forces the two component props onto `ZoneId` as well.
+ */
+declare module 'react' {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- merging must repeat React's <T> verbatim
+  interface HTMLAttributes<T> {
+    'data-zone-id'?: ZoneId;
+  }
+}
+
 export interface ZoneEntry {
-  /** Must match the element's data-zone-id attribute. */
-  id: string;
+  /** Spelled once more on the zone container's data-zone-id — see ZoneId. */
+  id: ZoneId;
   /** Called to give focus to this zone. */
   focus(direction: 'forward' | 'backward'): void;
   /**
@@ -41,7 +98,7 @@ export interface ZoneEntry {
  * register their handle directly.
  */
 export function useZoneProxy(
-  id: string,
+  id: ZoneId,
   ref: RefObject<Pick<ZoneEntry, 'focus'> | null>,
 ): ZoneEntry {
   const proxy = useRef<ZoneEntry | null>(null);
@@ -68,6 +125,7 @@ export function useZoneProxy(
  */
 export function useZoneNavigation(orderedZonesRef: RefObject<ZoneEntry[]>) {
   const cycleZone = useCallback(
+    // `string`, not `ZoneId`: the F6 handler reads this back out of the DOM.
     (fromId: string | null, forward: boolean) => {
       const zones = orderedZonesRef.current;
       if (!zones || zones.length === 0) return;
@@ -116,7 +174,7 @@ export function useZoneNavigation(orderedZonesRef: RefObject<ZoneEntry[]>) {
    * Each zone calls exitZone(its own id, forward) when Tab exits the zone boundary.
    */
   const exitZone = useCallback(
-    (fromId: string, forward: boolean) => {
+    (fromId: ZoneId, forward: boolean) => {
       if (isInModal()) return;
       cycleZone(fromId, forward);
     },

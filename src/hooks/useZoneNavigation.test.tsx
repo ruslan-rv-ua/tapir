@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 import type { RefObject } from "react";
-import { useZoneNavigation, useZoneProxy, type ZoneEntry } from "./useZoneNavigation";
+import { useZoneNavigation, useZoneProxy, type ZoneEntry, type ZoneId } from "./useZoneNavigation";
 
 /**
  * Build a real DOM zone (a `[data-zone-id]` container with a focusable button)
@@ -20,7 +20,8 @@ function makeZone(
   div.appendChild(button);
   document.body.appendChild(div);
   const entry: ZoneEntry = {
-    id,
+    // Named for the scenario, not for a screen: the cast opts out of ZoneId on purpose.
+    id: id as ZoneId,
     focus: opts.dead ? () => {} : () => button.focus(),
   };
   return { entry, button };
@@ -135,7 +136,8 @@ function makeTwoStopZone(id: string): {
   div.append(first, last);
   document.body.appendChild(div);
   const entry: ZoneEntry = {
-    id,
+    // Named for the scenario, not for a screen: the cast opts out of ZoneId on purpose.
+    id: id as ZoneId,
     focus: (dir) => (dir === "forward" ? first : last).focus(),
   };
   return { entry, first, last, detach: () => div.remove() };
@@ -147,7 +149,8 @@ function makeTwoStopZone(id: string): {
  */
 function renderProxy(id: string, initial: ZoneEntry | null) {
   const ref: RefObject<ZoneEntry | null> = { current: initial };
-  const { result, rerender } = renderHook(() => useZoneProxy(id, ref));
+  // Same opt-out as makeZone: "list" is a scenario name, not a screen zone.
+  const { result, rerender } = renderHook(() => useZoneProxy(id as ZoneId, ref));
   return { ref, proxy: result.current, result, rerender };
 }
 

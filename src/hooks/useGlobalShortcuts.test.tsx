@@ -2,7 +2,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 import { useGlobalShortcuts } from "./useGlobalShortcuts";
-import type { ZoneEntry } from "./useZoneNavigation";
+import type { ZoneEntry, ZoneId } from "./useZoneNavigation";
 import { $activeSection, $commandPaletteOpen } from "../stores/navigation";
 import { $showAddStreamDialog, $streams, $statuses } from "../stores/streams";
 import { $showCreateProfileDialog } from "../stores/profileManager";
@@ -28,7 +28,8 @@ function Harness({ children, zones = [] }: { children?: ReactNode; zones?: ZoneE
 
 /** A zone with no search field — the ordinary case (lists, toolbars). */
 const plainZone = (id: string, focus = vi.fn()): ZoneEntry => ({
-  id,
+  // Named for the scenario, not for a screen: the cast opts out of ZoneId on purpose.
+  id: id as ZoneId,
   focus,
 });
 

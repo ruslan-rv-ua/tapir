@@ -64,7 +64,7 @@ export const ActivityBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
     return si >= 0 ? si + 1 : 1;
   }, [activeSection]);
 
-  useImperativeHandle(ref, () => ({
+  useImperativeHandle(ref, (): ZoneEntry => ({
     id: "activity-bar",
     focus: (_direction) => {
       // moveTo syncs the roving tabindex, but it focuses via a state-change-driven

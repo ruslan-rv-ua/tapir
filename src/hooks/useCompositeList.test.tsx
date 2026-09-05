@@ -60,7 +60,6 @@ function Harness({
     listRef, trailingRef, onKeyDownCapture, onContextMenu, onClick,
     isFocused, isTrailingFocused, activateTrailing, restoreFocus, resetCursor,
   } = useCompositeList({
-    zoneId: "test",
     items,
     trailingStop,
     onTabOut,

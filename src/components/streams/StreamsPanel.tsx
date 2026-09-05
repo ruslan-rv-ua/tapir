@@ -16,7 +16,7 @@ import { ScreenZone } from "../layout/ScreenZone";
 import { ScreenHeader } from "../layout/ScreenHeader";
 import { useRovingFocus } from "../../hooks/useRovingFocus";
 import { useAnnounce } from "../../hooks/useAnnounce";
-import { useZoneProxy, type ZoneEntry } from "../../hooks/useZoneNavigation";
+import { useZoneProxy, type ZoneEntry, type ZoneId } from "../../hooks/useZoneNavigation";
 import * as tauri from "../../lib/tauri";
 import { isRecordingLike } from "../../lib/streamState";
 import { SHORTCUTS } from "../../lib/shortcuts";
@@ -25,7 +25,7 @@ import * as m from "../../i18n/paraglide/messages";
 
 interface Props {
   onZonesChange: (zones: ZoneEntry[]) => void;
-  exitZone: (fromId: string, forward: boolean) => void;
+  exitZone: (fromId: ZoneId, forward: boolean) => void;
 }
 
 // Empty-state discoverability badge (ADR 2026-05-31 §6, S3). The combo is read

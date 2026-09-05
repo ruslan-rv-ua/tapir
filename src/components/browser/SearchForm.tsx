@@ -38,7 +38,7 @@ export const SearchForm = forwardRef<ZoneEntry, SearchFormProps>(function Search
   // Ctrl+F target: the input itself, not the zone.
   const focusSearch = useCallback(() => focusOrSelect(searchInputRef.current), []);
 
-  useImperativeHandle(ref, () => ({
+  useImperativeHandle(ref, (): ZoneEntry => ({
     id: "browser-search",
     focus: restoreFocus,
     focusSearch,

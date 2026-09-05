@@ -13,7 +13,7 @@ import { ScreenZone } from "../layout/ScreenZone";
 import { ScreenHeader } from "../layout/ScreenHeader";
 import { useRovingFocus } from "../../hooks/useRovingFocus";
 import { useAnnounce } from "../../hooks/useAnnounce";
-import type { ZoneEntry } from "../../hooks/useZoneNavigation";
+import type { ZoneEntry, ZoneId } from "../../hooks/useZoneNavigation";
 import * as tauri from "../../lib/tauri";
 import type { ActiveScheduled, ImportPreview } from "../../lib/tauri";
 import { activeScheduledMessage } from "../../lib/scheduleFormat";
@@ -33,7 +33,7 @@ type SubDialog =
 
 interface Props {
   onZonesChange: (zones: ZoneEntry[]) => void;
-  exitZone: (fromId: string, forward: boolean) => void;
+  exitZone: (fromId: ZoneId, forward: boolean) => void;
 }
 
 export function ProfilesPanel({ onZonesChange, exitZone }: Props) {

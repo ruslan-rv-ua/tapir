@@ -15,12 +15,12 @@ import {
 import { replaceSelection } from "../../stores/selection";
 import { useRovingFocus } from "../../hooks/useRovingFocus";
 import { useAnnounce } from "../../hooks/useAnnounce";
-import { useZoneProxy, type ZoneEntry } from "../../hooks/useZoneNavigation";
+import { useZoneProxy, type ZoneEntry, type ZoneId } from "../../hooks/useZoneNavigation";
 import * as m from "../../i18n/paraglide/messages";
 
 interface Props {
   onZonesChange: (zones: ZoneEntry[]) => void;
-  exitZone: (fromId: string, forward: boolean) => void;
+  exitZone: (fromId: ZoneId, forward: boolean) => void;
 }
 
 export function BrowserPanel({ onZonesChange, exitZone }: Props) {

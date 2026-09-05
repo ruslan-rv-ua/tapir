@@ -5,12 +5,17 @@ import { addStation, addStations, $stationSelection } from "../../stores/browser
 import { replaceSelection } from "../../stores/selection";
 import { useListSelection } from "../../hooks/useListSelection";
 import { CompositeList, type CompositeListHandle } from "../common/composite-list";
+import type { ZoneId } from "../../hooks/useZoneNavigation";
 import { ListCardState } from "../common/ListCard";
 import type { StationResult } from "../../lib/tauri";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import { addToast } from "../../stores/toasts";
 import { StationItem, getStationSegments } from "./StationItem";
 import * as m from "../../i18n/paraglide/messages";
+
+// The one zone id this file spells twice — the list's zoneId and the Shift+Enter
+// selector in onAction. One constant, so the two cannot drift apart.
+const RESULTS_ZONE = "browser-results" satisfies ZoneId;
 
 // resetCursor comes from CompositeList: this is the one list whose whole result
 // set is replaced under the user (a changed query/filter), so BrowserPanel needs
@@ -136,7 +141,7 @@ export const StationList = forwardRef<StationListHandle, Props>(
     return (
       <CompositeList<StationListHandle>
         ref={ref}
-        zoneId="browser-results"
+        zoneId={RESULTS_ZONE}
         ariaLabel={m.zone_browser_results()}
         items={items}
         className="flex-1 overflow-auto"
@@ -177,7 +182,7 @@ export const StationList = forwardRef<StationListHandle, Props>(
           if (mods.shift) {
             document
               .querySelector<HTMLElement>(
-                `[data-zone-id="browser-results"] [data-item-id="${CSS.escape(itemId)}"][data-segment="action-play"]`,
+                `[data-zone-id="${RESULTS_ZONE}"] [data-item-id="${CSS.escape(itemId)}"][data-segment="action-play"]`,
               )
               ?.click();
             return;
