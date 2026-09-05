@@ -35,6 +35,9 @@ interface Props {
 // if the entry is ever renamed.
 const PALETTE_COMBO = SHORTCUTS.find((s) => s.id === "command-palette")?.combo ?? "Ctrl+K";
 
+/** The three mutually exclusive things that can stand in the list card. */
+type ListSlot = "empty" | "filter-empty" | "list";
+
 // Partial-success announcements: skipped = requested − done (R5). Pure of
 // component state, so they live at module scope.
 const composeRecordSummary = (sel: number, started: number): string => {
@@ -267,22 +270,18 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     ? m.streams_examples_loading()
     : m.streams_empty_add_examples();
 
-  // ── Deferred focus across a list ⇄ empty-zone swap ──────────────
-  // Both flags are requests, not destinations: at request time the target isn't
-  // mounted, so the effects below resolve it after the swap. The rule they
-  // follow is one (docs/accessibility.md §3.1): focus takes whatever replaced
-  // the control on screen — never let it fall to <body>.
-  // Set by whoever makes the list appear (add examples, reset filter).
-  const pendingFocusFirstRow = useRef(false);
-  // Set by StreamList.onEmpty when a delete/move clears the visible list.
-  const pendingFocusEmptyZone = useRef(false);
+  // ── Focus across a list ⇄ empty-zone swap ───────────────────────
+  // Which of the three mutually exclusive branches currently stands in the card.
+  // Naming the slot is what lets one guard watch the transition itself instead of
+  // each caller having to remember to ask for a hand-off.
+  const slot: ListSlot = isEmpty ? "empty" : filterHidesAll ? "filter-empty" : "list";
+  const prevSlotRef = useRef<ListSlot>(slot);
 
   const handleResetFilter = () => {
     $streamFilter.set("all");
     replaceSelection(new Set());
-    // The list replaces this zone in the same commit, so the button unmounts
-    // with focus on it. Ask for the first row; the effect below delivers.
-    pendingFocusFirstRow.current = true;
+    // No focus request here: the list replaces this zone in the same commit, and the
+    // slot guard below sees that for itself.
     announce(filterAnnouncement("all", streams.length), "polite");
   };
 
@@ -310,8 +309,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
       const added = await tauri.addExampleStreams();
       // Backend already emitted streams-changed → App.tsx reloads $streams →
       // isEmpty flips false and the list mounts. Keep loadingExamples=true: this
-      // empty-state node unmounts with it. Focus the first row once mounted.
-      pendingFocusFirstRow.current = true;
+      // empty-state node unmounts with it, and the slot guard moves the focus.
       announce(addedAnnouncement(added.length, added.map((s) => s.name).join(", ")), "polite");
     } catch (err) {
       addToast(String(err), "error");
@@ -348,42 +346,45 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEmpty, filterHidesAll, toolbarRestore, streamListProxy]);
 
-  // Deliver a pending first-row request once the list is actually there. The
-  // await in handleAddExamples resolves before streams-changed + getStreams()
-  // repopulate $streams, so the list isn't mounted yet at await-time; a single
-  // rAF wouldn't cover that. Instead key off the transition: streamListRef is
-  // set by StreamList's callback ref during commit, so it's available here.
-  // The list can also fail to appear: examples added under an active filter that
-  // hides them all flip filterHidesAll instead of mounting the list. Then the
-  // filter-empty zone took the place on screen, and its button is the target.
+  // The one guard over the list ⇄ empty-zone swap. It replaces the two request flags
+  // this panel used to carry (pendingFocusFirstRow / pendingFocusEmptyZone): those only
+  // ever fired for transitions somebody had asked for, so every background cause — a
+  // recording stopping on its own, a stream erroring out, a reconnect clearing an error —
+  // dropped the focus on <body> with nobody to arm a request. Watching the transition
+  // itself needs no caller, so those causes are covered by construction.
+  //
+  // Both directions obey one rule (docs/accessibility.md §3.1): focus takes whatever
+  // replaced the control on screen. A plain useEffect is late enough on purpose —
+  // streamListRef is set by StreamList's callback ref during commit, and the await in
+  // handleAddExamples resolves before $streams repopulates, so a rAF would not do.
   useEffect(() => {
-    if (!isEmpty && pendingFocusFirstRow.current) {
-      pendingFocusFirstRow.current = false;
-      if (filterHidesAll) resetFilterBtnRef.current?.focus();
-      // ZoneEntry.focus === CompositeList.restoreFocus: on a fresh list the memory
-      // is empty, so focus lands on the first row (summary).
-      else streamListRef.current?.focus("forward");
-    }
-    // loadingExamples is intentionally left true after a successful add (avoids a
-    // flash of the normal button label before the list mounts). But if all streams
-    // are later deleted isEmpty flips back to true and the empty-state zone
-    // re-mounts — reset here so the button is not stuck in the loading state.
-    if (isEmpty) setLoadingExamples(false);
-  }, [isEmpty, filterHidesAll]);
+    const prev = prevSlotRef.current;
+    prevSlotRef.current = slot;
+    if (prev === slot) return;
+    // One test decides it, and it is deliberately about the present, not the past: is the
+    // focus still on something real? If so it is not ours to move — either the node survived
+    // the swap (the two empty zones are the same element type in the same ternary slot, so
+    // React reuses it and the focus rides along), or the focus sits somewhere outside the
+    // slot entirely: another zone, a dialog. Only a focus that is genuinely gone gets
+    // repaired. Asking instead "was the focus inside the slot before the swap" needs a
+    // focusin tracker and answers nothing this does not — a focus that is elsewhere is
+    // connected and is not <body>, so it is already excluded here.
+    const active = document.activeElement;
+    if (active && active !== document.body && active.isConnected) return;
+    if (slot === "empty") addExamplesBtnRef.current?.focus();
+    else if (slot === "filter-empty") resetFilterBtnRef.current?.focus();
+    // ZoneEntry.focus === CompositeList.restoreFocus: on a fresh list the memory is
+    // empty, so focus lands on the first row (summary).
+    else streamListRef.current?.focus("forward");
+  }, [slot]);
 
-  // After a bulk delete empties the visible list, StreamList.onEmpty set a flag;
-  // the target button isn't mounted until isEmpty / filterHidesAll flips true, so
-  // focus it here (never let focus fall to <body>).
+  // loadingExamples is intentionally left true after a successful add (avoids a flash of
+  // the normal button label before the list mounts). But if all streams are later deleted
+  // isEmpty flips back to true and the empty-state zone re-mounts — reset here so the
+  // button is not stuck in the loading state.
   useEffect(() => {
-    if (!pendingFocusEmptyZone.current) return;
-    if (isEmpty) {
-      pendingFocusEmptyZone.current = false;
-      addExamplesBtnRef.current?.focus();
-    } else if (filterHidesAll) {
-      pendingFocusEmptyZone.current = false;
-      resetFilterBtnRef.current?.focus();
-    }
-  }, [isEmpty, filterHidesAll]);
+    if (isEmpty) setLoadingExamples(false);
+  }, [isEmpty]);
 
   // Selection is section-scoped: clear it when the streams screen unmounts.
   useEffect(() => () => { replaceSelection(new Set()); }, []);
@@ -718,7 +719,11 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
               ref={streamListCallbackRef}
               streams={visibleStreams}
               exitZone={(forward) => exitZone("streams-list", forward)}
-              onEmpty={() => { pendingFocusEmptyZone.current = true; }}
+              // No-op, not removed (StreamList requires the prop): the slot guard above
+              // covers every way this list can empty, including the ones no handler can
+              // report. Re-arming a flag from here would only add a second mechanism for
+              // the same transition — which is the drift this record set out to remove.
+              onEmpty={() => {}}
             />
           )}
       </ListCard>

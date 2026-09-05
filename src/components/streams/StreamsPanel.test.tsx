@@ -481,6 +481,64 @@ describe("StreamsPanel — filter-empty transitions rescue focus (streams-reset-
   });
 });
 
+describe("StreamsPanel — a background change must not drop focus (zone-vanishes-under-focus)", () => {
+  const resetBtn = () => screen.getByRole("button", { name: m.streams_filter_reset() });
+  const row = (id: string) =>
+    document.querySelector<HTMLElement>(`[data-item-id="${id}"][data-segment="summary"]`)!;
+
+  it("a recording that stops on its own hands focus to the zone that replaced the list", async () => {
+    // Path 1. The «recording» filter shows only what is recording, so a stop from
+    // anywhere — the tray, a global key, a dropped connection — empties the visible
+    // list and unmounts the whole list zone. No handler of ours runs on that path,
+    // which is precisely why the two request flags could never cover it: there is
+    // nobody to raise a request.
+    $streams.set([mkStream("a", "Alpha")]);
+    $statuses.set({ a: mkStatus("a", "recording") });
+    $streamFilter.set("recording");
+    renderPanel();
+    act(() => row("a").focus());
+    expect(document.activeElement).toBe(row("a"));
+
+    await act(async () => { $statuses.set({ a: mkStatus("a", "idle") }); });
+
+    expect(document.activeElement).not.toBe(document.body);
+    await waitFor(() => expect(document.activeElement).toBe(resetBtn()));
+  });
+
+  it("a recording that starts on its own hands focus to the list that replaced the zone", async () => {
+    // Path 2, the mirror direction: focus sits on «Скинути фільтр» while the filter
+    // hides everything, and a recording started elsewhere mounts the list — taking
+    // the button out from under the focus.
+    $streams.set([mkStream("a", "Alpha")]);
+    $statuses.set({ a: mkStatus("a", "idle") });
+    $streamFilter.set("recording");
+    renderPanel();
+    act(() => resetBtn().focus());
+
+    await act(async () => { $statuses.set({ a: mkStatus("a", "recording") }); });
+
+    expect(document.activeElement).not.toBe(document.body);
+    await waitFor(() =>
+      expect(document.activeElement?.getAttribute("data-item-id")).toBe("a"),
+    );
+  });
+
+  it("leaves focus alone when it was never in the swapped slot", async () => {
+    // The guard must not steal: the same swap happens while the user stands in the
+    // toolbar, and their position has to survive it untouched.
+    $streams.set([mkStream("a", "Alpha")]);
+    $statuses.set({ a: mkStatus("a", "recording") });
+    $streamFilter.set("recording");
+    renderPanel();
+    const toolbarBtn = screen.getByRole("button", { name: /імпорт|import/i });
+    act(() => toolbarBtn.focus());
+
+    await act(async () => { $statuses.set({ a: mkStatus("a", "idle") }); });
+
+    expect(document.activeElement).toBe(toolbarBtn);
+  });
+});
+
 describe("StreamsPanel — import button outcomes", () => {
   const importBtn = () => screen.getByRole("button", { name: /імпорт|import/i });
 
