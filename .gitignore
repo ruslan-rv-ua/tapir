@@ -10,3 +10,4 @@ src/i18n/paraglide/
 *.pem
 *.key
 *.pdb
+.claude/settings.local.json

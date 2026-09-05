@@ -27,7 +27,7 @@ notes:
 
 > **Контекст:** правило й відкинуті альтернативи —
 > [ADR «ворота відмовляють, а не радять»](../decisions/2026-09-05-gates-refuse-rather-than-advise.md).
-> Передумова — [repo-public-rename](p2-repo-public-rename.md): без публічного
+> Передумова — [repo-public-rename](done/p2-repo-public-rename.md): без публічного
 > репозиторію захист гілки недоступний.
 
 ## Опис
@@ -113,7 +113,7 @@ PR і недоступний нікому іншому, але місце в 10-
 
 Порядок несучий — переставляння кроків дає або заблокований PR, або осиротілі коміти.
 
-1. Закрити [repo-public-rename](p2-repo-public-rename.md).
+1. ✅ Закрити [repo-public-rename](done/p2-repo-public-rename.md) — зроблено 2026-09-05.
 2. **Запушити локальний `develop` повністю.** У мить увімкнення захисту будь-який коміт,
    що вже в локальному стовбурі, але не на origin, стає непроштовхуваним: прямий push
    відхиляється, а PR із нього не зробити — він уже не на гілці. Такі коміти доводиться
@@ -170,7 +170,7 @@ PR і недоступний нікому іншому, але місце в 10-
 ## Документи
 
 - [ADR — ворота відмовляють, а не радять](../decisions/2026-09-05-gates-refuse-rather-than-advise.md)
-- [repo-public-rename](p2-repo-public-rename.md) — передумова
+- [repo-public-rename](done/p2-repo-public-rename.md) — передумова
 - [release-workflow](p3-release-workflow.md) — розблоковується цим записом
 - [typecheck-gate](done/p1-typecheck-gate.md), [clippy-warnings-zero](done/p2-clippy-warnings-zero.md) — ворота, які CI запускає
 - https://github.com/Swatinem/rust-cache

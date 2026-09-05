@@ -28,10 +28,11 @@ The phase table below is history — it records what each phase covered and wher
 | Phase 3J — Stream Import/Export | ✅ Complete | merged to `develop` |
 | Phase 3K — Crash Recovery | ✅ Complete | `feature/phase-3k-crash-recovery` |
 
-## Developer Context
+## Accessibility Context
 
-The developer is **blind** and uses **NVDA** screen reader on Windows.
-All UI must be fully operable and understandable via NVDA — test with screen reader, not just visually.
+Tapir is developed and tested with the **NVDA** screen reader on Windows.
+Accessibility is a requirement, not an option: all UI must be fully operable and
+understandable via NVDA — test with a screen reader, not just visually.
 
 ## Architecture
 

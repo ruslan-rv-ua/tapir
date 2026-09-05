@@ -4,7 +4,7 @@
 - **Дата:** 2026-09-05
 - **Тип:** ADR — межа між перевіркою і відмовою; спосіб входу змін у `develop`
 - **Контекст:** беклог — [ci-pipeline](../backlog/p2-ci-pipeline.md),
-  [repo-public-rename](../backlog/p2-repo-public-rename.md),
+  [repo-public-rename](../backlog/done/p2-repo-public-rename.md),
   [release-workflow](../backlog/p3-release-workflow.md);
   ворота — [typecheck-gate](../backlog/done/p1-typecheck-gate.md),
   [clippy-warnings-zero](../backlog/done/p2-clippy-warnings-zero.md).

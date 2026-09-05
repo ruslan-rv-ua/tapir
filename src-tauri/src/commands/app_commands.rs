@@ -124,8 +124,9 @@ mod about_tests {
     #[test]
     fn project_homepage_is_the_public_repository() {
         // The one address the About section shows and the "Open project page"
-        // button hands to the shell. Decided in backlog about-app-info (2026-09-02):
-        // deliberately the public name, not the current `Tapir_draft` remote.
+        // button hands to the shell. Decided in backlog about-app-info
+        // (2026-09-02) ahead of the rename; the remote carries this name
+        // since backlog repo-public-rename.
         assert_eq!(PROJECT_HOMEPAGE, "https://github.com/ruslan-rv-ua/tapir");
     }
 }
