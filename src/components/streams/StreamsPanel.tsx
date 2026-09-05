@@ -250,6 +250,23 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const addExamplesBtnRef = useRef<HTMLButtonElement | null>(null);
   const [loadingExamples, setLoadingExamples] = useState(false);
 
+  // Both empty-state buttons below carry an explicit aria-label duplicating their own
+  // visible text. Not redundancy: `streams-empty` and `streams-filter-empty` are the same
+  // element type at the same ternary position, so React reuses the DOM node and a swap
+  // changes nothing but the button's text — focus survives, and the label under it changes
+  // silently. Chromium suppresses EVENT_OBJECT_NAMECHANGE when the name comes from contents
+  // (NameFrom::kContents), and IA2 is the path NVDA reads in WebView2; an attribute-sourced
+  // name lets the event through, and NVDA's default event_nameChange speaks a name change on
+  // the focused object. See docs/notes/zone-vanishes-under-focus.md §4.2-4.3.
+  // Verified by NVDA 2026-09-05: the swap is announced, and the loading label is too — which
+  // is why handleAddExamples no longer announces it separately.
+  // The visible text is the carrier here (ADR 2026-08-31): these labels must keep mirroring
+  // it exactly. An aria-label that says something the screen does not show would announce a
+  // fact with no visible carrier — which is the thing that ADR forbids.
+  const addExamplesLabel = loadingExamples
+    ? m.streams_examples_loading()
+    : m.streams_empty_add_examples();
+
   // ── Deferred focus across a list ⇄ empty-zone swap ──────────────
   // Both flags are requests, not destinations: at request time the target isn't
   // mounted, so the effects below resolve it after the swap. The rule they
@@ -285,7 +302,10 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const handleAddExamples = async () => {
     if (loadingExamples) return; // guard double-activation (button stays clickable via aria-disabled)
     setLoadingExamples(true);
-    announce(m.streams_examples_loading(), "polite");
+    // No announce() for the loading state. The button's own name changes to exactly these
+    // words, and with an attribute-sourced name (see addExamplesLabel) the screen reader
+    // speaks that change on the focused button — a live region on top of it said the same
+    // sentence twice. Verified by NVDA 2026-09-05.
     try {
       const added = await tauri.addExampleStreams();
       // Backend already emitted streams-changed → App.tsx reloads $streams →
@@ -659,12 +679,13 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
               <p className="text-sm">{m.streams_empty_hint()}</p>
               <button
                 ref={addExamplesBtnRef}
+                aria-label={addExamplesLabel}
                 aria-disabled={loadingExamples || undefined}
                 aria-busy={loadingExamples || undefined}
                 onClick={handleAddExamples}
                 className="rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
               >
-                {loadingExamples ? m.streams_examples_loading() : m.streams_empty_add_examples()}
+                {addExamplesLabel}
               </button>
               {/* Not a Tab stop by design (S3/S4): plain inline nodes, so NVDA
                   reads the hint in document order without adding a focus stop. */}
@@ -685,6 +706,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
               <p className="text-sm">{m.streams_filter_empty()}</p>
               <button
                 ref={resetFilterBtnRef}
+                aria-label={m.streams_filter_reset()}
                 onClick={handleResetFilter}
                 className="rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText] forced-colors:text-[ButtonText]"
               >

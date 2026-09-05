@@ -411,16 +411,20 @@ describe("StreamsPanel — example-streams click flow", () => {
     expect(document.activeElement).toBe(after);
   });
 
-  it("announces the loading message before awaiting addExampleStreams", async () => {
-    // Intercept the resolved promise to check the announcement that fires before await.
+  it("carries the loading state in the button's own name before awaiting addExampleStreams", async () => {
+    // Intercept the resolved promise to check the state that lands before await.
     let resolveAdd!: (v: StreamInfo[]) => void;
     vi.mocked(tauri.addExampleStreams).mockReturnValueOnce(
       new Promise<StreamInfo[]>((res) => { resolveAdd = res; }),
     );
     renderPanel();
     fireEvent.click(addBtn());
-    // Loading announcement fires synchronously before the await resolves.
-    expect($announcer.get()?.message).toMatch(/додаю приклади|adding examples/i);
+    // The button's accessible name carries the loading state, and nothing else does: it is
+    // attribute-sourced (aria-label), which is what lets the screen reader speak the change on
+    // the still-focused button. A live region saying the same words was a second announcement
+    // of one fact — see docs/notes/zone-vanishes-under-focus.md §4.3.
+    expect(screen.getByRole("button", { name: m.streams_examples_loading() })).toBeTruthy();
+    expect($announcer.get()?.message ?? "").not.toMatch(/додаю приклади|adding examples/i);
     // Resolve to clean up the pending promise.
     await act(async () => { resolveAdd([]); });
   });
