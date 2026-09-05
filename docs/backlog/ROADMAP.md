@@ -37,6 +37,11 @@ semver; `unscheduled` — наприкінці.
 > й закрився — репозиторій став `ruslan-rv-ua/tapir` і публічним, чим розблокував
 > `ci-pipeline`. Того ж дня закрився `single-version-source`: три джерела версії стали
 > одним. Разом **три P2**.
+> NVDA-прогін `zone-vanishes-under-focus-audit` 2026-09-05 додав до черги **P1**: сценарій
+> «зроби помилку й перевір фільтр» виявився непрохідним, бо стану «помилка» потік не набуває
+> взагалі — фільтр збоїв і метрика «Потребує уваги» мертві, а `assertive`-репліка про збій
+> не звучала жодного разу. Тема віхи його й ловить: інтерфейс каже «Немає збоїв» там, де
+> вони є.
 > Чи вважати віху завершеною і тегувати збірку, вирішує розробник після цієї черги;
 > завантажуваний exe для тегу — [release-workflow](p3-release-workflow.md), поки `draft`.
 
@@ -45,6 +50,7 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
+| [error-state-never-reaches-ui](p1-error-state-never-reaches-ui.md) | P1 | planned | **draft** | M | — | — (бекенд не шле статус `error` ніколи, а власний `Error` затирає `Reconnecting` або фінальний `Idle`: фільтр «З помилками» не збігається ні з чим, метрика «Потребує уваги» завжди каже «Немає збоїв», а `assertive`-репліка про збій — мертвий код; grooming — коли потік має спочивати в помилці і що її знімає) |
 | [ci-pipeline](p2-ci-pipeline.md) | P2 | planned | ready | M | [repo-public-rename](done/p2-repo-public-rename.md) ✅, [typecheck-gate](done/p1-typecheck-gate.md) ✅, [clippy-warnings-zero](done/p2-clippy-warnings-zero.md) ✅ | [release-workflow](p3-release-workflow.md) (ворота, які **відмовляють**: PR обов'язковий, два jobs `frontend`/`backend`, адміністратор включений, ретраю немає; правило — [ADR](../decisions/2026-09-05-gates-refuse-rather-than-advise.md)) |
 | [zone-vanishes-under-focus-audit](p2-zone-vanishes-under-focus-audit.md) | P2 | research | **draft** | S | [streams-reset-filter-focus-drop](done/p2-streams-reset-filter-focus-drop.md) | — (дзеркало аудиту 2026-07-20: зона зникає з-під фокуса не від натиску — запис зупинився й відфільтрований список спорожнів, дзеркальний напрям, мовчазна підміна підпису між двома порожніми зонами; питання — чи зводяться два прапорці в один сторож) |
 | [tauri-ts-type-drift](p2-tauri-ts-type-drift.md) | P2 | planned | **draft** | S | [tauri-specta-bindings](done/p3-tauri-specta-bindings.md) ✅ | — (аудит 67 типів `tauri.ts` проти Rust: одна жива вада — `track-changed` із плеєра без `ignored`, тож кваліфікатор «ігнорується» в рядку залежить від того, чий емітер останній; ще 11 звужень і латентних пасток; grooming — хто рахує `ignored` для треку з плеєра) |
