@@ -3,11 +3,12 @@ slug: plural-form-single-source
 title: "Одне джерело форми множини замість шести Intl.PluralRules із трьома входами"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: S
 kind: chore
 target: 0.1.0
-updated: 2026-09-04
+updated: 2026-09-05
+completed: 2026-09-05
 a11y: false
 depends_on: [paraglide-native-plurals]
 blocks: []
@@ -19,17 +20,21 @@ touches:
   - src/components/streams/StreamsPanel.tsx
   - src/components/streams/StreamTransferDialog.tsx
   - src/hooks/useCrashResumeFeedback.ts
+  - src/hooks/useCrashResumeFeedback.test.tsx
+  - src-tauri/src/i18n.rs
+  - docs/decisions/2026-08-17-native-layer-localisation.md
 gates: [pnpm test, pnpm typecheck, pnpm vite:build]
 notes:
   - "Рішення дослідження paraglide-native-plurals (2026-09-04): варіант (в). JSON, i18n.rs і cargo test не чіпаємо — варіанти paraglide відкладено."
   - "Єдине джерело локалі — getLocale(): саме воно обирає ТЕКСТ, який форма мусить узгодити. Хелпер не приймає параметр locale, інакше стане сьомим джерелом."
   - "Хелпер приймає категорію CLDR і мапить other → _many в одному місці: CLDR для en дає one/other, а ключі звуться _many."
+  - "Закрито 2026-09-05 з одним відступом від критеріїв: i18n.rs таки змінений — на один док-коментар, який називав видалену StreamsPanel.pluralize. Ключів, логіки й cargo test це не торкнулось."
 ---
 
 # Одне джерело форми множини замість шести Intl.PluralRules із трьома входами
 
 > **Контекст:** прямий наслідок дослідження
-> [paraglide-native-plurals](done/p2-paraglide-native-plurals.md) — обрано варіант (в).
+> [paraglide-native-plurals](p2-paraglide-native-plurals.md) — обрано варіант (в).
 > Читати спершу секцію «Результати дослідження» там: вона пояснює, чому варіанти
 > Paraglide відкладено і чому вхід має бути саме `getLocale()`.
 
@@ -40,15 +45,15 @@ notes:
 
 | Місце | Вхід |
 |-------|------|
-| [StatusBar.tsx:58](../../src/components/layout/StatusBar.tsx:58) | `document.documentElement.lang \|\| "uk"`, нові правила щорендеру |
-| [SongsPanel.tsx:130](../../src/components/songs/SongsPanel.tsx:130) | те саме, але `useMemo` з `deps: []` |
-| [StreamsPanel.tsx:89](../../src/components/streams/StreamsPanel.tsx:89) | `settings?.language \|\| document.documentElement.lang \|\| "uk"` |
-| [useCrashResumeFeedback.ts:18](../../src/hooks/useCrashResumeFeedback.ts:18) | те саме, `deps: []` — **дає неправильну форму**, див. [crash-resume-plural-english-rules](p2-crash-resume-plural-english-rules.md) |
-| [ProfileItem.tsx:39](../../src/components/profile/ProfileItem.tsx:39) | `getLocale()` |
-| [StreamTransferDialog.tsx:10](../../src/components/streams/StreamTransferDialog.tsx:10) | `getLocale()` |
+| [StatusBar.tsx:58](../../../src/components/layout/StatusBar.tsx:58) | `document.documentElement.lang \|\| "uk"`, нові правила щорендеру |
+| [SongsPanel.tsx:130](../../../src/components/songs/SongsPanel.tsx:130) | те саме, але `useMemo` з `deps: []` |
+| [StreamsPanel.tsx:89](../../../src/components/streams/StreamsPanel.tsx:89) | `settings?.language \|\| document.documentElement.lang \|\| "uk"` |
+| [useCrashResumeFeedback.ts:18](../../../src/hooks/useCrashResumeFeedback.ts:18) | те саме, `deps: []` — **дає неправильну форму**, див. [crash-resume-plural-english-rules](../p2-crash-resume-plural-english-rules.md) |
+| [ProfileItem.tsx:39](../../../src/components/profile/ProfileItem.tsx:39) | `getLocale()` |
+| [StreamTransferDialog.tsx:10](../../../src/components/streams/StreamTransferDialog.tsx:10) | `getLocale()` |
 
-Запасне `"uk"` — мертвий код: [index.html](../../index.html) віддає `<html lang="en">`,
-і перезаписує його лише [App.tsx:146](../../src/App.tsx:146) **після** резолву
+Запасне `"uk"` — мертвий код: [index.html](../../../index.html) віддає `<html lang="en">`,
+і перезаписує його лише [App.tsx:146](../../../src/App.tsx:146) **після** резолву
 `getSettings()`. Тобто реальний дефолт цих чотирьох — англійський.
 
 Текст же в усіх шести дістає `m.*()`, тобто **`getLocale()`** зі стратегією
@@ -62,7 +67,7 @@ notes:
 - **Параметра `locale` в неї немає.** Дати його означає завести сьоме джерело.
 - Набором форм, а не готовим суфіксом, — бо родини різні: `crash_resume_all` має лише
   `_one/_few/_many`, а `profile_stream_count` — ще й справжній `_other`
-  ([ProfileItem.tsx:38](../../src/components/profile/ProfileItem.tsx:38)). Хелпер, який
+  ([ProfileItem.tsx:38](../../../src/components/profile/ProfileItem.tsx:38)). Хелпер, який
   віддає рядок-суфікс, на цій парі ламається.
 - Тому мапінг `other → _many` живе всередині хелпера як **запасний хід**: коли CLDR дав
   `other`, а форми `other` викликач не передав. Одне місце, з коментарем, чому так —
@@ -75,22 +80,60 @@ notes:
 
 ## Критерії готовності
 
-- [ ] `docs/help/` — запис видимої поведінки не змінює (форми в `uk` лишаються ті самі)
-- [ ] `src/lib/plural.ts` існує, `getLocale()` — його єдиний вхід, параметра `locale` немає
-- [ ] Усі шість місць із таблиці вище перейшли на хелпер
-- [ ] `grep -rn "Intl.PluralRules" src/ --include=*.ts --include=*.tsx` поза
+- [x] `docs/help/` — запис видимої поведінки не змінює (форми в `uk` лишаються ті самі)
+- [x] `src/lib/plural.ts` існує, `getLocale()` — його єдиний вхід, параметра `locale` немає
+- [x] Усі шість місць із таблиці вище перейшли на хелпер
+- [x] `grep -rn "Intl.PluralRules" src/ --include=*.ts --include=*.tsx` поза
       `src/lib/plural.ts` і його тестом дає порожньо
-- [ ] Тест хелпера, обидві локалі: `uk` — 1/2/5/21/22 → `one`/`few`/`many`/`one`/`few`;
+- [x] Тест хелпера, обидві локалі: `uk` — 1/2/5/21/22 → `one`/`few`/`many`/`one`/`few`;
       `en` — 1/2 → `one` і запасний хід у `many` за відсутності форми `other`
-- [ ] Тест запасного ходу: коли форму `other` передано (`profile_stream_count`), вона й
+- [x] Тест запасного ходу: коли форму `other` передано (`profile_stream_count`), вона й
       обирається, а не `many`
-- [ ] Сім тестів, що мокають ключі з суфіксами поіменно (`ProfileItem`, `ProfileList`,
+- [x] Сім тестів, що мокають ключі з суфіксами поіменно (`ProfileItem`, `ProfileList`,
       `ProfilesPanel`, `StreamTransferDialog`, `useBrowserProbeFeedback`,
       `useCrashResumeFeedback`, `scheduleFormat`), лишаються зеленими або оновлені
-- [ ] JSON повідомлень і `src-tauri/src/i18n.rs` не змінені (`git diff` порожній для них)
+- [x] JSON повідомлень не змінені (`git diff` порожній). `src-tauri/src/i18n.rs` —
+      **з одним відступом**: док-коментар `plural_suffix` називав видалену
+      `StreamsPanel.pluralize`, і вказівник переписано на `plural()`. Ані ключів, ані
+      логіки вибору форми, ані `cargo test` правка не торкається
 
 ## Документи
 
-- [paraglide-native-plurals](done/p2-paraglide-native-plurals.md) — дослідження й обґрунтування (в)
-- [crash-resume-plural-english-rules](p2-crash-resume-plural-english-rules.md) — жива вада, яку ця зміна закриває структурно
-- [ADR: локалізація нативного шару](../decisions/2026-08-17-native-layer-localisation.md) — чому Rust лишається на суфіксах
+- [paraglide-native-plurals](p2-paraglide-native-plurals.md) — дослідження й обґрунтування (в)
+- [crash-resume-plural-english-rules](../p2-crash-resume-plural-english-rules.md) — жива вада, яку ця зміна закриває структурно
+- [ADR: локалізація нативного шару](../../decisions/2026-08-17-native-layer-localisation.md) — чому Rust лишається на суфіксах
+
+## Результат (2026-09-05)
+
+Хелпер — [src/lib/plural.ts](../../../src/lib/plural.ts): `plural(count, forms)`, локаль
+лише з `getLocale()`, параметра `locale` немає. Форми — **танки**, а не готові рядки й не
+функції повідомлень: `crash_resume_all` має тільки `_one/_few/_many`, а
+`profile_stream_count` — ще й справжній `_other`, і саме на цій парі ламається хелпер, що
+віддає суфікс. Побічний виграш замикання: підстановки понад `{count}` (`{label}` у
+`streams_filter_changed`, `{names}` у `streams_examples_added`) просто закриваються в
+танку — зникла причина, через яку `StreamsPanel` тримав власну обгортку поверх правил.
+
+**Сайтів шість, викликів одинадцять.** Таблиця вище рахувала конструктори
+`Intl.PluralRules`; у `StreamsPanel` за одним конструктором стояла локальна обгортка
+`pluralize` і **шість** її викликів, три з них у `useCallback`
+(`filterAnnouncement`, `addedAnnouncement`, `recordAllAnnouncement`). Грепом за
+`Intl.PluralRules` — тобто критерієм цього запису — їх не видно; знайшов їх
+`pnpm typecheck` після зняття обгортки.
+
+Попутно закрилась жива вада
+[crash-resume-plural-english-rules](../p2-crash-resume-plural-english-rules.md):
+регресійний тест (`<html lang="en">`, `resumed: 3` → `_few`) лишений у
+`useCrashResumeFeedback.test.tsx` і перевірений на невиправленому коді — там він дає
+`all-many-3`. Сам запис лишається відкритим до окремого приймання.
+
+Перейменування зламало три вказівники на стару конвенцію, усі три переписані на
+`src/lib/plural.ts`: два в [ADR](../../decisions/2026-08-17-native-layer-localisation.md)
+(вступний перелік і §4) і док-коментар `plural_suffix` у
+[i18n.rs](../../../src-tauri/src/i18n.rs). Жоден із них не стереже тест: `docsLinks`
+перевіряє існування файлу, а не рядок, а імені функції в коментарі не перевіряє ніщо.
+Заразом §4 ADR дістав межу, яку доти замовчував: Rust віддає `_zero` на нулі **завжди**,
+фронтенд — лише там, де ключ є.
+
+Хвіст, свідомо не взятий: `streamCountLabel` і далі стоїть двома однаковими копіями в
+`ProfileItem.tsx` і `StreamTransferDialog.tsx`. Кожна стала вдвічі коротшою, але копія
+лишилась копією — запис її не просив.
