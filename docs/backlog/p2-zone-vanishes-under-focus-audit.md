@@ -83,6 +83,9 @@ notes:
 
 ## Документи
 
+- [notes/zone-vanishes-under-focus.md](../notes/zone-vanishes-under-focus.md) — дослідницька нотатка
+  2026-09-05: відповіді на всі три відкриті питання з першоджерел (HTML, ARIA, WCAG, Chromium,
+  NVDA, react-aria) плюс три власні виміри
 - [p2-streams-reset-filter-focus-drop.md](done/p2-streams-reset-filter-focus-drop.md) — батьківський запис, правило й перший виклик
 - [done/p2-streams-empty-focus-audit.md](done/p2-streams-empty-focus-audit.md) — дзеркальний аудит 2026-07-20, зразок форми
 - [accessibility.md](../accessibility.md) — §3.1, правило вибору цілі фокуса
