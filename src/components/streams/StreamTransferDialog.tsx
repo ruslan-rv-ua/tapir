@@ -1,19 +1,9 @@
 import { Modal, ModalOverlay, Dialog, Heading } from "react-aria-components";
 import type { ProfileMeta } from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
-import { plural } from "../../lib/plural";
+import { streamCountLabel } from "../../lib/profileStreamCount";
 
 export type TransferSubject = { kind: "single"; name: string } | { kind: "bulk"; count: number };
-
-/** Localized "{count} streams" — mirrors ProfileItem so NVDA hears the same phrasing everywhere. */
-function streamCountLabel(count: number): string {
-  return plural(count, {
-    one: () => m.profile_stream_count_one({ count }),
-    few: () => m.profile_stream_count_few({ count }),
-    many: () => m.profile_stream_count_many({ count }),
-    other: () => m.profile_stream_count_other({ count }),
-  });
-}
 
 interface Props {
   mode: "copy" | "move";
