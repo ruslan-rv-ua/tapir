@@ -79,7 +79,8 @@ notes:
       причину, чому він недосяжний
 - [ ] `document.activeElement` не буває `<body>` у жодному з відтворених шляхів
 - [ ] Рішення по відкритих питаннях записане тут або в ADR, а не лише в коді
-- [ ] NVDA-прогін на відтворені шляхи
+- [ ] NVDA-прогін на відтворені шляхи —
+      [nvda-zone-vanishes-under-focus-audit.md](../testing/nvda-zone-vanishes-under-focus-audit.md)
 
 ## Документи
 
