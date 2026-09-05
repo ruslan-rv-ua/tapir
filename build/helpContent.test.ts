@@ -58,13 +58,14 @@ describe("getHelpHtml", () => {
     //    an anti-stub floor of 120, which by then could no longer go red.
     //  - RATIO holds the Ukrainian file against its English pair, and it is the
     //    anti-stub guard now: an absolute floor on uk would fire on a flawless
-    //    translation (the observed spread is 0.80–0.90 of en), while catching
+    //    translation, while catching
     //    nothing an English floor of 600 does not already catch. What it does
     //    catch, and what nothing caught before, is the section whose English half
     //    grew and whose Ukrainian half stayed as it was — the failure that hurts
     //    most, because `getHelpHtml` falls back to uk for every unknown locale,
     //    so a half-translated file is seen by MORE people than the English one.
-    //    0.75 is the observed minimum (0.798, background) with room to spare.
+    //    0.75 sits under the measured spread of the fourteen pairs, 0.798
+    //    (background) to 0.895 (wishlist), with room for a tighter translation.
     //    It also subsumes the placeholder blacklist this suite once planned: a
     //    stub is caught however it is worded, which matters because rule 8 of the
     //    style guide REQUIRES settings.md to write "поки що недоступно" —
@@ -81,19 +82,19 @@ describe("getHelpHtml", () => {
     const CEILING = 3000;
     const RATIO = 0.75;
     const wordCount = (md: string) => md.split(/\s+/).filter(Boolean).length;
-    const read = (locale: string, file: string) =>
+    const wordsIn = (locale: string, file: string) =>
       wordCount(fs.readFileSync(path.join(process.cwd(), "docs/help", locale, file), "utf-8"));
 
     const enDir = path.join(process.cwd(), "docs/help/en");
     for (const file of fs.readdirSync(enDir).filter((f) => f.endsWith(".md"))) {
-      const en = read("en", file);
+      const en = wordsIn("en", file);
       expect(en, `en/${file} is under the floor — finish it, don't pad it (rule 9)`)
         .toBeGreaterThanOrEqual(FLOOR);
       expect(en, `en/${file} is over the ceiling — split it, don't trim`)
         .toBeLessThanOrEqual(CEILING);
 
       // Same section, the other locale: the pair is what the ratio is about.
-      const uk = read("uk", file);
+      const uk = wordsIn("uk", file);
       expect(uk, `uk/${file} lags its en pair (${uk} vs ${en}) — the translation is behind`)
         .toBeGreaterThanOrEqual(Math.ceil(RATIO * en));
     }

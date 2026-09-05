@@ -20,7 +20,7 @@ While a dialog is open — settings, adding a stream, a confirmation — zone mo
 - Deletion: the `Delete` key removes the focused row or all selected rows, always asking for confirmation. In the Station Browser, this key has no effect.
 - Context menu: open it with a right click, the menu key, or `Shift+F10`. Outside of lists, there are no context menus in the application, so the key does nothing there — that is deliberate, not a fault.
 
-The asymmetry between the last three points is worth holding on to, because it decides what a keystroke will touch. `Delete` and the buttons on the action bar work on **the whole selection**; `Enter` and its modifiers always work on **the one focused row**, selection or no selection. So to record several streams at once you select them — `Ctrl+Space` on each, or `Shift+↓` for a run — and then use the action bar of that screen, which is where the bulk actions live. Pressing `Ctrl+Enter` instead would have recorded exactly one.
+The asymmetry between the last three points is worth holding on to, because it decides what a keystroke will touch. `Delete` and the buttons on the action bar work on the whole selection; `Enter` and its modifiers always work on the one focused row, selection or no selection. So to record several streams at once you select them — `Ctrl+Space` on each, or `Shift+↓` for a run — and then use the action bar of that screen, which is where the bulk actions live. Pressing `Ctrl+Enter` instead would have recorded exactly one.
 
 `Ctrl+A` takes the visible rows, not everything the screen knows about: with a filter on, it selects what the filter left. That is usually what you want, and it is the reason the filter is a safe way to aim a bulk action.
 

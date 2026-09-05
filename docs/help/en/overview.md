@@ -2,7 +2,7 @@
 
 Tapir listens to internet radio, records the broadcast, splits it into separate tracks using stream metadata, and sets tags. You point it at a station address, tell it to record, and get a folder of individual songs with the artist and title already filled in — instead of one long file you would have to cut up by hand.
 
-The application is portable and requires no installation: the system AppData folder is not used, and the `data\` and `recordings\` folders are created right next to the `tapir.exe` file. Everything Tapir knows — your streams, profiles, schedule, and saved tracks — lives inside those two folders. Copy the whole folder to another disk or another computer and Tapir starts there with the same streams and the same recordings. The one thing Tapir puts outside its own folder is the Windows startup entry, and only if you turn on **Start with Windows** — see the "Running in the background" section.
+The application is portable and requires no installation: the system AppData folder is not used, and the `data\` and `recordings\` folders are created right next to the `tapir.exe` file. Everything Tapir knows — your streams, profiles, schedule, and saved tracks — lives inside those two folders. Copy the whole folder to another disk or another computer and Tapir starts there with the same streams and the same recordings. The one thing Tapir puts outside its own folder is the Windows startup entry, and only if you turn on **Launch with Windows** — see the "Running in the background" section.
 
 ### First launch
 
@@ -14,7 +14,7 @@ Find a station in the catalogue: go to the **Station Browser**, type part of the
 
 Or take the shortcut on an empty list: the **Add example streams** button adds a handful of working stations so you can try recording immediately, before deciding which stations you actually want.
 
-Now record. On the **Streams** screen, move to the stream and press `Enter` — by default that starts recording; `Ctrl+Enter` always records, whatever the default is. The row changes to show what is happening: connecting, then recording. Within a minute or two the first file appears in `recordings\`, inside a folder named after the station. The first track after the start is almost always cut off in the middle, so by default Tapir does not keep it. To stop, press the same key again. If the station goes off the air, recording stops and the row shows an error — by default Tapir does not reconnect on its own; how to turn reconnection on is described in "How recording works".
+Now record. On the **Streams** screen, move to the stream and press `Enter` — by default that starts recording; `Ctrl+Enter` always records, whatever the default is. The row changes to show what is happening: connecting, then recording. Within a minute or two the first file appears in `recordings\`, inside a folder named after the station. The first track after the start is almost always cut off in the middle, so by default Tapir does not keep it. To stop, press the same key again. If the station goes off the air, Tapir reconnects by itself a set number of times and stops the recording once those run out, leaving an error on the row; how many attempts, and how to change that, is in "How recording works".
 
 ### Application screens
 
