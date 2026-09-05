@@ -1,6 +1,5 @@
 {
   "productName": "Tapir",
-  "version": "0.1.0",
   "identifier": "ua.ruslanrv.tapir",
   "build": {
     "devUrl": "http://localhost:1420",

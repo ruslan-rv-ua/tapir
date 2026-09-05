@@ -35,8 +35,7 @@ notes:
 **User-Agent.** Рядок `Tapir/0.1.0` стоїть окремо в
 [connection.rs](../../../src-tauri/src/stream/connection.rs),
 [playlist.rs](../../../src-tauri/src/stream/playlist.rs) і двічі в
-[browser/api.rs](../../../src-tauri/src/browser/api.rs). Тест
-[versionSync.test.ts](../../../src/lib/versionSync.test.ts) звіряє три файли з версією,
+[browser/api.rs](../../../src-tauri/src/browser/api.rs). Тест `versionSync.test.ts` звіряє три файли з версією,
 але цих рядків не знає. Після підняття версії до 0.2.0 станції й Radio Browser
 бачитимуть 0.1.0. Заміна: одна константа, похідна від `CARGO_PKG_VERSION`, наприклад
 `concat!("Tapir/", env!("CARGO_PKG_VERSION"))`, і чотири місця беруть її.
@@ -67,8 +66,7 @@ notes:
 піддеревах (`stream/` і `browser/`), тож будь-який з них як господар константи
 змусив би сусіда ходити через чужу область. Заголовок тепер не рядок, а похідна
 версії, тож підняти версію й забути про нього більше не можна — сторожа для цього
-не треба, бо ламати нема чого. Коментар
-[versionSync.test.ts](../../../src/lib/versionSync.test.ts) дописано: споживачів
+не треба, бо ламати нема чого. Коментар `versionSync.test.ts` дописано: споживачів
 версії тепер троє, не двоє.
 
 **Другого писаря немає.** `SessionState::save_to` — один рядок:
@@ -83,4 +81,5 @@ notes:
 ## Документи
 
 - [store.rs](../../../src-tauri/src/store.rs) — `write_json_atomically` і коментар про порядок sync/rename
-- [versionSync.test.ts](../../../src/lib/versionSync.test.ts) — що саме сторож версії бачить, а що ні
+- [versionSource.test.ts](../../../build/versionSource.test.ts) — сторож версії; на час
+  цього запису він звався `versionSync.test.ts` і лежав у `src/lib/`

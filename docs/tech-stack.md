@@ -208,16 +208,13 @@ Portable-збірка не має ярлика в меню «Пуск», том�
 - **`--no-bundle`.** Пропускає створення NSIS/MSI, виробляючи standalone `.exe` — саме
   той файл, який роздається користувачам.
 
-### Синхронізація версій
+### Версія застосунку
 
-Три файли мають завжди мати однакову версію; сторож —
-[`src/lib/versionSync.test.ts`](../src/lib/versionSync.test.ts).
-
-| Файл | Поле |
-|------|------|
-| `package.json` | `"version"` |
-| `src-tauri/tauri.conf.json` | `"version"` |
-| `src-tauri/Cargo.toml` | `version =` |
+Версію несе одне поле — `version` у таблиці `[package]` файлу
+[`src-tauri/Cargo.toml`](../src-tauri/Cargo.toml). Ні `tauri.conf.json`, ні
+`package.json` її не дублюють: за відсутності поля в конфізі Tauri бере версію з
+`CARGO_PKG_VERSION` сам. Чому саме так і чим це стережеться —
+[`build/versionSource.test.ts`](../build/versionSource.test.ts).
 
 ---
 
