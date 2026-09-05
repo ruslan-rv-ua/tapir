@@ -7,8 +7,8 @@ description: Use when a Tapir backlog record with `a11y: true` has been implemen
 
 ## Overview
 
-The developer is blind, uses NVDA, and is the only person who runs these
-checklists. A completed one is the acceptance evidence for the `a11y: true` gate —
+These checklists are walked by hand, with NVDA, by the single human reviewer
+who accepts the record. A completed one is the acceptance evidence for the `a11y: true` gate —
 it turns "implemented" into "accepted".
 
 So **a checklist that can be walked end to end without exercising the change is

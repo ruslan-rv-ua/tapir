@@ -141,7 +141,8 @@ All project documentation lives in `docs/`. Key files:
 ### Issue tracker
 
 Задачі живуть локальними markdown-файлами в [docs/backlog/](docs/backlog/), не в
-GitHub Issues. Див. [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md).
+GitHub Issues; самі Issues увімкнено як вхідну скриньку для чужих повідомлень.
+Див. [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md).
 
 ### Triage labels
 
