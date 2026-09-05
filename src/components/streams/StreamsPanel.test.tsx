@@ -426,6 +426,57 @@ describe("StreamsPanel — example-streams click flow", () => {
   });
 });
 
+describe("StreamsPanel — filter-empty transitions rescue focus (streams-reset-filter-focus-drop)", () => {
+  const resetBtn = () => screen.getByRole("button", { name: m.streams_filter_reset() });
+  const addBtn = () =>
+    screen.getByRole("button", { name: /додати приклади потоків|add example streams/i });
+
+  it("Reset filter hands focus to the first row that took its place (never <body>)", async () => {
+    // The fixture stream is idle, so the "recording" filter hides everything and
+    // the filter-empty zone stands where the list would be.
+    $streamFilter.set("recording");
+    renderPanel();
+    act(() => resetBtn().focus());
+
+    fireEvent.click(resetBtn());
+
+    await waitFor(() =>
+      expect(document.activeElement?.getAttribute("data-item-id")).toBe("a"),
+    );
+    // The polite reply about the filter is unchanged by the focus move.
+    expect($announcer.get()?.message).toMatch(/усі|all/i);
+  });
+
+  it("examples added under a filter that hides them leave focus on the reset button", async () => {
+    // Same swap, other direction: the list never mounts, so the first-row request
+    // must fall through to whatever did take the CTA's place.
+    //
+    // This one passes even without the hand-off, and knowing why is the point:
+    // both empty zones are a <div> with <p> + <button> in the same slot of the
+    // same ternary, so React reuses the DOM node and focus rides along by
+    // accident — the label under it just silently changes. The assertion pins
+    // the destination as a contract, so it still holds the day either branch
+    // gets a key or a different wrapper and the accident stops happening.
+    $streams.set([]);
+    $streamFilter.set("recording");
+    const added = [mkStream("ex1", "Example One")];
+    vi.mocked(tauri.addExampleStreams).mockResolvedValueOnce(added);
+    renderPanel();
+    const cta = addBtn();
+    act(() => cta.focus());
+
+    await act(async () => {
+      fireEvent.click(addBtn());
+    });
+    // Simulate the streams-changed round-trip the mocked event bridge can't deliver.
+    await act(async () => {
+      $streams.set(added);
+    });
+
+    await waitFor(() => expect(document.activeElement).toBe(resetBtn()));
+  });
+});
+
 describe("StreamsPanel — import button outcomes", () => {
   const importBtn = () => screen.getByRole("button", { name: /імпорт|import/i });
 
