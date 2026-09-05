@@ -36,7 +36,7 @@ semver; `unscheduled` — наприкінці.
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
 | [streams-reset-filter-focus-drop](p2-streams-reset-filter-focus-drop.md) | P2 | planned | **draft** | S | — | — («Скинути фільтр» на Потоках демонтує власну кнопку й лишає фокус на `<body>`: репліка про фільтр чутна, далі тиша, наступний `F6` починає коло з бокової панелі; знахідка рев'ю zone-proxy-hook; `draft` через одне питання — перший рядок списку чи чіп «Усі») |
-| [tauri-conf-version-source](p2-tauri-conf-version-source.md) | P2 | planned | **draft** | S | — | — (`"version": "../package.json"` лишає два джерела версії замість трьох; рішення розробника) |
+| [single-version-source](p2-single-version-source.md) | P2 | planned | ready | S | — | — (`version` зникає і з `tauri.conf.json`, і з `package.json`; власник — `Cargo.toml`, з якого версію вже читають `--version`, User-Agent і властивості exe; сторож звіряв копії — стерегтиме їхню відсутність) |
 | [tauri-specta-bindings](p3-tauri-specta-bindings.md) | P3 | research | ready | **L** | — | — (925 рядків `tauri.ts` руками проти генерації з Rust; RC з 2023 року; тригер: справжній баг дрейфу типів) |
 | [ci-pipeline](p3-ci-pipeline.md) | P3 | idea | draft | M | [typecheck-gate](done/p1-typecheck-gate.md), [clippy-warnings-zero](done/p2-clippy-warnings-zero.md) ✅ | — (жодного workflow; тригер: контриб'ютор або тег) |
 | [optional-library-swaps](p3-optional-library-swaps.md) | P3 | planned | **draft** | S | — | — (`wildmatch` і `use-debounce` один в один; питання смаку, зафіксувати «так» або «ні») |
