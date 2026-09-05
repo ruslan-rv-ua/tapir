@@ -3,11 +3,12 @@ slug: zone-id-union
 title: "Ідентифікатор зони — рядок у трьох місцях, який ніхто не звіряє"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: S
 kind: chore
 target: 0.1.0
 updated: 2026-09-05
+completed: 2026-09-05
 a11y: true
 depends_on: [zone-entry-dead-el]
 blocks: []
@@ -32,8 +33,8 @@ notes:
 
 # Ідентифікатор зони — рядок у трьох місцях, який ніхто не звіряє
 
-> **Контекст:** хвіст [zone-entry-dead-el](done/p2-zone-entry-dead-el.md).
-> Огрилено 2026-09-05 — дев'ять розвилок, усі рішення в розділі нижче. Підхід:
+> **Контекст:** хвіст [zone-entry-dead-el](p2-zone-entry-dead-el.md).
+> Огрилено, реалізовано й **прийнято 2026-09-05**; дев'ять розвилок — у «Рішеннях». Підхід:
 > союз літералів `ZoneId` плюс аугментація React, яка дотягує сторож до сирих атрибутів.
 
 ## Опис
@@ -54,13 +55,13 @@ notes:
    проти хука, а проти пропса `exitZone: (fromId: string, …)` у шести панелях.
 
 Плюс один захардкоджений селектор у
-[StationList.tsx](../../src/components/browser/StationList.tsx) —
+[StationList.tsx](../../../src/components/browser/StationList.tsx) —
 `[data-zone-id="browser-results"]` у файлі, який той самий id уже передає пропсом.
 Разом 67 рядкових літералів, жоден із яких не звіряється з іншим ні компілятором,
 ні тестом.
 
 Ціна помилки — **тиха неправильна навігація, а не падіння**.
-[`cycleZone`](../../src/hooks/useZoneNavigation.ts) на невідомий `fromId` не
+[`cycleZone`](../../../src/hooks/useZoneNavigation.ts) на невідомий `fromId` не
 скаржиться:
 
 ```ts
@@ -110,7 +111,7 @@ fromIdx = idx < 0 ? (forward ? -1 : zones.length) : idx;
   док-коментарі `ScreenZone`), не «носій»: «видимий носій» у `CONTEXT.md` — це стан,
   який людина читає на екрані, і глосарій прямо каже, що значення в атрибуті носієм
   не є. У глосарій термін не йде — це DOM-деталь, а не поняття домену.
-- **Порядок із [zone-proxy-hook](done/p2-zone-proxy-hook.md).** Домовленість була «союз
+- **Порядок із [zone-proxy-hook](p2-zone-proxy-hook.md).** Домовленість була «союз
   першим», але на момент грумінгу сусідня гілка вже мала готовий коміт, а до злиття цього
   запису встигла в `develop` (722e200). Тому `useZoneProxy(id: string, …)` перетипізовано
   на `ZoneId` у мерж-коміті — одне слово; компілятор одразу вказав на два тестові хелпери
@@ -131,18 +132,23 @@ fromIdx = idx < 0 ? (forward ? -1 : zones.length) : idx;
 
 ## Критерії готовності
 
-- [ ] `docs/help/` — запис видимої поведінки не змінює
-- [ ] Одруківка в **кожному** з місць падає на `pnpm typecheck` — реєстрація,
+- [x] `docs/help/` — запис видимої поведінки не змінює
+- [x] Одруківка в **кожному** з місць падає на `pnpm typecheck` — реєстрація,
       `ScreenZone`, сирий `data-zone-id`, `exitZone`, константа селектора — перевірено
-      **підсадженою** одруківкою, а не міркуванням
-- [ ] Діф продуктивного коду (`git diff develop -- src ':!*.test.*'`) не містить нічого,
-      крім типів, константи в `StationList` і знятої опції `useCompositeList`
-- [ ] Обхід F6 на збірці по всіх шести секціях: те саме коло, що й до зміни — без
-      чекліста, підстава в «Рішеннях»
+      **підсадженою** одруківкою, а не міркуванням. Сім одруківок одразу (плюс inline-хендл
+      і `CompositeList`), tsc назвав усі сім файлів; восьма — у виклику `useZoneProxy`
+      після злиття
+- [x] Діф продуктивного коду (`git diff develop -- src ':!*.test.*'`) не містить нічого,
+      крім типів, константи в `StationList` і знятої опції `useCompositeList` — плюс
+      п'ять явних `(): ZoneEntry =>` на inline-хендлах і одна директива ESLint, обидва
+      типового рівня
+- [x] Обхід F6 на збірці по всіх шести секціях: те саме коло, що й до зміни — без
+      чекліста, підстава в «Рішеннях». Збірка `release-fast` від 2026-09-05 08:13;
+      прийнято розробником того ж дня
 
 ## Документи
 
-- [zone-entry-dead-el](done/p2-zone-entry-dead-el.md) — звідки взявся хвіст
-- [zone-proxy-hook](done/p2-zone-proxy-hook.md) — сусідній хвіст у тому самому файлі, злитий першим
-- [useZoneNavigation.ts](../../src/hooks/useZoneNavigation.ts) — `ZoneEntry` і `cycleZone`
-- [accessibility.md](../accessibility.md) — вимоги до зонової навігації
+- [zone-entry-dead-el](p2-zone-entry-dead-el.md) — звідки взявся хвіст
+- [zone-proxy-hook](p2-zone-proxy-hook.md) — сусідній хвіст у тому самому файлі, злитий першим
+- [useZoneNavigation.ts](../../../src/hooks/useZoneNavigation.ts) — `ZoneEntry` і `cycleZone`
+- [accessibility.md](../../accessibility.md) — вимоги до зонової навігації
