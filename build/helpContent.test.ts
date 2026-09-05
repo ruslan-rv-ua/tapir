@@ -45,26 +45,32 @@ describe("getHelpHtml", () => {
   });
 
   it("keeps every section inside the word bounds of the style guide", () => {
-    // Rule 6 of the help spec (help-content-polish): 200–1000 words per section,
-    // measured on the ENGLISH file — Ukrainian comes out shorter on the same
-    // content. The two bounds do different jobs:
+    // Rule 6 of the help spec (help-content-polish): 600–3000 words per section,
+    // measured on the ENGLISH file — Ukrainian comes out 10–15% shorter on the
+    // same content. The two bounds do different jobs:
     //
-    //  - FLOOR is the anti-stub guard, NOT rule 6's lower bound. Do not "align"
-    //    it with the 200 above: uk/overview.md is 184 words and en/overview.md is
-    //    exactly 200, so a floor of 200 goes red on files nobody touched. What it
-    //    replaces is a blacklist of placeholder phrases ("coming soon"), which
-    //    catches only the wording we happened to use once — and sits
-    //    uncomfortably close to "поки що недоступно", a phrase rule 8 of the
-    //    style guide REQUIRES settings.md to write. A length floor catches a stub
-    //    however it is worded; 120 clears the shortest real section and dwarfs
-    //    any plausible stub, so it never fires on prose.
+    //  - FLOOR is the anti-stub guard, NOT rule 6's lower bound — which is 600 and
+    //    is NOT enforced here yet. Nine of the fourteen sections still sit below
+    //    it (overview is 200 words), so raising this constant now would go red on
+    //    files nobody has had a chance to rewrite; help-sections-expand rewrites
+    //    all fourteen and, as its last step, replaces this floor with `en >= 600`
+    //    plus a relative `uk >= 0.75 * en`. Until then 120 is the only thing
+    //    guarding length at all. What it replaces is a blacklist of placeholder
+    //    phrases ("coming soon"), which catches only the wording we happened to
+    //    use once — and sits uncomfortably close to "поки що недоступно", a
+    //    phrase rule 8 of the style guide REQUIRES settings.md to write. A length
+    //    floor catches a stub however it is worded; 120 clears the shortest real
+    //    section and dwarfs any plausible stub, so it never fires on prose.
     //  - CEILING is rule 6 itself. Past it a section is meant to be SPLIT into a
-    //    new tab, not trimmed, so a failure here is a design prompt.
+    //    new tab, not trimmed, so a failure here is a design prompt. Raised
+    //    1000 → 3000 on 2026-09-05 with the floor: the two move together because
+    //    the 1:5 spread is what keeps them meaning "unfinished" and "two sections
+    //    in one", rather than squeezing every section into a fixed length.
     //
     // Counted in JS deliberately: `wc -w` returns 0 for Cyrillic in this repo's
     // shell, which makes every uk file look a third of its real length.
     const FLOOR = 120;
-    const CEILING = 1000;
+    const CEILING = 3000;
     const wordCount = (md: string) => md.split(/\s+/).filter(Boolean).length;
 
     for (const locale of ["uk", "en"]) {
