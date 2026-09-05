@@ -6,6 +6,10 @@ One panel plays two things: a station on air and a file you already recorded. Mo
 
 Press `Shift+Enter` on a stream to hear it live, or `Enter` on a recording to play it.
 
+Whichever you start, it takes over the panel: one thing plays at a time, and starting the other simply replaces it. Recording is not affected — a stream keeps recording while you listen to something else, and the usual way to check a recording is to leave it running, go to **Recordings**, and play the file that was written a minute ago.
+
+A station whose codec Tapir cannot play refuses at this point and says so, even though the same station may record perfectly well; that mismatch is covered in "Troubleshooting".
+
 A live broadcast cannot be usefully paused — you would replay a stale buffer while the station moves on — so its main button stops it. A file pauses instead, keeps its position, and resumes from there.
 
 ### Volume and position
@@ -36,7 +40,7 @@ To hear that without walking into the player zone, press `F9` — anywhere in th
 
 The position in a file and the volume level stand as numbers beside their bars — 2 min 14 sec and 45%. The position is there even when the file's duration is unknown and there is no bar.
 
-**Output** shows the current device. Change it, or rescan after plugging something in, in the app settings, tab **Audio**.
+**Output** shows the current device. Change it, or rescan after plugging something in, in the app settings, tab **Audio**. The panel only shows it — there is nothing to click here, which is worth knowing before you go looking for a device list that is not on this panel.
 
 When nothing is playing, Tapir can pick up whatever you listened to last: a station goes back on air, while a file resumes from its saved position or starts over — that choice is **Resume file** in the profile settings, tab **Playback**. It does not do so by default: to have it pick up the last source at startup, switch on **Resume last playback on startup** on the same tab. This never affects a pause: a paused file continues where it stopped.
 
