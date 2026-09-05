@@ -22,23 +22,29 @@ semver; `unscheduled` — наприкінці.
 > костилі» 2026-09-04 додав 13 записів про місця, де код або документація брешуть самі
 > собі, у тому самому дусі теми: обрізані назви треків, файл у AppData всупереч README,
 > вимкнені ворота типів, мертві залежності, застарілий опис стеку. У черзі з них
-> лишились один P2 і чотири P3; серед них одне дослідження й одна ідея. Обидва хвости
+> лишились два P2 і три P3; серед них одне дослідження. Обидва хвости
 > зі зняття `ZoneEntry.el` закриті 2026-09-05, і того самого дня закрились усі три
 > записи множини — хелпер `src/lib/plural.ts`, жива вада crash-resume і його власний
 > хвіст — два власники рядка «N потоків». Хвіст рев'ю `zone-proxy-hook` огрилено, зроблено
 > й прийнято того ж дня, але грилінг відділив від нього цілий клас випадків «зона зникла
-> з-під фокуса **не** від натиску», і той став окремим записом у цій же вісі. Разом два P2. Чи вважати віху завершеною і тегувати збірку, вирішує розробник після цієї
-> черги.
+> з-під фокуса **не** від натиску», і той став окремим записом.
+> Грилінг `ci-pipeline` 2026-09-05 додав до черги ще два P2: сама ідея CI виросла в
+> ухвалене рішення (`P3 idea` → `P2 planned`), а публікація репозиторію відокремилась
+> у власний запис, бо захист гілки приватному репо недоступний. Разом чотири P2.
+> Чи вважати віху завершеною і тегувати збірку, вирішує розробник після цієї черги;
+> завантажуваний exe для тегу — [release-workflow](p3-release-workflow.md), поки `draft`.
 
 Порядок рядків у секціях — за пріоритетом, а в межах пріоритету **більші першими**:
 саме вони визначають, чи версія закриється, тож беруться раніше за дрібні.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
+| [ci-pipeline](p2-ci-pipeline.md) | P2 | planned | ready | M | [repo-public-rename](p2-repo-public-rename.md), [typecheck-gate](done/p1-typecheck-gate.md) ✅, [clippy-warnings-zero](done/p2-clippy-warnings-zero.md) ✅ | [release-workflow](p3-release-workflow.md) (ворота, які **відмовляють**: PR обов'язковий, два jobs `frontend`/`backend`, адміністратор включений, ретраю немає; правило — [ADR](../decisions/2026-09-05-gates-refuse-rather-than-advise.md)) |
+| [repo-public-rename](p2-repo-public-rename.md) | P2 | planned | ready | S | — | [ci-pipeline](p2-ci-pipeline.md) (приватному репо на Free захист гілки недоступний — `403 Upgrade to GitHub Pro`; заразом кнопка «Відкрити сторінку проєкту» перестає вести на 404, куди її сьогодні шле довідка) |
 | [zone-vanishes-under-focus-audit](p2-zone-vanishes-under-focus-audit.md) | P2 | research | **draft** | S | [streams-reset-filter-focus-drop](done/p2-streams-reset-filter-focus-drop.md) | — (дзеркало аудиту 2026-07-20: зона зникає з-під фокуса не від натиску — запис зупинився й відфільтрований список спорожнів, дзеркальний напрям, мовчазна підміна підпису між двома порожніми зонами; питання — чи зводяться два прапорці в один сторож) |
 | [tauri-conf-version-source](p2-tauri-conf-version-source.md) | P2 | planned | **draft** | S | — | — (`"version": "../package.json"` лишає два джерела версії замість трьох; рішення розробника) |
 | [tauri-specta-bindings](p3-tauri-specta-bindings.md) | P3 | research | ready | **L** | — | — (925 рядків `tauri.ts` руками проти генерації з Rust; RC з 2023 року; тригер: справжній баг дрейфу типів) |
-| [ci-pipeline](p3-ci-pipeline.md) | P3 | idea | draft | M | [typecheck-gate](done/p1-typecheck-gate.md), [clippy-warnings-zero](done/p2-clippy-warnings-zero.md) ✅ | — (жодного workflow; тригер: контриб'ютор або тег) |
+| [release-workflow](p3-release-workflow.md) | P3 | idea | **draft** | M | [ci-pipeline](p2-ci-pipeline.md) | — (exe у GitHub Release на тег `v*`; у воротах не збирається — release-профіль це другий повний прохід по графу залежностей; шість відкритих питань, зокрема підпис і екран SmartScreen) |
 | [optional-library-swaps](p3-optional-library-swaps.md) | P3 | planned | **draft** | S | — | — (`wildmatch` і `use-debounce` один в один; питання смаку, зафіксувати «так» або «ні») |
 | [dead-js-tauri-plugins](p3-dead-js-tauri-plugins.md) | P3 | planned | **draft** | S | [dead-dependencies](done/p2-dead-dependencies.md) ✅ | — (`@tauri-apps/plugin-dialog` і `@tauri-apps/plugin-log` у `package.json` не імпортує ніхто: з боку JS живий лише `@tauri-apps/api`) |
 
