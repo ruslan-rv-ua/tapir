@@ -1,4 +1,4 @@
-import { RefObject, useCallback, useEffect } from 'react';
+import { RefObject, useCallback, useEffect, useRef } from 'react';
 import { isInModal } from '../lib/shortcutGuard';
 
 export interface ZoneEntry {
@@ -16,6 +16,38 @@ export interface ZoneEntry {
    * is as likely to be the sort <select> as the search input.
    */
   focusSearch?(): void;
+}
+
+/**
+ * A stable `ZoneEntry` that stands in for a zone whose handle comes and goes.
+ *
+ * Why a proxy rather than the handle itself: a list zone unmounts while
+ * loading/empty/errored and remounts with a NEW handle whenever its items
+ * change or its tab switches, and a permanent zone can rebuild its entry too
+ * (PlayerPanel does on every playback change). Zone-registration effects run
+ * on a coarse dependency — `songs.length`, `activeTab`, `hasRows` — so a change
+ * that keeps that dependency equal never re-registers. Register the raw handle
+ * and App is left holding a dead `ZoneEntry` whose `focus()` no-ops:
+ * `cycleZone` skips it, and the zone is unreachable by F6/Tab until something
+ * else re-registers. The confirmed case was a Songs rescan that kept the count;
+ * history in docs/backlog/done/p1-wishlist-stale-list-ref.md.
+ *
+ * The proxy is created once per component instance and forwards `focus` to
+ * whatever `target.current` holds AT CALL TIME, so the registered entry never
+ * goes stale and can sit in an effect's dependency list without re-running it.
+ * `id` is read on the first render and must match the zone's `data-zone-id`.
+ * Only `focus` is forwarded: the zones that own a search field (`focusSearch`)
+ * register their handle directly.
+ */
+export function useZoneProxy(
+  id: string,
+  target: RefObject<Pick<ZoneEntry, 'focus'> | null>,
+): ZoneEntry {
+  const proxy = useRef<ZoneEntry | null>(null);
+  if (proxy.current === null) {
+    proxy.current = { id, focus: (dir) => target.current?.focus(dir) };
+  }
+  return proxy.current;
 }
 
 /**

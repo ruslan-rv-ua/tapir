@@ -16,7 +16,7 @@ import { ScreenZone } from "../layout/ScreenZone";
 import { ScreenHeader } from "../layout/ScreenHeader";
 import { useRovingFocus } from "../../hooks/useRovingFocus";
 import { useAnnounce } from "../../hooks/useAnnounce";
-import type { ZoneEntry } from "../../hooks/useZoneNavigation";
+import { useZoneProxy, type ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as tauri from "../../lib/tauri";
 import { isRecordingLike } from "../../lib/streamState";
 import { SHORTCUTS } from "../../lib/shortcuts";
@@ -265,17 +265,8 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const streamListCallbackRef = useCallback((zone: StreamListHandle | null) => {
     streamListRef.current = zone;
   }, []);
-  // Stable zone proxy delegating to the CURRENT handle. The zone-registration
-  // effect below doesn't depend on the handle, so it doesn't re-run when the list
-  // re-sorts (e.g. the persisted "added" order arriving after $streams loaded) or
-  // remounts — pushing the raw handle would freeze a stale ZoneEntry (with a stale
-  // `items` closure) in App's zones array, so Tab-into-list would focus the old
-  // first row. The proxy is created once and always routes focus() to the live
-  // handle. See zone-navigation-stable-proxies; mirrors SongsPanel/SchedulePanel.
-  const streamListProxyRef = useRef<ZoneEntry>({
-    id: "streams-list",
-    focus: (dir) => streamListRef.current?.focus(dir),
-  });
+  // Proxied (see useZoneProxy): the list re-sorts once the persisted order arrives, and a raw handle would keep the old first row.
+  const streamListProxy = useZoneProxy("streams-list", streamListRef);
 
   // ── Filter-empty zone (streams exist but filter hides them) ─────
   const resetFilterBtnRef  = useRef<HTMLButtonElement | null>(null);
@@ -347,12 +338,12 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
         focus: () => resetFilterBtnRef.current?.focus(),
       });
     } else if (streamListRef.current) {
-      zones.push(streamListProxyRef.current);
+      zones.push(streamListProxy);
     }
     onZonesChange(zones);
   // onZonesChange intentionally omitted — callers must pass a stable reference.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEmpty, filterHidesAll, toolbarRestore]);
+  }, [isEmpty, filterHidesAll, toolbarRestore, streamListProxy]);
 
   // Move focus to the first stream row after examples are added. The await in
   // handleAddExamples resolves before streams-changed + getStreams() repopulate

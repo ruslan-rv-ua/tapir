@@ -15,7 +15,7 @@ import {
 import { replaceSelection } from "../../stores/selection";
 import { useRovingFocus } from "../../hooks/useRovingFocus";
 import { useAnnounce } from "../../hooks/useAnnounce";
-import type { ZoneEntry } from "../../hooks/useZoneNavigation";
+import { useZoneProxy, type ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as m from "../../i18n/paraglide/messages";
 
 interface Props {
@@ -56,17 +56,8 @@ export function BrowserPanel({ onZonesChange, exitZone }: Props) {
     resultsListRef.current = zone;
   }, []);
 
-  // Stable proxy for the results list zone. StationList's CompositeList drops its
-  // <ul> (and recreates its ZoneEntry) while loading/empty and on each new result
-  // set; the registration effect only re-runs on showSearchResults/stations.length,
-  // so without the proxy a same-count refresh could leave App holding a stale
-  // ZoneEntry whose focus() no-ops and F6 stalls. The proxy is created once and
-  // always delegates to the CURRENT handle (the pattern App.tsx uses for permanent
-  // zones).
-  const resultsProxyRef = useRef<ZoneEntry>({
-    id: "browser-results",
-    focus: (dir) => resultsListRef.current?.focus(dir),
-  });
+  // Proxied (see useZoneProxy): StationList drops its <ul> while loading/empty and on every new result set.
+  const resultsProxy = useZoneProxy("browser-results", resultsListRef);
 
   const showSearchResults = isSearchActive && (searchResults.length > 0 || searchLoading || !!searchError);
   const stations = showSearchResults ? searchResults : popularStations;
@@ -126,9 +117,9 @@ export function BrowserPanel({ onZonesChange, exitZone }: Props) {
       focus: selRestore,
     }];
     if (searchZoneRef.current) zones.push(searchZoneRef.current);
-    if (resultsListRef.current) zones.push(resultsProxyRef.current);
+    if (resultsListRef.current) zones.push(resultsProxy);
     onZonesChange(zones);
-  }, [onZonesChange, showSearchResults, stations.length, selRestore]);
+  }, [onZonesChange, showSearchResults, stations.length, selRestore, resultsProxy]);
 
   return (
     <div role="region" aria-label={m.browser_section()} className="flex flex-1 flex-col overflow-hidden">

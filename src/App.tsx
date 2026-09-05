@@ -16,7 +16,7 @@ import { BrowserPanel } from "./components/browser/BrowserPanel";
 import { SongsPanel } from "./components/songs/SongsPanel";
 import { SchedulePanel } from "./components/schedule/SchedulePanel";
 import { PlayerPanel } from "./components/player/PlayerPanel";
-import { useZoneNavigation, type ZoneEntry } from "./hooks/useZoneNavigation";
+import { useZoneNavigation, useZoneProxy, type ZoneEntry } from "./hooks/useZoneNavigation";
 import { useTauriEvent } from "./hooks/useTauriEvent";
 import { useDiskSpacePolling } from "./hooks/useDiskSpacePolling";
 import { useProfileSync } from "./hooks/useProfileSync";
@@ -67,37 +67,19 @@ function AppContent() {
   const playerZoneRef = useRef<ZoneEntry | null>(null);
   const statusBarZoneRef = useRef<ZoneEntry | null>(null);
 
-  // Stable proxy ZoneEntry objects for permanent zones.
-  // These are created once and always delegate to the CURRENT ref at call time,
-  // preventing stale-closure bugs when a permanent zone recreates its ZoneEntry
-  // (e.g. PlayerPanel recreates restoreFocusPlayer when playback state changes).
-  const activityBarProxyRef = useRef<ZoneEntry>({
-    id: "activity-bar",
-    focus: (dir) => activityBarZoneRef.current?.focus(dir),
-  });
-  const playerProxyRef = useRef<ZoneEntry>({
-    id: "player",
-    focus: (dir) => playerZoneRef.current?.focus(dir),
-  });
-  const statusBarProxyRef = useRef<ZoneEntry>({
-    id: "status-bar",
-    focus: (dir) => statusBarZoneRef.current?.focus(dir),
-  });
+  // Proxied (see useZoneProxy): PlayerPanel rebuilds its ZoneEntry on every playback change.
+  const activityBarProxy = useZoneProxy("activity-bar", activityBarZoneRef);
+  const playerProxy = useZoneProxy("player", playerZoneRef);
+  const statusBarProxy = useZoneProxy("status-bar", statusBarZoneRef);
 
   // Screen zones from the active panel — registered via onZonesChange
   const [screenZones, setScreenZones] = useState<ZoneEntry[]>([]);
   const orderedZonesRef = useRef<ZoneEntry[]>([]);
 
   // Keep orderedZonesRef in sync whenever screenZones changes.
-  // Permanent zones use proxies (above) so they never go stale.
   useEffect(() => {
-    orderedZonesRef.current = [
-      activityBarProxyRef.current,
-      ...screenZones,
-      playerProxyRef.current,
-      statusBarProxyRef.current,
-    ];
-  }, [screenZones]);
+    orderedZonesRef.current = [activityBarProxy, ...screenZones, playerProxy, statusBarProxy];
+  }, [activityBarProxy, screenZones, playerProxy, statusBarProxy]);
 
   const { exitZone } = useZoneNavigation(orderedZonesRef);
 

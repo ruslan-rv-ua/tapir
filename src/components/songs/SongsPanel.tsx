@@ -18,7 +18,7 @@ import { ScreenHeader } from "../layout/ScreenHeader";
 import { ScreenZone } from "../layout/ScreenZone";
 import { SelectionToolbar } from "../common/SelectionToolbar";
 import { useRovingFocus } from "../../hooks/useRovingFocus";
-import type { ZoneEntry } from "../../hooks/useZoneNavigation";
+import { useZoneProxy, type ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as tauri from "../../lib/tauri";
 import type { Song, SongTagsUpdatedPayload, SongDeletedPayload, SongRenamedPayload } from "../../types/song";
 import { useTauriEvent } from "../../hooks/useTauriEvent";
@@ -51,17 +51,8 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
   // listRef now carries the bulk-delete entry point
   const listRef = useRef<SongsListHandle | null>(null);
 
-  // Stable proxy for the list zone. SongsList (and its CompositeList) unmounts
-  // and remounts whenever $songsLoading toggles — e.g. a rescan after a recording
-  // completes — which recreates its ZoneEntry. The zone-registration effect below
-  // only re-runs on songs.length, so a rescan that keeps the same count would
-  // otherwise leave App holding a dead ZoneEntry whose focus() no-ops and F6
-  // silently stalls. The proxy is created once and always delegates to the CURRENT
-  // handle — the same pattern App.tsx uses for permanent zones.
-  const listProxyRef = useRef<ZoneEntry>({
-    id: "songs-list",
-    focus: (dir) => listRef.current?.focus(dir),
-  });
+  // Proxied (see useZoneProxy): SongsList remounts whenever $songsLoading toggles, e.g. on a rescan.
+  const listProxy = useZoneProxy("songs-list", listRef);
 
   // Selection toolbar roving zone (two stops)
   const selectAllBtn = useRef<HTMLButtonElement | null>(null);
@@ -105,9 +96,9 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
       focus: selRestore,
     }];
     if (filterRef.current) zones.push(filterRef.current);
-    if (listRef.current) zones.push(listProxyRef.current);
+    if (listRef.current) zones.push(listProxy);
     onZonesChange(zones);
-  }, [onZonesChange, songs.length, selRestore]);
+  }, [onZonesChange, songs.length, selRestore, listProxy]);
 
   useTauriEvent<SongTagsUpdatedPayload>("song-tags-updated", (payload) => {
     replaceSongByPath(payload);

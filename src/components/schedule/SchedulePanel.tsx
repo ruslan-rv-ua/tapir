@@ -14,7 +14,7 @@ import { ScreenZone } from "../layout/ScreenZone";
 import { SelectionToolbar } from "../common/SelectionToolbar";
 import { useRovingFocus } from "../../hooks/useRovingFocus";
 import { useAnnounce } from "../../hooks/useAnnounce";
-import type { ZoneEntry } from "../../hooks/useZoneNavigation";
+import { useZoneProxy, type ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as tauri from "../../lib/tauri";
 import type { ScheduleDto, ScheduledRecording } from "../../lib/tauri";
 import { addToast } from "../../stores/toasts";
@@ -38,12 +38,8 @@ export function SchedulePanel({ onZonesChange, exitZone }: Props) {
   const allVisibleSelected = schedules.length > 0 && schedules.every((s) => selection.has(s.id));
 
   const tableRef = useRef<ScheduleTableHandle | null>(null);
-  // Stable proxy: таблиця демонтується на loading/error/empty — App не повинен
-  // тримати мертвий ZoneEntry, інакше F6 мовчки глухне (патерн SongsPanel).
-  const tableProxyRef = useRef<ZoneEntry>({
-    id: "schedule-list",
-    focus: (dir) => tableRef.current?.focus(dir),
-  });
+  // Проксі (див. useZoneProxy): таблиця демонтується на loading/error/empty.
+  const tableProxy = useZoneProxy("schedule-list", tableRef);
 
   const [formFor, setFormFor] = useState<{ schedule: ScheduleDto | null } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<ScheduleDto | null>(null);
@@ -92,11 +88,11 @@ export function SchedulePanel({ onZonesChange, exitZone }: Props) {
       focus: toolbarRestore,
     };
     const zones: ZoneEntry[] = [toolbarZone];
-    if (hasRows) zones.push(tableProxyRef.current);
+    if (hasRows) zones.push(tableProxy);
     onZonesChange(zones);
   // onZonesChange — стабільний reference від App.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toolbarRestore, hasRows]);
+  }, [toolbarRestore, hasRows, tableProxy]);
 
   const find = (id: string) => $schedules.get().find((s) => s.id === id);
 

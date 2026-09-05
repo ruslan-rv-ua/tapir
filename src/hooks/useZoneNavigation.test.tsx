@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 import type { RefObject } from "react";
-import { useZoneNavigation, type ZoneEntry } from "./useZoneNavigation";
+import { useZoneNavigation, useZoneProxy, type ZoneEntry } from "./useZoneNavigation";
 
 /**
  * Build a real DOM zone (a `[data-zone-id]` container with a focusable button)
@@ -115,5 +115,99 @@ describe("useZoneNavigation — F6 cycling", () => {
     inner.focus();
     pressF6();
     expect(document.activeElement).toBe(inner);
+  });
+});
+
+/**
+ * A zone whose handle knows the entry direction: forward lands on its first
+ * stop, backward on its last — the shape every CompositeList handle has.
+ */
+function makeTwoStopZone(id: string): {
+  entry: ZoneEntry;
+  first: HTMLButtonElement;
+  last: HTMLButtonElement;
+  detach(): void;
+} {
+  const div = document.createElement("div");
+  div.setAttribute("data-zone-id", id);
+  const first = document.createElement("button");
+  const last = document.createElement("button");
+  div.append(first, last);
+  document.body.appendChild(div);
+  const entry: ZoneEntry = {
+    id,
+    focus: (dir) => (dir === "forward" ? first : last).focus(),
+  };
+  return { entry, first, last, detach: () => div.remove() };
+}
+
+describe("useZoneProxy — a stable stand-in for a zone whose handle is replaced", () => {
+  // The regression the proxy exists for: a list remounts (loading → loaded, a
+  // rescan, a tab switch) and hands out a NEW handle, but nobody re-registers
+  // the zones. The entry App holds must still reach the live handle.
+  it("routes F6 to the handle installed after registration", () => {
+    const a = makeZone("a");
+    const stale = makeTwoStopZone("list");
+    const target: RefObject<ZoneEntry | null> = { current: stale.entry };
+    const { result } = renderHook(() => useZoneProxy("list", target));
+    mount([a.entry, result.current]);
+
+    // The list remounts: old DOM gone, new handle in the ref, zones untouched.
+    stale.detach();
+    const live = makeTwoStopZone("list");
+    target.current = live.entry;
+
+    a.button.focus();
+    pressF6();
+    expect(document.activeElement).toBe(live.first);
+  });
+
+  it("passes the entry direction through to the handle", () => {
+    const a = makeZone("a");
+    const list = makeTwoStopZone("list");
+    const target: RefObject<ZoneEntry | null> = { current: list.entry };
+    const { result } = renderHook(() => useZoneProxy("list", target));
+    mount([a.entry, result.current]);
+
+    a.button.focus();
+    pressF6(true); // backward into the list → its last stop
+    expect(document.activeElement).toBe(list.last);
+  });
+
+  it("carries the zone id, so F6 from inside the zone leaves it forward", () => {
+    const a = makeZone("a");
+    const list = makeTwoStopZone("list");
+    const c = makeZone("c");
+    const target: RefObject<ZoneEntry | null> = { current: list.entry };
+    const { result } = renderHook(() => useZoneProxy("list", target));
+    expect(result.current.id).toBe("list");
+    mount([a.entry, result.current, c.entry]);
+
+    list.first.focus();
+    pressF6();
+    expect(document.activeElement).toBe(c.button);
+  });
+
+  it("declines focus quietly while no handle is installed", () => {
+    const a = makeZone("a");
+    const target: RefObject<ZoneEntry | null> = { current: null };
+    const { result } = renderHook(() => useZoneProxy("list", target));
+    const c = makeZone("c");
+    mount([a.entry, result.current, c.entry]);
+
+    a.button.focus();
+    pressF6(); // a → (list has no handle) → c
+    expect(document.activeElement).toBe(c.button);
+  });
+
+  // Registration effects push the entry into App's zones array once; a fresh
+  // object per render would either go stale there or, listed as an effect
+  // dependency, re-register on every render.
+  it("hands out the same entry on every render", () => {
+    const target: RefObject<ZoneEntry | null> = { current: null };
+    const { result, rerender } = renderHook(() => useZoneProxy("list", target));
+    const first = result.current;
+    rerender();
+    expect(result.current).toBe(first);
   });
 });

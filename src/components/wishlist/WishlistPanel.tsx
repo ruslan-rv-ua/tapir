@@ -15,7 +15,7 @@ import { addToast } from "../../stores/toasts";
 import { $wishlist, $ignorelist, $wishlistMatches, $patternSelection, $showAddPatternDialog } from "../../stores/wishlist";
 import { replaceSelection } from "../../stores/selection";
 import * as tauri from "../../lib/tauri";
-import type { ZoneEntry } from "../../hooks/useZoneNavigation";
+import { useZoneProxy, type ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as m from "../../i18n/paraglide/messages";
 import { EXAMPLE_WISHLIST_PATTERNS, EXAMPLE_IGNORELIST_PATTERNS } from "./examplePatterns";
 
@@ -443,24 +443,10 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
     };
   }, []);
 
-  // Stable proxy for the list zone. PatternList's ZoneEntry is recreated when its
-  // items change (and the list remounts when switching tabs), but the registration
-  // effect only re-runs on activeTab — so without the proxy a same-tab data change
-  // could leave App holding a stale ZoneEntry whose focus() no-ops and F6 stalls.
-  // The proxy is created once and always delegates to the CURRENT handle (the same
-  // pattern App.tsx uses for permanent zones).
-  const patternListProxyRef = useRef<ZoneEntry>({
-    id: "wishlist-list",
-    focus: (dir) => patternListRef.current?.focus(dir),
-  });
-
-  // Той самий стабільний проксі для журналу — MatchList перестворює свій
-  // ZoneEntry на кожній зміні списку, а живий збіг змінює список під час, коли
-  // ефект реєстрації не перезапускається.
-  const matchListProxyRef = useRef<ZoneEntry>({
-    id: "wishlist-matches",
-    focus: (dir) => matchListRef.current?.focus(dir),
-  });
+  // Proxied (see useZoneProxy): PatternList rebuilds its ZoneEntry on item changes and remounts on a tab switch.
+  const patternListProxy = useZoneProxy("wishlist-list", patternListRef);
+  // Проксі (див. useZoneProxy): MatchList перестворює ZoneEntry на кожному живому збігу.
+  const matchListProxy = useZoneProxy("wishlist-matches", matchListRef);
 
   // Register zones whenever tab or roving restore changes.
   // Zone entry: forward (F6) lands on the tabs (visually first), backward
@@ -475,7 +461,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
       // Журнал реєструється завжди: порожнім він теж ПРИЙМАЄ фокус (CompositeList
       // робить порожній стан якорем зони), і саме тому F6 не проскакує його повз
       // — а NVDA дочитує причину, чому список порожній.
-      zones.push(matchListProxyRef.current);
+      zones.push(matchListProxy);
     } else if (activeItems.length === 0) {
       // Replaces the list zone while the active list is empty — the CTA button
       // is the focus target directly (mirrors StreamsPanel's streams-empty zone), which
@@ -485,12 +471,12 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
         focus: () => addExampleBtnRef.current?.focus(),
       });
     } else if (patternListRef.current) {
-      zones.push(patternListProxyRef.current);
+      zones.push(patternListProxy);
     }
     onZonesChange(zones);
     // onZonesChange intentionally omitted — callers must pass a stable (useCallback-wrapped) reference.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, hasToolbar, focusControlsBackward, focusActiveTab, activeItems.length]);
+  }, [activeTab, hasToolbar, focusControlsBackward, focusActiveTab, activeItems.length, matchListProxy, patternListProxy]);
 
   // Shared empty-state zone. Both tabs render the same shape via this helper;
   // handleAddExamples branches on activeTab, and only the active tab's empty
