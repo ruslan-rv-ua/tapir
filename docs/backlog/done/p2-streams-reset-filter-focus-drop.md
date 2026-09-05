@@ -3,11 +3,12 @@ slug: streams-reset-filter-focus-drop
 title: "«Скинути фільтр» на Потоках лишає фокус ніде"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: S
 kind: bug
 target: 0.1.0
 updated: 2026-09-05
+completed: 2026-09-05
 a11y: true
 depends_on: []
 blocks: [zone-vanishes-under-focus-audit]
@@ -19,21 +20,21 @@ gates: [pnpm lint, pnpm test, pnpm typecheck, pnpm vite:build]
 notes:
   - "Знахідка код-рев'ю zone-proxy-hook 2026-09-05: чекліст NVDA мусив назвати, де стоїть фокус після скидання фільтра, а він не стоїть ніде."
   - "Огрилено 2026-09-05: ціль фокуса вибрано (перший рядок), правило записане в accessibility.md §3.1, обсяг звужено — родина «зона зникла не від натиску» пішла окремим записом."
-  - "Код написано, гейти зелені; лишився NVDA-прогін."
+  - "ПРИЙНЯТО 2026-09-05: NVDA-прогін 7/7 без зауважень."
 ---
 
 # «Скинути фільтр» на Потоках лишає фокус ніде
 
-> **Контекст:** хвіст [zone-proxy-hook](done/p2-zone-proxy-hook.md) — знайдено, коли
-> чекліст мусив написати, що чутно після Enter на кнопці. Огрилено 2026-09-05:
-> рішення нижче, код реалізовано, чекає NVDA-прогону.
+> **Контекст:** хвіст [zone-proxy-hook](p2-zone-proxy-hook.md) — знайдено, коли
+> чекліст мусив написати, що чутно після Enter на кнопці. Огрилено, реалізовано
+> й прийнято 2026-09-05 (NVDA-прогін 7/7).
 
 ## Опис
 
 Коли фільтр потоків ховає всі рядки, замість списку стоїть зона «Немає потоків,
 що відповідають фільтру» з єдиною кнопкою «Скинути фільтр». Enter на ній
 (`handleResetFilter` у
-[StreamsPanel.tsx](../../src/components/streams/StreamsPanel.tsx)) ставив
+[StreamsPanel.tsx](../../../src/components/streams/StreamsPanel.tsx)) ставив
 фільтр «Усі» й оголошував кількість — але фокус нікуди не вів. Зона з кнопкою
 демонтується разом із кнопкою, і `document.activeElement` падав на `<body>`.
 
@@ -52,10 +53,10 @@ notes:
 1. **Ціль — перший рядок списку**, не чіп «Усі» в тулбарі. Правило, спільне для всіх
    таких переходів: фокус бере те, що стало **на місце** зниклого контрола, а не контрол,
    логічно відповідальний за дію. Воно ж пояснює, чому в Браузері станцій однойменна
-   кнопка веде фокус **у поле пошуку** ([SearchForm.tsx](../../src/components/browser/SearchForm.tsx)):
+   кнопка веде фокус **у поле пошуку** ([SearchForm.tsx](../../../src/components/browser/SearchForm.tsx)):
    там кнопка живе всередині зони пошуку, і зона нікуди не дівається. Чіп відхилено ще й
    тому, що його `aria-label` уже містить «Усі, N потоків» — вийшла б подвійна репліка.
-2. **Правило записане** в [accessibility.md §3.1](../accessibility.md), не в ADR: усі три
+2. **Правило записане** в [accessibility.md §3.1](../../accessibility.md), не в ADR: усі три
    умови для ADR не виконуються — відкат коштує кілька рядків і один прогін. ADR
    зарезервовано за записом-аудитом (п. 4).
 3. **Репліка не змінюється.** `handleAddExamples` — та сама форма (прапорець → `announce` →
@@ -63,7 +64,7 @@ notes:
    активний, тож дубля немає.
 4. **Обсяг звужено.** Родина «зона зникла з-під фокуса **не** від натиску» (зміна статусу
    спорожнила відфільтрований список, дзеркальний напрям) винесена в
-   [zone-vanishes-under-focus-audit](p2-zone-vanishes-under-focus-audit.md) — там же
+   [zone-vanishes-under-focus-audit](../p2-zone-vanishes-under-focus-audit.md) — там же
    питання, чи зводяться два прапорці в один сторож.
 5. **Один прапорець на двох замовників.** `pendingFocusFirstRow` тепер ставлять і
    «Додати приклади», і «Скинути фільтр»; ефект ключується на `[isEmpty, filterHidesAll]`
@@ -90,14 +91,13 @@ notes:
       формою, що й для `pendingFocusFirstRow`; перевірено як падаючий на невиправленому коді
 - [x] Другий тест — на переході «порожня зона → порожня зона» (пінить контракт, який
       сьогодні тримається на переви́користанні ноди)
-- [ ] NVDA-прогін за
-      [nvda-streams-reset-filter-focus-drop.md](../testing/nvda-streams-reset-filter-focus-drop.md):
-      після Enter чутно назву елемента, на який став фокус, а не лише репліку про фільтр
+- [x] NVDA-прогін 2026-09-05, 7 сценаріїв із 7, зауважень немає: після Enter чутно
+      назву елемента, на який став фокус, а не лише репліку про фільтр
 
 ## Документи
 
-- [StreamsPanel.tsx](../../src/components/streams/StreamsPanel.tsx) —
+- [StreamsPanel.tsx](../../../src/components/streams/StreamsPanel.tsx) —
   `handleResetFilter`, `pendingFocusFirstRow`, `pendingFocusEmptyZone`
-- [accessibility.md](../accessibility.md) — §3.1, правило вибору цілі фокуса; вимоги до зон
-- [done/p2-streams-empty-focus-audit.md](done/p2-streams-empty-focus-audit.md) — дзеркальний аудит 2026-07-20
-- [p2-zone-vanishes-under-focus-audit.md](p2-zone-vanishes-under-focus-audit.md) — винесений клас випадків
+- [accessibility.md](../../accessibility.md) — §3.1, правило вибору цілі фокуса; вимоги до зон
+- [done/p2-streams-empty-focus-audit.md](p2-streams-empty-focus-audit.md) — дзеркальний аудит 2026-07-20
+- [p2-zone-vanishes-under-focus-audit.md](../p2-zone-vanishes-under-focus-audit.md) — винесений клас випадків

@@ -22,7 +22,7 @@ notes:
 
 # Аудит: зона зникає з-під фокуса не від натиску
 
-> **Контекст:** відкладений хвіст [streams-reset-filter-focus-drop](p2-streams-reset-filter-focus-drop.md).
+> **Контекст:** відкладений хвіст [streams-reset-filter-focus-drop](done/p2-streams-reset-filter-focus-drop.md).
 > Правило, за яким аудит міряє шляхи, уже записане — [accessibility.md §3.1](../accessibility.md).
 > Коду немає; спершу трасування, потім рішення про форму фікса.
 
@@ -83,7 +83,7 @@ notes:
 
 ## Документи
 
-- [p2-streams-reset-filter-focus-drop.md](p2-streams-reset-filter-focus-drop.md) — батьківський запис, правило й перший виклик
+- [p2-streams-reset-filter-focus-drop.md](done/p2-streams-reset-filter-focus-drop.md) — батьківський запис, правило й перший виклик
 - [done/p2-streams-empty-focus-audit.md](done/p2-streams-empty-focus-audit.md) — дзеркальний аудит 2026-07-20, зразок форми
 - [accessibility.md](../accessibility.md) — §3.1, правило вибору цілі фокуса
 - код: [StreamsPanel.tsx](../../src/components/streams/StreamsPanel.tsx),
