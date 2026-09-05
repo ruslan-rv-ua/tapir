@@ -104,7 +104,7 @@ notes:
 - [paraglide-native-plurals](p2-paraglide-native-plurals.md) — дослідження й обґрунтування (в)
 - [crash-resume-plural-english-rules](p2-crash-resume-plural-english-rules.md) — та сама вада, закрита точково 2026-09-05; тест форми лишився в `useCrashResumeFeedback.test.tsx`
 - [ADR: локалізація нативного шару](../../decisions/2026-08-17-native-layer-localisation.md) — чому Rust лишається на суфіксах
-- [profile-stream-count-label-duplicated](../p3-profile-stream-count-label-duplicated.md) — хвіст: два власники одного рядка «N потоків»
+- [profile-stream-count-label-duplicated](p3-profile-stream-count-label-duplicated.md) — хвіст: два власники одного рядка «N потоків»
 
 ## Результат (2026-09-05)
 
@@ -139,8 +139,8 @@ notes:
 Заразом §4 ADR дістав межу, яку доти замовчував: Rust віддає `_zero` на нулі **завжди**,
 фронтенд — лише там, де ключ є.
 
-Хвіст, свідомо не взятий: `streamCountLabel` і далі стоїть двома однаковими копіями в
-`ProfileItem.tsx` і `StreamTransferDialog.tsx`. Кожна стала вдвічі коротшою, але копія
+Хвіст, свідомо не взятий (закритий 2026-09-05): `streamCountLabel` лишався двома
+однаковими копіями в `ProfileItem.tsx` і `StreamTransferDialog.tsx`. Кожна стала вдвічі коротшою, але копія
 лишилась копією — цей запис просив звести вибір **форми**, а не власників **рядка**.
 Винесено окремо:
-[profile-stream-count-label-duplicated](../p3-profile-stream-count-label-duplicated.md).
+[profile-stream-count-label-duplicated](p3-profile-stream-count-label-duplicated.md).
