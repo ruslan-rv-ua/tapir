@@ -23,6 +23,11 @@ export interface PluralForms {
  * so it is the only input that keeps form and text agreeing inside one sentence.
  * A parameter here would just be a second source again (research
  * `done/p2-paraglide-native-plurals.md`, option (в)).
+ *
+ * The locale is read on **every** call, not once: `GeneralTab` switches language
+ * with `setLocale(…, { reload: false })`, so a session outlives its locale.
+ * Callers must not cache or memoize what comes back — and have no rules of their
+ * own left to memoize either, which is the point.
  */
 export function plural(count: number, forms: PluralForms): string {
   // Zero is an application case, not a language form: neither uk nor en has a
