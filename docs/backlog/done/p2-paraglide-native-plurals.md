@@ -88,7 +88,7 @@ Paraglide 2 підтримує варіанти в самому повідомл
       сторож `every_plural_family_has_all_four_forms_in_both_locales` лишаються як є
 - [x] Якщо (в): той самий запис, але без змін у JSON —
       [plural-form-single-source](../p2-plural-form-single-source.md); попутну живу ваду
-      винесено окремо в [crash-resume-plural-english-rules](../p2-crash-resume-plural-english-rules.md)
+      винесено окремо в [crash-resume-plural-english-rules](p2-crash-resume-plural-english-rules.md)
 
 ## Документи
 

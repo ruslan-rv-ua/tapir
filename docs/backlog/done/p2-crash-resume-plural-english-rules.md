@@ -3,11 +3,12 @@ slug: crash-resume-plural-english-rules
 title: "Відновлення після аварії озвучується англійськими правилами множини"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: S
 kind: bug
 target: 0.1.0
-updated: 2026-09-04
+updated: 2026-09-05
+completed: 2026-09-05
 a11y: false
 depends_on: []
 blocks: []
@@ -22,13 +23,17 @@ notes:
 
 # Відновлення після аварії озвучується англійськими правилами множини
 
+> **Опис нижче — стан ДО виправлення** (2026-09-04): він цитує знятий `useMemo`, і
+> рядкові якорі на `useCrashResumeFeedback.ts` ведуть у файл тієї редакції, не в
+> теперішній. Що стоїть там зараз — «Виправлення».
+>
 > **Контекст:** знахідка попутно в дослідженні
-> [paraglide-native-plurals](done/p2-paraglide-native-plurals.md). Механізм перевірено
+> [paraglide-native-plurals](p2-paraglide-native-plurals.md). Механізм перевірено
 > в коді на HEAD, не з опису. Вада жива для української локалі.
 
 ## Опис
 
-[useCrashResumeFeedback.ts:18](../../src/hooks/useCrashResumeFeedback.ts:18) створює
+[useCrashResumeFeedback.ts:18](../../../src/hooks/useCrashResumeFeedback.ts:18) створює
 правила множини так:
 
 ```ts
@@ -40,15 +45,15 @@ const pluralRules = useMemo(
 
 Три обставини складаються в неправильну форму:
 
-1. [index.html](../../index.html) віддає `<html lang="en">`, тож `|| "uk"` **ніколи** не
+1. [index.html](../../../index.html) віддає `<html lang="en">`, тож `|| "uk"` **ніколи** не
    бере праву гілку — запасне значення тут декоративне.
-2. Атрибут перезаписує лише [App.tsx:146](../../src/App.tsx:146), і то **після** того,
+2. Атрибут перезаписує лише [App.tsx:146](../../../src/App.tsx:146), і то **після** того,
    як зарезолвиться `getSettings()`.
-3. Хук кличеться на першому рендері `App` ([App.tsx:435](../../src/App.tsx:435)), а
+3. Хук кличеться на першому рендері `App` ([App.tsx:435](../../../src/App.tsx:435)), а
    `deps: []` фіксує створені тоді правила **на всю сесію**.
 
 Результат: українцеві `select(3)` дає `other`, ланцюжок тернарників
-([useCrashResumeFeedback.ts:28](../../src/hooks/useCrashResumeFeedback.ts:28)) падає в
+([useCrashResumeFeedback.ts:28](../../../src/hooks/useCrashResumeFeedback.ts:28)) падає в
 `_many`, і замість «Відновлено 3 записи» звучить і показується «Відновлено 3 записів».
 Те саме на 2, 4, 22 — тобто на всій категорії `few`.
 
@@ -63,19 +68,19 @@ const pluralRules = useMemo(
 атрибута `<html>`, який на момент першого рендеру ще англійський.
 
 Структурно це та сама зміна, яку робить
-[plural-form-single-source](p2-plural-form-single-source.md) для всіх шести місць. Записи
+[plural-form-single-source](../p2-plural-form-single-source.md) для всіх шести місць. Записи
 свідомо роздільні: вада має закритися незалежно від того, коли дійдуть руки до хелпера.
 Хто йде першим, той і лишає тест; другий підбирає його під себе.
 
 ## Критерії готовності
 
-- [ ] `docs/help/` — запис видимої поведінки не змінює (текст і так мав бути правильний)
-- [ ] Регресійний тест: подія `crash-resume` з `resumed: 3, total: 3` при українській
+- [x] `docs/help/` — запис видимої поведінки не змінює (текст і так мав бути правильний)
+- [x] Регресійний тест: подія `crash-resume` з `resumed: 3, total: 3` при українській
       локалі дає форму `_few`; перевірено, що на невиправленому коді він **падає**
-- [ ] `document.documentElement.lang` більше не є входом у цьому файлі
-- [ ] Тост і `announce()` несуть той самий рядок (як зараз)
+- [x] `document.documentElement.lang` більше не є входом у цьому файлі
+- [x] Тост і `announce()` несуть той самий рядок (як зараз)
 
 ## Документи
 
-- [paraglide-native-plurals](done/p2-paraglide-native-plurals.md) — звідки знахідка, з розбором усіх шести місць
-- [plural-form-single-source](p2-plural-form-single-source.md) — структурне закриття того самого класу
+- [paraglide-native-plurals](p2-paraglide-native-plurals.md) — звідки знахідка, з розбором усіх шести місць
+- [plural-form-single-source](../p2-plural-form-single-source.md) — структурне закриття того самого класу
