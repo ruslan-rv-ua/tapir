@@ -40,6 +40,7 @@ semver; `unscheduled` — наприкінці.
 | [ci-pipeline](p3-ci-pipeline.md) | P3 | idea | draft | M | [typecheck-gate](done/p1-typecheck-gate.md), [clippy-warnings-zero](done/p2-clippy-warnings-zero.md) ✅ | — (жодного workflow; тригер: контриб'ютор або тег) |
 | [optional-library-swaps](p3-optional-library-swaps.md) | P3 | planned | **draft** | S | — | — (`wildmatch` і `use-debounce` один в один; питання смаку, зафіксувати «так» або «ні») |
 | [dead-js-tauri-plugins](p3-dead-js-tauri-plugins.md) | P3 | planned | **draft** | S | [dead-dependencies](done/p2-dead-dependencies.md) ✅ | — (`@tauri-apps/plugin-dialog` і `@tauri-apps/plugin-log` у `package.json` не імпортує ніхто: з боку JS живий лише `@tauri-apps/api`) |
+| [profile-stream-count-label-duplicated](p3-profile-stream-count-label-duplicated.md) | P3 | planned | ready | S | [plural-form-single-source](done/p2-plural-form-single-source.md) ✅ | — (`streamCountLabel` побайтово однаковий у `ProfileItem` і `StreamTransferDialog`; однаковість — інваріант, бо слово «потоки» живе тільки в доступній назві, а видно лише голе число; розійдуться — жоден тест не назве, кожен перевіряє свій компонент) |
 
 ## v0.2.0
 
