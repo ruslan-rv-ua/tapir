@@ -12,6 +12,8 @@ Once the reconnection attempts run out, the recording stops. Raise **Max reconne
 
 The station sends no broadcast metadata, so Tapir has nothing to cut on. There is no setting for this and no other way to split the sound. You can tell before you look at the files: if Tapir never shows the name of the current track, the metadata is not there.
 
+Some stations announce on one address and not on another, so if the station publishes several it is worth trying a different one. Otherwise the continuous file is what you get, and the "Files & names" section is where you make its name carry the date and time instead of an artist that will never arrive.
+
 ### Fewer tracks were saved than were on air
 
 Two filters are on by default, and both drop tracks without saying so. **Skip first incomplete track** removes the one that was already playing when the recording began, and **Minimum track duration (sec)** — 30 by default — drops everything shorter, which is most jingles and adverts. Both are in the profile settings, tab **Recording**, under **Track filters**.
@@ -46,9 +48,15 @@ Tapir remembers the output device by name and never falls back on its own, so un
 
 Tapir names the reason. Usually Windows has no program registered for that kind of file, or the file has been moved, renamed or deleted outside Tapir since the list was built.
 
+For the first, set a default program for `.mp3` or `.aac` files in Windows and try again. For the second, `Ctrl+Enter` opens the folder the file should be in, which settles in one step whether it is still there.
+
 ### A global hotkey did nothing
 
-Another program claimed the combination. Tapir says so once at startup; the app settings, tab **Hotkeys**, mark it “taken by another program”; assign a different one.
+Another program claimed the combination before Tapir, and a combination held elsewhere never reaches Tapir at all.
+
+Tapir says so once at startup, naming the combination and the action that will not work. Afterwards the evidence is on the **Hotkeys** tab of the app settings: the row of that action is marked **taken by another program**.
+
+Opening that tab also checks every combination again, so if the program that was holding it has since been closed, the mark goes away by itself and the key works. If it stays, assign a different combination on the same row.
 
 ### The station catalogue is unreachable
 
@@ -56,16 +64,20 @@ The Station Browser searches an outside service, and that service is sometimes s
 
 ### Tapir closed unexpectedly
 
-Recordings that were running resume by themselves at the next start, and Tapir tells you how many. Whatever had already been written stays on disk.
+Recordings that were running resume by themselves at the next start, and Tapir tells you how many. Whatever had already been written stays on disk, so a night of recording survives as everything up to the moment it stopped plus everything after the restart.
+
+The recordings come back; playback does not, and neither does a scheduled window that ended while Tapir was down — that entry reports itself as missed.
 
 ### If none of this helped
 
 Tapir keeps a log at `data\logs\tapir.log`, in the folder beside `tapir.exe`.
 
-To capture a problem in it, turn on **Detailed logging for diagnostics** in the app settings, tab **General**, then restart Tapir — the setting only takes effect on the next start — and do the thing that goes wrong.
+To capture a problem in it, turn on **Detailed logging for diagnostics** in the app settings, tab **General**. Then restart Tapir: the setting is read once, when the program starts, so a log written before the restart will not carry the extra detail. With Tapir running again, do the thing that goes wrong, and do it in as few steps as you can — a short log around one failure is far easier to read than an hour of ordinary use.
 
-If the problem only shows up once in a while, raise **Max log file size (MB)** first, in the collapsed **Advanced** block in the same place. Otherwise the older entries are pushed out before you manage to catch it.
+If the problem only shows up once in a while, raise **Max log file size (MB)** before you start, in the collapsed **Advanced** block in the same place. The log has a fixed size, and once it is full the oldest entries are pushed out; with a small size and a rare problem, the interesting part is gone before you notice the failure. **Log level**, in the same block, decides how much is written — the diagnostics checkbox above already sets it high enough for a report.
 
-The folder may hold two files, the current log and the one before it. Attach both to your report on the project page (**Open project page** in the app settings, tab **General**, section **About**) and name the version shown there.
+The folder may hold two files: the log Tapir is writing now and the one before it. Take both. The failure often sits at the end of the older one, just before the restart that split them.
+
+Send them with your report on the project page. **Open project page** in the app settings, tab **General**, section **About**, opens it in your browser, and the same section shows the version — name it in the report, because the answer to most questions starts with knowing which version produced the log.
 
 If your screen reader does not announce something, or you cannot reach it from the keyboard, that is a fault in Tapir rather than a setting on your side — it belongs in the same report.

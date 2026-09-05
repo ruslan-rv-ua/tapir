@@ -4,7 +4,9 @@ There are two sets of settings, and the dialog a control sits in is what its sco
 
 `Ctrl+,` opens the **app settings** — whatever concerns this computer and Tapir itself: the sound device, the things Tapir registers with the system, and what pressing a key does. `Ctrl+Shift+,` opens the **profile settings** — whatever describes a scenario: which data, written where, shown how. Nothing is labelled with its scope, because the boundary already runs between the dialogs.
 
-Both save themselves the moment you change something: there is no Save button.
+Both save themselves the moment you change something: there is no Save button, and the footer of the dialog says so rather than reporting each save. Close the dialog with `Escape` and nothing is lost — there is nothing to confirm and nothing to discard.
+
+So when you are hunting for a setting, ask which of the two questions it answers. "Which speakers should the sound come out of" and "what should this key do" are about the computer, and live behind `Ctrl+,`. "Where should these recordings go, how should they be named, how long should Tapir keep trying" are about the scenario, and live behind `Ctrl+Shift+,` — separately for every profile, which is what makes a second profile worth having at all. Pressing `Ctrl+Shift+,` always opens the settings of the profile that is active; to reach another profile's settings, use the row menu on the **Profiles** screen.
 
 ### App settings
 
@@ -27,3 +29,5 @@ The **Recording** tab holds **Output & templates** (**Recording folder**, **Trac
 The **Playback** tab holds **Resume last playback on startup**, **Resume file** and **Auto-play next track**; those belong to the section "Listening". The **Interface** tab holds the stream list **Sort** order and two independent checkboxes: **Tray notifications for track changes** and **Tray notifications for scheduled recordings**.
 
 The **Post-processing** tab is empty for now: running an external program over a finished file is not available yet, and the tab stays in place so you know it is coming.
+
+A changed profile setting takes effect from the next thing Tapir does with it: a new file name template names the next file written, not the ones already on disk, and a changed reconnection limit applies the next time a connection drops. Nothing you change here stops a recording that is already running — the one exception in the program is editing a schedule entry while it records, and that belongs to "Schedule".

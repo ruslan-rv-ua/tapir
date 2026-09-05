@@ -6,6 +6,8 @@ That is why closing the window does not end the program. The window hides, while
 
 If anything is recording when you quit, Tapir says how many recordings are active, names any scheduled one among them, and asks whether you really mean to leave.
 
+While anything is recording or playing, Tapir also keeps the computer from going to sleep, and lets it sleep again as soon as the last of them stops. The screen still turns itself off on its usual schedule — that is only the display, and the recording is unaffected. So an overnight recording needs nothing arranged in the Windows power settings; it needs the computer left switched on.
+
 ### The tray icon
 
 A left click hides the window when it is visible and brings it back when it is not. Hover over the icon to see what is playing and how many streams are recording, without opening the window at all.
@@ -29,6 +31,8 @@ The system media keys on your keyboard and the buttons on a headset control play
 The entry holds the full path to `tapir.exe`, so moving the Tapir folder elsewhere stops autostart from working. Once you start Tapir from its new place it notices, switches autostart off and tells you so — switch it back on.
 
 A second launch does not open a second window; it brings the open one to the front instead.
+
+Put together, an unattended recording is three settings and a schedule entry: **Launch with Windows** and **Launch minimized** so Tapir is running, the profile holding the streams made active, and the entry itself. Nothing else is needed — no window has to stay open, no session has to stay logged in beyond what Windows itself requires, and the result of every run waits for you on the **Schedule** screen.
 
 ### Starting with parameters
 
