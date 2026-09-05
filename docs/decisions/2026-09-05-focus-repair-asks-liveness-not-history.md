@@ -3,7 +3,7 @@
 - **Статус:** ПРИЙНЯТО
 - **Дата:** 2026-09-05
 - **Тип:** ADR — правило побудови сторожа, що ловить зникнення зони з-під фокуса
-- **Контекст:** беклог — [zone-vanishes-under-focus-audit](../backlog/p2-zone-vanishes-under-focus-audit.md);
+- **Контекст:** беклог — [zone-vanishes-under-focus-audit](../backlog/done/p2-zone-vanishes-under-focus-audit.md);
   **куди** веде фокус — [accessibility.md §3.1](../accessibility.md);
   перший виклик правила — [streams-reset-filter-focus-drop](../backlog/done/p2-streams-reset-filter-focus-drop.md);
   дзеркальний аудит — [streams-empty-focus-audit](../backlog/done/p2-streams-empty-focus-audit.md);

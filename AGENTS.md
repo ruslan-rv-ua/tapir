@@ -129,8 +129,6 @@ All project documentation lives in `docs/`. Key files:
 
 **Manual testing** (`docs/testing/`):
 - [test-streams.md](docs/testing/test-streams.md) — тестові URL радіо-потоків
-- [nvda-zone-vanishes-under-focus-audit.md](docs/testing/nvda-zone-vanishes-under-focus-audit.md) —
-  чекліст прогону для `p2-zone-vanishes-under-focus-audit` (видалити на прийманні)
 
 Чеклісти NVDA-прогону (`docs/testing/nvda-<slug>.md`) створюються для записів беклогу
 з `a11y: true` і видаляються на прийманні — метод і шаблон живуть у скілі

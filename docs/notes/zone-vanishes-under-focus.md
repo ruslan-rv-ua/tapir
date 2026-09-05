@@ -1,7 +1,7 @@
 # Зона зникає з-під фокуса: що гарантує платформа й чого немає в бібліотеках
 
 > Дослідницька нотатка до запису беклогу
-> [p2-zone-vanishes-under-focus-audit](../backlog/p2-zone-vanishes-under-focus-audit.md).
+> [p2-zone-vanishes-under-focus-audit](../backlog/done/p2-zone-vanishes-under-focus-audit.md).
 > Дата: 2026-09-05. Код Tapir читано на `d697cd2`.
 > React 19.2.5, react-dom 19.2.5, react-aria-components 1.16.0 (у `node_modules`),
 > jsdom 29.1.1. Джерела читано на: Chromium `main` @ `4858086` (2026-09-05),

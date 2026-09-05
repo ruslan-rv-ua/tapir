@@ -3,11 +3,12 @@ slug: zone-vanishes-under-focus-audit
 title: "Аудит: зона зникає з-під фокуса не від натиску"
 priority: P2
 type: research
-status: draft
+status: done
 effort: S
 kind: bug
 target: 0.1.0
 updated: 2026-09-05
+completed: 2026-09-05
 a11y: true
 depends_on: [streams-reset-filter-focus-drop]
 blocks: []
@@ -25,14 +26,14 @@ notes:
 
 # Аудит: зона зникає з-під фокуса не від натиску
 
-> **Контекст:** відкладений хвіст [streams-reset-filter-focus-drop](done/p2-streams-reset-filter-focus-drop.md).
-> Правило, за яким аудит міряє шляхи, уже записане — [accessibility.md §3.1](../accessibility.md).
+> **Контекст:** відкладений хвіст [streams-reset-filter-focus-drop](p2-streams-reset-filter-focus-drop.md).
+> Правило, за яким аудит міряє шляхи, уже записане — [accessibility.md §3.1](../../accessibility.md).
 > Аудит проведено, рішення нижче, код реалізовано й прийнято NVDA-прогоном; підстави з
-> першоджерел — у нотатці [zone-vanishes-under-focus](../notes/zone-vanishes-under-focus.md).
+> першоджерел — у нотатці [zone-vanishes-under-focus](../../notes/zone-vanishes-under-focus.md).
 
 ## Опис
 
-Аудит [2026-07-20](done/p2-streams-empty-focus-audit.md) простежив шляхи, якими список
+Аудит [2026-07-20](p2-streams-empty-focus-audit.md) простежив шляхи, якими список
 **порожніє від дії зі списком** (видалення, переміщення), і закрив їх імперативним
 `onEmpty()`. Він не питав про причини, що лежать поза списком, — а вони є, і механіка в них
 та сама: зона під фокусом демонтується, ціль не названа, фокус іде на `<body>`, `F6`
@@ -44,15 +45,15 @@ notes:
 1. **Зміна статусу спорожнює видимий список — ЗЛАМАНО, полагоджено.** Фільтр «Записуються»,
    фокус на рядку, запис зупинено — з самого рядка, з тулбара, з трею, глобальною клавішею
    або по обриву. `$visibleStreams` залежить від `$statuses`
-   ([stores/streams.ts:65-71](../../src/stores/streams.ts)) → `filterHidesAll` →
+   ([stores/streams.ts:65-71](../../../src/stores/streams.ts)) → `filterHidesAll` →
    `StreamList` демонтується.
    **Виправлення гіпотези:** «`onEmpty` живе лише на шляхах видалення й переміщення» — не
    так. `useCompositeList` кличе його із загального ефекту по `[items]`
-   ([useCompositeList.ts:496](../../src/hooks/useCompositeList.ts)); імперативні виклики в
+   ([useCompositeList.ts:496](../../../src/hooks/useCompositeList.ts)); імперативні виклики в
    `StreamList` дописані саме тому, що на демонтажі в тому ж коміті **тіло** цього ефекту
    не біжить. Тобто механізм існував, але помирав разом із компонентом.
    **Фільтр «З помилками» сюди не входить:** стану «помилка» потік не набуває взагалі —
-   окремий запис [error-state-never-reaches-ui](p1-error-state-never-reaches-ui.md).
+   окремий запис [error-state-never-reaches-ui](../p1-error-state-never-reaches-ui.md).
 2. **Дзеркальний напрям — ЗЛАМАНО, полагоджено.** Фокус на «Скинути фільтр», ззовні
    почався запис під активним фільтром → кнопка демонтується, список монтується.
 3. **Порожня зона ↔ порожня зона — ПІДТВЕРДЖЕНО, полагоджено інакше, ніж припускалось.**
@@ -66,7 +67,7 @@ notes:
 4. **Інші панелі — ДЕФЕКТУ НЕМАЄ, і причина повчальна.** Набір патернів Вішліста міняє лише
    користувач. Журнал збігів — єдине там фонове джерело — **зон не міняє взагалі**:
    `MatchList` змонтований завжди, а порожній стан є якорем зони всередині нього
-   ([WishlistPanel.tsx:463-468](../../src/components/wishlist/WishlistPanel.tsx)). Тобто це
+   ([WishlistPanel.tsx:463-468](../../../src/components/wishlist/WishlistPanel.tsx)). Тобто це
    не «там пощастило», а доведений зразок форми (В) з розділу рішень.
 5. **Рядок випав із фільтра, список лишився — ПРАЦЮЄ.** Шлях понад гіпотезу. Компонент не
    демонтується, тож ефект `useCompositeList.ts:496` таки біжить і переводить фокус на
@@ -75,7 +76,7 @@ notes:
 ## Рішення
 
 Підстави й цитати з першоджерел — у нотатці
-[zone-vanishes-under-focus](../notes/zone-vanishes-under-focus.md); тут самі рішення.
+[zone-vanishes-under-focus](../../notes/zone-vanishes-under-focus.md); тут самі рішення.
 
 - **Форма фікса — один сторож переходу, і прапорців не лишилось.** Гілку, що стоїть у
   картці, названо значенням (`empty` / `filter-empty` / `list`); ефект порівнює її з
@@ -94,7 +95,7 @@ notes:
   не існує. Дістає ARIA 1.2 §4.3.1 — «If the author removes the element with focus, the
   author SHOULD move focus to a logical element», і ця вимога **не обумовлена тим, хто
   спричинив видалення**. Оголошення ніде не подано як заміну ремонту фокуса, лише як
-  доповнення. ADR [«вухо, вікно, система»](../decisions/2026-09-01-response-surfaces-ear-window-system.md)
+  доповнення. ADR [«вухо, вікно, система»](../../decisions/2026-09-01-response-surfaces-ear-window-system.md)
   звірено: він вирішує, **де живе репліка**, а не чи рухати фокус; рух фокуса — ремонт стану
   навігації, а не поверхня відповіді. У фоні віконна репліка однаково не буде почута, тож
   окремої репліки цей випадок не потребує — фокус, що переїхав, озвучує себе сам.
@@ -106,7 +107,7 @@ notes:
   **Побічний наслідок, який довелося прибрати:** підпис кнопки міняється й на час
   завантаження, тож репліка `announce(streams_examples_loading)` почала лунати другим
   голосом. Її знято — носієм лишився видимий текст кнопки.
-- **ADR — написаний:** [focus-repair-asks-liveness-not-history](../decisions/2026-09-05-focus-repair-asks-liveness-not-history.md).
+- **ADR — написаний:** [focus-repair-asks-liveness-not-history](../../decisions/2026-09-05-focus-repair-asks-liveness-not-history.md).
   Умову ставив сам запис: ADR виправданий, якщо механізми зведуться в один. Вони звелися,
   відхилені варіанти й ціна відкату з'явилися. Головне ж — правило, що переживе цей екран:
   сторож питає, чи фокус живий, а не де він був; подієвим він бути не може; доставка живе в
@@ -125,16 +126,16 @@ notes:
 - [x] Рішення по відкритих питаннях записане тут або в ADR, а не лише в коді
 - [x] NVDA-прогін на відтворені шляхи — пройдено 2026-09-05, 7 сценаріїв із 8; восьмий
       знято з названою причиною недосяжності, і сама причина стала записом
-      [error-state-never-reaches-ui](p1-error-state-never-reaches-ui.md)
+      [error-state-never-reaches-ui](../p1-error-state-never-reaches-ui.md)
 
 ## Документи
 
-- [notes/zone-vanishes-under-focus.md](../notes/zone-vanishes-under-focus.md) — дослідницька нотатка
+- [notes/zone-vanishes-under-focus.md](../../notes/zone-vanishes-under-focus.md) — дослідницька нотатка
   2026-09-05: відповіді на всі три відкриті питання з першоджерел (HTML, ARIA, WCAG, Chromium,
   NVDA, react-aria) плюс три власні виміри
-- [p2-streams-reset-filter-focus-drop.md](done/p2-streams-reset-filter-focus-drop.md) — батьківський запис, правило й перший виклик
-- [done/p2-streams-empty-focus-audit.md](done/p2-streams-empty-focus-audit.md) — дзеркальний аудит 2026-07-20, зразок форми
-- [accessibility.md](../accessibility.md) — §3.1, правило вибору цілі фокуса
-- код: [StreamsPanel.tsx](../../src/components/streams/StreamsPanel.tsx),
-  [StreamList.tsx](../../src/components/streams/StreamList.tsx),
-  [useCompositeList.ts](../../src/hooks/useCompositeList.ts)
+- [p2-streams-reset-filter-focus-drop.md](p2-streams-reset-filter-focus-drop.md) — батьківський запис, правило й перший виклик
+- [p2-streams-empty-focus-audit.md](p2-streams-empty-focus-audit.md) — дзеркальний аудит 2026-07-20, зразок форми
+- [accessibility.md](../../accessibility.md) — §3.1, правило вибору цілі фокуса
+- код: [StreamsPanel.tsx](../../../src/components/streams/StreamsPanel.tsx),
+  [StreamList.tsx](../../../src/components/streams/StreamList.tsx),
+  [useCompositeList.ts](../../../src/hooks/useCompositeList.ts)

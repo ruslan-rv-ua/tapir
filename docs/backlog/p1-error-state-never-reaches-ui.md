@@ -25,7 +25,7 @@ notes:
 # Стан «помилка» не доходить до інтерфейсу: фільтр і метрика збоїв мертві
 
 > **Контекст:** знахідка NVDA-прогону
-> [zone-vanishes-under-focus-audit](p2-zone-vanishes-under-focus-audit.md) — там сценарій 3
+> [zone-vanishes-under-focus-audit](done/p2-zone-vanishes-under-focus-audit.md) — там сценарій 3
 > знято як недосяжний саме через це. Коду немає; спершу grooming, бо питання не «як
 > полагодити», а «яким має бути стан».
 
@@ -98,7 +98,7 @@ notes:
 
 ## Документи
 
-- [p2-zone-vanishes-under-focus-audit.md](p2-zone-vanishes-under-focus-audit.md) — прогін, що це знайшов
+- [p2-zone-vanishes-under-focus-audit.md](done/p2-zone-vanishes-under-focus-audit.md) — прогін, що це знайшов
 - [p2-reconnect-counter-not-live.md](p2-reconnect-counter-not-live.md) — сусідня вада того ж
   вузла: пара «спроба N з M» не оновлюється наживо
 - [ADR 2026-09-01](../decisions/2026-09-01-response-surfaces-ear-window-system.md) — вибір поверхні відгуку

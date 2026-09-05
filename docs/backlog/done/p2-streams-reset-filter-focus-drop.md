@@ -64,7 +64,7 @@ notes:
    активний, тож дубля немає.
 4. **Обсяг звужено.** Родина «зона зникла з-під фокуса **не** від натиску» (зміна статусу
    спорожнила відфільтрований список, дзеркальний напрям) винесена в
-   [zone-vanishes-under-focus-audit](../p2-zone-vanishes-under-focus-audit.md) — там же
+   [zone-vanishes-under-focus-audit](p2-zone-vanishes-under-focus-audit.md) — там же
    питання, чи зводяться два прапорці в один сторож.
 5. **Один прапорець на двох замовників.** `pendingFocusFirstRow` тепер ставлять і
    «Додати приклади», і «Скинути фільтр»; ефект ключується на `[isEmpty, filterHidesAll]`
@@ -100,4 +100,4 @@ notes:
   `handleResetFilter`, `pendingFocusFirstRow`, `pendingFocusEmptyZone`
 - [accessibility.md](../../accessibility.md) — §3.1, правило вибору цілі фокуса; вимоги до зон
 - [done/p2-streams-empty-focus-audit.md](p2-streams-empty-focus-audit.md) — дзеркальний аудит 2026-07-20
-- [p2-zone-vanishes-under-focus-audit.md](../p2-zone-vanishes-under-focus-audit.md) — винесений клас випадків
+- [p2-zone-vanishes-under-focus-audit.md](p2-zone-vanishes-under-focus-audit.md) — винесений клас випадків
