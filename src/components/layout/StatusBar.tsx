@@ -7,6 +7,7 @@ import { $statuses } from "../../stores/streams";
 import { $freeSpace } from "../../stores/system";
 import { $profileSettings } from "../../stores/settings";
 import { formatBytes, formatDuration, isLowDiskSpace } from "../../lib/formatters";
+import { plural } from "../../lib/plural";
 import * as m from "../../i18n/paraglide/messages";
 
 interface Props {
@@ -54,13 +55,12 @@ export const StatusBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
   // suppress unused warning — tick is used to trigger re-render
   void tick;
 
-  const pluralRules = new Intl.PluralRules(document.documentElement.lang || "uk");
-  const pluralForm = recordingCount === 0 ? "zero" : pluralRules.select(recordingCount);
-  const recordingsText =
-    pluralForm === "zero" ? m.recordings_count_zero() :
-    pluralForm === "one" ? m.recordings_count_one({ count: recordingCount }) :
-    pluralForm === "few" ? m.recordings_count_few({ count: recordingCount }) :
-    m.recordings_count_many({ count: recordingCount });
+  const recordingsText = plural(recordingCount, {
+    zero: () => m.recordings_count_zero(),
+    one: () => m.recordings_count_one({ count: recordingCount }),
+    few: () => m.recordings_count_few({ count: recordingCount }),
+    many: () => m.recordings_count_many({ count: recordingCount }),
+  });
 
   const { onKeyDown, getTabIndex, restoreFocus, moveTo } = useRovingFocus(
     segRefs,

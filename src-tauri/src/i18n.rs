@@ -135,9 +135,9 @@ keys! { PluralKey, ALL,
     ActiveRecordings => "active_recordings",
 }
 
-/// Суфікс форми числа. Повторює конвенцію фронтенду (`StreamsPanel.pluralize`):
-/// нуль — окремий випадок застосунку, а не форма мови; далі правила CLDR для
-/// `uk` (1 / 2–4 / решта) і `en` (1 / решта).
+/// Суфікс форми числа. Повторює конвенцію фронтенду (`plural()` у
+/// `src/lib/plural.ts`): нуль — окремий випадок застосунку, а не форма мови;
+/// далі правила CLDR для `uk` (1 / 2–4 / решта) і `en` (1 / решта).
 fn plural_suffix(locale: Locale, n: usize) -> &'static str {
     if n == 0 { return "zero"; }
     match locale {

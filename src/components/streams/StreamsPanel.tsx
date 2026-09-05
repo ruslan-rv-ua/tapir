@@ -19,6 +19,7 @@ import { useAnnounce } from "../../hooks/useAnnounce";
 import { useZoneProxy, type ZoneEntry, type ZoneId } from "../../hooks/useZoneNavigation";
 import * as tauri from "../../lib/tauri";
 import { isRecordingLike } from "../../lib/streamState";
+import { plural } from "../../lib/plural";
 import { SHORTCUTS } from "../../lib/shortcuts";
 import { addToast } from "../../stores/toasts";
 import * as m from "../../i18n/paraglide/messages";
@@ -61,7 +62,6 @@ const SORT_OPTIONS = [
 export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const streams = useStore($streams);
   const statuses = useStore($statuses);
-  const settings = useStore($settings);
   const profileSettings = useStore($profileSettings);
   const freeSpace = useStore($freeSpace);
   const isEmpty = streams.length === 0;
@@ -85,48 +85,24 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     [streams, statuses],
   );
 
-  const pluralRules = useMemo(
-    () => new Intl.PluralRules(settings?.language || document.documentElement.lang || "uk"),
-    [settings?.language],
-  );
-  const pluralize = useCallback(
-    (
-      count: number,
-      zero: () => string,
-      one:  (p: { count: number }) => string,
-      few:  (p: { count: number }) => string,
-      many: (p: { count: number }) => string,
-    ) => {
-      if (count === 0) return zero();
-      const form = pluralRules.select(count);
-      if (form === "one") return one({ count });
-      if (form === "few") return few({ count });
-      return many({ count });
-    },
-    [pluralRules],
-  );
-
-  const streamCountText = pluralize(
-    streams.length,
-    m.streams_count_zero,
-    m.streams_count_one,
-    m.streams_count_few,
-    m.streams_count_many,
-  );
-  const activeRecText = pluralize(
-    activeCount,
-    m.active_recordings_zero,
-    m.active_recordings_one,
-    m.active_recordings_few,
-    m.active_recordings_many,
-  );
-  const errorText = pluralize(
-    errorCount,
-    m.errors_count_zero,
-    m.errors_count_one,
-    m.errors_count_few,
-    m.errors_count_many,
-  );
+  const streamCountText = plural(streams.length, {
+    zero: () => m.streams_count_zero(),
+    one: () => m.streams_count_one({ count: streams.length }),
+    few: () => m.streams_count_few({ count: streams.length }),
+    many: () => m.streams_count_many({ count: streams.length }),
+  });
+  const activeRecText = plural(activeCount, {
+    zero: () => m.active_recordings_zero(),
+    one: () => m.active_recordings_one({ count: activeCount }),
+    few: () => m.active_recordings_few({ count: activeCount }),
+    many: () => m.active_recordings_many({ count: activeCount }),
+  });
+  const errorText = plural(errorCount, {
+    zero: () => m.errors_count_zero(),
+    one: () => m.errors_count_one({ count: errorCount }),
+    few: () => m.errors_count_few({ count: errorCount }),
+    many: () => m.errors_count_many({ count: errorCount }),
+  });
 
   // ── Filter chip state ─────────────────────────────────────
   const activeChip = useStore($streamFilter);
@@ -139,15 +115,14 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     (chipId: StreamFilter, count: number) => {
       const chip = FILTER_CHIPS.find(c => c.id === chipId);
       const label = chip ? chip.labelFn() : "";
-      return pluralize(
-        count,
-        () => m.streams_filter_changed_zero({ label }),
-        ({ count }) => m.streams_filter_changed_one({ label, count }),
-        ({ count }) => m.streams_filter_changed_few({ label, count }),
-        ({ count }) => m.streams_filter_changed_many({ label, count }),
-      );
+      return plural(count, {
+        zero: () => m.streams_filter_changed_zero({ label }),
+        one: () => m.streams_filter_changed_one({ label, count }),
+        few: () => m.streams_filter_changed_few({ label, count }),
+        many: () => m.streams_filter_changed_many({ label, count }),
+      });
     },
-    [pluralize],
+    [],
   );
 
   // Visible order = active filter chip applied to the sort order. Lives in the
@@ -285,18 +260,17 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     announce(filterAnnouncement("all", streams.length), "polite");
   };
 
-  // Pluralized "Added N examples: <names>. List updated." — threads {names} in addition
-  // to {count}, so it needs its own wrapper beyond what pluralize can handle alone.
+  // Pluralized "Added N examples: <names>. List updated." — {names} rides along
+  // in the closure, which is why the forms are thunks and not message functions.
   const addedAnnouncement = useCallback(
     (count: number, names: string) =>
-      pluralize(
-        count,
-        () => m.streams_examples_added_zero(),
-        ({ count }) => m.streams_examples_added_one({ count, names }),
-        ({ count }) => m.streams_examples_added_few({ count, names }),
-        ({ count }) => m.streams_examples_added_many({ count, names }),
-      ),
-    [pluralize],
+      plural(count, {
+        zero: () => m.streams_examples_added_zero(),
+        one: () => m.streams_examples_added_one({ count, names }),
+        few: () => m.streams_examples_added_few({ count, names }),
+        many: () => m.streams_examples_added_many({ count, names }),
+      }),
+    [],
   );
 
   const handleAddExamples = async () => {
@@ -405,14 +379,13 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
   const recordAllAnnouncement = useCallback(
     (count: number) =>
-      pluralize(
-        count,
-        m.record_all_announce_zero,
-        m.record_all_announce_one,
-        m.record_all_announce_few,
-        m.record_all_announce_many,
-      ),
-    [pluralize],
+      plural(count, {
+        zero: () => m.record_all_announce_zero(),
+        one: () => m.record_all_announce_one({ count }),
+        few: () => m.record_all_announce_few({ count }),
+        many: () => m.record_all_announce_many({ count }),
+      }),
+    [],
   );
 
   const handleRecordAll = async () => {

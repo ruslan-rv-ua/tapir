@@ -4,7 +4,7 @@ import type { ProfileMeta } from "../../lib/tauri";
 import type { SegmentKind } from "../../hooks/useCompositeList";
 import { CompositeRow, CompositeAction } from "../common/composite-list";
 import { ProfileContextMenu } from "./ProfileContextMenu";
-import { getLocale } from "../../i18n/paraglide/runtime";
+import { plural } from "../../lib/plural";
 import * as m from "../../i18n/paraglide/messages";
 
 export type ProfileSegment =
@@ -36,17 +36,12 @@ export function getProfileSegments(profile: ProfileMeta, activeProfile: string):
 }
 
 function streamCountLabel(count: number): string {
-  const category = new Intl.PluralRules(getLocale()).select(count);
-  switch (category) {
-    case "one":
-      return m.profile_stream_count_one({ count });
-    case "few":
-      return m.profile_stream_count_few({ count });
-    case "many":
-      return m.profile_stream_count_many({ count });
-    default:
-      return m.profile_stream_count_other({ count });
-  }
+  return plural(count, {
+    one: () => m.profile_stream_count_one({ count }),
+    few: () => m.profile_stream_count_few({ count }),
+    many: () => m.profile_stream_count_many({ count }),
+    other: () => m.profile_stream_count_other({ count }),
+  });
 }
 
 interface Props {

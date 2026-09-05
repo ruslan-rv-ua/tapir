@@ -1,8 +1,9 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { useTauriEvent } from "./useTauriEvent";
 import { useAnnounce } from "./useAnnounce";
 import { addToast } from "../stores/toasts";
 import * as m from "../i18n/paraglide/messages";
+import { plural } from "../lib/plural";
 import type { CrashResumeSummary } from "../lib/tauri";
 
 /**
@@ -14,10 +15,6 @@ import type { CrashResumeSummary } from "../lib/tauri";
  */
 export function useCrashResumeFeedback(): void {
   const announce = useAnnounce();
-  const pluralRules = useMemo(
-    () => new Intl.PluralRules(document.documentElement.lang || "uk"),
-    [],
-  );
 
   useTauriEvent<CrashResumeSummary>(
     "crash-resume",
@@ -25,11 +22,11 @@ export function useCrashResumeFeedback(): void {
       ({ resumed, total }) => {
         let msg: string;
         if (resumed === total) {
-          const form = pluralRules.select(resumed);
-          msg =
-            form === "one" ? m.crash_resume_all_one({ count: String(resumed) }) :
-            form === "few" ? m.crash_resume_all_few({ count: String(resumed) }) :
-            m.crash_resume_all_many({ count: String(resumed) });
+          msg = plural(resumed, {
+            one: () => m.crash_resume_all_one({ count: String(resumed) }),
+            few: () => m.crash_resume_all_few({ count: String(resumed) }),
+            many: () => m.crash_resume_all_many({ count: String(resumed) }),
+          });
         } else {
           msg = m.crash_resume_partial({
             resumed: String(resumed),
@@ -39,7 +36,7 @@ export function useCrashResumeFeedback(): void {
         announce(msg, "polite");
         addToast(msg, "info");
       },
-      [announce, pluralRules],
+      [announce],
     ),
   );
 }

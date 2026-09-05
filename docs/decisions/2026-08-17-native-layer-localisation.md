@@ -7,7 +7,7 @@
   (там же десять рішень рівня реалізації); код — [i18n.rs](../../src-tauri/src/i18n.rs),
   [tray/menu.rs](../../src-tauri/src/tray/menu.rs), [tray/notify.rs](../../src-tauri/src/tray/notify.rs),
   [settings_commands.rs](../../src-tauri/src/commands/settings_commands.rs);
-  конвенція фронтенду — [StreamsPanel.tsx:92-107](../../src/components/streams/StreamsPanel.tsx:92).
+  конвенція фронтенду — [src/lib/plural.ts](../../src/lib/plural.ts).
 
 ## Проблема
 
@@ -79,11 +79,17 @@ Tapir має два процеси, які показують текст: webvie
 ### 4. Плюралізація повторює конвенцію фронтенду, а не CLDR
 
 Форму обирає `plural_suffix` ([i18n.rs:137](../../src-tauri/src/i18n.rs:137)) за тим самим
-правилом, що `pluralize` у React: нуль — окремий випадок **застосунку** (`_zero`), далі
-CLDR-гілки `uk` (1 / 2–4 / решта) і `en` (1 / решта). Ключ збирається як `{base}_{suffix}`.
+правилом, що `plural()` у React ([src/lib/plural.ts](../../src/lib/plural.ts)): нуль —
+окремий випадок **застосунку** (`_zero`), далі CLDR-гілки `uk` (1 / 2–4 / решта) і `en`
+(1 / решта). Ключ збирається як `{base}_{suffix}`.
 
 Конвенція спільна саме тому, що спільні ключі (§2) інакше неможливі: `record_all_announce_*`
 має обслуговувати обидві поверхні однаково.
+
+Одна межа розходиться, і на спільних ключах це не позначається: Rust віддає `_zero` на
+нулі **завжди**, бо всі три родини, які він читає, цей ключ мають; фронтенд бере його
+**лише там, де він є**, бо `crash_resume_all` і `profile_stream_count` живуть без `_zero`
+і на нулі падають у мовну категорію.
 
 ## Відхилені варіанти
 

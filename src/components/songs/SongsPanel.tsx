@@ -24,6 +24,7 @@ import type { Song, SongTagsUpdatedPayload, SongDeletedPayload, SongRenamedPaylo
 import { useTauriEvent } from "../../hooks/useTauriEvent";
 import { addToast } from "../../stores/toasts";
 import { shellOpenErrorMessage } from "../../lib/shellOpenError";
+import { plural } from "../../lib/plural";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import * as m from "../../i18n/paraglide/messages";
 
@@ -115,19 +116,14 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
   });
 
   // Announce filter result count politely. Uses pluralized i18n.
-  const pluralRules = useMemo(() => new Intl.PluralRules(document.documentElement.lang || "uk"), []);
   const announceCount = useCallback((count: number) => {
-    if (count === 0) {
-      announce(m.songs_loaded_zero(), "polite");
-      return;
-    }
-    const form = pluralRules.select(count);
-    const message =
-      form === "one" ? m.songs_loaded_one({ count: String(count) }) :
-      form === "few" ? m.songs_loaded_few({ count: String(count) }) :
-      m.songs_loaded_many({ count: String(count) });
-    announce(message, "polite");
-  }, [pluralRules, announce]);
+    announce(plural(count, {
+      zero: () => m.songs_loaded_zero(),
+      one: () => m.songs_loaded_one({ count: String(count) }),
+      few: () => m.songs_loaded_few({ count: String(count) }),
+      many: () => m.songs_loaded_many({ count: String(count) }),
+    }), "polite");
+  }, [announce]);
 
   useEffect(() => {
     if (loading || error) return;
