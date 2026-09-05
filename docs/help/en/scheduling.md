@@ -8,6 +8,10 @@ The Schedule records a programme for you, so you need not sit by the computer wh
 
 An end earlier than the start crosses midnight: `22:30` to `00:30` records two hours of the night. The two times may not be equal, so one entry can never cover a whole day. A one-time date that has already gone by is refused.
 
+A Saturday show at eight in the evening is therefore five fields: a name you will recognise in the list, the stream, **Recurring** with Saturday ticked, `20:00` and `21:00`. Save it, and the row shows what it will do — enabled, the stream, when, and the next run as a weekday and time. Come back after Saturday and the same row shows what it did.
+
+Every row reads the same way, left to right: name, on or off, the stream it records, when it runs, the next run, and the result of the last one. A dash instead of a next run means the entry will not run — it is switched off, or it is a one-time entry that has already fired.
+
 ### What Tapir needs to run it
 
 Two conditions, both easy to miss:
