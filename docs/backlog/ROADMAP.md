@@ -25,19 +25,24 @@ semver; `unscheduled` — наприкінці.
 > лишились один P2 і чотири P3; серед них одне дослідження й одна ідея. Обидва хвости
 > зі зняття `ZoneEntry.el` закриті 2026-09-05, і того самого дня закрились обидва
 > записи множини — хелпер `src/lib/plural.ts` і жива вада crash-resume. Зверху лишився
-> хвіст рев'ю `zone-proxy-hook` (фокус падає на `<body>` після «Скинути фільтр»), разом
-> два P2. Чи вважати віху завершеною і тегувати збірку, вирішує розробник після цієї
-> черги.
+> хвіст рев'ю `zone-proxy-hook` (фокус падає на `<body>` після «Скинути фільтр»).
+> Грилінг `ci-pipeline` 2026-09-05 додав до черги ще два P2: сама ідея CI виросла в
+> ухвалене рішення (`P3 idea` → `P2 planned`), а публікація репозиторію відокремилась
+> у власний запис, бо захист гілки приватному репо недоступний. Разом чотири P2.
+> Чи вважати віху завершеною і тегувати збірку, вирішує розробник після цієї черги;
+> завантажуваний exe для тегу — [release-workflow](p3-release-workflow.md), поки `draft`.
 
 Порядок рядків у секціях — за пріоритетом, а в межах пріоритету **більші першими**:
 саме вони визначають, чи версія закриється, тож беруться раніше за дрібні.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
+| [ci-pipeline](p2-ci-pipeline.md) | P2 | planned | ready | M | [repo-public-rename](p2-repo-public-rename.md), [typecheck-gate](done/p1-typecheck-gate.md) ✅, [clippy-warnings-zero](done/p2-clippy-warnings-zero.md) ✅ | [release-workflow](p3-release-workflow.md) (ворота, які **відмовляють**: PR обов'язковий, два jobs `frontend`/`backend`, адміністратор включений, ретраю немає; правило — [ADR](../decisions/2026-09-05-gates-refuse-rather-than-advise.md)) |
+| [repo-public-rename](p2-repo-public-rename.md) | P2 | planned | ready | S | — | [ci-pipeline](p2-ci-pipeline.md) (приватному репо на Free захист гілки недоступний — `403 Upgrade to GitHub Pro`; заразом кнопка «Відкрити сторінку проєкту» перестає вести на 404, куди її сьогодні шле довідка) |
 | [streams-reset-filter-focus-drop](p2-streams-reset-filter-focus-drop.md) | P2 | planned | **draft** | S | — | — («Скинути фільтр» на Потоках демонтує власну кнопку й лишає фокус на `<body>`: репліка про фільтр чутна, далі тиша, наступний `F6` починає коло з бокової панелі; знахідка рев'ю zone-proxy-hook; `draft` через одне питання — перший рядок списку чи чіп «Усі») |
 | [tauri-conf-version-source](p2-tauri-conf-version-source.md) | P2 | planned | **draft** | S | — | — (`"version": "../package.json"` лишає два джерела версії замість трьох; рішення розробника) |
 | [tauri-specta-bindings](p3-tauri-specta-bindings.md) | P3 | research | ready | **L** | — | — (925 рядків `tauri.ts` руками проти генерації з Rust; RC з 2023 року; тригер: справжній баг дрейфу типів) |
-| [ci-pipeline](p3-ci-pipeline.md) | P3 | idea | draft | M | [typecheck-gate](done/p1-typecheck-gate.md), [clippy-warnings-zero](done/p2-clippy-warnings-zero.md) ✅ | — (жодного workflow; тригер: контриб'ютор або тег) |
+| [release-workflow](p3-release-workflow.md) | P3 | idea | **draft** | M | [ci-pipeline](p2-ci-pipeline.md) | — (exe у GitHub Release на тег `v*`; у воротах не збирається — release-профіль це другий повний прохід по графу залежностей; шість відкритих питань, зокрема підпис і екран SmartScreen) |
 | [optional-library-swaps](p3-optional-library-swaps.md) | P3 | planned | **draft** | S | — | — (`wildmatch` і `use-debounce` один в один; питання смаку, зафіксувати «так» або «ні») |
 | [dead-js-tauri-plugins](p3-dead-js-tauri-plugins.md) | P3 | planned | **draft** | S | [dead-dependencies](done/p2-dead-dependencies.md) ✅ | — (`@tauri-apps/plugin-dialog` і `@tauri-apps/plugin-log` у `package.json` не імпортує ніхто: з боку JS живий лише `@tauri-apps/api`) |
 | [profile-stream-count-label-duplicated](p3-profile-stream-count-label-duplicated.md) | P3 | planned | ready | S | [plural-form-single-source](done/p2-plural-form-single-source.md) ✅ | — (`streamCountLabel` побайтово однаковий у `ProfileItem` і `StreamTransferDialog`; однаковість — інваріант, бо слово «потоки» живе тільки в доступній назві, а видно лише голе число; розійдуться — жоден тест не назве, кожен перевіряє свій компонент) |
