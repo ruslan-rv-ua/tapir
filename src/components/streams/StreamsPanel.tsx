@@ -249,14 +249,23 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   // ── Empty-profile zone (no streams at all) ──────────────────────
   const addExamplesBtnRef = useRef<HTMLButtonElement | null>(null);
   const [loadingExamples, setLoadingExamples] = useState(false);
+
+  // ── Deferred focus across a list ⇄ empty-zone swap ──────────────
+  // Both flags are requests, not destinations: at request time the target isn't
+  // mounted, so the effects below resolve it after the swap. The rule they
+  // follow is one (docs/accessibility.md §3.1): focus takes whatever replaced
+  // the control on screen — never let it fall to <body>.
+  // Set by whoever makes the list appear (add examples, reset filter).
   const pendingFocusFirstRow = useRef(false);
-  // Set by StreamList.onEmpty when a bulk delete clears the visible list — the
-  // target button isn't mounted yet, so a deferred effect focuses it (see below).
+  // Set by StreamList.onEmpty when a delete/move clears the visible list.
   const pendingFocusEmptyZone = useRef(false);
 
   const handleResetFilter = () => {
     $streamFilter.set("all");
     replaceSelection(new Set());
+    // The list replaces this zone in the same commit, so the button unmounts
+    // with focus on it. Ask for the first row; the effect below delivers.
+    pendingFocusFirstRow.current = true;
     announce(filterAnnouncement("all", streams.length), "polite");
   };
 
@@ -319,24 +328,28 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEmpty, filterHidesAll, toolbarRestore, streamListProxy]);
 
-  // Move focus to the first stream row after examples are added. The await in
-  // handleAddExamples resolves before streams-changed + getStreams() repopulate
-  // $streams, so the list isn't mounted yet at await-time; a single rAF wouldn't
-  // cover that. Instead key off the isEmpty transition: streamListRef is set by
-  // StreamList's callback ref during commit, so it's available here.
+  // Deliver a pending first-row request once the list is actually there. The
+  // await in handleAddExamples resolves before streams-changed + getStreams()
+  // repopulate $streams, so the list isn't mounted yet at await-time; a single
+  // rAF wouldn't cover that. Instead key off the transition: streamListRef is
+  // set by StreamList's callback ref during commit, so it's available here.
+  // The list can also fail to appear: examples added under an active filter that
+  // hides them all flip filterHidesAll instead of mounting the list. Then the
+  // filter-empty zone took the place on screen, and its button is the target.
   useEffect(() => {
     if (!isEmpty && pendingFocusFirstRow.current) {
       pendingFocusFirstRow.current = false;
+      if (filterHidesAll) resetFilterBtnRef.current?.focus();
       // ZoneEntry.focus === CompositeList.restoreFocus: on a fresh list the memory
       // is empty, so focus lands on the first row (summary).
-      streamListRef.current?.focus("forward");
+      else streamListRef.current?.focus("forward");
     }
     // loadingExamples is intentionally left true after a successful add (avoids a
     // flash of the normal button label before the list mounts). But if all streams
     // are later deleted isEmpty flips back to true and the empty-state zone
     // re-mounts — reset here so the button is not stuck in the loading state.
     if (isEmpty) setLoadingExamples(false);
-  }, [isEmpty]);
+  }, [isEmpty, filterHidesAll]);
 
   // After a bulk delete empties the visible list, StreamList.onEmpty set a flag;
   // the target button isn't mounted until isEmpty / filterHidesAll flips true, so
@@ -561,7 +574,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
           <div className="mx-1 h-4 w-px bg-slate-700 forced-colors:bg-[ButtonText]" aria-hidden="true" />
 
-          {/* Indices 9–11: Filter chips — semantic group, toggle chips kept */}
+          {/* Indices 7–9: Filter chips — semantic group, toggle chips kept */}
           <div role="group" aria-label={m.streams_filter_group()} className="flex items-center gap-2">
             {FILTER_CHIPS.map((chip, i) => {
               const count = chip.id === "recording" ? activeCount
@@ -595,7 +608,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
 
           <div className="mx-1 h-4 w-px bg-slate-700 forced-colors:bg-[ButtonText]" aria-hidden="true" />
 
-          {/* Indices 12–13: Sort toggle — segmented group mirroring the filter chips */}
+          {/* Indices 10–11: Sort toggle — segmented group mirroring the filter chips */}
           <div role="group" aria-label={m.streams_sort_group()} className="flex items-center gap-2">
             {SORT_OPTIONS.map((opt, i) => (
               <button
