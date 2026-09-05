@@ -47,44 +47,55 @@ describe("getHelpHtml", () => {
   it("keeps every section inside the word bounds of the style guide", () => {
     // Rule 6 of the help spec (help-content-polish): 600–3000 words per section,
     // measured on the ENGLISH file — Ukrainian comes out 10–15% shorter on the
-    // same content. The two bounds do different jobs:
+    // same content. Three bounds, each doing a different job:
     //
-    //  - FLOOR is the anti-stub guard, NOT rule 6's lower bound — which is 600 and
-    //    is NOT enforced here yet. Nine of the fourteen sections still sit below
-    //    it (overview is 200 words), so raising this constant now would go red on
-    //    files nobody has had a chance to rewrite; help-sections-expand rewrites
-    //    all fourteen and, as its last step, replaces this floor with `en >= 600`
-    //    plus a relative `uk >= 0.75 * en`. Until then 120 is the only thing
-    //    guarding length at all. What it replaces is a blacklist of placeholder
-    //    phrases ("coming soon"), which catches only the wording we happened to
-    //    use once — and sits uncomfortably close to "поки що недоступно", a
-    //    phrase rule 8 of the style guide REQUIRES settings.md to write. A length
-    //    floor catches a stub however it is worded; 120 clears the shortest real
-    //    section and dwarfs any plausible stub, so it never fires on prose.
-    //  - CEILING is rule 6 itself. Past it a section is meant to be SPLIT into a
-    //    new tab, not trimmed, so a failure here is a design prompt. Raised
-    //    1000 → 3000 on 2026-09-05 with the floor: the two move together because
-    //    the 1:5 spread is what keeps them meaning "unfinished" and "two sections
-    //    in one", rather than squeezing every section into a fixed length.
+    //  - FLOOR is rule 6's lower bound itself, enforced since
+    //    help-sections-expand rewrote all fourteen sections (2026-09-05). Below
+    //    it a section is unfinished: 600 words is what rule 9's three
+    //    obligations — a scenario per main action, the explicit "what happens"
+    //    including the refusal, and a seam to the owner of every behaviour named
+    //    but not owned — come to when they are actually written out. It replaced
+    //    an anti-stub floor of 120, which by then could no longer go red.
+    //  - RATIO holds the Ukrainian file against its English pair, and it is the
+    //    anti-stub guard now: an absolute floor on uk would fire on a flawless
+    //    translation (the observed spread is 0.80–0.90 of en), while catching
+    //    nothing an English floor of 600 does not already catch. What it does
+    //    catch, and what nothing caught before, is the section whose English half
+    //    grew and whose Ukrainian half stayed as it was — the failure that hurts
+    //    most, because `getHelpHtml` falls back to uk for every unknown locale,
+    //    so a half-translated file is seen by MORE people than the English one.
+    //    0.75 is the observed minimum (0.798, background) with room to spare.
+    //    It also subsumes the placeholder blacklist this suite once planned: a
+    //    stub is caught however it is worded, which matters because rule 8 of the
+    //    style guide REQUIRES settings.md to write "поки що недоступно" —
+    //    forbidden and mandatory phrasing would have sat side by side.
+    //  - CEILING is rule 6's upper bound. Past it a section is meant to be SPLIT
+    //    into a new tab, not trimmed, so a failure here is a design prompt.
+    //    Raised 1000 → 3000 on 2026-09-05 (help-word-floor) together with the
+    //    floor: the 1:5 spread is what keeps the two meaning "unfinished" and
+    //    "two sections in one", rather than squeezing every section to a length.
     //
     // Counted in JS deliberately: `wc -w` returns 0 for Cyrillic in this repo's
     // shell, which makes every uk file look a third of its real length.
-    const FLOOR = 120;
+    const FLOOR = 600;
     const CEILING = 3000;
+    const RATIO = 0.75;
     const wordCount = (md: string) => md.split(/\s+/).filter(Boolean).length;
+    const read = (locale: string, file: string) =>
+      wordCount(fs.readFileSync(path.join(process.cwd(), "docs/help", locale, file), "utf-8"));
 
-    for (const locale of ["uk", "en"]) {
-      const dir = path.join(process.cwd(), "docs/help", locale);
-      for (const file of fs.readdirSync(dir).filter((f) => f.endsWith(".md"))) {
-        const words = wordCount(fs.readFileSync(path.join(dir, file), "utf-8"));
-        expect(words, `${locale}/${file} is too short to be a real section`)
-          .toBeGreaterThanOrEqual(FLOOR);
-        // The ceiling is stated on the English file, so only en is held to it.
-        if (locale === "en") {
-          expect(words, `${locale}/${file} is over the ceiling — split it, don't trim`)
-            .toBeLessThanOrEqual(CEILING);
-        }
-      }
+    const enDir = path.join(process.cwd(), "docs/help/en");
+    for (const file of fs.readdirSync(enDir).filter((f) => f.endsWith(".md"))) {
+      const en = read("en", file);
+      expect(en, `en/${file} is under the floor — finish it, don't pad it (rule 9)`)
+        .toBeGreaterThanOrEqual(FLOOR);
+      expect(en, `en/${file} is over the ceiling — split it, don't trim`)
+        .toBeLessThanOrEqual(CEILING);
+
+      // Same section, the other locale: the pair is what the ratio is about.
+      const uk = read("uk", file);
+      expect(uk, `uk/${file} lags its en pair (${uk} vs ${en}) — the translation is behind`)
+        .toBeGreaterThanOrEqual(Math.ceil(RATIO * en));
     }
   });
 

@@ -68,7 +68,7 @@ notes:
 3. **Зміна ретроактивна, але розділена на два записи.** Під нову межу не проходять
    дев'ять розділів із чотирнадцяти — у секунду, коли `FLOOR` стане 600, `pnpm test`
    червоніє на дев'яти файлах. Тому цей запис міняє **лише стелю** в тесті (безпечно:
-   жоден файл її не перетинає), а межу вмикає [`help-sections-expand`](../p2-help-sections-expand.md)
+   жоден файл її не перетинає), а межу вмикає [`help-sections-expand`](p2-help-sections-expand.md)
    останнім кроком — коли текст їй відповідає. Другий запис створено **тією ж сесією** й
    зі `status: ready`: інакше специфікація місяцями обіцяла б 600, тест стеріг би 120, і
    розбіжність пережила б пам'ять про цю розмову.
@@ -126,7 +126,7 @@ notes:
       пояснює, **чому** нижня межа поки не 600 і хто її вмикає
 - [x] Жива стала цитата виправлена: `p3-diagnostic-report-block.md` більше не вимагає
       «`en` ≤ 1000 слів». Закриті записи не чіпалися — їхній текст є станом на їхню дату
-- [x] [`help-sections-expand`](../p2-help-sections-expand.md) створено зі `status: ready`
+- [x] [`help-sections-expand`](p2-help-sections-expand.md) створено зі `status: ready`
       і [`help-style-guide-extract`](../p3-help-style-guide-extract.md) як `draft`
 - [x] ROADMAP оновлено
 - [x] `docs/help/` не чіпався — запис не змінює видимої поведінки застосунку
@@ -135,7 +135,7 @@ notes:
 ## Документи
 
 - [help-content-polish](p1-help-content-polish.md) — стиль-гайд, у якому живуть правила 6 і 9
-- [help-sections-expand](../p2-help-sections-expand.md) — переписування 14 розділів,
+- [help-sections-expand](p2-help-sections-expand.md) — переписування 14 розділів,
   вмикає ворота
 - [help-style-guide-extract](../p3-help-style-guide-extract.md) — винесення стиль-гайду з `done/`
 - шляхи коду: `build/helpContent.test.ts`, `docs/help/{uk,en}/`
