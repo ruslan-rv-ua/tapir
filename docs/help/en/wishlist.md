@@ -19,9 +19,11 @@ The title Tapir compares is "artist - title", built from the broadcast metadata 
 
 A match here announces the track and nothing more: it is cut and saved exactly like any other one.
 
-Tapir checks the broadcast against your patterns **only while a stream is recording**. A stream you are merely listening to is never matched — that is the most common reason a list seems to stay silent.
+End to end, catching a track takes four things and fails if any of them is missing. Add the station on **Streams**. Start recording it. Add a pattern here that matches the whole title. Leave Tapir running. When the track goes on air, Tapir says it found a desired track and names it together with the station.
 
-A match is reported as it happens, and it leaves a trace on the **On-air matches** tab: time, station, track and pattern, newest first. That record lives until you quit the program — it is never written to disk, and switching profiles clears it, because every profile keeps its own list of desired tracks. Stopping a recording does not clear it. Rows there carry no actions: at the moment of a match the file may not exist yet, and whatever was saved lives in the "Recordings" section.
+Tapir checks the broadcast against your patterns **only while a stream is recording**. A stream you are merely listening to is never matched — that is the most common reason a list seems to stay silent. The other three, in the order worth checking them: the pattern is not anchored (`Tycho` where `Tycho*` was meant), the station sends no broadcast metadata at all, or the patterns are in a profile that is not the active one — every profile carries its own two lists, and only the active profile's are consulted.
+
+A match is reported as it happens, and it leaves a trace on the **On-air matches** tab: time, station, track and pattern, newest first, up to the last two hundred. That record lives until you quit the program — it is never written to disk, and switching profiles clears it, because every profile keeps its own list of desired tracks. Stopping a recording does not clear it. Rows there carry no actions: at the moment of a match the file may not exist yet, and whatever was saved lives in the "Recordings" section.
 
 ### Ignored tracks
 
