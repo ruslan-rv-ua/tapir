@@ -67,7 +67,7 @@ function AppContent() {
   const playerZoneRef = useRef<ZoneEntry | null>(null);
   const statusBarZoneRef = useRef<ZoneEntry | null>(null);
 
-  // Proxied (see useZoneProxy): PlayerPanel rebuilds its ZoneEntry on every playback change.
+  // Proxied (see useZoneProxy): these never unmount, but PlayerPanel rebuilds its ZoneEntry on every playback change.
   const activityBarProxy = useZoneProxy("activity-bar", activityBarZoneRef);
   const playerProxy = useZoneProxy("player", playerZoneRef);
   const statusBarProxy = useZoneProxy("status-bar", statusBarZoneRef);

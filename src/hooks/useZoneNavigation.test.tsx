@@ -141,6 +141,16 @@ function makeTwoStopZone(id: string): {
   return { entry, first, last, detach: () => div.remove() };
 }
 
+/**
+ * Render the hook around a ref the test can swap out afterwards — what a
+ * remounting list does to the ref its panel holds.
+ */
+function renderProxy(id: string, initial: ZoneEntry | null) {
+  const ref: RefObject<ZoneEntry | null> = { current: initial };
+  const { result, rerender } = renderHook(() => useZoneProxy(id, ref));
+  return { ref, proxy: result.current, result, rerender };
+}
+
 describe("useZoneProxy — a stable stand-in for a zone whose handle is replaced", () => {
   // The regression the proxy exists for: a list remounts (loading → loaded, a
   // rescan, a tab switch) and hands out a NEW handle, but nobody re-registers
@@ -148,14 +158,13 @@ describe("useZoneProxy — a stable stand-in for a zone whose handle is replaced
   it("routes F6 to the handle installed after registration", () => {
     const a = makeZone("a");
     const stale = makeTwoStopZone("list");
-    const target: RefObject<ZoneEntry | null> = { current: stale.entry };
-    const { result } = renderHook(() => useZoneProxy("list", target));
-    mount([a.entry, result.current]);
+    const { ref, proxy } = renderProxy("list", stale.entry);
+    mount([a.entry, proxy]);
 
     // The list remounts: old DOM gone, new handle in the ref, zones untouched.
     stale.detach();
     const live = makeTwoStopZone("list");
-    target.current = live.entry;
+    ref.current = live.entry;
 
     a.button.focus();
     pressF6();
@@ -165,9 +174,8 @@ describe("useZoneProxy — a stable stand-in for a zone whose handle is replaced
   it("passes the entry direction through to the handle", () => {
     const a = makeZone("a");
     const list = makeTwoStopZone("list");
-    const target: RefObject<ZoneEntry | null> = { current: list.entry };
-    const { result } = renderHook(() => useZoneProxy("list", target));
-    mount([a.entry, result.current]);
+    const { proxy } = renderProxy("list", list.entry);
+    mount([a.entry, proxy]);
 
     a.button.focus();
     pressF6(true); // backward into the list → its last stop
@@ -178,10 +186,9 @@ describe("useZoneProxy — a stable stand-in for a zone whose handle is replaced
     const a = makeZone("a");
     const list = makeTwoStopZone("list");
     const c = makeZone("c");
-    const target: RefObject<ZoneEntry | null> = { current: list.entry };
-    const { result } = renderHook(() => useZoneProxy("list", target));
-    expect(result.current.id).toBe("list");
-    mount([a.entry, result.current, c.entry]);
+    const { proxy } = renderProxy("list", list.entry);
+    expect(proxy.id).toBe("list");
+    mount([a.entry, proxy, c.entry]);
 
     list.first.focus();
     pressF6();
@@ -190,10 +197,9 @@ describe("useZoneProxy — a stable stand-in for a zone whose handle is replaced
 
   it("declines focus quietly while no handle is installed", () => {
     const a = makeZone("a");
-    const target: RefObject<ZoneEntry | null> = { current: null };
-    const { result } = renderHook(() => useZoneProxy("list", target));
+    const { proxy } = renderProxy("list", null);
     const c = makeZone("c");
-    mount([a.entry, result.current, c.entry]);
+    mount([a.entry, proxy, c.entry]);
 
     a.button.focus();
     pressF6(); // a → (list has no handle) → c
@@ -204,8 +210,7 @@ describe("useZoneProxy — a stable stand-in for a zone whose handle is replaced
   // object per render would either go stale there or, listed as an effect
   // dependency, re-register on every render.
   it("hands out the same entry on every render", () => {
-    const target: RefObject<ZoneEntry | null> = { current: null };
-    const { result, rerender } = renderHook(() => useZoneProxy("list", target));
+    const { result, rerender } = renderProxy("list", null);
     const first = result.current;
     rerender();
     expect(result.current).toBe(first);

@@ -265,7 +265,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const streamListCallbackRef = useCallback((zone: StreamListHandle | null) => {
     streamListRef.current = zone;
   }, []);
-  // Proxied (see useZoneProxy): the list re-sorts once the persisted order arrives, and a raw handle would keep the old first row.
+  // Proxied (see useZoneProxy): the list re-sorts and rebuilds its handle once the persisted order arrives.
   const streamListProxy = useZoneProxy("streams-list", streamListRef);
 
   // ── Filter-empty zone (streams exist but filter hides them) ─────

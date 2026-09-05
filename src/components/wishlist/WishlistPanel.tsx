@@ -445,7 +445,7 @@ export function WishlistPanel({ onZonesChange, exitZone }: Props) {
 
   // Proxied (see useZoneProxy): PatternList rebuilds its ZoneEntry on item changes and remounts on a tab switch.
   const patternListProxy = useZoneProxy("wishlist-list", patternListRef);
-  // Проксі (див. useZoneProxy): MatchList перестворює ZoneEntry на кожному живому збігу.
+  // Proxied (see useZoneProxy): MatchList rebuilds its ZoneEntry on every live match.
   const matchListProxy = useZoneProxy("wishlist-matches", matchListRef);
 
   // Register zones whenever tab or roving restore changes.

@@ -29,23 +29,24 @@ export interface ZoneEntry {
  * that keeps that dependency equal never re-registers. Register the raw handle
  * and App is left holding a dead `ZoneEntry` whose `focus()` no-ops:
  * `cycleZone` skips it, and the zone is unreachable by F6/Tab until something
- * else re-registers. The confirmed case was a Songs rescan that kept the count;
- * history in docs/backlog/done/p1-wishlist-stale-list-ref.md.
+ * else re-registers. The confirmed case was a Songs rescan that kept the count
+ * (commit e00262a, found via a file-log trace).
  *
  * The proxy is created once per component instance and forwards `focus` to
- * whatever `target.current` holds AT CALL TIME, so the registered entry never
+ * whatever `ref.current` holds AT CALL TIME, so the registered entry never
  * goes stale and can sit in an effect's dependency list without re-running it.
- * `id` is read on the first render and must match the zone's `data-zone-id`.
+ * Both arguments are captured on the first render: `ref` must be the ref
+ * object itself, and `id` must match the zone's `data-zone-id`.
  * Only `focus` is forwarded: the zones that own a search field (`focusSearch`)
  * register their handle directly.
  */
 export function useZoneProxy(
   id: string,
-  target: RefObject<Pick<ZoneEntry, 'focus'> | null>,
+  ref: RefObject<Pick<ZoneEntry, 'focus'> | null>,
 ): ZoneEntry {
   const proxy = useRef<ZoneEntry | null>(null);
   if (proxy.current === null) {
-    proxy.current = { id, focus: (dir) => target.current?.focus(dir) };
+    proxy.current = { id, focus: (dir) => ref.current?.focus(dir) };
   }
   return proxy.current;
 }
