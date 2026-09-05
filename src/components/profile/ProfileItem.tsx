@@ -4,7 +4,7 @@ import type { ProfileMeta } from "../../lib/tauri";
 import type { SegmentKind } from "../../hooks/useCompositeList";
 import { CompositeRow, CompositeAction } from "../common/composite-list";
 import { ProfileContextMenu } from "./ProfileContextMenu";
-import { plural } from "../../lib/plural";
+import { streamCountLabel } from "../../lib/profileStreamCount";
 import * as m from "../../i18n/paraglide/messages";
 
 export type ProfileSegment =
@@ -33,15 +33,6 @@ export function getProfileSegments(profile: ProfileMeta, activeProfile: string):
   segs.push("action-export");
   segs.push("action-menu");
   return segs;
-}
-
-function streamCountLabel(count: number): string {
-  return plural(count, {
-    one: () => m.profile_stream_count_one({ count }),
-    few: () => m.profile_stream_count_few({ count }),
-    many: () => m.profile_stream_count_many({ count }),
-    other: () => m.profile_stream_count_other({ count }),
-  });
 }
 
 interface Props {
