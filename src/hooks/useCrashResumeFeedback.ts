@@ -22,6 +22,10 @@ export function useCrashResumeFeedback(): void {
       ({ resumed, total }) => {
         let msg: string;
         if (resumed === total) {
+          // Форму обирає `plural` — з тієї самої локалі, що й текст. Нічого не
+          // мемоїзуємо: мову міняють без перезавантаження (GeneralTab:
+          // setLocale(…, { reload: false })), а хелпер читає локаль на кожному
+          // виклику, тож сесія переживає зміну мови.
           msg = plural(resumed, {
             one: () => m.crash_resume_all_one({ count: String(resumed) }),
             few: () => m.crash_resume_all_few({ count: String(resumed) }),

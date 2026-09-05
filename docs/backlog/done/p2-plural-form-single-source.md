@@ -48,13 +48,15 @@ notes:
 | [StatusBar.tsx:58](../../../src/components/layout/StatusBar.tsx:58) | `document.documentElement.lang \|\| "uk"`, нові правила щорендеру |
 | [SongsPanel.tsx:130](../../../src/components/songs/SongsPanel.tsx:130) | те саме, але `useMemo` з `deps: []` |
 | [StreamsPanel.tsx:89](../../../src/components/streams/StreamsPanel.tsx:89) | `settings?.language \|\| document.documentElement.lang \|\| "uk"` |
-| [useCrashResumeFeedback.ts:18](../../../src/hooks/useCrashResumeFeedback.ts:18) | те саме, `deps: []` — **дає неправильну форму**, див. [crash-resume-plural-english-rules](../p2-crash-resume-plural-english-rules.md) |
+| [useCrashResumeFeedback.ts:30](../../../src/hooks/useCrashResumeFeedback.ts:30) | `getLocale()` — переведено на нього окремо, див. [crash-resume-plural-english-rules](p2-crash-resume-plural-english-rules.md) |
 | [ProfileItem.tsx:39](../../../src/components/profile/ProfileItem.tsx:39) | `getLocale()` |
 | [StreamTransferDialog.tsx:10](../../../src/components/streams/StreamTransferDialog.tsx:10) | `getLocale()` |
 
 Запасне `"uk"` — мертвий код: [index.html](../../../index.html) віддає `<html lang="en">`,
 і перезаписує його лише [App.tsx:146](../../../src/App.tsx:146) **після** резолву
-`getSettings()`. Тобто реальний дефолт цих чотирьох — англійський.
+`getSettings()`. Тобто реальний дефолт трьох, що лишились на атрибуті, — англійський.
+(Четвертим був `useCrashResumeFeedback`; його перевели на `getLocale()` окремо —
+запис [crash-resume-plural-english-rules](p2-crash-resume-plural-english-rules.md).)
 
 Текст же в усіх шести дістає `m.*()`, тобто **`getLocale()`** зі стратегією
 `["cookie", "globalVariable", "baseLocale"]`. Форму і текст обирають два незалежні
@@ -100,7 +102,7 @@ notes:
 ## Документи
 
 - [paraglide-native-plurals](p2-paraglide-native-plurals.md) — дослідження й обґрунтування (в)
-- [crash-resume-plural-english-rules](../p2-crash-resume-plural-english-rules.md) — жива вада, яку ця зміна закриває структурно
+- [crash-resume-plural-english-rules](p2-crash-resume-plural-english-rules.md) — та сама вада, закрита точково 2026-09-05; тест форми лишився в `useCrashResumeFeedback.test.tsx`
 - [ADR: локалізація нативного шару](../../decisions/2026-08-17-native-layer-localisation.md) — чому Rust лишається на суфіксах
 
 ## Результат (2026-09-05)
@@ -120,11 +122,13 @@ notes:
 `Intl.PluralRules` — тобто критерієм цього запису — їх не видно; знайшов їх
 `pnpm typecheck` після зняття обгортки.
 
-Попутно закрилась жива вада
-[crash-resume-plural-english-rules](../p2-crash-resume-plural-english-rules.md):
-регресійний тест (`<html lang="en">`, `resumed: 3` → `_few`) лишений у
-`useCrashResumeFeedback.test.tsx` і перевірений на невиправленому коді — там він дає
-`all-many-3`. Сам запис лишається відкритим до окремого приймання.
+Ту саму ваду того самого дня закрив точковий запис
+[crash-resume-plural-english-rules](p2-crash-resume-plural-english-rules.md) — паралельно
+й раніше на кілька хвилин. Обидві гілки дійшли до `getLocale()` незалежно; при злитті
+взято версію через хелпер, а тест лишився **його** — сильніший за наш, бо пришпилює
+`<html lang="en">` у `beforeEach` на всі випадки, а не на один, і мокає `getLocale()`
+замість покладатись на `baseLocale`. Це рівно те, що записи домовились наперед:
+«хто йде першим, той і лишає тест; другий підбирає його під себе».
 
 Перейменування зламало три вказівники на стару конвенцію, усі три переписані на
 `src/lib/plural.ts`: два в [ADR](../../decisions/2026-08-17-native-layer-localisation.md)

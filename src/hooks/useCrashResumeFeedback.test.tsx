@@ -25,6 +25,11 @@ vi.mock("../i18n/paraglide/messages", async (importOriginal) => {
   };
 });
 
+vi.mock("../i18n/paraglide/runtime", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../i18n/paraglide/runtime")>();
+  return { ...actual, getLocale: () => "uk" };
+});
+
 import { useCrashResumeFeedback } from "./useCrashResumeFeedback";
 
 function Host() {
@@ -37,6 +42,11 @@ beforeEach(() => {
   handlers.clear();
   $announcer.set(null);
   $toasts.set([]);
+  // index.html ships <html lang="en"> and App.tsx overwrites it only after
+  // getSettings() resolves — so at the moment this hook first runs the
+  // attribute still says "en". jsdom leaves lang empty, which would let a
+  // reading of document.documentElement.lang pass by accident; pin it.
+  document.documentElement.lang = "en";
 });
 
 describe("useCrashResumeFeedback", () => {
@@ -44,9 +54,18 @@ describe("useCrashResumeFeedback", () => {
     render(<Host />);
     await vi.waitFor(() => expect(handlers.has("crash-resume")).toBe(true));
     handlers.get("crash-resume")!({ payload: { resumed: 2, total: 2 } });
-    // lang за замовчуванням "uk": 2 → few
     expect($announcer.get()).toEqual({ message: "all-few-2", priority: "polite" });
     expect($toasts.get().some((t) => t.message === "all-few-2" && t.type === "info")).toBe(true);
+  });
+
+  it("форму множини диктує getLocale(), а не lang документа", async () => {
+    render(<Host />);
+    await vi.waitFor(() => expect(handlers.has("crash-resume")).toBe(true));
+    handlers.get("crash-resume")!({ payload: { resumed: 3, total: 3 } });
+    // Локаль інтерфейсу — "uk" (мок getLocale), тож 3 → few. Правила, зняті з
+    // document.documentElement.lang, дали б тут англійське other → форму _many.
+    expect($announcer.get()).toEqual({ message: "all-few-3", priority: "polite" });
+    expect($toasts.get().some((t) => t.message === "all-few-3" && t.type === "info")).toBe(true);
   });
 
   it("частково → повідомлення «N з M»", async () => {
