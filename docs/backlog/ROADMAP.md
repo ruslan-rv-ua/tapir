@@ -55,7 +55,7 @@ semver; `unscheduled` — наприкінці.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
-| [tauri-ts-type-drift](p2-tauri-ts-type-drift.md) | P2 | planned | **draft** | S | [tauri-specta-bindings](done/p3-tauri-specta-bindings.md) ✅ | — (аудит 67 типів `tauri.ts` проти Rust: одна жива вада — `track-changed` із плеєра без `ignored`, тож кваліфікатор «ігнорується» в рядку залежить від того, чий емітер останній; ще 11 звужень і латентних пасток; grooming — хто рахує `ignored` для треку з плеєра) |
+| [tauri-ts-type-drift](p2-tauri-ts-type-drift.md) | P2 | planned | ready | M | [tauri-specta-bindings](done/p3-tauri-specta-bindings.md) ✅ | [ts-rs-drift-guard](p3-ts-rs-drift-guard.md) (аудит 67 типів `tauri.ts` проти Rust: одна жива вада — `track-changed` із плеєра без `ignored`, тож кваліфікатор «ігнорується» в рядку залежить від того, чий емітер останній; ще 11 звужень і латентних пасток. Grooming 2026-09-06 закрив 13 питань: «ігнорується» — факт про запис, плеєр мовчить, поки менеджер у `Recording`, позначка належить трекові, `album` знято, два словники `RecordingStatus`/`StreamState`, чотири enum'и; сторож дрейфу ширший за один тип — окремий P3) |
 | [release-workflow](p3-release-workflow.md) | P3 | idea | **draft** | M | [ci-pipeline](done/p2-ci-pipeline.md) ✅ | — (exe у GitHub Release на тег `v*`; у воротах не збирається — release-профіль це другий повний прохід по графу залежностей; шість відкритих питань, зокрема підпис і екран SmartScreen) |
 
 ## v0.2.0
@@ -89,7 +89,9 @@ semver; `unscheduled` — наприкінці.
 > **GROOMING**, а не обговорення. Так само
 > [list-shift-range-to-edge](p2-list-shift-range-to-edge.md) — хвіст грилінгу
 > [list-key-modifier-guards](done/p2-list-key-modifier-guards.md), з ясною клавішею й відкритим
-> обсягом. 18 записів.
+> обсягом. [ts-rs-drift-guard](p3-ts-rs-drift-guard.md) — `research`/`draft`, хвіст
+> грилінгу [tauri-ts-type-drift](p2-tauri-ts-type-drift.md): йому потрібне дослідження,
+> не обговорення. 19 записів.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
@@ -111,6 +113,7 @@ semver; `unscheduled` — наприкінці.
 | [diagnostic-report-block](p3-diagnostic-report-block.md) | P3 | idea | draft | S | [about-app-info](done/p1-about-app-info.md) | — (хвіст about-app-info: збірка Windows, версія WebView2, кнопка «Скопіювати відомості для звіту») |
 | [tray-now-playing-source-prefix](p3-tray-now-playing-source-prefix.md) | P3 | planned | draft | S | — | — (знахідка grilling 2026-09-03: «Зараз грає: Файл: track.mp3» і префікс «Станція:», що відрізняє прев'ю від ефіру) |
 | [list-shift-range-to-edge](p2-list-shift-range-to-edge.md) | P2 | planned | draft | S | [list-key-modifier-guards](done/p2-list-key-modifier-guards.md) | — (хвіст грилінгу 2026-09-04: `Shift+↑/↓` є, `Shift+Home`/`End` немає; батьківський запис зробив їх інертними саме щоб фічу додавали, а не перевчали від неї) |
+| [ts-rs-drift-guard](p3-ts-rs-drift-guard.md) | P3 | research | draft | M | [tauri-ts-type-drift](p2-tauri-ts-type-drift.md) | — (хвіст грилінгу 2026-09-06: сторож дрейфу `tauri.ts` проти Rust на ts-rs 12 «лише типи»; підстави відмови від `tauri-specta` тут не діють, 12 розбіжностей за місяць — постійна ціна) |
 
 ## unscheduled
 
