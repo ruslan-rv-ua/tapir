@@ -1,0 +1,131 @@
+# Gates that refuse, rather than advise.
+#
+# Every choice below that looks like waste — Windows on both jobs, no `paths`
+# filter, no retry, a cache only one run is allowed to write — is deliberate and
+# argued in docs/decisions/2026-09-05-gates-refuse-rather-than-advise.md. Read it
+# before changing anything here.
+name: CI
+
+on:
+  # No `paths` filter, deliberately: a filtered check never reports, and a
+  # required check that never reports blocks the pull request forever with
+  # nothing red to look at. A docs-only PR paying the full run is the price.
+  pull_request:
+    branches: [develop]
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # A superseded pull-request run is pointless — the new head replaces it.
+  # Runs on `push: develop` are never cancelled: they are the only ones allowed
+  # to write the caches every other run reads.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  # The job ids are the names GitHub shows as required checks: `frontend` and
+  # `backend`. Two named statuses are readable with a screen reader; one long log
+  # with the break somewhere in the middle is not. That is the reason for the
+  # split — the parallel minutes are a side effect, not the point.
+  frontend:
+    # Not `ubuntu-latest`, though it would be faster and cheaper: the product
+    # exists only on Windows, and a gate judging from another platform returns a
+    # verdict about a configuration that never ships.
+    runs-on: windows-latest
+    # A hung run would leave the required check pending forever — the same shape
+    # of failure a `paths` filter causes. The limit turns it back into red.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      # Version comes from `packageManager` in package.json — nothing to pin here.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          # Matches the major on the developer's machine; the gate should judge
+          # from the same runtime the work is done on.
+          node-version: "26"
+
+      - name: Locate the pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> $env:GITHUB_OUTPUT
+
+      - name: Restore the pnpm store
+        id: pnpm-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+
+      # `--frozen-lockfile` reinstalls from the lock on every run, so the cache
+      # speeds the download up and never substitutes for the install: the clean
+      # clone stays the thing being tested.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Save the pnpm store
+        # Only the `push: develop` run writes. A cache written by a PR run is
+        # scoped to that PR and unreachable by anyone else, yet it still evicts
+        # the one useful entry from the 10 GB limit.
+        if: github.event_name == 'push' && steps.pnpm-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      # The four frontend gates, one step each so the failing one is named in the
+      # summary instead of buried in a shared log. The list and its order mirror
+      # `just check` — a gate added there has to be added here too.
+      #
+      # `vite:build` runs first: it generates `src/i18n/paraglide/` on disk, and
+      # both the tests and `tsc` resolve `messages` against exactly that output.
+      - name: Gate — pnpm vite:build
+        run: pnpm vite:build
+
+      - name: Gate — pnpm test
+        run: pnpm test
+
+      - name: Gate — pnpm typecheck
+        run: pnpm typecheck
+
+      - name: Gate — pnpm lint
+        run: pnpm lint
+
+  backend:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      # No Node and no `dist/` here on purpose: in the dev profile
+      # `generate_context!` takes the `cfg!(not(feature = "custom-protocol"))`
+      # branch and embeds empty assets. Only `tauri build` would need the
+      # frontend, and that lives in the release workflow, not in the gates.
+      #
+      # The Rust toolchain is whatever stable the runner image ships, unpinned on
+      # purpose: the crate declares no MSRV, and edition 2024 already demands a
+      # newer rustc than any live image carries. `rust-cache` keys on the rustc
+      # version, so an image bump invalidates the cache rather than hiding in it.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          save-if: ${{ github.event_name == 'push' }}
+
+      # No `-D warnings`: the deny level is set once, by `[lints.clippy]` in
+      # src-tauri/Cargo.toml, so an editor, a terminal and this job all reach the
+      # same verdict. `--all-targets` is what reaches `#[cfg(test)]` code.
+      - name: Gate — cargo clippy --all-targets
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets
+
+      - name: Gate — cargo test
+        run: cargo test --manifest-path src-tauri/Cargo.toml
