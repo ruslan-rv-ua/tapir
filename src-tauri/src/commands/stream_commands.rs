@@ -9,6 +9,23 @@ use crate::stream::manager::{StreamState, StreamStatus};
 use crate::stream::playlist;
 use log::warn;
 
+/// Refusal codes of `start_recording` / `stop_recording`. Part of the IPC
+/// contract: `recordRefusalMessage` in src/lib/recordingToggle.ts matches on
+/// them, so do not reword. Mirrors `PLAY_ERR_UNSUPPORTED_CODEC` in
+/// [`crate::commands::player_commands`].
+pub(crate) const REC_ERR_ALREADY_RECORDING: &str = "already_recording";
+pub(crate) const REC_ERR_NOT_RECORDING: &str = "not_recording";
+
+/// What a recording refusal looks like on the wire: the two «nothing to do»
+/// verdicts become stable codes, everything else keeps its Display text.
+pub(crate) fn recording_refusal_code(e: RadioError) -> String {
+    match e {
+        RadioError::AlreadyRecording(_) => REC_ERR_ALREADY_RECORDING.to_string(),
+        RadioError::NotRecording(_) => REC_ERR_NOT_RECORDING.to_string(),
+        other => other.to_string(),
+    }
+}
+
 /// Whether a stream transfer leaves the source in place (`Copy`) or removes it
 /// from the active profile (`Move`). Deserialized from the JS string "copy"/"move".
 #[derive(Debug, Clone, PartialEq, serde::Deserialize)]
@@ -549,7 +566,7 @@ pub async fn start_recording(
     manager
         .start_recording(stream, settings, manager_arc.clone())
         .map(|_| ())
-        .map_err(|e| e.to_string())
+        .map_err(recording_refusal_code)
 }
 
 #[tauri::command]
@@ -566,7 +583,7 @@ pub async fn stop_recording(
     };
     {
         let mut manager = state.stream_manager.write().await;
-        manager.stop_recording(&stream_id).map_err(|e| e.to_string())?;
+        manager.stop_recording(&stream_id).map_err(recording_refusal_code)?;
     }
     if let Some(session_id) = session_id {
         crate::scheduler::timer::notify_manual_stop(&app, &stream_id, session_id).await;
@@ -839,6 +856,24 @@ mod tests {
         assert_eq!(out.id, "src-id");
         assert_eq!(out.added_at, "2026-01-01");
         assert_eq!(out.password.as_deref(), Some("DPAPI:abc"));
+    }
+
+    #[test]
+    fn recording_refusals_cross_the_boundary_as_codes_not_prose() {
+        // Wire contract with `recordRefusalMessage` in src/lib/recordingToggle.ts:
+        // the frontend swallows both codes (a second start is a skip, not a
+        // failure — the same verdict «Записати все» and the scheduler already
+        // give) and could not match English prose safely. Anything else still
+        // crosses as-is; that prose is another record's problem.
+        assert_eq!(
+            recording_refusal_code(RadioError::AlreadyRecording("s1".into())),
+            "already_recording"
+        );
+        assert_eq!(
+            recording_refusal_code(RadioError::NotRecording("s1".into())),
+            "not_recording"
+        );
+        assert_eq!(recording_refusal_code(RadioError::Other("disk".into())), "disk");
     }
 
     #[test]

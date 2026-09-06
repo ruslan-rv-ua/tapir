@@ -216,10 +216,7 @@ impl StreamManager {
         let stream_id = stream_info.id.clone();
 
         if self.entries.contains_key(&stream_id) {
-            return Err(RadioError::Other(format!(
-                "Stream '{}' is already recording",
-                stream_id
-            )));
+            return Err(RadioError::AlreadyRecording(stream_id));
         }
 
         self.next_session_id += 1;
@@ -270,10 +267,7 @@ impl StreamManager {
                 entry.cancel_token.cancel();
                 Ok(())
             }
-            None => Err(RadioError::NotFound(format!(
-                "No active recording for stream '{}'",
-                stream_id
-            ))),
+            None => Err(RadioError::NotRecording(stream_id.to_string())),
         }
     }
 

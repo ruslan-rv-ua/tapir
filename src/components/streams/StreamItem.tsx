@@ -8,6 +8,7 @@ import { CompositeRow, CompositeSegment, CompositeAction } from "../common/compo
 import { formatBitrate, formatDuration } from "../../lib/formatters";
 import { playRefusalMessage } from "../../lib/playRefusal";
 import { isRecordingLike, needsAttention } from "../../lib/streamState";
+import { toggleRecording } from "../../lib/recordingToggle";
 import { failureReasonText } from "../../lib/recordingAnnounce";
 import { StreamContextMenu } from "./StreamContextMenu";
 import { AddPatternDialog } from "../wishlist/AddPatternDialog";
@@ -71,7 +72,12 @@ export function StreamItem({
   isSelected,
 }: Props) {
   const state = status?.state ?? "idle";
+  // Two questions, kept apart on purpose. «Are bytes flowing?» drives the
+  // duration, the summary label and the red fill. «Does a recording exist?»
+  // drives the action: it exists from the start command on, and connecting /
+  // reconnecting are its phases (CONTEXT.md §«Запис і Записи»).
   const isRecording = state === "recording";
+  const hasRecording = isRecordingLike(state);
   const playerStatus = useStore($playerStatus);
   const announce = useAnnounce();
   const [patternDialog, setPatternDialog] = useState<{
@@ -96,14 +102,7 @@ export function StreamItem({
     ? Date.now() - new Date(status.recordingStartedAt).getTime()
     : 0;
 
-  const handleRecordToggle = async () => {
-    try {
-      if (isRecording) await tauri.stopRecording(stream.id);
-      else await tauri.startRecording(stream.id);
-    } catch (err) {
-      addToast(String(err), "error");
-    }
-  };
+  const handleRecordToggle = () => toggleRecording(stream.id, state);
 
   const handlePlayToggle = async () => {
     try {
@@ -204,9 +203,14 @@ export function StreamItem({
   const segments = getStreamSegments(status);
 
   // A subtle background marks the active row while focus is drilled into a segment.
+  // The fill tells the phase apart — red while bytes flow, amber (the spinner's
+  // colour) while the recording only connects or reconnects — and any phase of
+  // a recording outranks the blue of playback. An errored row has no fill.
   const rowBg = isRecording
     ? "bg-red-950/30 border-l-2 border-l-red-500"
-    : isThisStreamPlaying
+    : hasRecording
+      ? "bg-amber-950/30 border-l-2 border-l-amber-500"
+      : isThisStreamPlaying
       ? "bg-blue-950/30"
       : isActiveRow
         ? "bg-slate-800/60"
@@ -314,18 +318,18 @@ export function StreamItem({
           isFocused={isFocused}
           onClick={handleRecordToggle}
           label={
-            isRecording
+            hasRecording
               ? m.stop_recording_named({ name: stream.name })
               : m.start_recording_named({ name: stream.name })
           }
           className={`inline-flex min-w-[7.5rem] justify-center shrink-0 whitespace-nowrap items-center gap-1 rounded-md px-2 py-0.5 text-xs ${
-            isRecording
+            hasRecording
               ? "bg-red-700 text-white forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]"
               : "bg-slate-700 text-slate-300 forced-colors:bg-[ButtonFace] forced-colors:border forced-colors:border-[ButtonText]"
           }`}
         >
-          <span aria-hidden="true">{isRecording ? "⏹" : "⏺"}</span>
-          <span>{isRecording ? m.stop_recording() : m.start_recording()}</span>
+          <span aria-hidden="true">{hasRecording ? "⏹" : "⏺"}</span>
+          <span>{hasRecording ? m.stop_recording() : m.start_recording()}</span>
         </CompositeAction>
         <StreamContextMenu
           stream={stream}

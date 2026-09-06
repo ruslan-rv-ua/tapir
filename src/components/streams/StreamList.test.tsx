@@ -220,6 +220,26 @@ describe("StreamList — row activation honors doubleClickAction", () => {
     expect(tauri.playStream).not.toHaveBeenCalled();
   });
 
+  it.each(["connecting", "reconnecting"] as const)(
+    "Enter stops the recording while it is still %s — it exists from the start command on",
+    (state) => {
+      $settings.set({ ...baseSettings, doubleClickAction: "record" });
+      $statuses.set({
+        a: {
+          streamId: "a", state, currentTrack: null, recordingStartedAt: null,
+          bytesRecorded: 0, tracksRecorded: 0, error: null,
+          reconnectAttempt: state === "reconnecting" ? 1 : null,
+          reconnectMaxRetries: state === "reconnecting" ? 10 : null,
+          sessionId: 0,
+        },
+      });
+      focusFirstRow();
+      fireEvent.keyDown(document.activeElement!, { key: "Enter" });
+      expect(tauri.stopRecording).toHaveBeenCalledWith("a");
+      expect(tauri.startRecording).not.toHaveBeenCalled();
+    },
+  );
+
   it("advertises the row's own keys, then the app-wide Enter combo", () => {
     const { container } = renderList();
     const li = container.querySelector('li[data-segment="summary"]')!;

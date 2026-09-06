@@ -4,6 +4,15 @@ import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import { StreamContextMenu } from "./StreamContextMenu";
 import { $playerStatus } from "../../stores/player";
 import { replaceSelection } from "../../stores/streams";
+import * as tauri from "../../lib/tauri";
+
+// No backend in jsdom — stub the Tauri IPC layer.
+vi.mock("../../lib/tauri", () => ({
+  playStream: vi.fn().mockResolvedValue(undefined),
+  stopPlayback: vi.fn().mockResolvedValue(undefined),
+  startRecording: vi.fn().mockResolvedValue(undefined),
+  stopRecording: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock("../../i18n/paraglide/messages", () => ({
   stream_actions: ({ name }: { name: string }) => `Дії для ${name}`,
@@ -112,6 +121,26 @@ describe("StreamContextMenu — copy/move to profile", () => {
     fireEvent.click(item);
     expect(onOpenInPlayer).toHaveBeenCalled();
   });
+});
+
+describe("StreamContextMenu — the record item while the recording is only connecting", () => {
+  // Same rule as the row button: a recording exists from the start command on,
+  // so the menu must say the same thing the button says (one condition, one home).
+  const open = (container: HTMLElement) =>
+    fireEvent.click(container.querySelector('button[data-segment="action-menu"]')!);
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it.each(["connecting", "reconnecting"] as const)(
+    "offers «Зупинити запис» while %s and stops, never starts",
+    async (state) => {
+      const { container } = renderMenu(mkStatus(state));
+      open(container);
+      fireEvent.click(await screen.findByRole("menuitem", { name: "Зупинити запис" }));
+      expect(tauri.stopRecording).toHaveBeenCalledWith("s1");
+      expect(tauri.startRecording).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe("StreamContextMenu — selection-aware delete label", () => {

@@ -17,6 +17,17 @@ pub enum RadioError {
     #[error("Not found: {0}")]
     NotFound(String),
 
+    /// The stream already has a live recording — in any of its phases
+    /// (connecting, recording, reconnecting). Crosses the IPC boundary as the
+    /// `REC_ERR_ALREADY_RECORDING` code, never as this prose.
+    #[error("Stream '{0}' is already recording")]
+    AlreadyRecording(String),
+
+    /// Nothing to stop: no live recording for the stream. Crosses as
+    /// `REC_ERR_NOT_RECORDING`.
+    #[error("No active recording for stream '{0}'")]
+    NotRecording(String),
+
     #[error("Invalid URL: {0}")]
     InvalidUrl(String),
 

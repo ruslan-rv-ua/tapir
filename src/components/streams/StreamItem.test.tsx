@@ -167,6 +167,60 @@ describe("StreamItem — action buttons activate Tauri commands", () => {
   });
 });
 
+describe("StreamItem — the record action while the recording is only connecting", () => {
+  // A recording exists from the start command on; connecting and reconnecting
+  // are its phases (CONTEXT.md §«Запис і Записи»). For the ≈40 minutes of a
+  // reconnect the row used to offer to *start* it — and the backend's English
+  // refusal landed in the toast.
+  const record = (container: HTMLElement) =>
+    container.querySelector<HTMLButtonElement>('button[data-segment="action-record"]')!;
+  const row = (container: HTMLElement) => container.querySelector<HTMLElement>('li[data-segment="summary"]')!;
+  const mkPhase = (state: StreamStatus["state"]): StreamStatus => ({
+    streamId: "s1", state, currentTrack: null, recordingStartedAt: null,
+    bytesRecorded: 0, tracksRecorded: 0, error: null,
+    reconnectAttempt: state === "reconnecting" ? 1 : null,
+    reconnectMaxRetries: state === "reconnecting" ? 10 : null,
+    sessionId: 0,
+  });
+
+  it.each(["connecting", "reconnecting"] as const)("stops the recording while %s, never starts it again", (state) => {
+    const { container } = renderItem(mkStream(), mkPhase(state));
+    fireEvent.click(record(container));
+    expect(tauri.stopRecording).toHaveBeenCalledWith("s1");
+    expect(tauri.startRecording).not.toHaveBeenCalled();
+  });
+
+  it.each(["connecting", "reconnecting"] as const)("reads «Зупинити запис» with the stream's name while %s", (state) => {
+    const { container } = renderItem(mkStream(), mkPhase(state));
+    const btn = record(container);
+    expect(btn.getAttribute("aria-label")).toBe(m.stop_recording_named({ name: "Radio Paradise" }));
+    expect(btn.textContent).toContain(m.stop_recording());
+  });
+
+  it.each(["connecting", "reconnecting"] as const)(
+    "paints the row amber while %s — the phase shows, the button still codes the action",
+    (state) => {
+      const { container } = renderItem(mkStream(), mkPhase(state));
+      expect(row(container).className).toMatch(/border-l-amber-500/);
+      expect(row(container).className).not.toMatch(/border-l-red-500/);
+      // Red like while recording: two colours under one word would make the
+      // user wonder whether it is still the same action.
+      expect(record(container).className).toMatch(/bg-red-700/);
+    },
+  );
+
+  it("keeps the red fill for the phase in which bytes are flowing", () => {
+    const { container } = renderItem(mkStream(), mkPhase("recording"));
+    expect(row(container).className).toMatch(/border-l-red-500/);
+    expect(row(container).className).not.toMatch(/amber/);
+  });
+
+  it("gives an errored row no fill — the recording is gone, not paused", () => {
+    const { container } = renderItem(mkStream(), { ...mkPhase("error"), error: "station_unreachable" });
+    expect(row(container).className).not.toMatch(/border-l-(red|amber)-500/);
+  });
+});
+
 describe("StreamItem — reconnecting counter display", () => {
   const mkReconnecting = (
     reconnectAttempt: number | null,

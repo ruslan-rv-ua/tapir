@@ -3,6 +3,7 @@ import { Copy, FolderInput, Link } from "lucide-react";
 import type { StreamInfo, StreamStatus } from "../../lib/tauri";
 import * as tauri from "../../lib/tauri";
 import { isRecordingLike } from "../../lib/streamState";
+import { toggleRecording } from "../../lib/recordingToggle";
 import { playRefusalMessage } from "../../lib/playRefusal";
 import { $editStream, $streamSelection } from "../../stores/streams";
 import { $playerStatus } from "../../stores/player";
@@ -30,7 +31,9 @@ export function StreamContextMenu({ stream, status, menuFocused, onAddToWishlist
   const selection = useStore($streamSelection);
   const isSelected = selection.has(stream.id);
   const state = status?.state ?? "idle";
-  const isRecording = state === "recording";
+  // A recording exists from the start command on — connecting and reconnecting
+  // are its phases — so the item says what the row button says.
+  const hasRecording = isRecordingLike(state);
   const isThisStreamPlaying =
     playerStatus.state !== "stopped" &&
     playerStatus.source?.type === "stream" &&
@@ -52,8 +55,7 @@ export function StreamContextMenu({ stream, status, menuFocused, onAddToWishlist
           else await tauri.playStream(stream.id);
           break;
         case "record":
-          if (isRecording) await tauri.stopRecording(stream.id);
-          else await tauri.startRecording(stream.id);
+          await toggleRecording(stream.id, state);
           break;
         case "open-player":
           onOpenInPlayer();
@@ -116,7 +118,7 @@ export function StreamContextMenu({ stream, status, menuFocused, onAddToWishlist
             id="record"
             className="cursor-pointer px-3 py-1.5 text-sm text-slate-200 outline-none hover:bg-slate-700 focus:bg-slate-700"
           >
-            {isRecording
+            {hasRecording
               ? <><span aria-hidden="true">⏹ </span>{m.stop_recording()}</>
               : <><span aria-hidden="true">⏺ </span>{m.start_recording()}</>}
           </MenuItem>

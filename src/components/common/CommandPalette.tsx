@@ -6,6 +6,8 @@ import { $settings, $profileSettingsTarget } from "../../stores/settings";
 import { addToast } from "../../stores/toasts";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import * as tauri from "../../lib/tauri";
+import { isRecordingLike } from "../../lib/streamState";
+import { toggleRecording } from "../../lib/recordingToggle";
 import * as m from "../../i18n/paraglide/messages";
 
 // Number of options PageUp/PageDown jumps by.
@@ -119,24 +121,17 @@ export function CommandPalette() {
       },
     },
     ...streams.flatMap((stream) => {
-      const state = statuses[stream.id]?.state ?? "idle";
-      const isRecording = state === "recording";
+      const state = statuses[stream.id]?.state;
+      // A recording exists from the start command on — the palette says what
+      // the row button says, through the same module.
       return [
         {
           id: `record-${stream.id}`,
-          label: isRecording ? m.stop_recording() : m.start_recording(),
+          label: isRecordingLike(state) ? m.stop_recording() : m.start_recording(),
           sublabel: stream.name,
           action: async () => {
             close();
-            try {
-              if (isRecording) {
-                await tauri.stopRecording(stream.id);
-              } else {
-                await tauri.startRecording(stream.id);
-              }
-            } catch (e) {
-              addToast(String(e), "error");
-            }
+            await toggleRecording(stream.id, state);
           },
         },
       ];

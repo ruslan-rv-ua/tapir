@@ -15,6 +15,7 @@ import * as tauri from "../../lib/tauri";
 import { addToast } from "../../stores/toasts";
 import { streamOpenErrorMessage } from "../../lib/shellOpenError";
 import { isRecordingLike } from "../../lib/streamState";
+import { toggleRecording } from "../../lib/recordingToggle";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import { createPortal } from "react-dom";
 import { ConfirmDialog } from "../common/ConfirmDialog";
@@ -294,10 +295,7 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
           addToast(playRefusalMessage(err), "error"),
         );
       } else {
-        const isRecording = statuses[itemId]?.state === "recording";
-        (isRecording ? tauri.stopRecording(itemId) : tauri.startRecording(itemId)).catch((err) =>
-          addToast(String(err), "error"),
-        );
+        void toggleRecording(itemId, statuses[itemId]?.state);
       }
     },
     [settings, isPlayingStream, statuses],

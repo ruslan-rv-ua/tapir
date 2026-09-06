@@ -60,6 +60,36 @@ describe("CommandPalette — whole-profile regardless of selection (R7)", () => 
   });
 });
 
+describe("CommandPalette — the per-stream record command while the recording is only connecting", () => {
+  // The palette is read as a list, so a wrong label lies there no less than
+  // on the row: a recording exists from the start command on.
+  const phase = (state: "connecting" | "reconnecting") => ({
+    streamId: "a", state, currentTrack: null, recordingStartedAt: null,
+    bytesRecorded: 0, tracksRecorded: 0, error: null,
+    reconnectAttempt: state === "reconnecting" ? 1 : null,
+    reconnectMaxRetries: state === "reconnecting" ? 10 : null,
+    sessionId: 0,
+  });
+
+  it.each(["connecting", "reconnecting"] as const)(
+    "offers «Зупинити запис» for a stream that is %s, and stops it",
+    async (state) => {
+      $streams.set([{ id: "a", name: "Alpha" } as never]);
+      $statuses.set({ a: phase(state) });
+      render(<CommandPalette />);
+      // Narrow to this stream's commands: «Зупинити запис» is also the label of
+      // the whole-profile stop command.
+      fireEvent.change(screen.getByRole("combobox"), { target: { value: "Alpha" } });
+      expect(screen.queryByText(m.start_recording())).toBeNull();
+      await act(async () => {
+        fireEvent.click(screen.getByText(m.stop_recording()));
+      });
+      expect(tauri.stopRecording).toHaveBeenCalledWith("a");
+      expect(tauri.startRecording).not.toHaveBeenCalled();
+    },
+  );
+});
+
 describe("CommandPalette — a11y: empty state & results count", () => {
   it("renders the localized empty-state string (not a hardcoded literal)", () => {
     render(<CommandPalette />);
