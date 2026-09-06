@@ -3,11 +3,12 @@ slug: record-refusals-untranslated
 title: "Відмова почати запис через диск або зниклий потік приходить у тост англійською"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: S
 kind: bug
 target: 0.1.0
 updated: 2026-09-06
+completed: 2026-09-06
 a11y: false
 depends_on: [record-action-lies-while-connecting]
 blocks: []
@@ -29,12 +30,12 @@ notes:
 
 > **Контекст:** хвіст [record-action-lies-while-connecting](p1-record-action-lies-while-connecting.md),
 > відщеплений при його grooming. Рішення нижче; правило, яке вони застосовують, —
-> [ADR 2026-09-06 §5](../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md)
-> і [ADR 2026-08-17 про локалізацію](../decisions/2026-08-17-native-layer-localisation.md).
+> [ADR 2026-09-06 §5](../../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md)
+> і [ADR 2026-08-17 про локалізацію](../../decisions/2026-08-17-native-layer-localisation.md).
 
 ## Опис
 
-Команда `start_recording` у [stream_commands.rs](../../src-tauri/src/commands/stream_commands.rs)
+Команда `start_recording` у [stream_commands.rs](../../../src-tauri/src/commands/stream_commands.rs)
 має три виходи з відмовою, і кожен віддає фронтенду **англійську прозу** через
 `Result<(), String>`; фронтенд кладе її в тост через `String(err)`, і NVDA читає її вголос
 в українському інтерфейсі. Один із трьох — «вже пишеться» — закриває батьківський запис.
@@ -47,8 +48,8 @@ notes:
    `troubleshooting.md` §«На диску закінчується місце»). Досяжна з **шести** місць, а не
    чотирьох: до кнопки рядка, контекстного меню, Enter у списку й палітри додаються два
    виклики `start_all_recordings` — «Записати все» / «Записати виділені» у
-   [StreamsPanel.tsx](../../src/components/streams/StreamsPanel.tsx) і «Записати все» в
-   [CommandPalette.tsx](../../src/components/common/CommandPalette.tsx). Та сама перевірка
+   [StreamsPanel.tsx](../../../src/components/streams/StreamsPanel.tsx) і «Записати все» в
+   [CommandPalette.tsx](../../../src/components/common/CommandPalette.tsx). Та сама перевірка
    стоїть першою в обох командах.
 2. **Потоку немає в активному профілі.** `format!("Stream {} not found", stream_id)` —
    гонка між рендером і кліком: профіль перемкнули, потік видалили. Практично недосяжно,
@@ -74,7 +75,7 @@ notes:
   невдалу перевірку. Поки числа їхали в тост, це було непомітно; щойно тост їх втратить,
   запис у лог стає єдиним місцем, де вони є.
 - Та сама проза «stream not found» живе в `play_stream`
-  ([player_commands.rs](../../src-tauri/src/commands/player_commands.rs)) і проходить
+  ([player_commands.rs](../../../src-tauri/src/commands/player_commands.rs)) і проходить
   `playRefusalMessage` без перекладу. Той самий клас, але плеєр — див. «Межі».
 
 ## Ухвалені рішення
@@ -150,17 +151,17 @@ notes:
 
 - [record-action-lies-while-connecting](p1-record-action-lies-while-connecting.md) —
   батьківський запис: мапер, константи, рішення «пропуск — не помилка»
-- [ADR 2026-09-06](../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md) §5 —
+- [ADR 2026-09-06](../../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md) §5 —
   причина є закритим переліком, деталь лишається в логах
-- [ADR 2026-08-17 про локалізацію](../decisions/2026-08-17-native-layer-localisation.md) —
+- [ADR 2026-08-17 про локалізацію](../../decisions/2026-08-17-native-layer-localisation.md) —
   нативний шар шле ключі, не прозу
-- [ADR 2026-08-31](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) —
+- [ADR 2026-08-31](../../decisions/2026-08-31-visible-carrier-for-announced-facts.md) —
   чому тост без чисел нічого не втрачає: носій у рядку стану
 - `docs/help/uk/troubleshooting.md` §«На диску закінчується місце»,
   `docs/help/uk/recording.md` — поведінка, яку тост має підтверджувати
-- код: [stream_commands.rs](../../src-tauri/src/commands/stream_commands.rs),
-  [errors.rs](../../src-tauri/src/errors.rs),
-  [player_commands.rs](../../src-tauri/src/commands/player_commands.rs) і
-  [playRefusal.ts](../../src/lib/playRefusal.ts) — зразки коду на межі,
-  [StatusBar.tsx](../../src/components/layout/StatusBar.tsx) і
-  [FreeSpaceMetric.tsx](../../src/components/streams/FreeSpaceMetric.tsx) — видимий носій
+- код: [stream_commands.rs](../../../src-tauri/src/commands/stream_commands.rs),
+  [errors.rs](../../../src-tauri/src/errors.rs),
+  [player_commands.rs](../../../src-tauri/src/commands/player_commands.rs) і
+  [playRefusal.ts](../../../src/lib/playRefusal.ts) — зразки коду на межі,
+  [StatusBar.tsx](../../../src/components/layout/StatusBar.tsx) і
+  [FreeSpaceMetric.tsx](../../../src/components/streams/FreeSpaceMetric.tsx) — видимий носій
