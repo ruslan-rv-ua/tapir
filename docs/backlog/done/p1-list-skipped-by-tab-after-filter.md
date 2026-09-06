@@ -3,11 +3,12 @@ slug: list-skipped-by-tab-after-filter
 title: "Після зміни фільтра Tab перестрибує список — у ньому не лишається жодної зупинки"
 priority: P1
 type: planned
-status: ready
+status: done
 effort: L
 kind: bug
 target: 0.1.0
 updated: 2026-09-06
+completed: 2026-09-06
 a11y: true
 depends_on: []
 blocks: []
@@ -32,17 +33,18 @@ notes:
   - "Знайдено NVDA-прогоном error-state-never-reaches-ui (2026-09-06). Вада НЕ від тієї зміни: відтворюється на фільтрі «Записуються», гілку якого той запис не чіпав."
   - "2026-09-06: гіпотезу доведено виміром (нотатка), запис прогрумлено. Правило — в ADR new-result-set-forgets-the-current-stop; словник отримав узагальнену «Вибірку» і «Поточний стоп»."
   - "2026-09-06: реалізовано. Ключ вибірки будує спільний `src/lib/resultSetKey.ts`; `resetCursor` знято. Дорогою знайдено й полагоджено сусідню ваду: `restoreFocus` зводив `pendingFocusRef` навіть після власного `el.focus()`, і в разі bail-out React той запит смикав фокус назад у список на наступному комміті. Лишився NVDA-прогін."
+  - "2026-09-06: NVDA-прогін пройдено, розбіжностей немає — запис прийнято."
   - "2026-09-06, розбіжність із ADR §5 (одне речення в дужках). ADR передбачав: якщо ключ зміниться, поки фокус у списку, і рядок під фокусом зникне — «лікує наявна реконсиляція», тобто кламп за індексом. Реалізовано інакше: перший рядок нової вибірки бере і стоп, і фокус. Причина — коли спрацьовують обидва правила, кламп і §1 дають різні рядки, а §1 («нова вибірка починається спочатку») тут головніше; фокус на `<body>` не лишається в жодному разі. Стан сьогодні недосяжний (жоден шлях не міняє критерій, не вивівши фокус із списку), тож у NVDA-чеклісті його немає; сторож — тест хука «takes the focus with it…»."
 ---
 
 # Після зміни фільтра Tab перестрибує список — у ньому не лишається жодної зупинки
 
 > **Контекст:** знахідка NVDA-прогону
-> [error-state-never-reaches-ui](done/p1-error-state-never-reaches-ui.md). Вада від того
+> [error-state-never-reaches-ui](p1-error-state-never-reaches-ui.md). Вада від того
 > запису не залежить і в ньому не лікується — вона в спільному хуку списків.
 > Терміни цього запису — «вибірка», «нова вибірка», «дрейф вибірки», «поточний стоп» —
-> визначені в [CONTEXT.md](../../CONTEXT.md); правило, яке тут реалізується, — в ADR
-> [new-result-set-forgets-the-current-stop](../decisions/2026-09-06-new-result-set-forgets-the-current-stop.md).
+> визначені в [CONTEXT.md](../../../CONTEXT.md); правило, яке тут реалізується, — в ADR
+> [new-result-set-forgets-the-current-stop](../../decisions/2026-09-06-new-result-set-forgets-the-current-stop.md).
 
 ## Опис
 
@@ -65,7 +67,7 @@ notes:
 ## Причина (доведена 2026-09-06)
 
 Гіпотеза запису підтвердилась дослівно — вимір у нотатці
-[list-skipped-by-tab-after-filter](../notes/list-skipped-by-tab-after-filter.md) §1.
+[list-skipped-by-tab-after-filter](../../notes/list-skipped-by-tab-after-filter.md) §1.
 `useCompositeList` тримає `activeItemId` рядка, якого у вибірці вже немає; пере-сів на
 перший рядок відступає, бо `userNavigatedRef` каже, що людина вже ходила списком;
 жива реконсиляція відступає, бо фокус живий на елементі поза списком. Список лишається
@@ -155,11 +157,11 @@ notes:
 - [x] Довідка: `streams.md` і `songs.md` (uk + en) — речення про перший рядок після зміни
       критерію, тим самим формулюванням, що в `browser.md`; стелі слів дотримано
 - [x] `pnpm test`, `pnpm typecheck`, `pnpm vite:build` — без помилок
-- [ ] NVDA-прогін: після кожного з трьох чіпів і після зміни сортування `Tab` із тулбара
+- [x] NVDA-прогін: після кожного з трьох чіпів і після зміни сортування `Tab` із тулбара
       приводить у список і NVDA називає **перший** рядок; `F6` — той самий рядок; потік,
       що випав із «Записуються» сам, поки фокус на чіпі, — `Tab` веде на сусіда; у Записах
-      після зміни запиту `F6` веде на перший рядок —
-      чекліст [nvda-list-skipped-by-tab-after-filter](../testing/nvda-list-skipped-by-tab-after-filter.md)
+      після зміни запиту `F6` веде на перший рядок — пройдено 2026-09-06, десять сценаріїв,
+      розбіжностей немає
 
 ## Поза межами
 
@@ -169,13 +171,12 @@ notes:
 
 ## Документи
 
-- [ADR new-result-set-forgets-the-current-stop](../decisions/2026-09-06-new-result-set-forgets-the-current-stop.md) — правило, відхилені варіанти, коли переглянути
-- [Дослідницька нотатка 2026-09-06](../notes/list-skipped-by-tab-after-filter.md) — виміри, першоджерела, три форми фікса з ціною
-- [ADR 2026-09-05](../decisions/2026-09-05-focus-repair-asks-liveness-not-history.md) — умова спрацювання сторожа (коли), на відміну від цього ADR (куди)
-- [error-state-never-reaches-ui](done/p1-error-state-never-reaches-ui.md) — прогін, що це знайшов
-- [CONTEXT.md](../../CONTEXT.md) — «Вибірка», «Поточний стоп»
-- [Чекліст NVDA-прогону](../testing/nvda-list-skipped-by-tab-after-filter.md) — те, що лишилось для приймання
-- код: [useCompositeList.ts](../../src/hooks/useCompositeList.ts),
-  [CompositeList.tsx](../../src/components/common/composite-list/CompositeList.tsx),
-  [resultSetKey.ts](../../src/lib/resultSetKey.ts),
-  [StreamList.tsx](../../src/components/streams/StreamList.tsx)
+- [ADR new-result-set-forgets-the-current-stop](../../decisions/2026-09-06-new-result-set-forgets-the-current-stop.md) — правило, відхилені варіанти, коли переглянути
+- [Дослідницька нотатка 2026-09-06](../../notes/list-skipped-by-tab-after-filter.md) — виміри, першоджерела, три форми фікса з ціною
+- [ADR 2026-09-05](../../decisions/2026-09-05-focus-repair-asks-liveness-not-history.md) — умова спрацювання сторожа (коли), на відміну від цього ADR (куди)
+- [error-state-never-reaches-ui](p1-error-state-never-reaches-ui.md) — прогін, що це знайшов
+- [CONTEXT.md](../../../CONTEXT.md) — «Вибірка», «Поточний стоп»
+- код: [useCompositeList.ts](../../../src/hooks/useCompositeList.ts),
+  [CompositeList.tsx](../../../src/components/common/composite-list/CompositeList.tsx),
+  [resultSetKey.ts](../../../src/lib/resultSetKey.ts),
+  [StreamList.tsx](../../../src/components/streams/StreamList.tsx)

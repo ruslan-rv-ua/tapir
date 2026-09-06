@@ -4,7 +4,7 @@
 - **Дата:** 2026-09-06
 - **Тип:** ADR — правило, куди стає поточний стоп списку, коли його вибірка змінилася, і
   хто за це відповідає
-- **Контекст:** беклог — [list-skipped-by-tab-after-filter](../backlog/p1-list-skipped-by-tab-after-filter.md);
+- **Контекст:** беклог — [list-skipped-by-tab-after-filter](../backlog/done/p1-list-skipped-by-tab-after-filter.md);
   першоджерела й виміри — нотатка [list-skipped-by-tab-after-filter](../notes/list-skipped-by-tab-after-filter.md);
   **умова спрацювання** сторожа фокуса — ADR [focus-repair-asks-liveness-not-history](2026-09-05-focus-repair-asks-liveness-not-history.md)
   (той — про те, *коли* лагодити; цей — про те, *куди* ставити);

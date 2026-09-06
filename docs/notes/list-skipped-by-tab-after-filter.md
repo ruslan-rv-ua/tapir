@@ -1,7 +1,7 @@
 # Tab перестрибує список після фільтра: де губиться роving-зупинка і хто її має повертати
 
 > Дослідницька нотатка до запису беклогу
-> [p1-list-skipped-by-tab-after-filter](../backlog/p1-list-skipped-by-tab-after-filter.md).
+> [p1-list-skipped-by-tab-after-filter](../backlog/done/p1-list-skipped-by-tab-after-filter.md).
 > Дата: 2026-09-06. Код Tapir читано на `a74bd86`.
 > React 19.2.5, react-dom 19.2.5, react-aria-components 1.16.0, у її дереві —
 > @react-stately/list 3.13.4, @react-aria/selection 3.27.2, @react-aria/focus 3.21.5;

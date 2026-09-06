@@ -137,7 +137,7 @@ Grooming 2026-09-06. Обґрунтування, відхилені варіан
   [reconnect-counter-not-live](../p2-reconnect-counter-not-live.md); відро «Потребує
   уваги» зробило цю ваду буденною, і в записі це дописано як аргумент за перегляд `target`.
 - Після зміни фільтра `Tab` перестрибує непорожній список —
-  [list-skipped-by-tab-after-filter](../p1-list-skipped-by-tab-after-filter.md); вада не
+  [list-skipped-by-tab-after-filter](p1-list-skipped-by-tab-after-filter.md); вада не
   від цієї зміни, живе в спільному `useCompositeList`.
 - Кнопка рядка пропонує почати вже активний запис і відповідає англійською —
   [record-action-lies-while-connecting](../p1-record-action-lies-while-connecting.md).
