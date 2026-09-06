@@ -100,6 +100,9 @@ export const PatternList = forwardRef<PatternListHandle, Props>(
           ref={ref}
           imperativeExtra={imperativeExtra}
           zoneId="wishlist-list"
+          // No criteria to change: this list is never replaced under the person,
+          // only added to and taken from. See CompositeList's resultSetKey.
+          resultSetKey={null}
           ariaLabel={ariaLabel}
           items={listItems}
           className="flex-1 overflow-auto"

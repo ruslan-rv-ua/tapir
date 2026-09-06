@@ -148,6 +148,23 @@ export interface TrailingStop {
 
 interface UseCompositeListOptions<T extends CompositeListItem> {
   items: T[];
+  /**
+   * Identity of the RESULT SET on screen — the owning screen's criteria spelled
+   * as one string, `null` for a list that has no criteria to change.
+   *
+   * A CHANGED key means the person replaced the set (another filter chip, query,
+   * station, sort order): the current stop goes back to the first row, even if
+   * the row it sat on survived — the old result set ended, and a row present in
+   * both is a coincidence, not an identity. The SAME key with different `items`
+   * is DRIFT — the data moved on its own — and the stop stays where it is, or
+   * clamps to the neighbour by index when its row is gone.
+   *
+   * Required on purpose: forgetting to say what replaces the set used to be a
+   * spoken contract that only one screen of three remembered, and a list left
+   * with no stop is skipped by a native Tab altogether. ADR 2026-09-06,
+   * docs/decisions/2026-09-06-new-result-set-forgets-the-current-stop.md.
+   */
+  resultSetKey: string | null;
   /** Present ⇒ the list ends with one trailing action stop after the last row. */
   trailingStop?: TrailingStop;
   onTabOut: (forward: boolean) => void;
@@ -374,6 +391,7 @@ function yieldsToNativeControl(e: KeyStroke): boolean {
  */
 export function useCompositeList<T extends CompositeListItem>({
   items,
+  resultSetKey,
   trailingStop,
   onTabOut,
   onAction,
@@ -393,6 +411,12 @@ export function useCompositeList<T extends CompositeListItem>({
   // below, which every reader uses instead of the raw state.
   const [onTrailing, setOnTrailing] = useState(false);
   const cursorOnTrailing = onTrailing && trailingStop != null;
+
+  // `activeItemId` as the effects below must read it. A layout effect can move
+  // the stop before the passive drift effect gets its turn, and that effect's
+  // own closure would still be holding the row from the set that is gone.
+  const activeItemIdRef = useRef(activeItemId);
+  activeItemIdRef.current = activeItemId;
 
   const memoryRef = useRef<FocusMemory>({
     itemId: items[0]?.id ?? '',
@@ -476,6 +500,9 @@ export function useCompositeList<T extends CompositeListItem>({
   }, [activeItemId, activeSegment, items]);
 
   // Keep the active row pinned to the CURRENT first row until the user navigates.
+  // Also how a new result set finishes what the effect above started: that one
+  // moves the stop onto the rows still on screen, this one follows it onto the
+  // first row of the set that arrives.
   // The list can reorder after mount — most importantly when the persisted sort
   // order (e.g. "added", newest-first) arrives after the data has already loaded
   // and rendered under the default order. The mount-time seed (items[0] at first
@@ -493,24 +520,64 @@ export function useCompositeList<T extends CompositeListItem>({
     setActiveSegment('summary');
   }, [items, activeItemId]);
 
-  // Live reconciliation: active item removed while list has/had focus
+  // A NEW RESULT SET: the screen changed its criteria, so the remembered row
+  // belongs to a set that no longer exists — the current stop goes back to the
+  // first row (ADR 2026-09-06 §1). Not a guess from `items`: a different array
+  // arrives both when the person re-filters and when the data drifts on its own,
+  // and only the screen knows which of the two happened.
+  //
+  // A LAYOUT effect, and it reads `itemsRef` rather than waiting for the new
+  // rows: the criteria change first and the rows follow — half a second later
+  // for a debounced text search — and the roving tabIndex=0 stop is exactly
+  // where a native Tab lands in that window.
+  const resultSetKeyRef = useRef(resultSetKey);
+  useLayoutEffect(() => {
+    if (resultSetKeyRef.current === resultSetKey) return;
+    resultSetKeyRef.current = resultSetKey;
+    // ADR §5: the rule is about the NEXT entry. While the list holds focus the
+    // current stop IS the focus, and nothing may move it out from under it.
+    if (listRef.current?.contains(document.activeElement)) return;
+    userNavigatedRef.current = false;
+    setOnTrailing(false);
+    const rows = itemsRef.current;
+    // An empty new result set has no row to be the way in — correct, and why
+    // the empty state carries its own focusable anchor (accessibility.md §3.1).
+    if (rows.length === 0) return;
+    setActiveItemId(rows[0].id);
+    setActiveSegment('summary');
+    activeItemIdRef.current = rows[0].id;
+    // `memoryRef` is deliberately left alone: with userNavigatedRef false nothing
+    // reads it back as a position, while a Shift+click still anchors its range on
+    // `memoryRef.current.itemId` (see onClick) — blanking it would collapse that
+    // span to the clicked row.
+  }, [resultSetKey]);
+
+  // DRIFT: the active row left the result set without the criteria changing.
+  //
+  // Two duties, deliberately separated (ADR 2026-09-06 §3). The current stop
+  // ALWAYS re-seats — a non-empty list with no tabIndex=0 stop is omitted from
+  // the sequential focus order, so a native Tab walks straight past it. Focus is
+  // only recovered when it was the vanished row that held it; a person who has
+  // moved to another live control keeps it.
   useEffect(() => {
-    if (!activeItemId) return;
-    const exists = items.some((it) => it.id === activeItemId);
+    const active = activeItemIdRef.current;
+    if (!active) return;
+    const exists = items.some((it) => it.id === active);
     if (exists) return;
 
     const ae = document.activeElement;
     const focusInList = listRef.current?.contains(ae) ?? false;
-    // The user deliberately moved to another (still-connected) element outside
-    // the list — don't steal their focus back.
-    if (!focusInList && ae && ae !== document.body && ae.isConnected) return;
-    // The list never held focus (e.g. async data load on mount) — don't grab it.
-    // When the active row is removed, focus falls to <body> or a detached node,
-    // which are both treated as recoverable here.
-    if (!focusInList && !hasFocusRef.current) return;
+    const focusLivesOutside =
+      !focusInList && !!ae && ae !== document.body && ae.isConnected;
+    // The list never held focus (e.g. async data load on mount) and focus is
+    // nowhere in particular — nothing to recover, and the re-seed effect above
+    // owns the stop in that state.
+    if (!focusInList && !focusLivesOutside && !hasFocusRef.current) return;
 
     if (items.length === 0) {
-      onEmptyRef.current?.();
+      // No row to seat the stop on. Handing the screen its empty state is a
+      // FOCUS duty, so it belongs to the same half as recovering focus.
+      if (!focusLivesOutside) onEmptyRef.current?.();
       return;
     }
     const targetIdx = Math.max(
@@ -520,8 +587,13 @@ export function useCompositeList<T extends CompositeListItem>({
     const target = items[targetIdx];
     setActiveItemId(target.id);
     setActiveSegment('summary');
-    pendingFocusRef.current = { itemId: target.id, segment: 'summary' };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    activeItemIdRef.current = target.id;
+    if (!focusLivesOutside) {
+      pendingFocusRef.current = { itemId: target.id, segment: 'summary' };
+    }
+    // `[items]` really is the whole dependency list now: everything else this
+    // reads is a ref, `activeItemId` included — which is what lets it run once
+    // per change of the rows instead of once per move of the cursor.
   }, [items]);
 
   function resolveSegments(item: T): SegmentKind[] {
@@ -1024,42 +1096,6 @@ export function useCompositeList<T extends CompositeListItem>({
     [items],
   );
 
-  /**
-   * Forget the remembered cursor position: the next entry (Tab/F6) lands on the
-   * first row, and the re-seed effect re-anchors the roving tabIndex=0 there as
-   * soon as the new rows arrive.
-   *
-   * For the owning screen to call when a NEW selection REPLACES the old one —
-   * a changed query or filter. The remembered row then belongs to a different
-   * result set, so "return where you were" means nothing: either the row
-   * survived by accident (entry lands mid-list, and it is unclear whether the
-   * filter did anything) or it did not (the clamp by stale index is just as
-   * arbitrary). APG says the same for listbox: entry goes to the selected item,
-   * otherwise the FIRST one; position memory is for unchanged content.
-   * Appending to the SAME selection ("Load more") must NOT call this.
-   *
-   * Focus is not moved — only where the next entry lands. And while the list
-   * currently holds focus this is a no-op: never yank a live cursor.
-   *
-   * `memoryRef` is deliberately left alone: with userNavigatedRef false nothing
-   * reads it back as a position, while a Shift+click still anchors its range on
-   * `memoryRef.current.itemId` (see onClick) — blanking it would collapse that
-   * span to the clicked row.
-   */
-  const resetCursor = useCallback(() => {
-    if (listRef.current?.contains(document.activeElement)) return;
-    userNavigatedRef.current = false;
-    setOnTrailing(false);
-    // Move the roving tabIndex=0 stop NOW rather than waiting for the re-seed
-    // effect: a native Tab into the list goes straight to that stop, and between
-    // a changed query and the results landing there is a window — half a second
-    // for a debounced text search — in which it would still be the remembered row.
-    if (items.length > 0) {
-      setActiveItemId(items[0].id);
-      setActiveSegment('summary');
-    }
-  }, [items]);
-
   /** isFocused(itemId, segment) → true iff this element should have tabIndex=0 */
   const isFocused = useCallback(
     (itemId: string, segment: SegmentKind): boolean =>
@@ -1111,14 +1147,18 @@ export function useCompositeList<T extends CompositeListItem>({
       setActiveItemId(target.id);
       setActiveSegment(targetSeg);
       if (listRef.current) listRef.current.scrollTop = mem.scrollTop;
-      pendingFocusRef.current = { itemId: target.id, segment: targetSeg };
       // Focus immediately: React bails out of re-render when state values haven't changed
       // (user returns to the same position), so useLayoutEffect would never fire in that case.
       // tabIndex=-1 elements are still focusable programmatically.
       const el = listRef.current?.querySelector<HTMLElement>(
         `[data-item-id="${CSS.escape(target.id)}"][data-segment="${targetSeg}"]`,
       );
-      el?.focus();
+      // The queue is the FALLBACK, not a belt: arming it as well would leave it
+      // armed exactly in the bail-out case this focus call exists for, and the
+      // next commit — for any reason at all — would then pull focus back into
+      // the list from wherever the person had since moved it.
+      if (el) el.focus();
+      else pendingFocusRef.current = { itemId: target.id, segment: targetSeg };
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [items],
@@ -1127,6 +1167,6 @@ export function useCompositeList<T extends CompositeListItem>({
   return {
     listRef, emptyRef, trailingRef, onKeyDownCapture, onContextMenu, onClick,
     isFocused, isTrailingFocused: cursorOnTrailing, activateTrailing,
-    restoreFocus, resetCursor, focusItem, activeItemId, activeSegment,
+    restoreFocus, focusItem, activeItemId, activeSegment,
   };
 }

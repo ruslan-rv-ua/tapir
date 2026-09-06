@@ -4,7 +4,7 @@ import { useStore } from "@nanostores/react";
 import {
   $filteredSongs, $songs, $songsLoading, $songsError,
   loadSongs, replaceSongByPath, removeSongByPath,
-  $songsSelection, $songsQuery, $songsStation,
+  $songsSelection, $songsQuery, $songsStation, $songsSort,
 } from "../../stores/songs";
 import { replaceSelection } from "../../stores/selection";
 import { $playerStatus } from "../../stores/player";
@@ -25,6 +25,7 @@ import { useTauriEvent } from "../../hooks/useTauriEvent";
 import { addToast } from "../../stores/toasts";
 import { shellOpenErrorMessage } from "../../lib/shellOpenError";
 import { plural } from "../../lib/plural";
+import { resultSetKey } from "../../lib/resultSetKey";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import * as m from "../../i18n/paraglide/messages";
 
@@ -44,6 +45,14 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
   const selection = useStore($songsSelection);
   const query = useStore($songsQuery);
   const station = useStore($songsStation);
+  const sort = useStore($songsSort);
+
+  // What makes the visible list the set it is: the search text, the station and
+  // the order. Changing any of the three REPLACES the set, so the list forgets
+  // its current stop and the next entry starts at the first row; a file that
+  // appears or disappears in the recordings folder changes the rows without
+  // changing this, and the stop stays where the person left it (ADR 2026-09-06).
+  const listResultSetKey = resultSetKey([query, station, sort]);
   const selCount = selection.size;
   const visibleIds = useMemo(() => songs.map((s) => s.path), [songs]);
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selection.has(id));
@@ -229,6 +238,7 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
             onEmpty={() => filterRef.current?.focus("forward")}
             onPlay={handlePlay}
             onAction={handleMenuAction}
+            resultSetKey={listResultSetKey}
           />
         )}
       </ListCard>

@@ -35,7 +35,7 @@ function renderList() {
   const onEmpty = vi.fn();
   const onPlay = vi.fn();
   const utils = render(
-    <SongsList ref={ref} exitZone={vi.fn()} onEmpty={onEmpty} onPlay={onPlay} onAction={onAction} />,
+    <SongsList resultSetKey={null} ref={ref} exitZone={vi.fn()} onEmpty={onEmpty} onPlay={onPlay} onAction={onAction} />,
   );
   return { ref, onAction, onEmpty, onPlay, ...utils };
 }

@@ -1023,3 +1023,105 @@ describe("StreamsPanel — the «Потребує уваги» bucket", () => {
     expect(rowOrder(document.body)).toEqual(["a", "b"]);
   });
 });
+
+/* ------------------------------------------------------------------ */
+/* A new result set forgets the current stop — ADR 2026-09-06          */
+/* The screen's half of the rule: what its result-set key is made of.  */
+/* ------------------------------------------------------------------ */
+
+describe("StreamsPanel — the list after its result set is replaced", () => {
+  /** Every stop a native Tab out of the toolbar could land on, as "id/segment". */
+  const stops = (container: HTMLElement) =>
+    Array.from(container.querySelectorAll<HTMLElement>('[data-item-id][tabindex="0"]')).map(
+      (el) => `${el.dataset.itemId}/${el.dataset.segment}`,
+    );
+
+  /**
+   * The state the NVDA run found the bug in: the person has walked the list, so
+   * the cursor is on a row of their choosing, and focus is now parked on a chip.
+   */
+  function walkListThenFocus(container: HTMLElement, control: HTMLElement) {
+    const rows = container.querySelectorAll<HTMLElement>('li[data-segment="summary"]');
+    act(() => rows[0].focus());
+    fireEvent.keyDown(rows[0], { key: "ArrowDown" }); // deliberate move: row 2
+    act(() => control.focus());
+  }
+
+  beforeEach(() => {
+    setSort("name");
+    $streams.set([mkStream("a", "Alpha"), mkStream("b", "Beta"), mkStream("c", "Gamma")]);
+    $statuses.set({ a: mkStatus("a", "recording") });
+  });
+
+  it("leaves the list one stop, on its first row, when a chip replaces the set", () => {
+    // The reported defect: the cursor stayed on a row the filter had hidden, the
+    // list was left with no tabIndex=0 stop, and a native Tab out of the toolbar
+    // walked past a list that plainly had a row in it.
+    const { container } = renderPanel();
+    const { chips } = chipButtons(container);
+    walkListThenFocus(container, chips[1]); // "Записуються"
+
+    act(() => { fireEvent.click(chips[1]); });
+
+    expect(rowOrder(container)).toEqual(["a"]);
+    expect(stops(container)).toEqual(["a/summary"]);
+    expect(document.activeElement).toBe(chips[1]); // and focus stayed on the chip
+  });
+
+  it("starts over on the first row even when the cursor's row survived the chip", () => {
+    $statuses.set({ a: mkStatus("a", "recording"), b: mkStatus("b", "recording") });
+    const { container } = renderPanel();
+    const { chips } = chipButtons(container);
+    walkListThenFocus(container, chips[1]); // cursor on "b", which is about to survive
+
+    act(() => { fireEvent.click(chips[1]); });
+
+    expect(rowOrder(container)).toEqual(["a", "b"]);
+    expect(stops(container)).toEqual(["a/summary"]);
+  });
+
+  it("counts the sort order as a criterion — re-sorting starts the list over", () => {
+    const { container } = renderPanel();
+    const sorts = sortButtons(container);
+    walkListThenFocus(container, sorts[1]); // "За часом додавання"
+
+    act(() => { fireEvent.click(sorts[1]); });
+
+    expect(stops(container)).toEqual([`${rowOrder(container)[0]}/summary`]);
+  });
+
+  it("counts the profile as a criterion — the same rows under another profile start over", () => {
+    // Nothing else about the screen moves, so this fails for one reason only:
+    // the key forgot to name the profile whose streams these are.
+    const { container } = renderPanel();
+    const { chips } = chipButtons(container);
+    walkListThenFocus(container, chips[0]);
+    expect(stops(container)).toEqual(["b/summary"]);
+
+    act(() => {
+      $settings.set({ language: "uk", activeProfile: "Jazz" } as GlobalSettings);
+    });
+
+    expect(stops(container)).toEqual(["a/summary"]);
+  });
+
+  it("moves the stop to the neighbour, not the first row, when a stream leaves the filter on its own", () => {
+    // Drift, not a new result set: the person asked for nothing, so the list
+    // keeps its place in the order instead of starting over (ADR §1).
+    $statuses.set({
+      a: mkStatus("a", "recording"),
+      b: mkStatus("b", "recording"),
+      c: mkStatus("c", "recording"),
+    });
+    $streamFilter.set("recording");
+    const { container } = renderPanel();
+    const { chips } = chipButtons(container);
+    walkListThenFocus(container, chips[1]); // cursor on "b", index 1
+
+    act(() => { $statuses.setKey("b", mkStatus("b", "idle")); });
+
+    expect(rowOrder(container)).toEqual(["a", "c"]);
+    expect(stops(container)).toEqual(["c/summary"]); // clamp(1) over ["a","c"]
+    expect(document.activeElement).toBe(chips[1]);
+  });
+});

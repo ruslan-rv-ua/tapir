@@ -26,10 +26,17 @@ interface Props {
   onPlay: (path: string) => void;
   /** Single-row menu actions, incl. the single-delete path (Explorer model). */
   onAction: (path: string, action: SongAction) => void;
+  /**
+   * Identity of the result set $filteredSongs currently is. The filter bar lives
+   * on the panel, so only the panel can tell a REPLACED set (another query,
+   * station or order) from one that drifted. Threaded straight through to
+   * CompositeList, which documents the rule.
+   */
+  resultSetKey: string | null;
 }
 
 export const SongsList = forwardRef<SongsListHandle, Props>(
-  ({ exitZone, onEmpty, onPlay, onAction }, ref) => {
+  ({ exitZone, onEmpty, onPlay, onAction, resultSetKey }, ref) => {
     const songs = useStore($filteredSongs);
     const allSongs = useStore($songs);
     const selectedSet = useStore($songsSelection);
@@ -109,6 +116,7 @@ export const SongsList = forwardRef<SongsListHandle, Props>(
           zoneId="songs-list"
           ariaLabel={m.songs_zone_list()}
           items={items}
+          resultSetKey={resultSetKey}
           className="flex-1 overflow-y-auto overflow-x-hidden"
           onTabOut={exitZone}
           onEmpty={onEmpty}

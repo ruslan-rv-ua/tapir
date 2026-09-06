@@ -21,6 +21,8 @@ import {
 
 interface HarnessProps {
   items: CompositeListItem[];
+  /** Identity of the result set on screen. Changing it = the panel replaced it. */
+  resultSetKey?: string | null;
   onTabOut?: (forward: boolean) => void;
   onAction?: (
     type: ActionType,
@@ -38,6 +40,7 @@ interface HarnessProps {
 
 function Harness({
   items,
+  resultSetKey = null,
   onTabOut = () => {},
   onAction = () => {},
   onEmpty,
@@ -58,9 +61,10 @@ function Harness({
 
   const {
     listRef, trailingRef, onKeyDownCapture, onContextMenu, onClick,
-    isFocused, isTrailingFocused, activateTrailing, restoreFocus, resetCursor,
+    isFocused, isTrailingFocused, activateTrailing, restoreFocus,
   } = useCompositeList({
     items,
+    resultSetKey,
     trailingStop,
     onTabOut,
     onAction,
@@ -76,9 +80,6 @@ function Harness({
       <button data-testid="outside">outside</button>
       <button data-testid="restore" onClick={() => restoreFocus("forward")}>
         restore
-      </button>
-      <button data-testid="reset-cursor" onClick={() => resetCursor()}>
-        reset
       </button>
       <ul ref={listRef} role="list" data-testid="list" onKeyDownCapture={onKeyDownCapture} onContextMenu={onContextMenu} onClick={onClick}>
         {items.map((item) => (
@@ -144,6 +145,16 @@ const list = () => screen.getByTestId("list");
 
 const stop = (id: string, seg: string) =>
   list().querySelector<HTMLElement>(`[data-item-id="${id}"][data-segment="${seg}"]`)!;
+
+/**
+ * Every focus stop the list currently offers a native Tab, as "id/segment".
+ * The invariant these tests guard is "exactly one, and it is in the result set",
+ * so they assert over the whole set rather than probing one element.
+ */
+const stops = () =>
+  [...list().querySelectorAll<HTMLElement>('[data-item-id][tabindex="0"]')].map(
+    (el) => `${el.dataset.itemId}/${el.dataset.segment}`,
+  );
 
 /** Fire a keydown on the currently focused list element (falls back to the ul). */
 function press(key: string, init: KeyboardEventInit = {}) {
@@ -753,63 +764,108 @@ describe("restoreFocus (zone re-entry)", () => {
   });
 });
 
-describe("resetCursor (the result set was replaced)", () => {
-  it("forgets the remembered row — the next entry lands on the first one", () => {
-    render(<Harness items={makeItems()} />);
+/* ------------------------------------------------------------------ */
+/* A NEW RESULT SET vs. DRIFT — ADR 2026-09-06                        */
+/* docs/decisions/2026-09-06-new-result-set-forgets-the-current-stop.md */
+/* ------------------------------------------------------------------ */
+
+const RECORDING: CompositeListItem[] = [{ id: "b", segments: ["track"] }];
+
+describe("a new result set (the key changed) forgets the current stop", () => {
+  it("seats the only stop on the first row when the active row is not in the new set", () => {
+    // The reported bug, in the state that produced it: the person has walked the
+    // list, focus is parked on a LIVE control outside it (a filter chip), and the
+    // new result set does not contain the row the cursor sat on. A list with no
+    // tabIndex=0 stop is skipped by a native Tab entirely.
+    const { rerender } = render(<Harness items={makeItems()} resultSetKey="all" />);
     focusStart("a");
-    press("ArrowDown"); // b/summary — a deliberate position
-    press("ArrowRight"); // b/track
-    expectActive("b", "track");
+    press("ArrowDown"); // deliberate move: active = b
+    act(() => screen.getByTestId("outside").focus());
+
+    rerender(<Harness items={[{ id: "z", segments: ["track"] }]} resultSetKey="recording" />);
+
+    expect(stops()).toEqual(["z/summary"]);
+    expect(document.activeElement).toBe(screen.getByTestId("outside"));
+  });
+
+  it("forgets a row that SURVIVED the new set — the stop still goes to the first row", () => {
+    // A row present in both sets is a coincidence, not an identity: entry
+    // mid-list would not say whether the filter did anything (ADR §1).
+    const { rerender } = render(<Harness items={makeItems()} resultSetKey="all" />);
+    focusStart("a");
+    press("ArrowDown"); // active = b
+    act(() => screen.getByTestId("outside").focus());
+
+    // b survives the new set, but NOT as its first row.
+    rerender(
+      <Harness
+        items={[{ id: "z", segments: ["track"] }, { id: "b", segments: ["track"] }]}
+        resultSetKey="recording"
+      />,
+    );
+
+    expect(stops()).toEqual(["z/summary"]);
+  });
+
+  it("keeps the answer the same through all three ways in", () => {
+    // Native Tab reads the roving tabIndex=0 stop; F6 goes through restoreFocus;
+    // returning to the previous chip is a third new result set. One list, one
+    // answer (ADR §6).
+    const { rerender } = render(<Harness items={makeItems()} resultSetKey="all" />);
+    focusStart("a");
+    press("End"); // active = c
+    act(() => screen.getByTestId("outside").focus());
+
+    rerender(<Harness items={RECORDING} resultSetKey="recording" />);
+    expect(stops()).toEqual(["b/summary"]); // native Tab target
+
+    act(() => screen.getByTestId("restore").click()); // F6 entry
+    expectActive("b", "summary");
 
     act(() => screen.getByTestId("outside").focus());
-    act(() => screen.getByTestId("reset-cursor").click());
-
+    rerender(<Harness items={makeItems()} resultSetKey="all" />); // back to "All"
+    expect(stops()).toEqual(["a/summary"]); // the FIRST row, not the old one
     act(() => screen.getByTestId("restore").click());
     expectActive("a", "summary");
   });
 
-  it("re-anchors the roving tabIndex=0 to the first row of the NEW selection", () => {
-    // The tabIndex=0 stop is where a NATIVE Tab lands (it never goes through
-    // restoreFocus), so the re-seed must follow the reset once the new rows arrive.
-    const { rerender } = render(<Harness items={makeItems()} />);
+  it("moves the stop at once, before the new rows arrive", () => {
+    // The criteria change first and the rows follow — half a second later for a
+    // debounced text search. A native Tab in that window must not land on a row
+    // from the set that is already gone.
+    const { rerender } = render(<Harness items={makeItems()} resultSetKey="q:" />);
     focusStart("a");
-    press("End"); // c/summary
+    press("End"); // active = c
     act(() => screen.getByTestId("outside").focus());
+    expect(stops()).toEqual(["c/summary"]);
 
-    act(() => screen.getByTestId("reset-cursor").click());
-    const next: CompositeListItem[] = [
-      { id: "x", segments: ["track"] },
-      { id: "y", segments: ["track"] },
-    ];
-    rerender(<Harness items={next} />);
+    rerender(<Harness items={makeItems()} resultSetKey="q:ja" />); // same rows, new criteria
 
-    expect(stop("x", "summary").tabIndex).toBe(0);
-    expect(stop("y", "summary").tabIndex).toBe(-1);
+    expect(stops()).toEqual(["a/summary"]);
   });
 
-  it("does NOT move focus — a reset only changes where the NEXT entry lands", () => {
-    render(<Harness items={makeItems()} />);
+  it("does not move focus", () => {
+    const { rerender } = render(<Harness items={makeItems()} resultSetKey="all" />);
     focusStart("a");
     press("ArrowDown");
     act(() => screen.getByTestId("outside").focus());
 
-    act(() => screen.getByTestId("reset-cursor").click());
+    rerender(<Harness items={RECORDING} resultSetKey="recording" />);
+
     expect(document.activeElement).toBe(screen.getByTestId("outside"));
   });
 
-  it("moves the roving tabIndex=0 stop at once, before the new rows arrive", () => {
-    // A native Tab goes straight to the tabIndex=0 stop. Between a changed query
-    // and its results there is a window (half a second for a debounced search) in
-    // which the old rows are still on screen — the stop must already have moved.
-    render(<Harness items={makeItems()} />);
+  it("is a no-op while the list holds focus — never yank a live cursor", () => {
+    // ADR §5: the rule is about the NEXT entry. While the list has focus the
+    // current stop IS the focus.
+    const { rerender } = render(<Harness items={makeItems()} resultSetKey="all" />);
     focusStart("a");
-    press("End"); // c/summary
-    act(() => screen.getByTestId("outside").focus());
-    expect(stop("c", "summary").tabIndex).toBe(0);
+    press("ArrowDown"); // active = b, focus inside the list
 
-    act(() => screen.getByTestId("reset-cursor").click());
-    expect(stop("a", "summary").tabIndex).toBe(0);
-    expect(stop("c", "summary").tabIndex).toBe(-1);
+    rerender(<Harness items={makeItems()} resultSetKey="recording" />);
+
+    expectActive("b", "summary");
+    expect(stops()).toEqual(["b/summary"]);
   });
 
   it("leaves the range anchor usable — Shift+Click still spans, it does not collapse", () => {
@@ -817,27 +873,30 @@ describe("resetCursor (the result set was replaced)", () => {
     // that blanked the focus memory would turn the next Shift+Click into a
     // one-row selection.
     const selectionRef = { current: new Set<string>() };
-    render(<Harness items={makeItems()} selectionRef={selectionRef} />);
+    const { rerender } = render(
+      <Harness items={makeItems()} resultSetKey="all" selectionRef={selectionRef} />,
+    );
     focusStart("a");
     press("ArrowDown"); // b/summary
     act(() => screen.getByTestId("outside").focus());
-    act(() => screen.getByTestId("reset-cursor").click());
+    rerender(<Harness items={makeItems()} resultSetKey="name" selectionRef={selectionRef} />);
 
     // The cursor now sits on the first row, so the span runs from there.
     clickRow("c", { shiftKey: true });
     expect([...selectionRef.current].sort()).toEqual(["a", "b", "c"]);
   });
 
-  it("is a no-op while the list holds focus — never yank a live cursor", () => {
-    render(<Harness items={makeItems()} />);
+  it("leaves an EMPTY new result set with no stop at all", () => {
+    // Correct, and the reason the empty state carries its own focusable anchor
+    // (accessibility.md §3.1): there is no row to be the way in.
+    const { rerender } = render(<Harness items={makeItems()} resultSetKey="all" />);
     focusStart("a");
-    press("ArrowDown"); // b/summary, focus still inside the list
-    act(() => screen.getByTestId("reset-cursor").click());
-    expectActive("b", "summary");
-
+    press("ArrowDown");
     act(() => screen.getByTestId("outside").focus());
-    act(() => screen.getByTestId("restore").click());
-    expectActive("b", "summary");
+
+    rerender(<Harness items={[]} resultSetKey="recording" />);
+
+    expect(stops()).toEqual([]);
   });
 });
 
@@ -874,6 +933,33 @@ describe("live reconciliation when items change under the active row", () => {
 
     // Focus must remain where the user put it; the hook must not yank it back.
     expect(document.activeElement).toBe(screen.getByTestId("outside"));
+  });
+
+  it("re-seats the stop on the neighbour anyway — not moving focus is a different duty", () => {
+    // Drift under an UNCHANGED result set (a stream stopped recording on its own)
+    // while focus sits on a live control outside the list. "Don't move their
+    // focus" must not become "leave the list with no way in" (ADR §3).
+    const { rerender } = render(<Harness items={makeItems()} resultSetKey="recording" />);
+    focusStart("a");
+    press("ArrowDown"); // active = b, index 1
+
+    act(() => screen.getByTestId("outside").focus());
+    rerender(<Harness items={makeItems().filter((i) => i.id !== "b")} resultSetKey="recording" />);
+
+    // clamp(prevIndex=1, len-1=1) -> "c", the neighbour by index — NOT the first row.
+    expect(stops()).toEqual(["c/summary"]);
+    expect(document.activeElement).toBe(screen.getByTestId("outside"));
+  });
+
+  it("leaves a surviving active row alone when the set only drifts", () => {
+    const { rerender } = render(<Harness items={makeItems()} resultSetKey="all" />);
+    focusStart("a");
+    press("ArrowDown"); // active = b
+
+    act(() => screen.getByTestId("outside").focus());
+    rerender(<Harness items={makeItems().filter((i) => i.id !== "c")} resultSetKey="all" />);
+
+    expect(stops()).toEqual(["b/summary"]);
   });
 });
 

@@ -20,6 +20,7 @@ import { useZoneProxy, type ZoneEntry, type ZoneId } from "../../hooks/useZoneNa
 import * as tauri from "../../lib/tauri";
 import { isRecordingLike, needsAttention } from "../../lib/streamState";
 import { plural } from "../../lib/plural";
+import { resultSetKey } from "../../lib/resultSetKey";
 import { SHORTCUTS } from "../../lib/shortcuts";
 import { addToast } from "../../stores/toasts";
 import * as m from "../../i18n/paraglide/messages";
@@ -66,6 +67,9 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const streams = useStore($streams);
   const statuses = useStore($statuses);
   const profileSettings = useStore($profileSettings);
+  // Read for one thing only: which profile's streams these are, so switching
+  // profiles counts as a new result set for the list below.
+  const settings = useStore($settings);
   const freeSpace = useStore($freeSpace);
   const isEmpty = streams.length === 0;
 
@@ -138,6 +142,14 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const visibleStreams = useStore($visibleStreams);
 
   const sortBy: StreamSort = profileSettings?.ui.streamSort ?? "name";
+
+  // What makes the visible list the set it is: whose streams, which chip, which
+  // order. Changing any of the three REPLACES the set, so the list forgets its
+  // current stop and the next entry starts at the first row; a stream that
+  // starts or stops recording changes the rows without changing this, and the
+  // stop stays where the person left it (ADR 2026-09-06). The order counts
+  // because re-sorting is asking to see the list from the top in that order.
+  const listResultSetKey = resultSetKey([settings?.activeProfile, activeChip, sortBy]);
 
   const selection = useStore($streamSelection);
   const selCount = selection.size;
@@ -725,6 +737,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
             <StreamList
               ref={streamListCallbackRef}
               streams={visibleStreams}
+              resultSetKey={listResultSetKey}
               exitZone={(forward) => exitZone("streams-list", forward)}
               // No-op, not removed (StreamList requires the prop): the slot guard above
               // covers every way this list can empty, including the ones no handler can

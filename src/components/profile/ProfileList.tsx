@@ -114,6 +114,9 @@ export const ProfileList = forwardRef<ProfileListHandle, Props>(function Profile
         ref={ref}
         imperativeExtra={imperativeExtra}
         zoneId="profiles-list"
+        // No criteria to change: this list is never replaced under the person,
+        // only added to and taken from. See CompositeList's resultSetKey.
+        resultSetKey={null}
         ariaLabel={m.zone_profiles_list()}
         items={items}
         className="flex-1 overflow-y-auto overflow-x-hidden"

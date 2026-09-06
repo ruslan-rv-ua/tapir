@@ -13,6 +13,7 @@ import {
   loadFilters, loadPopularStations, loadMore,
 } from "../../stores/browser";
 import { replaceSelection } from "../../stores/selection";
+import { resultSetKey } from "../../lib/resultSetKey";
 import { useRovingFocus } from "../../hooks/useRovingFocus";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import { useZoneProxy, type ZoneEntry, type ZoneId } from "../../hooks/useZoneNavigation";
@@ -33,6 +34,13 @@ export function BrowserPanel({ onZonesChange, exitZone }: Props) {
   const popularError = useStore($popularError);
   const hasMore = useStore($hasMore);
   const isSearchActive = useStore($isSearchActive);
+  // Read for the result-set key below, and it costs a render of the results per
+  // keystroke — the price of the key being a prop the type system can demand,
+  // instead of the imperative reset call this used to be (one screen of three
+  // remembered to make it). Criteria change BEFORE their rows: the key moves the
+  // list's stop to the first row at once, and the rows that arrive half a second
+  // later find it already there.
+  const searchParams = useStore($searchParams);
 
   const announce = useAnnounce();
   const selection = useStore($stationSelection);
@@ -65,6 +73,21 @@ export function BrowserPanel({ onZonesChange, exitZone }: Props) {
   const error = showSearchResults ? searchError : popularError;
   const emptyMessage = showSearchResults ? m.browser_no_results() : m.browser_empty();
 
+  // Every criterion the catalogue is asked for, plus which of the two lists is on
+  // screen — Popular Stations and a search result are different sets even when
+  // the criteria between them did not move. "Load more" changes neither, which
+  // is what keeps the cursor on the batch the person is reading.
+  const listResultSetKey = resultSetKey([
+    showSearchResults,
+    searchParams.query,
+    searchParams.country,
+    searchParams.language,
+    searchParams.codec,
+    searchParams.minBitrate,
+    searchParams.order,
+    searchParams.limit,
+  ]);
+
   const visibleIds = useMemo(() => stations.map((s) => s.stationuuid), [stations]);
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selection.has(id));
 
@@ -93,20 +116,6 @@ export function BrowserPanel({ onZonesChange, exitZone }: Props) {
   // Clear on unmount (new-search/reset already clear via the store from Task 31).
   // Browser has no filter bar → unmount-clear only (no filter-change effect).
   useEffect(() => () => { replaceSelection($stationSelection, new Set()); }, []);
-
-  // A changed query or filter REPLACES the result set, and the remembered row no
-  // longer means anything — why that is the right rule is on resetCursor in
-  // useCompositeList. Every change of the criteria is such a case: "Load more"
-  // appends to the SAME result set and writes nothing here, so it never wakes
-  // this listener. Focus is not moved: the user keeps typing.
-  //
-  // Subscribed imperatively instead of with useStore: the query changes on every
-  // keystroke, and re-rendering the whole results list per character is a price
-  // this cursor rule has no reason to charge.
-  useEffect(
-    () => $searchParams.listen(() => resultsListRef.current?.resetCursor()),
-    [],
-  );
 
   // Zone registration: selection zone FIRST, then search, then results.
   // Re-register whenever the results content changes (both callback refs
@@ -156,6 +165,7 @@ export function BrowserPanel({ onZonesChange, exitZone }: Props) {
         <StationList
           ref={resultsCallbackRef}
           stations={stations}
+          resultSetKey={listResultSetKey}
           mode={showSearchResults ? "search" : "popular"}
           loading={loading}
           error={error}

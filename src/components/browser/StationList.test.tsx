@@ -53,6 +53,7 @@ function renderList() {
   const ref = createRef<StationListHandle>();
   const utils = render(
     <StationList
+      resultSetKey="test"
       ref={ref}
       stations={stations()}
       mode="search"
@@ -121,7 +122,7 @@ it("bulk-adds the selection, announces the summary, and does NOT move focus", as
   const stns = [mk("u1"), mk("u2")];
   replaceSelection($stationSelection, new Set(["u1", "u2"]));
   const ref = createRef<StationListHandle>();
-  render(<StationList ref={ref} stations={stns} mode="search" loading={false} error={null} hasMore={false}
+  render(<StationList resultSetKey="test" ref={ref} stations={stns} mode="search" loading={false} error={null} hasMore={false}
     emptyMessage="empty" exitZone={vi.fn()} />);
   const before = document.activeElement;
   await act(async () => { ref.current!.requestBulkAdd(); });
@@ -138,6 +139,7 @@ describe("StationList — the trailing stop", () => {
   const renderMode = (mode: "search" | "popular", over: Record<string, unknown> = {}) =>
     render(
       <StationList
+        resultSetKey="test"
         stations={[mk("u1"), mk("u2")]}
         mode={mode}
         loading={false}

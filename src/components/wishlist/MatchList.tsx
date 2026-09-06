@@ -36,6 +36,9 @@ export const MatchList = forwardRef<ZoneEntry, Props>(({ items, exitZone, emptyM
     <CompositeList
       ref={ref}
       zoneId="wishlist-matches"
+      // No criteria to change: this list is never replaced under the person,
+      // only added to and taken from. See CompositeList's resultSetKey.
+      resultSetKey={null}
       ariaLabel={m.zone_wishlist_matches()}
       items={listItems}
       className="flex-1 overflow-auto"

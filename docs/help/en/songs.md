@@ -8,7 +8,7 @@ After an overnight recording the usual first move is to sort **By date**, see wh
 
 ### Finding a track
 
-Type into the search box to match artist, track or album; `Ctrl+F` puts focus there from anywhere on the screen. **Station** narrows the list to one station, and **Sort** orders it by date, title, artist or size. Each row reads out as title, artist, station, size and the date it was recorded, so the sort you choose is also the thing you compare rows by.
+Type into the search box to match artist, track or album; `Ctrl+F` puts focus there from anywhere on the screen. **Station** narrows the list to one station, and **Sort** orders it by date, title, artist or size. Whenever you change the query, the station or the sort the list starts over: your next entry into it lands on the first row. Each row reads out as title, artist, station, size and the date it was recorded, so the sort you choose is also the thing you compare rows by.
 
 A row marked **incomplete** is a track Tapir did not see the start or the end of — the first track after a recording began, or the one that was running when it stopped. The mark comes from the file name: Tapir gives such files a name ending in `_incomplete`. Rename that ending away and the mark goes with it. The naming itself is covered in the section "Files & names".
 

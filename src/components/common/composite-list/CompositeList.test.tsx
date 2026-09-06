@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, fireEvent, act } from "@testing-library/react";
 import type { ZoneEntry, ZoneId } from "../../../hooks/useZoneNavigation";
 import type { CompositeListItem } from "../../../hooks/useCompositeList";
-import { CompositeList, CompositeRow, CompositeSegment, CompositeAction, type CompositeListHandle } from "./index";
+import { CompositeList, CompositeRow, CompositeSegment, CompositeAction } from "./index";
 
 const ITEMS: CompositeListItem[] = [
   { id: "a", segments: ["metadata", "action-add"] },
@@ -19,6 +19,7 @@ function renderList(extra: Record<string, unknown> = {}) {
   const onAction = vi.fn();
   const utils = render(
     <CompositeList
+      resultSetKey={null}
       ref={ref}
       zoneId={TEST_ZONE}
       ariaLabel="Test list"
@@ -118,6 +119,7 @@ describe("CompositeList", () => {
     const ref = createRef<ZoneEntry>();
     const make = (order: string[]) => (
       <CompositeList
+        resultSetKey={null}
         ref={ref}
         zoneId={TEST_ZONE}
         ariaLabel="Test list"
@@ -153,6 +155,7 @@ describe("CompositeList", () => {
     const ref = createRef<ZoneEntry>();
     const make = (order: string[]) => (
       <CompositeList
+        resultSetKey={null}
         ref={ref}
         zoneId={TEST_ZONE}
         ariaLabel="Test list"
@@ -187,6 +190,7 @@ describe("CompositeList", () => {
     const ref = createRef<ZoneEntry>();
     const { container, queryByText } = render(
       <CompositeList
+        resultSetKey={null}
         ref={ref}
         zoneId={TEST_ZONE}
         ariaLabel="Test list"
@@ -205,6 +209,7 @@ describe("CompositeList", () => {
     const ref = createRef<ZoneEntry>();
     const { container, queryByText } = render(
       <CompositeList
+        resultSetKey={null}
         ref={ref}
         zoneId={TEST_ZONE}
         ariaLabel="Test list"
@@ -271,6 +276,7 @@ describe("CompositeList", () => {
     const ref = createRef<ZoneEntry & { focusFirst: () => void }>();
     render(
       <CompositeList
+        resultSetKey={null}
         ref={ref}
         zoneId={TEST_ZONE}
         ariaLabel="Test list"
@@ -290,11 +296,13 @@ describe("CompositeList", () => {
     expect(activeAttrs()).toEqual({ id: "a", seg: "summary" });
   });
 
-  it("resetCursor on the handle sends the next entry back to the first row", () => {
-    // The owning screen calls this when a new result set REPLACES the old one.
-    const ref = createRef<CompositeListHandle>();
-    const make = (ids: string[]) => (
+  it("a changed resultSetKey sends the next entry back to the first row", () => {
+    // The screen says its criteria changed by handing the list another key; the
+    // list then owns everything that follows from it, on every screen at once.
+    const ref = createRef<ZoneEntry>();
+    const make = (key: string, ids: string[]) => (
       <CompositeList
+        resultSetKey={key}
         ref={ref}
         zoneId={TEST_ZONE}
         ariaLabel="Test list"
@@ -308,18 +316,18 @@ describe("CompositeList", () => {
         )}
       />
     );
-    const { rerender, container } = render(make(["a", "b", "c"]));
+    const { rerender, container } = render(make("all", ["a", "b", "c"]));
     act(() => ref.current!.focus("forward"));
     fireEvent.keyDown(document.activeElement!, { key: "End" }); // deliberate position: "c"
     expect(activeAttrs()).toEqual({ id: "c", seg: "summary" });
     act(() => (document.activeElement as HTMLElement).blur());
 
-    act(() => ref.current!.resetCursor());
-    rerender(make(["x", "y"])); // the new selection arrives
+    rerender(make("recording", ["x", "y"])); // the new result set arrives
 
-    // Native Tab target followed the reset...
+    // Native Tab target followed the new key...
     const rows = container.querySelectorAll<HTMLElement>('li[data-segment="summary"]');
     expect(rows[0].tabIndex).toBe(0);
+    expect(rows[1].tabIndex).toBe(-1);
     // ...and so does zone entry.
     act(() => ref.current!.focus("forward"));
     expect(activeAttrs()).toEqual({ id: "x", seg: "summary" });

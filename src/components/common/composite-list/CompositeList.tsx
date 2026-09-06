@@ -11,16 +11,6 @@ import {
 } from "../../../hooks/useCompositeList";
 import type { ZoneEntry, ZoneId } from "../../../hooks/useZoneNavigation";
 
-/**
- * The base imperative handle every CompositeList exposes. `resetCursor` is opt-in
- * for the caller's TYPE (screens that never replace their selection can keep the
- * plain ZoneEntry), but it is always present at runtime.
- */
-export type CompositeListHandle = ZoneEntry & {
-  /** Forget the remembered row — the next entry lands on the first one. */
-  resetCursor: () => void;
-};
-
 export interface CompositeRowRenderArgs {
   id: string;
   /** This row is the active item (subtle context highlight). */
@@ -34,6 +24,19 @@ export interface CompositeListProps {
   zoneId: ZoneId;
   ariaLabel: string;
   items: CompositeListItem[];
+  /**
+   * Identity of the RESULT SET these `items` are — the screen's criteria spelled
+   * as one string (a filter chip, a query, a station, a sort order), and `null`
+   * for a list that has no criteria to change.
+   *
+   * Required by type, deliberately: a changed key is what tells the list that the
+   * old result set ENDED, so the next entry starts at the first row instead of a
+   * row the person can no longer see. It used to be a spoken contract
+   * (`resetCursor()`) and only one screen of three remembered it — see
+   * docs/decisions/2026-09-06-new-result-set-forgets-the-current-stop.md. A key
+   * that appends to the SAME result set ("Load more") must NOT change.
+   */
+  resultSetKey: string | null;
   onTabOut: (forward: boolean) => void;
   onAction: (
     type: ActionType,
@@ -79,6 +82,7 @@ function CompositeListInner<H extends ZoneEntry = ZoneEntry>(
     zoneId,
     ariaLabel,
     items,
+    resultSetKey,
     onTabOut,
     onAction,
     onEmpty,
@@ -97,8 +101,8 @@ function CompositeListInner<H extends ZoneEntry = ZoneEntry>(
   const {
     listRef, emptyRef, trailingRef, onKeyDownCapture, onContextMenu, onClick,
     isFocused, isTrailingFocused, activateTrailing,
-    restoreFocus, resetCursor, focusItem, activeItemId,
-  } = useCompositeList({ items, trailingStop, onTabOut, onAction, onEmpty, selection, onSelectionChange });
+    restoreFocus, focusItem, activeItemId,
+  } = useCompositeList({ items, resultSetKey, trailingStop, onTabOut, onAction, onEmpty, selection, onSelectionChange });
 
   /**
    * Wraps focusItem so that the DOM element is focused immediately, even when
@@ -125,12 +129,11 @@ function CompositeListInner<H extends ZoneEntry = ZoneEntry>(
       ({
         id: zoneId,
         focus: restoreFocus,
-        resetCursor,
         ...(imperativeExtra ? imperativeExtra({ focusItem: focusItemAndDom }) : {}),
       }) as unknown as H,
     // imperativeExtra is expected to be pure over the `api` argument.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [zoneId, restoreFocus, resetCursor, focusItemAndDom],
+    [zoneId, restoreFocus, focusItemAndDom],
   );
 
   if (loading != null) return <>{loading}</>;

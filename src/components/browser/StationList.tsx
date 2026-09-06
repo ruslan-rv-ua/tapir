@@ -4,8 +4,8 @@ import { $streams } from "../../stores/streams";
 import { addStation, addStations, $stationSelection } from "../../stores/browser";
 import { replaceSelection } from "../../stores/selection";
 import { useListSelection } from "../../hooks/useListSelection";
-import { CompositeList, type CompositeListHandle } from "../common/composite-list";
-import type { ZoneId } from "../../hooks/useZoneNavigation";
+import { CompositeList } from "../common/composite-list";
+import type { ZoneEntry, ZoneId } from "../../hooks/useZoneNavigation";
 import { ListCardState } from "../common/ListCard";
 import type { StationResult } from "../../lib/tauri";
 import { useAnnounce } from "../../hooks/useAnnounce";
@@ -17,13 +17,18 @@ import * as m from "../../i18n/paraglide/messages";
 // selector in onAction. One constant, so the two cannot drift apart.
 const RESULTS_ZONE = "browser-results" satisfies ZoneId;
 
-// resetCursor comes from CompositeList: this is the one list whose whole result
-// set is replaced under the user (a changed query/filter), so BrowserPanel needs
-// to say "forget the remembered row".
-export type StationListHandle = CompositeListHandle & { requestBulkAdd: () => void };
+export type StationListHandle = ZoneEntry & { requestBulkAdd: () => void };
 
 interface Props {
   stations: StationResult[];
+  /**
+   * Identity of the result set `stations` is — the search criteria, plus which
+   * of the screen's two lists this is. The search form lives beside this list,
+   * not inside it, so the panel is what knows. Threaded straight through to
+   * CompositeList, which documents the rule; "Load more" appends to the SAME
+   * set and must not change it.
+   */
+  resultSetKey: string;
   /**
    * Which of the screen's two lists this is. "popular" is a fixed showcase —
    * finite, with nothing more to fetch — so it has no trailing "Load more" stop;
@@ -43,7 +48,7 @@ interface Props {
 }
 
 export const StationList = forwardRef<StationListHandle, Props>(
-  ({ stations, mode, loading, error, hasMore, loadingMore, onLoadMore, emptyMessage, exitZone }, ref) => {
+  ({ stations, resultSetKey, mode, loading, error, hasMore, loadingMore, onLoadMore, emptyMessage, exitZone }, ref) => {
     const streams = useStore($streams);
     const announce = useAnnounce();
     const [failedPreview, setFailedPreview] = useState<Set<string>>(new Set());
@@ -144,6 +149,7 @@ export const StationList = forwardRef<StationListHandle, Props>(
         zoneId={RESULTS_ZONE}
         ariaLabel={m.zone_browser_results()}
         items={items}
+        resultSetKey={resultSetKey}
         className="flex-1 overflow-auto"
         onTabOut={exitZone}
         selection={selectionAdapter}

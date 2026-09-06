@@ -31,9 +31,15 @@ interface Props {
   onEmpty: () => void;
   /** Pre-filtered list to render. Defaults to all streams in the store. */
   streams?: StreamInfo[];
+  /**
+   * Identity of the result set `streams` is — the panel filters and sorts, so
+   * only the panel can say when the set was REPLACED rather than drifted.
+   * Threaded straight through to CompositeList, which documents the rule.
+   */
+  resultSetKey: string | null;
 }
 
-export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmpty, streams: streamsProp }, ref) => {
+export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmpty, streams: streamsProp, resultSetKey }, ref) => {
   const allStreams = useStore($streams);
   const statuses = useStore($statuses);
   const selectedSet = useStore($streamSelection);
@@ -376,6 +382,7 @@ export const StreamList = forwardRef<StreamListHandle, Props>(({ exitZone, onEmp
         zoneId="streams-list"
         ariaLabel={m.zone_streams_list()}
         items={items}
+        resultSetKey={resultSetKey}
         className="flex-1 overflow-y-auto overflow-x-hidden"
         onTabOut={exitZone}
         onEmpty={onEmpty}
