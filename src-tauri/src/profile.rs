@@ -251,24 +251,46 @@ impl RecordingSettings {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UiSettings {
-    /// `String`, не enum, свідомо: невідоме значення в enum завалило б розбір
-    /// **усього** профілю, а не одного поля. Фронт звужує його до
-    /// `"name" | "added"` і має фолбек на `"name"` — та сама терпимість, що й у
-    /// `deserialize_log_level`, лише дешевша.
-    #[serde(default = "default_stream_sort")]
-    pub stream_sort: String,
+    /// Enum, а не `String`: тип каже те, що досі казав коментар і звужувала
+    /// вручну TS-унія. Страх, з якого поле було рядком, чинний — невідоме
+    /// значення в enum завалило б розбір **усього** профілю, а не одного поля, —
+    /// але лікує його терпимий `deserialize_with` за прецедентом
+    /// `deserialize_log_level`, а не відмова від типу.
+    #[serde(default, deserialize_with = "deserialize_stream_sort")]
+    pub stream_sort: StreamSort,
     #[serde(default = "default_true")]
     pub tray_notifications_track_change: bool,
     #[serde(default = "default_true")]
     pub tray_notifications_scheduled: bool,
 }
 
-fn default_stream_sort() -> String { "name".to_string() }
+/// Порядок сортування списку потоків.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum StreamSort {
+    #[default]
+    Name,
+    Added,
+}
+
+/// Розібрати `stream_sort` терпимо: невідоме або застаріле значення падає на
+/// [`StreamSort::Name`] замість того, щоб завалити розбір усього профілю.
+/// `#[serde(other)]` тут не працює — він лише для tagged-enum.
+fn deserialize_stream_sort<'de, D>(deserializer: D) -> Result<StreamSort, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let raw = Option::<String>::deserialize(deserializer)?;
+    Ok(match raw.as_deref() {
+        Some("added") => StreamSort::Added,
+        _ => StreamSort::Name,
+    })
+}
 
 impl Default for UiSettings {
     fn default() -> Self {
         Self {
-            stream_sort: default_stream_sort(),
+            stream_sort: StreamSort::default(),
             tray_notifications_track_change: true,
             tray_notifications_scheduled: true,
         }
@@ -833,7 +855,7 @@ mod tests {
     #[test]
     fn ui_settings_defaults() {
         let u = UiSettings::default();
-        assert_eq!(u.stream_sort, "name");
+        assert_eq!(u.stream_sort, StreamSort::Name);
         assert!(u.tray_notifications_track_change);
         assert!(u.tray_notifications_scheduled);
     }
@@ -845,9 +867,23 @@ mod tests {
     fn profile_with_pre_split_tray_flag_reads_with_both_categories_on() {
         let json = r#"{"name":"T","ui":{"streamSort":"added","trayNotifications":false}}"#;
         let p: Profile = serde_json::from_str(json).unwrap();
-        assert_eq!(p.ui.stream_sort, "added");
+        assert_eq!(p.ui.stream_sort, StreamSort::Added);
         assert!(p.ui.tray_notifications_track_change);
         assert!(p.ui.tray_notifications_scheduled);
+    }
+
+    /// Ціна, за яку `stream_sort` став enum: невідоме значення не має завалити
+    /// розбір усього профілю. Терпимість — та сама, що в `deserialize_log_level`.
+    #[test]
+    fn unknown_stream_sort_falls_back_instead_of_failing_the_profile() {
+        for raw in [r#""sideways""#, "null"] {
+            let json = format!(r#"{{"name":"T","ui":{{"streamSort":{raw}}}}}"#);
+            let p: Profile = serde_json::from_str(&json)
+                .unwrap_or_else(|e| panic!("streamSort {raw} must not fail the load: {e}"));
+            assert_eq!(p.ui.stream_sort, StreamSort::Name);
+            // Решта профілю читається так само, як і без цього поля.
+            assert!(p.ui.tray_notifications_track_change);
+        }
     }
 
     #[test]
@@ -855,7 +891,7 @@ mod tests {
         // A profile written before the block existed must still deserialize.
         let json = r#"{"name":"T"}"#;
         let p: Profile = serde_json::from_str(json).unwrap();
-        assert_eq!(p.ui.stream_sort, "name");
+        assert_eq!(p.ui.stream_sort, StreamSort::Name);
         assert!(p.ui.tray_notifications_track_change);
         assert!(p.ui.tray_notifications_scheduled);
         assert_eq!(p.recording.disk_space_threshold_gb, 1);
@@ -879,14 +915,14 @@ mod tests {
     fn migrated_fields_round_trip() {
         let mut p = Profile::create_default();
         p.recording.disk_space_threshold_gb = 25;
-        p.ui.stream_sort = "added".into();
+        p.ui.stream_sort = StreamSort::Added;
         p.ui.tray_notifications_track_change = false;
         p.ui.tray_notifications_scheduled = false;
         p.player_session.auto_advance = false;
         p.player_session.resume_file_from = ResumeFileFrom::Start;
         let back: Profile = serde_json::from_str(&serde_json::to_string(&p).unwrap()).unwrap();
         assert_eq!(back.recording.disk_space_threshold_gb, 25);
-        assert_eq!(back.ui.stream_sort, "added");
+        assert_eq!(back.ui.stream_sort, StreamSort::Added);
         assert!(!back.ui.tray_notifications_track_change);
         assert!(!back.ui.tray_notifications_scheduled);
         assert!(!back.player_session.auto_advance);
@@ -910,7 +946,7 @@ mod tests {
     fn apply_patch_touches_only_present_sections() {
         let mut p = Profile::create_default();
         p.recording.output_dir = "D:/arc".into();
-        p.ui.stream_sort = "added".into();
+        p.ui.stream_sort = StreamSort::Added;
         p.player_session.autoplay_on_startup = true;
 
         p.apply_settings_patch(ProfileSettingsPatch {
@@ -920,7 +956,7 @@ mod tests {
 
         assert!(!p.player_session.auto_advance, "the one present field applied");
         assert_eq!(p.recording.output_dir, "D:/arc", "absent section untouched");
-        assert_eq!(p.ui.stream_sort, "added", "absent section untouched");
+        assert_eq!(p.ui.stream_sort, StreamSort::Added, "absent section untouched");
         assert!(p.player_session.autoplay_on_startup, "absent field untouched");
     }
 

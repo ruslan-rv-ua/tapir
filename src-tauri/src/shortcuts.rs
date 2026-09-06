@@ -57,7 +57,11 @@ pub fn register_global_shortcuts(app: &AppHandle, hotkeys: &HotkeyMap) -> Vec<St
                                 // and set_volume emits `player-status` before it
                                 // returns, so the webview already holds the
                                 // number it is about to speak.
-                                crate::playback_control::emit_announce(&app, "volume", None);
+                                crate::playback_control::emit_announce(
+                                    &app,
+                                    crate::playback_control::AnnounceKind::Volume,
+                                    None,
+                                );
                             });
                         }
                     }

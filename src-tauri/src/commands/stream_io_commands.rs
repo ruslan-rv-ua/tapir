@@ -25,12 +25,22 @@ pub struct ImportCandidate {
     pub already_in_profile: bool,
 }
 
+/// How far one URL's probe got. A closed set, not a free string: the row
+/// branches on it and nothing parses it (`tauri-ts-type-drift`, decision 9).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ImportProgressStatus {
+    Checking,
+    Ok,
+    Error,
+}
+
 /// Payload for the `stream-import-progress` event, emitted per URL as probes run.
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportProgress {
     pub url: String,
-    pub status: String, // "checking" | "ok" | "error"
+    pub status: ImportProgressStatus,
     pub icy_name: Option<String>,
     pub bitrate: Option<u32>,
     pub format: Option<AudioFormat>,
@@ -142,14 +152,14 @@ pub async fn validate_import_candidates(urls: Vec<String>, app: AppHandle) -> Re
         async move {
             let _ = app.emit(
                 "stream-import-progress",
-                ImportProgress { url: url.clone(), status: "checking".into(), icy_name: None, bitrate: None, format: None, unsupported: None, error: None },
+                ImportProgress { url: url.clone(), status: ImportProgressStatus::Checking, icy_name: None, bitrate: None, format: None, unsupported: None, error: None },
             );
             let r = probe::probe(&url).await;
             let _ = app.emit(
                 "stream-import-progress",
                 ImportProgress {
                     url: r.url,
-                    status: if r.ok { "ok".into() } else { "error".into() },
+                    status: if r.ok { ImportProgressStatus::Ok } else { ImportProgressStatus::Error },
                     icy_name: r.icy_name,
                     bitrate: r.bitrate,
                     format: r.format,

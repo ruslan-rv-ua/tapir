@@ -216,7 +216,14 @@ export function ProfileRecordingTab({ recording, onChange }: Props) {
         </NumberField>
       </div>
 
-      {/* Section: Reconnection (collapsed) */}
+      {/* Section: Reconnection (collapsed)
+
+          `step={1}` на трьох цілих полях — єдиний досяжний шлях дробового
+          числа в ці налаштування: react-stately без `step` клампить введене
+          до `minValue`/`maxValue`, але не округлює, а Rust читає їх у `u32`
+          і дробове відкидає цілим викликом `invoke`, не клампить
+          (`tauri-ts-type-drift`, рядок 12). `backoffMultiplier` — дробовий
+          навмисно, тому лишається зі `step={0.1}`. */}
       <details className="rounded border border-slate-700">
         <summary className="cursor-pointer px-3 py-2 text-sm text-slate-300 outline-none focus-visible:ring-2 focus-visible:ring-blue-400">
           {m.settings_tab_reconnection()}
@@ -227,6 +234,7 @@ export function ProfileRecordingTab({ recording, onChange }: Props) {
             onChange={(val) => { if (!Number.isNaN(val)) updateReconnect({ maxRetries: val }); }}
             minValue={0}
             maxValue={10000}
+            step={1}
           >
             <Label className="block text-sm font-medium text-slate-300">{m.settings_max_retries()}</Label>
             <Group className="mt-1 flex w-32">
@@ -239,6 +247,7 @@ export function ProfileRecordingTab({ recording, onChange }: Props) {
             value={recording.reconnect.retryIntervalSecs}
             onChange={(val) => { if (!Number.isNaN(val)) updateReconnect({ retryIntervalSecs: val }); }}
             minValue={1}
+            step={1}
           >
             <Label className="block text-sm font-medium text-slate-300">{m.settings_retry_interval()}</Label>
             <Group className="mt-1 flex w-32">
@@ -264,6 +273,7 @@ export function ProfileRecordingTab({ recording, onChange }: Props) {
             value={recording.reconnect.maxIntervalSecs}
             onChange={(val) => { if (!Number.isNaN(val)) updateReconnect({ maxIntervalSecs: val }); }}
             minValue={1}
+            step={1}
           >
             <Label className="block text-sm font-medium text-slate-300">{m.settings_max_interval()}</Label>
             <Group className="mt-1 flex w-32">

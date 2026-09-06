@@ -75,12 +75,26 @@ use std::sync::Arc;
 use std::time::Duration;
 use anyhow::{Context, Result};
 use rodio::{ChannelCount, Decoder, DeviceSinkBuilder, MixerDeviceSink, Player, SampleRate, Source};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 use log::info;
+use crate::stream::manager::{player_owns_track_line, StreamState, TrackChangedPayload};
 use crate::wake_lock::WakeLock;
+
+/// Стан потоку в менеджері запису, або `None`, коли менеджер про нього не знає
+/// (потік ніколи не писався — і на ранньому старті, поки `AppState` ще не в
+/// реєстрі Tauri). Входить у [`player_owns_track_line`], і читання блокування
+/// не переживає: гвардія `State` падає до `.await`.
+async fn manager_stream_state(app: &AppHandle, stream_id: &str) -> Option<StreamState> {
+    let manager = app
+        .try_state::<crate::app_state::AppState>()?
+        .stream_manager
+        .clone();
+    let status = manager.read().await.get_status(stream_id);
+    status.map(|s| s.state)
+}
 
 /// Max time to wait for symphonia to identify a live stream's format and first
 /// decodable frame before giving up. Streams symphonia cannot decode (notably
@@ -662,25 +676,29 @@ impl PlayerEngine {
                         match event {
                             None | Some(IcyEvent::Eof) | Some(IcyEvent::Error) => break,
                             Some(IcyEvent::Metadata(artist, title)) => {
+                                // SMTC стоїть поза правилом власника: системну картку
+                                // ефіру наповнює лише плеєр, менеджер її не торкається.
                                 crate::smtc::sync_track(&stream_id_writer, &artist, &title);
                                 // Previews carry an empty stream_id (no profile stream); skip
                                 // per-track events/notifications for them.
-                                if !stream_id_writer.is_empty() {
-                                    #[derive(serde::Serialize, Clone)]
-                                    #[serde(rename_all = "camelCase")]
-                                    struct TrackChangedPayload {
-                                        stream_id: String,
-                                        artist: String,
-                                        title: String,
-                                        album: String,
-                                    }
+                                //
+                                // Поки потік пишеться, рядок треку належить менеджеру —
+                                // див. [`player_owns_track_line`]. Перевірка на кожну
+                                // зміну метаданих, а не на старті відтворення: запис
+                                // може початись і скінчитись посеред відтворення.
+                                let owns_line = player_owns_track_line(
+                                    manager_stream_state(&app_writer, &stream_id_writer).await,
+                                );
+                                if !stream_id_writer.is_empty() && owns_line {
                                     let _ = app_writer.emit(
                                         "track-changed",
                                         TrackChangedPayload {
                                             stream_id: stream_id_writer.clone(),
                                             artist: artist.clone(),
                                             title: title.clone(),
-                                            album: String::new(),
+                                            // Потік, який лише грає, нічого не пише —
+                                            // а отже, нічого й не ігнорує (рішення 1).
+                                            ignored: false,
                                         },
                                     );
                                     crate::tray::notify::notify_track_change(
