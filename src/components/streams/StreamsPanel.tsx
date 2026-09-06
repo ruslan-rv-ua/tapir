@@ -19,6 +19,7 @@ import { useAnnounce } from "../../hooks/useAnnounce";
 import { useZoneProxy, type ZoneEntry, type ZoneId } from "../../hooks/useZoneNavigation";
 import * as tauri from "../../lib/tauri";
 import { isRecordingLike, needsAttention } from "../../lib/streamState";
+import { reportRecordRefusal } from "../../lib/recordingToggle";
 import { plural } from "../../lib/plural";
 import { resultSetKey } from "../../lib/resultSetKey";
 import { SHORTCUTS } from "../../lib/shortcuts";
@@ -449,13 +450,13 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
       try {
         const started = await tauri.startAllRecordings(ids);
         announce(composeRecordSummary(ids.length, started), "polite");
-      } catch (err) { addToast(String(err), "error"); }
+      } catch (err) { reportRecordRefusal(err, "startAllRecordings(selected)"); }
     } else {
       if (startableCount === 0) return;
       try {
         const started = await tauri.startAllRecordings();
         announce(recordAllAnnouncement(started), "polite");
-      } catch (err) { addToast(String(err), "error"); }
+      } catch (err) { reportRecordRefusal(err, "startAllRecordings"); }
     }
   };
 

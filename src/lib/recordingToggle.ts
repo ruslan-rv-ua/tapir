@@ -8,32 +8,64 @@
  * start-or-stop by its own `state === "recording"`, so for the ≈40 minutes a
  * stream spends reconnecting they all offered to *start* a recording that was
  * already alive, and the backend's refusal reached the toast as English prose.
- * Record: docs/backlog/p1-record-action-lies-while-connecting.md.
+ * Record: docs/backlog/done/p1-record-action-lies-while-connecting.md.
+ *
+ * The wording of the refusals lives here too, because «Записати все» shares
+ * one of them (the disk threshold) with the row — a second home would drift.
+ * Record: docs/backlog/p2-record-refusals-untranslated.md.
  */
 
 import * as tauri from "./tauri";
 import type { StreamState } from "./tauri";
 import { addToast } from "../stores/toasts";
 import { isRecordingLike } from "./streamState";
-
-/** Refusal codes of `start_recording` / `stop_recording` — the IPC contract
- *  with `REC_ERR_*` in src-tauri/src/commands/stream_commands.rs. */
-const SKIP_CODES: ReadonlySet<string> = new Set(["already_recording", "not_recording"]);
+import * as m from "../i18n/paraglide/messages";
 
 /**
  * What a recording refusal should say, or `null` for «nothing to say».
  *
- * «Already recording» and «nothing to stop» are skips, not failures — the
- * verdict «Записати все» («пропущено») and the scheduler («потік уже
- * записувався») already give. They surface only in the race between the
- * `invoke` and the `recording-status` event that flips the row, and the row
- * flipping *is* the answer. Anything else passes through untouched, like
- * `playRefusalMessage`: that prose is another record's problem, and hiding it
+ * The codes are the IPC contract with `REC_ERR_*` in
+ * src-tauri/src/commands/stream_commands.rs:
+ *
+ * - «already recording» and «nothing to stop» are skips, not failures — the
+ *   verdict «Записати все» («пропущено») and the scheduler («потік уже
+ *   записувався») already give. They surface only in the race between the
+ *   `invoke` and the `recording-status` event that flips the row, and the row
+ *   flipping *is* the answer.
+ * - the disk threshold is Tapir's own refusal, worded without numbers: the
+ *   status bar and the «Вільно» metric already show the free space and flip
+ *   to «low» at the same threshold; the log keeps the figures.
+ * - a stream missing from the active profile is a toast, not silence: the list
+ *   should never have offered that row, and silence would hide that defect.
+ *
+ * Anything else passes through untouched, like `playRefusalMessage`: hiding it
  * would take away the only detail the user has.
  */
 export function recordRefusalMessage(err: unknown): string | null {
   const text = String(err);
-  return SKIP_CODES.has(text) ? null : text;
+  switch (text) {
+    case "already_recording":
+    case "not_recording":
+      return null;
+    case "disk_space_low":
+      return m.record_refused_disk_space();
+    case "stream_not_found":
+      return m.stream_not_found_in_profile();
+    default:
+      return text;
+  }
+}
+
+/**
+ * Answer for a rejected recording command: an error toast when the refusal
+ * has something to say, a debug line otherwise. `origin` names the caller in
+ * that line — if a row ever stays stale, it is the only evidence the press
+ * reached the backend.
+ */
+export function reportRecordRefusal(err: unknown, origin: string): void {
+  const message = recordRefusalMessage(err);
+  if (message !== null) addToast(message, "error");
+  else console.debug(`${origin}: skipped —`, err);
 }
 
 /**
@@ -49,10 +81,6 @@ export async function toggleRecording(streamId: string, state: StreamState | und
     if (isRecordingLike(state)) await tauri.stopRecording(streamId);
     else await tauri.startRecording(streamId);
   } catch (err) {
-    const message = recordRefusalMessage(err);
-    if (message !== null) addToast(message, "error");
-    // A swallowed skip still leaves a trace: if the row ever stays stale, this
-    // is the only evidence the second press reached the backend.
-    else console.debug(`toggleRecording(${streamId}): skipped —`, err);
+    reportRecordRefusal(err, `toggleRecording(${streamId})`);
   }
 }
