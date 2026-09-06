@@ -140,7 +140,7 @@ Grooming 2026-09-06. Обґрунтування, відхилені варіан
   [list-skipped-by-tab-after-filter](p1-list-skipped-by-tab-after-filter.md); вада не
   від цієї зміни, живе в спільному `useCompositeList`.
 - Кнопка рядка пропонує почати вже активний запис і відповідає англійською —
-  [record-action-lies-while-connecting](../p1-record-action-lies-while-connecting.md).
+  [record-action-lies-while-connecting](p1-record-action-lies-while-connecting.md).
 
 ## Документи
 

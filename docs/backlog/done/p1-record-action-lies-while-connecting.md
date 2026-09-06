@@ -3,11 +3,12 @@ slug: record-action-lies-while-connecting
 title: "Поки потік підключається, кнопка рядка пропонує почати запис — і відповідає англійською"
 priority: P1
 type: planned
-status: ready
+status: done
 effort: M
 kind: bug
 target: 0.1.0
 updated: 2026-09-06
+completed: 2026-09-06
 a11y: true
 depends_on: []
 blocks: []
@@ -30,9 +31,9 @@ notes:
 # Поки потік підключається, кнопка рядка пропонує почати запис — і відповідає англійською
 
 > **Контекст:** знахідка NVDA-прогону
-> [error-state-never-reaches-ui](done/p1-error-state-never-reaches-ui.md). Grooming
+> [error-state-never-reaches-ui](p1-error-state-never-reaches-ui.md). Grooming
 > проведено 2026-09-06; рішення — в розділі «Ухвалені рішення» нижче, термін — у
-> [CONTEXT.md](../../CONTEXT.md) §«Запис і Записи».
+> [CONTEXT.md](../../../CONTEXT.md) §«Запис і Записи».
 
 ## Опис
 
@@ -40,13 +41,13 @@ notes:
 вузьку умову не у двох місцях, як здавалось, а в **чотирьох**, і кожне з них кладе
 відмову бекенду в тост через `String(err)`:
 
-- [StreamItem.tsx](../../src/components/streams/StreamItem.tsx) — `const isRecording = state === "recording"`,
+- [StreamItem.tsx](../../../src/components/streams/StreamItem.tsx) — `const isRecording = state === "recording"`,
   від нього залежать підпис дії, колір кнопки, заливка рядка і те, що дія робить;
-- [StreamContextMenu.tsx](../../src/components/streams/StreamContextMenu.tsx) — та сама
+- [StreamContextMenu.tsx](../../../src/components/streams/StreamContextMenu.tsx) — та сама
   умова, той самий наслідок;
-- [StreamList.tsx](../../src/components/streams/StreamList.tsx) — Enter і подвійний клік
+- [StreamList.tsx](../../../src/components/streams/StreamList.tsx) — Enter і подвійний клік
   рядка (головна дія за налаштуванням, `Ctrl` примусово «запис»);
-- [CommandPalette.tsx](../../src/components/common/CommandPalette.tsx) — команда
+- [CommandPalette.tsx](../../../src/components/common/CommandPalette.tsx) — команда
   «Почати запис» / «Зупинити запис» з назвою потоку підрядком.
 
 Отже поки потік у стані `connecting` або `reconnecting` — а перепідключення за
@@ -60,7 +61,7 @@ notes:
    у менеджері й повертає `Stream '<id>' is already recording`; фронтенд кладе цей рядок
    у тост через `String(err)`. У українському інтерфейсі, і NVDA читає його вголос. Це
    рівно те, що заборонив ADR
-   [2026-09-06 §5](../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md).
+   [2026-09-06 §5](../../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md).
    Симетрична гонка на зупинці дає `No active recording for stream '<id>'`.
 3. **Зупинити потік із його ж рядка неможливо.** Лишаються обхідні шляхи: виділити рядок
    і «Зупинити виділені», або глобальна `Ctrl+Shift+S` на все відразу. Обидва — не те, що
@@ -148,8 +149,8 @@ reconnecting) керує лічильником «зупиняються», кн
       запис» лишається правдою; правок не було
 - [x] `cargo test`, `cargo clippy --all-targets`, `pnpm test`, `pnpm typecheck`,
       `pnpm vite:build` — без помилок
-- [ ] NVDA-прогін за чеклістом
-      [nvda-record-action-lies-while-connecting.md](../testing/nvda-record-action-lies-while-connecting.md):
+- [x] NVDA-прогін за чеклістом
+      `nvda-record-action-lies-while-connecting.md` (видалено на прийнятті, як велить скіл):
       підпис під час підключення й перепідключення читається правильно; зміна підпису під
       сфокусованою кнопкою **чутна** (див. `focused-label-swap-is-silent` — лікує
       дзеркальний `aria-label`, який тут уже є); повторний Enter одразу після старту не
@@ -182,16 +183,16 @@ reconnecting) керує лічильником «зупиняються», кн
 
 ## Документи
 
-- [error-state-never-reaches-ui](done/p1-error-state-never-reaches-ui.md) — прогін, що це знайшов
-- [CONTEXT.md](../../CONTEXT.md) §«Запис і Записи» — термін, розширений цим grooming-ом
-- [ADR 2026-09-06](../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md) §5 — чому технічний рядок не має перетинати межу; §2 — чому чіпи лишаються вузькими
-- [ADR 2026-08-17 про локалізацію](../decisions/2026-08-17-native-layer-localisation.md) — нативний шар шле ключі, не прозу
-- код: [StreamItem.tsx](../../src/components/streams/StreamItem.tsx),
-  [StreamContextMenu.tsx](../../src/components/streams/StreamContextMenu.tsx),
-  [StreamList.tsx](../../src/components/streams/StreamList.tsx),
-  [CommandPalette.tsx](../../src/components/common/CommandPalette.tsx),
-  [streamState.ts](../../src/lib/streamState.ts),
-  [playRefusal.ts](../../src/lib/playRefusal.ts) і
-  [transportControl.ts](../../src/lib/transportControl.ts) — зразки,
-  [manager.rs](../../src-tauri/src/stream/manager.rs),
-  [player_commands.rs](../../src-tauri/src/commands/player_commands.rs) — зразок коду на межі
+- [error-state-never-reaches-ui](p1-error-state-never-reaches-ui.md) — прогін, що це знайшов
+- [CONTEXT.md](../../../CONTEXT.md) §«Запис і Записи» — термін, розширений цим grooming-ом
+- [ADR 2026-09-06](../../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md) §5 — чому технічний рядок не має перетинати межу; §2 — чому чіпи лишаються вузькими
+- [ADR 2026-08-17 про локалізацію](../../decisions/2026-08-17-native-layer-localisation.md) — нативний шар шле ключі, не прозу
+- код: [StreamItem.tsx](../../../src/components/streams/StreamItem.tsx),
+  [StreamContextMenu.tsx](../../../src/components/streams/StreamContextMenu.tsx),
+  [StreamList.tsx](../../../src/components/streams/StreamList.tsx),
+  [CommandPalette.tsx](../../../src/components/common/CommandPalette.tsx),
+  [streamState.ts](../../../src/lib/streamState.ts),
+  [playRefusal.ts](../../../src/lib/playRefusal.ts) і
+  [transportControl.ts](../../../src/lib/transportControl.ts) — зразки,
+  [manager.rs](../../../src-tauri/src/stream/manager.rs),
+  [player_commands.rs](../../../src-tauri/src/commands/player_commands.rs) — зразок коду на межі
