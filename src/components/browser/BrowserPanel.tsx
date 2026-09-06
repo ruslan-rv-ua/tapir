@@ -73,10 +73,15 @@ export function BrowserPanel({ onZonesChange, exitZone }: Props) {
   const error = showSearchResults ? searchError : popularError;
   const emptyMessage = showSearchResults ? m.browser_no_results() : m.browser_empty();
 
-  // Every criterion the catalogue is asked for, plus which of the two lists is on
-  // screen — Popular Stations and a search result are different sets even when
-  // the criteria between them did not move. "Load more" changes neither, which
-  // is what keeps the cursor on the batch the person is reading.
+  // Every field of SearchCriteria, plus which of the two lists is on screen.
+  // The second is not view state smuggled into the key: this one list renders
+  // Popular Stations OR a search result, and those are two different sets — the
+  // flag only ever flips when the rows under it are replaced wholesale. Listed
+  // in full rather than only the
+  // fields a control can reach today (`order` and `limit` are pinned), so a
+  // criterion added to the type is not silently left out of the identity of the
+  // set it defines. "Load more" writes none of them, which is what keeps the
+  // cursor on the batch the person is reading.
   const listResultSetKey = resultSetKey([
     showSearchResults,
     searchParams.query,

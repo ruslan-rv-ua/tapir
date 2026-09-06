@@ -487,6 +487,22 @@ export function useCompositeList<T extends CompositeListItem>({
     return () => ul.removeEventListener('focusin', onFocusIn);
   }, []);
 
+  /**
+   * Seat the current stop on a row's summary — the one move the hook makes on
+   * its own behalf, in all three places it makes it (re-seed, a new result set,
+   * drift). The ref travels WITH the state because the effects below read it
+   * rather than their own closure: an effect that runs later in the same flush
+   * would otherwise still be looking at the row from a render ago.
+   *
+   * Key and pointer handlers do not go through here — they move focus as well
+   * as the stop, and a render always lands between them and any effect.
+   */
+  const seatStopOnRow = useCallback((itemId: string) => {
+    setActiveItemId(itemId);
+    setActiveSegment('summary');
+    activeItemIdRef.current = itemId;
+  }, []);
+
   // Update focus memory whenever active position changes
   useEffect(() => {
     if (!activeItemId) return;
@@ -516,9 +532,8 @@ export function useCompositeList<T extends CompositeListItem>({
     if (items.length === 0) return;
     if (activeItemId === items[0].id) return;
     if (listRef.current?.contains(document.activeElement)) return;
-    setActiveItemId(items[0].id);
-    setActiveSegment('summary');
-  }, [items, activeItemId]);
+    seatStopOnRow(items[0].id);
+  }, [items, activeItemId, seatStopOnRow]);
 
   // A NEW RESULT SET: the screen changed its criteria, so the remembered row
   // belongs to a set that no longer exists — the current stop goes back to the
@@ -536,21 +551,29 @@ export function useCompositeList<T extends CompositeListItem>({
     resultSetKeyRef.current = resultSetKey;
     // ADR §5: the rule is about the NEXT entry. While the list holds focus the
     // current stop IS the focus, and nothing may move it out from under it.
-    if (listRef.current?.contains(document.activeElement)) return;
+    const ae = document.activeElement;
+    if (listRef.current?.contains(ae)) return;
     userNavigatedRef.current = false;
     setOnTrailing(false);
     const rows = itemsRef.current;
     // An empty new result set has no row to be the way in — correct, and why
     // the empty state carries its own focusable anchor (accessibility.md §3.1).
     if (rows.length === 0) return;
-    setActiveItemId(rows[0].id);
-    setActiveSegment('summary');
-    activeItemIdRef.current = rows[0].id;
+    seatStopOnRow(rows[0].id);
+    // The list HELD focus and focus is now nowhere: either the person's own row
+    // went with the old result set, or they blurred out of the list earlier.
+    // Both leave a live person on <body>, which is the failure this project
+    // refuses (ADR 2026-09-05) — so the first row of the new set takes the focus
+    // as well as the stop. Asked of the present, not of history: whether what
+    // holds focus right now is alive.
+    if (hasFocusRef.current && (!ae || ae === document.body || !ae.isConnected)) {
+      pendingFocusRef.current = { itemId: rows[0].id, segment: 'summary' };
+    }
     // `memoryRef` is deliberately left alone: with userNavigatedRef false nothing
     // reads it back as a position, while a Shift+click still anchors its range on
     // `memoryRef.current.itemId` (see onClick) — blanking it would collapse that
     // span to the clicked row.
-  }, [resultSetKey]);
+  }, [resultSetKey, seatStopOnRow]);
 
   // DRIFT: the active row left the result set without the criteria changing.
   //
@@ -585,16 +608,15 @@ export function useCompositeList<T extends CompositeListItem>({
       Math.min(memoryRef.current.prevIndex, items.length - 1),
     );
     const target = items[targetIdx];
-    setActiveItemId(target.id);
-    setActiveSegment('summary');
-    activeItemIdRef.current = target.id;
+    seatStopOnRow(target.id);
     if (!focusLivesOutside) {
       pendingFocusRef.current = { itemId: target.id, segment: 'summary' };
     }
-    // `[items]` really is the whole dependency list now: everything else this
-    // reads is a ref, `activeItemId` included — which is what lets it run once
-    // per change of the rows instead of once per move of the cursor.
-  }, [items]);
+    // `items` really is the whole dependency now (`seatStopOnRow` is stable):
+    // everything else this reads is a ref, `activeItemId` included — which is
+    // what lets it run once per change of the rows instead of once per move of
+    // the cursor.
+  }, [items, seatStopOnRow]);
 
   function resolveSegments(item: T): SegmentKind[] {
     return ['summary', ...item.segments] as SegmentKind[];

@@ -129,7 +129,7 @@ it("a changed query sends the results cursor back to the first station", async (
   expect(activeRow()).toBe("s1");
 });
 
-// "Load more" appends to the SAME selection — the remembered row still means
+// "Load more" appends to the SAME result set — the remembered row still means
 // what it meant, so it survives.
 it("«Load more» keeps the remembered row", async () => {
   const onZonesChange = vi.fn();
@@ -152,6 +152,37 @@ it("«Load more» keeps the remembered row", async () => {
 
   act(() => results.focus("forward"));
   expect(activeRow()).toBe("s2");
+});
+
+// The query is not the only criterion: a dropdown filter replaces the result set
+// just as thoroughly, and the key has to name it too. Guards the half of the
+// contract the query test cannot reach.
+it("a changed FILTER, not just the query, sends the cursor back to the first station", async () => {
+  const onZonesChange = vi.fn();
+  render(<BrowserPanel onZonesChange={onZonesChange} exitZone={vi.fn()} />);
+  const results = (await zonesOf(onZonesChange)).find((z) => z.id === "browser-results")!;
+
+  vi.mocked(searchStationsIpc).mockResolvedValueOnce([mk("s1"), mk("s2")]);
+  await act(async () => {
+    updateSearchParam("query", "jazz");
+    await searchStations($searchParams.get());
+  });
+  act(() => results.focus("forward"));
+  fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+  expect(activeRow()).toBe("s2");
+  act(() => (document.activeElement as HTMLElement).blur());
+
+  // Same query, another country — a different result set all the same.
+  vi.mocked(searchStationsIpc).mockResolvedValueOnce([mk("s7"), mk("s8")]);
+  await act(async () => {
+    updateSearchParam("country", "Poland");
+    await searchStations($searchParams.get());
+  });
+
+  const rows = document.querySelectorAll<HTMLElement>('li[data-segment="summary"]');
+  expect(rows[0].tabIndex).toBe(0); // native Tab target
+  act(() => results.focus("forward"));
+  expect(activeRow()).toBe("s7");
 });
 
 /** Two results on screen with a third waiting in the catalogue. */

@@ -886,6 +886,26 @@ describe("a new result set (the key changed) forgets the current stop", () => {
     expect([...selectionRef.current].sort()).toEqual(["a", "b", "c"]);
   });
 
+  it("takes the focus with it when the row UNDER it goes with the old result set", () => {
+    // ADR §5's other half. The criteria changed while the person stood in the
+    // list and their own row is not in the new set, so focus has nowhere to be —
+    // and a live person on <body> is the failure this project refuses. The first
+    // row of the new set takes the focus along with the stop.
+    const { rerender } = render(<Harness items={makeItems()} resultSetKey="all" />);
+    focusStart("a");
+    press("ArrowDown"); // active = b, index 1, focus inside the list
+
+    rerender(
+      <Harness
+        items={[{ id: "a", segments: ["track"] }, { id: "c", segments: ["track"] }]}
+        resultSetKey="recording"
+      />,
+    );
+
+    expectActive("a", "summary");
+    expect(stops()).toEqual(["a/summary"]);
+  });
+
   it("leaves an EMPTY new result set with no stop at all", () => {
     // Correct, and the reason the empty state carries its own focusable anchor
     // (accessibility.md §3.1): there is no row to be the way in.
@@ -897,6 +917,24 @@ describe("a new result set (the key changed) forgets the current stop", () => {
     rerender(<Harness items={[]} resultSetKey="recording" />);
 
     expect(stops()).toEqual([]);
+  });
+});
+
+describe("restoreFocus leaves nothing armed behind it", () => {
+  it("does not pull focus back into the list on some later, unrelated commit", () => {
+    // The queue is the FALLBACK for React bailing out of the re-render. Arming it
+    // as well as focusing meant that in exactly the bail-out case it stayed armed,
+    // and the next commit for any reason at all yanked focus out of wherever the
+    // person had since moved it.
+    const { rerender } = render(<Harness items={makeItems()} />);
+    act(() => screen.getByTestId("restore").click()); // entry lands on "a"
+    expectActive("a", "summary");
+    act(() => screen.getByTestId("restore").click()); // same row again → React bails out
+    act(() => screen.getByTestId("outside").focus());
+
+    rerender(<Harness items={makeItems()} />); // any later commit at all
+
+    expect(document.activeElement).toBe(screen.getByTestId("outside"));
   });
 });
 

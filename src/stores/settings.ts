@@ -1,7 +1,14 @@
-import { atom } from "nanostores";
+import { atom, computed } from "nanostores";
 import type { GlobalSettings, ProfileSettings } from "../lib/tauri";
 
 export const $settings = atom<GlobalSettings | null>(null);
+
+/**
+ * Whose data is on screen. Split out of $settings so a screen that only needs
+ * to know the profile is not re-rendered by every unrelated setting — the
+ * streams list reads it as one of the criteria that define its result set.
+ */
+export const $activeProfile = computed($settings, (s) => s?.activeProfile ?? null);
 export const $settingsDialogOpen = atom(false);
 
 /**

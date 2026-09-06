@@ -122,8 +122,7 @@ export const ScheduleTable = forwardRef<ScheduleTableHandle, Props>(
           ref={ref}
           imperativeExtra={imperativeExtra}
           zoneId="schedule-list"
-          // No criteria to change: this list is never replaced under the person,
-          // only added to and taken from. See CompositeList's resultSetKey.
+          // No criteria: nothing here replaces the result set.
           resultSetKey={null}
           ariaLabel={m.zone_schedule_list()}
           items={items}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { createPortal } from "react-dom";
 import { $streams, $statuses, $visibleStreams, $showAddStreamDialog, $streamFilter, $importCandidates, $exportStreamsRequest, $streamSelection, replaceSelection, type StreamFilter, type StreamSort } from "../../stores/streams";
-import { $settings, $profileSettings } from "../../stores/settings";
+import { $settings, $profileSettings, $activeProfile } from "../../stores/settings";
 import { $freeSpace } from "../../stores/system";
 import { FreeSpaceMetric } from "./FreeSpaceMetric";
 import { StreamList, type StreamListHandle } from "./StreamList";
@@ -67,9 +67,10 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   const streams = useStore($streams);
   const statuses = useStore($statuses);
   const profileSettings = useStore($profileSettings);
-  // Read for one thing only: which profile's streams these are, so switching
-  // profiles counts as a new result set for the list below.
-  const settings = useStore($settings);
+  // Which profile's streams these are — one of the criteria that define the
+  // list's result set below. Read through the narrow computed so an unrelated
+  // setting does not re-render the screen.
+  const activeProfile = useStore($activeProfile);
   const freeSpace = useStore($freeSpace);
   const isEmpty = streams.length === 0;
 
@@ -149,7 +150,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
   // starts or stops recording changes the rows without changing this, and the
   // stop stays where the person left it (ADR 2026-09-06). The order counts
   // because re-sorting is asking to see the list from the top in that order.
-  const listResultSetKey = resultSetKey([settings?.activeProfile, activeChip, sortBy]);
+  const listResultSetKey = resultSetKey([activeProfile, activeChip, sortBy]);
 
   const selection = useStore($streamSelection);
   const selCount = selection.size;
