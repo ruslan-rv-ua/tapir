@@ -139,44 +139,62 @@ Grooming 2026-09-06, тринадцять питань. Факти — у [но�
 
 ## Критерії готовності
 
-- [ ] `docs/help/` — запис видимої поведінки не змінює: кваліфікатор «ігнорується» в
+- [x] `docs/help/` — запис видимої поведінки не змінює: кваліфікатор «ігнорується» в
       рядку вже описаний як «поки такий трек в ефірі», і після рішення 3 це лишається
       правдою
-- [ ] Рядок 1: статичний вердикт нотатки (B.5, дзеркало обох порядків) прийнято як
+- [x] Рядок 1: статичний вердикт нотатки (B.5, дзеркало обох порядків) прийнято як
       відтворення; живого прогону з ефіром запис не вимагає
-- [ ] Обидва емітери `track-changed` шлють одну `pub struct TrackChangedPayload` зі
+- [x] Обидва емітери `track-changed` шлють одну `pub struct TrackChangedPayload` зі
       `stream/manager.rs`: `stream_id`, `artist`, `title`, `ignored: bool`; поля `album`
       немає ні в ній, ні в `TrackInfo`, ні в TS-типах, ні у фікстурах тестів
-- [ ] Плеєр емітить `track-changed` і кличе `notify_track_change` лише коли статус потоку
+- [x] Плеєр емітить `track-changed` і кличе `notify_track_change` лише коли статус потоку
       в менеджері **не** `Recording` (у `Connecting`, `Reconnecting` і без запису —
       емітить з `ignored: false`); `smtc::sync_track` під предикат не підпадає; перевірка
       на кожну зміну метаданих
-- [ ] Предикат — чиста функція з doc-коментарем (чому `Recording`, а не `is_active`;
+- [x] Предикат — чиста функція з doc-коментарем (чому `Recording`, а не `is_active`;
       посилання на цей запис) і тестом на всі варіанти `StreamState` та відсутній статус
-- [ ] Тест форми дроту: серіалізований `TrackChangedPayload` має рівно ключі `streamId`,
+- [x] Тест форми дроту: серіалізований `TrackChangedPayload` має рівно ключі `streamId`,
       `artist`, `title`, `ignored`
-- [ ] `TrackChangedPayload` і `TrackInfo` у TS збігаються зі структурами поле в поле
-- [ ] Рядки 3–4: Rust `RecordingStatus { Connecting, Recording, Reconnecting, Stopped, Error }`
+- [x] `TrackChangedPayload` і `TrackInfo` у TS збігаються зі структурами поле в поле
+- [x] Рядки 3–4: Rust `RecordingStatus { Connecting, Recording, Reconnecting, Stopped, Error }`
       (lowercase, лише `Serialize`) замість `status: String` і `TaskOutcome::status()`; TS
       `RecordingStatus` для події, `StreamState` без `"stopped"`; дзеркало відображає
       `stopped → idle` одним рядком в `App.tsx`; `recordingAnnounce` гілкується за
       `RecordingStatus`; `streamState.ts` без змін
-- [ ] Рядки 7–9: `StreamSort { Name, Added }` з терпимим `deserialize_with` (невідоме →
+- [x] Рядки 7–9: `StreamSort { Name, Added }` з терпимим `deserialize_with` (невідоме →
       `Name`), коментар у `profile.rs` переписано під нову причину; `PlaybackAnnounce.kind`
       і `ImportProgressPayload.status` — enum'и lowercase; TS-унії без змін
-- [ ] Рядок 10: окремий enum для payload `scheduled-completed`
+- [x] Рядок 10: окремий enum для payload `scheduled-completed`
       (`Completed | StartedLate | StoppedByUser`, camelCase); TS без змін
-- [ ] Рядки 2, 5, 6 — лише TS: `error: FailureReason | null`,
+- [x] Рядки 2, 5, 6 — лише TS: `error: FailureReason | null`,
       `PlayerSession.lastActive: "stream" | "file" | null`, `interface SavedTrack` з
       усіма полями замість `unknown[]`
-- [ ] Рядок 11: `#[serde(rename_all = "camelCase")]` на `FilterItem` і `BrowserFilters`,
+- [x] Рядок 11: `#[serde(rename_all = "camelCase")]` на `FilterItem` і `BrowserFilters`,
       навіть якщо сьогодні всі ключі однослівні
-- [ ] Рядок 12: `step={1}` на `reconnect.maxRetries`, `retryIntervalSecs`,
+- [x] Рядок 12: `step={1}` на `reconnect.maxRetries`, `retryIntervalSecs`,
       `maxIntervalSecs` у `ProfileRecordingTab.tsx`; коментар біля `RecordingSettings` і
       `UiSettings` у `tauri.ts`, що цілі поля їдуть як JSON-цілі і serde інше відкидає
-- [ ] Запис [ts-rs-drift-guard](p3-ts-rs-drift-guard.md) заведено з посиланням на
+      — див. відхилення 1
+- [x] Запис [ts-rs-drift-guard](p3-ts-rs-drift-guard.md) заведено з посиланням на
       розділ D нотатки
-- [ ] Ворота з `gates:` зелені
+- [x] Ворота з `gates:` зелені (локально; на CI — у PR)
+
+## Відхилення від запису
+
+Два, обидва свідомі й обидва знайдені code-review'ом.
+
+1. **Коментар про цілі числа стоїть біля `GlobalSettings`, не `UiSettings`.** Критерій
+   називає `UiSettings`, але жодного числового поля там немає: `volumeStepPercent`, який
+   рядок 12 і перелічує, живе в `GlobalSettings`. Коментар пішов туди, де числа справді
+   є (`RecordingSettings`, `GlobalSettings.volumeStepPercent`, `ScheduledRecording.days`,
+   `SearchParams`); у `UiSettings` він був би неправдою. Сам критерій, схоже, назвав
+   `UiSettings` замість `GlobalSettings` помилково.
+2. **Зачеплено `docs/data-models.md`, якого немає в `touches:`.** Документ цитує
+   `TrackChangedPayload`, `RecordingStatusPayload` і `TrackInfo` поле в поле, тож після
+   цієї роботи почав би брехати. Копії полагоджено, а не знято: знімати їх — робота
+   запису [data-models-doc-drift](p2-data-models-doc-drift.md), який цей борг і веде.
+   У щойно виправленому фрагменті Rust `TrackInfo` заразом дописано `pub ignored: bool` —
+   дрейф, що був там до цієї роботи, у рядку, який усе одно правився.
 
 ## Документи
 
