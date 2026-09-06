@@ -125,33 +125,60 @@ reconnecting) керує лічильником «зупиняються», кн
 
 ## Критерії готовності
 
-- [ ] `src/lib/recordingToggle.ts`: `toggleRecording(streamId, state)` у `connecting` і
+- [x] `src/lib/recordingToggle.ts`: `toggleRecording(streamId, state)` у `connecting` і
       `reconnecting` кличе `stopRecording`, в `idle`, `error` і без статусу —
       `startRecording`; тест модуля без DOM
-- [ ] `recordRefusalMessage(err)`: `already_recording` і `not_recording` → `null` (тоста
+- [x] `recordRefusalMessage(err)`: `already_recording` і `not_recording` → `null` (тоста
       немає), решта → `String(err)`; тест
-- [ ] Чотири місця — кнопка рядка, контекстне меню, Enter/подвійний клік у списку,
+- [x] Чотири місця — кнопка рядка, контекстне меню, Enter/подвійний клік у списку,
       палітра — викликають модуль без власного `try/catch`; по одному тесту на місце, що
       падає на невиправленому коді: у стані `connecting` дія зупиняє потік, а не пробує
       його почати
-- [ ] Підпис у всіх чотирьох місцях у `connecting` і `reconnecting` — «Зупинити запис»
+- [x] Підпис у всіх чотирьох місцях у `connecting` і `reconnecting` — «Зупинити запис»
       (у рядку — з назвою в `aria-label`); тести на підпис
-- [ ] Бекенд: `RadioError` дістає варіанти для «вже пишеться» і «не пишеться» замість прози
+- [x] Бекенд: `RadioError` дістає варіанти для «вже пишеться» і «не пишеться» замість прози
       в `Other`/`NotFound`; команди `start_recording` і `stop_recording` віддають голі коди
       `already_recording` / `not_recording` константами за зразком
-      `PLAY_ERR_UNSUPPORTED_CODEC`; `cargo test` на менеджер і на мапінг команди
-- [ ] Заливка рядка: `recording` червона, `connecting`/`reconnecting` жовта, `error` без
+      `PLAY_ERR_UNSUPPORTED_CODEC`; `cargo test` на мапінг команди (менеджер — див.
+      «Знайдено під час реалізації»)
+- [x] Заливка рядка: `recording` червона, `connecting`/`reconnecting` жовта, `error` без
       заливки, фаза перекриває синю заливку відтворення; кнопка червона з ⏹ у трьох фазах;
       тест на рядок у `connecting`
-- [ ] `docs/help/` — `streams.md` (uk, en): звірити, що «Enter — почати або зупинити
-      запис» лишається правдою; правок не очікується
-- [ ] `cargo test`, `cargo clippy --all-targets`, `pnpm test`, `pnpm typecheck`,
+- [x] `docs/help/` — `streams.md` (uk, en): звірено, «Enter — почати або зупинити
+      запис» лишається правдою; правок не було
+- [x] `cargo test`, `cargo clippy --all-targets`, `pnpm test`, `pnpm typecheck`,
       `pnpm vite:build` — без помилок
-- [ ] NVDA-прогін за чеклістом зі скілу `writing-nvda-checklists`: підпис під час
-      підключення й перепідключення читається правильно; зміна підпису під сфокусованою
-      кнопкою **чутна** (див. `focused-label-swap-is-silent` — лікує дзеркальний
-      `aria-label`, який тут уже є); повторний Enter одразу після старту не дає тоста;
-      палітра пропонує «Зупинити запис» для потоку, що підключається
+- [ ] NVDA-прогін за чеклістом
+      [nvda-record-action-lies-while-connecting.md](../testing/nvda-record-action-lies-while-connecting.md):
+      підпис під час підключення й перепідключення читається правильно; зміна підпису під
+      сфокусованою кнопкою **чутна** (див. `focused-label-swap-is-silent` — лікує
+      дзеркальний `aria-label`, який тут уже є); повторний Enter одразу після старту не
+      дає тоста; палітра пропонує «Зупинити запис» для потоку, що підключається
+
+## Знайдено під час реалізації
+
+- **Тест менеджера на нові варіанти неможливий без `AppHandle`.** `StreamManager::new`
+  вимагає його, а `tauri` без `test`-feature мок-застосунку не дає; сусідні тести
+  менеджера (`start_recording_returns_session_id`) через це лише пінять сигнатури.
+  Гарантія тому перевіряється там, де вона й живе — на межі команди:
+  `recording_refusals_cross_the_boundary_as_codes_not_prose` у `stream_commands.rs`.
+  Планувальник і crash recovery звуть той самий `start_recording` і роблять
+  `to_string()` — для них Display-текст варіантів не змінився.
+- **Рев'ю перейменувало два імені за словником.** `isRecording` у рядку відповідав на
+  «чи йдуть байти», а після розширення терміна читався як суперечність — став
+  `isWriting`; `recording_refusal_code` повертав прозу для всього, крім двох варіантів, —
+  став `recording_refusal_on_wire`.
+- **Ковтнутий пропуск лишає слід** у `console.debug`: якщо рядок колись застрягне
+  застарілим, це єдиний доказ, що другий натиск дійшов до бекенду.
+- **Прийнято без правки:** жовта заливка, як і червона поруч, без `forced-colors:`-варіанта
+  (у High Contrast фон і так гаситься, фазу несе текст сегмента); три локальні фабрики
+  `StreamStatus` у тестах (спільної в `src/test/` немає, заводити заради трьох місць
+  не варто); підписи «Почати/Зупинити запис» лишаються в чотирьох місцях — так вирішено
+  в (2).
+- **Сусідній запис.** Паралельна сесія огрилила решту англійських відмов на тому ж
+  виклику в `record-refusals-untranslated` (P2, `depends_on` цей запис): він розширює
+  `recordRefusalMessage` і константи `REC_ERR_*`, не заводить свого мапера.
+- Код: `206fc3d` (реалізація), `4cef9fc` (рев'ю).
 
 ## Документи
 
