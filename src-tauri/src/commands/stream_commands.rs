@@ -885,6 +885,10 @@ mod tests {
             "disk_space_low"
         );
         assert_eq!(recording_refusal_on_wire(RadioError::Other("boom".into())), "boom");
+        // Used by the commands directly, not through the mapper — pinned here so
+        // a rename cannot drift from the literal the frontend matches on. The
+        // player shares it (`PLAY_ERR_STREAM_NOT_FOUND` is an alias).
+        assert_eq!(REC_ERR_STREAM_NOT_FOUND, "stream_not_found");
     }
 
     #[test]

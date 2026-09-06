@@ -7,6 +7,11 @@ use crate::player::engine::AudioDevice;
 /// to its own localized toast (`playRefusal.ts`), so do not reword it. Mirrors
 /// the `SHELL_ERR_*` codes in [`crate::commands::shell_open`].
 pub(crate) const PLAY_ERR_UNSUPPORTED_CODEC: &str = "unsupported_codec";
+/// The stream is not in the active profile — the row outlived a profile switch
+/// or a delete. Deliberately the same code as the recording side: one fact, one
+/// frontend key (`stream_not_found_in_profile`), so the alias, not a literal.
+pub(crate) const PLAY_ERR_STREAM_NOT_FOUND: &str =
+    crate::commands::stream_commands::REC_ERR_STREAM_NOT_FOUND;
 
 #[tauri::command]
 pub async fn play_stream(
@@ -19,7 +24,7 @@ pub async fn play_stream(
         profile.streams.iter()
             .find(|s| s.id == stream_id)
             .cloned()
-            .ok_or_else(|| format!("stream not found: {stream_id}"))?
+            .ok_or_else(|| PLAY_ERR_STREAM_NOT_FOUND.to_string())?
     };
     // Імплікація однобічна (ADR 2026-08-31 §7): symphonia декодує вужчий набір,
     // ніж Tapir уміє назвати, тож «не формат» гарантує «не заграє» — хибної
