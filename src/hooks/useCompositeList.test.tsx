@@ -887,10 +887,11 @@ describe("a new result set (the key changed) forgets the current stop", () => {
   });
 
   it("takes the focus with it when the row UNDER it goes with the old result set", () => {
-    // ADR §5's other half. The criteria changed while the person stood in the
-    // list and their own row is not in the new set, so focus has nowhere to be —
-    // and a live person on <body> is the failure this project refuses. The first
-    // row of the new set takes the focus along with the stop.
+    // ADR §5 state 3, and the reason the amendment to it exists. The criteria
+    // changed while the person stood in the list and their own row is not in the
+    // new set. The event says which row (a new result set → the first), liveness
+    // says whether focus moves (it is on <body> → yes), so the first row takes
+    // both. NOT the drift clamp: that target answers a question nobody asked.
     const { rerender } = render(<Harness items={makeItems()} resultSetKey="all" />);
     focusStart("a");
     press("ArrowDown"); // active = b, index 1, focus inside the list

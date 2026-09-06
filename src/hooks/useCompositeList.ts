@@ -560,12 +560,16 @@ export function useCompositeList<T extends CompositeListItem>({
     // the empty state carries its own focusable anchor (accessibility.md §3.1).
     if (rows.length === 0) return;
     seatStopOnRow(rows[0].id);
-    // The list HELD focus and focus is now nowhere: either the person's own row
-    // went with the old result set, or they blurred out of the list earlier.
-    // Both leave a live person on <body>, which is the failure this project
-    // refuses (ADR 2026-09-05) — so the first row of the new set takes the focus
-    // as well as the stop. Asked of the present, not of history: whether what
-    // holds focus right now is alive.
+    // Focus is nowhere and the list is the one that lost it — the person's own
+    // row went with the old result set. Two questions, two answers, and they
+    // compose (ADR §5 as amended): WHICH row is the stop is decided by the event
+    // (a new result set, so the first row), and WHETHER focus moves is decided by
+    // liveness (it is dead, so repair it). The clamp belongs to drift and would
+    // let where focus happened to be pick the target instead of what happened.
+    //
+    // Unreachable from the UI today — changing a criterion means holding focus on
+    // the control that changes it — but the premise lives in the UI, not in the
+    // types, and this whole record exists because one like it aged in silence.
     if (hasFocusRef.current && (!ae || ae === document.body || !ae.isConnected)) {
       pendingFocusRef.current = { itemId: rows[0].id, segment: 'summary' };
     }
