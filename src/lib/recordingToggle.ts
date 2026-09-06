@@ -51,5 +51,8 @@ export async function toggleRecording(streamId: string, state: StreamState | und
   } catch (err) {
     const message = recordRefusalMessage(err);
     if (message !== null) addToast(message, "error");
+    // A swallowed skip still leaves a trace: if the row ever stays stale, this
+    // is the only evidence the second press reached the backend.
+    else console.debug(`toggleRecording(${streamId}): skipped —`, err);
   }
 }

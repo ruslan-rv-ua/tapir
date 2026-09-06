@@ -76,7 +76,7 @@ export function StreamItem({
   // duration, the summary label and the red fill. «Does a recording exist?»
   // drives the action: it exists from the start command on, and connecting /
   // reconnecting are its phases (CONTEXT.md §«Запис і Записи»).
-  const isRecording = state === "recording";
+  const isWriting = state === "recording";
   const hasRecording = isRecordingLike(state);
   const playerStatus = useStore($playerStatus);
   const announce = useAnnounce();
@@ -93,10 +93,10 @@ export function StreamItem({
 
   // Update elapsed time display while recording
   useEffect(() => {
-    if (!isRecording || !status?.recordingStartedAt) return;
+    if (!isWriting || !status?.recordingStartedAt) return;
     const id = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(id);
-  }, [isRecording, status?.recordingStartedAt]);
+  }, [isWriting, status?.recordingStartedAt]);
 
   const elapsedMs = status?.recordingStartedAt
     ? Date.now() - new Date(status.recordingStartedAt).getTime()
@@ -115,9 +115,9 @@ export function StreamItem({
 
   // Summary label — uses screen-reader-friendly words, not the visual "REC".
   const stateLabel =
-    isRecording && isThisStreamPlaying
+    isWriting && isThisStreamPlaying
       ? m.status_recording_and_playing()
-      : isRecording
+      : isWriting
         ? m.status_recording_label()
         : isThisStreamPlaying
           ? m.segment_playing()
@@ -206,7 +206,7 @@ export function StreamItem({
   // The fill tells the phase apart — red while bytes flow, amber (the spinner's
   // colour) while the recording only connects or reconnects — and any phase of
   // a recording outranks the blue of playback. An errored row has no fill.
-  const rowBg = isRecording
+  const rowBg = isWriting
     ? "bg-red-950/30 border-l-2 border-l-red-500"
     : hasRecording
       ? "bg-amber-950/30 border-l-2 border-l-amber-500"

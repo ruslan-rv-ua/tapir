@@ -209,6 +209,16 @@ describe("StreamItem — the record action while the recording is only connectin
     },
   );
 
+  it("lets any phase of a recording outrank the blue of playback", () => {
+    $playerStatus.set({
+      state: "playing", source: { type: "stream", streamId: "s1" },
+      volume: 0.75, positionMs: null, durationMs: null,
+    });
+    const { container } = renderItem(mkStream(), mkPhase("connecting"));
+    expect(row(container).className).toMatch(/border-l-amber-500/);
+    expect(row(container).className).not.toMatch(/bg-blue-950/);
+  });
+
   it("keeps the red fill for the phase in which bytes are flowing", () => {
     const { container } = renderItem(mkStream(), mkPhase("recording"));
     expect(row(container).className).toMatch(/border-l-red-500/);

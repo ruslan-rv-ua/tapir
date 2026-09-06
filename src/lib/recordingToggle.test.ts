@@ -23,9 +23,9 @@ describe("recordRefusalMessage", () => {
     expect(recordRefusalMessage("not_recording")).toBeNull();
   });
 
-  it("passes anything else through untouched", () => {
-    // Other refusals on the same call are another record's problem; hiding
-    // them here would take away the only detail the user has.
+  it("still lets every other refusal through as it came — their wording is another record's", () => {
+    // Hiding them here would take away the only detail the user has;
+    // translating them is record-refusals-untranslated.
     expect(recordRefusalMessage("Stream s1 not found")).toBe("Stream s1 not found");
     expect(recordRefusalMessage(new Error("boom"))).toBe("Error: boom");
   });

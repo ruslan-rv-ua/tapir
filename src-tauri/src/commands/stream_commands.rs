@@ -18,7 +18,7 @@ pub(crate) const REC_ERR_NOT_RECORDING: &str = "not_recording";
 
 /// What a recording refusal looks like on the wire: the two «nothing to do»
 /// verdicts become stable codes, everything else keeps its Display text.
-pub(crate) fn recording_refusal_code(e: RadioError) -> String {
+pub(crate) fn recording_refusal_on_wire(e: RadioError) -> String {
     match e {
         RadioError::AlreadyRecording(_) => REC_ERR_ALREADY_RECORDING.to_string(),
         RadioError::NotRecording(_) => REC_ERR_NOT_RECORDING.to_string(),
@@ -566,7 +566,7 @@ pub async fn start_recording(
     manager
         .start_recording(stream, settings, manager_arc.clone())
         .map(|_| ())
-        .map_err(recording_refusal_code)
+        .map_err(recording_refusal_on_wire)
 }
 
 #[tauri::command]
@@ -583,7 +583,7 @@ pub async fn stop_recording(
     };
     {
         let mut manager = state.stream_manager.write().await;
-        manager.stop_recording(&stream_id).map_err(recording_refusal_code)?;
+        manager.stop_recording(&stream_id).map_err(recording_refusal_on_wire)?;
     }
     if let Some(session_id) = session_id {
         crate::scheduler::timer::notify_manual_stop(&app, &stream_id, session_id).await;
@@ -866,14 +866,14 @@ mod tests {
         // give) and could not match English prose safely. Anything else still
         // crosses as-is; that prose is another record's problem.
         assert_eq!(
-            recording_refusal_code(RadioError::AlreadyRecording("s1".into())),
+            recording_refusal_on_wire(RadioError::AlreadyRecording("s1".into())),
             "already_recording"
         );
         assert_eq!(
-            recording_refusal_code(RadioError::NotRecording("s1".into())),
+            recording_refusal_on_wire(RadioError::NotRecording("s1".into())),
             "not_recording"
         );
-        assert_eq!(recording_refusal_code(RadioError::Other("disk".into())), "disk");
+        assert_eq!(recording_refusal_on_wire(RadioError::Other("disk".into())), "disk");
     }
 
     #[test]
