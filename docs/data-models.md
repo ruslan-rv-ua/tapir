@@ -814,7 +814,6 @@ interface StreamStatus {
 interface TrackInfo {
   artist: string;
   title: string;
-  album: string;
   startedAt: string;
   ignored: boolean;             // трек підпав під ігнор-лист — кваліфікатор у рядку потоку
 }
@@ -851,8 +850,8 @@ pub enum StreamState {
 pub struct TrackInfo {
     pub artist: String,
     pub title: String,
-    pub album: String,
     pub started_at: String,
+    pub ignored: bool,
 }
 ```
 
@@ -1027,19 +1026,21 @@ Payload типи для Tauri events (backend → frontend).
 
 ```typescript
 // track-changed
+// Одна структура на обидва емітери: поки потік пишеться, подію шле лише
+// менеджер запису, і кваліфікатор належить йому (tauri-ts-type-drift).
 interface TrackChangedPayload {
   streamId: string;
   artist: string;
   title: string;
-  album: string;
   ignored: boolean;             // дублює TrackInfo.ignored — живий рядок збирається з події
 }
 
-// recording-status
+// recording-status — несе РЕЗУЛЬТАТ запису, не стан потоку: "stopped" є тут і
+// немає в StreamState, а дзеркало відображає його в "idle".
 interface RecordingStatusPayload {
   streamId: string;
-  status: "connecting" | "recording" | "stopped" | "error" | "reconnecting";
-  error?: string;
+  status: "connecting" | "recording" | "reconnecting" | "stopped" | "error";
+  error: FailureReason | null;
 }
 
 // recording-started

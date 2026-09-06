@@ -686,10 +686,12 @@ impl PlayerEngine {
                                 // див. [`player_owns_track_line`]. Перевірка на кожну
                                 // зміну метаданих, а не на старті відтворення: запис
                                 // може початись і скінчитись посеред відтворення.
-                                let owns_line = player_owns_track_line(
-                                    manager_stream_state(&app_writer, &stream_id_writer).await,
-                                );
-                                if !stream_id_writer.is_empty() && owns_line {
+                                // Прев'ю до менеджера не ходить узагалі.
+                                let owns_line = !stream_id_writer.is_empty()
+                                    && player_owns_track_line(
+                                        manager_stream_state(&app_writer, &stream_id_writer).await,
+                                    );
+                                if owns_line {
                                     let _ = app_writer.emit(
                                         "track-changed",
                                         TrackChangedPayload {
