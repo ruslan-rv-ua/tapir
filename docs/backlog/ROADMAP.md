@@ -43,6 +43,10 @@ semver; `unscheduled` — наприкінці.
 > не звучала жодного разу. Тема віхи його й ловить: інтерфейс каже «Немає збоїв» там, де
 > вони є.
 > Грилінг обсягу довідки 2026-09-05 додав до віхи ще один P2 і **того ж дня його закрив**: правило 6 отримало нижню межу 600 слів замість стелі, а саме письмо — чотирнадцять розділів — поїхало в 0.2.0 окремим записом, бо віха названа за станом застосунку, а не довідки. Черга від цього не змінилась.
+> Grooming того P1 2026-09-06 відщепив ще один P2: на тому самому виклику лишається дві
+> англійські відмови — за диском і на зниклий потік, — і обидві їдуть у тост, який NVDA
+> читає; батьківський запис закриває лише подвійний старт. Тема віхи — «обидві локалі
+> повні» — ловить і його.
 > Чи вважати віху завершеною і тегувати збірку, вирішує розробник після цієї черги;
 > завантажуваний exe для тегу — [release-workflow](p3-release-workflow.md), поки `draft`.
 
@@ -52,6 +56,7 @@ semver; `unscheduled` — наприкінці.
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує |
 |------|---|-----|------|---------|---------------|-------------|
 | [ci-pipeline](p2-ci-pipeline.md) | P2 | planned | ready | M | [repo-public-rename](done/p2-repo-public-rename.md) ✅, [typecheck-gate](done/p1-typecheck-gate.md) ✅, [clippy-warnings-zero](done/p2-clippy-warnings-zero.md) ✅ | [release-workflow](p3-release-workflow.md) (ворота, які **відмовляють**: PR обов'язковий, два jobs `frontend`/`backend`, адміністратор включений, ретраю немає; правило — [ADR](../decisions/2026-09-05-gates-refuse-rather-than-advise.md)) |
+| [record-refusals-untranslated](p2-record-refusals-untranslated.md) | P2 | planned | ready | S | [record-action-lies-while-connecting](p1-record-action-lies-while-connecting.md) | — (хвіст батьківського запису: `start_recording` має три англійські відмови, той закриває лише «вже пишеться»; лишаються `Not enough disk space: free 0.4 GB, required 1 GB` і `Stream <id> not found`, обидві через `String(err)` у тост. Перша досяжна з **шести** місць, не чотирьох — ще й через «Записати все» / «Записати виділені». Grooming знайшов, що прозу показують лише дві команди з чотирьох споживачів перевірки, а числа з неї вже мають видимий носій — рядок стану й метрика «Вільно» перемикаються на «Мало вільного місця» за тим самим порогом; тож коди `disk_space_low` / `stream_not_found` без чисел, деталь у `warn!`, два ключі, той самий `recordRefusalMessage`. Зниклий потік — тост, не тиша: список не мав його показувати, і тиша сховала б ваду списку) |
 | [tauri-ts-type-drift](p2-tauri-ts-type-drift.md) | P2 | planned | **draft** | S | [tauri-specta-bindings](done/p3-tauri-specta-bindings.md) ✅ | — (аудит 67 типів `tauri.ts` проти Rust: одна жива вада — `track-changed` із плеєра без `ignored`, тож кваліфікатор «ігнорується» в рядку залежить від того, чий емітер останній; ще 11 звужень і латентних пасток; grooming — хто рахує `ignored` для треку з плеєра) |
 | [release-workflow](p3-release-workflow.md) | P3 | idea | **draft** | M | [ci-pipeline](p2-ci-pipeline.md) | — (exe у GitHub Release на тег `v*`; у воротах не збирається — release-профіль це другий повний прохід по графу залежностей; шість відкритих питань, зокрема підпис і екран SmartScreen) |
 | [dead-js-tauri-plugins](p3-dead-js-tauri-plugins.md) | P3 | planned | **draft** | S | [dead-dependencies](done/p2-dead-dependencies.md) ✅ | — (`@tauri-apps/plugin-dialog` і `@tauri-apps/plugin-log` у `package.json` не імпортує ніхто: з боку JS живий лише `@tauri-apps/api`) |
