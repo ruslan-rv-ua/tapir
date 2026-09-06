@@ -3,11 +3,12 @@ slug: ci-pipeline
 title: "CI на GitHub Actions: ворота, які відмовляють"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: M
 kind: chore
 target: 0.1.0
-updated: 2026-09-05
+updated: 2026-09-06
+completed: 2026-09-06
 a11y: false
 depends_on: [repo-public-rename, typecheck-gate, clippy-warnings-zero]
 blocks: [release-workflow]
@@ -20,14 +21,23 @@ notes:
   - "Грилінг 2026-09-05 (15 питань). Запис переписано цілком: із трьох аргументів «за», що були в чернетці, вціліло нуль — два спростовано вимірами, третій виявився не тим."
   - "Публікація репозиторію винесена в окремий запис repo-public-rename: без неї захист гілки недоступний, тож це не примітка, а передумова."
   - "Збірка exe винесена в окремий запис release-workflow: release-профіль не переюзовує нічого з воріт, це другий повний прохід по графу залежностей."
+  - "Реалізація 2026-09-06: `actions/setup-node@v5` вмикає `package-manager-cache` за
+    замовчуванням і кешує pnpm-store сам, зокрема з PR-прогонів — тобто тихо порушує
+    правило «пише лише push: develop». Видно лише в лозі кроку Post Run і в списку
+    кешів; вимкнено явним `package-manager-cache: false`."
+  - "Ворота в CI не викликають `just check`, а дублюють його кроками — заради
+    іменованого провалу (ADR §5). Дубль стереже `build/ciGates.test.ts`."
+  - "Ланцюг закриття не каже, куди лягає коміт `docs(backlog): close …`: власного PR
+    для нього не передбачено, а прямий push у захищений `develop` неможливий. Фактично
+    він їде в тому самому PR, що й робота — питання лишилось відкритим."
   - "Помилка грилінгу, збережена навмисно: спершу було вирішено, що cargo test потребує dist/ через generate_context!. Це неправда — dev = cfg!(not(feature = \"custom-protocol\")) веде в гілку з порожніми ассетами. Паніка чекає лише на tauri build."
 ---
 
 # CI на GitHub Actions: ворота, які відмовляють
 
 > **Контекст:** правило й відкинуті альтернативи —
-> [ADR «ворота відмовляють, а не радять»](../decisions/2026-09-05-gates-refuse-rather-than-advise.md).
-> Передумова — [repo-public-rename](done/p2-repo-public-rename.md): без публічного
+> [ADR «ворота відмовляють, а не радять»](../../decisions/2026-09-05-gates-refuse-rather-than-advise.md).
+> Передумова — [repo-public-rename](p2-repo-public-rename.md): без публічного
 > репозиторію захист гілки недоступний.
 
 ## Опис
@@ -113,7 +123,7 @@ PR і недоступний нікому іншому, але місце в 10-
 
 Порядок несучий — переставляння кроків дає або заблокований PR, або осиротілі коміти.
 
-1. ✅ Закрити [repo-public-rename](done/p2-repo-public-rename.md) — зроблено 2026-09-05.
+1. ✅ Закрити [repo-public-rename](p2-repo-public-rename.md) — зроблено 2026-09-05.
 2. **Запушити локальний `develop` повністю.** У мить увімкнення захисту будь-який коміт,
    що вже в локальному стовбурі, але не на origin, стає непроштовхуваним: прямий push
    відхиляється, а PR із нього не зробити — він уже не на гілці. Такі коміти доводиться
@@ -151,26 +161,26 @@ PR і недоступний нікому іншому, але місце в 10-
 - **Ретрай будь-якого рівня**, зокрема `vitest --retry` — стирає єдиний сигнал, заради
   якого ворота ставлять.
 - **Збірка exe у воротах** — окремий повний прохід release-профілю; винесено в
-  [release-workflow](p3-release-workflow.md).
+  [release-workflow](../p3-release-workflow.md).
 
 ## Критерії готовності
 
-- [ ] `docs/help/` — запис видимої поведінки не змінює
-- [ ] Workflow ганяє всі шість воріт двома jobs на `pull_request` у `develop`,
+- [x] `docs/help/` — запис видимої поведінки не змінює
+- [x] Workflow ганяє всі шість воріт двома jobs на `pull_request` у `develop`,
       на `push` у `develop` і вручну
-- [ ] Кеш налаштовано; прогін на теплому кеші триває менше 10 хвилин
-- [ ] Захист `develop` увімкнено; **спроба прямого push відхиляється** — перевірено
+- [x] Кеш налаштовано; прогін на теплому кеші триває менше 10 хвилин
+- [x] Захист `develop` увімкнено; **спроба прямого push відхиляється** — перевірено
       вручну, а не припущено
-- [ ] У налаштуваннях репозиторію лишився тільки merge commit
-- [ ] `AGENTS.md` має розділ про гілки й PR-потік (сьогодні жодного рядка про це немає)
-- [ ] `DEVELOPERS.md` описує, що перевіряє CI і як прочитати його лог
-- [ ] У `AGENTS.md` і `DEVELOPERS.md` виправлено «три frontend gates» на чотири —
+- [x] У налаштуваннях репозиторію лишився тільки merge commit
+- [x] `AGENTS.md` має розділ про гілки й PR-потік (сьогодні жодного рядка про це немає)
+- [x] `DEVELOPERS.md` описує, що перевіряє CI і як прочитати його лог
+- [x] У `AGENTS.md` і `DEVELOPERS.md` виправлено «три frontend gates» на чотири —
       `pnpm lint` став ворітьми 2026-09-04, обидва файли цього не знають
 
 ## Документи
 
-- [ADR — ворота відмовляють, а не радять](../decisions/2026-09-05-gates-refuse-rather-than-advise.md)
-- [repo-public-rename](done/p2-repo-public-rename.md) — передумова
-- [release-workflow](p3-release-workflow.md) — розблоковується цим записом
-- [typecheck-gate](done/p1-typecheck-gate.md), [clippy-warnings-zero](done/p2-clippy-warnings-zero.md) — ворота, які CI запускає
+- [ADR — ворота відмовляють, а не радять](../../decisions/2026-09-05-gates-refuse-rather-than-advise.md)
+- [repo-public-rename](p2-repo-public-rename.md) — передумова
+- [release-workflow](../p3-release-workflow.md) — розблоковується цим записом
+- [typecheck-gate](p1-typecheck-gate.md), [clippy-warnings-zero](p2-clippy-warnings-zero.md) — ворота, які CI запускає
 - https://github.com/Swatinem/rust-cache

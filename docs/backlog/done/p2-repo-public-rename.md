@@ -31,7 +31,7 @@ notes:
 
 > **Контекст:** рішення грилінгу 2026-09-05, перша половина розвилки про ворота —
 > див. [ADR «ворота відмовляють, а не радять»](../../decisions/2026-09-05-gates-refuse-rather-than-advise.md).
-> Друга половина — [ci-pipeline](../p2-ci-pipeline.md), який без цього запису
+> Друга половина — [ci-pipeline](p2-ci-pipeline.md), який без цього запису
 > нездійсненний.
 
 ## Опис
@@ -132,6 +132,6 @@ Windows дорогий» після публікації просто зника
 ## Документи
 
 - [ADR — ворота відмовляють, а не радять](../../decisions/2026-09-05-gates-refuse-rather-than-advise.md)
-- [ci-pipeline](../p2-ci-pipeline.md) — запис, який цей розблоковує
+- [ci-pipeline](p2-ci-pipeline.md) — запис, який цей розблоковує
 - [about-app-info](p1-about-app-info.md) — де обрано публічну адресу
 - код: `src-tauri/src/commands/app_commands.rs`, `docs/help/uk/troubleshooting.md`
