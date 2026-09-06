@@ -180,6 +180,8 @@
   "stream_unsupported_codec": "Потік «{name}»: Tapir не записує кодек {codec}",
   "stream_unsupported_unknown": "Потік «{name}»: кодек не розпізнано — запис не почався",
   "stream_play_unsupported": "Tapir не відтворює кодек цього потоку",
+  "record_refused_disk_space": "Замало вільного місця на диску — запис не розпочато",
+  "stream_not_found_in_profile": "Потік не знайдено в активному профілі",
   "recording_started": "Запис розпочато: {name}",
   "recording_stopped": "Запис зупинено: {name}",
   "stream_failed": "{name}: {reason}",

@@ -180,6 +180,8 @@
   "stream_unsupported_codec": "Stream \"{name}\": Tapir does not record the {codec} codec",
   "stream_unsupported_unknown": "Stream \"{name}\": the codec was not recognised — recording did not start",
   "stream_play_unsupported": "Tapir does not play this stream’s codec",
+  "record_refused_disk_space": "Not enough free disk space — recording did not start",
+  "stream_not_found_in_profile": "Stream not found in the active profile",
   "recording_started": "Recording started: {name}",
   "recording_stopped": "Recording stopped: {name}",
   "stream_failed": "{name}: {reason}",

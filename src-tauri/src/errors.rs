@@ -30,6 +30,14 @@ pub enum RadioError {
     #[error("No active recording for stream '{0}'")]
     NotRecording(String),
 
+    /// Free space on the recording volume is under the profile's threshold.
+    /// A refusal by Tapir, not a failure of the station — nothing is tried.
+    /// `start_recording` / `start_all_recordings` put it on the wire as
+    /// `REC_ERR_DISK_SPACE_LOW`; the numbers live in this prose for the log
+    /// (ADR 2026-09-06 §5) — on screen the status bar already carries them.
+    #[error("Not enough disk space: free {:.1} GB, required {threshold_gb} GB", gib(.free_bytes))]
+    DiskSpaceLow { free_bytes: u64, threshold_gb: u32 },
+
     #[error("Invalid URL: {0}")]
     InvalidUrl(String),
 
@@ -64,6 +72,11 @@ impl From<RadioError> for String {
     }
 }
 
+/// Bytes as gibibytes, for the one Display that quotes a size.
+fn gib(bytes: &u64) -> f64 {
+    *bytes as f64 / 1_073_741_824.0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -74,5 +87,13 @@ mod tests {
         assert_eq!(RadioError::Forbidden("x".into()).to_string(), "Forbidden: x");
         assert_eq!(RadioError::InvalidName("x".into()).to_string(), "InvalidName: x");
         assert_eq!(RadioError::InvalidData("x".into()).to_string(), "InvalidData: x");
+    }
+
+    #[test]
+    fn disk_space_low_display_keeps_the_numbers_for_the_log() {
+        // The toast no longer quotes them (record-refusals-untranslated), so
+        // this line is where they survive.
+        let e = RadioError::DiskSpaceLow { free_bytes: 429_496_730, threshold_gb: 1 };
+        assert_eq!(e.to_string(), "Not enough disk space: free 0.4 GB, required 1 GB");
     }
 }

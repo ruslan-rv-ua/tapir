@@ -4,6 +4,7 @@ import * as tauri from "../../lib/tauri";
 import { $commandPaletteOpen } from "../../stores/navigation";
 import { $streams, $statuses, replaceSelection, $exportStreamsRequest } from "../../stores/streams";
 import { $announcer } from "../../stores/announcer";
+import { $toasts } from "../../stores/toasts";
 import * as m from "../../i18n/paraglide/messages";
 import { CommandPalette } from "./CommandPalette";
 
@@ -21,10 +22,24 @@ beforeEach(() => {
   $statuses.set({});
   $commandPaletteOpen.set(true);
   $announcer.set(null);
+  $toasts.set([]);
   replaceSelection(new Set());
 });
 
 describe("CommandPalette — record all", () => {
+  it("words the disk-threshold refusal the same way the row does", async () => {
+    // The palette's «Записати все» runs the same check first as a single
+    // start; its refusal goes through the same mapper, never raw.
+    vi.mocked(tauri.startAllRecordings).mockRejectedValueOnce("disk_space_low");
+    render(<CommandPalette />);
+    await act(async () => {
+      fireEvent.click(screen.getByText(/^записати все$|^record all$/i));
+    });
+    expect($toasts.get().map((t) => [t.message, t.type])).toEqual([
+      [m.record_refused_disk_space(), "error"],
+    ]);
+  });
+
   it("offers a Record-all command", () => {
     render(<CommandPalette />);
     expect(screen.getByText(/^записати все$|^record all$/i)).toBeTruthy();

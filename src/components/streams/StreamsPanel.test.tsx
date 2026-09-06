@@ -237,6 +237,21 @@ describe("StreamsPanel — record all", () => {
     expect(tauri.startAllRecordings).toHaveBeenCalledOnce();
   });
 
+  it("words the disk-threshold refusal the same way the row does", async () => {
+    // «Записати все» runs the same check first as a single start, so its
+    // refusal must reach the toast through the same mapper — never as the
+    // raw code, and never as the backend's English prose.
+    vi.mocked(tauri.startAllRecordings).mockRejectedValueOnce("disk_space_low");
+    renderPanel();
+    const btn = screen.getByRole("button", { name: /записати все|record all/i });
+    await act(async () => {
+      fireEvent.click(btn);
+    });
+    const messages = $toasts.get().map((t) => t.message);
+    expect(messages).toContain(m.record_refused_disk_space());
+    expect(messages).not.toContain("disk_space_low");
+  });
+
   it("disables Record-all (aria) when every stream is already active", () => {
     $streams.set([mkStream("a", "Alpha")]);
     $statuses.set({ a: mkStatus("a", "recording") });

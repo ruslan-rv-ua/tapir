@@ -15,13 +15,21 @@ use log::warn;
 /// [`crate::commands::player_commands`].
 pub(crate) const REC_ERR_ALREADY_RECORDING: &str = "already_recording";
 pub(crate) const REC_ERR_NOT_RECORDING: &str = "not_recording";
+/// Free space on the recording volume is under the profile's threshold — the
+/// one refusal `start_all_recordings` shares with `start_recording`. Carries no
+/// numbers: the status bar shows them, the log keeps them (ADR 2026-09-06 §5).
+pub(crate) const REC_ERR_DISK_SPACE_LOW: &str = "disk_space_low";
+/// The stream is not in the active profile: the row outlived a profile switch
+/// or a delete. Reachable only in that race — the list should not have shown it.
+pub(crate) const REC_ERR_STREAM_NOT_FOUND: &str = "stream_not_found";
 
-/// What a recording refusal looks like on the wire: the two «nothing to do»
-/// verdicts become stable codes, everything else keeps its Display text.
+/// What a recording refusal looks like on the wire: the typed verdicts become
+/// stable codes, everything else keeps its Display text.
 pub(crate) fn recording_refusal_on_wire(e: RadioError) -> String {
     match e {
         RadioError::AlreadyRecording(_) => REC_ERR_ALREADY_RECORDING.to_string(),
         RadioError::NotRecording(_) => REC_ERR_NOT_RECORDING.to_string(),
+        RadioError::DiskSpaceLow { .. } => REC_ERR_DISK_SPACE_LOW.to_string(),
         other => other.to_string(),
     }
 }
@@ -131,11 +139,10 @@ pub(crate) async fn check_disk_space(state: &AppState) -> Result<(), RadioError>
     };
 
     if below_threshold(free_bytes, threshold_gb) {
-        return Err(RadioError::Other(format!(
-            "Not enough disk space: free {:.1} GB, required {} GB",
-            free_bytes as f64 / 1_073_741_824.0,
-            threshold_gb,
-        )));
+        let refusal = RadioError::DiskSpaceLow { free_bytes, threshold_gb };
+        // The toast carries no numbers any more; the log is where they stay.
+        warn!("Recording refused: {refusal}");
+        return Err(refusal);
     }
     Ok(())
 }
@@ -544,7 +551,7 @@ pub async fn start_recording(
     state: tauri::State<'_, AppState>,
     _app: tauri::AppHandle,
 ) -> Result<(), String> {
-    check_disk_space(&state).await.map_err(|e| e.to_string())?;
+    check_disk_space(&state).await.map_err(recording_refusal_on_wire)?;
 
     let stream = {
         let profile = state.active_profile.read().await;
@@ -553,7 +560,7 @@ pub async fn start_recording(
             .iter()
             .find(|s| s.id == stream_id)
             .cloned()
-            .ok_or_else(|| format!("Stream {} not found", stream_id))?
+            .ok_or_else(|| REC_ERR_STREAM_NOT_FOUND.to_string())?
     };
 
     let settings = {
@@ -605,7 +612,7 @@ pub async fn start_all_recordings(
     stream_ids: Option<Vec<String>>,
     state: tauri::State<'_, AppState>,
 ) -> Result<usize, String> {
-    check_disk_space(&state).await.map_err(|e| e.to_string())?;
+    check_disk_space(&state).await.map_err(recording_refusal_on_wire)?;
 
     let (all, settings) = {
         let profile = state.active_profile.read().await;
@@ -861,10 +868,10 @@ mod tests {
     #[test]
     fn recording_refusals_cross_the_boundary_as_codes_not_prose() {
         // Wire contract with `recordRefusalMessage` in src/lib/recordingToggle.ts:
-        // the frontend swallows both codes (a second start is a skip, not a
-        // failure — the same verdict «Записати все» and the scheduler already
-        // give) and could not match English prose safely. Anything else still
-        // crosses as-is; that prose is another record's problem.
+        // the frontend swallows the two «nothing to do» codes (a second start is
+        // a skip, not a failure — the same verdict «Записати все» and the
+        // scheduler already give), words the disk refusal itself, and could not
+        // match English prose safely. Anything untyped still crosses as-is.
         assert_eq!(
             recording_refusal_on_wire(RadioError::AlreadyRecording("s1".into())),
             "already_recording"
@@ -873,7 +880,15 @@ mod tests {
             recording_refusal_on_wire(RadioError::NotRecording("s1".into())),
             "not_recording"
         );
-        assert_eq!(recording_refusal_on_wire(RadioError::Other("disk".into())), "disk");
+        assert_eq!(
+            recording_refusal_on_wire(RadioError::DiskSpaceLow { free_bytes: 0, threshold_gb: 1 }),
+            "disk_space_low"
+        );
+        assert_eq!(recording_refusal_on_wire(RadioError::Other("boom".into())), "boom");
+        // Used by the commands directly, not through the mapper — pinned here so
+        // a rename cannot drift from the literal the frontend matches on. The
+        // player shares it (`PLAY_ERR_STREAM_NOT_FOUND` is an alias).
+        assert_eq!(REC_ERR_STREAM_NOT_FOUND, "stream_not_found");
     }
 
     #[test]

@@ -7,7 +7,7 @@ import { addToast } from "../../stores/toasts";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import * as tauri from "../../lib/tauri";
 import { isRecordingLike } from "../../lib/streamState";
-import { toggleRecording } from "../../lib/recordingToggle";
+import { reportRecordRefusal, toggleRecording } from "../../lib/recordingToggle";
 import * as m from "../../i18n/paraglide/messages";
 
 // Number of options PageUp/PageDown jumps by.
@@ -109,7 +109,7 @@ export function CommandPalette() {
       label: m.record_all(),
       action: async () => {
         close();
-        try { await tauri.startAllRecordings(); } catch (e) { addToast(String(e), "error"); }
+        try { await tauri.startAllRecordings(); } catch (e) { reportRecordRefusal(e, "startAllRecordings(palette)"); }
       },
     },
     {
