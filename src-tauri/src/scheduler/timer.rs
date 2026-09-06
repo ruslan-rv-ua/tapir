@@ -298,7 +298,7 @@ fn emit_result(app: &AppHandle, f: &Fixation) {
     // Кожна гілка називає свій варіант payload сама: перекласти
     // `ScheduleResultStatus` у `ScheduledCompletedStatus` автоматично нема як,
     // і саме цього тут і треба.
-    let completed = |status| {
+    let emit_scheduled_completed = |status| {
         app.emit("scheduled-completed", ScheduledCompletedPayload {
             recording_id: f.schedule_id.clone(),
             stream_id: f.stream_id.clone(),
@@ -319,17 +319,17 @@ fn emit_result(app: &AppHandle, f: &Fixation) {
 
     match f.result.status {
         ScheduleResultStatus::Completed => {
-            completed(ScheduledCompletedStatus::Completed);
+            emit_scheduled_completed(ScheduledCompletedStatus::Completed);
             notify_completed();
         }
         ScheduleResultStatus::StartedLate => {
-            completed(ScheduledCompletedStatus::StartedLate);
+            emit_scheduled_completed(ScheduledCompletedStatus::StartedLate);
             notify_completed();
         }
         ScheduleResultStatus::StoppedByUser => {
             // §4: подія потрібна для оновлення панелі; без balloon і announce —
             // ручну зупинку вже озвучує recording-флоу.
-            completed(ScheduledCompletedStatus::StoppedByUser);
+            emit_scheduled_completed(ScheduledCompletedStatus::StoppedByUser);
         }
         ScheduleResultStatus::Missed => {
             // §3.2 крок 3: запис у лог

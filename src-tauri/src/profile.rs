@@ -276,12 +276,16 @@ pub enum StreamSort {
 /// Розібрати `stream_sort` терпимо: невідоме або застаріле значення падає на
 /// [`StreamSort::Name`] замість того, щоб завалити розбір усього профілю.
 /// `#[serde(other)]` тут не працює — він лише для tagged-enum.
+///
+/// Приймає **будь-яке** JSON-значення, а не лише рядок: `Option<String>`
+/// пропустив би `null`, але на числі чи об'єкті завалив би профіль цілком —
+/// саме та відмова, проти якої це поле й тримали рядком.
 fn deserialize_stream_sort<'de, D>(deserializer: D) -> Result<StreamSort, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
-    let raw = Option::<String>::deserialize(deserializer)?;
-    Ok(match raw.as_deref() {
+    let raw = serde_json::Value::deserialize(deserializer)?;
+    Ok(match raw.as_str() {
         Some("added") => StreamSort::Added,
         _ => StreamSort::Name,
     })
@@ -876,7 +880,7 @@ mod tests {
     /// розбір усього профілю. Терпимість — та сама, що в `deserialize_log_level`.
     #[test]
     fn unknown_stream_sort_falls_back_instead_of_failing_the_profile() {
-        for raw in [r#""sideways""#, "null"] {
+        for raw in [r#""sideways""#, "null", "5", "true", "{}", "[]"] {
             let json = format!(r#"{{"name":"T","ui":{{"streamSort":{raw}}}}}"#);
             let p: Profile = serde_json::from_str(&json)
                 .unwrap_or_else(|e| panic!("streamSort {raw} must not fail the load: {e}"));

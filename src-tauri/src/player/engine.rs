@@ -92,8 +92,7 @@ async fn manager_stream_state(app: &AppHandle, stream_id: &str) -> Option<Stream
         .try_state::<crate::app_state::AppState>()?
         .stream_manager
         .clone();
-    let status = manager.read().await.get_status(stream_id);
-    status.map(|s| s.state)
+    manager.read().await.get_state(stream_id)
 }
 
 /// Max time to wait for symphonia to identify a live stream's format and first

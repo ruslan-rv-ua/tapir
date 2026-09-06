@@ -365,6 +365,13 @@ impl StreamManager {
         self.entries.get(stream_id).map(|e| e.status.clone())
     }
 
+    /// Лише стан, без клонування всього [`StreamStatus`]. Плеєр питає його на
+    /// **кожен** блок ICY-метаданих (див. [`player_owns_track_line`]), тож
+    /// чотири зайві `String` на трек тут були б платою ні за що.
+    pub fn get_state(&self, stream_id: &str) -> Option<StreamState> {
+        self.entries.get(stream_id).map(|e| e.status.state)
+    }
+
     pub fn get_all_statuses(&self) -> Vec<StreamStatus> {
         self.entries.values().map(|e| e.status.clone()).collect()
     }
