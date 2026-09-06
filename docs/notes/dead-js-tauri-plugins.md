@@ -1,7 +1,7 @@
 # Мертві JS-обгортки: чи можна зняти `@tauri-apps/plugin-dialog` і `@tauri-apps/plugin-log`
 
 > Дослідницька нотатка з виміром до запису беклогу
-> [p3-dead-js-tauri-plugins](../backlog/p3-dead-js-tauri-plugins.md).
+> [p3-dead-js-tauri-plugins](../backlog/done/p3-dead-js-tauri-plugins.md).
 > Дата: 2026-09-06. Код Tapir читано на `f838820`, гілка `chore/dead-js-tauri-plugins`
 > (робоче дерево, без комітів).
 >

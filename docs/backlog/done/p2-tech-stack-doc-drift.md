@@ -164,7 +164,7 @@ Contrast має відмічений чекбокс і 210 вживань `force
 **Хвіст у чергу, крім architecture-doc-drift.** У `package.json` лежать
 `@tauri-apps/plugin-dialog` і `@tauri-apps/plugin-log`, яких не імпортує ніхто: з боку
 JS живий лише `@tauri-apps/api`. Родич знятих `dead-dependencies`, які JS-обгортки
-плагінів не перевіряли → [dead-js-tauri-plugins](../p3-dead-js-tauri-plugins.md).
+плагінів не перевіряли → [dead-js-tauri-plugins](p3-dead-js-tauri-plugins.md).
 
 ## Критерії готовності
 
@@ -185,4 +185,4 @@ JS живий лише `@tauri-apps/api`. Родич знятих `dead-dependen
 - [tech-stack.md](../../tech-stack.md), [architecture.md](../../architecture.md), [AGENTS.md](../../../AGENTS.md)
 - [accessibility-doc-audit](p2-accessibility-doc-audit.md) — прецедент звірки документа з кодом і формат звіту
 - [architecture-doc-drift](p2-architecture-doc-drift.md) — решта architecture.md
-- [dead-js-tauri-plugins](../p3-dead-js-tauri-plugins.md) — мертві JS-обгортки плагінів
+- [dead-js-tauri-plugins](p3-dead-js-tauri-plugins.md) — мертві JS-обгортки плагінів
