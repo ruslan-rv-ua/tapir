@@ -54,6 +54,11 @@ jobs:
           # Matches the major on the developer's machine; the gate should judge
           # from the same runtime the work is done on.
           node-version: "26"
+          # setup-node v5 caches the pnpm store by itself, and does it from
+          # pull-request runs too — a second copy of the cache below, written
+          # from the one place that is not allowed to write. Off, so the store
+          # has exactly one cache and only `push: develop` fills it.
+          package-manager-cache: false
 
       - name: Locate the pnpm store
         id: pnpm-store
