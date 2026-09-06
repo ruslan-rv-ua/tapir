@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isRecordingLike } from "./streamState";
+import { isRecordingLike, needsAttention } from "./streamState";
 
 describe("isRecordingLike", () => {
   it("covers exactly the states with an in-flight recording task", () => {
@@ -18,5 +18,23 @@ describe("isRecordingLike", () => {
     expect(isRecordingLike("idle")).toBe(false);
     expect(isRecordingLike("stopped")).toBe(false);
     expect(isRecordingLike(undefined)).toBe(false);
+  });
+});
+
+describe("needsAttention", () => {
+  it("collects both the stream that gave up and the one still fighting", () => {
+    // The bucket is one predicate behind both the filter chip and the metric
+    // (ADR 2026-09-06 §2); counting only `error` would leave the ~40 minutes of
+    // retries showing zero.
+    expect(needsAttention("error")).toBe(true);
+    expect(needsAttention("reconnecting")).toBe(true);
+  });
+
+  it("leaves healthy, finished and unknown streams out", () => {
+    expect(needsAttention("recording")).toBe(false);
+    expect(needsAttention("connecting")).toBe(false);
+    expect(needsAttention("idle")).toBe(false);
+    expect(needsAttention("stopped")).toBe(false);
+    expect(needsAttention(undefined)).toBe(false);
   });
 });

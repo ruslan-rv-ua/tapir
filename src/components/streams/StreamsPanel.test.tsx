@@ -146,12 +146,12 @@ beforeEach(() => {
 describe("StreamsPanel — filter state persistence", () => {
   it("reads the active filter from the store after remount", () => {
     const { unmount } = renderPanel();
-    act(() => $streamFilter.set("errors"));
+    act(() => $streamFilter.set("attention"));
     unmount();
 
     const { container } = renderPanel();
     const pressed = container.querySelector('button[aria-pressed="true"]')!;
-    expect(pressed.textContent).toMatch(/помилк|error/i);
+    expect(pressed.textContent).toMatch(/уваги|attention/i);
   });
 });
 
@@ -956,5 +956,70 @@ describe("StreamsPanel — Record/Stop selected (C4, R6/R8)", () => {
     renderPanel();
     const stop = screen.getByRole("button", { name: /^зупинити запис$|^stop recording$/i });
     expect(stop.getAttribute("aria-disabled")).toBeNull(); // broad stoppableCount = 1 → enabled
+  });
+});
+
+describe("StreamsPanel — the «Потребує уваги» bucket", () => {
+  const failed = (id: string): StreamStatus => ({
+    ...mkStatus(id, "error"),
+    error: "station_unreachable",
+  });
+
+  it("counts the stream that gave up together with the one still reconnecting", () => {
+    // Counting `error` alone showed zero for the ~40 minutes of retries — the
+    // whole window in which the user could still do something (ADR 2026-09-06 §2).
+    $streams.set([mkStream("a", "Alpha"), mkStream("b", "Bravo"), mkStream("c", "Charlie")]);
+    $statuses.set({ a: failed("a"), b: mkStatus("b", "reconnecting"), c: mkStatus("c", "recording") });
+    renderPanel();
+
+    const metric = screen.getByLabelText(new RegExp(`^${m.metric_attention()}:`));
+    expect(metric.textContent).toMatch(/\b2\b/);
+  });
+
+  it("counts streams, not failures — the metric is a to-do list, not a tally", () => {
+    $streams.set([mkStream("a", "Alpha")]);
+    $statuses.set({ a: failed("a") });
+    renderPanel();
+
+    const metric = screen.getByLabelText(new RegExp(`^${m.metric_attention()}:`));
+    expect(metric.textContent).toMatch(/потік|stream/i);
+    expect(metric.textContent).not.toMatch(/збі|error/i);
+  });
+
+  it("gives the chip and the metric the same name", () => {
+    // Two keys, two families (`filter_*` and `metric_*`), one concept — so the
+    // one thing that must never drift is the text. It already did once: the chip
+    // said «З помилками» while the metric beside it said «Потребує уваги» about
+    // the very same number (ADR 2026-09-06 §2).
+    expect(m.filter_attention()).toBe(m.metric_attention());
+  });
+
+  it("announces the same number the badge, the metric and the list agree on", () => {
+    // The spoken count had its own copy of the predicate and nobody could see it
+    // disagree: badge and list said 2, NVDA said «0 потоків». That is the ADR's
+    // «одне число мало чотири імені» defect, reappearing on the a11y surface.
+    $streams.set([mkStream("a", "Alpha"), mkStream("b", "Bravo"), mkStream("c", "Charlie")]);
+    $statuses.set({ a: failed("a"), b: mkStatus("b", "reconnecting"), c: mkStatus("c", "recording") });
+    renderPanel();
+
+    const { chips } = chipButtons(document.body);
+    fireEvent.click(chips.find((c) => c.textContent?.includes(m.filter_attention()))!);
+
+    expect($announcer.get()?.message).toBe(
+      m.streams_filter_changed_few({ label: m.filter_attention(), count: 2 }),
+    );
+  });
+
+  it("filters the list down to the same two streams the metric counted", () => {
+    $streams.set([mkStream("a", "Alpha"), mkStream("b", "Bravo"), mkStream("c", "Charlie")]);
+    $statuses.set({ a: failed("a"), b: mkStatus("b", "reconnecting"), c: mkStatus("c", "recording") });
+    renderPanel();
+
+    const { chips } = chipButtons(document.body);
+    const attention = chips.find((c) => c.textContent?.includes(m.filter_attention()));
+    expect(attention).toBeTruthy();
+    fireEvent.click(attention!);
+
+    expect(rowOrder(document.body)).toEqual(["a", "b"]);
   });
 });

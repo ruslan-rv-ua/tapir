@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { $streamSelection, $streams, $visibleStreams, replaceSelection, pruneSelection } from "./streams";
+import { $streamSelection, $streams, $statuses, $streamFilter, $visibleStreams, replaceSelection, pruneSelection, updateStreamStatus } from "./streams";
 import { $settings, $profileSettings } from "./settings";
 import type { GlobalSettings, ProfileSettings, StreamInfo } from "../lib/tauri";
 
@@ -83,5 +83,40 @@ describe("$visibleStreams — sort order is profile-scoped", () => {
     $streams.set(streams);
     setSort("name");
     expect($visibleStreams.get().map((s) => s.id)).toEqual(["old", "mid", "new"]);
+  });
+});
+
+describe("$visibleStreams — the «Потребує уваги» filter", () => {
+  const streams = [
+    mkStream("broken", "Alpha", "2026-01-01T00:00:00Z"),
+    mkStream("retrying", "Bravo", "2026-02-01T00:00:00Z"),
+    mkStream("healthy", "Charlie", "2026-03-01T00:00:00Z"),
+  ];
+
+  beforeEach(() => {
+    $statuses.set({});
+    $streamFilter.set("all");
+  });
+
+  it("shows the stream that gave up next to the one still reconnecting", () => {
+    // The bucket is one predicate (ADR 2026-09-06 §2) — a stream mid-retry is
+    // what the user wants surfaced long before it finally gives up.
+    $streams.set(streams);
+    updateStreamStatus("broken", { state: "error", error: "station_unreachable" });
+    updateStreamStatus("retrying", { state: "reconnecting" });
+    updateStreamStatus("healthy", { state: "recording" });
+
+    $streamFilter.set("attention");
+    expect($visibleStreams.get().map((s) => s.id)).toEqual(["broken", "retrying"]);
+  });
+
+  it("keeps a stream Tapir refuses to record out of the bucket", () => {
+    // Refusal is not a failure: the task ends `stopped`, and the carrier is the
+    // codec mark on the stream itself (ADR 2026-09-06 §7).
+    $streams.set(streams);
+    updateStreamStatus("broken", { state: "stopped" });
+
+    $streamFilter.set("attention");
+    expect($visibleStreams.get()).toEqual([]);
   });
 });

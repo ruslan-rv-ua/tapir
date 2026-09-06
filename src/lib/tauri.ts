@@ -31,6 +31,15 @@ export interface StreamInfo {
 
 export type StreamState = "idle" | "connecting" | "recording" | "reconnecting" | "stopped" | "error";
 
+/**
+ * Why a recording task gave up — a closed set, not a raw error string across the
+ * process boundary (ADR 2026-09-06 §5, following `TransportFailureReason`). The
+ * technical detail stays in the log; the interface says one of two things, in
+ * the user's language. A third cause extends this union, it does not reopen it
+ * to free text.
+ */
+export type FailureReason = "station_unreachable" | "disk_write_failed";
+
 export interface TrackInfo {
   artist: string;
   title: string;
@@ -51,7 +60,8 @@ export interface StreamStatus {
   recordingStartedAt: string | null;
   bytesRecorded: number;
   tracksRecorded: number;
-  error: string | null;
+  /** Non-null only in state `error` — the reason the task gave up. */
+  error: FailureReason | null;
   reconnectAttempt: number | null;
   /** Стеля спроб зі знімка, за яким живе перепідключення — парою з reconnectAttempt, не з налаштувань профілю. */
   reconnectMaxRetries: number | null;
@@ -115,7 +125,8 @@ export interface GlobalSettings {
 export interface RecordingStatusPayload {
   streamId: string;
   status: StreamState;
-  error?: string;
+  /** Set only on `status: "error"` — see [`FailureReason`]. */
+  error?: FailureReason;
 }
 
 export interface TrackChangedPayload {
@@ -127,16 +138,11 @@ export interface TrackChangedPayload {
   ignored: boolean;
 }
 
-export interface StreamErrorPayload {
-  streamId: string;
-  message: string;
-  willRetry: boolean;
-}
-
 /** `stream-unsupported`: the recording task connected, read the evidence and
- *  refused — Tapir does not record this air. Deliberately not a `stream-error`:
- *  the stream state does not become `error`, no attempt was spent and no
- *  reconnect is planned. `family` is null when nothing was recognised. */
+ *  refused — Tapir does not record this air. The stream state does not become
+ *  `error`: no attempt was spent, no reconnect is planned, and the stream stays
+ *  out of the «Потребує уваги» bucket (ADR 2026-09-06 §7). `family` is null when
+ *  nothing was recognised. */
 export interface StreamUnsupportedPayload {
   streamId: string;
   family: string | null;

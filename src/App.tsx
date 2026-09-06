@@ -35,7 +35,7 @@ import { $activeSection } from "./stores/navigation";
 import { SECTIONS } from "./lib/sections";
 import { addToast } from "./stores/toasts";
 import * as tauri from "./lib/tauri";
-import type { RecordingStatusPayload, TrackChangedPayload, StreamErrorPayload, StreamUnsupportedPayload, RecordingStartedPayload, RecordingCompletedPayload, StreamInfo, PlayerStatus, PlayerProgressPayload, WishlistMatch, PlayerEndedPayload, PlaybackAnnounce } from "./lib/tauri";
+import type { RecordingStatusPayload, TrackChangedPayload, StreamUnsupportedPayload, RecordingStartedPayload, RecordingCompletedPayload, StreamInfo, PlayerStatus, PlayerProgressPayload, WishlistMatch, PlayerEndedPayload, PlaybackAnnounce } from "./lib/tauri";
 import { $filteredSongs } from "./stores/songs";
 import { computePlaybackNeighbors } from "./stores/playbackNeighbors";
 import { resolveEndedAction } from "./lib/playbackTransport";
@@ -43,6 +43,7 @@ import { executeTransportSkip, parseSkipTrigger } from "./lib/transportControl";
 import { applyMuteCleanup } from "./lib/muteCleanup";
 import { rememberVolumeLevel, selectVolumeAnnouncement } from "./lib/muteControl";
 import { selectPlaybackAnnouncement, sourceName, suppressesStarted, type PendingConnect } from "./lib/playbackAnnounce";
+import { describeRecording, selectRecordingAnnouncement } from "./lib/recordingAnnounce";
 import { formatTimeParts } from "./lib/time";
 import { windowTitleLabel } from "./lib/windowTitle";
 import { useGlobalShortcuts } from "./hooks/useGlobalShortcuts";
@@ -172,23 +173,24 @@ function AppContent() {
   useWebviewGuard();
 
   // Subscribe to Tauri events
+  // The mirror is what holds a failure after the backend forgets the stream
+  // (ADR 2026-09-06 §3): the manager drops the entry on cleanup either way, so
+  // `error` survives here until the next event for this stream, a profile switch
+  // or a restart. The reason is cleared on every other transition — a stale cause
+  // outliving its failure is the same class of lie this record is closing.
   const handleRecordingStatus = useCallback((payload: RecordingStatusPayload) => {
-    if (payload.status === "recording") {
-      updateStreamStatus(payload.streamId, { state: payload.status, recordingStartedAt: new Date().toISOString() });
-    } else {
-      updateStreamStatus(payload.streamId, { state: payload.status, recordingStartedAt: null });
-    }
+    const event = selectRecordingAnnouncement(payload);
+    updateStreamStatus(payload.streamId, {
+      state: payload.status,
+      recordingStartedAt: payload.status === "recording" ? new Date().toISOString() : null,
+      error: event?.kind === "failed" ? event.reason : null,
+    });
+
+    if (!event) return;
     const stream = $streams.get().find((s) => s.id === payload.streamId);
-    const name = stream?.name ?? payload.streamId;
-    if (payload.status === "recording") {
-      announce(m.recording_started({ name }), "polite");
-      addToast(m.recording_started({ name }), "success");
-    } else if (payload.status === "stopped") {
-      announce(m.recording_stopped({ name }), "polite");
-    } else if (payload.status === "error") {
-      announce(m.connection_error({ name }), "assertive");
-      addToast(m.connection_error({ name }), "error");
-    }
+    const speech = describeRecording(event, stream?.name ?? payload.streamId);
+    announce(speech.message, speech.priority);
+    if (speech.toast) addToast(speech.message, speech.toast);
   }, [announce]);
 
   const handleTrackChanged = useCallback((payload: TrackChangedPayload) => {
@@ -201,12 +203,6 @@ function AppContent() {
         ignored: payload.ignored,
       },
     });
-  }, []);
-
-  const handleStreamError = useCallback((payload: StreamErrorPayload) => {
-    const stream = $streams.get().find((s) => s.id === payload.streamId);
-    const name = stream?.name ?? payload.streamId;
-    addToast(`${name}: ${payload.message}`, "error");
   }, []);
 
   // Відмова записувати, а не збій: стан потоку лишається чистим, і текст не
@@ -385,7 +381,6 @@ function AppContent() {
 
   useTauriEvent<RecordingStatusPayload>("recording-status", handleRecordingStatus);
   useTauriEvent<TrackChangedPayload>("track-changed", handleTrackChanged);
-  useTauriEvent<StreamErrorPayload>("stream-error", handleStreamError);
   useTauriEvent<StreamUnsupportedPayload>("stream-unsupported", handleStreamUnsupported);
   useTauriEvent<StreamInfo>("stream-info-updated", handleStreamInfoUpdated);
   const handleRecordingStarted = useCallback(() => {}, []);

@@ -210,22 +210,40 @@ describe("StreamItem — reconnecting counter display", () => {
 });
 
 describe("StreamItem — error state accessibility (D9)", () => {
+  const mkFailed = (error: StreamStatus["error"] = "station_unreachable"): StreamStatus => ({
+    streamId: "s1",
+    state: "error",
+    currentTrack: null,
+    recordingStartedAt: null,
+    bytesRecorded: 0,
+    tracksRecorded: 0,
+    error,
+    reconnectAttempt: null, reconnectMaxRetries: null,
+    sessionId: 0,
+  });
+
   it("includes error label in the row aria-label so NVDA announces it", () => {
-    const status: StreamStatus = {
-      streamId: "s1",
-      state: "error",
-      currentTrack: null,
-      recordingStartedAt: null,
-      bytesRecorded: 0,
-      tracksRecorded: 0,
-      error: "Connection refused",
-      reconnectAttempt: null, reconnectMaxRetries: null,
-      sessionId: 0,
-    };
-    const { container } = renderItem(mkStream(), status);
+    const { container } = renderItem(mkStream(), mkFailed());
     const li = container.querySelector<HTMLElement>('li[data-segment="summary"]')!;
     expect(li.getAttribute("aria-label")).toMatch(/error|помилка/i);
     expect(li.getAttribute("aria-label")).toContain("Radio Paradise");
+  });
+
+  it("spends the status segment on the reason, not on «Очікування»", () => {
+    // The segment had no `error` branch at all and fell through to the idle
+    // wording, so the row read «Помилка, Radio Paradise … Очікування». Repeating
+    // «Помилка» there would just say the same word twice a second apart — the
+    // reason is what the segment is for (ADR 2026-09-06 §5).
+    const { container } = renderItem(mkStream(), mkFailed("station_unreachable"));
+    const statusCell = container.querySelector('[data-segment="status"]')!;
+    expect(statusCell.textContent).toMatch(/станція не відповідає|station is not responding/i);
+    expect(statusCell.textContent).not.toMatch(/очікування|idle/i);
+  });
+
+  it("tells the disk apart from the station", () => {
+    const { container } = renderItem(mkStream(), mkFailed("disk_write_failed"));
+    const statusCell = container.querySelector('[data-segment="status"]')!;
+    expect(statusCell.textContent).toMatch(/записати на диск|write to disk/i);
   });
 });
 
@@ -270,7 +288,7 @@ describe("StreamItem — inline icon slots (D1–D2)", () => {
   });
 
   it("shows error icon in R-slot when in error state", () => {
-    const { container } = renderItem(mkStream(), mkSt("error", { error: "Connection refused" }));
+    const { container } = renderItem(mkStream(), mkSt("error", { error: "station_unreachable" }));
     expect(container.querySelector('[data-slot="record"] svg')).toBeTruthy();
     expect(container.querySelector('[data-slot="play"] svg')).toBeFalsy();
   });

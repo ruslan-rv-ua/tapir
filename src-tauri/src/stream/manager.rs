@@ -30,7 +30,8 @@ pub struct StreamStatus {
     pub recording_started_at: Option<String>,
     pub bytes_recorded: u64,
     pub tracks_recorded: u32,
-    pub error: Option<String>,
+    /// Непорожня лише в стані `Error` — причина, з якої задача здалась.
+    pub error: Option<FailureReason>,
     pub reconnect_attempt: Option<u32>,
     /// Стеля спроб зі знімка налаштувань, за яким живе цикл `'reconnect`, —
     /// не з поточних налаштувань профілю. Їде парою з `reconnect_attempt`
@@ -52,6 +53,56 @@ pub enum StreamState {
     Recording,
     Reconnecting,
     Error,
+}
+
+/// Чому запис здався. Закритий набір, а не сирий рядок через межу процесів
+/// (ADR 2026-09-06 §5, за зразком `TransportFailureReason`): технічна деталь
+/// лишається в лозі, а інтерфейс каже одне з двох мовою користувача. Третя
+/// причина розширює перелік, а не відкриває його назад до вільного тексту.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FailureReason {
+    /// Спроби вичерпано, або перепідключення вимкнене нулем.
+    StationUnreachable,
+    /// Диск відмовився приймати запис.
+    DiskWriteFailed,
+}
+
+/// Чим скінчилась задача запису. До 2026-09-06 цієї різниці не існувало: **всі**
+/// виходи з `recording_task` слали `"stopped"`, тож потік, що вичерпав спроби,
+/// був для інтерфейсу невідрізненний від зупиненого руками, а стан `error` не
+/// доходив нікуди й ніколи.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TaskOutcome {
+    /// Скасування користувачем, зупинка застосунку — і відмова записувати чужий
+    /// кодек: станція справна, спроби не витрачені, уваги не потребує (§7).
+    Stopped,
+    Failed(FailureReason),
+}
+
+impl TaskOutcome {
+    /// Рядок статусу події `recording-status` — те, що дзеркало кладе як `StreamState`.
+    fn status(&self) -> &'static str {
+        match self {
+            TaskOutcome::Stopped => "stopped",
+            TaskOutcome::Failed(_) => "error",
+        }
+    }
+
+    fn reason(&self) -> Option<FailureReason> {
+        match self {
+            TaskOutcome::Stopped => None,
+            TaskOutcome::Failed(reason) => Some(*reason),
+        }
+    }
+
+    /// Стан, у якому запис лишається в менеджері до прибирання.
+    fn state(&self) -> StreamState {
+        match self {
+            TaskOutcome::Stopped => StreamState::Idle,
+            TaskOutcome::Failed(_) => StreamState::Error,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -77,7 +128,9 @@ pub struct TrackInfo {
 struct RecordingStatusPayload {
     stream_id: String,
     status: String,
-    error: Option<String>,
+    /// Заповнене лише при `status: "error"`. Канал існував наскрізь і в усіх
+    /// викликах передавався порожнім — тепер він несе причину (ADR 2026-09-06 §5).
+    error: Option<FailureReason>,
 }
 
 #[derive(Clone, Serialize)]
@@ -92,17 +145,10 @@ struct TrackChangedPayload {
     ignored: bool,
 }
 
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct StreamErrorPayload {
-    stream_id: String,
-    message: String,
-    will_retry: bool,
-}
-
-/// Відмова записувати ефір, який Tapir не вміє (ADR 2026-08-31 §3). Окрема
-/// подія, а не `stream-error`: це не збій станції, стан потоку не стає `Error`,
-/// і повторювати спробу нема сенсу. `family` названа, коли сім'ю впізнано.
+/// Відмова записувати ефір, який Tapir не вміє (ADR 2026-08-31 §3). Власна
+/// подія: це не збій станції, стан потоку не стає `Error`, у відро «Потребує
+/// уваги» він не потрапляє (ADR 2026-09-06 §7), і повторювати спробу нема сенсу.
+/// `family` названа, коли сім'ю впізнано.
 /// Готового рядка backend не віддає — його складе Paraglide.
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -296,7 +342,7 @@ impl StreamManager {
 // Helper emit functions (fire-and-forget)
 // ---------------------------------------------------------------------------
 
-fn emit_recording_status(app: &AppHandle, stream_id: &str, status: &str, error: Option<String>) {
+fn emit_recording_status(app: &AppHandle, stream_id: &str, status: &str, error: Option<FailureReason>) {
     // Phase 3K: будь-який перехід стану запису — тригер живого снапшота.
     if let Some(state) = app.try_state::<crate::app_state::AppState>() {
         state.snapshot.notify.notify_one();
@@ -333,18 +379,6 @@ fn emit_track_changed(app: &AppHandle, stream_id: &str, artist: &str, title: &st
 
     // Tray menu refresh so "Зараз грає" reflects new track.
     crate::tray::notify_state_changed(app);
-}
-
-fn emit_stream_error(app: &AppHandle, stream_id: &str, message: &str, will_retry: bool) {
-    app.emit(
-        "stream-error",
-        StreamErrorPayload {
-            stream_id: stream_id.to_string(),
-            message: message.to_string(),
-            will_retry,
-        },
-    )
-    .ok();
 }
 
 fn emit_stream_unsupported(app: &AppHandle, stream_id: &str, family: Option<String>) {
@@ -443,15 +477,23 @@ async fn update_state_recording(
     guard.wake_lock.set_recording(any_active);
 }
 
-async fn update_state_error(
+/// Стан і причина виставляються лише разом і з одного джерела — так само, як
+/// спроба зі стелею в `mark_reconnecting`. Інакше причина пережила б помилку,
+/// яку описувала, і рядок показав би вчорашній діагноз.
+///
+/// Стан тут потрібен на мить: одразу по цьому запис іде з менеджера, і далі
+/// `Error` тримає дзеркало у фронтенді (ADR 2026-09-06 §3). Але цю мить бачить
+/// живий снапшот crash-recovery — і саме тому потік, що впав, до нього не
+/// потрапляє.
+async fn update_final_state(
     manager: &Arc<RwLock<StreamManager>>,
     stream_id: &str,
-    error: &str,
+    outcome: TaskOutcome,
 ) {
     let mut guard = manager.write().await;
     if let Some(entry) = guard.entries.get_mut(stream_id) {
-        entry.status.state = StreamState::Error;
-        entry.status.error = Some(error.to_string());
+        entry.status.state = outcome.state();
+        entry.status.error = outcome.reason();
     }
     let any_active = guard.entries.values().any(|e| is_active_state(&e.status.state));
     guard.wake_lock.set_recording(any_active);
@@ -516,10 +558,12 @@ struct RetryPlan {
 /// Single source of truth for "try again?" — `max_retries == 0` means never
 /// reconnect at all (ADR 2026-08-13: zero is not "unlimited"), otherwise the
 /// next attempt is allowed as long as it doesn't exceed the configured ceiling.
-/// Split out from `plan_retry` so callers that only need the yes/no answer
-/// (e.g. the `will_retry` flag on `emit_stream_error`) don't pay for
-/// `compute_backoff_delay`'s `powi` when the actual plan is computed
-/// separately right after.
+/// Split out from `plan_retry` (ADR 2026-08-13 §3) for callers that only need
+/// the yes/no answer, without paying for `compute_backoff_delay`'s `powi`. The
+/// second such caller — the `will_retry` flag on the `stream-error` event — went
+/// with that event on 2026-09-06, so `plan_retry` is the only one left; the
+/// split stays because the ceiling rule reads as a sentence here and inlined
+/// would not.
 fn would_retry(reconnect: &ReconnectConfig, attempt: u32) -> bool {
     reconnect.max_retries != 0 && attempt < reconnect.max_retries
 }
@@ -613,6 +657,9 @@ pub async fn recording_task(
 
     let reconnect = recording_settings.reconnect.clone();
     let mut attempt = 0u32;
+    // Кожен `break 'reconnect` мусить сказати, ЧОМУ. Дефолт — «зупинено»:
+    // скасування й відмова записувати чужий кодек збоями не є.
+    let mut outcome = TaskOutcome::Stopped;
 
     'reconnect: loop {
         if cancel_token.is_cancelled() {
@@ -631,11 +678,13 @@ pub async fn recording_task(
             Err(e) => {
                 let msg = e.to_string();
                 error!("[{}] Connection failed: {}", stream_id, msg);
-                update_state_error(&manager, &stream_id, &msg).await;
-                let plan = plan_retry(&reconnect, attempt);
-                emit_stream_error(&app_handle, &stream_id, &msg, plan.is_some());
-                // fall through to reconnect logic
-                let Some(RetryPlan { attempt: next_attempt, delay_secs }) = plan else {
+                // Стану помилки тут не виставляємо: поки спроби лишаються, потік
+                // ПЕРЕПІДКЛЮЧАЄТЬСЯ — це процес, а помилка діагноз
+                // (ADR 2026-09-06 §1). Тост на кожну невдалу спробу теж знято:
+                // носій є в самому рядку, а десять спливань за 40 хвилин жодного
+                // разу не казали головного (§4).
+                let Some(RetryPlan { attempt: next_attempt, delay_secs }) = plan_retry(&reconnect, attempt) else {
+                    outcome = TaskOutcome::Failed(FailureReason::StationUnreachable);
                     break 'reconnect;
                 };
                 attempt = next_attempt;
@@ -839,8 +888,8 @@ pub async fn recording_task(
                         Some(ReadEvent::Error(msg)) => {
                             error!("[{}] Stream read error: {}", stream_id, msg);
                             rec.close().await.ok();
-                            let will_retry = would_retry(&reconnect, attempt);
-                            emit_stream_error(&app_handle, &stream_id, &msg, will_retry);
+                            // Обрив сам собою не вердикт — його виносить
+                            // `plan_retry` нижче, коли спроби скінчаться.
                             break 'read;
                         }
                         Some(ReadEvent::MetadataChanged(artist, title)) => {
@@ -934,8 +983,10 @@ pub async fn recording_task(
                             }
                             local_bytes += data.len() as u64;
                             if let Err(e) = rec.write_bytes(&data).await {
+                                error!("[{}] Write failed: {}", stream_id, e);
                                 rec.close().await.ok();
-                                emit_stream_error(&app_handle, &stream_id, &e.to_string(), false);
+                                // Станція ні до чого — перепідключення не помогло б.
+                                outcome = TaskOutcome::Failed(FailureReason::DiskWriteFailed);
                                 break 'reconnect;
                             }
                             // Flush accumulated byte count to manager periodically
@@ -973,6 +1024,7 @@ pub async fn recording_task(
             break 'reconnect;
         }
         let Some(RetryPlan { attempt: next_attempt, delay_secs }) = plan_retry(&reconnect, attempt) else {
+            outcome = TaskOutcome::Failed(FailureReason::StationUnreachable);
             break 'reconnect;
         };
         attempt = next_attempt;
@@ -986,9 +1038,9 @@ pub async fn recording_task(
     }
 
     // --- Final cleanup ---
-    info!("[{}] Recording task finished — cleaning up", stream_id);
-    update_state(&manager, &stream_id, StreamState::Idle).await;
-    emit_recording_status(&app_handle, &stream_id, "stopped", None);
+    info!("[{}] Recording task finished — cleaning up ({:?})", stream_id, outcome);
+    update_final_state(&manager, &stream_id, outcome).await;
+    emit_recording_status(&app_handle, &stream_id, outcome.status(), outcome.reason());
 
     // Remove entry from the manager
     manager.write().await.entries.remove(&stream_id);
@@ -1041,6 +1093,45 @@ mod tests {
         let json = serde_json::to_string(&status).unwrap();
         assert!(json.contains("\"reconnectAttempt\":2"), "got: {json}");
         assert!(json.contains("\"reconnectMaxRetries\":7"), "got: {json}");
+    }
+
+    #[test]
+    fn a_task_that_gave_up_reports_error_not_stopped() {
+        // The whole defect in one assertion: every exit from `recording_task`
+        // used to emit "stopped", so a stream that exhausted its retries was
+        // indistinguishable from one the user stopped by hand, and the frontend
+        // never saw `error` at all.
+        let gave_up = TaskOutcome::Failed(FailureReason::StationUnreachable);
+        assert_eq!(gave_up.status(), "error");
+        assert_eq!(gave_up.reason(), Some(FailureReason::StationUnreachable));
+        assert!(matches!(gave_up.state(), StreamState::Error));
+    }
+
+    #[test]
+    fn cancellation_and_refusal_stay_stopped() {
+        // A user stop and a refused codec are not failures: neither spends an
+        // attempt, and neither belongs in the «Потребує уваги» bucket
+        // (ADR 2026-09-06 §7).
+        assert_eq!(TaskOutcome::Stopped.status(), "stopped");
+        assert_eq!(TaskOutcome::Stopped.reason(), None);
+        assert!(matches!(TaskOutcome::Stopped.state(), StreamState::Idle));
+    }
+
+    #[test]
+    fn failure_reason_crosses_the_boundary_as_a_closed_set() {
+        // The wire contract with `FailureReason` in src/lib/tauri.ts. A raw
+        // error string would arrive in English inside a Ukrainian interface and
+        // be read out in full by NVDA (ADR 2026-09-06 §5).
+        assert_eq!(
+            serde_json::to_string(&FailureReason::StationUnreachable).unwrap(),
+            "\"station_unreachable\"",
+        );
+        assert_eq!(
+            serde_json::to_string(&FailureReason::DiskWriteFailed).unwrap(),
+            "\"disk_write_failed\"",
+        );
+        // The state the mirror stores alongside it.
+        assert_eq!(serde_json::to_string(&StreamState::Error).unwrap(), "\"error\"");
     }
 
     #[test]

@@ -7,7 +7,8 @@ import type { ActionModifiers, SegmentKind } from "../../hooks/useCompositeList"
 import { CompositeRow, CompositeSegment, CompositeAction } from "../common/composite-list";
 import { formatBitrate, formatDuration } from "../../lib/formatters";
 import { playRefusalMessage } from "../../lib/playRefusal";
-import { isRecordingLike } from "../../lib/streamState";
+import { isRecordingLike, needsAttention } from "../../lib/streamState";
+import { failureReasonText } from "../../lib/recordingAnnounce";
 import { StreamContextMenu } from "./StreamContextMenu";
 import { AddPatternDialog } from "../wishlist/AddPatternDialog";
 import { $playerStatus } from "../../stores/player";
@@ -27,10 +28,16 @@ export interface StreamItemData {
  * Every row exposes its three action buttons as individual stops; 'status'
  * appears only while the stream is active.
  */
+/**
+ * The status segment exists only where it has something to say. A stream that
+ * gave up has: the segment is the only place the *reason* lives, and it must be
+ * reachable with the arrow keys, not just visible (ADR 2026-09-06 §5). An idle
+ * stream still has none — «Очікування» is what the absent segment already means.
+ */
 export function getStreamSegments(status: StreamStatus | undefined): StreamItemData["segments"] {
-  const active = isRecordingLike(status?.state);
+  const speaks = isRecordingLike(status?.state) || needsAttention(status?.state);
   const actions: StreamItemData["segments"] = ["action-play", "action-record", "action-menu"];
-  return active ? ["track", "tech", "status", ...actions] : ["track", "tech", ...actions];
+  return speaks ? ["track", "tech", "status", ...actions] : ["track", "tech", ...actions];
 }
 
 interface Props {
@@ -177,6 +184,10 @@ export function StreamItem({
       ? m.status_reconnecting_attempt({ attempt: retryAttempt, max: retryMax })
       : m.status_reconnecting();
 
+  // «Помилка» is already in the row's own label, so the segment carries the
+  // reason instead of saying the same word twice a second apart
+  // (ADR 2026-09-06 §5). Without a reason the backend has a defect; the segment
+  // still must not claim the stream is idle.
   const statusValue =
     state === "recording"
       ? formatDuration(elapsedMs)
@@ -184,7 +195,9 @@ export function StreamItem({
         ? m.status_connecting()
         : state === "reconnecting"
           ? retryLabel
-          : m.status_idle();
+          : state === "error"
+            ? failureReasonText(status?.error)
+            : m.status_idle();
   // Recording rows describe the value as a duration; others as stream status.
   const statusRoleDesc = state === "recording" ? m.segment_status_duration() : m.segment_status();
 

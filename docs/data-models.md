@@ -1055,16 +1055,9 @@ interface RecordingCompletedPayload {
   durationMs: number;
 }
 
-// stream-error
-interface StreamErrorPayload {
-  streamId: string;
-  message: string;
-  willRetry: boolean;
-}
-
 // stream-unsupported — ефір, який Tapir не записує (ADR 2026-08-31).
-// Свідомо НЕ stream-error: стан потоку не стає `error`, спроба не витрачена,
-// перепідключення не заплановано. family = "OGG" / "FLAC", або null, коли
+// Стан потоку НЕ стає `error`: спроба не витрачена, перепідключення не
+// заплановано, і у відро «Потребує уваги» такий потік не потрапляє. family = "OGG" / "FLAC", або null, коли
 // доказів не вистачило; готового рядка backend не віддає — текст складе Paraglide.
 interface StreamUnsupportedPayload {
   streamId: string;

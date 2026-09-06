@@ -18,7 +18,7 @@ import { useRovingFocus } from "../../hooks/useRovingFocus";
 import { useAnnounce } from "../../hooks/useAnnounce";
 import { useZoneProxy, type ZoneEntry, type ZoneId } from "../../hooks/useZoneNavigation";
 import * as tauri from "../../lib/tauri";
-import { isRecordingLike } from "../../lib/streamState";
+import { isRecordingLike, needsAttention } from "../../lib/streamState";
 import { plural } from "../../lib/plural";
 import { SHORTCUTS } from "../../lib/shortcuts";
 import { addToast } from "../../stores/toasts";
@@ -54,7 +54,7 @@ const composeStopSummary = (sel: number, stopped: number): string => {
 const FILTER_CHIPS = [
   { id: "all",       labelFn: () => m.filter_all() },
   { id: "recording", labelFn: () => m.filter_recording() },
-  { id: "errors",    labelFn: () => m.filter_errors() },
+  { id: "attention", labelFn: () => m.filter_attention() },
 ] as const satisfies ReadonlyArray<{ id: StreamFilter; labelFn: () => string }>;
 
 const SORT_OPTIONS = [
@@ -78,7 +78,9 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     [statuses, streamIds],
   );
   const activeCount = visibleStatuses.filter(s => s.state === "recording").length;
-  const errorCount  = visibleStatuses.filter(s => s.state === "error").length;
+  // One predicate behind the metric and the filter chip — they were two names
+  // for one number before this widened it (ADR 2026-09-06 §2).
+  const attentionCount = visibleStatuses.filter(s => needsAttention(s.state)).length;
 
   // Streams whose recording task is NOT currently live (idle / error / stopped /
   // never-started) — these are what "Записати все" will start. Backend skips any
@@ -100,11 +102,13 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     few: () => m.active_recordings_few({ count: activeCount }),
     many: () => m.active_recordings_many({ count: activeCount }),
   });
-  const errorText = plural(errorCount, {
-    zero: () => m.errors_count_zero(),
-    one: () => m.errors_count_one({ count: errorCount }),
-    few: () => m.errors_count_few({ count: errorCount }),
-    many: () => m.errors_count_many({ count: errorCount }),
+  // Streams, not failures: a station that dropped seven times overnight and came
+  // back seven times is one stream and zero reasons to look at it.
+  const attentionText = plural(attentionCount, {
+    zero: () => m.attention_count_zero(),
+    one: () => m.attention_count_one({ count: attentionCount }),
+    few: () => m.attention_count_few({ count: attentionCount }),
+    many: () => m.attention_count_many({ count: attentionCount }),
   });
 
   // ── Filter chip state ─────────────────────────────────────
@@ -197,11 +201,14 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
     // The visible set changes under the new filter — selection is scoped to what's
     // visible, so clear it rather than leaving stale (now-hidden) ids selected.
     replaceSelection(new Set());
+    // The spoken count is the third reader of this predicate, after the chip
+    // badge and the metric — and the one nobody sees disagree. It must go
+    // through `needsAttention` like the other two (ADR 2026-09-06 §2).
     const count = chipId === "all"
       ? streams.length
       : chipId === "recording"
       ? streams.filter(s => statuses[s.id]?.state === "recording").length
-      : streams.filter(s => statuses[s.id]?.state === "error").length;
+      : streams.filter(s => needsAttention(statuses[s.id]?.state)).length;
     announce(filterAnnouncement(chipId, count), "polite");
   };
 
@@ -475,11 +482,11 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
         <div
           role="status"
           aria-atomic="true"
-          aria-label={`${m.metric_errors()}: ${errorText}`}
+          aria-label={`${m.metric_attention()}: ${attentionText}`}
           className="flex flex-col gap-1.5 rounded-2xl border border-white/[.06] bg-white/[.04] p-4 forced-colors:border-[ButtonText] forced-colors:bg-[Canvas]"
         >
-          <strong className="text-sm text-slate-100">{errorText}</strong>
-          <span className="text-xs text-slate-400">{m.metric_errors()}</span>
+          <strong className="text-sm text-slate-100">{attentionText}</strong>
+          <span className="text-xs text-slate-400">{m.metric_attention()}</span>
         </div>
         <FreeSpaceMetric
           freeBytes={freeSpace}
@@ -599,7 +606,7 @@ export function StreamsPanel({ onZonesChange, exitZone }: Props) {
           <div role="group" aria-label={m.streams_filter_group()} className="flex items-center gap-2">
             {FILTER_CHIPS.map((chip, i) => {
               const count = chip.id === "recording" ? activeCount
-                          : chip.id === "errors"    ? errorCount
+                          : chip.id === "attention" ? attentionCount
                           : streams.length;
               return (
                 <button

@@ -1,6 +1,7 @@
 import { atom, computed, map } from "nanostores";
 import type { StreamInfo, StreamStatus, ImportCandidate } from "../lib/tauri";
 import { replaceSelection as replaceSel, pruneSelection as pruneSel } from "./selection";
+import { needsAttention } from "../lib/streamState";
 import { $settings, $profileSettings } from "./settings";
 
 export const $streams = atom<StreamInfo[]>([]);
@@ -27,7 +28,7 @@ export function pruneSelection(existingIds: ReadonlySet<string>): void {
 export const $showAddStreamDialog = atom<boolean>(false);
 export const $editStream = atom<StreamInfo | null>(null);
 
-export type StreamFilter = "all" | "recording" | "errors";
+export type StreamFilter = "all" | "recording" | "attention";
 export const $streamFilter = atom<StreamFilter>("all");
 
 export type StreamSort = "name" | "added";
@@ -66,8 +67,8 @@ export const $visibleStreams = computed(
   [$sortedStreams, $streamFilter, $statuses],
   (sorted, filter, statuses) => {
     if (filter === "all") return sorted;
-    const want = filter === "recording" ? "recording" : "error";
-    return sorted.filter((s) => statuses[s.id]?.state === want);
+    if (filter === "recording") return sorted.filter((s) => statuses[s.id]?.state === "recording");
+    return sorted.filter((s) => needsAttention(statuses[s.id]?.state));
   },
 );
 
