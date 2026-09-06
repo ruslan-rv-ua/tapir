@@ -3,7 +3,7 @@
 - **Статус:** ПРИЙНЯТО
 - **Дата:** 2026-09-06
 - **Тип:** ADR — модель стану «потік не пишеться» і поверхонь, якими про це дізнаються
-- **Контекст:** беклог — [error-state-never-reaches-ui](../backlog/p1-error-state-never-reaches-ui.md),
+- **Контекст:** беклог — [error-state-never-reaches-ui](../backlog/done/p1-error-state-never-reaches-ui.md),
   знахідка NVDA-прогону [zone-vanishes-under-focus-audit](../backlog/done/p2-zone-vanishes-under-focus-audit.md);
   словник — [CONTEXT.md](../../CONTEXT.md) §«Поразка і потреба в увазі»;
   семантика спроби — [ADR 2026-08-13](2026-08-13-reconnect-attempt-semantics.md);

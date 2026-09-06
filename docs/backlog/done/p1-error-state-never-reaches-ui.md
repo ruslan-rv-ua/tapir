@@ -3,11 +3,12 @@ slug: error-state-never-reaches-ui
 title: "Стан «помилка» не доходить до інтерфейсу: фільтр і метрика збоїв мертві"
 priority: P1
 type: planned
-status: ready
+status: done
 effort: M
 kind: bug
 target: 0.1.0
 updated: 2026-09-06
+completed: 2026-09-06
 a11y: true
 depends_on: []
 blocks: [stream-failure-tray-toast]
@@ -26,15 +27,15 @@ gates: [cargo test, cargo clippy --all-targets, pnpm test, pnpm typecheck, pnpm 
 notes:
   - "Знайдено NVDA-прогоном zone-vanishes-under-focus-audit (2026-09-05): сценарій «зроби помилку й перевір фільтр» виявився непрохідним, бо стану «помилка» потік не набуває взагалі."
   - "Grooming 2026-09-06 закрив усі п'ять відкритих питань і ще два, що з них виросли. Рішення — ADR 2026-09-06 error-is-the-diagnosis-attention-is-the-bucket. Нативна плашка відщеплена в окремий запис."
-  - "Реалізовано 2026-09-06 у гілці fix/error-state-never-reaches-ui. Усі ворота зелені. Лишився NVDA-прогін — доти запис не закривати."
+  - "Реалізовано 2026-09-06 у гілці fix/error-state-never-reaches-ui. NVDA-прогін пройдено 2026-09-06 без розбіжностей; чекліст видалено на прийманні."
 ---
 
 # Стан «помилка» не доходить до інтерфейсу: фільтр і метрика збоїв мертві
 
 > **Контекст:** знахідка NVDA-прогону
-> [zone-vanishes-under-focus-audit](done/p2-zone-vanishes-under-focus-audit.md) — там сценарій 3
+> [zone-vanishes-under-focus-audit](p2-zone-vanishes-under-focus-audit.md) — там сценарій 3
 > знято як недосяжний саме через це. Grooming проведено 2026-09-06; **рішення читати в
-> [ADR](../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md)**, цей
+> [ADR](../../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md)**, цей
 > запис лишає за собою обсяг і критерії приймання.
 
 ## Опис
@@ -51,15 +52,15 @@ notes:
    виставляє `StreamState::Error`, але одразу за ним стан затирає або `mark_reconnecting`
    (якщо лишились спроби), або фінальне прибирання `recording_task`: воно ставить `Idle`
    і викидає запис із менеджера зовсім.
-3. **Подія `stream-error` статусу не міняє** — [App.tsx](../../src/App.tsx) лише показує тост.
+3. **Подія `stream-error` статусу не міняє** — [App.tsx](../../../src/App.tsx) лише показує тост.
 
 Наслідки, кожен спостережуваний:
 
-- **Фільтр «З помилками» не збігається ні з чим** — [streams.ts](../../src/stores/streams.ts)
+- **Фільтр «З помилками» не збігається ні з чим** — [streams.ts](../../../src/stores/streams.ts)
   шукає `state === "error"`. Чіп завжди показує 0.
 - **Метрика «Потребує уваги» завжди каже «Немає збоїв»** —
-  [StreamsPanel.tsx](../../src/components/streams/StreamsPanel.tsx) рахує той самий стан.
-- **Мертвий код озвучення.** [App.tsx](../../src/App.tsx) має гілку `payload.status === "error"`,
+  [StreamsPanel.tsx](../../../src/components/streams/StreamsPanel.tsx) рахує той самий стан.
+- **Мертвий код озвучення.** [App.tsx](../../../src/App.tsx) має гілку `payload.status === "error"`,
   яка каже `m.connection_error()` з пріоритетом `assertive`. Умова не буває істинною ніколи,
   тож найгучнішу репліку застосунку не чув жоден користувач.
 - **Сегмент стану в рядку для `error` гілки не має зовсім** — падає в запасну й каже
@@ -73,7 +74,7 @@ notes:
 ## Ухвалені рішення
 
 Grooming 2026-09-06. Обґрунтування, відхилені варіанти й межі — в
-[ADR](../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md); тут
+[ADR](../../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md); тут
 лише перелік, щоб реалізатор бачив обсяг одним поглядом.
 
 1. **«Перепідключення» — процес, «помилка» — діагноз** (§1). `Error` настає один раз, на
@@ -87,7 +88,7 @@ Grooming 2026-09-06. Обґрунтування, відхилені варіан
 5. **Причина — закритий перелік із двох значень** (§5), їде мертвим сьогодні полем
    `error` події `recording-status`; заповнює сегмент стану в рядку.
 6. **Нативна плашка при згорнутому вікні — окремим записом** (§6),
-   [stream-failure-tray-toast](p2-stream-failure-tray-toast.md).
+   [stream-failure-tray-toast](../p2-stream-failure-tray-toast.md).
 7. **Відмова за непідтримуваним кодеком у відро не входить** (§7).
 
 ## Критерії готовності
@@ -108,9 +109,9 @@ Grooming 2026-09-06. Обґрунтування, відхилені варіан
 - [x] Тест: відмова за непідтримуваним кодеком у відро **не** потрапляє
 - [x] `cargo test` (554), `cargo clippy --all-targets`, `pnpm test` (1199),
       `pnpm typecheck`, `pnpm vite:build`, `pnpm lint` — без помилок
-- [ ] **NVDA-прогін**: поразку чутно, репліка нічого не перебиває, рядок і метрика
-      читаються узгоджено; чекліст —
-      [nvda-error-state-never-reaches-ui.md](../testing/nvda-error-state-never-reaches-ui.md)
+- [x] **NVDA-прогін 2026-09-06 — без розбіжностей**: поразку чутно, репліка нічого не
+      перебиває, рядок і метрика читаються узгоджено. Чекліст видалено на прийманні; три
+      зауваження поза цим записом стали окремими записами (див. нижче)
 
 ## Знайдено під час реалізації
 
@@ -123,17 +124,35 @@ Grooming 2026-09-06. Обґрунтування, відхилені варіан
 **Подія `stream-error` знята цілком** разом із `StreamErrorPayload` в обох шарах: після
 зняття проміжних тостів у неї не лишилось жодного споживача.
 
+**Рев'ю знайшло третю копію предиката — саме в промовленому числі.** Значок чіпа й метрика
+ходили через `needsAttention`, а `handleChipClick` рахував сам, тож NVDA казав «0 потоків»
+там, де око бачило 2. Тести на значок і порядок рядків такого класу не ловлять — слухову
+поверхню довелось накрити окремим тестом на `$announcer`.
+
+## Знайдено NVDA-прогоном (поза цим записом)
+
+Прогін 2026-09-06 пройшов чисто, але виявив три речі поруч:
+
+- «Спроба N з M» під час перепідключення не показується —
+  [reconnect-counter-not-live](../p2-reconnect-counter-not-live.md); відро «Потребує
+  уваги» зробило цю ваду буденною, і в записі це дописано як аргумент за перегляд `target`.
+- Після зміни фільтра `Tab` перестрибує непорожній список —
+  [list-skipped-by-tab-after-filter](../p1-list-skipped-by-tab-after-filter.md); вада не
+  від цієї зміни, живе в спільному `useCompositeList`.
+- Кнопка рядка пропонує почати вже активний запис і відповідає англійською —
+  [record-action-lies-while-connecting](../p1-record-action-lies-while-connecting.md).
+
 ## Документи
 
-- [ADR 2026-09-06](../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md) — рішення grooming'у
-- [CONTEXT.md](../../CONTEXT.md) §«Поразка і потреба в увазі» — словник
-- [p2-zone-vanishes-under-focus-audit.md](done/p2-zone-vanishes-under-focus-audit.md) — прогін, що це знайшов
-- [p2-stream-failure-tray-toast.md](p2-stream-failure-tray-toast.md) — відщеплена нативна поверхня
-- [p2-reconnect-counter-not-live.md](p2-reconnect-counter-not-live.md) — сусідня вада того ж
+- [ADR 2026-09-06](../../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md) — рішення grooming'у
+- [CONTEXT.md](../../../CONTEXT.md) §«Поразка і потреба в увазі» — словник
+- [p2-zone-vanishes-under-focus-audit.md](p2-zone-vanishes-under-focus-audit.md) — прогін, що це знайшов
+- [p2-stream-failure-tray-toast.md](../p2-stream-failure-tray-toast.md) — відщеплена нативна поверхня
+- [p2-reconnect-counter-not-live.md](../p2-reconnect-counter-not-live.md) — сусідня вада того ж
   вузла; цим записом **не** закривається
-- [ADR 2026-08-13](../decisions/2026-08-13-reconnect-attempt-semantics.md) — семантика спроби
-- [ADR 2026-09-01](../decisions/2026-09-01-response-surfaces-ear-window-system.md) — вибір поверхні відгуку
-- код: [manager.rs](../../src-tauri/src/stream/manager.rs), [App.tsx](../../src/App.tsx),
-  [StreamsPanel.tsx](../../src/components/streams/StreamsPanel.tsx),
-  [StreamItem.tsx](../../src/components/streams/StreamItem.tsx),
-  [streams.ts](../../src/stores/streams.ts)
+- [ADR 2026-08-13](../../decisions/2026-08-13-reconnect-attempt-semantics.md) — семантика спроби
+- [ADR 2026-09-01](../../decisions/2026-09-01-response-surfaces-ear-window-system.md) — вибір поверхні відгуку
+- код: [manager.rs](../../../src-tauri/src/stream/manager.rs), [App.tsx](../../../src/App.tsx),
+  [StreamsPanel.tsx](../../../src/components/streams/StreamsPanel.tsx),
+  [StreamItem.tsx](../../../src/components/streams/StreamItem.tsx),
+  [streams.ts](../../../src/stores/streams.ts)

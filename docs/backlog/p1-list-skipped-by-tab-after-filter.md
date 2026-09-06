@@ -24,7 +24,7 @@ notes:
 # Після зміни фільтра Tab перестрибує список — у ньому не лишається жодної зупинки
 
 > **Контекст:** знахідка NVDA-прогону
-> [error-state-never-reaches-ui](p1-error-state-never-reaches-ui.md). Вада від того
+> [error-state-never-reaches-ui](done/p1-error-state-never-reaches-ui.md). Вада від того
 > запису не залежить і в ньому не лікується — вона в спільному хуку списків.
 
 ## Опис
@@ -87,7 +87,7 @@ notes:
 
 ## Документи
 
-- [error-state-never-reaches-ui](p1-error-state-never-reaches-ui.md) — прогін, що це знайшов
+- [error-state-never-reaches-ui](done/p1-error-state-never-reaches-ui.md) — прогін, що це знайшов
 - [ADR 2026-09-05](../decisions/2026-09-05-focus-repair-asks-liveness-not-history.md) — сторож питає про живість фокуса
 - код: [useCompositeList.ts](../../src/hooks/useCompositeList.ts),
   [StreamList.tsx](../../src/components/streams/StreamList.tsx)

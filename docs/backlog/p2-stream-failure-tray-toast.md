@@ -32,7 +32,7 @@ notes:
 > **Контекст:** рішення вже ухвалене —
 > [ADR 2026-09-06 §6](../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md).
 > Цей запис лише реалізує його. Спершу має бути зроблений
-> [error-state-never-reaches-ui](p1-error-state-never-reaches-ui.md): поки стану поразки
+> [error-state-never-reaches-ui](done/p1-error-state-never-reaches-ui.md): поки стану поразки
 > немає, плашці нема на що спрацьовувати.
 
 ## Опис
@@ -82,7 +82,7 @@ Tapir — застосунок, який згортають і лишають п
 ## Документи
 
 - [ADR 2026-09-06](../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md) §6 — рішення
-- [error-state-never-reaches-ui](p1-error-state-never-reaches-ui.md) — батьківський запис
+- [error-state-never-reaches-ui](done/p1-error-state-never-reaches-ui.md) — батьківський запис
 - [ADR 2026-09-01](../decisions/2026-09-01-response-surfaces-ear-window-system.md) — вухо, вікно, система
 - [ADR 2026-08-17 про категорії тостів](../decisions/2026-08-17-tray-toast-categories.md) — коли плашка гейтиться
 - код: [notify.rs](../../src-tauri/src/tray/notify.rs),

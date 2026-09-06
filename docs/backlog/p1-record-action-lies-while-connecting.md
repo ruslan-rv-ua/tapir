@@ -24,7 +24,7 @@ notes:
 # Поки потік підключається, кнопка рядка пропонує почати запис — і відповідає англійською
 
 > **Контекст:** знахідка NVDA-прогону
-> [error-state-never-reaches-ui](p1-error-state-never-reaches-ui.md). Питання формулювання
+> [error-state-never-reaches-ui](done/p1-error-state-never-reaches-ui.md). Питання формулювання
 > не вирішене — перед реалізацією потрібен grooming.
 
 ## Опис
@@ -82,7 +82,7 @@ reconnecting) керує лічильником «зупиняються», кн
 
 ## Документи
 
-- [error-state-never-reaches-ui](p1-error-state-never-reaches-ui.md) — прогін, що це знайшов
+- [error-state-never-reaches-ui](done/p1-error-state-never-reaches-ui.md) — прогін, що це знайшов
 - [ADR 2026-09-06](../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md) §5 — чому технічний рядок не має перетинати межу
 - код: [StreamItem.tsx](../../src/components/streams/StreamItem.tsx),
   [StreamContextMenu.tsx](../../src/components/streams/StreamContextMenu.tsx),
