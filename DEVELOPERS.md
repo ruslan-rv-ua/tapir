@@ -75,7 +75,7 @@ Please refer to [AGENTS.md](AGENTS.md) for a general architecture overview, buil
 
 Clippy is a **gate, not a suggestion**. Its level is set once, by the `[lints.clippy]`
 section of `src-tauri/Cargo.toml`, which denies the whole `clippy::all` group. No call
-site has to remember `-D warnings`, and an editor, a terminal and a future CI job all
+site has to remember `-D warnings`, and an editor, a terminal and the CI job all
 reach the same verdict. `--all-targets` is what reaches test code; without it clippy
 never looks at `#[cfg(test)]` modules. Plain `cargo build` and `cargo test` are
 unaffected: rustc ignores `clippy::` lints.
@@ -83,8 +83,42 @@ unaffected: rustc ignores `clippy::` lints.
 A lint that is genuinely wrong in one place is silenced there —
 `#[allow(clippy::…)]` with a comment saying why — never by lowering the crate-wide level.
 
-The three frontend gates (`pnpm vite:build`, `pnpm test`, `pnpm typecheck`) run together
-as `just check`.
+The four frontend gates (`pnpm vite:build`, `pnpm test`, `pnpm typecheck`, `pnpm lint`)
+run together as `just check`, in that order: `vite:build` generates
+`src/i18n/paraglide/` on disk, and both `tsc` and the tests read that output.
+
+### Continuous Integration
+
+The same six gates run on GitHub Actions — for every pull request into `develop`, for
+every push to `develop`, and on demand. The workflow is
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml); it is the source of truth for
+what runs, and this section only explains how to read it.
+
+`develop` is protected: both checks are required, and nobody — the repository owner
+included — can merge past a red one. A direct push to the trunk is refused outright.
+
+Two jobs, both on `windows-latest`, and their ids are the names GitHub shows as required
+checks:
+
+- **`frontend`** — installs from the lockfile, then runs the four frontend gates. Its
+  step list mirrors `just check`, order included; a gate added to one has to be added to
+  the other.
+- **`backend`** — the two Rust gates, with no Node and no `dist/`. In the dev profile
+  `generate_context!` embeds empty assets, so nothing there reads the frontend build.
+
+**Reading a failure.** The split is for exactly this. The pull-request page names the two
+checks, so the status alone says which half broke before you open anything; inside a job
+every gate is a separate named step, and its log holds that gate's output and nothing
+else. There is no retry anywhere in the workflow: a red run means a gate said no, and it
+is worth a diagnosis rather than a re-run button.
+
+**Cache.** Only the run on `push: develop` writes it; pull-request runs read. Nothing about
+it weakens the verdict: `actions/checkout` gives a fresh tree every time, `dist/` is never
+cached, and `--frozen-lockfile` reinstalls from the lock — so "does this still build from a
+clean clone" stays a question the gates actually answer.
+
+Why the gates refuse instead of advise, and which alternatives were rejected —
+[ADR](docs/decisions/2026-09-05-gates-refuse-rather-than-advise.md).
 
 Additional technical documentation is available in the `docs/` folder:
 - `docs/architecture.md`

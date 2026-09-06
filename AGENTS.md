@@ -64,10 +64,38 @@ Requires: Rust toolchain, Node.js, pnpm, [just](https://github.com/casey/just).
 | `just build-fast` | Quick release build (`release-fast` profile) |
 | `just build` | Optimized release build (slow, small binary) |
 | `just clean` | Clean Rust build artifacts |
-| `just check` | All three frontend gates: `pnpm vite:build`, `pnpm test`, `pnpm typecheck` |
+| `just check` | All four frontend gates: `pnpm vite:build`, `pnpm test`, `pnpm typecheck`, `pnpm lint` |
 | `just check-rust` | Both backend gates: `cargo clippy --all-targets`, `cargo test` |
 
 Output binary: `src-tauri/target/release-fast/tapir.exe` (build-fast) or `src-tauri/target/release/tapir.exe` (build).
+
+## Branches and pull requests
+
+Трунк — `develop`; `main` лишається на старому стані й не рухається. Робота йде в
+гілках (`fix/…`, `chore/…`, `feature/…`, `docs/…`), і кожна входить у стовбур **лише
+через pull request**: гілка захищена, обидві перевірки CI обов'язкові, адміністратор
+не виняток. Прямий push відхиляється (`GH006: Required status check is expected`).
+
+- **Локального FF-мержа в `develop` більше немає**, як і прийому
+  `git fetch . <гілка>:develop`, яким паралельні worktree просували стовбур.
+  `develop` рухає лише GitHub; локальна копія — дзеркало, оновлюване `git pull`.
+- **Метод злиття один — merge commit** (`gh pr merge --merge`); squash і rebase вимкнені
+  в налаштуваннях репозиторію. Merge commit лишає коміти дослівно, з тими самими SHA,
+  які перевірив CI: squash зруйнував би навмисну структуру «код окремо,
+  `docs(backlog): close …` окремо», а rebase переписав би SHA, які записи беклогу
+  фіксують у `notes:` як адресу зробленого.
+- **PR веде агент до кінця.** Процедура закриття запису беклогу дістає крок посередині:
+  ворота → коміт → push гілки → `gh pr create` → **дочекатись зеленого** →
+  `gh pr merge --merge` → `git pull` → `done/` → рядок у ROADMAP. Запис не закривається,
+  поки перевірки справді не зелені, — інакше «зелені ворота перед закриттям»
+  перетворюються на «зелені ворота, ймовірно, згодом».
+- **Гілки лишаються вільними.** Ворота стоять на дверях стовбура, а не над робочим
+  столом: комітити, переписувати й ламати на своїй гілці можна як завгодно.
+
+Що саме ганяє CI і як прочитати його провал —
+[DEVELOPERS.md](DEVELOPERS.md#continuous-integration). Чому ворота відмовляють, а не
+радять, і що при цьому відкинуто —
+[ADR 2026-09-05](docs/decisions/2026-09-05-gates-refuse-rather-than-advise.md).
 
 ## Conventions
 
