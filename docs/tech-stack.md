@@ -198,13 +198,15 @@ Portable-збірка не має ярлика в меню «Пуск», том�
 | [`package.json`](../package.json) | JS-залежності, скрипти (`dev`, `build`, `test`, `typecheck`), `packageManager` |
 | [`src-tauri/Cargo.toml`](../src-tauri/Cargo.toml) | Rust-залежності, профілі `release` і `release-fast`, `[lints.clippy]` (рівень воріт clippy) |
 | [`src-tauri/tauri.conf.json`](../src-tauri/tauri.conf.json) | `identifier` (`ua.ruslanrv.tapir`), вікно, CSP, bundle |
-| [`src-tauri/capabilities/default.json`](../src-tauri/capabilities/default.json) | Дозволи IPC — ядро плюс чотири плагіни, які webview кличе: `dialog`, `log`, `global-shortcut`, `notification` (single-instance дозволу не потребує) |
+| [`src-tauri/capabilities/default.json`](../src-tauri/capabilities/default.json) | Дозволи IPC. Живе тут лише ядро (`core:*`): webview працює з `event` і `window`. Чотири плагінні набори — `dialog`, `log`, `global-shortcut`, `notification` — не обслуговують нікого: усі чотири плагіни керуються з Rust, і webview не кличе жодної плагінної команди. Хвіст, [capabilities-dead-plugin-permissions](backlog/p3-capabilities-dead-plugin-permissions.md) (single-instance дозволу не потребує) |
 | [`justfile`](../justfile) | Команди збірки й ворота (`just check`) |
 
 Два місця, де легко помилитись:
 
-- **Capabilities.** Tauri v2 вимагає явного дозволу на кожну команду плагіна. Немає
-  дозволу — плагін мовчки не працює, хоча підключений у `Cargo.toml`.
+- **Capabilities.** Tauri v2 вимагає явного дозволу на кожну команду плагіна — але
+  **лише для виклику з webview**. ACL сидить на межі IPC, тож плагін, який кличе Rust,
+  працює без жодного дозволу. Немає дозволу — мовчки відмовляє **фронтендовий шлях**
+  до плагіна, а не сам плагін.
 - **`--no-bundle`.** Пропускає створення NSIS/MSI, виробляючи standalone `.exe` — саме
   той файл, який роздається користувачам.
 

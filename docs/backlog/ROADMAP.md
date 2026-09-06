@@ -117,7 +117,7 @@ semver; `unscheduled` — наприкінці.
 
 > **Номера свідомо немає.** Тут лишаються дослідження (`type: research`), спірні ідеї,
 > чиї «Відкриті питання» ставлять під сумнів саму пропозицію, і тригер-gated записи —
-> ті, до яких повертаються лише за реальним приводом, а не за планом. 11 записів
+> ті, до яких повертаються лише за реальним приводом, а не за планом. 12 записів
 > (2026-08-17 троє знято рішенням розробника — див. «Виконано»).
 > Найперше рішення для цієї секції — **gate A4** ([mpv-playback-engine](p3-mpv-playback-engine.md)):
 > його «go» закриває два інші записи разом.
@@ -135,6 +135,7 @@ semver; `unscheduled` — наприкінці.
 | [cli-answers-only-with-exit-code](p3-cli-answers-only-with-exit-code.md) | P3 | idea | draft | S | — | спірна — `--version` і `--help` не друкують нічого (вихід кодом 0 без `e.print()`), і перше питання не «як полагодити», а чи GUI-застосунок узагалі має відповідати в консолі |
 | [stale-search-overwrites-results](p2-stale-search-overwrites-results.md) | P2 | planned | **draft** | S | [load-more-retry-skips-failed-page](done/p2-load-more-retry-skips-failed-page.md) | — (друга половина класу «стан розійшовся з екраном»: дві заміни в польоті, пізня кладе на екран результати критеріїв, яких там уже немає. Квиток із [ADR loaded-prefix-is-the-cursor](../decisions/2026-09-04-loaded-prefix-is-the-cursor.md) підходить, але заміна тягне прапорець завантаження — варіант не обрано, грилити) |
 | [help-style-guide-extract](p3-help-style-guide-extract.md) | P3 | planned | draft | S | [help-word-floor](done/p2-help-word-floor.md) ✅ | — (стиль-гайд довідки лежить усередині закритого запису `help-content-polish`: правило 6 правили там уже двічі, тест цитує його за slug'ом. Чистий рефакторинг адреси, три відкриті питання — зокрема чи їде мапа покриття й чи не чекати закриття `help-sections-expand`) |
+| [capabilities-dead-plugin-permissions](p3-capabilities-dead-plugin-permissions.md) | P3 | planned | draft | S | [dead-js-tauri-plugins](done/p3-dead-js-tauri-plugins.md) ✅ | — (хвіст dead-js-tauri-plugins: `dialog`, `log`, `global-shortcut`, `notification` у `capabilities/default.json` не обслуговують нікого — ACL діє лише на межі IPC, а webview не кличе жодної плагінної команди. Запис-**рішення**, не чистка: ціна помилки протилежна до батьківського — зайвий npm-пакет ламав збірку гучно, відсутній дозвіл ламає майбутній фронтендовий виклик **мовчки**) |
 
 ---
 
