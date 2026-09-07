@@ -3,7 +3,7 @@
 - **Статус:** ПРИЙНЯТО
 - **Дата:** 2026-09-07
 - **Тип:** ADR — форма того, що роздається
-- **Контекст:** беклог — [release-workflow](../backlog/p2-release-workflow.md);
+- **Контекст:** беклог — [release-workflow](../backlog/done/p2-release-workflow.md);
   межа портативності — [ADR 2026-09-04](2026-09-04-portable-boundary.md);
   ворота — [ADR 2026-09-05](2026-09-05-gates-refuse-rather-than-advise.md).
 
