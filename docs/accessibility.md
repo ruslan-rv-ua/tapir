@@ -1116,7 +1116,7 @@ document.addEventListener("keydown", (e) => {
 `play_file`, за тим самим патерном, що й `"connecting"` для стрімів (де-ризик +
 one-shot suppression наступного дубльованого «Відтворення: …»). Перемикач
 `resumeFileFrom` профільний — діалог профілю (`Ctrl+Shift+,`) → «Відтворення»
-([data-models.md](data-models.md#playersession)).
+([data-models.md](data-models.md) §3.7).
 
 ### Локальні клавіші (у вікні)
 

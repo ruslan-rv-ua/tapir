@@ -234,7 +234,7 @@ ELSE (не перший сегмент):
 
 > **Поля:** `RecordingSettings.skipFirstIncompleteTrack` (bool) та `RecordingSettings.skipShortTracksMs` (u32).
 > У PRD ці поля описані як `saveFirstTrack` (інвертована семантика) та `minTrackDuration`.
-> Canonical назви — з data-models.md.
+> Canonical назви — `RecordingSettings` у `src-tauri/src/profile.rs`.
 
 ### 5.2. Живе джерело — окреме з'єднання
 
@@ -332,7 +332,7 @@ main.rs → lib.rs::run()
 | Команди | `generate_handler![…]` у `src-tauri/src/lib.rs` |
 | Реалізації | `src-tauri/src/commands/` |
 | Типи payload'ів подій | `src/lib/tauri.ts` — їх перевіряє `tsc` |
-| Емітери подій | `stream/manager.rs`, `player/engine.rs`, `scheduler/`, `tray/`, `cli.rs` |
+| Емітери подій | виклики `.emit(` — головні домівки `stream/manager.rs`, `player/engine.rs`, `scheduler/timer.rs` і `commands/`, але не лише вони |
 
 ### Форма контракту
 
@@ -552,7 +552,7 @@ Unicode NFC-нормалізації **немає** — крейт прибра�
 
 | Документ | Що дає |
 |---|---|
-| [data-models.md](data-models.md) | Структури даних, формати файлів, розкладка на диску |
+| [data-models.md](data-models.md) | Що де лежить на диску, у якому файлі й за якими правилами |
 | [tech-stack.md](tech-stack.md) | Вибір технологій і обґрунтування, зокрема відхилені |
 | [accessibility.md](accessibility.md) | Вимоги доступності — не опційні |
 | [keyboard-shortcuts.md](keyboard-shortcuts.md) | Реєстр гарячих клавіш — першоджерело |
