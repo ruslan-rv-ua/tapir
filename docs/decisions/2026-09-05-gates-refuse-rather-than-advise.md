@@ -5,7 +5,7 @@
 - **Тип:** ADR — межа між перевіркою і відмовою; спосіб входу змін у `develop`
 - **Контекст:** беклог — [ci-pipeline](../backlog/done/p2-ci-pipeline.md),
   [repo-public-rename](../backlog/done/p2-repo-public-rename.md),
-  [release-workflow](../backlog/p2-release-workflow.md);
+  [release-workflow](../backlog/done/p2-release-workflow.md);
   ворота — [typecheck-gate](../backlog/done/p1-typecheck-gate.md),
   [clippy-warnings-zero](../backlog/done/p2-clippy-warnings-zero.md).
 
@@ -71,7 +71,7 @@
 дверях стовбура, а не над робочим столом.
 
 Публікація релізу під це правило не підпадає й живе окремо
-([release-workflow](../backlog/p2-release-workflow.md)): ворота відповідають на питання
+([release-workflow](../backlog/done/p2-release-workflow.md)): ворота відповідають на питання
 «що перевіряється», реліз — «що роздається», і в другого свої рішення.
 
 ## Обмеження / наслідки
