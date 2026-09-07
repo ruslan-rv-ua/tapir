@@ -3,12 +3,13 @@
 > Згенеровано з front-matter записів командою `pnpm backlog index`. **Не редагувати руками:**
 > один рядок тут — поле `summary:` запису (без нього — `title:`).
 
-99 записів, найновіші зверху. Кожен файл зберігає ухвалені рішення, критерії,
+100 записів, найновіші зверху. Кожен файл зберігає ухвалені рішення, критерії,
 за якими фічу приймали, і секцію «Спадок» — що лишилось у коді й правилах після закриття.
 Черга — [ROADMAP.md](../ROADMAP.md).
 
 | Запис | Версія | Коли | Підсумок |
 |-------|--------|------|----------|
+| [backlog-index-generated](p2-backlog-index-generated.md) | 0.1.0 | 2026-09-07 | ROADMAP і done/README — вивід `pnpm backlog index`; спадок у записі, індекс несе рядок `summary:`; сторож у `pnpm test`; `pnpm backlog next` замість читання |
 | [tauri-ts-type-drift](p2-tauri-ts-type-drift.md) | 0.1.0 | 2026-09-07 | Один `TrackChangedPayload`; власник — `player_owns_track_line` за `Recording`, не `is_active`; терпимість десеріалізатора перевіряти, не оголошувати. |
 | [ci-pipeline](p2-ci-pipeline.md) | 0.1.0 | 2026-09-06 | Ворота відмовляють, а не радять: jobs на `windows-latest`, `develop` під `enforce_admins`, лише merge commit; `setup-node` кешує сам — вимкнено явно. |
 | [dead-js-tauri-plugins](p3-dead-js-tauri-plugins.md) | 0.1.0 | 2026-09-06 | Tauri CLI звіряє major.minor кожного плагіна, на `tauri build` розбіжність = `Err`; пара без npm-сторони випадає з перевірки — ось підстава зняття. |
