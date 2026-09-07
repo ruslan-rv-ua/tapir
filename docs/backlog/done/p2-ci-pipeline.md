@@ -163,7 +163,7 @@ PR і недоступний нікому іншому, але місце в 10-
 - **Ретрай будь-якого рівня**, зокрема `vitest --retry` — стирає єдиний сигнал, заради
   якого ворота ставлять.
 - **Збірка exe у воротах** — окремий повний прохід release-профілю; винесено в
-  [release-workflow](../p2-release-workflow.md).
+  [release-workflow](p2-release-workflow.md).
 
 ## Критерії готовності
 
@@ -215,6 +215,6 @@ AGENTS.md з першого дня, а його ж список «Виконан
 
 - [ADR — ворота відмовляють, а не радять](../../decisions/2026-09-05-gates-refuse-rather-than-advise.md)
 - [repo-public-rename](p2-repo-public-rename.md) — передумова
-- [release-workflow](../p2-release-workflow.md) — розблоковується цим записом
+- [release-workflow](p2-release-workflow.md) — розблоковується цим записом
 - [typecheck-gate](p1-typecheck-gate.md), [clippy-warnings-zero](p2-clippy-warnings-zero.md) — ворота, які CI запускає
 - https://github.com/Swatinem/rust-cache

@@ -3,7 +3,7 @@
 Як версія Tapir потрапляє до людини. Механізм — [release.yml](../.github/workflows/release.yml);
 форма артефакту й чому він непідписаний —
 [ADR «реліз — один голий exe»](decisions/2026-09-07-release-is-one-bare-exe.md);
-рішення грилінгу — [release-workflow](backlog/p2-release-workflow.md).
+рішення грилінгу — [release-workflow](backlog/done/p2-release-workflow.md).
 
 Модель гілок — **форма git-flow, механіка PR**: `develop` — інтеграція, `main` — випущене,
 `release/` і `hotfix/` стартують через `git flow start`, а **зливаються лише pull request'ом**.
