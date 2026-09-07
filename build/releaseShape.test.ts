@@ -116,11 +116,12 @@ function recipe(justfile: string, name: string): string {
   const lines = justfile.split(/\r?\n/);
   const start = lines.findIndex((l) => l === `${name}:`);
   if (start === -1) throw new Error(`justfile has no recipe \`${name}\``);
-  const body = lines
-    .slice(start + 1)
-    .filter((line, i, rest) => rest.slice(0, i + 1).every((l) => /^\s/.test(l)))
-    .map((l) => l.trim().replace(/^@/, ""))
-    .filter(Boolean);
+  const body: string[] = [];
+  for (const line of lines.slice(start + 1)) {
+    if (!/^\s/.test(line)) break;
+    const command = line.trim().replace(/^@/, "");
+    if (command) body.push(command);
+  }
   if (body.length !== 1) throw new Error(`justfile recipe \`${name}\` is not a single command`);
   return body[0];
 }
