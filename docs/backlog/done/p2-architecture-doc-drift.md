@@ -56,7 +56,7 @@ notes:
 
 Окрема знахідка: `data-models.md` §5 — **не** канонічний власник IPC-контракту, а
 близнюк §6.2 з тією самою підмножиною подій і тими самими фікціями. Винесено в
-[data-models-doc-drift](../p2-data-models-doc-drift.md).
+[data-models-doc-drift](p2-data-models-doc-drift.md).
 
 ## Що зроблено
 
@@ -113,7 +113,7 @@ notes:
 в тілі `done/`-запису, де його не читають **до** роботи; третій раз — в ADR. Сторож у гейті:
 `docsLinks.test.ts` тепер перевіряє й шляхи в бектіках, але **лише в трьох системних
 документах** — записи беклогу й ADR називають неіснуючі файли законно. Хвости:
-[data-models-doc-drift](../p2-data-models-doc-drift.md) (§5 виявилась не власником
+[data-models-doc-drift](p2-data-models-doc-drift.md) (§5 виявилась не власником
 IPC-контракту, а близнюком: та сама підмножина 14 подій із 28 і ті самі 4 фікції;
 TypeScript-типи там — третя копія `src/lib/tauri.ts`) і
 [disk-space-monitor](../p2-disk-space-monitor.md).
@@ -124,4 +124,4 @@ TypeScript-типи там — третя копія `src/lib/tauri.ts`) і
 - [ADR: документація посилається, а не цитує](../../decisions/2026-09-04-docs-reference-rather-than-quote.md)
 - [tech-stack-doc-drift](p2-tech-stack-doc-drift.md) — запис, під час якого знайдено
 - [accessibility-doc-audit](p2-accessibility-doc-audit.md) — формат звірки й межа правила
-- хвости: [data-models-doc-drift](../p2-data-models-doc-drift.md), [disk-space-monitor](../p2-disk-space-monitor.md)
+- хвости: [data-models-doc-drift](p2-data-models-doc-drift.md), [disk-space-monitor](../p2-disk-space-monitor.md)

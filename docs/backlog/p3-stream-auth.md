@@ -22,7 +22,7 @@ touches:
 gates: [cargo test, cargo clippy --all-targets, pnpm test, pnpm vite:build]
 notes:
   - "Виявлено при groomingʼу full-edit-stream (2026-08-07): поля username/password існують у StreamInfo від Phase 1, але жоден із трьох потрібних шарів не реалізований"
-  - "data-models.md описує DPAPI-шифрування паролів як діюче — це drift, не факт; виправити разом із реалізацією або окремо, якщо запис так і не візьмуть"
+  - "data-models.md описував DPAPI-шифрування як діюче; drift знято 2026-09-07 (data-models-doc-drift) — тепер поля названі мертвими, і документ звіряти більше не треба"
   - "Профіль уже страхує експорт: export_json / import стирають password (profile.rs:570-625) — цей інваріант зберегти"
 ---
 
@@ -43,10 +43,8 @@ notes:
 ([profile.rs:570-625](../../src-tauri/src/profile.rs#L570-L625)). На цьому все
 й закінчується — бракує трьох шарів:
 
-1. **Шифрування.** [data-models.md](../data-models.md) стверджує, що паролі
-   шифруються через Windows DPAPI (`CryptProtectData`) у форматі
-   `"DPAPI:<base64>"`. У коді `CryptProtectData` немає — рядок `"DPAPI:abc"`
-   зустрічається лише у тестових фікстурах
+1. **Шифрування.** Його немає: `CryptProtectData` у коді не зустрічається, а
+   рядок `"DPAPI:abc"` живе лише у тестових фікстурах
    ([stream_commands.rs:717](../../src-tauri/src/commands/stream_commands.rs#L717)).
    Тобто **документація випереджає код**, і пароль сьогодні ліг би у
    `profile.json` відкритим текстом.
@@ -88,7 +86,8 @@ notes:
 - [ ] Пароль ніколи не лягає у `profile.json` відкритим текстом
 - [ ] Креденшли доходять до рекордера, probe і плеєра — по одному тесту на шар
 - [ ] Інваріант «експорт стирає пароль» не регресує
-- [ ] [data-models.md](../data-models.md) приведено у відповідність із кодом
+- [x] [data-models.md](../data-models.md) приведено у відповідність із кодом
+      (2026-09-07, [data-models-doc-drift](done/p2-data-models-doc-drift.md))
 - [ ] Поля auth у `AddStreamDialog` + NVDA-прогін
 
 ## Документи
@@ -98,4 +97,4 @@ notes:
   [connection.rs](../../src-tauri/src/stream/connection.rs) (`connect`),
   [stream_io_commands.rs](../../src-tauri/src/commands/stream_io_commands.rs) (`probe_once`),
   [player/engine.rs](../../src-tauri/src/player/engine.rs)
-- [data-models.md](../data-models.md) — **містить drift**, звірити при реалізації
+- [data-models.md](../data-models.md) — звірено 2026-09-07; описує ці поля як мертві
