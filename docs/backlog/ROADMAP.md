@@ -14,7 +14,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 саме вони визначають, чи версія закриється. Колонка «Суть» — поле `summary:` запису
 (без нього — `title:`).
 ♿ — запис зачіпає доступність (`a11y: true`), приймання потребує NVDA-прогону.
-Виконані записи (100) — у [done/README.md](done/README.md), спадок кожного — у секції
+Виконані записи (101) — у [done/README.md](done/README.md), спадок кожного — у секції
 «Спадок» його файлу.
 
 ---
@@ -27,11 +27,10 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > Чи вважати віху завершеною і тегувати збірку, вирішує розробник після цієї черги;
 > завантажуваний exe для тегу — [release-workflow](p3-release-workflow.md), поки `draft`.
 
-У черзі: 2. Виконано: 85.
+У черзі: 1. Виконано: 86.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
-| [data-models-doc-drift](p2-data-models-doc-drift.md) | P2 | planned | ready | L | [architecture-doc-drift](done/p2-architecture-doc-drift.md) ✅ | — | третій документ у ряду `tech-stack.md` → `architecture.md` → `data-models.md`; метод звірки вже записаний, виводити наново не треба |
 | [release-workflow](p3-release-workflow.md) | P3 | idea | draft | M | [ci-pipeline](done/p2-ci-pipeline.md) ✅ | — | exe у GitHub Release на тег `v*`; у воротах не збирається — release-профіль це другий повний прохід по графу залежностей; відкриті підпис і SmartScreen |
 
 ---

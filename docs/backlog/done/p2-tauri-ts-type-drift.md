@@ -194,7 +194,7 @@ Grooming 2026-09-06, тринадцять питань. Факти — у [но�
 2. **Зачеплено `docs/data-models.md`, якого немає в `touches:`.** Документ цитує
    `TrackChangedPayload`, `RecordingStatusPayload` і `TrackInfo` поле в поле, тож після
    цієї роботи почав би брехати. Копії полагоджено, а не знято: знімати їх — робота
-   запису [data-models-doc-drift](../p2-data-models-doc-drift.md), який цей борг і веде.
+   запису [data-models-doc-drift](p2-data-models-doc-drift.md), який цей борг і веде.
    У щойно виправленому фрагменті Rust `TrackInfo` заразом дописано `pub ignored: bool` —
    дрейф, що був там до цієї роботи, у рядку, який усе одно правився.
 
@@ -221,7 +221,7 @@ TrackChangedPayload` у `stream/manager.rs`), а власника називає
 дереві. Спадок: два відхилення записані в самому записі (коментар рядка 12 пішов у
 `GlobalSettings`, бо в `UiSettings` чисел немає; `docs/data-models.md` полагоджено поза
 `touches:`, бо він цитує змінені payload'и — знімати ті копії лишається роботою
-[data-models-doc-drift](../p2-data-models-doc-drift.md)), і хвіст
+[data-models-doc-drift](p2-data-models-doc-drift.md)), і хвіст
 [ts-rs-drift-guard](../p3-ts-rs-drift-guard.md): дванадцять розбіжностей за місяць кажуть, що
 дрейф — постійна ціна, а не разова подія
 
