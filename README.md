@@ -32,12 +32,12 @@ Tapir is a friendly, easy-to-use Windows app for listening to and recording inte
 - **Scheduler** — Want to record a Saturday night show? Set a timer, and Tapir will do it automatically—either once or every week.
 - **Profiles** — Create different settings profiles, like "Relax Radio" or "News," and switch between them easily.
 - **System Tray** — Hide the app so it doesn't get in your way. A small tray menu lets you control recording and playback.
+- **Start with Windows** — Optionally launch Tapir at sign-in, minimized to the tray if you like, and pick up the last station or file where you left it.
 - **Global Hotkeys** — Control music and recordings from your keyboard, even while working in other apps!
 
 ### Coming soon
 
 - **Post-processing** — Ability to send recorded files to other apps for further editing.
-- **New settings** — High Contrast theme and run on Windows startup.
 
 ---
 
