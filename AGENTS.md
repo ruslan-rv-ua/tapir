@@ -2,11 +2,13 @@
 
 ## Project State
 
-Pre-release, working towards **0.1.0** — Post-processing (3H) is the last phase still open,
-and day-to-day work is queued **by target version in the backlog**, not by phase.
-Breaking changes are expected at any time — no migrations, no backward-compatibility guarantees.
-What 0.1.0 still needs: [docs/backlog/ROADMAP.md](docs/backlog/ROADMAP.md) — generated from the
-records; `pnpm backlog next` prints the head of the queue. The phase roadmap
+**0.1.0 released 2026-09-07** — tag on `main`, a GitHub Release with the bare exe, and a
+scoop manifest in the bucket; how a version ships is [docs/release.md](docs/release.md).
+Work towards the next version is queued **by target version in the backlog**, not by phase;
+Post-processing (3H) is the last phase still open and is planned for 0.2.0.
+Still 0.x: breaking changes are expected at any time — no migrations, no backward-compatibility
+guarantees. What the next version needs: [docs/backlog/ROADMAP.md](docs/backlog/ROADMAP.md) —
+generated from the records; `pnpm backlog next` prints the head of the queue. The phase roadmap
 itself: [docs/implementation-phases.md](docs/implementation-phases.md).
 
 The phase table below is history — it records what each phase covered and where it landed:
