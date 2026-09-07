@@ -25,13 +25,13 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > не бреше й не мовчить: мертві налаштування прибрані, мовчазні відмови дістають видиму
 > поверхню, хибні мітки виправлені, обидві локалі повні. Нових можливостей версія не додає.
 > Чи вважати віху завершеною і тегувати збірку, вирішує розробник після цієї черги;
-> завантажуваний exe для тегу — [release-workflow](p3-release-workflow.md), поки `draft`.
+> завантажуваний exe для тегу — [release-workflow](p2-release-workflow.md), огрилено 2026-09-07.
 
 У черзі: 1. Виконано: 86.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
-| [release-workflow](p3-release-workflow.md) | P3 | idea | draft | M | [ci-pipeline](done/p2-ci-pipeline.md) ✅ | — | exe у GitHub Release на тег `v*`; у воротах не збирається — release-профіль це другий повний прохід по графу залежностей; відкриті підпис і SmartScreen |
+| [release-workflow](p2-release-workflow.md) | P2 | planned | ready | L | [ci-pipeline](done/p2-ci-pipeline.md) ✅, [single-version-source](done/p2-single-version-source.md) ✅ | — | Тег `v*` на `main` → `tapir-v<тег>-x64.exe` + `.sha256` у Release; bucket оновлює Excavator; git-flow як форма, PR як механіка; без ZIP, без підпису |
 
 ---
 
