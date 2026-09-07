@@ -44,8 +44,16 @@ pub struct SearchParams {
     pub limit: Option<u32>,
 }
 
-/// Елемент списку фільтрів (країна/кодек/мова/тег)
+/// Елемент списку фільтрів (країна/кодек/мова/тег).
+///
+/// `rename_all` стоїть, хоч сьогодні всі ключі однослівні й правило для них —
+/// тотожність: без нього перше поле з `_` мовчки роз'їхалось би з ручним типом
+/// у `src/lib/tauri.ts` (`tauri-ts-type-drift`, рядок 11). Ця ж структура
+/// **читається** з відповіді Radio Browser API (`browser/api.rs`), тому таке
+/// поле водночас потребуватиме `#[serde(alias = …)]` під ключ API — рівно як
+/// це вже зроблено в `StationResult` нижче.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FilterItem {
     pub name: String,
     #[serde(default)]
@@ -53,7 +61,9 @@ pub struct FilterItem {
 }
 
 /// Набір усіх фільтрів для UI. Кешується у RadioBrowserClient.
+/// Про `rename_all` — див. [`FilterItem`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BrowserFilters {
     pub countries: Vec<FilterItem>,
     pub codecs: Vec<FilterItem>,

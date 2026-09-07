@@ -14,9 +14,10 @@ describe("isRecordingLike", () => {
     expect(isRecordingLike("error")).toBe(false);
   });
 
-  it("treats idle, stopped and an unknown stream alike", () => {
+  it("treats idle and an unknown stream alike", () => {
+    // `stopped` тут більше немає: це результат запису, не стан потоку, і в
+    // дзеркало він приходить уже як `idle` (`tauri-ts-type-drift`, рішення 8).
     expect(isRecordingLike("idle")).toBe(false);
-    expect(isRecordingLike("stopped")).toBe(false);
     expect(isRecordingLike(undefined)).toBe(false);
   });
 });
@@ -34,7 +35,6 @@ describe("needsAttention", () => {
     expect(needsAttention("recording")).toBe(false);
     expect(needsAttention("connecting")).toBe(false);
     expect(needsAttention("idle")).toBe(false);
-    expect(needsAttention("stopped")).toBe(false);
     expect(needsAttention(undefined)).toBe(false);
   });
 });

@@ -252,13 +252,26 @@ struct ScheduledStartedPayload {
     name: String,
 }
 
+/// Три результати, які доїжджають подією `scheduled-completed`, — власний
+/// перелік, вужчий за [`ScheduleResultStatus`]. `match` в [`emit_result`] уже
+/// розділив п'ять результатів на три події; окремий тип робить цей поділ
+/// перевіркою компілятора: шостий варіант `ScheduleResultStatus` тоді ламає
+/// збірку тут, а не тихо їде в чужу подію (`tauri-ts-type-drift`, рішення 10).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+enum ScheduledCompletedStatus {
+    Completed,
+    StartedLate,
+    StoppedByUser,
+}
+
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ScheduledCompletedPayload {
     recording_id: String,
     stream_id: String,
     name: String,
-    status: ScheduleResultStatus, // completed | startedLate | stoppedByUser
+    status: ScheduledCompletedStatus,
     recorded_minutes: u32,
 }
 
@@ -282,33 +295,41 @@ struct ScheduledSkippedPayload {
 /// scheduled-completed емітиться і при StoppedByUser (§4) — інакше панель
 /// не оновить результат; frontend для StoppedByUser не озвучує (Фаза 3).
 fn emit_result(app: &AppHandle, f: &Fixation) {
+    // Кожна гілка називає свій варіант payload сама: перекласти
+    // `ScheduleResultStatus` у `ScheduledCompletedStatus` автоматично нема як,
+    // і саме цього тут і треба.
+    let emit_scheduled_completed = |status| {
+        app.emit("scheduled-completed", ScheduledCompletedPayload {
+            recording_id: f.schedule_id.clone(),
+            stream_id: f.stream_id.clone(),
+            name: f.schedule_name.clone(),
+            status,
+            recorded_minutes: f.result.recorded_minutes,
+        }).ok();
+    };
+    let notify_completed = || {
+        crate::tray::notify::notify_scheduled(
+            app,
+            crate::tray::notify::scheduled_completed_body(
+                &f.schedule_name,
+                f.result.recorded_minutes,
+            ),
+        );
+    };
+
     match f.result.status {
-        ScheduleResultStatus::Completed | ScheduleResultStatus::StartedLate => {
-            app.emit("scheduled-completed", ScheduledCompletedPayload {
-                recording_id: f.schedule_id.clone(),
-                stream_id: f.stream_id.clone(),
-                name: f.schedule_name.clone(),
-                status: f.result.status.clone(),
-                recorded_minutes: f.result.recorded_minutes,
-            }).ok();
-            crate::tray::notify::notify_scheduled(
-                app,
-                crate::tray::notify::scheduled_completed_body(
-                    &f.schedule_name,
-                    f.result.recorded_minutes,
-                ),
-            );
+        ScheduleResultStatus::Completed => {
+            emit_scheduled_completed(ScheduledCompletedStatus::Completed);
+            notify_completed();
+        }
+        ScheduleResultStatus::StartedLate => {
+            emit_scheduled_completed(ScheduledCompletedStatus::StartedLate);
+            notify_completed();
         }
         ScheduleResultStatus::StoppedByUser => {
             // §4: подія потрібна для оновлення панелі; без balloon і announce —
             // ручну зупинку вже озвучує recording-флоу.
-            app.emit("scheduled-completed", ScheduledCompletedPayload {
-                recording_id: f.schedule_id.clone(),
-                stream_id: f.stream_id.clone(),
-                name: f.schedule_name.clone(),
-                status: f.result.status.clone(),
-                recorded_minutes: f.result.recorded_minutes,
-            }).ok();
+            emit_scheduled_completed(ScheduledCompletedStatus::StoppedByUser);
         }
         ScheduleResultStatus::Missed => {
             // §3.2 крок 3: запис у лог

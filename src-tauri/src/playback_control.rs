@@ -11,12 +11,26 @@ use crate::profile::{FilePosition, LastActive, PlayerSession};
 use crate::profile::ResumeFileFrom;
 use tauri::{AppHandle, Emitter, Manager};
 
+/// What the webview is being asked to say. A closed set, not a free string:
+/// every consumer branches on it, nothing parses it, and it only ever travels
+/// outwards — so the type can say what the TS union already said by hand
+/// (`tauri-ts-type-drift`, decision 9). `Serialize` only.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum AnnounceKind {
+    Connecting,
+    Unavailable,
+    Error,
+    Resuming,
+    Volume,
+}
+
 /// Hints the webview can't derive from `player-status`. The webview localizes
 /// `kind` via Paraglide (backend never sends ready-made strings).
 #[derive(Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 struct PlaybackAnnounce {
-    kind: String,
+    kind: AnnounceKind,
     name: Option<String>,
     position_ms: Option<u64>,
 }
@@ -25,8 +39,8 @@ struct PlaybackAnnounce {
 /// `pub(crate)` for `shortcuts.rs`: the global volume keys change the level here
 /// in Rust and only ASK for the sentence — the number itself the webview reads
 /// off its own `$playerStatus`, so no level travels in the payload.
-pub(crate) fn emit_announce(app: &AppHandle, kind: &str, name: Option<String>) {
-    let payload = PlaybackAnnounce { kind: kind.to_string(), name, position_ms: None };
+pub(crate) fn emit_announce(app: &AppHandle, kind: AnnounceKind, name: Option<String>) {
+    let payload = PlaybackAnnounce { kind, name, position_ms: None };
     if let Err(e) = app.emit("player-announce", payload) {
         log::warn!("playback: failed to emit player-announce: {e}");
     }
@@ -36,7 +50,7 @@ pub(crate) fn emit_announce(app: &AppHandle, kind: &str, name: Option<String>) {
 /// before `play_stream`) so the webview arms the started-suppression in time.
 fn emit_resuming(app: &AppHandle, name: String, position_ms: u64) {
     let payload = PlaybackAnnounce {
-        kind: "resuming".to_string(),
+        kind: AnnounceKind::Resuming,
         name: Some(name),
         position_ms: Some(position_ms),
     };
@@ -290,12 +304,12 @@ pub(crate) async fn resume_last(app: &AppHandle) {
             // Before the ≤15 s blocking connect. The webview arms a one-shot
             // suppression so the eventual stopped→playing "started" for this
             // source is not announced on top of "Connecting — X".
-            emit_announce(app, "connecting", Some(name));
+            emit_announce(app, AnnounceKind::Connecting, Some(name));
             match state.player.play_stream(id, url, app).await {
                 Ok(()) => persist_session_snapshot(app).await,
                 Err(e) => {
                     log::warn!("playback: cold-start stream failed: {e}");
-                    emit_announce(app, "error", None); // transient — keep the record
+                    emit_announce(app, AnnounceKind::Error, None); // transient — keep the record
                 }
             }
         }
@@ -327,12 +341,12 @@ pub(crate) async fn resume_last(app: &AppHandle) {
                 }
                 Err(e) => {
                     log::warn!("playback: cold-start file failed: {e}");
-                    emit_announce(app, "error", None); // keep the record; clears webview pending
+                    emit_announce(app, AnnounceKind::Error, None); // keep the record; clears webview pending
                 }
             }
         }
         ColdStart::Unavailable => {
-            emit_announce(app, "unavailable", None);
+            emit_announce(app, AnnounceKind::Unavailable, None);
             clear_last_session(app).await;
         }
         ColdStart::Silent => {

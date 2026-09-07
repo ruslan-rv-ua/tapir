@@ -234,7 +234,7 @@ function playingStream() {
   $statuses.set({
     s1: {
       streamId: "s1", state: "recording",
-      currentTrack: { artist: "Miles", title: "So What", album: "", startedAt: "", ignored: false },
+      currentTrack: { artist: "Miles", title: "So What", startedAt: "", ignored: false },
       recordingStartedAt: null, bytesRecorded: 0, tracksRecorded: 0,
       error: null, reconnectAttempt: null, reconnectMaxRetries: null, sessionId: 1,
     },

@@ -111,10 +111,11 @@ describe("$visibleStreams — the «Потребує уваги» filter", () =>
   });
 
   it("keeps a stream Tapir refuses to record out of the bucket", () => {
-    // Refusal is not a failure: the task ends `stopped`, and the carrier is the
-    // codec mark on the stream itself (ADR 2026-09-06 §7).
+    // Refusal is not a failure: the task ends with the `stopped` result — which
+    // leaves the stream `idle` — and the carrier is the codec mark on the stream
+    // itself (ADR 2026-09-06 §7).
     $streams.set(streams);
-    updateStreamStatus("broken", { state: "stopped" });
+    updateStreamStatus("broken", { state: "idle" });
 
     $streamFilter.set("attention");
     expect($visibleStreams.get()).toEqual([]);

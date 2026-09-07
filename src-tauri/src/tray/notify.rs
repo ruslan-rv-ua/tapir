@@ -378,7 +378,7 @@ mod tests {
     #[test]
     fn hotkey_feedback_is_never_gated() {
         let ui = UiSettings {
-            stream_sort: "name".to_string(),
+            stream_sort: crate::profile::StreamSort::Name,
             tray_notifications_track_change: false,
             tray_notifications_scheduled: false,
         };

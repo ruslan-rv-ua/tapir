@@ -45,7 +45,7 @@ pub struct StreamStatus {
     pub session_id: u64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum StreamState {
     Idle,
@@ -53,6 +53,26 @@ pub enum StreamState {
     Recording,
     Reconnecting,
     Error,
+}
+
+/// Кому належить живий рядок треку, коли менеджер знає про потік стан `state`
+/// (`None` — не знає жодного: потік ніколи не писався).
+///
+/// Правило одного власника (беклог `tauri-ts-type-drift`, рішення 2): поки потік
+/// **пишеться**, рядок треку і кваліфікатор «ігнорується» належать менеджеру, і
+/// плеєр на ту саму межу треку мовчить. Обидва емітери читають ICY-метадані
+/// кожен на своєму з'єднанні, тож без правила порядок двох подій задавала мережа
+/// і кваліфікатор то з'являвся, то зникав.
+///
+/// Предикат дивиться рівно на [`StreamState::Recording`], а **не** на
+/// «запис активний» (`recording_control::is_active`, куди входять ще
+/// `Connecting` і `Reconnecting`): у цих двох станах менеджер ефіру не
+/// спостерігає — свого з'єднання в нього ще (або вже) немає, — тож власник
+/// рядка на цей час плеєр. З `is_active` рядок застигав би на весь час
+/// перепідключення. Щойно менеджер (пере)з'єднався, він забирає рядок назад
+/// на першому ж блоці метаданих (рішення 4).
+pub fn player_owns_track_line(state: Option<StreamState>) -> bool {
+    !matches!(state, Some(StreamState::Recording))
 }
 
 /// Чому запис здався. Закритий набір, а не сирий рядок через межу процесів
@@ -68,6 +88,25 @@ pub enum FailureReason {
     DiskWriteFailed,
 }
 
+/// Результат запису, який їде в події `recording-status`, — **не** стан потоку.
+/// Два словники навмисно різні (беклог `tauri-ts-type-drift`, рішення 8):
+/// `stopped` — це результат («запис скінчився»), а стан, у якому потік після
+/// цього лишається, — `Idle` («очікування»). Заводити `Stopped` у
+/// [`StreamState`] означало б узаконити стан, якого менеджер не зберігає;
+/// слати на дроті `idle` замість `stopped` — зробити «зупинено» з будь-якого
+/// майбутнього шляху в `Idle`. Межу тримає один рядок відображення в `App.tsx`.
+///
+/// Лише `Serialize`: назад ця величина не приходить ніколи.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum RecordingStatus {
+    Connecting,
+    Recording,
+    Reconnecting,
+    Stopped,
+    Error,
+}
+
 /// Чим скінчилась задача запису. До 2026-09-06 цієї різниці не існувало: **всі**
 /// виходи з `recording_task` слали `"stopped"`, тож потік, що вичерпав спроби,
 /// був для інтерфейсу невідрізненний від зупиненого руками, а стан `error` не
@@ -81,11 +120,13 @@ enum TaskOutcome {
 }
 
 impl TaskOutcome {
-    /// Рядок статусу події `recording-status` — те, що дзеркало кладе як `StreamState`.
-    fn status(&self) -> &'static str {
+    /// Результат запису для події `recording-status`. Пара до [`Self::state`]:
+    /// той самий вихід із задачі названий двома словниками — результатом і
+    /// станом, у якому потік після нього лишається.
+    fn status(&self) -> RecordingStatus {
         match self {
-            TaskOutcome::Stopped => "stopped",
-            TaskOutcome::Failed(_) => "error",
+            TaskOutcome::Stopped => RecordingStatus::Stopped,
+            TaskOutcome::Failed(_) => RecordingStatus::Error,
         }
     }
 
@@ -110,7 +151,6 @@ impl TaskOutcome {
 pub struct TrackInfo {
     pub artist: String,
     pub title: String,
-    pub album: String,
     pub started_at: String,
     /// Трек підпав під ігнор-лист і окремим файлом не збережеться. Носій цього
     /// факту — сам рядок потоку: подія рутинна (десятки за ніч), тож дістає
@@ -127,22 +167,26 @@ pub struct TrackInfo {
 #[serde(rename_all = "camelCase")]
 struct RecordingStatusPayload {
     stream_id: String,
-    status: String,
+    status: RecordingStatus,
     /// Заповнене лише при `status: "error"`. Канал існував наскрізь і в усіх
     /// викликах передавався порожнім — тепер він несе причину (ADR 2026-09-06 §5).
     error: Option<FailureReason>,
 }
 
+/// Тіло події `track-changed` — **одне на обидва емітери**. Плеєр
+/// ([`crate::player::engine`]) шле цю саму структуру, а не свою: два тіла з
+/// різним набором полів були живою вадою (tauri-ts-type-drift, рядок 1).
+/// Поля `album` немає навмисно: метадані ефіру альбому не несуть, на дроті
+/// воно завжди було `""`, і жоден споживач його не читав.
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct TrackChangedPayload {
-    stream_id: String,
-    artist: String,
-    title: String,
-    album: String,
+pub struct TrackChangedPayload {
+    pub stream_id: String,
+    pub artist: String,
+    pub title: String,
     /// Дублює [`TrackInfo::ignored`]: живий рядок фронтенд збирає з цієї події,
     /// а не перечитує статуси, тож кваліфікатор мусить їхати обома шляхами.
-    ignored: bool,
+    pub ignored: bool,
 }
 
 /// Відмова записувати ефір, який Tapir не вміє (ADR 2026-08-31 §3). Власна
@@ -321,6 +365,13 @@ impl StreamManager {
         self.entries.get(stream_id).map(|e| e.status.clone())
     }
 
+    /// Лише стан, без клонування всього [`StreamStatus`]. Плеєр питає його на
+    /// **кожен** блок ICY-метаданих (див. [`player_owns_track_line`]), тож
+    /// чотири зайві `String` на трек тут були б платою ні за що.
+    pub fn get_state(&self, stream_id: &str) -> Option<StreamState> {
+        self.entries.get(stream_id).map(|e| e.status.state)
+    }
+
     pub fn get_all_statuses(&self) -> Vec<StreamStatus> {
         self.entries.values().map(|e| e.status.clone()).collect()
     }
@@ -336,17 +387,17 @@ impl StreamManager {
 // Helper emit functions (fire-and-forget)
 // ---------------------------------------------------------------------------
 
-fn emit_recording_status(app: &AppHandle, stream_id: &str, status: &str, error: Option<FailureReason>) {
+fn emit_recording_status(app: &AppHandle, stream_id: &str, status: RecordingStatus, error: Option<FailureReason>) {
     // Phase 3K: будь-який перехід стану запису — тригер живого снапшота.
     if let Some(state) = app.try_state::<crate::app_state::AppState>() {
         state.snapshot.notify.notify_one();
     }
-    debug!("[{}] Emitting recording-status: {}", stream_id, status);
+    debug!("[{}] Emitting recording-status: {:?}", stream_id, status);
     match app.emit(
         "recording-status",
         RecordingStatusPayload {
             stream_id: stream_id.to_string(),
-            status: status.to_string(),
+            status,
             error,
         },
     ) {
@@ -356,14 +407,13 @@ fn emit_recording_status(app: &AppHandle, stream_id: &str, status: &str, error: 
     crate::tray::notify_state_changed(app);
 }
 
-fn emit_track_changed(app: &AppHandle, stream_id: &str, artist: &str, title: &str, album: &str, ignored: bool) {
+fn emit_track_changed(app: &AppHandle, stream_id: &str, artist: &str, title: &str, ignored: bool) {
     app.emit(
         "track-changed",
         TrackChangedPayload {
             stream_id: stream_id.to_string(),
             artist: artist.to_string(),
             title: title.to_string(),
-            album: album.to_string(),
             ignored,
         },
     )
@@ -517,7 +567,6 @@ async fn update_track_info(
         entry.status.current_track = Some(TrackInfo {
             artist: artist.to_string(),
             title: title.to_string(),
-            album: String::new(),
             started_at,
             ignored,
         });
@@ -607,7 +656,7 @@ async fn handle_splitter_action(
     match action {
         splitter::SplitAction::Skip => {
             debug!("[{}] Splitter: skip (first-incomplete/too-short/unchanged): {} - {}", stream_id, artist, title);
-            emit_track_changed(app_handle, stream_id, artist, title, "", false);
+            emit_track_changed(app_handle, stream_id, artist, title, false);
             update_track_info(manager, stream_id, artist, title, false).await;
         }
         splitter::SplitAction::StartTrack(m) => {
@@ -615,7 +664,7 @@ async fn handle_splitter_action(
             if let Ok(file_name) = rec.start_track(&m.artist, &m.title).await {
                 emit_recording_started(app_handle, stream_id, &file_name);
             }
-            emit_track_changed(app_handle, stream_id, &m.artist, &m.title, "", false);
+            emit_track_changed(app_handle, stream_id, &m.artist, &m.title, false);
             update_track_info(manager, stream_id, &m.artist, &m.title, false).await;
         }
         splitter::SplitAction::FinalizeAndStart { completed, new, duration_ms } => {
@@ -630,7 +679,7 @@ async fn handle_splitter_action(
             if let Ok(file_name) = rec.start_track(&new.artist, &new.title).await {
                 emit_recording_started(app_handle, stream_id, &file_name);
             }
-            emit_track_changed(app_handle, stream_id, &new.artist, &new.title, "", false);
+            emit_track_changed(app_handle, stream_id, &new.artist, &new.title, false);
             update_track_info(manager, stream_id, &new.artist, &new.title, false).await;
         }
     }
@@ -662,7 +711,7 @@ pub async fn recording_task(
 
         // --- connecting ---
         update_state(&manager, &stream_id, StreamState::Connecting).await;
-        emit_recording_status(&app_handle, &stream_id, "connecting", None);
+        emit_recording_status(&app_handle, &stream_id, RecordingStatus::Connecting, None);
 
         let conn = match connection::connect(&url).await {
             Ok(c) => {
@@ -684,7 +733,7 @@ pub async fn recording_task(
                 attempt = next_attempt;
                 debug!("[{}] Reconnecting in {}s (attempt {}/{})", stream_id, delay_secs, attempt, reconnect.max_retries);
                 update_state_reconnecting(&manager, &stream_id, attempt, reconnect.max_retries).await;
-                emit_recording_status(&app_handle, &stream_id, "reconnecting", None);
+                emit_recording_status(&app_handle, &stream_id, RecordingStatus::Reconnecting, None);
                 tokio::select! {
                     _ = cancel_token.cancelled() => break 'reconnect,
                     _ = tokio::time::sleep(Duration::from_secs(delay_secs)) => {}
@@ -849,7 +898,7 @@ pub async fn recording_task(
         // --- Async event consumer ---
         let started_at = chrono::Local::now().to_rfc3339();
         update_state_recording(&manager, &stream_id, &started_at).await;
-        emit_recording_status(&app_handle, &stream_id, "recording", None);
+        emit_recording_status(&app_handle, &stream_id, RecordingStatus::Recording, None);
 
         let mut local_bytes: u64 = 0;
         const BYTES_UPDATE_THRESHOLD: u64 = 65536;
@@ -929,7 +978,7 @@ pub async fn recording_task(
                                     // Носій — кваліфікатор у рядку потоку; окремої події
                                     // «трек проігноровано» більше немає, бо оголошувати
                                     // кожен рекламний блок нічим (ADR 2026-08-31 §4).
-                                    emit_track_changed(&app_handle, &stream_id, &artist, &title, "", true);
+                                    emit_track_changed(&app_handle, &stream_id, &artist, &title, true);
                                     update_track_info(&manager, &stream_id, &artist, &title, true).await;
                                     info!("[{}] Track ignored ({}): {} - {}", stream_id, pattern, artist, title);
                                 }
@@ -1024,7 +1073,7 @@ pub async fn recording_task(
         attempt = next_attempt;
         debug!("[{}] Reconnecting in {}s (attempt {}/{})", stream_id, delay_secs, attempt, reconnect.max_retries);
         update_state_reconnecting(&manager, &stream_id, attempt, reconnect.max_retries).await;
-        emit_recording_status(&app_handle, &stream_id, "reconnecting", None);
+        emit_recording_status(&app_handle, &stream_id, RecordingStatus::Reconnecting, None);
         tokio::select! {
             _ = cancel_token.cancelled() => break 'reconnect,
             _ = tokio::time::sleep(Duration::from_secs(delay_secs)) => {}
@@ -1043,6 +1092,46 @@ pub async fn recording_task(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Правило одного власника, усі стани менеджера плюс «менеджер про потік не
+    /// знає». Один `matches!` — і саме тому запис `tauri-ts-type-drift` обійшовся
+    /// без ADR: відкотити правило можна правкою цього рядка.
+    #[test]
+    fn player_owns_the_track_line_unless_the_stream_is_being_recorded() {
+        // Потік пишеться — рядок і кваліфікатор належать менеджеру.
+        assert!(!player_owns_track_line(Some(StreamState::Recording)));
+
+        // Менеджер ефіру не спостерігає: свого з'єднання ще (або вже) немає.
+        // Саме тут `is_active` замість `Recording` заморозив би рядок на весь
+        // час перепідключення.
+        assert!(player_owns_track_line(Some(StreamState::Connecting)));
+        assert!(player_owns_track_line(Some(StreamState::Reconnecting)));
+
+        assert!(player_owns_track_line(Some(StreamState::Idle)));
+        assert!(player_owns_track_line(Some(StreamState::Error)));
+
+        // Потік ніколи не писався — менеджер його не знає.
+        assert!(player_owns_track_line(None));
+    }
+
+    /// Форма дроту `track-changed`: рівно чотири ключі, camelCase. Тест ловить
+    /// і повернення `album`, і розбіжність із ручним типом у `src/lib/tauri.ts`,
+    /// який цю подію читає (`TrackChangedPayload`).
+    #[test]
+    fn track_changed_payload_carries_exactly_four_keys() {
+        let json = serde_json::to_value(TrackChangedPayload {
+            stream_id: "s1".to_string(),
+            artist: "Miles".to_string(),
+            title: "So What".to_string(),
+            ignored: true,
+        })
+        .unwrap();
+
+        let mut keys: Vec<&str> = json.as_object().unwrap().keys().map(String::as_str).collect();
+        keys.sort_unstable();
+        assert_eq!(keys, ["artist", "ignored", "streamId", "title"]);
+        assert_eq!(json["ignored"], serde_json::json!(true));
+    }
 
     fn reconnect_config(max_retries: u32) -> ReconnectConfig {
         ReconnectConfig {
@@ -1096,7 +1185,7 @@ mod tests {
         // indistinguishable from one the user stopped by hand, and the frontend
         // never saw `error` at all.
         let gave_up = TaskOutcome::Failed(FailureReason::StationUnreachable);
-        assert_eq!(gave_up.status(), "error");
+        assert_eq!(gave_up.status(), RecordingStatus::Error);
         assert_eq!(gave_up.reason(), Some(FailureReason::StationUnreachable));
         assert!(matches!(gave_up.state(), StreamState::Error));
     }
@@ -1106,9 +1195,37 @@ mod tests {
         // A user stop and a refused codec are not failures: neither spends an
         // attempt, and neither belongs in the «Потребує уваги» bucket
         // (ADR 2026-09-06 §7).
-        assert_eq!(TaskOutcome::Stopped.status(), "stopped");
+        assert_eq!(TaskOutcome::Stopped.status(), RecordingStatus::Stopped);
         assert_eq!(TaskOutcome::Stopped.reason(), None);
         assert!(matches!(TaskOutcome::Stopped.state(), StreamState::Idle));
+    }
+
+    /// Два словники на дроті: результат запису знає `stopped`, стан потоку —
+    /// ні. Тест тримає обидві унії `src/lib/tauri.ts` (`RecordingStatus` і
+    /// `StreamState`) і саме ту різницю, заради якої їх розвели.
+    #[test]
+    fn recording_result_and_stream_state_are_two_vocabularies() {
+        let word = |v| serde_json::to_value(v).unwrap();
+
+        assert_eq!(word(RecordingStatus::Connecting), "connecting");
+        assert_eq!(word(RecordingStatus::Recording), "recording");
+        assert_eq!(word(RecordingStatus::Reconnecting), "reconnecting");
+        assert_eq!(word(RecordingStatus::Stopped), "stopped");
+        assert_eq!(word(RecordingStatus::Error), "error");
+
+        // `stopped` — результат, не стан: потік після зупинки в очікуванні.
+        let states = [
+            StreamState::Idle,
+            StreamState::Connecting,
+            StreamState::Recording,
+            StreamState::Reconnecting,
+            StreamState::Error,
+        ];
+        assert!(states.iter().all(|s| serde_json::to_value(s).unwrap() != "stopped"));
+        assert_eq!(
+            serde_json::to_value(TaskOutcome::Stopped.state()).unwrap(),
+            "idle",
+        );
     }
 
     #[test]

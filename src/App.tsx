@@ -181,7 +181,10 @@ function AppContent() {
   const handleRecordingStatus = useCallback((payload: RecordingStatusPayload) => {
     const event = selectRecordingAnnouncement(payload);
     updateStreamStatus(payload.streamId, {
-      state: payload.status,
+      // Подія несе результат запису, дзеркало зберігає стан потоку — два
+      // словники, і вся межа між ними тут: «зупинено» — це результат, а стан
+      // після нього — «очікування» (`tauri-ts-type-drift`, рішення 8).
+      state: payload.status === "stopped" ? "idle" : payload.status,
       recordingStartedAt: payload.status === "recording" ? new Date().toISOString() : null,
       error: event?.kind === "failed" ? event.reason : null,
     });
@@ -198,7 +201,6 @@ function AppContent() {
       currentTrack: {
         artist: payload.artist,
         title: payload.title,
-        album: payload.album,
         startedAt: new Date().toISOString(),
         ignored: payload.ignored,
       },

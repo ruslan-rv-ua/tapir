@@ -1,9 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { selectRecordingAnnouncement, describeRecording, failureReasonText, DEFAULT_FAILURE_REASON } from "./recordingAnnounce";
-import type { RecordingStatusPayload, StreamState } from "./tauri";
+import type { RecordingStatus, RecordingStatusPayload } from "./tauri";
 
-const payload = (status: StreamState, error?: RecordingStatusPayload["error"]): RecordingStatusPayload =>
-  ({ streamId: "s1", status, ...(error ? { error } : {}) });
+// `RecordingStatus`, не `StreamState`: подія несе результат запису, і `stopped`
+// живе лише в цьому словнику (`tauri-ts-type-drift`, рішення 8).
+const payload = (status: RecordingStatus, error?: RecordingStatusPayload["error"]): RecordingStatusPayload =>
+  ({ streamId: "s1", status, error: error ?? null });
 
 describe("selectRecordingAnnouncement", () => {
   it("speaks for the three transitions that end something", () => {
@@ -19,7 +21,8 @@ describe("selectRecordingAnnouncement", () => {
     // The carrier for a retry is the row itself, not speech.
     expect(selectRecordingAnnouncement(payload("connecting"))).toBeNull();
     expect(selectRecordingAnnouncement(payload("reconnecting"))).toBeNull();
-    expect(selectRecordingAnnouncement(payload("idle"))).toBeNull();
+    // `idle` тут більше не перевіряється: подія несе результат запису, а
+    // «очікування» — стан потоку, і на дроті його не буває ніколи.
   });
 
   it("still speaks when a failure arrives without a reason", () => {

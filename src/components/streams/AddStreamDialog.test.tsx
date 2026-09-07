@@ -353,7 +353,7 @@ describe("AddStreamDialog edit mode — URL", () => {
     expect(screen.getByLabelText("URL")).toHaveFocus();
   });
 
-  it.each(["idle", "error", "stopped"] as const)(
+  it.each(["idle", "error"] as const)(
     "leaves the address editable while the stream is %s",
     async (state) => {
       // An errored stream in a reconnect loop is exactly the one whose address

@@ -29,7 +29,26 @@ export interface StreamInfo {
   addedAt: string;
 }
 
-export type StreamState = "idle" | "connecting" | "recording" | "reconnecting" | "stopped" | "error";
+/**
+ * Стан потоку, який тримає менеджер запису — дзеркало Rust `StreamState`.
+ *
+ * `"stopped"` тут навмисно немає: зупинка — це **результат** запису, а стан,
+ * у якому потік після неї лишається, зветься `"idle"` («очікування»). Словник
+ * результату — окремий тип [`RecordingStatus`], і межу між ними тримає один
+ * рядок відображення в `App.tsx` (`tauri-ts-type-drift`, рішення 8).
+ */
+export type StreamState = "idle" | "connecting" | "recording" | "reconnecting" | "error";
+
+/**
+ * Результат запису, який приїжджає подією `recording-status` — дзеркало Rust
+ * `RecordingStatus`. Ширший за [`StreamState`] рівно на `"stopped"`.
+ */
+export type RecordingStatus =
+  | "connecting"
+  | "recording"
+  | "reconnecting"
+  | "stopped"
+  | "error";
 
 /**
  * Why a recording task gave up — a closed set, not a raw error string across the
@@ -43,7 +62,6 @@ export type FailureReason = "station_unreachable" | "disk_write_failed";
 export interface TrackInfo {
   artist: string;
   title: string;
-  album: string;
   startedAt: string;
   /**
    * Трек підпав під ігнор-лист. Рутинна подія станції — носієм їй служить
@@ -75,6 +93,13 @@ export interface ReconnectConfig {
   maxIntervalSecs: number;
 }
 
+/**
+ * Цілі поля тут їдуть на `invoke` як JSON-цілі: Rust читає їх у `u8`/`u32`, і
+ * serde відкидає від'ємне («invalid value») чи дробове («invalid type») ще до
+ * тіла команди — не клампить. Проміс `invoke` при цьому відхиляється цілим
+ * викликом, тож форму числа стереже інтерфейс: `minValue` і `step={1}` на
+ * полях (`tauri-ts-type-drift`, рядок 12).
+ */
 export interface RecordingSettings {
   outputDir: string;
   /** Профільний поріг вільного місця, ГБ; 0 — перевірку вимкнено. */
@@ -113,6 +138,7 @@ export interface GlobalSettings {
   autostart: boolean;
   autostartMinimized: boolean;
   prevRestartThresholdMs: number;
+  /** ціле, `u8` у Rust — див. коментар до `RecordingSettings`. */
   volumeStepPercent: number;
   smtcEnabled: boolean;
   hotkeys: HotkeyMap;
@@ -124,16 +150,24 @@ export interface GlobalSettings {
 
 export interface RecordingStatusPayload {
   streamId: string;
-  status: StreamState;
-  /** Set only on `status: "error"` — see [`FailureReason`]. */
-  error?: FailureReason;
+  status: RecordingStatus;
+  /** Set only on `status: "error"` — see [`FailureReason`]. Rust sends
+   *  `Option<FailureReason>` without `skip_serializing_if`, so the key is
+   *  always on the wire: `null`, never absent. */
+  error: FailureReason | null;
 }
 
+/**
+ * Дзеркало Rust `stream::manager::TrackChangedPayload` — **однієї** структури
+ * на обидва емітери. Поки потік пишеться, подію шле лише менеджер; плеєр шле її
+ * для потоку, який лише грає, і тоді `ignored` завжди `false`
+ * (`tauri-ts-type-drift`, рішення 2). Форму дроту стереже Rust-тест
+ * `track_changed_payload_carries_exactly_four_keys`.
+ */
 export interface TrackChangedPayload {
   streamId: string;
   artist: string;
   title: string;
-  album: string;
   /** Див. [`TrackInfo.ignored`] — живий рядок збирається саме з цієї події. */
   ignored: boolean;
 }
@@ -551,6 +585,8 @@ export interface StationResult {
   lastcheckok: number;
 }
 
+/** `minBitrate`, `offset`, `limit` — цілі (`u32` у Rust); див. коментар до
+ *  `RecordingSettings` про те, що serde робить із дробовим і від'ємним. */
 export interface SearchParams {
   query?: string;
   country?: string;
@@ -667,6 +703,7 @@ export interface ProfileMeta {
  * фоновий хоткей не вимикаються взагалі, тож поля для них немає.
  */
 export interface UiSettings {
+  /** Дзеркало Rust `StreamSort`; невідоме значення бекенд читає як `"name"`. */
   streamSort: "name" | "added";
   trayNotificationsTrackChange: boolean;
   trayNotificationsScheduled: boolean;
@@ -737,7 +774,7 @@ export interface ScheduledRecording {
   streamId: string;
   name: string;
   type: ScheduleType;
-  days: number[];           // recurring: 0=Пн..6=Нд; oneshot: []
+  days: number[];           // recurring: 0=Пн..6=Нд; oneshot: []; цілі (`u8`)
   date: string | null;      // oneshot: "YYYY-MM-DD"; recurring: null
   time: string;             // "HH:MM", 24h, локальний час
   durationMinutes: number;  // 1..=1439
@@ -807,11 +844,33 @@ export interface Profile {
     volume: number;
     lastStreamId: string | null;
     lastFilePosition: { path: string; positionMs: number } | null;
+    /** Яка з двох комірок відновлення заповнена останньою; `null` — жодна. */
+    lastActive: "stream" | "file" | null;
     autoplayOnStartup: boolean;
     autoAdvance: boolean;
     resumeFileFrom: "position" | "start";
   };
-  savedTracks: unknown[];
+  savedTracks: SavedTrack[];
+}
+
+/**
+ * Дзеркало Rust `profile::SavedTrack`. Профіль возить його полем
+ * `savedTracks` — сьогодні воно порожнє (екран «Записи» сканує каталог), але
+ * тип описує те, що на дроті, а не те, що зараз читають.
+ */
+export interface SavedTrack {
+  path: string;
+  artist: string;
+  title: string;
+  album: string;
+  station: string;
+  format: "mp3" | "aac";
+  bitrate: number;
+  durationMs: number;
+  sizeBytes: number;
+  isComplete: boolean;
+  isWishlistMatch: boolean;
+  recordedAt: string;
 }
 
 export interface ProfileChangedPayload {

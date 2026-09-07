@@ -107,7 +107,7 @@ describe("StreamItem — last-played track presentation", () => {
   const mkStatus = (over: Partial<StreamStatus> = {}): StreamStatus => ({
     streamId: "s1",
     state: "idle",
-    currentTrack: { artist: "A", title: "B", album: "", startedAt: "2026-01-01T00:00:00Z", ignored: false },
+    currentTrack: { artist: "A", title: "B", startedAt: "2026-01-01T00:00:00Z", ignored: false },
     recordingStartedAt: null,
     bytesRecorded: 0,
     tracksRecorded: 0,
@@ -135,7 +135,7 @@ describe("StreamItem — last-played track presentation", () => {
       mkStatus({
         state: "recording",
         recordingStartedAt: "2026-01-01T00:00:00Z",
-        currentTrack: { artist: "A", title: "B", album: "", startedAt: "", ignored: true },
+        currentTrack: { artist: "A", title: "B", startedAt: "", ignored: true },
       }),
     );
     const track = container.querySelector('[data-segment="track"]')!;
