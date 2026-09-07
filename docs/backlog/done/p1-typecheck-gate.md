@@ -1,6 +1,7 @@
 ---
 slug: typecheck-gate
 title: "Повернути tsc у ворота: allowJs, ES2022, @types/node і 60 помилок до нуля"
+summary: "`tsc --noEmit` — ворота: 191 → 0; `filterDOMProps` глушить `title`, `onKeyDown`, `tabIndex` на RAC — мертвий код; натомість `excludeFromTabOrder`."
 priority: P1
 type: planned
 status: done
@@ -97,6 +98,30 @@ Paraglide 2 компілює повідомлення у `src/i18n/paraglide/*.j
   `tabIndex`.
 - Порядок робіт: спершу конфіг і переїзд тесту (тоді видно справжній список), потім
   тести, потім десять місць у коді застосунку.
+
+## Спадок
+
+`tsc --noEmit` знову ворота: **нуль помилок** проти 191 на старті, `pnpm typecheck` у скриптах,
+`just check` проганяє всі три (`test`, `typecheck`, `vite:build`), а `_TEMPLATE.md` і README
+беклогу називають нові ворота серед типових `gates:`. Стіну з 126 однакових TS7016 зняв
+`allowJs` (paraglide компілює повідомлення в JS із типами в JSDoc; `checkJs` лишається вимкненим
+— той код не наш), `lib: ES2022` повернув `.at()`, `@types/node` — `fs`/`process`.
+`helpContent.test.ts` переїхав у `build/`, на полицю для перевірок, яким потрібен Node; чотири
+посилання на старий шлях знайшов `docsLinks.test.ts`, а не людина. Лишилось 44 помилки, не 60 —
+і ось головне в спадок: **три з десяти «косметичних» місць у коді застосунку виявились мертвим
+кодом**. `filterDOMProps` у react-aria доносить до DOM лише `id`, `aria-*`, `data-*`, п'ять
+глобальних атрибутів і мишачі/вказівникові події — тож `title` на `<Button>`/`<MenuItem>` ніколи
+не малював рідну підказку, `onKeyDown` на `<TabList>` ніколи не викликався (звідси
+[wishlist-tabs-tab-bridge](p2-wishlist-tabs-tab-bridge.md)), а `tabIndex={-1}` на п'яти кнопках
+плеєра ігнорувався — увесь транспорт стояв із `tabindex=0` всупереч власній моделі зони
+(«стрілки між стопами, `Tab` виходить»). Підтримуваний спосіб сказати те саме —
+`excludeFromTabOrder`, і це **єдина зміна поведінки** запису, накрита новим тестом. Дзеркальний
+випадок: `autoFocus` на `<Tab>` навпаки **працює** (`useTab` віддає props у `useFocusable`),
+просто `TabProps` не успадковує `FocusableProps` — лишився під `@ts-expect-error` на трьох
+діалогах, бо директива почервоніє, коли RAC додасть тип, а каст мовчав би. У тестах гейт відкрив
+дрейф, який ніхто не бачив: п'ять фікстур `GlobalSettings` без
+`volumeStepPercent`/`smtcEnabled`, `StreamItem` без `onOpenInPlayer`, а `windowTitle.test.ts`
+тримав `state: "playing"` — стану, якого в `StreamState` немає взагалі.
 
 ## Документи
 

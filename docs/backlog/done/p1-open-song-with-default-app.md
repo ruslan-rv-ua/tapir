@@ -1,6 +1,7 @@
 ---
 slug: open-song-with-default-app
 title: "Відкрити файл у асоційованій програмі (Open With)"
+summary: "`ShellExecuteW` у STA на blocking-потоці; `not_found`/`no_assoc`/`generic` у спільному `shellOpenError.ts`; Alt+Enter ігнорує виділення, `reserved`."
 priority: P1
 type: planned
 status: done
@@ -160,6 +161,25 @@ export type SongAction = "play" | "open" | "explorer" | "rename" | "tags" | "del
       бо той самий контракт знадобиться запису для потоків.
 - [x] `docs/keyboard-shortcuts.md` — рядок `Alt+Enter`, уточнений `Ctrl+Enter` і абзац
       про те, що модифікатори діють лише на `Enter`.
+
+## Спадок
+
+команда `open_song_in_app` (`songs_commands.rs`) віддає файл шелу через `ShellExecuteW` з
+дієсловом `open` на blocking-потоці з парними `CoInitializeEx`/`CoUninitialize` (STA — вимога
+MSDN, потоки tokio апартаменту не мають); нова фіча `Win32_System_Com` у `Cargo.toml`. Код
+повернення (`HINSTANCE` ≤ 32) мапиться чистою `map_shell_error` у стабільні
+`not_found`/`no_assoc`/`generic`, які `src/lib/shellOpenError.ts` перетворює на локалізований
+toast — контракт свідомо винесено з Songs, бо той самий знадобиться
+[open-stream-with-default-app](p1-open-stream-with-default-app.md). UI: пункт «Відкрити у
+програмі» між `play` і `explorer`, діє на рядок під фокусом і **ігнорує виділення** (модель
+Провідника відкрила б N вікон з одного натискання). Клавіатура: `Alt+Enter` = зовнішня програма,
+`Ctrl+Enter` = Провідник (раніше шорткату не було зовсім), обидві — на фокусованому рядку, на
+відміну від `Delete`. Модифікатори діють лише на `Enter`, тож `Alt+Space` лишився чистим play.
+Побічно: `ActionModifiers` нарешті має поле `alt` (+ `CompositeRow.onActivate` прокидає
+`altKey`) — це закриває однойменний пункт у запису для потоків; `Alt+Enter` зареєстровано
+`reserved` у `shortcuts.ts`, інакше його можна було б перекрити глобальним хоткеєм. Гілка
+`feature/open-song-with-default-app`, TDD. **NVDA-прогін проведено 2026-08-06, усі 8 сценаріїв
+пройдено, зауважень немає**
 
 ## Документи
 

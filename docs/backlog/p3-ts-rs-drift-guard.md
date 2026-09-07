@@ -1,6 +1,7 @@
 ---
 slug: ts-rs-drift-guard
 title: "ts-rs «лише типи»: сторож дрейфу tauri.ts проти Rust у CI"
+summary: "хвіст грилінгу tauri-ts-type-drift: сторож дрейфу `tauri.ts` проти Rust на ts-rs 12 «лише типи»; 12 розбіжностей за місяць — постійна ціна"
 priority: P3
 type: research
 status: draft

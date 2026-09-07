@@ -1,6 +1,7 @@
 ---
 slug: webview-reload-guard
 title: "Подавити акселератори webview: reload (F5/Ctrl+R), F3/F7/F11, контекстне меню"
+summary: "`useWebviewGuard`: F3/F5/F7/F11 гасяться без розбору модифікаторів, лише `preventDefault()`, ніколи `stopPropagation()`; F3/F7 інертні, F11 зайнятий."
 priority: P2
 type: planned
 status: done
@@ -439,6 +440,29 @@ debug-збірці й перевіряється тим, що debug-запуск
 - **`F5` поза списком vs у списку.** Усередині списку `F5` буде безпечним і без
   гарда (власний хендлер сам робить `preventDefault`) — гард потрібен саме для
   решти інтерфейсу: тулбари, поля, порожні зони, діалоги.
+
+## Спадок
+
+Гард — два capture-слухачі на `window`
+([useWebviewGuard.ts](../../../src/hooks/useWebviewGuard.ts) над предикатами
+[webviewAccelerators.ts](../../../src/lib/webviewAccelerators.ts)), викликається поруч із
+`useGlobalShortcuts()`. `F3`/`F5`/`F7`/`F11` матчаться **без розбору модифікаторів** (кожен
+варіант F5 у WebView2 — reload; перелічувати поіменно означало б лишити дірку на невгаданому
+`Ctrl+Shift+F5`); `KeyR` — єдиний виняток, де саме модифікатор робить клавішу акселератором
+(`(ctrl||meta) && !alt`, бо AltGr рапортує ctrl+alt). Лише `preventDefault()`, **ніколи**
+`stopPropagation()`: гард гасить дефолт, не забирає клавішу — інакше майбутній `F5` = «Копіювати
+в профіль» ([streams-transfer-hotkeys](p2-streams-transfer-hotkeys.md)) не спрацював би, а
+KeyRecorder не записав би ці клавіші під OS-хоткей. Дві свідомі відмінності від Tier-2:
+`e.repeat` **не** відкидається (кожен повтор несе власний дефолт), і немає гейта на `isInModal`
+(reload з відкритого діалогу так само руйнівний). Контекстне меню — carve-out через наявний
+`isTextEntryTarget`, підйомом по `parentElement` від цілі події (не `document.activeElement`).
+Жодних режимних гілок — поведінка однакова в dev/vitest/прод. Devtools у debug відкриває Rust:
+`open_devtools()` під `cfg(debug_assertions)` **між** `show()` і `set_focus()`, щоб останнім
+фокус забрало головне вікно (інваріант «webview ініціалізується у OS-foreground»). `SHORTCUTS`
+не змінено — резервувати погашені клавіші не стали. Гілка `develop` напряму. **NVDA-прогін
+проведено 2026-08-07, усі 16 сценаріїв пройдено, зауважень немає**; сценарій-замір (Edge)
+підтвердив F3/F7 інертними (повернуто в пул вільних F-клавіш —
+[hotkeys-expansion](p2-hotkeys-expansion.md)), F11 зайнятим (fullscreen)
 
 ## Документи
 

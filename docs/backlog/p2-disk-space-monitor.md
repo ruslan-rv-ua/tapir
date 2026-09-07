@@ -1,6 +1,7 @@
 ---
 slug: disk-space-monitor
 title: "Нагляд за вільним місцем під час запису"
+summary: "знахідка architecture-doc-drift: §8 описував нагляд за місцем як робочий — події, щохвилинна перевірка, автозупинка, — а в коді немає нічого; не грилений"
 priority: P2
 type: planned
 status: draft

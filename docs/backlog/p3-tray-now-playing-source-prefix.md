@@ -1,6 +1,7 @@
 ---
 slug: tray-now-playing-source-prefix
 title: "Рядок «Зараз грає» у треї: подвійна двокрапка і зайвий префікс у прев'ю"
+summary: "знахідка grilling 2026-09-03: «Зараз грає: Файл: track.mp3» і префікс «Станція:», що відрізняє прев'ю від ефіру"
 priority: P3
 type: planned
 status: draft

@@ -1,6 +1,7 @@
 ---
 slug: autostart
 title: "Autostart (Підфаза 3I-2)"
+summary: "winreg-автостарт в `autostart.rs`, CLI `--minimize`; сам не грає — авто-гра лише через `autoplay_on_startup`."
 priority: P2
 type: idea
 status: done
@@ -100,6 +101,11 @@ _Усі виконані (звірено в коді 2026-06-25; файли — 
 | Деактивація при переміщенні EXE? | **Тихо + NVDA-оголошення.** Немає несподіваних діалогів при запуску. |
 | Анонс при autostart-старті? | **Ні** (фінальне). Не анонсувати при кожному вході в Windows. _Підтверджено в коді: `useAutostartFeedback` озвучує лише деактивацію через переміщення EXE, звичайний autostart-старт не анонсується._ |
 | Phase 3G залежність? | **Закрито (A5, 2026-06-25):** `--minimize` є в коді (`cli.rs:42`); autostart реалізований з ним. |
+
+## Спадок
+
+winreg-автостарт (`autostart.rs`), CLI `--minimize`; сам **не** грає — авто-гра лише через
+`autoplay_on_startup` (`resume-last-playback`)
 
 ## Документи
 

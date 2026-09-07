@@ -1,6 +1,7 @@
 ---
 slug: he-aac-mf-playback
 title: "HE-AAC / HE-AACv2 відтворення (через Media Foundation)"
+summary: "залежить від рішення mpv-playback-engine"
 priority: P3
 type: research
 status: draft

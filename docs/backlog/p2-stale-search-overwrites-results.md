@@ -1,6 +1,7 @@
 ---
 slug: stale-search-overwrites-results
 title: "Браузер станцій: пізня заміна затирає свіжішу вибірку"
+summary: "клас «стан розійшовся з екраном»: дві заміни в польоті, пізня кладе результати критеріїв, яких уже немає; квиток із load-more-retry підходить, грилити"
 priority: P2
 type: planned
 status: draft

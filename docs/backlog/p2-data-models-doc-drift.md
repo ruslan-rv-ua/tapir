@@ -1,6 +1,7 @@
 ---
 slug: data-models-doc-drift
 title: "Звірити data-models.md зі станом коду"
+summary: "третій документ у ряду `tech-stack.md` → `architecture.md` → `data-models.md`; метод звірки вже записаний, виводити наново не треба"
 priority: P2
 type: planned
 status: ready

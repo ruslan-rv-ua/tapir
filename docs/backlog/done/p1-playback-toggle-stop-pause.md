@@ -1,6 +1,7 @@
 ---
 slug: playback-toggle-stop-pause
 title: "Контекстний playback-toggle: stop для потоку, pause для файлу + resume останнього"
+summary: "`last_active` + оживлені `last_stream_id`/`last_file_position` у `playback_control.rs`; cold-start resume — база для `resume-last-playback`."
 priority: P1
 type: planned
 status: done
@@ -111,6 +112,11 @@ pub struct PlayerSession {
 3. **Запис позиції на «переходах» → розширено наявний `graceful_shutdown`.** Хук уже є ([app_state.rs:76-82](../../../src-tauri/src/app_state.rs#L76-L82)) і **вже зберігає `player_session.volume`** на виході. Додано поряд знімок session-стану (`last_active`/`last_stream_id`/`last_file_position`). Порядок: зчитати `get_status()` (позицію) **до** `stop_session_public()`, потім писати session-стан і volume **одним** save-блоком.
 4. **Легасі-edge (paused-stream зі старого білда) → закрито дизайном dispatch.** Розгалужування за типом джерела, не лише за станом: `Stream` активний (`Playing` АБО `Paused`) → **stop**; `Stream` Stopped/cold → reconnect; `File` Playing → pause, Paused → resume; `Preview` активний → stop.
 5. **Doc-фікс `architecture.md`** — усунуто помилкове твердження про Switch Profile як глобальний хоткей; play/pause оновлено на `Ctrl+Shift+K`.
+
+## Спадок
+
+`PlayerSession.last_active` + оживлені `last_stream_id`/`last_file_position`,
+`playback_control.rs`, cold-start resume — база для `resume-last-playback` (вище)
 
 ## Документи
 

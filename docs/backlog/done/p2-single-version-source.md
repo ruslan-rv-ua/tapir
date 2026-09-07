@@ -1,6 +1,7 @@
 ---
 slug: single-version-source
 title: "Версію несе лише Cargo.toml: три джерела версії стають одним"
+summary: "Версію несе лише `Cargo.toml`; `tauri.conf.json` і `package.json` мовчать; `build/versionSource.test.ts` стереже єдине джерело й semver."
 priority: P2
 type: planned
 status: done
@@ -128,6 +129,26 @@ notes:
 `versionSync.test.ts` і механічно перекочувало в новий; виправлено в обох місцях.
 Ширша вада — CLI мовчить і на `--help` — винесена окремо:
 [cli-answers-only-with-exit-code](../p3-cli-answers-only-with-exit-code.md).
+
+## Спадок
+
+Версію несе **один** файл — `[package].version` у `src-tauri/Cargo.toml`; `tauri.conf.json` і
+`package.json` про неї мовчать (другий дістав `"private": true`, щоб відсутність поля читалась
+як форма, а не як пропажа). Грилінг розвернув сам запис: він пропонував `"version":
+"../package.json"`, тобто зробив би власником єдину копію, якої **не читає жоден споживач**,
+лишивши справжнього (`Cargo.toml`) другою копією під наглядом тесту. Фолбеки покривають усе:
+`tauri-codegen` бере `CARGO_PKG_VERSION` для `package_info()` («Про програму»), `tauri-cli` —
+для бандла, `tauri-winres` уже віддавав звідти **рядкові** `FileVersion`/`ProductVersion`, які
+`tauri-build` не перезаписує ніколи (лише числові, і лише за наявності `version` у конфізі) —
+тобто дві копії дали б один exe з двома різними версіями. Сторож не помер, а змінив твердження:
+`src/lib/versionSync.test.ts` → `build/versionSource.test.ts`, «копії рівні» → «версію несе лише
+`Cargo.toml`, і вона semver»; третя перевірка не для симетрії — Cargo вважає `[package].version`
+необов'язковим і мовчки підставляє `0.0.0`. Полиця обрана за змістом: той файл був єдиним у
+`src/`, хто читає `node:fs`, і єдиним тестом у `src/lib/` без модуля-сусіда. ADR свідомо немає —
+рішення відкочується одним рядком, тож пояснення живе в коментарі сторожа, тобто там, де його
+прочитають у мить помилки. **Хвіст:** критерій «`tapir --version` показує версію» виявився
+неперевірним — CLI не друкує нічого ні на `--version`, ні на `--help`; винесено в
+[cli-answers-only-with-exit-code](../p3-cli-answers-only-with-exit-code.md)
 
 ## Документи
 

@@ -1,6 +1,7 @@
 ---
 slug: hls-stream-support
 title: Підтримка HLS-потоків
+summary: "залежить від рішення mpv-playback-engine"
 priority: P3
 type: idea
 status: draft

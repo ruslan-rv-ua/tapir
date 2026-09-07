@@ -1,6 +1,7 @@
 ---
 slug: clippy-warnings-zero
 title: "clippy без попереджень і з -D warnings у воротах"
+summary: "Ворота — `cargo clippy --all-targets`, проста не бачить `#[cfg(test)]`; рівень несе `[lints.clippy] all = \"deny\"` у `Cargo.toml`, не `-D warnings`."
 priority: P2
 type: planned
 status: done
@@ -79,3 +80,17 @@ CI дають той самий вердикт. `cargo build` і `cargo test` ц
 
 Ворота названі однаково в трьох місцях: `just check-rust`, DEVELOPERS.md §«Gates»
 і рядок `gates` у [README беклогу](../README.md).
+
+## Спадок
+
+Попереджень виявилось **38, а не 32**: аудит рахував просту `cargo clippy`, яка не заглядає в
+`#[cfg(test)]`. Тому ворота тепер звуться `cargo clippy --all-targets` — без цього третина
+лінтів лишалась би поза ними. Носій рівня — **`[lints.clippy] all = "deny"` у
+`src-tauri/Cargo.toml`**, а не прапорець `-D warnings` на одному виклику: правило їде з крейтом,
+тож редактор, термінал і майбутній CI дають той самий вердикт, а `cargo build` / `cargo test`
+лишаються незачепленими (rustc ігнорує `clippy::`-лінти). 17 `collapsible_if` зняті let-chains —
+edition 2024 їх уже вміє. Розвилку `too_many_arguments` на `sanitize::build_track_path`
+розв'язано **структурою** `TrackPathParams`, а не `allow`: чотири з восьми параметрів були
+`&str`, і в рекордері виклик читався як `"", "", station, 0, false, ext`. Ворота названо
+однаково в трьох місцях — `just check-rust`, DEVELOPERS.md §«Gates» і рядок `gates` у
+[README](../README.md).

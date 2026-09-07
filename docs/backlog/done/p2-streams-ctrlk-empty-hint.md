@@ -1,6 +1,7 @@
 ---
 slug: streams-ctrlk-empty-hint
 title: "Бейдж-підказка `Ctrl+K` у порожньому стані Streams"
+summary: "Бейдж «Команди — Ctrl+K» у порожньому `StreamsPanel` (не Tab-стоп); `PALETTE_COMBO` бере комбінацію з `SHORTCUTS`, тож не розходиться з F1-довідкою."
 priority: P2
 type: planned
 status: done
@@ -81,6 +82,13 @@ ADR [2026-05-31 «Командна палітра і пошук/фільтр»](
   Покрито негативним тестом.
 - ADR §9.2: якщо порожнього стану як єдиного місця навчання виявиться замало —
   повернутись до розгляду `aria-keyshortcuts` (S4). Це окремий тригер, не частина цього запису.
+
+## Спадок
+
+бейдж «Команди — Ctrl+K» у порожньому стані `StreamsPanel` (не Tab-стоп); константа
+`PALETTE_COMBO` читає комбінацію з `SHORTCUTS`, тож бейдж не розходиться з F1-довідкою; ключ
+`streams_empty_palette_hint`. Завершує ADR 2026-05-31 §6 (S3) — патерн для
+`wishlist-example-patterns`
 
 ## Документи
 

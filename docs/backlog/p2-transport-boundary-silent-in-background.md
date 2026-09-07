@@ -1,6 +1,7 @@
 ---
 slug: transport-boundary-silent-in-background
 title: "Межа списку у фоні не має носія — «наступний» на краю мовчить так само, як незареєстрована клавіша"
+summary: "у вікні носій є — кнопки на межі `disabled`; у фоні натискання на краю списку не лишає сліду"
 priority: P2
 type: planned
 status: draft

@@ -5,7 +5,8 @@
 Pre-release, working towards **0.1.0** — Post-processing (3H) is the last phase still open,
 and day-to-day work is queued **by target version in the backlog**, not by phase.
 Breaking changes are expected at any time — no migrations, no backward-compatibility guarantees.
-What 0.1.0 still needs: [docs/backlog/ROADMAP.md](docs/backlog/ROADMAP.md). The phase roadmap
+What 0.1.0 still needs: [docs/backlog/ROADMAP.md](docs/backlog/ROADMAP.md) — generated from the
+records; `pnpm backlog next` prints the head of the queue. The phase roadmap
 itself: [docs/implementation-phases.md](docs/implementation-phases.md).
 
 The phase table below is history — it records what each phase covered and where it landed:
@@ -85,8 +86,8 @@ Output binary: `src-tauri/target/release-fast/tapir.exe` (build-fast) or `src-ta
   `docs(backlog): close …` окремо», а rebase переписав би SHA, які записи беклогу
   фіксують у `notes:` як адресу зробленого.
 - **PR веде агент до кінця.** Процедура закриття запису беклогу: ворота → коміт із
-  роботою → **коміт `docs(backlog): close …` у тій самій гілці** (`done/` і рядок у
-  ROADMAP) → push → `gh pr create` → **дочекатись зеленого** → `gh pr merge --merge` →
+  роботою → **коміт `docs(backlog): close …` у тій самій гілці** (`done/`, `summary:`, «Спадок»
+  і `pnpm backlog index`) → push → `gh pr create` → **дочекатись зеленого** → `gh pr merge --merge` →
   `git pull`. Закриття їде **тим самим PR, що й робота**, окремим комітом: власного PR
   у нього немає, а прямий push у стовбур неможливий — і саме цю пару «код окремо,
   `close` окремо» зруйнував би squash. Запис не закривається, поки перевірки справді

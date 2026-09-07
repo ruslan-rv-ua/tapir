@@ -17,7 +17,8 @@ Issues **увімкнено**, але як вхідна скринька для 
 - `slug` завжди дорівнює імені файлу без префікса `p<рівень>-` і не змінюється.
   Посилання між записами — за slug'ом, не за номером.
 - [`ROADMAP.md`](../backlog/ROADMAP.md) — черга, згрупована за `target` (semver).
-  Підтримується вручну й може дрейфувати від front-matter.
+  **Генерується** з front-matter командою `pnpm backlog index`, руками не редагується;
+  сторож — `build/backlogIndex.test.ts`. Виконані — у [`done/README.md`](../backlog/done/README.md).
 - Виконаний запис переїжджає в [`done/`](../backlog/done/) (`git mv`, ім'я з префіксом
   не змінюється) — не видаляється, бо на нього посилаються через `depends_on:`.
 - Стан triage кодується полями `status:` / `type:` / `priority:` front-matter, а не
@@ -31,7 +32,8 @@ Issues **увімкнено**, але як вхідна скринька для 
 
 1. Створи `docs/backlog/p<рівень>-<slug>.md` за [`_TEMPLATE.md`](../backlog/_TEMPLATE.md)
    із заповненим front-matter (`priority` мусить збігатися з префіксом файлу).
-2. Додай рядок запису у відповідну `target`-секцію [`ROADMAP.md`](../backlog/ROADMAP.md).
+2. Виконай `pnpm backlog index` — запис з'явиться у своїй `target`-секції
+   [`ROADMAP.md`](../backlog/ROADMAP.md).
 
 Якщо тема вже є фазою в [`implementation-phases.md`](../implementation-phases.md) —
 вона живе **там**, а не в беклозі.
@@ -47,8 +49,9 @@ Issues **увімкнено**, але як вхідна скринька для 
 `docs/backlog/done/p*-<slug>.md`. Розробник зазвичай передає slug або шлях прямо.
 
 Вибір наступного запису самостійно — за алгоритмом із
-[`backlog/README.md` §«Алгоритм для агента»](../backlog/README.md): найменша
-semver-секція ROADMAP з невиконаними записами → верхній запис зі `status: ready`.
+[`backlog/README.md` §«Алгоритм для агента»](../backlog/README.md): `pnpm backlog next`
+друкує поточну версію (найменшу semver-секцію з невиконаними записами) і її записи
+зі `status: ready` зверху вниз.
 
 Режим роботи диктує пара (`type`, `status`) — `idea`/`draft` → лише обговорення,
 `research` → лише дослідження і звіт, `planned`+`ready` → реалізація. Не редагуй код
@@ -56,11 +59,14 @@ semver-секція ROADMAP з невиконаними записами → в�
 
 ## Закриття запису
 
-Три обов'язкові кроки (гейти беруться з `gates:` у front-matter):
+Обов'язкові кроки (гейти беруться з `gates:` у front-matter; повний список із
+перебазуванням посилань — у [`backlog/README.md` §«Виконано»](../backlog/README.md)):
 
-1. front-matter: `status: done`, `completed:` = дата приймання, `updated:` = та сама дата;
-2. `git mv docs/backlog/p<рівень>-<slug>.md docs/backlog/done/`;
-3. перенести рядок у секцію «Виконано» [`ROADMAP.md`](../backlog/ROADMAP.md).
+1. front-matter: `status: done`, `completed:` = дата приймання, `updated:` = та сама дата,
+   `summary:` — один рядок для архіву;
+2. секція «Спадок» у записі — що лишилось після закриття;
+3. `git mv docs/backlog/p<рівень>-<slug>.md docs/backlog/done/`;
+4. `pnpm backlog index` — перегенерувати [`ROADMAP.md`](../backlog/ROADMAP.md) і `done/README.md`.
 
 Для записів із `a11y: true` приймання вимагає **ручного NVDA-прогону** розробником —
 агент не закриває такий запис самотужки. Чекліст створюється й видаляється за

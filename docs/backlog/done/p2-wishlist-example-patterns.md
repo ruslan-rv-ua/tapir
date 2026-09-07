@@ -1,6 +1,7 @@
 ---
 slug: wishlist-example-patterns
 title: "Приклади-патерни у порожньому стані Wishlist / Ignorelist"
+summary: "CTA «Додати приклад» у власній зоні `wishlist-empty`, не в `emptyExtra` (той keyboard-unreachable); фіксований масив `examplePatterns.ts`."
 priority: P2
 type: planned
 status: done
@@ -107,6 +108,14 @@ gates: [pnpm test, pnpm vite:build]
   записи: [streams-empty-focus-audit](p2-streams-empty-focus-audit.md) (латентна версія
   фокус-вади в StreamsPanel), [wishlist-stale-list-ref](p1-wishlist-stale-list-ref.md)
   (застарілий callback-ref після перемикання вкладки).
+
+## Спадок
+
+CTA «Додати приклад» у власній зоні `wishlist-empty` (`WishlistPanel.tsx`) — не в
+`PatternList`'s `emptyExtra` (той варіант виявився keyboard-unreachable, rev R1); фіксований
+масив `examplePatterns.ts`; ключі
+`wishlist_add_example`/`wishlist_examples_adding`/`wishlist_examples_added`/`wishlist_examples_failed`.
+Застосувало патерн `streams-ctrlk-empty-hint`
 
 ## Документи
 

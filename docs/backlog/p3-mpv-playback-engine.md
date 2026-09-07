@@ -1,20 +1,21 @@
 ---
 slug: mpv-playback-engine
 title: "Відтворення через mpv / libmpv (альтернативний рушій декодування)"
+summary: "розвилка A4 (PoC-gate): «go» закриває he-aac-mf-playback і hls-stream-support разом; робити першим серед декодер-записів"
 priority: P3
 type: research
 status: draft
 effort: L
 kind: feature
 target: unscheduled
-updated: 2026-08-17
+updated: 2026-09-07
 a11y: true
 depends_on: []
 blocks: [he-aac-mf-playback, hls-stream-support]
 touches: [src-tauri/src/player/engine.rs, src-tauri/src/smtc.rs, src-tauri/src/wake_lock.rs]
 gates: [cargo test, cargo clippy --all-targets, pnpm test, pnpm vite:build]
 depends_on_external: ["player::engine (LiveSource, play_live, play_file, open_device_sink)", "stream::connection (ICY)", "smtc", "wake_lock", "деплой/бандлінг portable-EXE"]
-notes: ["Робити ПЕРШИМ серед декодер-записів — розвилка (PoC-gate), яка може зробити he-aac-mf-playback і hls-stream-support непотрібними; не вести MF-шлях і mpv паралельно"]
+notes: ["Робити ПЕРШИМ серед декодер-записів — розвилка (PoC-gate), яка може зробити he-aac-mf-playback і hls-stream-support непотрібними; не вести MF-шлях і mpv паралельно", "Перехресне рішення A4 (з колишньої секції ROADMAP «Перехресні рішення», станом на 2026-09-07 відкрите): якщо mpv проходить PoC — he-aac-mf-playback і hls-stream-support закриваються як зняті, обидва разом."]
 ---
 
 # Відтворення через mpv / libmpv (альтернативний рушій декодування)

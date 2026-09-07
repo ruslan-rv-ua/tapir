@@ -1,6 +1,7 @@
 ---
 slug: small-code-duplications
 title: "Дрібні дублі: User-Agent у чотирьох місцях і другий атомарний писар JSON"
+summary: "`crate::USER_AGENT` — єдиний рядок агента; атомарний писар один — `store::write_json_atomically`; хвіст: літерал `\"json.tmp\"` у чотирьох викликах."
 priority: P2
 type: planned
 status: done
@@ -77,6 +78,25 @@ notes:
 ті самі, тож `save_is_atomic_no_tmp_left_behind` і `roundtrip_save_load`
 лишились без правок і саме тому є доказом паритету. Коментар на `save_to`
 більше не переказує інваріант, а посилається на його єдине місце.
+
+## Спадок
+
+Два дублі аудиту 2026-09-04, обидва зняті. **User-Agent** більше не рядок: `crate::USER_AGENT` у
+`lib.rs` — `concat!("Tapir/", env!("CARGO_PKG_VERSION"))`, і чотири місця
+(`stream/connection.rs`, `stream/playlist.rs`, двічі `browser/api.rs`) беруть його. Сторожа для
+цього не додано й не треба: `versionSync.test.ts` не побачив би літерала в жодному разі, а
+похідну від версії ламати нема чим — після підняття до 0.2.0 заголовок поїде сам. Константа сіла
+в корінь крейта, бо споживачі стоять у двох різних піддеревах і будь-який із них як господар
+змусив би сусіда ходити через чужу область. **Другого атомарного писаря немає**:
+`SessionState::save_to` — один рядок `store::write_json_atomically(path, "json.tmp", self)`, тож
+інваріант «sync до rename» знову має рівно один дім, як і обіцяє модульний коментар `store.rs`.
+Розбіжність типів помилки (`io::Error` проти `RadioError`), через яку копія й з'явилась,
+коштувала нуль: `RadioError` уже конвертується з обох, а всі три виклики `save()` лише логують
+`{e}`. Тести не правились жодного — і саме тому `save_is_atomic_no_tmp_left_behind` та
+`roundtrip_save_load` є доказом паритету, а не формальністю. **Хвіст:** розширення tmp-файлу
+`"json.tmp"` і далі набране літералом у чотирьох викликах `write_json_atomically`
+(`crash_recovery`, `hotkey_busy`, `settings_store`, `window_state`; п'ятий, `profile_store`,
+свідомо інший) — дубль тієї самої форми, що й знятий User-Agent, але поза критеріями запису.
 
 ## Документи
 

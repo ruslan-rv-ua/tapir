@@ -1,6 +1,7 @@
 ---
 slug: capabilities-dead-plugin-permissions
 title: "Чотири плагінні дозволи в capabilities не обслуговують нікого"
+summary: "хвіст dead-js-tauri-plugins: чотири дозволи в `capabilities/default.json` нікого не обслуговують; рішення, бо відсутній дозвіл ламає виклик мовчки"
 priority: P3
 type: planned
 status: draft

@@ -1,6 +1,7 @@
 ---
 slug: profile-commit-seam
 title: Коміт профілю — один шов замість 31 копії
+summary: "`profile_store.rs` — єдиний писар профілю: `commit_profile` замінив 31 копію в 12 файлах; `Profile::save` знято; `set_volume` більше не персистить."
 priority: P0
 type: planned
 status: done
@@ -151,6 +152,21 @@ tokio::task::spawn_blocking(move || snapshot.save())
 - [x] `Profile::save` видалено; збірка проходить (доказ повноти міграції).
 - [x] Гейти зелені: `cargo test` (450), `pnpm test` (787), `pnpm vite:build`.
       Clippy — 47 попереджень, як і до змін.
+
+## Спадок
+
+новий `src-tauri/src/profile_store.rs` — єдине місце, що пише файл активного профілю;
+`AppState::commit_profile(|p| Commit::Save|Skip)` замінив 31 копію «lock → clone →
+spawn_blocking(save)» у 12 файлах. `ProfileWriter` бере лише номер під профільним локом
+(синхронно), а біля запису відкидає знімок, старіший за вже записаний того самого профілю
+(ворота ключовані іменем — вікно `switch_profile` пише різні файли). `Profile::save` видалено
+(не приватизовано) — компілятор сам перелічив кожен пропущений сайт. fsync (`sync_all` до
+`rename`) на кожному записі. Дві зміни поведінки: `set_volume` більше не персистить (гучність —
+сесійне поле, пише `persist_session_snapshot`/`graceful_shutdown`, як позиція відтворення);
+`save_recording_settings` втратив інверсію «диск перед пам'яттю» (був єдиним таким сайтом).
+`GlobalSettings` (та сама форма, 2 сайти) свідомо поза обсягом — той самий шов, наступним
+кроком. Гілка `refactor/profile-commit-seam`, злито FF у develop. **NVDA-прогін не потрібен** —
+жодне оголошення не змінюється
 
 ## Документи
 

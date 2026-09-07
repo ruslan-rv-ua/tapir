@@ -1,6 +1,7 @@
 ---
 slug: resume-last-playback
 title: "Відновлення останнього відтворення при запуску"
+summary: "`autoplay_on_startup` — per-profile opt-in, `AutoplayGuard` one-shot, IPC `set_profile_autoplay`, `ProfileSettingsDialog`; NVDA-прогін ще попереду."
 priority: P1
 type: planned
 status: done
@@ -135,6 +136,13 @@ pub struct PlayerSession {
 
 - ✅ **Порядок у `frontend_ready`** — вирішено: `plan_controls_playback(&plan.actions)` рахується ДО дренажу плану (перед `spawn(execute)`); `AutoplayGuard::take()` споживається завжди, навіть коли CLI скасовує авто-гру — reload після цього не може її «оживити».
 - 🟨 **NVDA-прогін діалогу** — стандартна перевірка нового модального діалогу (фокус-трап, анонс заголовка, Escape) та самого авто-старту (озвучення поверх мовлення при запуску) **не проведена** — рекомендовано перед релізом. Select-портал-ризик знято (чекбокс, не Select).
+
+## Спадок
+
+`PlayerSession.autoplay_on_startup` (per-profile opt-in) + `AutoplayGuard` one-shot +
+`set_profile_autoplay` IPC + `ProfileSettingsDialog`; злито fast-forward у develop (`26b7f1e`),
+локально, не запушено. **NVDA-прогін нового діалогу та авто-старту не проведено** —
+рекомендовано перед релізом
 
 ## Документи
 

@@ -1,6 +1,7 @@
 ---
 slug: wishlist-stale-list-ref
 title: "Застарілий patternListRef після перемикання вкладки Wishlist/Ignorelist"
+summary: "cleanup у `patternListCallbackRef` з guard `patternListRef.current === zone`: обидві `TabPanel` ділять ref, а RAC тримає стару панель ще один коміт."
 priority: P1
 type: planned
 status: done
@@ -103,6 +104,17 @@ handle — і не затирає. Перемикання на порожню в
       чеклістом `docs/testing/nvda-wishlist-stale-list-ref.md` — **усі 7
       сценаріїв пройдено, зауважень немає**. Чекліст видалено на прийманні
       (метод і шаблон — скіл `.claude/skills/writing-nvda-checklists/`).
+
+## Спадок
+
+`patternListCallbackRef` у `WishlistPanel.tsx` повертає cleanup (React 19) із guard
+`patternListRef.current === zone` — обидва `TabPanel` ділять один ref, а RAC тримає деселектнуту
+панель ще один коміт (`useExitAnimation`), тож порядок attach(нова)→detach(стара) затирав
+посилання на живий список: тулбарна «Видалити вибрані» мовчки no-op, а проксі-зона
+`wishlist-list` відхиляла фокус і F6 пропускав список. Два регресійні тести (тулбарний шлях + F6
+через `ZoneHarness`) — наявний ignorelist-bulk свідомо ходить рядковим ✕ і цього не ловив. Гілка
+`fix/wishlist-stale-list-ref`, TDD. **NVDA-прогін проведено 2026-08-06, усі 7 сценаріїв
+пройдено, зауважень немає**
 
 ## Документи
 

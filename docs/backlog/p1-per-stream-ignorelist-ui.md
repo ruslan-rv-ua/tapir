@@ -1,6 +1,7 @@
 ---
 slug: per-stream-ignorelist-ui
 title: "UI для per-stream ignorelist (логіка вже жива, редактора немає)"
+summary: "бекенд уже працює, наповнити список з інтерфейсу неможливо; довідка описує це як дірку"
 priority: P1
 type: planned
 status: draft

@@ -11,7 +11,8 @@
     "test": "vitest run",
     "lint": "eslint --max-warnings 0 src build",
     "typecheck": "tsc --noEmit",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "backlog": "node build/backlog.mts"
   },
   "packageManager": "pnpm@10.32.1",
   "dependencies": {
@@ -50,6 +51,7 @@
     "typescript-eslint": "^8.69.0",
     "unified": "^11.0.5",
     "vite": "^8",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.7",
+    "yaml": "^2.9.0"
   }
 }

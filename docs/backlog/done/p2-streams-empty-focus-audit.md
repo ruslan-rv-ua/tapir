@@ -1,6 +1,7 @@
 ---
 slug: streams-empty-focus-audit
 title: "Аудит фокуса при спорожненні списку Streams"
+summary: "Третій мертвий шлях — одиничне move-to-profile; імперативний `onEmpty()` у `handleConfirmDelete`/`doTransfer`; 3 регресійні тести на SINGLE-op."
 priority: P2
 type: research
 status: done
@@ -84,6 +85,12 @@ rescue focus», шаблон — тест R1 з
 
 Усі три перевірено як падаючі до фікса. Gates: `pnpm test` (683/683),
 `pnpm vite:build` — зелені.
+
+## Спадок
+
+гіпотеза підтверджена + третій мертвий шлях (одиничне move-to-profile); імперативний `onEmpty()`
+у `handleConfirmDelete`/`doTransfer` (`StreamList.tsx`) за зразком `223fadb`; 3 регресійні тести
+«SINGLE-op empty transitions» у `StreamsPanel.test.tsx`
 
 ## Документи
 

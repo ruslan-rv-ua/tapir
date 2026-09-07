@@ -1,6 +1,7 @@
 ---
 slug: stream-failure-tray-toast
 title: "Поразка потоку при згорнутому вікні не лишає системного сліду"
+summary: "ADR 2026-09-06 §6: у згорнутому вікні поверхня — система; нова категорія `ToastKind` зі своїм прапорцем, звірити з wishlist-match-tray-notification"
 priority: P2
 type: planned
 status: ready

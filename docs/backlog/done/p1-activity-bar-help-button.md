@@ -1,6 +1,7 @@
 ---
 slug: activity-bar-help-button
 title: "Кнопка довідки в ActivityBar"
+summary: "Кнопка Help у footer `ActivityBar.tsx` над Settings, спільний атом `$helpOpen` з F1; roving-order бару тепер 8 елементів."
 priority: P1
 type: planned
 status: done
@@ -62,6 +63,11 @@ notes: ["реалізовано у feature/activity-bar-help-button"]
       кнопці Settings (`aria-label` + `aria-hidden` іконка)
 - [x] Входить у roving-focus order ActivityBar (індекс `sectionItems.length + 1`, перед Settings)
 - [x] F1 і кнопка відкривають одну і ту ж HelpDialog (спільний атом `$helpOpen`)
+
+## Спадок
+
+кнопка Help у footer `ActivityBar.tsx` (над Settings, спільний атом `$helpOpen` з `F1`);
+roving-order бару тепер 8 елементів
 
 ## Документи
 

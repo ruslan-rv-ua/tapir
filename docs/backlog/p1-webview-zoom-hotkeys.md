@@ -1,6 +1,7 @@
 ---
 slug: webview-zoom-hotkeys
 title: "Масштаб інтерфейсу: увімкнути Ctrl+Plus/Minus/0 у вікні WebView2"
+summary: "прогалина доступності для слабозорих; перший крок — вимірювання, не правка"
 priority: P1
 type: planned
 status: ready

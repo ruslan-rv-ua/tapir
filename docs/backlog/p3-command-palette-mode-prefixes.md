@@ -1,6 +1,7 @@
 ---
 slug: command-palette-mode-prefixes
 title: "Командна палітра — mode-prefixes (`>` команди, `@` контент)"
+summary: "спірна — українська розкладка без `>`/`@`"
 priority: P3
 type: idea
 status: draft

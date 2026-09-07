@@ -1,6 +1,7 @@
 ---
 slug: import-duplicate-metadata-update
 title: Оновлення метаданих існуючого потоку при імпорті дубліката
+summary: "рішення ухвалено 2026-07-23"
 priority: P2
 type: planned
 status: ready

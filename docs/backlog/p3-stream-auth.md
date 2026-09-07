@@ -1,6 +1,7 @@
 ---
 slug: stream-auth
 title: "Автентифікація потоку: оживити username/password (DPAPI + передача в HTTP)"
+summary: "брати лише за реальною потребою (станція з платним/приватним mountpoint)"
 priority: P3
 type: research
 status: draft

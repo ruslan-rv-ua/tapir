@@ -1,6 +1,7 @@
 ---
 slug: streams-list-search
 title: "Пошук по списку потоків"
+summary: "гачок уже стоїть: `ZoneEntry.focusSearch?()` із search-focus-hotkey; зникне репліка «на цьому екрані немає пошуку»"
 priority: P2
 type: idea
 status: draft

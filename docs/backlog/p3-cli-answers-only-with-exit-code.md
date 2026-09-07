@@ -1,6 +1,7 @@
 ---
 slug: cli-answers-only-with-exit-code
 title: "`--version` і `--help` мовчать: CLI відповідає самим лише кодом виходу"
+summary: "спірна — `--version` і `--help` не друкують нічого (код 0 без `e.print()`); перше питання — чи GUI-застосунок узагалі має відповідати в консолі"
 priority: P3
 type: idea
 status: draft

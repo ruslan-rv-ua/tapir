@@ -1,6 +1,7 @@
 ---
 slug: wishlist-match-tray-notification
 title: "Збіг із вішлістом не доходить, коли вікна немає перед очима"
+summary: "четверта категорія `ToastKind`; слід, без якого гейт прапорцем був би заборонений, тепер є — журнал збігів"
 priority: P2
 type: planned
 status: ready

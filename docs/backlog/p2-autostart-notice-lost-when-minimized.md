@@ -1,6 +1,7 @@
 ---
 slug: autostart-notice-lost-when-minimized
 title: "Репліка про вимкнений автозапуск губиться при старті згорнутим"
+summary: "репліка про автозапуск переїжджає на гейт «перший показ вікна»; гейт витягти в спільний тип, не копіювати"
 priority: P2
 type: planned
 status: ready
