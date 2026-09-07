@@ -3,11 +3,12 @@ slug: tauri-ts-type-drift
 title: "Дрейф ручних типів tauri.ts проти Rust: track-changed із плеєра без ignored і ще 11 розбіжностей"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: M
 kind: bug
 target: 0.1.0
-updated: 2026-09-06
+updated: 2026-09-07
+completed: 2026-09-07
 a11y: false
 depends_on: [tauri-specta-bindings]
 blocks: [ts-rs-drift-guard]
@@ -34,21 +35,21 @@ notes:
 # Дрейф ручних типів tauri.ts проти Rust: track-changed із плеєра без ignored і ще 11 розбіжностей
 
 > **Контекст:** знахідка дослідження
-> [tauri-specta-bindings](done/p3-tauri-specta-bindings.md) (2026-09-05). Міграцію на
+> [tauri-specta-bindings](p3-tauri-specta-bindings.md) (2026-09-05). Міграцію на
 > генератор відхилено, поки крейт у RC, але аудит ручних типів залишив перелік
 > розбіжностей, і одна з них — жива вада. Дослідження 2026-09-06 перевірило всі рядки
 > на HEAD і дало статичний вердикт по ваді; grooming того ж дня закрив обидва відкриті
-> питання. Читати першим: [нотатку дослідження](../notes/tauri-ts-type-drift.md)
+> питання. Читати першим: [нотатку дослідження](../../notes/tauri-ts-type-drift.md)
 > (розділи B.5 і «Що це означає для grooming»), потім розділ «Рішення» нижче.
 
 ## Опис
 
 Подію `track-changed` шлють два емітери з різними тілами. Менеджер запису
-([manager.rs](../../src-tauri/src/stream/manager.rs)) кладе в неї `ignored: bool` —
+([manager.rs](../../../src-tauri/src/stream/manager.rs)) кладе в неї `ignored: bool` —
 кваліфікатор «ігнорується», з якого `StreamItem` збирає живий рядок треку. Плеєр
-([engine.rs](../../src-tauri/src/player/engine.rs)) шле локальну структуру без цього
-поля. TS-тип `TrackChangedPayload` у [tauri.ts](../../src/lib/tauri.ts) описує поле як
-обов'язкове, а `handleTrackChanged` в [App.tsx](../../src/App.tsx) збирає
+([engine.rs](../../../src-tauri/src/player/engine.rs)) шле локальну структуру без цього
+поля. TS-тип `TrackChangedPayload` у [tauri.ts](../../../src/lib/tauri.ts) описує поле як
+обов'язкове, а `handleTrackChanged` в [App.tsx](../../../src/App.tsx) збирає
 `currentTrack` цілком із події. Коли потік одночасно записується і грає, обидва емітери
 читають метадані ефіру кожен на своєму з'єднанні, тож порядок двох подій на одну межу
 треку задає мережа. Кваліфікатор стоїть у рядку тоді й лише тоді, коли останнім
@@ -72,7 +73,7 @@ NVDA — нечутна зміна тексту рядка (нотатка, B.5,
 | 8 | `PlaybackAnnounce.kind` — унія з 5 літералів | `kind: String` | звуження |
 | 9 | `ImportProgressPayload.status` — унія | `status: String` | звуження |
 | 10 | `ScheduledCompletedPayload.status` — 3 варіанти | `ScheduleResultStatus` — 5 | неповна унія |
-| 11 | `FilterItem`, `BrowserFilters` | структури без `rename_all` ([browser/types.rs](../../src-tauri/src/browser/types.rs)); збіг лише тому, що всі ключі однослівні | латентна: перше двослівне поле зламає TS мовчки |
+| 11 | `FilterItem`, `BrowserFilters` | структури без `rename_all` ([browser/types.rs](../../../src-tauri/src/browser/types.rs)); збіг лише тому, що всі ключі однослівні | латентна: перше двослівне поле зламає TS мовчки |
 | 12 | `volumeStepPercent`, `days`, `SearchParams.*`, `RecordingSettings.*` — `number` | `u8` / `Vec<u8>` / `u32` | від'ємне чи дробове відкине serde на `invoke`, а не клампне |
 
 Побічна знахідка нотатки (B.1): обидва емітери кличуть `notify_track_change`, тож при
@@ -81,7 +82,7 @@ NVDA — нечутна зміна тексту рядка (нотатка, B.5,
 
 ## Рішення
 
-Grooming 2026-09-06, тринадцять питань. Факти — у [нотатці](../notes/tauri-ts-type-drift.md),
+Grooming 2026-09-06, тринадцять питань. Факти — у [нотатці](../../notes/tauri-ts-type-drift.md),
 розділи в дужках.
 
 1. **«Ігнорується» — факт про запис, не про ефір.** Словник уже казав це двома
@@ -130,7 +131,7 @@ Grooming 2026-09-06, тринадцять питань. Факти — у [но�
 11. **Рядок 12 — `step={1}` на три поля `reconnect`**, єдиний досяжний шлях дробового
     (react-stately без `step` клампить, не округлює). Від'ємне з інтерфейсу недосяжне.
     Округлення в Rust відхилено як те саме «клампне», проти якого запис написаний.
-12. **Сторож дрейфу ширший за один тип — окремий P3** [ts-rs-drift-guard](p3-ts-rs-drift-guard.md):
+12. **Сторож дрейфу ширший за один тип — окремий P3** [ts-rs-drift-guard](../p3-ts-rs-drift-guard.md):
     три підстави відмови від `tauri-specta` для ts-rs 12 не тримаються, а дванадцять
     розбіжностей за місяць кажуть, що тригер «друга помилка дрейфу» фактично спрацював.
 13. **Без ADR.** Правило власника відкочується правкою одного `matches!`, тож умова
@@ -175,7 +176,7 @@ Grooming 2026-09-06, тринадцять питань. Факти — у [но�
       `maxIntervalSecs` у `ProfileRecordingTab.tsx`; коментар біля `RecordingSettings` і
       `UiSettings` у `tauri.ts`, що цілі поля їдуть як JSON-цілі і serde інше відкидає
       — див. відхилення 1
-- [x] Запис [ts-rs-drift-guard](p3-ts-rs-drift-guard.md) заведено з посиланням на
+- [x] Запис [ts-rs-drift-guard](../p3-ts-rs-drift-guard.md) заведено з посиланням на
       розділ D нотатки
 - [x] Ворота з `gates:` зелені (локально; на CI — у PR)
 
@@ -192,25 +193,25 @@ Grooming 2026-09-06, тринадцять питань. Факти — у [но�
 2. **Зачеплено `docs/data-models.md`, якого немає в `touches:`.** Документ цитує
    `TrackChangedPayload`, `RecordingStatusPayload` і `TrackInfo` поле в поле, тож після
    цієї роботи почав би брехати. Копії полагоджено, а не знято: знімати їх — робота
-   запису [data-models-doc-drift](p2-data-models-doc-drift.md), який цей борг і веде.
+   запису [data-models-doc-drift](../p2-data-models-doc-drift.md), який цей борг і веде.
    У щойно виправленому фрагменті Rust `TrackInfo` заразом дописано `pub ignored: bool` —
    дрейф, що був там до цієї роботи, у рядку, який усе одно правився.
 
 ## Документи
 
-- [Нотатка дослідження 2026-09-06](../notes/tauri-ts-type-drift.md) — перевірка 12 рядків
+- [Нотатка дослідження 2026-09-06](../../notes/tauri-ts-type-drift.md) — перевірка 12 рядків
   на `4eece78`, статичний вердикт по рядку 1, першоджерела serde/serde_json/tauri,
   факти про ts-rs 12
-- [Нотатка дослідження 2026-09-05](../notes/tauri-specta-bindings.md) — початкова
+- [Нотатка дослідження 2026-09-05](../../notes/tauri-specta-bindings.md) — початкова
   таблиця, номери рядків станом на `869154c`
-- [CONTEXT.md](../../CONTEXT.md) — «Вішліст і Ігнор-лист» (позначка належить трекові),
+- [CONTEXT.md](../../../CONTEXT.md) — «Вішліст і Ігнор-лист» (позначка належить трекові),
   «Запис» (результат запису проти стану потоку)
-- [tauri.ts](../../src/lib/tauri.ts), [App.tsx](../../src/App.tsx),
-  [StreamItem.tsx](../../src/components/streams/StreamItem.tsx) — споживачі
-- [engine.rs](../../src-tauri/src/player/engine.rs),
-  [manager.rs](../../src-tauri/src/stream/manager.rs),
-  [browser/types.rs](../../src-tauri/src/browser/types.rs) — емітери й структури
-- [ADR 2026-08-31: видимий носій](../decisions/2026-08-31-visible-carrier-for-announced-facts.md)
+- [tauri.ts](../../../src/lib/tauri.ts), [App.tsx](../../../src/App.tsx),
+  [StreamItem.tsx](../../../src/components/streams/StreamItem.tsx) — споживачі
+- [engine.rs](../../../src-tauri/src/player/engine.rs),
+  [manager.rs](../../../src-tauri/src/stream/manager.rs),
+  [browser/types.rs](../../../src-tauri/src/browser/types.rs) — емітери й структури
+- [ADR 2026-08-31: видимий носій](../../decisions/2026-08-31-visible-carrier-for-announced-facts.md)
   — чому кваліфікатор мусить стояти в самому рядку
-- [ADR 2026-08-31: носії для подій станції](../decisions/2026-08-31-carriers-for-station-events.md)
+- [ADR 2026-08-31: носії для подій станції](../../decisions/2026-08-31-carriers-for-station-events.md)
   — §3, §4: позначка на місці не переживає наступної події

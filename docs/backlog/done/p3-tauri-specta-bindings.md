@@ -35,7 +35,7 @@ notes:
 > **Результат (2026-09-05):** «не мігрувати, поки RC». Звіт —
 > [нотатка дослідження](../../notes/tauri-specta-bindings.md); спайк на гілці
 > `spike/tauri-specta`, не зливати. Єдина жива вада дрейфу стала записом
-> [tauri-ts-type-drift](../p2-tauri-ts-type-drift.md).
+> [tauri-ts-type-drift](p2-tauri-ts-type-drift.md).
 
 ## Опис
 
@@ -84,12 +84,12 @@ rc-релізами. Ручний `tauri.ts` зникає разом із сво
 - [x] Рекомендація — «не мігрувати, поки RC». Тригер повернення: `tauri-specta` `2.x`
       без `-rc` на crates.io із зеленим docs.rs, або друга справжня помилка дрейфу,
       яка доходить до користувача. Жива вада винесена в
-      [tauri-ts-type-drift](../p2-tauri-ts-type-drift.md)
+      [tauri-ts-type-drift](p2-tauri-ts-type-drift.md)
 
 ## Документи
 
 - [tauri.ts](../../../src/lib/tauri.ts) — що замінюється
 - [Нотатка дослідження](../../notes/tauri-specta-bindings.md) — відповіді з першоджерел, інвентар, спайк, оцінка в днях, рекомендація (2026-09-05)
-- [tauri-ts-type-drift](../p2-tauri-ts-type-drift.md) — жива вада дрейфу й решта 11 розбіжностей аудиту
+- [tauri-ts-type-drift](p2-tauri-ts-type-drift.md) — жива вада дрейфу й решта 11 розбіжностей аудиту
 - https://github.com/specta-rs/tauri-specta — README, таблиця сумісності, приклад `bindings.ts`
 - https://github.com/specta-rs/tauri-specta/issues/247 — статус RC

@@ -1,7 +1,7 @@
 # Дрейф `tauri.ts` проти Rust: перевірка на HEAD і першоджерела
 
 > Дослідницька нотатка до запису беклогу
-> [p2-tauri-ts-type-drift](../backlog/p2-tauri-ts-type-drift.md). Дата: 2026-09-06.
+> [p2-tauri-ts-type-drift](../backlog/done/p2-tauri-ts-type-drift.md). Дата: 2026-09-06.
 > HEAD `4eece78` (`develop`). Попередня нотатка, з якої взято 12 рядків:
 > [tauri-specta-bindings](tauri-specta-bindings.md), пін `869154c`.
 > Версії з `Cargo.lock` / `node_modules`: Tauri 2.10.3, tauri-macros 2.5.5,
