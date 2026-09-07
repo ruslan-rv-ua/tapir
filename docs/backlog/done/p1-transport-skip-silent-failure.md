@@ -1,6 +1,7 @@
 ---
 slug: transport-skip-silent-failure
 title: "«Попередній / наступний» не каже, чому не заграло — а з глобальної клавіші мовчить зовсім"
+summary: "Невдалий prev/next звітує з кнопки, клавіші й SMTC; поверхню обирає фокус вікна: тост у вікні або `HotkeyFeedback` — ADR «вухо, вікно, система»."
 priority: P1
 type: planned
 status: done
@@ -353,6 +354,17 @@ stringly-typed пошук через межу процесів, обходить
 - **`ToastContainer` не робимо assertive** — це рішення масштабу застосунку (§8).
 - **Межу списку у фоні не озвучуємо** — інший клас («межа», не «невдача»), винесено в [transport-boundary-silent-in-background](../p2-transport-boundary-silent-in-background.md).
 - **Тости за прецедентом більше не додаємо** — правило тепер живе в ADR (§7).
+
+## Спадок
+
+Єдиний L теми «чесний інтерфейс»: невдалий prev/next тепер повідомляє з кнопки, глобальної
+клавіші й SMTC; поверхню обирає фокус вікна (у фокусі — тост у вікні, поза ним — нативний
+`HotkeyFeedback`). Привіз [ADR «вухо, вікно,
+система»](../../decisions/2026-09-01-response-surfaces-ear-window-system.md) — правило вибору
+поверхні, що описує всі п'ять випадків фонового відгуку, — четвертий канал «сам звук» у
+CONTEXT.md, `announce()` як функцію стора і вузьку команду `notify_transport_failure`.
+Розблокував
+[transport-boundary-silent-in-background](../p2-transport-boundary-silent-in-background.md).
 
 ## Документи
 

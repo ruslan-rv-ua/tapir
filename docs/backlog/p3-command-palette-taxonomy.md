@@ -1,6 +1,7 @@
 ---
 slug: command-palette-taxonomy
 title: "Командна палітра — таксономія категорій і потоки-навігація"
+summary: "спірна — «Відкриті питання» ставлять під сумнів саму суть пропозиції"
 priority: P3
 type: idea
 status: draft

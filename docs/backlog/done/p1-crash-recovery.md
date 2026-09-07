@@ -1,6 +1,7 @@
 ---
 slug: crash-recovery
 title: "Crash Recovery — відновлення записів після аварійного завершення"
+summary: "`data/state.json` (`cleanShutdown`, `activeRecordings`), снапшот-писар у `crash_recovery.rs`, auto-resume; `active_recording_urls` прибрано."
 priority: P1
 type: planned
 status: done
@@ -182,6 +183,13 @@ ignorelist. Незіставлений `stream_id` (потік видалили 
 | Resume при зміні IP/мережі? | **Не в scope цієї фази.** Reconnect-логіка (`stream::manager`) — окрема задача. |
 | Планові записи при збої? | **Scheduler-owned потоки не входять у resume.** Снапшот їх виключає через `manual_resume_stream_ids`; їх catch-up лежить у `ScheduleManager`. |
 | Атомарний write `state.json`? | **Так, `write temp → rename`.** Той самий підхід, що у `profile.rs`. |
+
+## Спадок
+
+`data/state.json` (`cleanShutdown` + `activeRecordings[{streamId, url?}]`), снапшот-писар
+(`Notify` + 30с interval + 500мс debounce, `crash_recovery.rs`), auto-resume в setup-хуку,
+deferred подія `crash-resume`, `useCrashResumeFeedback` (NVDA polite + toast) —
+`Profile.active_recording_urls` прибрано
 
 ## Документи
 

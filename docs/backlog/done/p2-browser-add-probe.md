@@ -1,6 +1,7 @@
 ---
 slug: browser-add-probe
 title: "Перевірка потоку при додаванні з Browser (add_station_from_browser probe)"
+summary: "`spawn_probe_added()` — detached probe після збереження, `buffer_unordered(5)`; `useBrowserProbeFeedback` озвучує лише невдачі й підсумок."
 priority: P2
 type: idea
 status: done
@@ -101,6 +102,12 @@ _Закрито 2026-06-25 (рішення)._
 
 - ✅ **Вар. 1 (async тост) — обрано.** Browser підтримує масове додавання (`add_stations_from_browser`); sync-спінер серіалізував би перевірку й блокував UX. Async probe після збереження не блокує навігацію. Уточнення: при масовому додаванні озвучувати лише невдачі/підсумок, не кожен успіх (інакше потік тостів у NVDA). Sync-спінер лишається в `AddStreamDialog` ([add-stream-probe](p2-add-stream-probe.md)) — там додають по одному.
 - ✅ **`lastcheckok` — показувати лише FAIL, без стовпця OK/FAIL.** `lastcheckok == 1` («OK») ненадійний (саме тому й робимо probe) → показ «OK» дає хибну впевненість і подвоює багатослівність читання таблиці в NVDA. Виводити лише `lastcheckok == 0` як індикатор у доступному імені рядка («⚠ остання перевірка: FAIL»); для OK — нічого.
+
+## Спадок
+
+подія `browser-station-probe-result` + `useBrowserProbeFeedback` (App-wide, озвучує лише
+невдачі/підсумок); `spawn_probe_added()` у `browser_commands.rs` — detached probe після
+збереження, `buffer_unordered(5)`
 
 ## Документи
 

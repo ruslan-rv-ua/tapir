@@ -1,6 +1,7 @@
 ---
 slug: screen-reader-direct-speech
 title: "Пряме озвучення через API скрінрідера (Tolk)"
+summary: "Відхилено, тригер знято: озвучення лише через `aria-live` і balloon tips; нативної DLL (Tolk, NVDA Controller) поруч із EXE не буде."
 priority: P3
 type: idea
 status: done
@@ -77,6 +78,19 @@ accessible_output2 / Tolk / VocaBraille.
   `aria-live`. Повну заміну `aria-live` не робити (втрата Narrator, review-буфера,
   налаштувань verbosity, DOM-fallback, автотестів).
 - Місце — Rust-бекенд (backend-first); фронт кличе Tauri-команду.
+
+## Спадок
+
+**Відхилено** (не реалізовано) — і, що важливіше, **знято тригер**: запис стояв `blocked` з
+умовою «повернутись, якщо balloon tips виявляться недостатніми», тепер умови немає,
+`blocked_reason` вилучено. Спадок: озвучення йде **лише** через `aria-live` (`LiveAnnouncer`)
+плюс tray balloon tips — третьої поверхні мовлення не буде; **нативної DLL поруч із EXE не
+буде** (LGPL-комплаєнс Tolk + NVDA Controller Client і крос-SR тести поза проєктом), «portable
+single EXE» лишається інваріантом; Narrator лишається читачем першого класу, бо гібрид «SR з
+контролерним API → Tolk, решта → aria-live» відпадає разом із записом. Наслідок для черги:
+[sound-hotkeys-feedback-announce-only](p1-sound-hotkeys-feedback-announce-only.md) (P1, 0.1.0)
+втрачає резервний вихід «швидкий фідбек колись озвучимо напряму» — видима поверхня стає
+**єдиною** можливою відповіддю, і політика тостів, яку той запис ухвалює, є остаточною
 
 ## Документи
 

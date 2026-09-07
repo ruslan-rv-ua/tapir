@@ -1,6 +1,7 @@
 ---
 slug: release-workflow
 title: "Release-workflow: exe у GitHub Release на тег"
+summary: "exe у GitHub Release на тег `v*`; у воротах не збирається — release-профіль це другий повний прохід по графу залежностей; відкриті підпис і SmartScreen"
 priority: P3
 type: idea
 status: draft

@@ -1,6 +1,7 @@
 ---
 slug: post-processing
 title: "Постпроцесинг: запуск зовнішніх програм після запису"
+summary: "остання незакрита фаза **3H**; оживляє вкладку-заглушку в діалозі профілю"
 priority: P1
 type: planned
 status: ready

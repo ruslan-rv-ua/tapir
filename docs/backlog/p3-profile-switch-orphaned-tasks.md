@@ -1,6 +1,7 @@
 ---
 slug: profile-switch-orphaned-tasks
 title: "Баг: orphaned recording tasks при profile switch timeout"
+summary: "**умовний** — лише за реальним тригером (незафіналізовані файли після перемикання профілю)"
 priority: P3
 type: idea
 status: draft

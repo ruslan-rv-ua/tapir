@@ -1,6 +1,7 @@
 ---
 slug: resume-file-from-setting
 title: "Налаштування «відновлювати файл з позиції / з початку»"
+summary: "`resume_file_from` у `GlobalSettings`, `plan_file_resume`/`emit_resuming` у `playback_control.rs`, NVDA-анонс позиції; чисто адитивно, без виносу."
 priority: P2
 type: planned
 status: done
@@ -59,6 +60,11 @@ _Закрито 2026-06-25 (аудит коду + рішення)._
 
 - ✅ **Tab — AudioTab, секція «Керування плеєром» (`player_controls`)**, поруч із `auto_advance` ([AudioTab.tsx:138](../../../src/components/settings/AudioTab.tsx#L138)) і `prev_restart_threshold_ms`. Припущення «GeneralTab» було хибним: у коді `auto_advance` живе в AudioTab, а `double_click_action` — окремо в GeneralTab → «Поведінка» ([GeneralTab.tsx:172](../../../src/components/settings/GeneralTab.tsx#L172)); вони **не** в одному табі. `resume_file_from` належить до кластера resume/advance → AudioTab.
 - ✅ **«За довжиною» (поріг хвилин) — ні (фінально).** Поріг лише ховає рішення (магічне число, яке саме треба налаштовувати) і ламає передбачуваність для NVDA (незрячий не бачить тривалості → старт «із середини» дезорієнтує); до того ж потребує знати повну тривалість файлу до seek. Бінарний enum `position|start` лишається; back-compat-двері для 3-го варіанту відчинені — найімовірніший кандидат «питати» (`Never/Ask/Always`, як VLC), а не «за довжиною».
+
+## Спадок
+
+`resume_file_from` у `GlobalSettings`, `plan_file_resume`/`emit_resuming` у
+`playback_control.rs`, NVDA-анонс позиції — нульового виносу немає, чисто адитивно
 
 ## Документи
 

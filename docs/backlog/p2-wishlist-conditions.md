@@ -1,6 +1,7 @@
 ---
 slug: wishlist-conditions
 title: Умови та дії після запису у вішлісті
+summary: "перетинається з post-processing у частині «дії після запису» — звіряти після 0.2.0, інакше два механізми на одну задачу"
 priority: P2
 type: idea
 status: draft

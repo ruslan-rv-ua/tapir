@@ -1,6 +1,7 @@
 ---
 slug: settings-sidebar-tabs
 title: "Налаштування — вертикальні вкладки в бічній панелі (як у HelpDialog)"
+summary: "`SettingsDialog` на `orientation=\"vertical\"`, як `HelpDialog`: живі чотири стрілки; таблист дістав мітку `settings_sections_label`; свідомо без ADR."
 priority: P2
 type: planned
 status: done
@@ -106,6 +107,25 @@ ModalOverlay/Modal 80vh/max-w-3xl) з різною орієнтацією вкл
 2. Негативним контролем: із тимчасово знятим `orientation="vertical"` усі три
    нові тести падають, причому `{ArrowDown}` не рухає вибір узагалі — тобто
    тест справді стереже саме цю властивість, а не проходить випадково.
+
+## Спадок
+
+`SettingsDialog` перейшов на `orientation="vertical"` за зразком `HelpDialog` — обидва діалоги
+тепер звучать однаково, і це був головний аргумент, сильніший за напрямок стрілок. Вертикальний
+режим RAC поблажливіший: `TabsKeyboardDelegate.getKeyLeftOf/getKeyRightOf` не мають
+orientation-guard, тож живі **всі чотири** стрілки, тоді як у horizontal ↑/↓ мертві
+(`getKeyAbove/Below` повертають `null`) — перевірено і в сорсах `@react-aria/tabs@3.11.1`, і
+негативним контролем: зі знятим `orientation` усі три нові тести падають, `{ArrowDown}` не рухає
+вибір узагалі. Це страховка проти того, що NVDA не озвучує `aria-orientation` (JAWS озвучує) —
+клавіші не змінюються, а додаються. Понад початковий обсяг: `TabList` дістав власну мітку
+`settings_sections_label` («Розділи налаштувань») замість повторного `settings_title` — у бічній
+панелі таблист став окремою зоною, і мітка, тотожна заголовку діалогу, змушувала NVDA двічі
+поспіль вимовити «Налаштування» (симетрично до `help_sections_label`). З'явився перший
+`SettingsDialog.test.tsx` — доти діалог покривали лише тести чотирьох вкладок, тобто гейт `pnpm
+test` про сам діалог не знав нічого. Сесія `/grill-with-docs`; свідомо без ADR і без
+`CONTEXT.md` (зміна відкочується одним revert, запис беклогу — достатня домівка), мертві ключі
+`settings_tab_reconnection`/`settings_tab_audio` не чіпали. Гілка `feature/settings-dialog`.
+**NVDA-прогін проведено 2026-08-07, усі 5 сценаріїв пройдено, зауважень немає**
 
 ## Документи
 

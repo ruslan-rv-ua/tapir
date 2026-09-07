@@ -1,6 +1,7 @@
 ---
 slug: tech-stack-doc-drift
 title: "Звірити tech-stack.md, architecture.md і AGENTS.md зі станом залежностей"
+summary: "`tech-stack.md` переписано: таблиці за маніфестами, п'ять плагінів і таблиця відхилених; конфіг не цитувати, лише посилатись — усі цитати брехали."
 priority: P2
 type: planned
 status: done
@@ -179,6 +180,37 @@ JS живий лише `@tauri-apps/api`. Родич знятих `dead-dependen
 - [x] architecture.md не згадує `StreamTable`, TableView і плагіни shell, http, fs
 - [x] AGENTS.md описує поточний стан проєкту одним правдивим рядком
 - [x] `pnpm test` зелений: `docsLinks.test.ts` не бачить битих посилань
+
+## Спадок
+
+`tech-stack.md` переписано, а не поправлено: зведена таблиця розділилась на дві (frontend за
+`package.json`, backend за `Cargo.toml`), бо однією колонкою «версія» два маніфести не
+тримаються. У backend з'явилось те, чого документ не називав узагалі — `rtrb` (кільцевий буфер
+на місці знятого `stream-download`), `clap`, `tokio-util`, `encoding_rs`, `nanoid`, `walkdir`,
+`winreg` окремо від `windows`; у frontend — Vitest і `unified` (довідка `F1` компілюється з
+`docs/help/` на збірці, і сліду про це в стеку не було). Версії: `windows` 0.61 → **0.62**,
+`lofty` 0.23 → **0.24**. Рядок «Win API: Registry, toast, balloon tip» замінено на справжні
+поверхні, серед них **WinRT Media для SMTC** — цілої підсистеми `smtc.rs` документ не згадував.
+**Плагінів п'ять, не дванадцять**, і головне тут — окрема таблиця «розглянуто й відхилено» з
+причиною в один рядок на кожен: питання «а чому в нас немає `tauri-plugin-fs`?» тепер має
+письмову відповідь замість щоразового з'ясування. **П'ять повних цитат конфігів прибрано, і всі
+п'ять брехали** (`identifier: com.tapir.app`, прапорці `--datadir`/`--tempdir`, яких `clap` не
+знає, `justfile` без `check` — тих самих воріт, що ганяє агент); правило звідси загальне:
+**конфіг цитувати не можна, тільки посилатись** — і воно ж зняло 26-рядкову «Маппінг іконок», де
+десять іконок у коді не використовуються, а більшої частини вживаних немає. React Aria звірено
+поіменно за 31 імпортом: ні `TableView`, ні `GridList`, ні `ComboBox`, ні `DialogTrigger`;
+дописано те, чого бракувало найбільше — головна навігація **не** `Tabs`, а кнопки Activity Bar з
+`aria-pressed` і `Alt+0`…`Alt+5`. Секція «Джерела досліджень» посилалась на чотири файли, яких
+немає **у всій git-історії** (`docs/research/` існував, але з трьома іншими) — знято.
+`architecture.md` правлено **лише в названих місцях**: дерево фронтенду §3 переписано цілком
+(правити один рядок означало б лишити навколо нього вигаданий каталог — `ResultsTable`,
+`SongsTable`, `WishlistTable`, `ProfileSwitcher`, `UndoToast` теж не існують), §11 і §12 — за
+критеріями; решта пішла в [architecture-doc-drift](p2-architecture-doc-drift.md). Попутна
+поправка до [accessibility-doc-audit](p2-accessibility-doc-audit.md): throttle тостів 3 с
+**існує** (`THROTTLE_MS` у `tray/notify.rs`) — неправдою було місце, а не число. `AGENTS.md`
+перестав казати «Phase 3F»: передреліз 0.1.0, черга за цільовою версією, таблиця фаз лишилась
+підписаною як історія. У `DEVELOPERS.md` знайшовся свій `--start-recording`, якого `clap` не
+знає. Другий хвіст — [dead-js-tauri-plugins](p3-dead-js-tauri-plugins.md).
 
 ## Документи
 

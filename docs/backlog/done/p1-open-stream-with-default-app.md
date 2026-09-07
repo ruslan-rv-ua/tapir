@@ -1,6 +1,7 @@
 ---
 slug: open-stream-with-default-app
 title: "Відкрити потік у медіаплеєрі (тимчасовий .m3u8)"
+summary: "Шел дістає не URL, а `data/tmp/<назва>.m3u8`; `data/tmp/` чиститься при старті, не після відкриття; `shell_open` — у спільному `shell_open.rs`."
 priority: P1
 type: planned
 status: done
@@ -340,6 +341,22 @@ not be advertised on individual rows», і рішення залоковане �
 
 - [x] `settings_hotkey_action_row_open_external` більше не каже «(записи)» —
       `Alt+Enter` тепер і про потоки: «(записи, потоки)» / «(recordings, streams)»
+
+## Спадок
+
+шел не отримує сирий URL потоку — той резолвиться в `http(s)://…/live` ще на додаванні, і єдина
+асоціація для нього браузер; замість цього пишеться одноелементний `data/tmp/<назва>.m3u8`
+(`stream_playlist_path`, `to_m3u8`) і відкривається файл. `data/tmp/` створюється й чиститься в
+`ensure_data_dirs()` при старті (`portable::tmp_dir`/`clear_dir_contents`), а не після відкриття
+— видалення відразу гонилося б з холодним стартом плеєра. `shell_open`/`map_shell_error`
+винесено зі `songs_commands.rs` у спільний `commands/shell_open.rs` з новим кодом
+`write_failed`; фронтенд отримав окрему `streamOpenErrorMessage` (не переоформлення
+`shellOpenErrorMessage` — набори кодів різні). UI: пункт «Відкрити у медіаплеєрі» в
+`StreamContextMenu` (після record, перед edit) і `Alt+Enter` у `StreamList.onAction`, обидва на
+сфокусованому рядку, ігнорують виділення; успіх мовчазний, помилка — тост. `aria-keyshortcuts`
+на рядку свідомо не додано (рішення `b06a9c1`). Гілка `feature/open-stream-with-default-app`,
+TDD. **NVDA-прогін проведено 2026-08-07, усі 8 сценаріїв пройдено, зауважень немає**; код
+`no_assoc` вручну не перевірявся (немає машини без медіаплеєра)
 
 ## Документи
 

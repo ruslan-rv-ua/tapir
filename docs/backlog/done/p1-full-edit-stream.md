@@ -1,6 +1,7 @@
 ---
 slug: full-edit-stream
 title: "Редагування URL потоку"
+summary: "`update_stream`: `url` — перемикач, `Some` перезаписує похідні поля, навіть `None`; при записі поле `readOnly`+`aria-disabled`, не `disabled`."
 priority: P1
 type: planned
 status: done
@@ -180,6 +181,37 @@ recording state», і другого, ширшого визначення «ак
       `writing-nvda-checklists` (видалено на прийманні)
 - [x] NVDA-прогін пройдено (2026-08-07, усі 9 сценаріїв, зауважень немає)
 - [x] `cargo test`, `cargo clippy`, `pnpm test`, `pnpm vite:build`
+
+## Спадок
+
+`update_stream(stream_id, name, url?, icy_name?, bitrate?, format?)` — форма аргументів
+дзеркалить `add_stream`, і саме `url` є перемикачем: `None` — чисте перейменування з
+недоторканими похідними полями, `Some` — `resolve_playlist_url` і перезапис
+`format`/`bitrate`/`icy_name` переданим **включно з `None`** (вони описують адресу, а не рядок:
+після переїзду старе «AAC 64k» — брехня, яку NVDA прочитав би як факт; перше ж підключення їх
+перезаповнить). Окрему `update_stream_url` відхилено — ім'я й адреса в одному сабміті інакше
+стали б двома IPC і двома `save()` з частковим збоєм між ними. Уся логіка — в чистій
+`build_edited_stream` над `&[StreamInfo]` за зразком `build_added_stream`. Потік, чиє ім'я
+дорівнює **старому** URL, лишається безіменним (icy_name з probe через `naming::disambiguate`,
+інакше новий URL) — інакше рівність `name == url`, за якою `icy_rename` впізнає неназваний
+потік, зламалась би назавжди. Порожня назва трактується так само (зберегти `""` означало б
+рядок, який NVDA читає як ніщо, і теку `%s` без імені); шлях чистого перейменування не чіпали —
+там і далі `name.trim()`. UI: поле URL першим в **обох** режимах, але `autoFocus` в edit-режимі
+лишився на імені (F2 — м'язова пам'ять «перейменувати»). Змінена адреса проходить probe +
+`checkStreamConflicts({url, name, excludeId})`, незмінена — жодної нової перевірки. Обидва
+попередження озвучуються **разом**: перевірка після сабміту стає недійсною, тож притримане
+попередження — це попередження, яке не почують. Під час запису поле — `readOnly` +
+`aria-disabled` з поясненням через `aria-describedby`, а **не** нативний `disabled`: той випадає
+з обходу по Tab, і NVDA не дійшов би ні до поля, ні до пояснення (домашній патерн
+`SelectionToolbar`/`ActivityBar`); критерій «поле URL disabled» читати як «недоступне для
+правки». Побічно: предикат «потік записується» винесено в
+`src/lib/streamState.ts::isRecordingLike` — чотири копії каскаду станів (`StreamsPanel`,
+`StreamItem`, `StreamContextMenu` + новий виклик) стали однією функцією; Rust-дзеркало —
+`move_blocked_by_state`. Auth і per-stream ignorelist свідомо винесено
+([stream-auth](../p3-stream-auth.md),
+[per-stream-ignorelist-ui](../p1-per-stream-ignorelist-ui.md)). Гілка
+`feature/full-edit-stream`, TDD. **NVDA-прогін проведено 2026-08-07, усі 9 сценаріїв пройдено,
+зауважень немає**
 
 ## Документи
 

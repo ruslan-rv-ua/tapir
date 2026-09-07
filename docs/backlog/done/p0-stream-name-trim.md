@@ -1,12 +1,13 @@
 ---
 slug: stream-name-trim
 title: Обрізання пробільних символів у назві потоку
+summary: "`.trim()` у `add_stream` і `update_stream` — назва потоку більше не зберігається з провідними чи завершальними пробілами."
 priority: P0
 type: planned
 status: done
 effort: S
 kind: bug
-target: v0.1.0
+target: 0.1.0
 updated: 2026-07-22
 completed: 2026-07-22
 a11y: false
@@ -48,3 +49,8 @@ gates: [pnpm test, pnpm build]
 - [ ] Після виправлення бекенд є єдиним джерелом правди (фронтенд може не змінюватись)
 - [ ] `pnpm test` без регресій
 - [ ] `pnpm build` без помилок
+
+## Спадок
+
+`.trim()` у `add_stream` і `update_stream` (`stream_commands.rs`) — назва потоку більше не
+зберігається з провідними/завершальними пробілами

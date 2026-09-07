@@ -1,6 +1,7 @@
 ---
 slug: list-shift-range-to-edge
 title: "Списки: Shift+Home / Shift+End розширюють діапазон до краю"
+summary: "хвіст грилінгу list-key-modifier-guards: `Shift+↑/↓` є, `Shift+Home`/`End` немає; батьківський запис зробив їх інертними, щоб фічу додавали, а не перевчали"
 priority: P2
 type: planned
 status: draft

@@ -1,6 +1,7 @@
 ---
 slug: settings-commit-seam
 title: Глобальні налаштування — тим самим швом, що й профіль
+summary: "Інваріант порядку коміту — в одному `store.rs` (`Store<T>`, `Writer<T>`); `GlobalSettings::save` знято; відкат `switch_profile` — `Commit::Skip`."
 priority: P1
 type: planned
 status: done
@@ -95,6 +96,23 @@ notes:
 - [x] fsync тепер і для `settings.json`.
 - [x] Гейти зелені: `cargo test` (451), `pnpm test` (787), `pnpm vite:build`.
       Clippy — 47, як і до змін.
+
+## Спадок
+
+механізм коміту **узагальнено, а не скопійовано**: інваріант порядку живе тепер в одному
+`src-tauri/src/store.rs` (`Commit`, `Persist`, `Store<T>`, `Writer<T>`,
+`write_json_atomically`), а `profile_store.rs`/`settings_store.rs` — тонкі адаптери (ключ воріт
++ шлях + `save_detached`). `Persist::key` — ім'я профілю (файлів багато) проти константи для
+налаштувань (файл один). 5 сайтів `GlobalSettings`: три на `commit_settings` (`save_settings`,
+`set_output_device`, `switch_profile` крок 9), два на `save_detached` (створення дефолту в
+`load`, гасіння autostart у `lib.rs` до `AppState::new`). `GlobalSettings::save` видалено —
+після міграції не лишилося жодного `settings.write().await`. `save_settings` мала ту саму
+інверсію «диск перед пам'яттю», що й `save_recording_settings` — прибрано. Відкат у
+`switch_profile` **збережено** свідомо: `activeProfile` читається лише при старті, тож
+наступного коміту можна не дочекатися, а розбіжність відправила б застосунок у чужий профіль;
+реалізовано через `Commit::Skip` (диск уже старий — пишемо лише пам'ять).
+`SessionState`/`data/state.json` — третій агрегат тієї ж форми, свідомо не чіпали. **NVDA-прогін
+не потрібен**
 
 ## Документи
 

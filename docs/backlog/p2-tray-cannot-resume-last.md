@@ -1,6 +1,7 @@
 ---
 slug: tray-cannot-resume-last
 title: "Пункт трея сірий, коли `Ctrl+Shift+K` уміє відновити останнє джерело"
+summary: "знахідка grilling 2026-09-03: пункт трея сірий, хоча `Ctrl+Shift+K` у тому самому стані відновлює останнє джерело"
 priority: P2
 type: planned
 status: draft

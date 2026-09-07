@@ -1,6 +1,7 @@
 ---
 slug: help-style-guide-extract
 title: "Винести стиль-гайд довідки з done/ у docs/"
+summary: "стиль-гайд довідки лежить у закритому `help-content-polish`, тест цитує його за slug'ом; чистий рефакторинг адреси, три відкриті питання"
 priority: P3
 type: planned
 status: draft

@@ -1,6 +1,7 @@
 ---
 slug: diagnostic-report-block
 title: "Звіт про проблему збирається вручну: збірку Windows і версію WebView2 взяти нізвідки"
+summary: "хвіст about-app-info: збірка Windows, версія WebView2, кнопка «Скопіювати відомості для звіту»"
 priority: P3
 type: idea
 status: draft

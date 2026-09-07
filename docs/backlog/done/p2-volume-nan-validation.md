@@ -1,6 +1,7 @@
 ---
 slug: volume-nan-validation
 title: "Volume NaN Validation у set_volume()"
+summary: "`sanitize_volume()` у `player/engine.rs` — єдина точка санітизації гучності на межах IPC (`set_volume`) і профілю; non-finite → `0.0`."
 priority: P2
 type: planned
 status: done
@@ -58,6 +59,11 @@ let volume = if volume.is_finite() { volume.clamp(0.0, 1.0) } else { 0.0 };
 
 **Додатково:** `PlayerEngine::new()` теж використовував голий `clamp()` на `initial_volume`, який
 приходить із збереженого профілю (друга системна межа) — переведено на той самий хелпер.
+
+## Спадок
+
+хелпер `sanitize_volume()` у `player/engine.rs` — єдина точка санітизації гучності на межах IPC
+(`set_volume`) і профілю (`PlayerEngine::new`); non-finite → `0.0`
 
 ## Документи
 

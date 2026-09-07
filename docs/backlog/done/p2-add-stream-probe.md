@@ -1,6 +1,7 @@
 ---
 slug: add-stream-probe
 title: "Перевірка потоку при ручному додаванні (AddStreamDialog probe)"
+summary: "`probe_stream(url) -> { ok, error }` + `probe_once()` зі спільним 5-с `SINGLE_PROBE_TIMEOUT`; sync-spinner і «Все одно додати» в `AddStreamDialog`."
 priority: P2
 type: idea
 status: done
@@ -75,6 +76,11 @@ _Закрито 2026-06-25 (аудит коду + рішення)._
 
 - ✅ **Нова команда `probe_stream(url) -> { ok, error }`, не реюз `validate_import_candidates`.** Остання подієва (`stream-import-progress`, повертає `()`) і заточена під масовий пікер імпорту; для одного URL це форсувало б крихку обв'язку слухача події на фронтенді. `begin_stream_import` — взагалі файловий пікер плейлиста, не стосується. `probe_stream` — тонка обгортка над `probe::probe`, спільна з [browser-add-probe](p2-browser-add-probe.md).
 - ✅ **Timeout — фіксовані 5 с (іменована константа), без налаштування.** Probe тут необов'язкове попередження, не блокатор збереження → точність порогу не важлива, а налаштування додало б UI/персист/i18n/NVDA заради числа, яке ніхто не крутитиме (YAGNI). Увага: під 5 с потрібен зовнішній `tokio::time::timeout` — вбудований `connect_timeout` це 10 с і лише на стадію конекту.
+
+## Спадок
+
+IPC `probe_stream(url) -> { ok, error }` + `probe_once()` у `stream_io_commands.rs` (спільний
+5-с `SINGLE_PROBE_TIMEOUT`); sync-spinner + «Все одно додати» в `AddStreamDialog`
 
 ## Документи
 
