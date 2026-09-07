@@ -46,12 +46,18 @@ pub struct GlobalSettings {
 /// Deserialize `log_level` tolerantly: an unknown or legacy value (e.g. the
 /// removed "trace") falls back to the default instead of failing the whole
 /// settings load and panicking the app at startup.
+///
+/// Takes **any** JSON value, not just a string. `Option<String>` let `null`
+/// through but still failed the load on a number, bool, object or array — the
+/// exact failure this function exists to prevent, and the gap that made the
+/// promise above only half true (found reviewing its twin,
+/// `profile::deserialize_stream_sort`).
 fn deserialize_log_level<'de, D>(deserializer: D) -> Result<LogLevel, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
-    let raw = Option::<String>::deserialize(deserializer)?;
-    Ok(match raw.as_deref() {
+    let raw = serde_json::Value::deserialize(deserializer)?;
+    Ok(match raw.as_str() {
         Some("error") => LogLevel::Error,
         Some("warn") => LogLevel::Warn,
         Some("info") => LogLevel::Info,
@@ -231,6 +237,21 @@ mod tests {
         let json = r#"{ "logLevel": "trace" }"#;
         let settings: GlobalSettings = serde_json::from_str(json).unwrap();
         assert_eq!(settings.log_level, LogLevel::Info);
+    }
+
+    /// The promise in the doc comment is «the whole load must survive», and a
+    /// hand-edited `settings.json` can hold any JSON at all. Reading
+    /// `Option<String>` covered only two of these six.
+    #[test]
+    fn log_level_of_any_json_type_falls_back_instead_of_failing_the_load() {
+        for raw in [r#""trace""#, "null", "3", "true", "{}", "[]"] {
+            let json = format!(r#"{{ "language": "en-US", "logLevel": {raw} }}"#);
+            let settings: GlobalSettings = serde_json::from_str(&json)
+                .unwrap_or_else(|e| panic!("logLevel {raw} must not fail the load: {e}"));
+            assert_eq!(settings.log_level, LogLevel::Info);
+            // The rest of the file still loads — that is the whole point.
+            assert_eq!(settings.language, "en-US");
+        }
     }
 
     #[test]
