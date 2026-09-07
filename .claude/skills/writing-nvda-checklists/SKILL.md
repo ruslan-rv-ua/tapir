@@ -106,8 +106,9 @@ Non-negotiable:
 2. **Link** it from the «Manual testing» list in `AGENTS.md` and from the NVDA
    criterion inside the backlog record.
 3. **Accept**: after a clean run, one commit checks the criterion, sets
-   `status: done` + `completed:`, `git mv`s the record into `docs/backlog/done/`,
-   moves its ROADMAP line to «Виконано», **and deletes both the checklist file and
+   `status: done` + `completed:` + `summary:`, writes the «Спадок» section, `git mv`s the
+   record into `docs/backlog/done/`, regenerates the index (`pnpm backlog index`), **and
+   deletes both the checklist file and
    its AGENTS.md line** — the record in `done/` keeps the decisions; the checklist
    has done its job.
 

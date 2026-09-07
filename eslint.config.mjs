@@ -21,7 +21,7 @@ export default defineConfig([
   ]),
 
   {
-    files: ["src/**/*.{ts,tsx}", "build/**/*.ts"],
+    files: ["src/**/*.{ts,tsx}", "build/**/*.{ts,mts}"],
     extends: [js.configs.recommended, tseslint.configs.recommended],
     languageOptions: {
       parserOptions: { ecmaFeatures: { jsx: true } },
@@ -55,7 +55,7 @@ export default defineConfig([
     languageOptions: { globals: globals.browser },
   },
   {
-    files: ["build/**/*.ts"],
+    files: ["build/**/*.{ts,mts}"],
     languageOptions: { globals: globals.node },
   },
 
