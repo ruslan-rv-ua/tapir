@@ -72,10 +72,15 @@ Output binary: `src-tauri/target/release-fast/tapir.exe` (build-fast) or `src-ta
 
 ## Branches and pull requests
 
-Трунк — `develop`; `main` лишається на старому стані й не рухається. Робота йде в
+Трунк — `develop`; `main` — випущене, його рухають **лише `release/` і `hotfix/`** через
+pull request (форма git-flow, механіка PR — [docs/release.md](docs/release.md)). Робота йде в
 гілках (`fix/…`, `chore/…`, `feature/…`, `docs/…`), і кожна входить у стовбур **лише
-через pull request**: гілка захищена, обидві перевірки CI обов'язкові, адміністратор
+через pull request**: обидві гілки захищені, обидві перевірки CI обов'язкові, адміністратор
 не виняток. Прямий push відхиляється (`GH006: Required status check is expected`).
+`git flow start` можна; `git flow … finish` — ніколи: він зливає локально й пушить прямо.
+
+**Тег `v*` — необоротна публічна дія.** Агент ставить його лише за явною командою людини
+в тій самій сесії («випусти 0.1.0»); решту процедури релізу веде сам.
 
 - **Локального FF-мержа в `develop` більше немає**, як і прийому
   `git fetch . <гілка>:develop`, яким паралельні worktree просували стовбур.

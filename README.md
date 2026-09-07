@@ -12,7 +12,8 @@
   <img src="public/logo.svg" alt="Tapir" width="600">
 </p>
 
-> **Status: Early development — not yet ready for end users.**
+> **Status: Early release — expect rough edges.** Tapir works and is used daily, but it is
+> young; if something is off, [open an issue](../../issues).
 
 Tapir is a friendly, easy-to-use Windows app for listening to and recording internet radio. Not only can you record your favorite broadcasts, but Tapir also recognizes when a new song starts—automatically splitting the recording into individual tracks with the correct artist and title tags. No installation is required; just download and run!
 
@@ -42,9 +43,37 @@ Tapir is a friendly, easy-to-use Windows app for listening to and recording inte
 
 ## Getting Started
 
-1. Download `tapir.exe` from the [Releases](../../releases) page *(not yet available — in development)*.
-2. Place it in any folder you like (e.g., your Desktop or a USB drive).
-3. Run `tapir.exe`.
+There are two ways to get Tapir. Both give you the same single file.
+
+### Download
+
+1. Open the [Releases](../../releases/latest) page and download `tapir-v<version>-x64.exe`.
+2. Place it in any folder you like (e.g., your Desktop or a USB drive). You may rename it to `tapir.exe`.
+3. Run it.
+
+**The first run shows a Windows SmartScreen warning**, because the file is not code-signed
+(signing needs a paid certificate tied to a person; see the [decision](docs/decisions/2026-09-07-release-is-one-bare-exe.md)).
+To get through it with the keyboard or a screen reader: on the *Windows protected your PC*
+dialog, press **Tab** to the **More info** link and activate it with **Enter**; a **Run anyway**
+button appears — **Tab** to it and press **Enter**. Windows remembers the choice for that file.
+
+Beside the exe you will find `tapir-v<version>-x64.exe.sha256` — the file's SHA-256 checksum,
+if you want to verify the download.
+
+### Scoop
+
+If you use [Scoop](https://scoop.sh), this path shows no SmartScreen warning and updates with
+the rest of your apps:
+
+```powershell
+scoop bucket add ruslan-rv-ua https://github.com/ruslan-rv-ua/scoop-bucket
+scoop install tapir
+```
+
+Later, `scoop update tapir` brings the next version; your settings and recordings survive the
+update.
+
+### Where things go
 
 All your recordings will go into a `recordings\` folder, and your settings will be saved in `data\`. Both folders appear right next to the app, so moving Tapir to another computer is just copying its folder — nothing is installed. Windows itself keeps a cache for the page engine that draws the app's window, so a little data does stay behind in your user profile.
 

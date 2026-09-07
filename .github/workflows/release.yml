@@ -1,0 +1,177 @@
+# What a tag ships.
+#
+# A push of a `v*` tag builds the one file Tapir is distributed as — a bare
+# `tapir-<tag>-x64.exe` — writes its SHA-256 sidecar and publishes both on a
+# GitHub Release. Nothing here talks to the scoop bucket: the bucket's own
+# Excavator finds the release through `checkver`/`autoupdate` in its manifest
+# and lifts the hash from the sidecar, so no token crosses between the two
+# repositories. The shape of the artifact and why it is unsigned:
+# docs/decisions/2026-09-07-release-is-one-bare-exe.md. The procedure around
+# this file: docs/release.md.
+#
+# Every step before the build is a gate and refuses rather than warns, in the
+# spirit of docs/decisions/2026-09-05-gates-refuse-rather-than-advise.md — and
+# they run cheapest first, so a wrong tag or an empty changelog fails in seconds
+# rather than after ten minutes of LTO.
+#
+# No cache, deliberately: releases are rare, a build from a clean clone is part
+# of what a release proves, and a release-profile cache would evict the dev
+# cache the gates depend on from the repository's 10 GB limit.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # gh release create
+  checks: read # the check runs of the tagged commit
+
+env:
+  # The one place the release asset is named. The scoop manifest in
+  # packaging/scoop/tapir.json is written against exactly this shape, and
+  # build/releaseShape.test.ts holds the two together.
+  ASSET: tapir-${{ github.ref_name }}-x64.exe
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # `merge-base --is-ancestor` below needs the history of `main`.
+          fetch-depth: 0
+
+      # The tag is the only version statement a release adds, and the one no
+      # test can check before the tag exists. A pre-release suffix (`v0.1.0-rc.1`)
+      # is the tag's business alone: the exe says 0.1.0 either way, because
+      # VERSIONINFO has four numeric components and no room for `rc`.
+      - name: Gate — the tag names the version Cargo.toml carries
+        run: |
+          $tag = '${{ github.ref_name }}'
+          $version = ($tag.TrimStart('v') -split '-', 2)[0]
+          $inPackage = $false
+          $cargo = $null
+          foreach ($line in Get-Content src-tauri/Cargo.toml) {
+            if ($line -match '^\[') { $inPackage = ($line.Trim() -eq '[package]'); continue }
+            if ($inPackage -and $line -match '^version\s*=\s*"([^"]+)"') { $cargo = $Matches[1]; break }
+          }
+          if (-not $cargo) { throw "src-tauri/Cargo.toml has no [package].version" }
+          if ($cargo -ne $version) { throw "Cargo.toml version '$cargo' does not match tag '$tag'" }
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "PRERELEASE=$($tag.Contains('-'))" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Releasing $tag as version $version (pre-release: $($tag.Contains('-')))"
+
+      # `main` is the release branch and it sits behind the same two required
+      # checks as `develop`, so the merge commit a tag lands on has already been
+      # judged by CI. This step reads that verdict instead of recomputing it —
+      # the six gates on the same SHA would add eight minutes and no information.
+      # A tag on a commit outside `main`, or one whose CI has not finished, is
+      # refused; re-run this workflow from the Actions tab once it has.
+      - name: Gate — the tagged commit is on main and its checks are green
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $sha = git rev-parse HEAD
+          git merge-base --is-ancestor $sha origin/main
+          if ($LASTEXITCODE -ne 0) { throw "commit $sha is not on main - tags are cut from main only" }
+          $runs = gh api "repos/$env:GITHUB_REPOSITORY/commits/$sha/check-runs" --paginate `
+            --jq '.check_runs[] | "\(.name) \(.conclusion)"'
+          Write-Host ($runs -join "`n")
+          foreach ($check in 'frontend', 'backend') {
+            if (-not ($runs -contains "$check success")) {
+              throw "required check '$check' has no successful run on $sha"
+            }
+          }
+
+      # The release page says what changed, and it says it from CHANGELOG.md —
+      # `--generate-notes` would list merged pull requests by branch name, which
+      # is not a text for the person downloading. A version heading is a line
+      # beginning `## [`; its section runs to the next such line or the end of
+      # the file. Missing or blank means no release, not an empty page.
+      - name: Gate — CHANGELOG.md has a non-empty section for this version
+        run: |
+          $body = @()
+          $found = $false
+          foreach ($line in @(Get-Content CHANGELOG.md)) {
+            if ($line.StartsWith('## [')) {
+              if ($found) { break }
+              $found = $line.StartsWith("## [$env:VERSION]")
+              continue
+            }
+            if ($found) { $body += $line }
+          }
+          if (-not $found) { throw "CHANGELOG.md has no '## [$env:VERSION]' section" }
+          $notes = ($body -join "`n").Trim()
+          if (-not $notes) { throw "CHANGELOG.md's [$env:VERSION] section is empty" }
+          Set-Content -Path release-notes.md -Value $notes -Encoding utf8
+          Write-Host $notes
+
+      # The same Node and pnpm setup as ci.yml, without the store cache.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "26"
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The command is the `build` recipe of the justfile — the release profile:
+      # LTO, one codegen unit, `opt-level = "s"`. Twice the compile time of
+      # `release-fast` for an exe 2.5× smaller, and every download pays for size
+      # while only this runner pays for time. build/releaseShape.test.ts keeps
+      # this line and the recipe identical.
+      - name: Build
+        run: pnpm tauri build --no-bundle
+
+      - name: Stage the artifact
+        run: |
+          New-Item -ItemType Directory -Force artifacts | Out-Null
+          Copy-Item src-tauri/target/release/tapir.exe "artifacts/$env:ASSET"
+          Get-Item "artifacts/$env:ASSET" | Format-List Name, Length
+
+      # Unsigned by decision, so VERSIONINFO is the only claim the file makes
+      # about what it is. Read back out of the linked exe, not trusted from the
+      # manifest: `tauri-winres` fills the strings from CARGO_PKG_VERSION, and
+      # this is where a broken resource step would show.
+      - name: Gate — the exe identifies itself as this version
+        run: |
+          $info = (Get-Item "artifacts/$env:ASSET").VersionInfo
+          $info | Format-List ProductName, FileDescription, FileVersion, ProductVersion
+          if ($info.ProductName -ne 'Tapir') { throw "ProductName is '$($info.ProductName)'" }
+          if ($info.ProductVersion -ne $env:VERSION) { throw "ProductVersion '$($info.ProductVersion)' != '$env:VERSION'" }
+          if ($info.FileVersion -ne $env:VERSION) { throw "FileVersion '$($info.FileVersion)' != '$env:VERSION'" }
+
+      # Written only once every gate has passed, so a failed run leaves no hash
+      # for a file nobody should install. `<hex64> *<filename>` is sha256sum's
+      # own line: `sha256sum -c` verifies it, and scoop's `autoupdate` reads the
+      # hash straight out of it.
+      - name: Write the SHA-256 sidecar
+        run: |
+          $hash = (Get-FileHash "artifacts/$env:ASSET" -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash *$env:ASSET" | Out-File -FilePath "artifacts/$env:ASSET.sha256" -Encoding ascii -NoNewline
+          Get-Content "artifacts/$env:ASSET.sha256"
+
+      # A tag with a suffix is a pre-release: the page is marked, and
+      # `releases/latest` — the only thing the bucket's `checkver` reads — does
+      # not move, so the whole chain can be exercised without touching scoop.
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ghArgs = @(
+            'release', 'create', '${{ github.ref_name }}',
+            "artifacts/$env:ASSET", "artifacts/$env:ASSET.sha256",
+            '--verify-tag',
+            '--title', "Tapir ${{ github.ref_name }}",
+            '--notes-file', 'release-notes.md'
+          )
+          if ($env:PRERELEASE -eq 'True') { $ghArgs += '--prerelease' }
+          gh @ghArgs
