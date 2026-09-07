@@ -29,9 +29,10 @@
    `git pull`.
 2. **Версія.** `version` у `src-tauri/Cargo.toml` → `X.Y.Z`; `cargo update -p tapir` оновлює
    `Cargo.lock`. Це єдине джерело версії ([single-version-source](backlog/done/p2-single-version-source.md)).
-3. **CHANGELOG.** Секція `## [X.Y.Z] - YYYY-MM-DD` у `CHANGELOG.md` — переказ записів
-   `docs/backlog/done/` із `target: X.Y.Z` мовою користувача, англійською. Пишеться агентом,
-   читається людиною в PR. Порожню секцію workflow відмовить.
+3. **CHANGELOG.** Секція `## [X.Y.Z] — Unreleased` у `CHANGELOG.md` стає
+   `## [X.Y.Z] — YYYY-MM-DD`; зміст — переказ записів `docs/backlog/done/` із `target: X.Y.Z`
+   мовою користувача, англійською. Пишеться агентом, читається людиною в PR. Порожню секцію
+   workflow відмовить. Для rc дата лишається `Unreleased`.
 4. **README.** Те, що змінилось для людини, яка завантажує.
 5. **Ворота** локально: `just check`, `just check-rust`; `build/releaseShape.test.ts` серед них.
 6. **PR у `main`.** `git push -u origin release/X.Y.Z`, `gh pr create --base main`. Дочекатись
