@@ -1,0 +1,52 @@
+{
+    "##": [
+        "The manifest that is seeded, once and by hand, into ruslan-rv-ua/scoop-bucket as",
+        "bucket/tapir.json (docs/release.md, section «Засівання bucket»). After that the",
+        "bucket's own Excavator bumps the live copy: it reads `checkver` and `autoupdate`",
+        "below, finds the newest release and lifts the hash from the `.sha256` sidecar.",
+        "Nothing in this repository edits the bucket, and no token crosses between them.",
+        "",
+        "The release asset is `tapir-v<version>-x64.exe`; the `#/tapir.exe` fragment renames",
+        "the download so `bin` and `shortcuts` stay stable across versions.",
+        "build/releaseShape.test.ts holds this URL and .github/workflows/release.yml together.",
+        "",
+        "`persist` carries both folders Tapir keeps beside the exe. Under scoop they would",
+        "otherwise live inside the versioned app directory, which `scoop cleanup` and",
+        "`scoop uninstall` delete — and `recordings` is what the app exists for.",
+        "",
+        "`hash` is a placeholder until the first release exists to hash; the seeding step",
+        "replaces it with the sidecar's value."
+    ],
+    "version": "0.1.0",
+    "description": "Accessible Internet Radio Recorder for Windows",
+    "homepage": "https://github.com/ruslan-rv-ua/tapir",
+    "license": "MIT",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/ruslan-rv-ua/tapir/releases/download/v0.1.0/tapir-v0.1.0-x64.exe#/tapir.exe",
+            "hash": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+    },
+    "bin": "tapir.exe",
+    "shortcuts": [
+        [
+            "tapir.exe",
+            "Tapir"
+        ]
+    ],
+    "persist": [
+        "data",
+        "recordings"
+    ],
+    "checkver": "github",
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/ruslan-rv-ua/tapir/releases/download/v$version/tapir-v$version-x64.exe#/tapir.exe",
+                "hash": {
+                    "url": "$url.sha256"
+                }
+            }
+        }
+    }
+}

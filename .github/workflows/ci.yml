@@ -10,10 +10,15 @@ on:
   # No `paths` filter, deliberately: a filtered check never reports, and a
   # required check that never reports blocks the pull request forever with
   # nothing red to look at. A docs-only PR paying the full run is the price.
+  #
+  # `main` is the release branch — `release/` and `hotfix/` land there by pull
+  # request, and the tag a release is cut from sits on its merge commit. The
+  # same gates guard it, so the release workflow can read this run's verdict
+  # for the tagged commit instead of recomputing it (docs/release.md).
   pull_request:
-    branches: [develop]
+    branches: [develop, main]
   push:
-    branches: [develop]
+    branches: [develop, main]
   workflow_dispatch:
 
 permissions:
@@ -21,8 +26,9 @@ permissions:
 
 concurrency:
   # A superseded pull-request run is pointless — the new head replaces it.
-  # Runs on `push: develop` are never cancelled: they are the only ones allowed
-  # to write the caches every other run reads.
+  # Runs on `push:` are never cancelled: the one on `develop` is the only run
+  # allowed to write the caches every other run reads, and the one on `main`
+  # is the verdict the release workflow reads for the tagged commit.
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
@@ -81,8 +87,11 @@ jobs:
       - name: Save the pnpm store
         # Only the `push: develop` run writes. A cache written by a PR run is
         # scoped to that PR and unreachable by anyone else, yet it still evicts
-        # the one useful entry from the 10 GB limit.
-        if: github.event_name == 'push' && steps.pnpm-cache.outputs.cache-hit != 'true'
+        # the one useful entry from the 10 GB limit. `push: main` is excluded
+        # for the same reason: a cache on a non-default branch is reachable
+        # only from that branch and PRs into it — a second copy, not a shared
+        # one — while `main` itself can read the default branch's cache.
+        if: github.ref == 'refs/heads/develop' && steps.pnpm-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: ${{ steps.pnpm-store.outputs.path }}
@@ -124,7 +133,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-          save-if: ${{ github.event_name == 'push' }}
+          # `develop` only, for the reason given at the pnpm store above.
+          save-if: ${{ github.ref == 'refs/heads/develop' }}
 
       # No `-D warnings`: the deny level is set once, by `[lints.clippy]` in
       # src-tauri/Cargo.toml, so an editor, a terminal and this job all reach the

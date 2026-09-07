@@ -89,13 +89,13 @@ run together as `just check`, in that order: `vite:build` generates
 
 ### Continuous Integration
 
-The same six gates run on GitHub Actions — for every pull request into `develop`, for
-every push to `develop`, and on demand. The workflow is
+The same six gates run on GitHub Actions — for every pull request into `develop` or `main`,
+for every push to either, and on demand. The workflow is
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml); it is the source of truth for
 what runs, and this section only explains how to read it.
 
-`develop` is protected: both checks are required, and nobody — the repository owner
-included — can merge past a red one. A direct push to the trunk is refused outright.
+`develop` and `main` are protected: both checks are required, and nobody — the repository
+owner included — can merge past a red one. A direct push to either is refused outright.
 
 Two jobs, both on `windows-latest`, and their ids are the names GitHub shows as required
 checks:
@@ -119,6 +119,27 @@ clean clone" stays a question the gates actually answer.
 
 Why the gates refuse instead of advise, and which alternatives were rejected —
 [ADR](docs/decisions/2026-09-05-gates-refuse-rather-than-advise.md).
+
+### Releases
+
+A push of a `v*` tag runs [`.github/workflows/release.yml`](.github/workflows/release.yml):
+it checks that the tag names the version in `src-tauri/Cargo.toml`, that the tagged commit is
+on `main` with green checks, and that `CHANGELOG.md` has a section for the version; then it
+builds with the `release` profile (`just build`), verifies the exe's `VERSIONINFO`, and
+publishes `tapir-v<version>-x64.exe` with a `.sha256` sidecar on a GitHub Release. A tag with a
+suffix (`v0.1.0-rc.1`) becomes a pre-release. No installer, no archive, no code signature —
+the reasons are in the [ADR](docs/decisions/2026-09-07-release-is-one-bare-exe.md).
+
+Scoop is served from [ruslan-rv-ua/scoop-bucket](https://github.com/ruslan-rv-ua/scoop-bucket).
+Nothing here pushes to it: the bucket's Excavator reads `checkver`/`autoupdate` in its manifest,
+finds the new release and takes the hash from the sidecar. The manifest it was seeded from is
+[`packaging/scoop/tapir.json`](packaging/scoop/tapir.json), and
+[`build/releaseShape.test.ts`](build/releaseShape.test.ts) keeps its URL and the workflow's
+asset name identical. Under scoop the `data\` and `recordings\` folders are junctions into
+`~\scoop\persist\tapir\`, which is what lets them survive `scoop update`.
+
+The step-by-step procedure — release branch, tag, back-merge, bucket — is
+[docs/release.md](docs/release.md).
 
 Additional technical documentation is available in the `docs/` folder:
 - `docs/architecture.md`
