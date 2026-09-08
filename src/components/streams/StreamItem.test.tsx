@@ -5,6 +5,8 @@ import * as tauri from "../../lib/tauri";
 import { StreamItem } from "./StreamItem";
 import { $playerStatus } from "../../stores/player";
 import * as m from "../../i18n/paraglide/messages";
+import uk from "../../i18n/messages/uk.json";
+import en from "../../i18n/messages/en.json";
 
 // Stub the Tauri IPC layer — there is no backend in jsdom.
 vi.mock("../../lib/tauri", () => ({
@@ -452,5 +454,92 @@ describe("StreamItem — selection presentation", () => {
     const li = container.querySelector<HTMLElement>('li[data-segment="summary"]')!;
     expect(li.getAttribute("aria-label")).toBe("Radio Paradise");
     expect(li.getAttribute("data-selected")).toBeNull();
+  });
+});
+
+describe("StreamItem — the row name says every fact, not the loudest one", () => {
+  // Ідучи стрілками вгору/вниз, людина чує рівно ім'я рядка: сегменти лежать за
+  // Стрілкою вправо, а заливка й значки фаз від скрінрідера сховані. Тому кожен
+  // факт, який видно оком, мусить бути в імені — і фаза запису теж, бо саме її
+  // друге натискання скасовує (запис `row-silent-while-connecting`).
+  const mkState = (state: StreamStatus["state"]): StreamStatus => ({
+    streamId: "s1",
+    state,
+    currentTrack: null,
+    recordingStartedAt: state === "recording" ? new Date().toISOString() : null,
+    bytesRecorded: 0,
+    tracksRecorded: 0,
+    error: state === "error" ? "station_unreachable" : null,
+    reconnectAttempt: state === "reconnecting" ? 1 : null,
+    reconnectMaxRetries: state === "reconnecting" ? 10 : null,
+    sessionId: 0,
+  });
+
+  const playThisStream = () =>
+    $playerStatus.set({
+      state: "playing",
+      source: { type: "stream", streamId: "s1" },
+      volume: 0.75,
+      positionMs: null,
+      durationMs: null,
+    });
+
+  const nameOf = (container: HTMLElement) =>
+    container.querySelector<HTMLElement>('li[data-segment="summary"]')!.getAttribute("aria-label");
+
+  // Десять випадків = п'ять станів × «грає / не грає». `null` — рядок каже саму
+  // назву: «Очікування» вже означає відсутність слова, писати його зайве.
+  const table: Array<[StreamStatus["state"], boolean, string | null]> = [
+    ["idle", false, null],
+    ["idle", true, m.segment_playing()],
+    ["connecting", false, m.status_connecting_label()],
+    ["connecting", true, m.status_connecting_and_playing()],
+    ["reconnecting", false, m.status_reconnecting_label()],
+    ["reconnecting", true, m.status_reconnecting_and_playing()],
+    ["recording", false, m.status_recording_label()],
+    ["recording", true, m.status_recording_and_playing()],
+    ["error", false, m.status_error()],
+    ["error", true, m.status_error_and_playing()],
+  ];
+
+  it.each(table)("%s, playing: %s — names the state before the stream", (state, playing, expected) => {
+    if (playing) playThisStream();
+    const { container } = renderItem(mkStream(), mkState(state));
+    expect(nameOf(container)).toBe(expected ? `${expected}, Radio Paradise` : "Radio Paradise");
+  });
+
+  it("keeps the phase in the name of a selected row, before the suffix", () => {
+    const { container } = render(
+      <ul>
+        <StreamItem
+          stream={mkStream()}
+          status={mkState("connecting")}
+          isActiveRow={false}
+          isSelected
+          isFocused={(seg) => seg === "summary"}
+          onDelete={() => {}}
+          onCopyToProfile={() => {}}
+          onMoveToProfile={() => {}}
+          onCopyUrl={() => {}}
+          onOpenInPlayer={() => {}}
+        />
+      </ul>,
+    );
+    expect(nameOf(container)).toBe(
+      `${m.status_connecting_label()}, Radio Paradise, ${m.selection_suffix()}`,
+    );
+  });
+
+  it("says the phase without the segment's ellipsis — in both locales", () => {
+    // Три крапки в словнику належать клітинці стану («Підключення...») — в імені
+    // рядка вони читались би вголос як пауза ні про що. Перевіряємо словники, а
+    // не `m.*`: ті віддають лише поточну локаль, тож крапки, дописані в другу,
+    // сторож проґавив би.
+    for (const dict of [uk, en]) {
+      expect(dict.status_connecting_label).not.toMatch(/\.\.\./);
+      expect(dict.status_reconnecting_label).not.toMatch(/\.\.\./);
+      expect(dict.status_connecting_and_playing).not.toMatch(/\.\.\./);
+      expect(dict.status_reconnecting_and_playing).not.toMatch(/\.\.\./);
+    }
   });
 });

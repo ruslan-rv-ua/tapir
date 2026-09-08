@@ -14,7 +14,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 саме вони визначають, чи версія закриється. Колонка «Суть» — поле `summary:` запису
 (без нього — `title:`).
 ♿ — запис зачіпає доступність (`a11y: true`), приймання потребує NVDA-прогону.
-Виконані записи (102) — у [done/README.md](done/README.md), спадок кожного — у секції
+Виконані записи (103) — у [done/README.md](done/README.md), спадок кожного — у секції
 «Спадок» його файлу.
 
 ---
@@ -50,7 +50,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > поверхонь не з'являється, IPC не міняється, а вже встановлені копії лишаються зі
 > своїми значеннями, бо міграцій немає.
 
-У черзі: 4. Виконано: 0.
+У черзі: 4. Виконано: 1.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
@@ -126,7 +126,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > Найперше рішення для цієї секції — **gate A4** ([mpv-playback-engine](p3-mpv-playback-engine.md)):
 > його «go» закриває два інші записи разом.
 
-У черзі: 11. Виконано: 3.
+У черзі: 12. Виконано: 3.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
@@ -141,3 +141,4 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 | [cli-answers-only-with-exit-code](p3-cli-answers-only-with-exit-code.md) | P3 | idea | draft | S | — | — | спірна — `--version` і `--help` не друкують нічого (код 0 без `e.print()`); перше питання — чи GUI-застосунок узагалі має відповідати в консолі |
 | [command-palette-mode-prefixes](p3-command-palette-mode-prefixes.md) ♿ | P3 | idea | draft | S | [command-palette-phase-3](p1-command-palette-phase-3.md) | — | спірна — українська розкладка без `>`/`@` |
 | [help-style-guide-extract](p3-help-style-guide-extract.md) | P3 | planned | draft | S | [help-word-floor](done/p2-help-word-floor.md) ✅ | — | стиль-гайд довідки лежить у закритому `help-content-polish`, тест цитує його за slug'ом; чистий рефакторинг адреси, три відкриті питання |
+| [recording-start-speaks-three-times](p3-recording-start-speaks-three-times.md) ♿ | P3 | idea | draft | S | [row-silent-while-connecting](done/p1-row-silent-while-connecting.md) ✅ | — | тригер-gated: одна дія дає «Підключення…», «Записується…», «Запис розпочато…»; вертатись, лише коли людина скаже, що заважає |
