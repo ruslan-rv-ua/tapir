@@ -1,14 +1,15 @@
 ---
 slug: row-silent-while-connecting
 title: "Поки потік підключається, рядок про це мовчить — і людина скасовує власне підключення"
-summary: "Резюме рядка називає запис, відтворення й помилку, але не підключення; фазу видно оком і не чути вухом, тож друге натискання скасовує почате"
+summary: "Ім'я рядка несе кожен факт, а не найгучніший: десять випадків у stateLabelFor; нормативна таблиця імені живе в docs/accessibility.md"
 priority: P1
 type: planned
-status: ready
+status: done
 effort: S
 kind: bug
 target: 0.1.1
 updated: 2026-09-08
+completed: 2026-09-08
 a11y: true
 depends_on: [record-action-lies-while-connecting]
 blocks: []
@@ -28,7 +29,7 @@ notes:
 
 > **Контекст:** знахідка користувача 2026-09-08, грилінг того ж дня. Рішення — у
 > розділі «Ухвалені рішення»; реалізатору досить таблиці в ньому. Сусідній запис, чию
-> межу цей уточнює, — [record-action-lies-while-connecting](done/p1-record-action-lies-while-connecting.md).
+> межу цей уточнює, — [record-action-lies-while-connecting](p1-record-action-lies-while-connecting.md).
 
 ## Опис
 
@@ -45,8 +46,8 @@ notes:
 Ланцюг, звірений з кодом:
 
 1. Стрілки вгору/вниз ведуть по рядках. Ім'я рядка для NVDA — це його `aria-label`
-   ([CompositeRow.tsx](../../src/components/common/composite-list/CompositeRow.tsx)),
-   а туди їде `summaryLabel` з [StreamItem.tsx](../../src/components/streams/StreamItem.tsx).
+   ([CompositeRow.tsx](../../../src/components/common/composite-list/CompositeRow.tsx)),
+   а туди їде `summaryLabel` з [StreamItem.tsx](../../../src/components/streams/StreamItem.tsx).
 2. Слово про стан складає `stateLabel` у тому ж файлі. Воно знає запис, відтворення,
    їх поєднання й помилку. Для `connecting` і `reconnecting` не підходить жодна гілка,
    і слова не з'являється зовсім.
@@ -62,7 +63,7 @@ notes:
 Далі спрацьовує прийняте (і правильне) рішення: **запис існує від команди «почати»**,
 підключення — його фаза. Тому друге натискання «Записати» на такому рядку не починає
 запис, а **зупиняє** його — разом із підключенням
-([recordingToggle.ts](../../src/lib/recordingToggle.ts), `isRecordingLike`). Людина
+([recordingToggle.ts](../../../src/lib/recordingToggle.ts), `isRecordingLike`). Людина
 чує «Запис зупинено: <назва>», хоча щойно думала, що починає.
 
 Замкнене коло: не чути фазу → натиснути ще раз → скасувати те, що вже йшло.
@@ -77,9 +78,9 @@ notes:
 
 Коли команда «почати» прийнята, потік іде в `connecting`. Оголошення про цей перехід
 немає свідомо — `selectRecordingAnnouncement`
-([recordingAnnounce.ts](../../src/lib/recordingAnnounce.ts)) для `connecting` і
+([recordingAnnounce.ts](../../../src/lib/recordingAnnounce.ts)) для `connecting` і
 `reconnecting` мовчить, щоб не сипати репліками на кожну спробу перепідключення
-([ADR 2026-09-06 §4](../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md)).
+([ADR 2026-09-06 §4](../../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md)).
 Ім'я рядка теж не міняється — з причини вище. Отже після Enter на рядку людина не чує
 **нічого** аж до успіху або поразки.
 
@@ -94,13 +95,13 @@ notes:
 
 ## Чому це не скасування чужого рішення
 
-Запис [record-action-lies-while-connecting](done/p1-record-action-lies-while-connecting.md)
+Запис [record-action-lies-while-connecting](p1-record-action-lies-while-connecting.md)
 свідомо лишив слово «Записується» в резюме рядка за станом `recording`: воно про байти,
 що йдуть. Ця межа **не** забороняє сказати «Підключення» — вона забороняє назвати
 підключення записом. Тобто правка додає слово про фазу, а не розширює слово про запис.
 
 Видимий носій для нового слова вже на екрані — той самий сегмент стану, тож правило
-[видимого носія](../decisions/2026-08-31-visible-carrier-for-announced-facts.md)
+[видимого носія](../../decisions/2026-08-31-visible-carrier-for-announced-facts.md)
 виконане наперед.
 
 Прецедент форми теж є: «Помилка» стоїть у резюме рядка, а причину помилки несе сегмент.
@@ -171,7 +172,7 @@ notes:
   висловів поспіль забагато, це окремий запис, і цей на нього не чекає.
 - **Кнопку по фазах не переназиваємо** — відхилено в записі про кнопку.
 - **Номер спроби в резюме не несемо.** «Спроба N з M» — деталь сегмента, і в неї свій
-  запис [reconnect-counter-not-live](p2-reconnect-counter-not-live.md).
+  запис [reconnect-counter-not-live](../p2-reconnect-counter-not-live.md).
 - **Фільтри й метрики лишаються як є** — вони рахують потоки, а не називають рядок.
 
 ## Критерії готовності
@@ -186,14 +187,15 @@ notes:
       `streams.md`; правити лише якщо розійшлись
 - [x] `docs/accessibility.md` — таблиця імені рядка описує всі десять випадків
 - [x] `pnpm test`, `pnpm typecheck`, `pnpm vite:build`, `pnpm lint` — без помилок
-- [ ] NVDA-прогін за чеклістом
-      [nvda-row-silent-while-connecting.md](../testing/nvda-row-silent-while-connecting.md):
+- [x] NVDA-прогін за чеклістом `nvda-row-silent-while-connecting.md` (видалено на
+      прийнятті, як велить скіл) — 2026-09-08, чисто:
       - рух стрілками по потоку, що підключається, називає фазу;
       - Enter на самому рядку дає відповідь одразу, без окремої репліки;
       - потік, що перепідключається, не перетворює рядок на балакуна;
-      - **окремо послухати мить, коли запис почався на швидкій станції**: три вислови
-        поспіль — стерпно чи ні (рішення 3). Відповідь «ні» не тримає цей запис —
-        заводиться окремий
+      - мить старту на швидкій станції: вердикт **«поки що не ясно, чи дратує»** —
+        не «не перевірили», а «перевірили й не вирішили». Приймання це не тримає
+        (рішення 3); відщеплено в тригер-gated запис
+        [recording-start-speaks-three-times](../p3-recording-start-speaks-three-times.md)
 
 ## Знайдено під час реалізації
 
@@ -217,12 +219,49 @@ notes:
   `switch` без `default` стереже **лише** ім'я рядка: новий стан у `StreamState` мовчки
   провалиться в «Очікування» в сегменті й у «без значка» в R-слоті.
 
+## Спадок
+
+Ім'я рядка потоку тепер несе **кожен** факт, а не найгучніший з них: стрілки вгору/вниз
+читають саме його, сегменти лежать за Стрілкою вправо, а заливка й значки фаз від
+скрінрідера сховані. Правило й повна таблиця з десяти випадків живуть у двох місцях —
+`stateLabelFor` у `StreamItem.tsx` (один `switch` без `default`: новий стан у
+`StreamState` зупинить типізацію) і нормативна таблиця в `docs/accessibility.md`.
+Слова для імені йдуть **без трьох крапок** — крапки належать клітинці стану.
+
+**Правило, заради якого варто читати запис:** фаза запису звучить нарівні із самим
+записом, бо саме її скасовує друге натискання «Записати». Стара межа сусіднього запису
+(«Записується» — тільки коли йдуть байти) лишилась чинною: правка додала слово про фазу,
+а не розширила слово про запис.
+
+**Відхилено:** фаза перекриває відтворення в імені (ім'я замовчувало б правду — рівно те,
+що запис лікує); спільне слово на обидві фази (рядок перестав би розрізняти «підключаюсь
+уперше» і «станція впала»); прибрати репліку «Запис розпочато» (запуск із палітри чи
+гарячою клавішею став би німим). Форма слів навмисно різна — «Записується і
+відтворюється» двома дієсловами, «Підключення і відтворення» двома іменниками; зводити
+до одного зразка не треба.
+
+**Урок ширший за запис:** документ вимог старіє тихіше за довідку. Грилінг вписав у
+критерії лише `docs/help/`, і код розійшовся з таблицею імені рядка в
+`docs/accessibility.md`; знайшло це рев'ю. Поруч у тій самій таблиці лежала старіша
+розбіжність — сегмент для `error` значився як «Очікування» з часів ADR 2026-09-06 §5.
+Довідку ж треба перевіряти по суті, а не по обіцянці: обіцянка «очікує, підключення,
+запис…» була правдою, а розійшовся перелік поєднань поруч із нею.
+
+**Свідомо не зроблено:** `stateLabelFor` — четвертий каскад по `StreamState` у файлі
+(значок R-слота, значення сегмента, його роль); звести їх в одну мапу означало б чіпати
+заливку, значки й сегменти, тобто все, що межі лишали недоторканим. Вичерпність `switch`
+стереже **лише** ім'я рядка.
+
+**NVDA-прогін 2026-09-08: чисто.** Єдиний невирішений пункт — три вислови в мить старту
+на швидкій станції; вердикт «поки що не ясно, чи дратує» відщеплено в тригер-gated
+[recording-start-speaks-three-times](../p3-recording-start-speaks-three-times.md).
+
 ## Документи
 
-- [record-action-lies-while-connecting](done/p1-record-action-lies-while-connecting.md) — межа, яку цей запис уточнює
-- [error-state-never-reaches-ui](done/p1-error-state-never-reaches-ui.md) — прецедент: «Помилка» в імені рядка
-- [reconnect-counter-not-live](p2-reconnect-counter-not-live.md) — сусід про той самий рядок під час боротьби
-- [ADR 2026-09-06](../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md) — чому фази мовчать у репліках
-- [ADR 2026-08-31](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) — правило видимого носія
-- [CONTEXT.md](../../CONTEXT.md) §«Запис і Записи» — запис існує від команди «почати»
+- [record-action-lies-while-connecting](p1-record-action-lies-while-connecting.md) — межа, яку цей запис уточнює
+- [error-state-never-reaches-ui](p1-error-state-never-reaches-ui.md) — прецедент: «Помилка» в імені рядка
+- [reconnect-counter-not-live](../p2-reconnect-counter-not-live.md) — сусід про той самий рядок під час боротьби
+- [ADR 2026-09-06](../../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md) — чому фази мовчать у репліках
+- [ADR 2026-08-31](../../decisions/2026-08-31-visible-carrier-for-announced-facts.md) — правило видимого носія
+- [CONTEXT.md](../../../CONTEXT.md) §«Запис і Записи» — запис існує від команди «почати»
 - шляхи коду: `src/components/streams/StreamItem.tsx`, `src/components/common/composite-list/CompositeRow.tsx`, `src/lib/recordingToggle.ts`, `src/lib/recordingAnnounce.ts`
