@@ -29,6 +29,8 @@
    `git pull`.
 2. **Версія.** `version` у `src-tauri/Cargo.toml` → `X.Y.Z`; `cargo update -p tapir` оновлює
    `Cargo.lock`. Це єдине джерело версії ([single-version-source](backlog/done/p2-single-version-source.md)).
+   Версію піднімають на початку циклу, одразу після попереднього релізу, тож тут це найчастіше
+   **звірка**: `develop` уже несе `X.Y.Z` — правити нічого.
 3. **CHANGELOG.** Секція `## [X.Y.Z] — Unreleased` у `CHANGELOG.md` стає
    `## [X.Y.Z] — YYYY-MM-DD`; зміст — переказ записів `docs/backlog/done/` із `target: X.Y.Z`
    мовою користувача, англійською. Пишеться агентом, читається людиною в PR. Порожню секцію

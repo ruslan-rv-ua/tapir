@@ -19,6 +19,8 @@ All notable changes to Tapir are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and Tapir uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] — Unreleased
+
 ## [0.1.0] — 2026-09-07
 
 The first public build. Everything below is new.

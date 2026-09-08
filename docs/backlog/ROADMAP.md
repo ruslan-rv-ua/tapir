@@ -31,13 +31,38 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 
 ---
 
+## v0.1.1
+
+> **Тема — те, що обіцяно, але не працює.** Патч до випущеного 0.1.0: тільки записи
+> `kind: bug`, жодної нової поверхні, жодного нового `ToastKind`. Критерій відбору
+> подвійний — дефект видно в тому, що вже відвантажено людям, і виправлення лишається
+> всередині наявного механізму (IPC і набір поверхонь не міняються). Версія закрита,
+> коли код перестає розходитися з тим, що вже обіцяно: довідка обіцяє номер спроби
+> перепідключення, застосунок обіцяє сказати про вимкнений автозапуск, докоментар трея
+> обіцяє `cold=resume-last`. Пряме продовження *чесного інтерфейсу* 0.1.0 — цього разу
+> проти вже випущеної збірки. Четвертий запис,
+> [stale-search-overwrites-results](p2-stale-search-overwrites-results.md), стоїть тут
+> **умовно**: лишається у версії, лише якщо грилінг закриє розвилку варіантом, що не
+> чіпає IPC.
+
+У черзі: 4. Виконано: 0.
+
+| Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
+|------|---|-----|------|---------|---------------|-------------|------|
+| [autostart-notice-lost-when-minimized](p2-autostart-notice-lost-when-minimized.md) ♿ | P2 | planned | ready | S | [hotkey-registration-silent-at-startup](done/p1-hotkey-registration-silent-at-startup.md) ✅ | — | репліка про автозапуск переїжджає на гейт «перший показ вікна»; гейт витягти в спільний тип, не копіювати |
+| [reconnect-counter-not-live](p2-reconnect-counter-not-live.md) | P2 | planned | draft | S | [reconnect-max-in-status](done/p2-reconnect-max-in-status.md) ✅ | — | пара «спроба N з M» їде правильним каналом, але канал не оновлюється під час запису; знахідка реалізації 2026-09-02, потрібен grooming каналу |
+| [stale-search-overwrites-results](p2-stale-search-overwrites-results.md) | P2 | planned | draft | S | [load-more-retry-skips-failed-page](done/p2-load-more-retry-skips-failed-page.md) ✅ | — | клас «стан розійшовся з екраном»: дві заміни в польоті, пізня кладе результати критеріїв, яких уже немає; квиток із load-more-retry підходить, грилити |
+| [tray-cannot-resume-last](p2-tray-cannot-resume-last.md) ♿ | P2 | planned | draft | S | [tray-toggle-label-vs-action](done/p2-tray-toggle-label-vs-action.md) ✅ | — | знахідка grilling 2026-09-03: пункт трея сірий, хоча `Ctrl+Shift+K` у тому самому стані відновлює останнє джерело |
+
+---
+
 ## v0.2.0
 
 > **Тема — фічі з готовим дизайном.** Записи, де рішення вже ухвалені (`type: planned`)
 > і лишилася реалізація, включно з останньою незакритою фазою застосунку —
 > **3H Post-processing**.
 
-У черзі: 11. Виконано: 12.
+У черзі: 10. Виконано: 12.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
@@ -46,7 +71,6 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 | [command-palette-phase-3](p1-command-palette-phase-3.md) ♿ | P1 | planned | ready | S | — | [command-palette-phase-4](p2-command-palette-phase-4.md), [command-palette-mode-prefixes](p3-command-palette-mode-prefixes.md) | Командна палітра — Фаза 3: розширення контенту (пісні, навігація) |
 | [import-duplicate-metadata-update](p2-import-duplicate-metadata-update.md) ♿ | P2 | planned | ready | M | — | — | рішення ухвалено 2026-07-23 |
 | [wishlist-match-tray-notification](p2-wishlist-match-tray-notification.md) ♿ | P2 | planned | ready | M | [wishlist-match-invisible](done/p1-wishlist-match-invisible.md) ✅ | — | четверта категорія `ToastKind`; слід, без якого гейт прапорцем був би заборонений, тепер є — журнал збігів |
-| [autostart-notice-lost-when-minimized](p2-autostart-notice-lost-when-minimized.md) ♿ | P2 | planned | ready | S | [hotkey-registration-silent-at-startup](done/p1-hotkey-registration-silent-at-startup.md) ✅ | — | репліка про автозапуск переїжджає на гейт «перший показ вікна»; гейт витягти в спільний тип, не копіювати |
 | [stream-failure-tray-toast](p2-stream-failure-tray-toast.md) ♿ | P2 | planned | ready | S | [error-state-never-reaches-ui](done/p1-error-state-never-reaches-ui.md) ✅ | — | ADR 2026-09-06 §6: у згорнутому вікні поверхня — система; нова категорія `ToastKind` зі своїм прапорцем, звірити з wishlist-match-tray-notification |
 | [focus-active-item-on-playback-start](p2-focus-active-item-on-playback-start.md) ♿ | P2 | idea | draft | S | — | — | Автофокус на елементі при старті відтворення |
 | [streams-list-search](p2-streams-list-search.md) ♿ | P2 | idea | draft | S | — | — | гачок уже стоїть: `ZoneEntry.focusSearch?()` із search-focus-hotkey; зникне репліка «на цьому екрані немає пошуку» |
@@ -63,7 +87,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > тут — хвости грилінгів, їм потрібен **GROOMING**, а не обговорення; `research`/`draft` —
 > дослідження, не обговорення.
 
-У черзі: 19. Виконано: 0.
+У черзі: 18. Виконано: 0.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
@@ -77,7 +101,6 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 | [focus-on-screen-open-option](p2-focus-on-screen-open-option.md) ♿ | P2 | idea | draft | S | — | — | Налаштування фокуса при відкритті екрана |
 | [list-shift-range-to-edge](p2-list-shift-range-to-edge.md) ♿ | P2 | planned | draft | S | [list-key-modifier-guards](done/p2-list-key-modifier-guards.md) ✅ | — | хвіст грилінгу list-key-modifier-guards: `Shift+↑/↓` є, `Shift+Home`/`End` немає; батьківський запис зробив їх інертними, щоб фічу додавали, а не перевчали |
 | [sleep-timer](p2-sleep-timer.md) ♿ | P2 | idea | draft | S | — | — | Sleep Timer — зупинити відтворення/запис через X хвилин |
-| [tray-cannot-resume-last](p2-tray-cannot-resume-last.md) ♿ | P2 | planned | draft | S | [tray-toggle-label-vs-action](done/p2-tray-toggle-label-vs-action.md) ✅ | — | знахідка grilling 2026-09-03: пункт трея сірий, хоча `Ctrl+Shift+K` у тому самому стані відновлює останнє джерело |
 | [wishlist-separate-folder](p2-wishlist-separate-folder.md) | P2 | idea | draft | S | — | — | Окрема папка для записів із вішліста |
 | [lastfm-scrobbling](p3-lastfm-scrobbling.md) | P3 | idea | draft | M | — | — | Last.fm скробблінг — автоматична відправка прослуханих треків |
 | [ts-rs-drift-guard](p3-ts-rs-drift-guard.md) | P3 | research | draft | M | [tauri-ts-type-drift](done/p2-tauri-ts-type-drift.md) ✅ | — | хвіст грилінгу tauri-ts-type-drift: сторож дрейфу `tauri.ts` проти Rust на ts-rs 12 «лише типи»; 12 розбіжностей за місяць — постійна ціна |
@@ -97,13 +120,11 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > Найперше рішення для цієї секції — **gate A4** ([mpv-playback-engine](p3-mpv-playback-engine.md)):
 > його «go» закриває два інші записи разом.
 
-У черзі: 13. Виконано: 3.
+У черзі: 11. Виконано: 3.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
 | [disk-space-monitor](p2-disk-space-monitor.md) ♿ | P2 | planned | draft | M | — | — | знахідка architecture-doc-drift: §8 описував нагляд за місцем як робочий — події, щохвилинна перевірка, автозупинка, — а в коді немає нічого; не грилений |
-| [reconnect-counter-not-live](p2-reconnect-counter-not-live.md) | P2 | planned | draft | S | [reconnect-max-in-status](done/p2-reconnect-max-in-status.md) ✅ | — | пара «спроба N з M» їде правильним каналом, але канал не оновлюється під час запису; знахідка реалізації 2026-09-02, потрібен grooming каналу |
-| [stale-search-overwrites-results](p2-stale-search-overwrites-results.md) | P2 | planned | draft | S | [load-more-retry-skips-failed-page](done/p2-load-more-retry-skips-failed-page.md) ✅ | — | клас «стан розійшовся з екраном»: дві заміни в польоті, пізня кладе результати критеріїв, яких уже немає; квиток із load-more-retry підходить, грилити |
 | [hls-stream-support](p3-hls-stream-support.md) ♿ | P3 | idea | draft | L | — | — | залежить від рішення mpv-playback-engine |
 | [mpv-playback-engine](p3-mpv-playback-engine.md) ♿ | P3 | research | draft | L | — | [hls-stream-support](p3-hls-stream-support.md), [he-aac-mf-playback](p3-he-aac-mf-playback.md) | розвилка A4 (PoC-gate): «go» закриває he-aac-mf-playback і hls-stream-support разом; робити першим серед декодер-записів |
 | [stream-auth](p3-stream-auth.md) ♿ | P3 | research | draft | L | — | — | брати лише за реальною потребою (станція з платним/приватним mountpoint) |

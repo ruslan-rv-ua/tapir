@@ -4,6 +4,8 @@
 
 **0.1.0 released 2026-09-07** — tag on `main`, a GitHub Release with the bare exe, and a
 scoop manifest in the bucket; how a version ships is [docs/release.md](docs/release.md).
+`develop` has carried **0.1.1** since 2026-09-08 (`src-tauri/Cargo.toml`, the one file that
+holds the version): a patch made of `kind: bug` records only — no new surfaces, no IPC changes.
 Work towards the next version is queued **by target version in the backlog**, not by phase;
 Post-processing (3H) is the last phase still open and is planned for 0.2.0.
 Still 0.x: breaking changes are expected at any time — no migrations, no backward-compatibility

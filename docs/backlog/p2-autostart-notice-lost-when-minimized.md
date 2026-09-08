@@ -7,8 +7,8 @@ type: planned
 status: ready
 effort: S
 kind: bug
-target: 0.2.0
-updated: 2026-09-02
+target: 0.1.1
+updated: 2026-09-08
 a11y: true
 depends_on: [hotkey-registration-silent-at-startup]  # done/
 blocks: []
@@ -19,6 +19,7 @@ touches:
 gates: [cargo test, pnpm test]
 notes:
   - "Знахідка grilling hotkey-registration-silent-at-startup (2026-09-02): та сама діра, що й у репліки про зайняту комбінацію."
+  - "2026-09-08: перенесено з 0.2.0 у 0.1.1 — єдиний баг зі status: ready; репліка вже написана й обіцяна, лишається дати їй дожити до показу вікна. Нової поверхні не додає."
 ---
 
 # Репліка про вимкнений автозапуск губиться при старті згорнутим
