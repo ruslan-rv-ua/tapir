@@ -7,12 +7,14 @@ status: draft
 effort: S
 kind: feature
 target: 0.3.0
-updated: 2026-08-17
+updated: 2026-09-08
 a11y: true
 depends_on: []
 blocks: []
 touches: [src-tauri/src/profile.rs, src-tauri/src/commands/songs_commands.rs, src/components/settings, src/components/songs]
 gates: [pnpm test, cargo test]
+notes:
+  - "Панель «над / під списком треків» упирається в ADR 2026-09-08 «Екран не повторює власне число»: числа в ній мають бути власними (сумарний час, топ станцій), а не повтором того, що вже стоїть на екрані пісень. Прочитати ADR перед вибором форми."
 ---
 
 # Статистика запису — скільки записано, топ станцій
