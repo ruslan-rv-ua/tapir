@@ -50,10 +50,11 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > поверхонь не з'являється, IPC не міняється, а вже встановлені копії лишаються зі
 > своїми значеннями, бо міграцій немає.
 
-У черзі: 4. Виконано: 0.
+У черзі: 5. Виконано: 0.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
+| [row-silent-while-connecting](p1-row-silent-while-connecting.md) ♿ | P1 | planned | ready | S | [record-action-lies-while-connecting](done/p1-record-action-lies-while-connecting.md) ✅ | — | Резюме рядка називає запис, відтворення й помилку, але не підключення; фазу видно оком і не чути вухом, тож друге натискання скасовує почате |
 | [autostart-notice-lost-when-minimized](p2-autostart-notice-lost-when-minimized.md) ♿ | P2 | planned | ready | S | [hotkey-registration-silent-at-startup](done/p1-hotkey-registration-silent-at-startup.md) ✅ | — | репліка про автозапуск переїжджає на гейт «перший показ вікна»; гейт витягти в спільний тип, не копіювати |
 | [reconnect-counter-not-live](p2-reconnect-counter-not-live.md) | P2 | planned | draft | S | [reconnect-max-in-status](done/p2-reconnect-max-in-status.md) ✅ | — | пара «спроба N з M» їде правильним каналом, але канал не оновлюється під час запису; знахідка реалізації 2026-09-02, потрібен grooming каналу |
 | [stale-search-overwrites-results](p2-stale-search-overwrites-results.md) | P2 | planned | draft | S | [load-more-retry-skips-failed-page](done/p2-load-more-retry-skips-failed-page.md) ✅ | — | клас «стан розійшовся з екраном»: дві заміни в польоті, пізня кладе результати критеріїв, яких уже немає; квиток із load-more-retry підходить, грилити |
