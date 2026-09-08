@@ -359,7 +359,14 @@ mod tests {
     /// зв'язок «зняв балаканину про треки — втратив розклад» і був багом.
     #[test]
     fn track_change_and_scheduled_gate_independently() {
-        let mut ui = UiSettings::default();
+        // Починаємо з обох увімкнених — це стан, який людина вмикає руками;
+        // `UiSettings::default()` тепер мовчить, і брати його за відправну
+        // точку означало б перевіряти вимкнене двічі.
+        let mut ui = UiSettings {
+            tray_notifications_track_change: true,
+            tray_notifications_scheduled: true,
+            ..UiSettings::default()
+        };
         assert!(is_enabled(ToastKind::TrackChange, &ui));
         assert!(is_enabled(ToastKind::Scheduled, &ui));
 
@@ -371,6 +378,19 @@ mod tests {
         ui.tray_notifications_scheduled = false;
         assert!(is_enabled(ToastKind::TrackChange, &ui), "треки не залежать від розкладу");
         assert!(!is_enabled(ToastKind::Scheduled, &ui));
+    }
+
+    /// Умовчання версії: свіжий профіль не смикає систему тостами. Гейтів
+    /// два, і вимкнені обидва — «тихо» не означає «тихо про треки».
+    #[test]
+    fn a_fresh_profile_stays_quiet() {
+        let ui = UiSettings::default();
+        assert!(!is_enabled(ToastKind::TrackChange, &ui));
+        assert!(!is_enabled(ToastKind::Scheduled, &ui));
+        assert!(
+            is_enabled(ToastKind::HotkeyFeedback, &ui),
+            "відповідь на натиснуту клавішу — не сповіщення, і прапорця не має"
+        );
     }
 
     /// Відповідь на фоновий хоткей не вимикається нічим: іншого сліду

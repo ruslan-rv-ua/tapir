@@ -248,7 +248,7 @@ impl RecordingSettings {
 /// фільтра ОС-межі («нічний сценарій — тихо»), просто втілений двома полями:
 /// категорій тостів дві, і кожна вимикається окремо (ADR 2026-08-17 про
 /// категорії тостів). Рахувати їх як два винятки не можна.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UiSettings {
     /// Enum, а не `String`: тип каже те, що досі казав коментар і звужувала
@@ -258,9 +258,18 @@ pub struct UiSettings {
     /// `deserialize_log_level`, а не відмова від типу.
     #[serde(default, deserialize_with = "deserialize_stream_sort")]
     pub stream_sort: StreamSort,
-    #[serde(default = "default_true")]
+    /// Свіжий профіль мовчить: тост у зоні сповіщень Windows — те, що людина
+    /// вмикає, коли їй це потрібно, а не те, чим Tapir вітається. Відповідь на
+    /// глобальну клавішу цим не гейтиться й гейтитись не може — у неї немає
+    /// іншої поверхні (`is_enabled` у `tray/notify.rs`).
+    ///
+    /// `#[serde(default)]`, а не `default_true`: дефолт у коді один — той
+    /// самий, що дає `Default`, — тож профіль без ключа читається так само, як
+    /// щойно створений. Міграції немає: файли, які ці ключі вже несуть, а їх
+    /// пише кожна версія від 0.1.0, лишаються зі своїми значеннями.
+    #[serde(default)]
     pub tray_notifications_track_change: bool,
-    #[serde(default = "default_true")]
+    #[serde(default)]
     pub tray_notifications_scheduled: bool,
 }
 
@@ -289,16 +298,6 @@ where
         Some("added") => StreamSort::Added,
         _ => StreamSort::Name,
     })
-}
-
-impl Default for UiSettings {
-    fn default() -> Self {
-        Self {
-            stream_sort: StreamSort::default(),
-            tray_notifications_track_change: true,
-            tray_notifications_scheduled: true,
-        }
-    }
 }
 
 // --- PostprocessConfig ---
@@ -856,24 +855,30 @@ mod tests {
 
     // --- Profile-scoped settings (profile-scoped-settings) ---
 
+    /// Свіжий профіль мовчить (рішення 2026-09-08). Перевіряються обидва
+    /// прапорці окремо: «тихо» — це дві вимкнені категорії, а не одна.
     #[test]
     fn ui_settings_defaults() {
         let u = UiSettings::default();
         assert_eq!(u.stream_sort, StreamSort::Name);
-        assert!(u.tray_notifications_track_change);
-        assert!(u.tray_notifications_scheduled);
+        assert!(!u.tray_notifications_track_change);
+        assert!(!u.tray_notifications_scheduled);
     }
 
     /// Профіль, записаний до розділення прапорця, читається без помилки, а
-    /// обидві категорії піднімаються ввімкненими. Міграції немає свідомо:
-    /// `UiSettings` без `deny_unknown_fields`, тож старе поле просто зникає.
+    /// старе поле просто зникає: `UiSettings` без `deny_unknown_fields`,
+    /// міграції немає свідомо.
+    ///
+    /// Раніше обидві категорії піднімалися **ввімкненими** — це робив
+    /// `#[serde(default = "default_true")]`. З 2026-09-08 дефолт у коді один,
+    /// і такий файл читається так само, як будь-який інший без цих ключів.
     #[test]
-    fn profile_with_pre_split_tray_flag_reads_with_both_categories_on() {
+    fn a_pre_split_tray_flag_does_not_fail_the_profile() {
         let json = r#"{"name":"T","ui":{"streamSort":"added","trayNotifications":false}}"#;
         let p: Profile = serde_json::from_str(json).unwrap();
         assert_eq!(p.ui.stream_sort, StreamSort::Added);
-        assert!(p.ui.tray_notifications_track_change);
-        assert!(p.ui.tray_notifications_scheduled);
+        assert!(!p.ui.tray_notifications_track_change);
+        assert!(!p.ui.tray_notifications_scheduled);
     }
 
     /// Ціна, за яку `stream_sort` став enum: невідоме значення не має завалити
@@ -886,7 +891,7 @@ mod tests {
                 .unwrap_or_else(|e| panic!("streamSort {raw} must not fail the load: {e}"));
             assert_eq!(p.ui.stream_sort, StreamSort::Name);
             // Решта профілю читається так само, як і без цього поля.
-            assert!(p.ui.tray_notifications_track_change);
+            assert!(!p.ui.tray_notifications_track_change);
         }
     }
 
@@ -896,8 +901,8 @@ mod tests {
         let json = r#"{"name":"T"}"#;
         let p: Profile = serde_json::from_str(json).unwrap();
         assert_eq!(p.ui.stream_sort, StreamSort::Name);
-        assert!(p.ui.tray_notifications_track_change);
-        assert!(p.ui.tray_notifications_scheduled);
+        assert!(!p.ui.tray_notifications_track_change);
+        assert!(!p.ui.tray_notifications_scheduled);
         assert_eq!(p.recording.disk_space_threshold_gb, 1);
         assert!(p.player_session.auto_advance);
         assert_eq!(p.player_session.resume_file_from, ResumeFileFrom::Position);
@@ -908,8 +913,8 @@ mod tests {
         let p = Profile::create_default();
         let json = serde_json::to_string(&p).unwrap();
         assert!(json.contains(r#""streamSort":"name""#), "got: {json}");
-        assert!(json.contains(r#""trayNotificationsTrackChange":true"#), "got: {json}");
-        assert!(json.contains(r#""trayNotificationsScheduled":true"#), "got: {json}");
+        assert!(json.contains(r#""trayNotificationsTrackChange":false"#), "got: {json}");
+        assert!(json.contains(r#""trayNotificationsScheduled":false"#), "got: {json}");
         assert!(json.contains(r#""diskSpaceThresholdGb":1"#), "got: {json}");
         assert!(json.contains(r#""autoAdvance":true"#), "got: {json}");
         assert!(json.contains(r#""resumeFileFrom":"position""#), "got: {json}");

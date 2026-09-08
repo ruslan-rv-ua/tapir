@@ -21,6 +21,10 @@ and Tapir uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.1.1] — Unreleased
 
+### Changed
+
+- Adjusted several default settings; existing installations keep their current values.
+
 ### Fixed
 
 - The **LIVE** badge in the player no longer looks like a recording. It was a pulsing red

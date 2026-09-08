@@ -2,7 +2,7 @@
 
 Tapir can work with no window open — recording, keeping the schedule and answering keys while you are busy with something else.
 
-That is why closing the window does not end the program. The window hides, while recordings, schedule and playback carry on; Tapir stays as an icon in the system tray. To quit, use the exit item in the icon's menu — or simply close the window, if you turn off **Minimize to tray instead of closing** in the app settings, on the **General** tab. The window's minimise button does not hide Tapir to the tray; closing it does.
+By default, though, closing the window does end the program — as it does in any other Windows window, and the same for the close button and **Alt+F4**: Windows treats the two as one command. To have Tapir stay in the background instead, turn on **Minimize to tray instead of closing** in the app settings, on the **General** tab. Closing the window then only hides it: recordings, schedule and playback carry on, Tapir stays as an icon in the system tray, and you quit from the exit item in the icon's menu. The window's minimise button does not hide Tapir to the tray; closing it does.
 
 If anything is recording when you quit, Tapir says how many recordings are active, names any scheduled one among them, and asks whether you really mean to leave.
 
