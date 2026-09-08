@@ -67,7 +67,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > і лишилася реалізація, включно з останньою незакритою фазою застосунку —
 > **3H Post-processing**.
 
-У черзі: 10. Виконано: 12.
+У черзі: 11. Виконано: 12.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
@@ -77,6 +77,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 | [import-duplicate-metadata-update](p2-import-duplicate-metadata-update.md) ♿ | P2 | planned | ready | M | — | — | рішення ухвалено 2026-07-23 |
 | [wishlist-match-tray-notification](p2-wishlist-match-tray-notification.md) ♿ | P2 | planned | ready | M | [wishlist-match-invisible](done/p1-wishlist-match-invisible.md) ✅ | — | четверта категорія `ToastKind`; слід, без якого гейт прапорцем був би заборонений, тепер є — журнал збігів |
 | [stream-failure-tray-toast](p2-stream-failure-tray-toast.md) ♿ | P2 | planned | ready | S | [error-state-never-reaches-ui](done/p1-error-state-never-reaches-ui.md) ✅ | — | ADR 2026-09-06 §6: у згорнутому вікні поверхня — система; нова категорія `ToastKind` зі своїм прапорцем, звірити з wishlist-match-tray-notification |
+| [streams-metrics-bar-duplicates-chips](p2-streams-metrics-bar-duplicates-chips.md) ♿ | P2 | planned | ready | S | — | — | грилінг 2026-09-08: чотири плитки повторюють числа чіпів і рядка стану й тихо тримають чотири живі області; смуга прибирається цілком |
 | [focus-active-item-on-playback-start](p2-focus-active-item-on-playback-start.md) ♿ | P2 | idea | draft | S | — | — | Автофокус на елементі при старті відтворення |
 | [streams-list-search](p2-streams-list-search.md) ♿ | P2 | idea | draft | S | — | — | гачок уже стоїть: `ZoneEntry.focusSearch?()` із search-focus-hotkey; зникне репліка «на цьому екрані немає пошуку» |
 | [transport-boundary-silent-in-background](p2-transport-boundary-silent-in-background.md) ♿ | P2 | planned | draft | S | [transport-skip-silent-failure](done/p1-transport-skip-silent-failure.md) ✅ | — | у вікні носій є — кнопки на межі `disabled`; у фоні натискання на краю списку не лишає сліду |
