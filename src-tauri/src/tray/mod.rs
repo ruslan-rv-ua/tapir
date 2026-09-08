@@ -89,18 +89,32 @@ pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
 }
 
 /// Rebuild tray menu and tooltip from current AppState. Fire-and-forget.
+///
+/// Fire-and-forget is the dangerous half: the work runs in a spawned task, and
+/// release builds are compiled with `panic = "abort"`, so a panic in here takes
+/// the whole process down — before the log plugin has written a line, which is
+/// what made this a silent instant death (backlog
+/// minimized-start-crashes-release-build). Hence: this refresh may be called
+/// from anywhere, at any moment, INCLUDING before `setup` has managed the state
+/// — and it must then leave quietly rather than assume.
 pub fn notify_state_changed(app: &AppHandle) {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
-        let snap = build_snapshot(&app).await;
+        let Some(snap) = build_snapshot(&app).await else { return };
         if let Err(e) = apply_snapshot(&app, &snap) {
             log::warn!("Tray: failed to update menu/tooltip: {e}");
         }
     });
 }
 
-async fn build_snapshot(app: &AppHandle) -> MenuSnapshot {
-    let state = app.state::<AppState>();
+/// `None` when there is no `AppState` yet — the caller ran before `setup`
+/// managed it. `try_state`, not `state`: the latter panics, and a panic here is
+/// fatal (see [`notify_state_changed`]).
+async fn build_snapshot(app: &AppHandle) -> Option<MenuSnapshot> {
+    let Some(state) = app.try_state::<AppState>() else {
+        log::warn!("Tray: menu refresh before AppState is managed — skipped");
+        return None;
+    };
     let player_status = state.player.get_status().await;
 
     let active_recordings = {
@@ -121,12 +135,12 @@ async fn build_snapshot(app: &AppHandle) -> MenuSnapshot {
         .and_then(|w| w.is_visible().ok())
         .unwrap_or(false);
 
-    MenuSnapshot {
+    Some(MenuSnapshot {
         playback: MenuPlayback::from_status(&player_status),
         now_playing_label,
         active_recordings,
         window_visible,
-    }
+    })
 }
 
 fn apply_snapshot(app: &AppHandle, snap: &MenuSnapshot) -> tauri::Result<()> {
