@@ -21,6 +21,13 @@ and Tapir uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.1.1] — Unreleased
 
+### Fixed
+
+- The **LIVE** badge in the player no longer looks like a recording. It was a pulsing red
+  dot — the same mark a stream row shows while it writes to disk — on a badge that only
+  ever meant «the sound is a station on air, not a file». It is now still, green, and
+  carries a broadcast tower; what a screen reader announces is unchanged.
+
 ## [0.1.0] — 2026-09-07
 
 The first public build. Everything below is new.
