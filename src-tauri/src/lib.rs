@@ -175,8 +175,13 @@ pub fn run() {
                 if cli.minimize {
                     // --minimize = start in the tray. hide(), NOT minimize() (that
                     // is the taskbar). NVDA already attached above before we hide.
+                    // No tray refresh here: neither AppState nor the tray icon
+                    // exists yet at this point in setup, and `setup_tray` below
+                    // builds the menu from a snapshot that already says the window
+                    // is hidden. The refresh that used to stand here read
+                    // `AppState` before `manage` and aborted every release build
+                    // (backlog minimized-start-crashes-release-build).
                     let _ = main_window.hide();
-                    crate::tray::notify_state_changed(app.handle());
                 }
             }
 
