@@ -19,7 +19,12 @@ pub struct GlobalSettings {
     pub active_profile: String,
     #[serde(default)]
     pub output_device: Option<String>,
-    #[serde(default = "default_true")]
+    /// Закриття вікна завершує програму — як у будь-якому іншому вікні
+    /// Windows, і однаково для кнопки закриття та `Alt+F4`: система вважає їх
+    /// однією командою (`WM_CLOSE`), і код теж — гілка одна. Хто хоче, щоб
+    /// вікно ховалось у трей, а запис тривав, вмикає це сам; згортання
+    /// закриттям і має бути вибором, а не умовчанням.
+    #[serde(default)]
     pub minimize_to_tray: bool,
     #[serde(default = "default_true")]
     pub show_track_in_title: bool,
@@ -174,7 +179,7 @@ impl Default for GlobalSettings {
             theme: Theme::Auto,
             active_profile: "Default".to_string(),
             output_device: None,
-            minimize_to_tray: true,
+            minimize_to_tray: false,
             show_track_in_title: true,
             double_click_action: DoubleClickAction::Record,
             autostart: false,

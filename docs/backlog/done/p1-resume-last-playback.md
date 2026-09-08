@@ -34,7 +34,7 @@ notes: ["злито в develop 2026-07-23, fast-forward merge 26b7f1e (гілк�
 
 ## Модель (A1 + фіналізація 2026-07-19)
 
-Закрито в [OPEN-QUESTIONS.md](../OPEN-QUESTIONS.md) (A1) і рішеннями 2026-07-19. Цей запис — **тонкий шар політики + UI поверх готового `resume_last`** з [playback-toggle-stop-pause](p1-playback-toggle-stop-pause.md), а не друге джерело правди:
+Закрито питанням A1 зведення `OPEN-QUESTIONS.md` (сам файл знято 2026-09-08) і рішеннями 2026-07-19. Цей запис — **тонкий шар політики + UI поверх готового `resume_last`** з [playback-toggle-stop-pause](p1-playback-toggle-stop-pause.md), а не друге джерело правди:
 
 - **Дані** («що грало + позиція») — у `PlayerSession` профілю: `last_stream_id`, `last_file_position {path, position_ms}`, `last_active`. Їх **уже пише й читає** [playback-toggle-stop-pause](p1-playback-toggle-stop-pause.md) ([playback_control.rs:136](../../../src-tauri/src/playback_control.rs#L136), `apply_session_snapshot`). Окремого `data/last_playback.json` немає.
 - **Політика** («чи стартувати») — нове поле **`autoplay_on_startup: bool`** у тому ж `PlayerSession`, тобто **per-profile**; `#[serde(default)]` → `false`. **Бінарне, не enum:** режим `always_paused` викинуто (див. «Прийняті рішення» — cold-start `Ctrl+Shift+K` уже дає «тишу зі зведеною ціллю» на вимогу, а pre-load файлу потребував би нового engine-API «завантажити без гри» заради мілісекунд). Breaking changes дозволені — якщо колись знадобиться третій режим, поле перейменується.
@@ -151,4 +151,4 @@ pub struct PlayerSession {
 - [docs/accessibility.md](../../accessibility.md) — NVDA, модальні діалоги, `player-announce`
 - Код: [src-tauri/src/playback_control.rs](../../../src-tauri/src/playback_control.rs) (`resume_last`, `AutoplayGuard`), [src-tauri/src/profile.rs](../../../src-tauri/src/profile.rs), [src-tauri/src/commands/profile_commands.rs](../../../src-tauri/src/commands/profile_commands.rs), [src-tauri/src/commands/app_commands.rs](../../../src-tauri/src/commands/app_commands.rs), [src-tauri/src/cli.rs](../../../src-tauri/src/cli.rs) (`StartupPlan`, `plan_controls_playback`), [src/components/profile/](../../../src/components/profile/)
 - Пам'ять: [[nvda-startup-foreground]], [[portal-dialog-inside-collection-double-mount]], [[profiles-recording-model]], [[resume-last-playback-status]]
-- Перехресне: [OPEN-QUESTIONS.md](../OPEN-QUESTIONS.md) (A1 ✅, A2 знято, A3 per-profile), [ROADMAP.md](../ROADMAP.md)
+- Перехресне: [ROADMAP.md](../ROADMAP.md); питання A1 ✅, A2 знято, A3 per-profile — зі зведення `OPEN-QUESTIONS.md`, знятого 2026-09-08

@@ -155,7 +155,37 @@ fn work_areas(window: &Window) -> (Vec<WorkArea>, Option<WorkArea>) {
     (monitors, primary)
 }
 
-/// Застосувати збережену геометрію до ще прихованого вікна.
+/// Що робити з вікном на старті. `apply` цього рішення не ухвалює — лише
+/// виконує; сюди ж і дивиться тест.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Startup {
+    /// Сеанс уже був: ставимо його прямокутник, уже перевірений [`fit`].
+    Restore(Geometry),
+    /// `window.json` іще немає — вікно відкривається розгорнутим.
+    Maximize,
+}
+
+/// Умовчання розміру вікна.
+///
+/// Без збереженої геометрії Tapir відкривається **розгорнутим**, а не розміром
+/// із `tauri.conf.json`: 900×650 — це прямокутник, до якого вікно повернеться
+/// після «Відновити», а не те, з чого варто починати знайомство.
+///
+/// Це саме умовчання, а не поведінка: щойно сеанс запишеться у `window.json`,
+/// вирішує він, і людину, яка звузила вікно, наступний запуск не перевзує.
+pub fn startup(
+    saved: Option<Geometry>,
+    monitors: &[WorkArea],
+    primary: Option<&WorkArea>,
+) -> Startup {
+    match saved {
+        Some(g) => Startup::Restore(fit(g, monitors, primary)),
+        None => Startup::Maximize,
+    }
+}
+
+/// Застосувати до ще прихованого вікна те, що вирішив [`startup`]: збережену
+/// геометрію або умовчання.
 ///
 /// Викликається в `setup` **перед** `show()` + `set_focus()`: ті два лишаються
 /// останніми й сусідніми, бо від них залежить, чи NVDA озвучить вікно при
@@ -163,22 +193,34 @@ fn work_areas(window: &Window) -> (Vec<WorkArea>, Option<WorkArea>) {
 /// тут, поки вікно приховане: Windows розгортає вікно викликом, який заразом
 /// його показує, і зробити це після `show()` означало б видимий стрибок.
 pub fn apply(window: &Window, saved: Option<Geometry>) {
-    let Some(saved) = saved else { return };
     let (monitors, primary) = work_areas(window);
-    let g = fit(saved, &monitors, primary.as_ref());
-
-    let _ = window.set_position(PhysicalPosition { x: g.x, y: g.y });
-    let _ = window.set_size(PhysicalSize {
-        width: g.width,
-        height: g.height,
-    });
-    if g.maximized {
-        let _ = window.maximize();
+    match startup(saved, &monitors, primary.as_ref()) {
+        Startup::Restore(g) => {
+            let _ = window.set_position(PhysicalPosition { x: g.x, y: g.y });
+            let _ = window.set_size(PhysicalSize {
+                width: g.width,
+                height: g.height,
+            });
+            if g.maximized {
+                let _ = window.maximize();
+            }
+            *NORMAL.lock().unwrap() = Some(Geometry {
+                maximized: false,
+                ..g
+            });
+        }
+        Startup::Maximize => {
+            // Знімок робиться ДО `maximize()`: розмір із конфіга — єдиний
+            // прямокутник, до якого це вікно вміє повернутись, і саме він має
+            // лягти у файл, якщо сеанс скінчиться розгорнутим (`save` без
+            // `NORMAL` не пише нічого).
+            *NORMAL.lock().unwrap() = snapshot(window).map(|g| Geometry {
+                maximized: false,
+                ..g
+            });
+            let _ = window.maximize();
+        }
     }
-    *NORMAL.lock().unwrap() = Some(Geometry {
-        maximized: false,
-        ..g
-    });
 }
 
 /// Знімок поточного прямокутника вікна, або `None`, якщо його зараз немає сенсу
@@ -334,6 +376,27 @@ mod tests {
     fn without_any_monitor_the_saved_rectangle_is_used_as_is() {
         let saved = window(2400, 300);
         assert_eq!(fit(saved, &[], None), saved);
+    }
+
+    #[test]
+    fn the_very_first_start_opens_maximized() {
+        assert_eq!(startup(None, &[LAPTOP], Some(&LAPTOP)), Startup::Maximize);
+    }
+
+    #[test]
+    fn a_saved_session_outranks_the_maximized_default() {
+        let saved = window(100, 100);
+        assert_eq!(
+            startup(Some(saved), &[LAPTOP, SECOND], Some(&LAPTOP)),
+            Startup::Restore(fit(saved, &[LAPTOP, SECOND], Some(&LAPTOP))),
+        );
+    }
+
+    #[test]
+    fn a_first_start_does_not_depend_on_the_monitors() {
+        // Розгортання — справа Windows, не наша арифметика: без жодного
+        // монітора рішення те саме, що й з ними.
+        assert_eq!(startup(None, &[], None), Startup::Maximize);
     }
 
     #[test]
