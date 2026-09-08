@@ -5,6 +5,8 @@ import * as tauri from "../../lib/tauri";
 import { StreamItem } from "./StreamItem";
 import { $playerStatus } from "../../stores/player";
 import * as m from "../../i18n/paraglide/messages";
+import uk from "../../i18n/messages/uk.json";
+import en from "../../i18n/messages/en.json";
 
 // Stub the Tauri IPC layer — there is no backend in jsdom.
 vi.mock("../../lib/tauri", () => ({
@@ -528,10 +530,16 @@ describe("StreamItem — the row name says every fact, not the loudest one", () 
     );
   });
 
-  it("says the phase without the segment's ellipsis", () => {
-    // Три крапки в словнику належать клітинці стану — в імені рядка вони
-    // читались би вголос як пауза ні про що.
-    expect(m.status_connecting_label()).not.toMatch(/\.\.\./);
-    expect(m.status_reconnecting_label()).not.toMatch(/\.\.\./);
+  it("says the phase without the segment's ellipsis — in both locales", () => {
+    // Три крапки в словнику належать клітинці стану («Підключення...») — в імені
+    // рядка вони читались би вголос як пауза ні про що. Перевіряємо словники, а
+    // не `m.*`: ті віддають лише поточну локаль, тож крапки, дописані в другу,
+    // сторож проґавив би.
+    for (const dict of [uk, en]) {
+      expect(dict.status_connecting_label).not.toMatch(/\.\.\./);
+      expect(dict.status_reconnecting_label).not.toMatch(/\.\.\./);
+      expect(dict.status_connecting_and_playing).not.toMatch(/\.\.\./);
+      expect(dict.status_reconnecting_and_playing).not.toMatch(/\.\.\./);
+    }
   });
 });

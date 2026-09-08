@@ -8,7 +8,7 @@ The whole of it, end to end: you start a stream, Tapir connects and begins writi
 
 Press `Ctrl+Enter` on a stream, or `Enter` if you have not changed the stream activation setting. The action panel on the Streams screen starts and stops whole groups, and the global shortcut — `Ctrl+Shift+R` unless you reassigned it — works even while the window is hidden. Several streams can record at the same time.
 
-The row itself tells you where things stand: waiting, connecting, recording — with the time elapsed since it started — recording and playing at once, reconnecting with the attempt number, or an error. Recording and listening are independent: you can listen to a station you are recording, or to a completely different one, and neither disturbs the other.
+The row itself tells you where things stand: waiting, connecting, recording — with the time elapsed since it started — reconnecting with the attempt number, or an error. And if you are listening to that same station at the same time, the row names both facts together: "Connecting and playing", "Recording and playing", "Error and playing". Recording and listening are independent: you can listen to a station you are recording, or to a completely different one, and neither disturbs the other.
 
 Nothing has to be watched. A recording keeps going with the window hidden, and the status bar at the bottom of the window carries the count of active recordings, the free space left, and how long the longest one has been running.
 
