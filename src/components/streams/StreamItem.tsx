@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { createPortal } from "react-dom";
 import { Loader2, RefreshCw, AlertCircle, Volume2, Circle } from "lucide-react";
-import type { StreamInfo, StreamStatus } from "../../lib/tauri";
+import type { StreamInfo, StreamState, StreamStatus } from "../../lib/tauri";
 import type { ActionModifiers, SegmentKind } from "../../hooks/useCompositeList";
 import { CompositeRow, CompositeSegment, CompositeAction } from "../common/composite-list";
 import { formatBitrate, formatDuration } from "../../lib/formatters";
@@ -39,6 +39,37 @@ export function getStreamSegments(status: StreamStatus | undefined): StreamItemD
   const speaks = isRecordingLike(status?.state) || needsAttention(status?.state);
   const actions: StreamItemData["segments"] = ["action-play", "action-record", "action-menu"];
   return speaks ? ["track", "tech", "status", ...actions] : ["track", "tech", ...actions];
+}
+
+/**
+ * Слово (або два) на початку імені рядка — усе, що чує людина, ідучи стрілками
+ * вгору/вниз: сегменти лежать за Стрілкою вправо, а заливка й значки фаз від
+ * скрінрідера сховані (`aria-hidden`). Тому ім'я несе **кожен** факт, а не
+ * найгучніший з них: фазу запису — бо саме її скасовує друге натискання
+ * «Записати», і відтворення — бо його з цього ж рядка теж можна зупинити.
+ * `null` для сплячого потоку: «Очікування» вже означає відсутність слова.
+ *
+ * Форма слів навмисно різна — «Записується і відтворюється» двома дієсловами,
+ * «Підключення і відтворення» двома іменниками: кожна половина узгоджена зі
+ * своєю фазою. Зводити їх до одного зразка не треба, це не недогляд.
+ *
+ * `switch` без `default` тримає таблицю повною: новий стан у `StreamState`
+ * зупинить типізацію тут, а не залишить рядок мовчазним, як було з фазами до
+ * запису `row-silent-while-connecting`.
+ */
+function stateLabelFor(state: StreamState, isPlaying: boolean): string | null {
+  switch (state) {
+    case "recording":
+      return isPlaying ? m.status_recording_and_playing() : m.status_recording_label();
+    case "connecting":
+      return isPlaying ? m.status_connecting_and_playing() : m.status_connecting_label();
+    case "reconnecting":
+      return isPlaying ? m.status_reconnecting_and_playing() : m.status_reconnecting_label();
+    case "error":
+      return isPlaying ? m.status_error_and_playing() : m.status_error();
+    case "idle":
+      return isPlaying ? m.segment_playing() : null;
+  }
 }
 
 interface Props {
@@ -114,16 +145,7 @@ export function StreamItem({
   };
 
   // Summary label — uses screen-reader-friendly words, not the visual "REC".
-  const stateLabel =
-    isWriting && isThisStreamPlaying
-      ? m.status_recording_and_playing()
-      : isWriting
-        ? m.status_recording_label()
-        : isThisStreamPlaying
-          ? m.segment_playing()
-          : state === "error"
-            ? m.status_error()
-            : null;
+  const stateLabel = stateLabelFor(state, isThisStreamPlaying);
   const baseLabel = stateLabel ? `${stateLabel}, ${stream.name}` : stream.name;
   const summaryLabel = isSelected ? `${baseLabel}, ${m.selection_suffix()}` : baseLabel;
 
