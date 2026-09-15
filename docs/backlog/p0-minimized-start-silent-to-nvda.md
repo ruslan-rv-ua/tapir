@@ -95,7 +95,7 @@ NVDA причепився, наступний крок — пауза після
 - [ ] `docs/help/` не змінюється: для людини це полагоджене озвучення, а не нова
       поведінка
 - [ ] `cargo test`, `cargo clippy --all-targets`, `pnpm test` — без помилок
-- [ ] NVDA-прогін (чекліст лежить на припаркованій гілці)
+- [ ] NVDA-прогін за чеклістом `docs/testing/nvda-minimized-start-silent-to-nvda.md`
 
 ## Документи
 
