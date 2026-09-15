@@ -135,7 +135,7 @@ loaded-prefix-is-the-cursor](../../decisions/2026-09-04-loaded-prefix-is-the-cur
 **відхиляти** проміс, а не тихо виходити — завершальний стоп читає резолв як успішне порожнє
 дописування, тобто озвучив би хибне «Більше результатів немає» й забрав фокус із поля, де людина
 ще друкує. Гонка двох **замін** свідомо лишилась відкритою —
-[stale-search-overwrites-results](../p2-stale-search-overwrites-results.md).
+[stale-search-overwrites-results](p2-stale-search-overwrites-results.md).
 
 ## Документи
 
@@ -146,7 +146,7 @@ loaded-prefix-is-the-cursor](../../decisions/2026-09-04-loaded-prefix-is-the-cur
   запис, рев'ю якого знайшло ваду, і той, що заморозив арифметику `loadMore`
 - [browser-filter-cursor-reset](p2-browser-filter-cursor-reset.md) — правило
   курсора, що читало `offset` через `isAppendingResults`
-- [stale-search-overwrites-results](../p2-stale-search-overwrites-results.md) — друга
+- [stale-search-overwrites-results](p2-stale-search-overwrites-results.md) — друга
   половина класу: гонка двох **замін**, свідомо не закрита тут
 - [ADR 2026-09-03 — завершальний стоп](../../decisions/2026-09-03-trailing-stop-crosses-only-on-down.md)
 - Код: `src/stores/browser.ts` (`loadMore`, `searchStations`), `src/components/browser/BrowserPanel.tsx`

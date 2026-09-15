@@ -14,7 +14,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 саме вони визначають, чи версія закриється. Колонка «Суть» — поле `summary:` запису
 (без нього — `title:`).
 ♿ — запис зачіпає доступність (`a11y: true`), приймання потребує NVDA-прогону.
-Виконані записи (104) — у [done/README.md](done/README.md), спадок кожного — у секції
+Виконані записи (105) — у [done/README.md](done/README.md), спадок кожного — у секції
 «Спадок» його файлу.
 
 ---
@@ -41,7 +41,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > перепідключення, застосунок обіцяє сказати про вимкнений автозапуск, докоментар трея
 > обіцяє `cold=resume-last`. Пряме продовження *чесного інтерфейсу* 0.1.0 — цього разу
 > проти вже випущеної збірки. Четвертий запис,
-> [stale-search-overwrites-results](p2-stale-search-overwrites-results.md), стоїть тут
+> [stale-search-overwrites-results](done/p2-stale-search-overwrites-results.md), стоїть тут
 > **умовно**: лишається у версії, лише якщо грилінг закриє розвилку варіантом, що не
 > чіпає IPC.
 >
@@ -50,13 +50,12 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > поверхонь не з'являється, IPC не міняється, а вже встановлені копії лишаються зі
 > своїми значеннями, бо міграцій немає.
 
-У черзі: 5. Виконано: 2.
+У черзі: 4. Виконано: 3.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
 | [minimized-start-crashes-release-build](p0-minimized-start-crashes-release-build.md) | P0 | planned | ready | S | — | — | tray::notify_state_changed у гілці --minimize читає AppState до app.manage; у release (panic = abort) паніка в задачі вбиває процес |
 | [minimized-start-silent-to-nvda](p0-minimized-start-silent-to-nvda.md) ♿ | P0 | planned | ready | S | — | [autostart-notice-lost-when-minimized](p2-autostart-notice-lost-when-minimized.md) | вікно ховається до завантаження вебв'ю, скрінрідер бачить порожній документ і більше не перепитує; ховати треба на frontend_ready |
-| [stale-search-overwrites-results](p2-stale-search-overwrites-results.md) | P2 | planned | draft | S | [load-more-retry-skips-failed-page](done/p2-load-more-retry-skips-failed-page.md) ✅ | — | клас «стан розійшовся з екраном»: дві заміни в польоті, пізня кладе результати критеріїв, яких уже немає; квиток із load-more-retry підходить, грилити |
 | [tray-cannot-resume-last](p2-tray-cannot-resume-last.md) ♿ | P2 | planned | draft | S | [tray-toggle-label-vs-action](done/p2-tray-toggle-label-vs-action.md) ✅ | — | знахідка grilling 2026-09-03: пункт трея сірий, хоча `Ctrl+Shift+K` у тому самому стані відновлює останнє джерело |
 | [autostart-notice-lost-when-minimized](p2-autostart-notice-lost-when-minimized.md) ♿ | P2 | planned | **blocked** | S | [hotkey-registration-silent-at-startup](done/p1-hotkey-registration-silent-at-startup.md) ✅, [minimized-start-silent-to-nvda](p0-minimized-start-silent-to-nvda.md) | — | репліка про автозапуск переїжджає на гейт «перший показ вікна»; гейт витягти в спільний тип, не копіювати Заблоковано: Реалізацію написано й перевірено логом, але прийняти не можна: після старту згорнутим вікно німе для NVDA (minimized-start-silent-to-nvda), тож репліку в ньому фізично не почути. |
 
