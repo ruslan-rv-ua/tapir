@@ -9,13 +9,23 @@ import * as m from "../i18n/paraglide/messages";
 
 export const $searchResults = atom<StationResult[]>([]);
 /**
- * A NEW result set is being fetched — the list on screen is about to be replaced,
- * so the screen shows a loading card INSTEAD of it. Appending has its own flag
- * ($appendLoading) precisely because it must not do that: taking the <ul> away
- * mid-append drops the cursor to <body> and the results zone with it.
+ * The rows on screen are no longer about the current criteria and a replacement is
+ * coming, so the screen shows a loading card INSTEAD of them. Deliberately NOT "a
+ * request is in flight": a foreign reply leaves this flag UP, because the fresh
+ * request is still on the wire and lowering it would blink the card away and back.
+ * The one criteria writer that issues no request of its own — resetSearch — lowers
+ * it by hand, which is the whole of the rule and not an exception to it.
+ * ADR 2026-09-15 «прапорець заміни належить екрану, а не запиту».
  */
 export const $searchLoading = atom<boolean>(false);
-/** A further batch is in flight. The list stays on screen; only the button is busy. */
+/**
+ * A further batch is in flight. The list stays on screen; only the button is busy.
+ * Unlike $searchLoading this belongs to the PRESS, not to the result set: the press
+ * is over the moment its reply lands, foreign or not, so this flag is lowered
+ * unconditionally. Guarding it would leave it raised forever — no fresh append
+ * follows a foreign one; a person has to press the button, and a busy button
+ * cannot be pressed.
+ */
 export const $appendLoading = atom<boolean>(false);
 /**
  * A NEW result set failed. Appending never sets this: an error card here would
@@ -68,21 +78,52 @@ async function fetchBatch(
 }
 
 /**
+ * The ticket both halves carry: a reply belongs to the criteria it flew out with,
+ * and if those have changed while it was in the air it is about a result set nobody
+ * is reading — «чужа порція», CONTEXT.md §«Пошук станцій». The ticket is the
+ * REFERENCE, not a field-by-field comparison: it works because both criteria writers
+ * (updateSearchParam, resetSearch) build a NEW object every time, and unchanged
+ * criteria stay the very same one. Misfiring is only possible the conservative way —
+ * criteria changed and changed back — which costs a discarded reply, never a wrong
+ * screen. ADR 2026-09-04 §2.
+ *
+ * Shared between replacing and appending because «is this still ours» is one
+ * question. What follows from a NO is not shared, and deliberately so: the replace
+ * writes nothing (it reports to no one — see searchStations), the append REJECTS
+ * (the trailing stop reads a resolve as «look at the rows» — see loadMore).
+ */
+function stillOurs(criteria: SearchCriteria): boolean {
+  return $searchParams.get() === criteria;
+}
+
+/**
  * REPLACE the result set: a new query, filter or order. May take the list off the
  * screen (loading card, error card) precisely because the rows on it no longer
  * mean anything. Never rejects — the failure is already on screen as $searchError.
+ *
+ * Takes no criteria: it reads them from the store itself. A parameter here would be
+ * a second copy of what $searchParams already holds, free to drift from it — the
+ * same reason `offset` was taken out of SearchCriteria (ADR 2026-09-04 §1). It would
+ * also make the ticket below a promise the caller has to keep rather than one the
+ * function can keep itself.
+ *
+ * A foreign reply writes NOTHING — not the rows, not $hasMore, not the error, and
+ * not the flag. One rule over every field the result set owns, so the error that
+ * outlives its own request has nowhere left to land.
  */
-export async function searchStations(criteria: SearchCriteria): Promise<void> {
+export async function searchStations(): Promise<void> {
+  const criteria = $searchParams.get();
   $searchLoading.set(true);
   $searchError.set(null);
   try {
     const { results, hasMore } = await fetchBatch(criteria, 0);
+    if (!stillOurs(criteria)) return;
     $searchResults.set(results);
     $hasMore.set(hasMore);
   } catch (e) {
-    $searchError.set(String(e));
+    if (stillOurs(criteria)) $searchError.set(String(e));
   } finally {
-    $searchLoading.set(false);
+    if (stillOurs(criteria)) $searchLoading.set(false);
   }
 }
 
@@ -108,20 +149,19 @@ class ForeignBatch extends Error {
 export async function loadMore(): Promise<void> {
   const criteria = $searchParams.get();
   const offset = $searchResults.get().length;
-  // The batch belongs to the criteria it flew out with. If they changed while it
-  // was in the air — landed or failed — it is about a result set nobody is looking
-  // at, and there is nothing to tell someone already reading another one.
-  const stillOurs = () => $searchParams.get() === criteria;
   $appendLoading.set(true);
   try {
     const { results, hasMore } = await fetchBatch(criteria, offset);
-    if (!stillOurs()) throw new ForeignBatch();
+    if (!stillOurs(criteria)) throw new ForeignBatch();
     $searchResults.set([...$searchResults.get(), ...results]);
     $hasMore.set(hasMore);
   } catch (e) {
-    if (stillOurs()) addToast(String(e), "error");
+    // Nothing to tell someone already reading another result set — so a batch that
+    // FAILED after the criteria changed is silent too.
+    if (stillOurs(criteria)) addToast(String(e), "error");
     throw e;
   } finally {
+    // Unconditional: this flag belongs to the press, not to the set. See its docstring.
     $appendLoading.set(false);
   }
 }
@@ -173,5 +213,12 @@ export function resetSearch(): void {
   $searchResults.set([]);
   $hasMore.set(false);
   $searchError.set(null);
+  // Not dead code, and not somebody else's field. This is the ONE criteria write
+  // with no request behind it, so it is the one place that has to say «nothing is
+  // coming» — a replace still in the air will land foreign and, by the rule above,
+  // touch nothing at all, this flag included. Guarded by the store test «право
+  // гасити»; delete this line and nothing looks wrong until someone presses
+  // «Скинути фільтри» during a search.
+  $searchLoading.set(false);
   replaceSelection($stationSelection, new Set());
 }

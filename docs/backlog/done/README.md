@@ -3,13 +3,14 @@
 > Згенеровано з front-matter записів командою `pnpm backlog index`. **Не редагувати руками:**
 > один рядок тут — поле `summary:` запису (без нього — `title:`).
 
-104 записів, найновіші зверху. Кожен файл зберігає ухвалені рішення, критерії,
+105 записів, найновіші зверху. Кожен файл зберігає ухвалені рішення, критерії,
 за якими фічу приймали, і секцію «Спадок» — що лишилось у коді й правилах після закриття.
 Черга — [ROADMAP.md](../ROADMAP.md).
 
 | Запис | Версія | Коли | Підсумок |
 |-------|--------|------|----------|
 | [reconnect-counter-not-live](p2-reconnect-counter-not-live.md) | 0.1.1 | 2026-09-15 | Пара їде в події переходу одним значенням `ReconnectProgress`; `Connecting` — лише перше з'єднання, тож спроби не блимають у відрі «Потребує уваги». |
+| [stale-search-overwrites-results](p2-stale-search-overwrites-results.md) | 0.1.1 | 2026-09-15 | дві заміни в польоті, пізня кладе результати критеріїв, яких уже немає; закрито грилінгом — квиток над усіма полями вибірки, ADR 2026-09-15 |
 | [row-silent-while-connecting](p1-row-silent-while-connecting.md) ♿ | 0.1.1 | 2026-09-08 | Ім'я рядка несе кожен факт, а не найгучніший: десять випадків у stateLabelFor; нормативна таблиця імені живе в docs/accessibility.md |
 | [backlog-index-generated](p2-backlog-index-generated.md) | 0.1.0 | 2026-09-07 | ROADMAP і done/README — вивід `pnpm backlog index`; спадок у записі, індекс несе рядок `summary:`; сторож у `pnpm test`; `pnpm backlog next` замість читання |
 | [data-models-doc-drift](p2-data-models-doc-drift.md) | 0.1.0 | 2026-09-07 | data-models.md 1385→382 рядки; §5 і §6 знято як копії; DPAPI, постобробка й savedTracks названі мертвими; власник типів — src/lib/tauri.ts |

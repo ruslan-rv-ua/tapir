@@ -49,8 +49,7 @@ export const SearchForm = forwardRef<ZoneEntry, SearchFormProps>(function Search
     updateSearchParam("query", value || undefined);
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      const current = $searchParams.get();
-      searchStations(current);
+      searchStations();
     }, 500);
   }, []);
 
@@ -58,7 +57,7 @@ export const SearchForm = forwardRef<ZoneEntry, SearchFormProps>(function Search
   const handleFilterChange = useCallback(<K extends keyof SearchCriteria>(key: K, value: string) => {
     updateSearchParam(key, (value || undefined) as SearchCriteria[K]);
     clearTimeout(debounceRef.current);
-    setTimeout(() => searchStations($searchParams.get()), 0);
+    setTimeout(() => searchStations(), 0);
   }, []);
 
   // Debounced bitrate change
@@ -66,7 +65,7 @@ export const SearchForm = forwardRef<ZoneEntry, SearchFormProps>(function Search
     updateSearchParam("minBitrate", value > 0 ? value : undefined);
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      searchStations($searchParams.get());
+      searchStations();
     }, 500);
   }, []);
 
@@ -75,7 +74,7 @@ export const SearchForm = forwardRef<ZoneEntry, SearchFormProps>(function Search
   const handleClear = useCallback(() => {
     clearTimeout(debounceRef.current);
     updateSearchParam("query", undefined);
-    setTimeout(() => searchStations($searchParams.get()), 0);
+    setTimeout(() => searchStations(), 0);
   }, []);
 
   // Dedicated "Reset filters" button: clears every filter and returns to Popular.
