@@ -243,8 +243,7 @@ mod tests {
             bytes_recorded: 0,
             tracks_recorded: 0,
             error: None,
-            reconnect_attempt: None,
-            reconnect_max_retries: None,
+            reconnect: None,
             session_id,
         }
     }

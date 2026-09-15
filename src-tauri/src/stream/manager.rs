@@ -21,6 +21,20 @@ use crate::wake_lock::WakeLock;
 // Public data types
 // ---------------------------------------------------------------------------
 
+/// Спроба зі стелею — **одне** значення, а не два поля. Два незалежні
+/// `Option` дозволяли б дроту сказати «спроба 5, стеля невідома», чого в
+/// домені немає: обидва числа приходять із того самого знімка налаштувань, за
+/// яким живе цикл `'reconnect`, — не з поточних налаштувань профілю
+/// (reconnect-max-in-status). Варіант покласти пару в сам [`StreamState`]
+/// відхилено, бо `state` перестав би бути рядком на дроті — ADR 2026-09-15
+/// «Підключення — перше з'єднання запису».
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReconnectProgress {
+    pub attempt: u32,
+    pub max: u32,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StreamStatus {
@@ -32,12 +46,10 @@ pub struct StreamStatus {
     pub tracks_recorded: u32,
     /// Непорожня лише в стані `Error` — причина, з якої задача здалась.
     pub error: Option<FailureReason>,
-    pub reconnect_attempt: Option<u32>,
-    /// Стеля спроб зі знімка налаштувань, за яким живе цикл `'reconnect`, —
-    /// не з поточних налаштувань профілю. Їде парою з `reconnect_attempt`
-    /// (`mark_reconnecting` виставляє обидва разом), щоб «спроба N з M»
-    /// читала N і M з одного джерела (reconnect-max-in-status).
-    pub reconnect_max_retries: Option<u32>,
+    /// Спроба зі стелею, поки потік перепідключається; `None` у решті станів.
+    /// Інваріант «пара є тоді й лише тоді, коли стан `Reconnecting`» тримає
+    /// [`apply_transition`] — єдине місце, яке цю пару пише.
+    pub reconnect: Option<ReconnectProgress>,
     /// Стабільний id сесії запису (§3.3): присвоюється на старті, reconnect
     /// його НЕ змінює. Scheduler трекає власність записів саме по ньому —
     /// recording_started_at для цього непридатний (None у Connecting,
@@ -167,10 +179,11 @@ pub struct TrackInfo {
 #[serde(rename_all = "camelCase")]
 struct RecordingStatusPayload {
     stream_id: String,
-    status: RecordingStatus,
-    /// Заповнене лише при `status: "error"`. Канал існував наскрізь і в усіх
-    /// викликах передавався порожнім — тепер він несе причину (ADR 2026-09-06 §5).
-    error: Option<FailureReason>,
+    /// Тіло переходу цілком: поле, додане в [`Emission`], доїжджає на дріт
+    /// саме тим, що воно там є, — другого переліку тих самих полів, який можна
+    /// забути дописати, тут немає.
+    #[serde(flatten)]
+    emission: Emission,
 }
 
 /// Тіло події `track-changed` — **одне на обидва емітери**. Плеєр
@@ -276,8 +289,7 @@ impl StreamManager {
             bytes_recorded: 0,
             tracks_recorded: 0,
             error: None,
-            reconnect_attempt: None,
-            reconnect_max_retries: None,
+            reconnect: None,
             session_id,
         };
 
@@ -387,19 +399,15 @@ impl StreamManager {
 // Helper emit functions (fire-and-forget)
 // ---------------------------------------------------------------------------
 
-fn emit_recording_status(app: &AppHandle, stream_id: &str, status: RecordingStatus, error: Option<FailureReason>) {
+fn emit_recording_status(app: &AppHandle, stream_id: &str, emission: Emission) {
     // Phase 3K: будь-який перехід стану запису — тригер живого снапшота.
     if let Some(state) = app.try_state::<crate::app_state::AppState>() {
         state.snapshot.notify.notify_one();
     }
-    debug!("[{}] Emitting recording-status: {:?}", stream_id, status);
+    debug!("[{}] Emitting recording-status: {:?}", stream_id, emission.status);
     match app.emit(
         "recording-status",
-        RecordingStatusPayload {
-            stream_id: stream_id.to_string(),
-            status,
-            error,
-        },
+        RecordingStatusPayload { stream_id: stream_id.to_string(), emission },
     ) {
         Ok(_) => debug!("[{}] Event emitted OK", stream_id),
         Err(e) => error!("[{}] Failed to emit event: {}", stream_id, e),
@@ -474,73 +482,176 @@ fn is_active_state(s: &StreamState) -> bool {
     )
 }
 
-async fn update_state(manager: &Arc<RwLock<StreamManager>>, stream_id: &str, state: StreamState) {
-    let mut guard = manager.write().await;
-    if let Some(entry) = guard.entries.get_mut(stream_id) {
-        entry.status.state = state;
-        entry.status.error = None;
+/// Перехід стану запису — єдине, що задача про себе оголошує. Заводиться як
+/// **значення**, бо з нього виходять обидва канали: запис у статус потоку і
+/// тіло події. Розійтись вони не можуть — а до цього були двома сусідніми
+/// викликами, які несли різне, і саме так пара «спроба N з M» опинилась у
+/// статусі й не опинилась у події (ADR 2026-09-15 §4).
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Transition {
+    /// **Перше** з'єднання запису — і лише воно. Спроби всередині
+    /// перепідключення сюди не повертаються: інакше рядок половину циклу каже
+    /// «З'єднання…», а потік блимає у відрі «Потребує уваги», яке рахує
+    /// `Reconnecting` і не рахує `Connecting`
+    /// (ADR 2026-09-15 «Підключення — перше з'єднання запису»).
+    Connecting,
+    Reconnecting(ReconnectProgress),
+    Recording { started_at: String },
+    Final(TaskOutcome),
+}
+
+/// Що сказати фронтенду про перехід: факти **цього переходу**, не весь
+/// [`StreamStatus`]. Накопичене (`bytes_recorded`, `tracks_recorded`) не знає
+/// жоден перехід — воно росте між ними й їде наступним `get_all_statuses`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Emission {
+    status: RecordingStatus,
+    /// Заповнене лише при `status: "error"`. Канал існував наскрізь і в усіх
+    /// викликах передавався порожнім — тепер він несе причину (ADR 2026-09-06 §5).
+    error: Option<FailureReason>,
+    /// Непорожня лише при `status: "reconnecting"`, і саме порожнеча в решті
+    /// переходів **є** скиданням пари в дзеркалі фронтенду: окремого механізму
+    /// для цього не існує (ADR 2026-09-15 «Подія несе те, що знає перехід» §1).
+    reconnect: Option<ReconnectProgress>,
+    /// Мить, коли з'єднання стало записом. Доти фронтенд штампував власний
+    /// годинник на прибуття події — те саме поле з живим джерелом, яке ніхто
+    /// не читав (§1).
+    recording_started_at: Option<String>,
+}
+
+/// Перехід, яким починається чергова ітерація циклу `'reconnect`. Нуль спроб —
+/// це перша ітерація задачі, отже підключення; далі потік **перепідключається**
+/// і в підключення не повертається. Лічильник для цього придатний саме тому,
+/// що скидається на першому аудіобайті, а не на вдалому `connect`
+/// (ADR 2026-08-13 §2): після успішного запису наступний обрив чесно починає
+/// рахунок заново, не вдаючи перше з'єднання.
+fn opening_transition(attempt: u32, max_retries: u32) -> Transition {
+    if attempt == 0 {
+        Transition::Connecting
+    } else {
+        Transition::Reconnecting(ReconnectProgress { attempt, max: max_retries })
     }
-    let any_active = guard.entries.values().any(|e| is_active_state(&e.status.state));
-    guard.wake_lock.set_recording(any_active);
 }
 
-/// Спроба і стеля виставляються лише разом і з одного знімка: рядок потоку
-/// показує «спроба N з M», і обидва числа мусять описувати той самий цикл
-/// `'reconnect`, а не одне — цикл, а друге — поточні налаштування профілю.
-fn mark_reconnecting(status: &mut StreamStatus, attempt: u32, max_retries: u32) {
-    status.state = StreamState::Reconnecting;
-    status.reconnect_attempt = Some(attempt);
-    status.reconnect_max_retries = Some(max_retries);
-}
-
-async fn update_state_reconnecting(
-    manager: &Arc<RwLock<StreamManager>>,
-    stream_id: &str,
-    attempt: u32,
-    max_retries: u32,
-) {
-    let mut guard = manager.write().await;
-    if let Some(entry) = guard.entries.get_mut(stream_id) {
-        mark_reconnecting(&mut entry.status, attempt, max_retries);
-    }
-    let any_active = guard.entries.values().any(|e| is_active_state(&e.status.state));
-    guard.wake_lock.set_recording(any_active);
-}
-
-async fn update_state_recording(
-    manager: &Arc<RwLock<StreamManager>>,
-    stream_id: &str,
-    started_at: &str,
-) {
-    let mut guard = manager.write().await;
-    if let Some(entry) = guard.entries.get_mut(stream_id) {
-        entry.status.state = StreamState::Recording;
-        entry.status.recording_started_at = Some(started_at.to_string());
-    }
-    let any_active = guard.entries.values().any(|e| is_active_state(&e.status.state));
-    guard.wake_lock.set_recording(any_active);
-}
-
-/// Стан і причина виставляються лише разом і з одного джерела — так само, як
-/// спроба зі стелею в `mark_reconnecting`. Інакше причина пережила б помилку,
-/// яку описувала, і рядок показав би вчорашній діагноз.
+/// Чиста половина переходу: кладе його в статус і каже, що з цього емітити.
 ///
-/// Стан тут потрібен на мить: одразу по цьому запис іде з менеджера, і далі
-/// `Error` тримає дзеркало у фронтенді (ADR 2026-09-06 §3). Але цю мить бачить
-/// живий снапшот crash-recovery — і саме тому потік, що впав, до нього не
-/// потрапляє.
-async fn update_final_state(
+/// `None` означає «видиме не змінилось, фронтенду казати нема чого»
+/// (ADR 2026-09-15 §5). Верх циклу оголошує перехід беззастережно, тож той
+/// самий `Reconnecting` приходить двічі — перед сном і після нього; умовний
+/// емісії в самому циклі тримався б на маршруті, а не на правилі. Дублікат не
+/// безкоштовний: кожна подія штовхає живий снапшот crash-recovery і повну
+/// перебудову меню трея з трьома замками.
+fn transition_outcome(transition: Transition) -> (StreamState, Emission) {
+    match transition {
+        Transition::Connecting => (
+            StreamState::Connecting,
+            Emission {
+                status: RecordingStatus::Connecting,
+                error: None,
+                reconnect: None,
+                recording_started_at: None,
+            },
+        ),
+        Transition::Reconnecting(progress) => (
+            StreamState::Reconnecting,
+            Emission {
+                status: RecordingStatus::Reconnecting,
+                error: None,
+                reconnect: Some(progress),
+                recording_started_at: None,
+            },
+        ),
+        Transition::Recording { started_at } => (
+            StreamState::Recording,
+            Emission {
+                status: RecordingStatus::Recording,
+                error: None,
+                reconnect: None,
+                recording_started_at: Some(started_at),
+            },
+        ),
+        // Стан і причина йдуть з одного джерела — інакше причина пережила б
+        // помилку, яку описувала, і рядок показав би вчорашній діагноз. Стан
+        // тут потрібен на мить: одразу по цьому запис іде з менеджера, і далі
+        // `Error` тримає дзеркало у фронтенді (ADR 2026-09-06 §3). Але цю мить
+        // бачить живий снапшот crash-recovery — і саме тому потік, що впав, до
+        // нього не потрапляє.
+        Transition::Final(outcome) => (
+            outcome.state(),
+            Emission {
+                status: outcome.status(),
+                error: outcome.reason(),
+                reconnect: None,
+                recording_started_at: None,
+            },
+        ),
+    }
+}
+
+/// Чиста половина переходу: кладе його в статус і каже, що з цього емітити.
+///
+/// `None` означає рівно одне — «видиме не змінилось, фронтенду казати нема
+/// чого» (ADR 2026-09-15 §5). Верх циклу оголошує перехід беззастережно, тож
+/// той самий `Reconnecting` приходить двічі — перед сном і після нього; умовний
+/// емісії в самому циклі тримався б на маршруті, а не на правилі. Дублікат не
+/// безкоштовний: кожна подія штовхає живий снапшот crash-recovery і повну
+/// перебудову меню трея з трьома замками.
+///
+/// Обидва переліки полів нижче — про одні й ті самі чотири поля, і п'яте,
+/// дописане лише в один із них, компілятор не спіймає. Сторож на це —
+/// `every_emitted_field_alone_is_enough_to_emit`.
+fn apply_transition(status: &mut StreamStatus, transition: Transition) -> Option<Emission> {
+    let (state, next) = transition_outcome(transition);
+
+    let changed = (status.state, status.error, status.reconnect, &status.recording_started_at)
+        != (state, next.error, next.reconnect, &next.recording_started_at);
+
+    status.state = state;
+    status.error = next.error;
+    status.reconnect = next.reconnect;
+    status.recording_started_at = next.recording_started_at.clone();
+
+    changed.then_some(next)
+}
+
+/// Що емітити для переходу: `None` — коли статус є і видиме в ньому не
+/// змінилось. Коли статусу вже немає, порівнювати нема з чим, і перехід
+/// говорить беззастережно.
+fn emission_for(existing: Option<&mut StreamStatus>, transition: Transition) -> Option<Emission> {
+    match existing {
+        Some(status) => apply_transition(status, transition),
+        // `stop_all_async` осушує `entries` на перемиканні профілю, поки задачі
+        // ще доживають. `None` означає «видиме не змінилось», а не «запису вже
+        // немає»: злиття цих двох значень з'їло б останню звістку задачі.
+        None => Some(transition_outcome(transition).1),
+    }
+}
+
+/// Оголосити перехід: покласти в статус потоку і, якщо видиме змінилось,
+/// сказати фронтенду. Єдиний спосіб змінити стан запису.
+///
+/// Wake-lock перераховується тут, одним місцем: доти той самий дубль із двох
+/// рядків стояв у кожному з чотирьох помічників, які ця функція замінила.
+async fn announce_transition(
+    app: &AppHandle,
     manager: &Arc<RwLock<StreamManager>>,
     stream_id: &str,
-    outcome: TaskOutcome,
+    transition: Transition,
 ) {
-    let mut guard = manager.write().await;
-    if let Some(entry) = guard.entries.get_mut(stream_id) {
-        entry.status.state = outcome.state();
-        entry.status.error = outcome.reason();
+    let emission = {
+        let mut guard = manager.write().await;
+        let emission = emission_for(
+            guard.entries.get_mut(stream_id).map(|entry| &mut entry.status),
+            transition,
+        );
+        let any_active = guard.entries.values().any(|e| is_active_state(&e.status.state));
+        guard.wake_lock.set_recording(any_active);
+        emission
+    };
+    if let Some(emission) = emission {
+        emit_recording_status(app, stream_id, emission);
     }
-    let any_active = guard.entries.values().any(|e| is_active_state(&e.status.state));
-    guard.wake_lock.set_recording(any_active);
 }
 
 async fn update_bytes_recorded(
@@ -710,8 +821,13 @@ pub async fn recording_task(
         }
 
         // --- connecting ---
-        update_state(&manager, &stream_id, StreamState::Connecting).await;
-        emit_recording_status(&app_handle, &stream_id, RecordingStatus::Connecting, None);
+        announce_transition(
+            &app_handle,
+            &manager,
+            &stream_id,
+            opening_transition(attempt, reconnect.max_retries),
+        )
+        .await;
 
         let conn = match connection::connect(&url).await {
             Ok(c) => {
@@ -732,8 +848,13 @@ pub async fn recording_task(
                 };
                 attempt = next_attempt;
                 debug!("[{}] Reconnecting in {}s (attempt {}/{})", stream_id, delay_secs, attempt, reconnect.max_retries);
-                update_state_reconnecting(&manager, &stream_id, attempt, reconnect.max_retries).await;
-                emit_recording_status(&app_handle, &stream_id, RecordingStatus::Reconnecting, None);
+                announce_transition(
+                    &app_handle,
+                    &manager,
+                    &stream_id,
+                    Transition::Reconnecting(ReconnectProgress { attempt, max: reconnect.max_retries }),
+                )
+                .await;
                 tokio::select! {
                     _ = cancel_token.cancelled() => break 'reconnect,
                     _ = tokio::time::sleep(Duration::from_secs(delay_secs)) => {}
@@ -897,8 +1018,13 @@ pub async fn recording_task(
 
         // --- Async event consumer ---
         let started_at = chrono::Local::now().to_rfc3339();
-        update_state_recording(&manager, &stream_id, &started_at).await;
-        emit_recording_status(&app_handle, &stream_id, RecordingStatus::Recording, None);
+        announce_transition(
+            &app_handle,
+            &manager,
+            &stream_id,
+            Transition::Recording { started_at },
+        )
+        .await;
 
         let mut local_bytes: u64 = 0;
         const BYTES_UPDATE_THRESHOLD: u64 = 65536;
@@ -1072,8 +1198,13 @@ pub async fn recording_task(
         };
         attempt = next_attempt;
         debug!("[{}] Reconnecting in {}s (attempt {}/{})", stream_id, delay_secs, attempt, reconnect.max_retries);
-        update_state_reconnecting(&manager, &stream_id, attempt, reconnect.max_retries).await;
-        emit_recording_status(&app_handle, &stream_id, RecordingStatus::Reconnecting, None);
+        announce_transition(
+            &app_handle,
+            &manager,
+            &stream_id,
+            Transition::Reconnecting(ReconnectProgress { attempt, max: reconnect.max_retries }),
+        )
+        .await;
         tokio::select! {
             _ = cancel_token.cancelled() => break 'reconnect,
             _ = tokio::time::sleep(Duration::from_secs(delay_secs)) => {}
@@ -1082,8 +1213,7 @@ pub async fn recording_task(
 
     // --- Final cleanup ---
     info!("[{}] Recording task finished — cleaning up ({:?})", stream_id, outcome);
-    update_final_state(&manager, &stream_id, outcome).await;
-    emit_recording_status(&app_handle, &stream_id, outcome.status(), outcome.reason());
+    announce_transition(&app_handle, &manager, &stream_id, Transition::Final(outcome)).await;
 
     // Remove entry from the manager
     manager.write().await.entries.remove(&stream_id);
@@ -1151,31 +1281,132 @@ mod tests {
             bytes_recorded: 0,
             tracks_recorded: 0,
             error: None,
-            reconnect_attempt: None,
-            reconnect_max_retries: None,
+            reconnect: None,
             session_id: 0,
         }
     }
 
-    #[test]
-    fn mark_reconnecting_sets_attempt_and_ceiling_from_the_same_snapshot() {
-        // reconnect-max-in-status: the row shows "attempt N of M", so N and M
-        // must describe the same reconnect loop — both come from the snapshot
-        // the loop lives by, never from the profile's current settings.
-        let mut status = idle_status();
-        mark_reconnecting(&mut status, 3, 10);
-        assert!(matches!(status.state, StreamState::Reconnecting));
-        assert_eq!(status.reconnect_attempt, Some(3));
-        assert_eq!(status.reconnect_max_retries, Some(10));
+    fn progress(attempt: u32, max: u32) -> ReconnectProgress {
+        ReconnectProgress { attempt, max }
     }
 
     #[test]
-    fn stream_status_serializes_reconnect_ceiling_in_camel_case() {
+    fn the_pair_rides_only_with_reconnecting_and_the_event_repeats_the_status() {
+        // Пара існує тоді й лише тоді, коли стан `Reconnecting`, і обидва
+        // виходи переходу — запис у статус і тіло події — несуть те саме
+        // значення (ADR 2026-09-15 «Подія несе те, що знає перехід» §4).
+        // Обидва числа при цьому з одного знімка — reconnect-max-in-status.
         let mut status = idle_status();
-        mark_reconnecting(&mut status, 2, 7);
+
+        let e = apply_transition(&mut status, Transition::Reconnecting(progress(3, 10)))
+            .expect("a first reconnect changes the status");
+        assert!(matches!(status.state, StreamState::Reconnecting));
+        assert_eq!(status.reconnect, Some(progress(3, 10)));
+        assert_eq!(e.reconnect, status.reconnect);
+
+        let e = apply_transition(&mut status, Transition::Recording { started_at: "t0".into() })
+            .expect("recording changes the status");
+        assert_eq!(status.reconnect, None, "the pair does not outlive the reconnect");
+        assert_eq!(e.reconnect, None);
+        assert_eq!(status.recording_started_at.as_deref(), Some("t0"));
+        assert_eq!(e.recording_started_at.as_deref(), Some("t0"));
+
+        let e = apply_transition(&mut status, Transition::Connecting)
+            .expect("connecting changes the status");
+        assert_eq!(status.reconnect, None);
+        assert_eq!(status.recording_started_at, None, "the start moment belongs to recording");
+        assert_eq!(e.recording_started_at, None);
+    }
+
+    #[test]
+    fn a_transition_that_changes_nothing_emits_nothing() {
+        // ADR 2026-09-15 §5: подія виходить тоді й лише тоді, коли видиме
+        // змінилось. Верх циклу оголошує перехід беззастережно, тож той самий
+        // `Reconnecting` приходить двічі — до сну й після нього.
+        let mut status = idle_status();
+        assert!(apply_transition(&mut status, Transition::Reconnecting(progress(2, 7))).is_some());
+        assert!(apply_transition(&mut status, Transition::Reconnecting(progress(2, 7))).is_none());
+        assert!(apply_transition(&mut status, Transition::Reconnecting(progress(3, 7))).is_some());
+    }
+
+    #[test]
+    fn every_emitted_field_alone_is_enough_to_emit() {
+        // `apply_transition` перелічує ті самі чотири поля двічі — у перевірці
+        // «чи змінилось» і в присвоєннях, — і п'яте поле, дописане лише в один
+        // перелік, компілятор не спіймає. Кожне поле перевіряється окремо:
+        // пара переходів нижче різниться рівно одним із них.
+        let settled = |transition| {
+            let mut status = idle_status();
+            apply_transition(&mut status, transition);
+            status
+        };
+
+        let mut status = settled(Transition::Connecting);
+        assert!(
+            apply_transition(&mut status, Transition::Final(TaskOutcome::Stopped)).is_some(),
+            "state alone"
+        );
+
+        let mut status = settled(Transition::Reconnecting(progress(1, 5)));
+        assert!(
+            apply_transition(&mut status, Transition::Reconnecting(progress(2, 5))).is_some(),
+            "reconnect alone"
+        );
+
+        let mut status = settled(Transition::Recording { started_at: "t0".into() });
+        assert!(
+            apply_transition(&mut status, Transition::Recording { started_at: "t1".into() }).is_some(),
+            "recording_started_at alone"
+        );
+
+        let failed = |reason| Transition::Final(TaskOutcome::Failed(reason));
+        let mut status = settled(failed(FailureReason::StationUnreachable));
+        assert!(
+            apply_transition(&mut status, failed(FailureReason::DiskWriteFailed)).is_some(),
+            "error alone"
+        );
+    }
+
+    #[test]
+    fn a_task_whose_entry_is_already_gone_still_says_its_last_word() {
+        // `stop_all_async` осушує `entries` на перемиканні профілю, поки задачі
+        // ще доживають, — фінальному переходу такої задачі нема з чим
+        // порівнюватись. Мовчати він при цьому не має права: `None` означає
+        // «видиме не змінилось», а не «запису вже немає».
+        let emission = emission_for(None, Transition::Final(TaskOutcome::Stopped))
+            .expect("a vanished entry is not a reason to swallow the last event");
+        assert_eq!(emission.status, RecordingStatus::Stopped);
+    }
+
+    #[test]
+    fn only_the_first_connection_of_a_recording_is_connecting() {
+        // ADR 2026-09-15 «Підключення — перше з'єднання запису»: спроби циклу
+        // в `Connecting` не повертаються, інакше рядок половину циклу каже
+        // «З'єднання…», а потік блимає у відрі «Потребує уваги».
+        assert_eq!(opening_transition(0, 10), Transition::Connecting);
+        assert_eq!(opening_transition(1, 10), Transition::Reconnecting(progress(1, 10)));
+        assert_eq!(opening_transition(9, 10), Transition::Reconnecting(progress(9, 10)));
+    }
+
+    #[test]
+    fn stream_status_serializes_the_reconnect_pair_in_camel_case() {
+        let mut status = idle_status();
+        apply_transition(&mut status, Transition::Reconnecting(progress(2, 7)));
         let json = serde_json::to_string(&status).unwrap();
-        assert!(json.contains("\"reconnectAttempt\":2"), "got: {json}");
-        assert!(json.contains("\"reconnectMaxRetries\":7"), "got: {json}");
+        assert!(json.contains(r#""reconnect":{"attempt":2,"max":7}"#), "got: {json}");
+    }
+
+    #[test]
+    fn the_event_body_carries_the_pair_and_the_start_moment() {
+        // Тіло події везе факти переходу — не весь StreamStatus (ADR §1-§3).
+        let mut status = idle_status();
+        let e = apply_transition(&mut status, Transition::Reconnecting(progress(1, 10))).unwrap();
+        let json =
+            serde_json::to_string(&RecordingStatusPayload { stream_id: "s1".to_string(), emission: e })
+                .unwrap();
+        assert!(json.contains(r#""reconnect":{"attempt":1,"max":10}"#), "got: {json}");
+        assert!(json.contains(r#""recordingStartedAt":null"#), "got: {json}");
+        assert!(!json.contains("bytesRecorded"), "the event is not a whole status: {json}");
     }
 
     #[test]

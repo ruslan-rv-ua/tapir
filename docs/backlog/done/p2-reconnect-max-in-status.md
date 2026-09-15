@@ -98,7 +98,7 @@ Option<u32>` стоїть поруч із `reconnect_attempt` (у TS — `reconn
 перепідключення рядок зазвичай показує «Перепідключення…», а не «Спроба N з M»:
 лічильник був таким і до цього запису, стеля лише приєдналася до нього. Який канал має
 нести пару (розширити payload події чи дотягувати статус на подію) — розвилка для
-grooming, відщеплено в [reconnect-counter-not-live](../p2-reconnect-counter-not-live.md).
+grooming, відщеплено в [reconnect-counter-not-live](p2-reconnect-counter-not-live.md).
 
 ## Спадок
 
@@ -115,7 +115,7 @@ grooming, відщеплено в [reconnect-counter-not-live](../p2-reconnect-c
 спроби», число лише стало правдивим. **Знахідка поза обсягом:** подія `recording-status` несе
 лише стан, а пара потрапляє в стор тільки з `getAllStatuses` (старт, перемикання профілю), тож
 наживо рядок зазвичай показує «Перепідключення…» — відщеплено в
-[reconnect-counter-not-live](../p2-reconnect-counter-not-live.md) (draft, потребує grooming
+[reconnect-counter-not-live](p2-reconnect-counter-not-live.md) (draft, потребує grooming
 каналу). **NVDA-прогін не потрібен** (`a11y: false`) — змінилось джерело числа, не структура
 
 ## Документи

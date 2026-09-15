@@ -81,8 +81,7 @@ describe("CommandPalette — the per-stream record command while the recording i
   const phase = (state: "connecting" | "reconnecting") => ({
     streamId: "a", state, currentTrack: null, recordingStartedAt: null,
     bytesRecorded: 0, tracksRecorded: 0, error: null,
-    reconnectAttempt: state === "reconnecting" ? 1 : null,
-    reconnectMaxRetries: state === "reconnecting" ? 10 : null,
+    reconnect: state === "reconnecting" ? { attempt: 1, max: 10 } : null,
     sessionId: 0,
   });
 

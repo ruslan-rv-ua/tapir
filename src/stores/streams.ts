@@ -88,8 +88,7 @@ export function updateStreamStatus(streamId: string, status: Partial<StreamStatu
     bytesRecorded: 0,
     tracksRecorded: 0,
     error: null,
-    reconnectAttempt: null,
-    reconnectMaxRetries: null,
+    reconnect: null,
     sessionId: 0,
   };
   $statuses.setKey(streamId, { ...current, ...status });
