@@ -282,7 +282,9 @@ main.rs → lib.rs::run()
             │    Порядок критичний: webview мусить ініціалізуватись у вікні,
             │    яке вже на передньому плані ОС — інакше NVDA не чіпляється
             │    до документа і мовчить на старті
-            │    --minimize → hide() ПІСЛЯ того, як NVDA причепився
+            │    --minimize → hide() одразу тут, і це чинна вада: документа
+            │    ще немає, скрінрідеру нема до чого чіплятись, вікно лишається
+            │    німим на весь сеанс (беклог minimized-start-silent-to-nvda)
             │
             ├─ autostart::reconcile_on_startup()  ← звірити запис Run з current_exe()
             ├─ Profile::load → AppState::new → app.manage()

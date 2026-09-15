@@ -4,13 +4,14 @@ title: "Репліка про вимкнений автозапуск губит
 summary: "репліка про автозапуск переїжджає на гейт «перший показ вікна»; гейт витягти в спільний тип, не копіювати"
 priority: P2
 type: planned
-status: ready
+status: blocked
+blocked_reason: "Реалізацію написано й перевірено логом, але прийняти не можна: після старту згорнутим вікно німе для NVDA (minimized-start-silent-to-nvda), тож репліку в ньому фізично не почути."
 effort: S
 kind: bug
 target: 0.1.1
-updated: 2026-09-08
+updated: 2026-09-15
 a11y: true
-depends_on: [hotkey-registration-silent-at-startup]  # done/
+depends_on: [hotkey-registration-silent-at-startup, minimized-start-silent-to-nvda]  # перший у done/
 blocks: []
 touches:
   - src-tauri/src/commands/app_commands.rs
@@ -20,6 +21,9 @@ gates: [cargo test, pnpm test]
 notes:
   - "Знахідка grilling hotkey-registration-silent-at-startup (2026-09-02): та сама діра, що й у репліки про зайняту комбінацію."
   - "2026-09-08: перенесено з 0.2.0 у 0.1.1 — єдиний баг зі status: ready; репліка вже написана й обіцяна, лишається дати їй дожити до показу вікна. Нової поверхні не додає."
+  - "2026-09-15: реалізацію припарковано на гілці `fix/autostart-notice-lost-when-minimized` @ d04669b (не зливати без прогону). Гейт винесено в `src-tauri/src/startup_notice.rs` (`StartupNotice<T>` + `main_window_is_foreground`), обидва споживачі — аліаси (`autostart::MovedNotice`, `hotkey_busy::BusyNotice`), один набір тестів на гейт; там же NVDA-чекліст і правки architecture/accessibility/data-models."
+  - "2026-09-15, механіку доведено логом живого запуску: сесія стартує о 07:17:58 (`registered exe differs from current — deactivating`), `frontend_ready` настає тієї ж секунди й репліка МОВЧИТЬ, а `announcing deactivation after EXE move` іде о 07:18:29 — у мить, коли вікно вперше показали з клавіші. Тобто гейт працює; нечутною репліку робить сусідня вада."
+  - "2026-09-15, дві названі межі: (1) репліка живе один сеанс, не до почутого — переміщення виявляється один раз, реєстр уже почищено, тож сеанс без показу вікна забирає її з собою; міжсеансової пам'яті, як у комбінацій, тут немає навмисно — стоячим доказом лишається знятий прапорець у налаштуваннях; (2) звичайний старт звужено: видиме, але не сфокусоване вікно чекає повернення фокуса — у чужому фокусі репліка все одно нікому не звучить."
 ---
 
 # Репліка про вимкнений автозапуск губиться при старті згорнутим
@@ -27,6 +31,11 @@ notes:
 > **Контекст:** хвіст [hotkey-registration-silent-at-startup](done/p1-hotkey-registration-silent-at-startup.md),
 > рішення 8. Заведено, щоб не розширювати той запис; сам переїзд — кілька рядків.
 > Батьківський запис прийнято 2026-09-02, гейт `hotkey_busy::BusyNotice` є — можна брати.
+>
+> **Стан 2026-09-15:** код написано й припарковано на гілці (див. `notes:`), гейт
+> доведено логом живого запуску. Запис `blocked` не через себе, а через сусіда:
+> [minimized-start-silent-to-nvda](p0-minimized-start-silent-to-nvda.md) робить
+> вікно після старту згорнутим німим, тож репліку нема як почути. Спершу той.
 
 ## Опис
 
