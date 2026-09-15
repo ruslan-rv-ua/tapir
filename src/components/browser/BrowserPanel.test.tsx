@@ -5,7 +5,7 @@ import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import { useGlobalShortcuts } from "../../hooks/useGlobalShortcuts";
 import * as m from "../../i18n/paraglide/messages";
 import {
-  $popularStations, $searchParams, $stationSelection,
+  $popularStations, $stationSelection,
   loadMore, resetSearch, searchStations, updateSearchParam,
 } from "../../stores/browser";
 import { searchStationsIpc } from "../../lib/tauri";
@@ -115,7 +115,7 @@ it("a changed query sends the results cursor back to the first station", async (
   vi.mocked(searchStationsIpc).mockResolvedValueOnce([mk("s1"), mk("s2")]);
   await act(async () => {
     updateSearchParam("query", "jazz");
-    await searchStations($searchParams.get());
+    await searchStations();
   });
 
   // Typing never drags focus into the list.
@@ -139,7 +139,7 @@ it("«Load more» keeps the remembered row", async () => {
   vi.mocked(searchStationsIpc).mockResolvedValueOnce([mk("s1"), mk("s2")]);
   await act(async () => {
     updateSearchParam("query", "jazz");
-    await searchStations($searchParams.get());
+    await searchStations();
   });
 
   act(() => results.focus("forward"));
@@ -165,7 +165,7 @@ it("a changed FILTER, not just the query, sends the cursor back to the first sta
   vi.mocked(searchStationsIpc).mockResolvedValueOnce([mk("s1"), mk("s2")]);
   await act(async () => {
     updateSearchParam("query", "jazz");
-    await searchStations($searchParams.get());
+    await searchStations();
   });
   act(() => results.focus("forward"));
   fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
@@ -176,7 +176,7 @@ it("a changed FILTER, not just the query, sends the cursor back to the first sta
   vi.mocked(searchStationsIpc).mockResolvedValueOnce([mk("s7"), mk("s8")]);
   await act(async () => {
     updateSearchParam("country", "Poland");
-    await searchStations($searchParams.get());
+    await searchStations();
   });
 
   const rows = document.querySelectorAll<HTMLElement>('li[data-segment="summary"]');
@@ -192,7 +192,7 @@ async function withMoreToLoad(onZonesChange: ReturnType<typeof vi.fn>) {
   await act(async () => {
     updateSearchParam("query", "jazz");
     updateSearchParam("limit", 2);
-    await searchStations($searchParams.get());
+    await searchStations();
   });
   return results;
 }

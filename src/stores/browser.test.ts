@@ -48,20 +48,23 @@ describe("browser selection lifecycle", () => {
 describe("hasMore is asked, not guessed", () => {
   it("asks the catalogue for one record past the batch it shows", async () => {
     vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(4));
-    await searchStations({ limit: 3, order: "clickcount" });
+    $searchParams.set({ limit: 3, order: "clickcount" });
+    await searchStations();
     expect(searchStationsIpc).toHaveBeenCalledWith(expect.objectContaining({ limit: 4 }));
   });
 
   it("keeps the extra record out of the list and reads it as 'there is more'", async () => {
     vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(4));
-    await searchStations({ limit: 3, order: "clickcount" });
+    $searchParams.set({ limit: 3, order: "clickcount" });
+    await searchStations();
     expect($searchResults.get().map((s) => s.stationuuid)).toEqual(["u0", "u1", "u2"]);
     expect($hasMore.get()).toBe(true);
   });
 
   it("a full batch with no extra record means there is nothing more", async () => {
     vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(3));
-    await searchStations({ limit: 3, order: "clickcount" });
+    $searchParams.set({ limit: 3, order: "clickcount" });
+    await searchStations();
     expect($searchResults.get()).toHaveLength(3);
     expect($hasMore.get()).toBe(false);
   });
@@ -72,7 +75,8 @@ describe("hasMore is asked, not guessed", () => {
 describe("appending and replacing do not share a loading or error surface", () => {
   it("appending raises $appendLoading, never $searchLoading", async () => {
     vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(2));
-    await searchStations({ limit: 2, order: "clickcount" });
+    $searchParams.set({ limit: 2, order: "clickcount" });
+    await searchStations();
 
     const seen: { search: boolean; append: boolean }[] = [];
     const unsubscribe = $appendLoading.subscribe(() =>
@@ -89,7 +93,8 @@ describe("appending and replacing do not share a loading or error surface", () =
 
   it("a failed append leaves the results and $searchError alone, and toasts instead", async () => {
     vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(2));
-    await searchStations({ limit: 2, order: "clickcount" });
+    $searchParams.set({ limit: 2, order: "clickcount" });
+    await searchStations();
 
     vi.mocked(searchStationsIpc).mockRejectedValueOnce(new Error("offline"));
     await expect(loadMore()).rejects.toThrow("offline");
@@ -102,7 +107,8 @@ describe("appending and replacing do not share a loading or error surface", () =
 
   it("a failed REPLACE still goes to $searchError, as before", async () => {
     vi.mocked(searchStationsIpc).mockRejectedValueOnce(new Error("offline"));
-    await searchStations({ limit: 2, order: "clickcount" });
+    $searchParams.set({ limit: 2, order: "clickcount" });
+    await searchStations();
     expect($searchError.get()).toContain("offline");
     expect($toasts.get()).toHaveLength(0);
   });
@@ -125,7 +131,7 @@ describe("the loaded prefix is the pagination cursor", () => {
   it("asks for the very same page again after a failed batch", async () => {
     updateSearchParam("limit", 2);
     vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(2));
-    await searchStations($searchParams.get());
+    await searchStations();
 
     vi.mocked(searchStationsIpc).mockRejectedValueOnce(new Error("offline"));
     await expect(loadMore()).rejects.toThrow("offline");
@@ -143,7 +149,7 @@ describe("the loaded prefix is the pagination cursor", () => {
   it("throws away a batch that lands after the criteria changed", async () => {
     updateSearchParam("limit", 2);
     vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(2));
-    await searchStations($searchParams.get());
+    await searchStations();
 
     let release!: (batch: StationResult[]) => void;
     vi.mocked(searchStationsIpc).mockImplementationOnce(
@@ -164,7 +170,7 @@ describe("the loaded prefix is the pagination cursor", () => {
   it("does not toast a batch that FAILED after the criteria changed", async () => {
     updateSearchParam("limit", 2);
     vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(2));
-    await searchStations($searchParams.get());
+    await searchStations();
 
     let reject!: (e: Error) => void;
     vi.mocked(searchStationsIpc).mockImplementationOnce(
@@ -177,5 +183,103 @@ describe("the loaded prefix is the pagination cursor", () => {
 
     expect($toasts.get()).toHaveLength(0); // an error about a set they left
     expect($appendLoading.get()).toBe(false);
+  });
+});
+
+// The second half of «стан розійшовся з екраном»: two REPLACEs can be in the air at
+// once (a filter fires at once, the text query after a debounce, and the catalogue
+// rotates mirrors on a timeout — so the older one really can land last). The reply
+// carries the same ticket the append already carries; what is new is that a foreign
+// one touches NOTHING, the loading flag included. ADR 2026-09-15 «прапорець заміни
+// належить екрану, а не запиту».
+describe("a foreign reply to a REPLACE touches nothing", () => {
+  const held = () => {
+    let settle!: { ok: (b: StationResult[]) => void; no: (e: Error) => void };
+    vi.mocked(searchStationsIpc).mockImplementationOnce(
+      () => new Promise<StationResult[]>((ok, no) => { settle = { ok, no }; }),
+    );
+    return () => settle;
+  };
+
+  it("the late reply puts neither rows, nor hasMore, nor an error on screen", async () => {
+    $searchParams.set({ limit: 2, order: "clickcount" });
+    const a = held();
+    const inFlightA = searchStations();
+
+    updateSearchParam("query", "jazz"); // a different result set now
+    vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(2, 10));
+    await searchStations(); // …and its answer is already on screen
+
+    a().ok(page(3)); // so this one, and its "there is more", are not ours
+    await inFlightA;
+
+    expect($searchResults.get().map((s) => s.stationuuid)).toEqual(["u10", "u11"]);
+    expect($hasMore.get()).toBe(false);
+    expect($searchError.get()).toBeNull();
+    expect($searchLoading.get()).toBe(false);
+  });
+
+  // The blink this record is named after: the abandoned reply used to reach its
+  // `finally` and clear the flag while the fresh request was still on the wire.
+  it("keeps the loading card up while the fresh request is still on the wire", async () => {
+    $searchParams.set({ limit: 2, order: "clickcount" });
+    const a = held();
+    const inFlightA = searchStations();
+
+    const seen: boolean[] = [];
+    const unsubscribe = $searchLoading.subscribe((v) => seen.push(v));
+
+    updateSearchParam("query", "jazz");
+    const b = held();
+    const inFlightB = searchStations();
+
+    a().ok(page(3)); // the abandoned one lands FIRST
+    await inFlightA;
+    expect($searchLoading.get()).toBe(true); // …and the card stays put
+
+    b().ok(page(2, 10));
+    await inFlightB;
+    unsubscribe();
+
+    expect(seen[0]).toBe(true); // it was raised at all — nothing else pins that
+    expect(seen.filter((v) => !v)).toHaveLength(1); // and lowered exactly once
+  });
+
+  // $searchError is cleared at request START, so without the ticket an older
+  // failure lands on top of a newer success and nothing ever clears it again.
+  it("the late FAILURE puts no error card over a good result set", async () => {
+    $searchParams.set({ limit: 2, order: "clickcount" });
+    const a = held();
+    const inFlightA = searchStations();
+
+    updateSearchParam("query", "jazz");
+    vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(2, 10));
+    await searchStations();
+
+    a().no(new Error("offline"));
+    await inFlightA;
+
+    expect($searchError.get()).toBeNull();
+    expect($searchResults.get()).toHaveLength(2);
+    expect($toasts.get()).toHaveLength(0); // an error about a set they left
+  });
+
+  // Who has the RIGHT to lower the flag. Every other criteria write is followed by
+  // a request that will lower it; «Скинути фільтри» is the one that is not, so it
+  // has to say so itself — otherwise the abandoned reply leaves the flag up for good.
+  it("resetSearch says «nothing is coming», and the late reply leaves that alone", async () => {
+    $searchParams.set({ limit: 2, order: "clickcount" });
+    const a = held();
+    const inFlightA = searchStations();
+    expect($searchLoading.get()).toBe(true);
+
+    resetSearch(); // no request behind this one
+    expect($searchLoading.get()).toBe(false);
+
+    a().ok(page(3));
+    await inFlightA;
+
+    expect($searchLoading.get()).toBe(false);
+    expect($searchResults.get()).toHaveLength(0);
   });
 });
