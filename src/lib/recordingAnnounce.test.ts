@@ -5,7 +5,7 @@ import type { RecordingStatus, RecordingStatusPayload } from "./tauri";
 // `RecordingStatus`, не `StreamState`: подія несе результат запису, і `stopped`
 // живе лише в цьому словнику (`tauri-ts-type-drift`, рішення 8).
 const payload = (status: RecordingStatus, error?: RecordingStatusPayload["error"]): RecordingStatusPayload =>
-  ({ streamId: "s1", status, error: error ?? null });
+  ({ streamId: "s1", status, error: error ?? null, reconnect: null, recordingStartedAt: null });
 
 describe("selectRecordingAnnouncement", () => {
   it("speaks for the three transitions that end something", () => {

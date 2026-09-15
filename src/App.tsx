@@ -44,6 +44,7 @@ import { applyMuteCleanup } from "./lib/muteCleanup";
 import { rememberVolumeLevel, selectVolumeAnnouncement } from "./lib/muteControl";
 import { selectPlaybackAnnouncement, sourceName, suppressesStarted, type PendingConnect } from "./lib/playbackAnnounce";
 import { describeRecording, selectRecordingAnnouncement } from "./lib/recordingAnnounce";
+import { recordingStatusPatch } from "./lib/recordingStatusPatch";
 import { formatTimeParts } from "./lib/time";
 import { windowTitleLabel } from "./lib/windowTitle";
 import { useGlobalShortcuts } from "./hooks/useGlobalShortcuts";
@@ -179,16 +180,11 @@ function AppContent() {
   // or a restart. The reason is cleared on every other transition — a stale cause
   // outliving its failure is the same class of lie this record is closing.
   const handleRecordingStatus = useCallback((payload: RecordingStatusPayload) => {
-    const event = selectRecordingAnnouncement(payload);
-    updateStreamStatus(payload.streamId, {
-      // Подія несе результат запису, дзеркало зберігає стан потоку — два
-      // словники, і вся межа між ними тут: «зупинено» — це результат, а стан
-      // після нього — «очікування» (`tauri-ts-type-drift`, рішення 8).
-      state: payload.status === "stopped" ? "idle" : payload.status,
-      recordingStartedAt: payload.status === "recording" ? new Date().toISOString() : null,
-      error: event?.kind === "failed" ? event.reason : null,
-    });
+    // Що подія міняє в дзеркалі — рішення, і воно живе під сторожем у
+    // `recordingStatusPatch`; тут лишається проводка.
+    updateStreamStatus(payload.streamId, recordingStatusPatch(payload));
 
+    const event = selectRecordingAnnouncement(payload);
     if (!event) return;
     const stream = $streams.get().find((s) => s.id === payload.streamId);
     const speech = describeRecording(event, stream?.name ?? payload.streamId);

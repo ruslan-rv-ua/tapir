@@ -114,7 +114,7 @@ describe("StreamItem — last-played track presentation", () => {
     bytesRecorded: 0,
     tracksRecorded: 0,
     error: null,
-    reconnectAttempt: null, reconnectMaxRetries: null,
+    reconnect: null,
     sessionId: 0,
     ...over,
   });
@@ -180,8 +180,7 @@ describe("StreamItem — the record action while the recording is only connectin
   const mkPhase = (state: StreamStatus["state"]): StreamStatus => ({
     streamId: "s1", state, currentTrack: null, recordingStartedAt: null,
     bytesRecorded: 0, tracksRecorded: 0, error: null,
-    reconnectAttempt: state === "reconnecting" ? 1 : null,
-    reconnectMaxRetries: state === "reconnecting" ? 10 : null,
+    reconnect: state === "reconnecting" ? { attempt: 1, max: 10 } : null,
     sessionId: 0,
   });
 
@@ -234,10 +233,7 @@ describe("StreamItem — the record action while the recording is only connectin
 });
 
 describe("StreamItem — reconnecting counter display", () => {
-  const mkReconnecting = (
-    reconnectAttempt: number | null,
-    reconnectMaxRetries: number | null,
-  ): StreamStatus => ({
+  const mkReconnecting = (reconnect: StreamStatus["reconnect"]): StreamStatus => ({
     streamId: "s1",
     state: "reconnecting",
     currentTrack: null,
@@ -245,8 +241,7 @@ describe("StreamItem — reconnecting counter display", () => {
     bytesRecorded: 0,
     tracksRecorded: 0,
     error: null,
-    reconnectAttempt,
-    reconnectMaxRetries,
+    reconnect,
     sessionId: 0,
   });
 
@@ -254,24 +249,20 @@ describe("StreamItem — reconnecting counter display", () => {
     // reconnect-max-in-status: the ceiling rides with the status, from the
     // settings snapshot the backend's reconnect loop actually lives by — the
     // row has no other input for it (no prop, no profile settings).
-    const { container } = renderItem(mkStream(), mkReconnecting(3, 10));
+    const { container } = renderItem(mkStream(), mkReconnecting({ attempt: 3, max: 10 }));
     const statusCell = container.querySelector('[data-segment="status"]')!;
     expect(statusCell.textContent).toMatch(/attempt 3 of 10|спроба 3 з 10/i);
   });
 
-  it("falls back to 'Reconnecting...' when the status carries no ceiling", () => {
+  it("falls back to 'Reconnecting...' when the status carries no pair at all", () => {
     // A counter without its ceiling would be the bare "Attempt N" that ADR
-    // 2026-08-13 removed from the domain.
-    const { container } = renderItem(mkStream(), mkReconnecting(5, null));
+    // 2026-08-13 removed from the domain. Half a pair is no longer a case the
+    // row must defend against — the wire cannot express one — so what is left
+    // to guard is the pair being absent altogether.
+    const { container } = renderItem(mkStream(), mkReconnecting(null));
     const statusCell = container.querySelector('[data-segment="status"]')!;
     expect(statusCell.textContent).toMatch(/reconnecting|перепідключення/i);
     expect(statusCell.textContent).not.toMatch(/attempt|спроба/i);
-  });
-
-  it("falls back to 'Reconnecting...' when reconnectAttempt is null", () => {
-    const { container } = renderItem(mkStream(), mkReconnecting(null, 10));
-    const statusCell = container.querySelector('[data-segment="status"]')!;
-    expect(statusCell.textContent).toMatch(/reconnecting|перепідключення/i);
   });
 });
 
@@ -284,7 +275,7 @@ describe("StreamItem — error state accessibility (D9)", () => {
     bytesRecorded: 0,
     tracksRecorded: 0,
     error,
-    reconnectAttempt: null, reconnectMaxRetries: null,
+    reconnect: null,
     sessionId: 0,
   });
 
@@ -322,7 +313,7 @@ describe("StreamItem — inline icon slots (D1–D2)", () => {
     bytesRecorded: 0,
     tracksRecorded: 0,
     error: null,
-    reconnectAttempt: null, reconnectMaxRetries: null,
+    reconnect: null,
     sessionId: 0,
     ...over,
   });
@@ -348,7 +339,7 @@ describe("StreamItem — inline icon slots (D1–D2)", () => {
   });
 
   it("shows reconnecting icon in R-slot when reconnecting", () => {
-    const { container } = renderItem(mkStream(), mkSt("reconnecting", { reconnectAttempt: 1 }));
+    const { container } = renderItem(mkStream(), mkSt("reconnecting", { reconnect: { attempt: 1, max: 10 } }));
     expect(container.querySelector('[data-slot="record"] svg')).toBeTruthy();
     expect(container.querySelector('[data-slot="play"] svg')).toBeFalsy();
   });
@@ -406,7 +397,7 @@ describe("StreamItem — inline icon slots (D1–D2)", () => {
       positionMs: null,
       durationMs: null,
     });
-    const { container } = renderItem(mkStream(), mkSt("reconnecting", { reconnectAttempt: 1 }));
+    const { container } = renderItem(mkStream(), mkSt("reconnecting", { reconnect: { attempt: 1, max: 10 } }));
     expect(container.querySelector('[data-slot="record"] svg')).toBeTruthy();
     expect(container.querySelector('[data-slot="play"] svg')).toBeTruthy();
   });
@@ -470,8 +461,7 @@ describe("StreamItem — the row name says every fact, not the loudest one", () 
     bytesRecorded: 0,
     tracksRecorded: 0,
     error: state === "error" ? "station_unreachable" : null,
-    reconnectAttempt: state === "reconnecting" ? 1 : null,
-    reconnectMaxRetries: state === "reconnecting" ? 10 : null,
+    reconnect: state === "reconnecting" ? { attempt: 1, max: 10 } : null,
     sessionId: 0,
   });
 

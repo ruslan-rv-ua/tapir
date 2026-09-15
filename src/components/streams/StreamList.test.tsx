@@ -210,7 +210,7 @@ describe("StreamList — row activation honors doubleClickAction", () => {
     $statuses.set({
       a: {
         streamId: "a", state: "recording", currentTrack: null, recordingStartedAt: null,
-        bytesRecorded: 0, tracksRecorded: 0, error: null, reconnectAttempt: null, reconnectMaxRetries: null,
+        bytesRecorded: 0, tracksRecorded: 0, error: null, reconnect: null,
         sessionId: 0,
       },
     });
@@ -228,8 +228,7 @@ describe("StreamList — row activation honors doubleClickAction", () => {
         a: {
           streamId: "a", state, currentTrack: null, recordingStartedAt: null,
           bytesRecorded: 0, tracksRecorded: 0, error: null,
-          reconnectAttempt: state === "reconnecting" ? 1 : null,
-          reconnectMaxRetries: state === "reconnecting" ? 10 : null,
+          reconnect: state === "reconnecting" ? { attempt: 1, max: 10 } : null,
           sessionId: 0,
         },
       });
@@ -734,7 +733,7 @@ describe("StreamList — F5 / Shift+F5 transfer hotkeys", () => {
   const recording = (id: string) => ({
     [id]: {
       streamId: id, state: "recording" as const, currentTrack: null, recordingStartedAt: null,
-      bytesRecorded: 0, tracksRecorded: 0, error: null, reconnectAttempt: null, reconnectMaxRetries: null, sessionId: 0,
+      bytesRecorded: 0, tracksRecorded: 0, error: null, reconnect: null, sessionId: 0,
     },
   });
   const playing = (id: string) => ({
@@ -858,8 +857,8 @@ describe("StreamList — reconnect ceiling rides with the status", () => {
   const reconnecting = (attempt: number, max: number) => ({
     a: {
       streamId: "a", state: "reconnecting" as const, currentTrack: null, recordingStartedAt: null,
-      bytesRecorded: 0, tracksRecorded: 0, error: null, reconnectAttempt: attempt,
-      reconnectMaxRetries: max, sessionId: 0,
+      bytesRecorded: 0, tracksRecorded: 0, error: null,
+      reconnect: { attempt, max }, sessionId: 0,
     },
   });
   const statusCell = (container: HTMLElement) =>

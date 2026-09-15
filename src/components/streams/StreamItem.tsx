@@ -194,16 +194,15 @@ export function StreamItem({
 
   const techValue = formatBitrate(stream.bitrate, stream.format, stream.unsupportedCodec);
 
-  // Обидва числа — з одного статусу: стеля йде зі знімка налаштувань, за яким
-  // живе перепідключення, а не з поточних налаштувань профілю
-  // (reconnect-max-in-status). Без стелі напис «Спроба N» не відповідає жодному
-  // стану домену (ADR 2026-08-13), тож рядок каже лише «Перепідключення…».
-  const retryAttempt = status?.reconnectAttempt ?? null;
-  const retryMax = status?.reconnectMaxRetries ?? null;
-  const retryLabel =
-    retryAttempt !== null && retryMax !== null
-      ? m.status_reconnecting_attempt({ attempt: retryAttempt, max: retryMax })
-      : m.status_reconnecting();
+  // Пара — одне значення з одного знімка: стеля йде з тих налаштувань, за
+  // якими живе перепідключення, а не з поточних налаштувань профілю
+  // (reconnect-max-in-status). Половини пари не буває; запасна гілка лишається
+  // на випадок, коли пари немає зовсім — бо напис «Спроба N» без стелі не
+  // відповідає жодному стану домену (ADR 2026-08-13).
+  const retry = status?.reconnect ?? null;
+  const retryLabel = retry
+    ? m.status_reconnecting_attempt({ attempt: retry.attempt, max: retry.max })
+    : m.status_reconnecting();
 
   // «Помилка» is already in the row's own label, so the segment carries the
   // reason instead of saying the same word twice a second apart

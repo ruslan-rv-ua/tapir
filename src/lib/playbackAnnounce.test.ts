@@ -125,7 +125,7 @@ describe("describePlayback", () => {
       streamId: "s1", state: "recording",
       currentTrack: { artist: "Miles", title: "So What", startedAt: "", ignored: false },
       recordingStartedAt: null, bytesRecorded: 0, tracksRecorded: 0,
-      error: null, reconnectAttempt: null, reconnectMaxRetries: null, sessionId: 1,
+      error: null, reconnect: null, sessionId: 1,
     },
   };
 

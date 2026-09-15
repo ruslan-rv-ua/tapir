@@ -71,6 +71,11 @@ export interface TrackInfo {
   ignored: boolean;
 }
 
+export interface ReconnectProgress {
+  attempt: number;
+  max: number;
+}
+
 export interface StreamStatus {
   streamId: string;
   state: StreamState;
@@ -80,9 +85,13 @@ export interface StreamStatus {
   tracksRecorded: number;
   /** Non-null only in state `error` — the reason the task gave up. */
   error: FailureReason | null;
-  reconnectAttempt: number | null;
-  /** Стеля спроб зі знімка, за яким живе перепідключення — парою з reconnectAttempt, не з налаштувань профілю. */
-  reconnectMaxRetries: number | null;
+  /**
+   * Спроба зі стелею, поки потік перепідключається; `null` у решті станів.
+   * Одне значення, а не два поля: половини пари в домені немає, і обидва числа
+   * приходять із того самого знімка, за яким живе цикл перепідключення, — не з
+   * поточних налаштувань профілю (reconnect-max-in-status).
+   */
+  reconnect: ReconnectProgress | null;
   sessionId: number; // стабільний id сесії запису; reconnect його не змінює
 }
 
@@ -155,6 +164,14 @@ export interface RecordingStatusPayload {
    *  `Option<FailureReason>` without `skip_serializing_if`, so the key is
    *  always on the wire: `null`, never absent. */
   error: FailureReason | null;
+  /**
+   * Непорожня лише при `status: "reconnecting"` — і `null` у решті переходів
+   * **є** скиданням пари в дзеркалі: окремого механізму для цього немає
+   * (ADR 2026-09-15 «Подія несе те, що знає перехід» §1).
+   */
+  reconnect: ReconnectProgress | null;
+  /** Мить, коли з'єднання стало записом; `null` поза станом `recording`. */
+  recordingStartedAt: string | null;
 }
 
 /**
