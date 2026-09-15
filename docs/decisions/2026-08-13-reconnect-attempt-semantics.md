@@ -96,7 +96,7 @@
   > **Доповнено 2026-09-15.** Два поля звелися в одне — `StreamStatus.reconnect:
   > Option<ReconnectProgress>`, — тож половини пари більше не існує ні в пам'яті, ні на
   > дроті, і пара тепер їде в самій події переходу
-  > ([reconnect-counter-not-live](../backlog/p2-reconnect-counter-not-live.md)).
+  > ([reconnect-counter-not-live](../backlog/done/p2-reconnect-counter-not-live.md)).
 - **Довідка описує лише дефолт і спосіб вимкнути нулем.** Поріг «перший аудіобайт»
   свідомо не пояснюється користувачу: на його питання «чому воно здалося?» повна
   відповідь — «вичерпало 10 спроб».

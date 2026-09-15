@@ -29,7 +29,7 @@ notes:
 # Фікстури StreamStatus зібрані руками в кожному тестовому файлі
 
 > **Контекст:** знахідка рев'ю коду в
-> [reconnect-counter-not-live](p2-reconnect-counter-not-live.md) (2026-09-15).
+> [reconnect-counter-not-live](done/p2-reconnect-counter-not-live.md) (2026-09-15).
 > Чистий chore: поведінки застосунку не змінює.
 
 ## Опис
@@ -87,4 +87,4 @@ notes:
 
 ## Документи
 
-- [reconnect-counter-not-live](p2-reconnect-counter-not-live.md) — робота, яка це виміряла
+- [reconnect-counter-not-live](done/p2-reconnect-counter-not-live.md) — робота, яка це виміряла

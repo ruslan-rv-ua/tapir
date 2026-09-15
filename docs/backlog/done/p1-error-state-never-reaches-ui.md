@@ -135,7 +135,7 @@ Grooming 2026-09-06. Обґрунтування, відхилені варіан
 Прогін 2026-09-06 пройшов чисто, але виявив три речі поруч:
 
 - «Спроба N з M» під час перепідключення не показується —
-  [reconnect-counter-not-live](../p2-reconnect-counter-not-live.md); відро «Потребує
+  [reconnect-counter-not-live](p2-reconnect-counter-not-live.md); відро «Потребує
   уваги» зробило цю ваду буденною, і в записі це дописано як аргумент за перегляд `target`.
 - Після зміни фільтра `Tab` перестрибує непорожній список —
   [list-skipped-by-tab-after-filter](p1-list-skipped-by-tab-after-filter.md); вада не
@@ -168,7 +168,7 @@ attempt }`** — приваблива форма, яка ламається на
 серйозність факту**. **NVDA-прогін 2026-09-06: чисто**, але тестувальник знайшов поруч три речі
 — [list-skipped-by-tab-after-filter](p1-list-skipped-by-tab-after-filter.md),
 [record-action-lies-while-connecting](p1-record-action-lies-while-connecting.md) і свіжий
-аргумент за перегляд [reconnect-counter-not-live](../p2-reconnect-counter-not-live.md)
+аргумент за перегляд [reconnect-counter-not-live](p2-reconnect-counter-not-live.md)
 
 ## Документи
 
@@ -176,7 +176,7 @@ attempt }`** — приваблива форма, яка ламається на
 - [CONTEXT.md](../../../CONTEXT.md) §«Поразка і потреба в увазі» — словник
 - [p2-zone-vanishes-under-focus-audit.md](p2-zone-vanishes-under-focus-audit.md) — прогін, що це знайшов
 - [p2-stream-failure-tray-toast.md](../p2-stream-failure-tray-toast.md) — відщеплена нативна поверхня
-- [p2-reconnect-counter-not-live.md](../p2-reconnect-counter-not-live.md) — сусідня вада того ж
+- [p2-reconnect-counter-not-live.md](p2-reconnect-counter-not-live.md) — сусідня вада того ж
   вузла; цим записом **не** закривається
 - [ADR 2026-08-13](../../decisions/2026-08-13-reconnect-attempt-semantics.md) — семантика спроби
 - [ADR 2026-09-01](../../decisions/2026-09-01-response-surfaces-ear-window-system.md) — вибір поверхні відгуку

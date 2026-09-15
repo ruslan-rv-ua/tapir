@@ -3,7 +3,7 @@
 - **Статус:** ПРИЙНЯТО
 - **Дата:** 2026-09-15
 - **Тип:** ADR — межа каналу `recording-status` і те, з чого фронтенд збирає дзеркало статусу
-- **Контекст:** беклог — [reconnect-counter-not-live](../backlog/p2-reconnect-counter-not-live.md);
+- **Контекст:** беклог — [reconnect-counter-not-live](../backlog/done/p2-reconnect-counter-not-live.md);
   два словники результату й стану — беклог [tauri-ts-type-drift](../backlog/done/p2-tauri-ts-type-drift.md),
   рішення 8; семантика спроби — [ADR 2026-08-13](2026-08-13-reconnect-attempt-semantics.md);
   межа фаз — [ADR 2026-09-15](2026-09-15-connecting-is-the-first-connection.md); код —

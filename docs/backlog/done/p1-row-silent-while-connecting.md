@@ -172,7 +172,7 @@ notes:
   висловів поспіль забагато, це окремий запис, і цей на нього не чекає.
 - **Кнопку по фазах не переназиваємо** — відхилено в записі про кнопку.
 - **Номер спроби в резюме не несемо.** «Спроба N з M» — деталь сегмента, і в неї свій
-  запис [reconnect-counter-not-live](../p2-reconnect-counter-not-live.md).
+  запис [reconnect-counter-not-live](p2-reconnect-counter-not-live.md).
 - **Фільтри й метрики лишаються як є** — вони рахують потоки, а не називають рядок.
 
 ## Критерії готовності
@@ -260,7 +260,7 @@ notes:
 
 - [record-action-lies-while-connecting](p1-record-action-lies-while-connecting.md) — межа, яку цей запис уточнює
 - [error-state-never-reaches-ui](p1-error-state-never-reaches-ui.md) — прецедент: «Помилка» в імені рядка
-- [reconnect-counter-not-live](../p2-reconnect-counter-not-live.md) — сусід про той самий рядок під час боротьби
+- [reconnect-counter-not-live](p2-reconnect-counter-not-live.md) — сусід про той самий рядок під час боротьби
 - [ADR 2026-09-06](../../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md) — чому фази мовчать у репліках
 - [ADR 2026-08-31](../../decisions/2026-08-31-visible-carrier-for-announced-facts.md) — правило видимого носія
 - [CONTEXT.md](../../../CONTEXT.md) §«Запис і Записи» — запис існує від команди «почати»

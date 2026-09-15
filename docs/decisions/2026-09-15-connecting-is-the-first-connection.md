@@ -3,7 +3,7 @@
 - **Статус:** ПРИЙНЯТО
 - **Дата:** 2026-09-15
 - **Тип:** ADR — межа між фазами запису «підключення» і «перепідключення»
-- **Контекст:** беклог — [reconnect-counter-not-live](../backlog/p2-reconnect-counter-not-live.md);
+- **Контекст:** беклог — [reconnect-counter-not-live](../backlog/done/p2-reconnect-counter-not-live.md);
   словник — [CONTEXT.md](../../CONTEXT.md) §«Перепідключення і спроба», §«Запис і Записи»;
   семантика спроби — [ADR 2026-08-13](2026-08-13-reconnect-attempt-semantics.md); відро
   «Потребує уваги» — [ADR 2026-09-06](2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md)

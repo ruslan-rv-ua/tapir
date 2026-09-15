@@ -24,7 +24,7 @@ notes:
 # Тривалість запису обнуляється після кожного перепідключення
 
 > **Контекст:** знайдено під час грумінгу
-> [reconnect-counter-not-live](p2-reconnect-counter-not-live.md) (2026-09-15).
+> [reconnect-counter-not-live](done/p2-reconnect-counter-not-live.md) (2026-09-15).
 > Це `research`, а не `planned`: спершу треба вирішити, що таке «тривалість запису».
 
 ## Опис
@@ -74,7 +74,7 @@ reconnect його не змінює»).
 
 ## Документи
 
-- [reconnect-counter-not-live](p2-reconnect-counter-not-live.md) — звідки відщеплено
+- [reconnect-counter-not-live](done/p2-reconnect-counter-not-live.md) — звідки відщеплено
 - [ADR: подія несе те, що знає перехід](../decisions/2026-09-15-event-carries-what-the-transition-knows.md)
   — чому мить старту тепер їде в події й чому це нічого не змінило
 - [CONTEXT.md](../../CONTEXT.md) §«Запис і Записи»
