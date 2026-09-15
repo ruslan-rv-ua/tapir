@@ -126,11 +126,14 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > Найперше рішення для цієї секції — **gate A4** ([mpv-playback-engine](p3-mpv-playback-engine.md)):
 > його «go» закриває два інші записи разом.
 
-У черзі: 14. Виконано: 3.
+У черзі: 17. Виконано: 3.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
 | [disk-space-monitor](p2-disk-space-monitor.md) ♿ | P2 | planned | draft | M | — | — | знахідка architecture-doc-drift: §8 описував нагляд за місцем як робочий — події, щохвилинна перевірка, автозупинка, — а в коді немає нічого; не грилений |
+| [browser-zone-race-sweep-triage](p2-browser-zone-race-sweep-triage.md) ♿ | P2 | research | draft | S | [stale-search-overwrites-results](done/p2-stale-search-overwrites-results.md) ✅ | — | обхід зони браузера дав шість дефектів поза класом stale-search; частина підтверджена, частина не перевірялась — звірити й розділити на власні записи |
+| [debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md) ♿ | P2 | planned | draft | S | [stale-search-overwrites-results](done/p2-stale-search-overwrites-results.md) ✅ | — | критерії міняються миттєво, запит — через 500 мс; у це вікно стара вибірка видається за відповідь, а дописування йде новими критеріями по старому зсуву |
+| [empty-search-shows-popular-stations](p2-empty-search-shows-popular-stations.md) ♿ | P2 | planned | draft | S | — | — | нульовий результат згортає showSearchResults, тож відповіддю на запит стає список популярних; рядок «Станцій не знайдено» недосяжний узагалі |
 | [hls-stream-support](p3-hls-stream-support.md) ♿ | P3 | idea | draft | L | — | — | залежить від рішення mpv-playback-engine |
 | [mpv-playback-engine](p3-mpv-playback-engine.md) ♿ | P3 | research | draft | L | — | [hls-stream-support](p3-hls-stream-support.md), [he-aac-mf-playback](p3-he-aac-mf-playback.md) | розвилка A4 (PoC-gate): «go» закриває he-aac-mf-playback і hls-stream-support разом; робити першим серед декодер-записів |
 | [stream-auth](p3-stream-auth.md) ♿ | P3 | research | draft | L | — | — | брати лише за реальною потребою (станція з платним/приватним mountpoint) |
