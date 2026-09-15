@@ -56,7 +56,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 |------|---|-----|------|---------|---------------|-------------|------|
 | [minimized-start-crashes-release-build](p0-minimized-start-crashes-release-build.md) | P0 | planned | ready | S | — | — | tray::notify_state_changed у гілці --minimize читає AppState до app.manage; у release (panic = abort) паніка в задачі вбиває процес |
 | [minimized-start-silent-to-nvda](p0-minimized-start-silent-to-nvda.md) ♿ | P0 | planned | ready | S | — | [autostart-notice-lost-when-minimized](p2-autostart-notice-lost-when-minimized.md) | вікно ховається до завантаження вебв'ю, скрінрідер бачить порожній документ і більше не перепитує; ховати треба на frontend_ready |
-| [reconnect-counter-not-live](p2-reconnect-counter-not-live.md) | P2 | planned | draft | S | [reconnect-max-in-status](done/p2-reconnect-max-in-status.md) ✅ | — | пара «спроба N з M» їде правильним каналом, але канал не оновлюється під час запису; знахідка реалізації 2026-09-02, потрібен grooming каналу |
+| [reconnect-counter-not-live](p2-reconnect-counter-not-live.md) | P2 | planned | ready | M | [reconnect-max-in-status](done/p2-reconnect-max-in-status.md) ✅ | [recording-duration-is-per-connection](p3-recording-duration-is-per-connection.md) | пара «спроба N з M» не їде в події переходу, тож у рядок потрапляє лише на старті застосунку; грумінг 2026-09-15 закрито, два ADR |
 | [stale-search-overwrites-results](p2-stale-search-overwrites-results.md) | P2 | planned | draft | S | [load-more-retry-skips-failed-page](done/p2-load-more-retry-skips-failed-page.md) ✅ | — | клас «стан розійшовся з екраном»: дві заміни в польоті, пізня кладе результати критеріїв, яких уже немає; квиток із load-more-retry підходить, грилити |
 | [tray-cannot-resume-last](p2-tray-cannot-resume-last.md) ♿ | P2 | planned | draft | S | [tray-toggle-label-vs-action](done/p2-tray-toggle-label-vs-action.md) ✅ | — | знахідка grilling 2026-09-03: пункт трея сірий, хоча `Ctrl+Shift+K` у тому самому стані відновлює останнє джерело |
 | [autostart-notice-lost-when-minimized](p2-autostart-notice-lost-when-minimized.md) ♿ | P2 | planned | **blocked** | S | [hotkey-registration-silent-at-startup](done/p1-hotkey-registration-silent-at-startup.md) ✅, [minimized-start-silent-to-nvda](p0-minimized-start-silent-to-nvda.md) | — | репліка про автозапуск переїжджає на гейт «перший показ вікна»; гейт витягти в спільний тип, не копіювати Заблоковано: Реалізацію написано й перевірено логом, але прийняти не можна: після старту згорнутим вікно німе для NVDA (minimized-start-silent-to-nvda), тож репліку в ньому фізично не почути. |
@@ -128,7 +128,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > Найперше рішення для цієї секції — **gate A4** ([mpv-playback-engine](p3-mpv-playback-engine.md)):
 > його «go» закриває два інші записи разом.
 
-У черзі: 12. Виконано: 3.
+У черзі: 13. Виконано: 3.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
@@ -143,4 +143,5 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 | [cli-answers-only-with-exit-code](p3-cli-answers-only-with-exit-code.md) | P3 | idea | draft | S | — | — | спірна — `--version` і `--help` не друкують нічого (код 0 без `e.print()`); перше питання — чи GUI-застосунок узагалі має відповідати в консолі |
 | [command-palette-mode-prefixes](p3-command-palette-mode-prefixes.md) ♿ | P3 | idea | draft | S | [command-palette-phase-3](p1-command-palette-phase-3.md) | — | спірна — українська розкладка без `>`/`@` |
 | [help-style-guide-extract](p3-help-style-guide-extract.md) | P3 | planned | draft | S | [help-word-floor](done/p2-help-word-floor.md) ✅ | — | стиль-гайд довідки лежить у закритому `help-content-polish`, тест цитує його за slug'ом; чистий рефакторинг адреси, три відкриті питання |
+| [recording-duration-is-per-connection](p3-recording-duration-is-per-connection.md) | P3 | research | draft | S | [reconnect-counter-not-live](p2-reconnect-counter-not-live.md) | — | рядок і рядок стану показують вік поточного з'єднання, а не сесії запису; питання не в числі, а в тому, що таке «тривалість» |
 | [recording-start-speaks-three-times](p3-recording-start-speaks-three-times.md) ♿ | P3 | idea | draft | S | [row-silent-while-connecting](done/p1-row-silent-while-connecting.md) ✅ | — | тригер-gated: одна дія дає «Підключення…», «Записується…», «Запис розпочато…»; вертатись, лише коли людина скаже, що заважає |
