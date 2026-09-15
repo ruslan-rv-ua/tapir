@@ -128,7 +128,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > Найперше рішення для цієї секції — **gate A4** ([mpv-playback-engine](p3-mpv-playback-engine.md)):
 > його «go» закриває два інші записи разом.
 
-У черзі: 13. Виконано: 3.
+У черзі: 14. Виконано: 3.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
@@ -145,3 +145,4 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 | [help-style-guide-extract](p3-help-style-guide-extract.md) | P3 | planned | draft | S | [help-word-floor](done/p2-help-word-floor.md) ✅ | — | стиль-гайд довідки лежить у закритому `help-content-polish`, тест цитує його за slug'ом; чистий рефакторинг адреси, три відкриті питання |
 | [recording-duration-is-per-connection](p3-recording-duration-is-per-connection.md) | P3 | research | draft | S | [reconnect-counter-not-live](p2-reconnect-counter-not-live.md) | — | рядок і рядок стану показують вік поточного з'єднання, а не сесії запису; питання не в числі, а в тому, що таке «тривалість» |
 | [recording-start-speaks-three-times](p3-recording-start-speaks-three-times.md) ♿ | P3 | idea | draft | S | [row-silent-while-connecting](done/p1-row-silent-while-connecting.md) ✅ | — | тригер-gated: одна дія дає «Підключення…», «Записується…», «Запис розпочато…»; вертатись, лише коли людина скаже, що заважає |
+| [status-fixtures-rebuilt-per-test-file](p3-status-fixtures-rebuilt-per-test-file.md) | P3 | planned | draft | S | — | — | 5 білдерів у Rust і 17 літералів у 9 файлах TS; одне поле статусу — і правити треба всюди. Метушня, не ризик: типи стале ловлять |
