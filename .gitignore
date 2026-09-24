@@ -11,3 +11,6 @@ src/i18n/paraglide/
 *.key
 *.pdb
 .claude/settings.local.json
+
+# Total Commander tab set saved in the repo root
+.tc.tab
