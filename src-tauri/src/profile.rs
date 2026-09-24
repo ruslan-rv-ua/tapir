@@ -349,8 +349,9 @@ pub struct FilePosition {
 /// position (pause semantics). Enum (not bool) to leave the door open for a
 /// third variant (e.g. Ask), per the backlog decision.
 ///
-/// Lives next to `autoplay_on_startup` in `PlayerSession`: «чи відновлювати» і
-/// «звідки відновлювати» — одна фіча холодного старту (ADR 2026-08-08).
+/// Lives next to `autoplay_on_startup` in `PlayerSession`: «чи відновлювати при
+/// запуску» і «звідки відновлювати» — половини однієї фічі, продовження
+/// останнього джерела (ADR 2026-08-08).
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum ResumeFileFrom {
@@ -401,18 +402,18 @@ impl Default for PlayerSession {
 }
 
 impl PlayerSession {
-    /// Whether the profile remembers a last source: the discriminator is set and
-    /// the slot it names is filled. A dangling discriminator remembers nothing —
-    /// the reading `resume_last` gives it too, so the tray never offers what the
-    /// press would answer with silence. Staleness is not asked here: whether the
-    /// stream is still in the profile or the file still on disk, only the press
-    /// finds out.
-    pub fn has_last_source(&self) -> bool {
-        match self.last_active {
-            None => false,
-            Some(LastActive::Stream) => self.last_stream_id.is_some(),
-            Some(LastActive::File) => self.last_file_position.is_some(),
-        }
+    /// Which kind of last source the profile remembers — `None` when it
+    /// remembers none: no discriminator, or one naming an empty slot (a
+    /// dangling discriminator remembers nothing). The one reading behind both
+    /// the tray's greyed "Play" and `resume_last`'s silent branch, so the tray
+    /// never offers what the press would answer with silence. Staleness is not
+    /// asked here: whether the stream is still in the profile or the file still
+    /// on disk, only the press finds out.
+    pub fn last_source(&self) -> Option<&LastActive> {
+        self.last_active.as_ref().filter(|kind| match kind {
+            LastActive::Stream => self.last_stream_id.is_some(),
+            LastActive::File => self.last_file_position.is_some(),
+        })
     }
 
     /// Reset the fields that must not travel to a duplicate or an export: the
@@ -1496,7 +1497,7 @@ mod tests {
     /// є, навіть якщо воно вже застаріло: цього сесія не знає, це з'ясовує
     /// натискання.
     #[test]
-    fn has_last_source_only_when_the_discriminator_names_a_filled_slot() {
+    fn last_source_only_when_the_discriminator_names_a_filled_slot() {
         let stream = PlayerSession {
             last_active: Some(LastActive::Stream),
             last_stream_id: Some("s1".into()),
@@ -1507,8 +1508,8 @@ mod tests {
             last_file_position: Some(FilePosition { path: "a.mp3".into(), position_ms: 5 }),
             ..Default::default()
         };
-        assert!(stream.has_last_source());
-        assert!(file.has_last_source());
+        assert_eq!(stream.last_source(), Some(&LastActive::Stream));
+        assert_eq!(file.last_source(), Some(&LastActive::File));
 
         let nothing_recorded = [
             (PlayerSession::default(), "порожня сесія"),
@@ -1518,7 +1519,7 @@ mod tests {
             (PlayerSession { last_active: None, ..stream }, "комірка без дискримінатора"),
         ];
         for (session, what) in nothing_recorded {
-            assert!(!session.has_last_source(), "{what}");
+            assert_eq!(session.last_source(), None, "{what}");
         }
     }
 }

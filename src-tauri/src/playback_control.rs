@@ -97,9 +97,9 @@ pub(crate) fn decide_toggle(source: Option<&PlaybackSource>, state: PlaybackStat
 /// What `resume_last` does with the last source — for each of its callers: the
 /// tray item and `Ctrl+Shift+K` when nothing plays, and startup autoplay.
 /// `NoLastSource` clears the record without an announce (nothing saved, or a
-/// dangling discriminator — impl-decision #1; the tray greys its item on the
-/// same reading, `PlayerSession::has_last_source`); `Unavailable` answers then
-/// clears (stale target: stream deleted / file moved).
+/// dangling discriminator — impl-decision #1; `PlayerSession::last_source`
+/// reads it, and the tray greys its item on that same reading); `Unavailable`
+/// answers then clears (stale target: stream deleted / file moved).
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum ResumeLastAction {
     PlayStream,
@@ -109,27 +109,21 @@ pub(crate) enum ResumeLastAction {
 }
 
 pub(crate) fn decide_resume_last(
-    last_active: Option<&LastActive>,
-    has_stream_id: bool,
+    session: &PlayerSession,
     stream_in_profile: bool,
-    has_file: bool,
     file_exists: bool,
 ) -> ResumeLastAction {
-    match last_active {
-        None => ResumeLastAction::NoLastSource,
+    match session.last_source() {
+        None => ResumeLastAction::NoLastSource, // nothing saved, or dangling
         Some(LastActive::Stream) => {
-            if !has_stream_id {
-                ResumeLastAction::NoLastSource // dangling discriminator
-            } else if stream_in_profile {
+            if stream_in_profile {
                 ResumeLastAction::PlayStream
             } else {
                 ResumeLastAction::Unavailable // stream deleted from profile
             }
         }
         Some(LastActive::File) => {
-            if !has_file {
-                ResumeLastAction::NoLastSource // dangling discriminator
-            } else if file_exists {
+            if file_exists {
                 ResumeLastAction::PlayFile
             } else {
                 ResumeLastAction::Unavailable // file moved / deleted
@@ -277,7 +271,7 @@ impl AutoplayGuard {
 /// A file's name as the webview's `nameOf()` gives it for a file source: the
 /// path's basename with its extension. The "resuming" announce must match it,
 /// or the started-suppression won't engage and NVDA would hear a duplicate.
-fn file_name(path: &str) -> String {
+fn file_source_name(path: &str) -> String {
     std::path::Path::new(path)
         .file_name()
         .map(|s| s.to_string_lossy().into_owned())
@@ -313,21 +307,19 @@ pub(crate) async fn resume_last(app: &AppHandle) {
     let state = app.state::<AppState>();
 
     // Read everything needed under one short read-lock.
-    let (last_active, last_stream_id, last_file, stream) = {
+    let (session, stream) = {
         let profile = state.active_profile.read().await;
-        let ps = &profile.player_session;
-        let stream = ps.last_stream_id.as_ref().and_then(|id| {
+        let session = profile.player_session.clone();
+        let stream = session.last_stream_id.as_ref().and_then(|id| {
             profile.streams.iter().find(|s| &s.id == id)
                 .map(|s| (s.id.clone(), s.url.clone(), s.name.clone()))
         });
-        (ps.last_active.clone(), ps.last_stream_id.clone(), ps.last_file_position.clone(), stream)
+        (session, stream)
     };
 
-    let has_stream_id = last_stream_id.is_some();
     let stream_in_profile = stream.is_some();
-    let has_file = last_file.is_some();
     // The `exists()` stat is blocking — keep it off the async executor thread.
-    let file_exists = match last_file.as_ref() {
+    let file_exists = match session.last_file_position.as_ref() {
         Some(f) => {
             let path = f.path.clone();
             tokio::task::spawn_blocking(move || std::path::Path::new(&path).exists())
@@ -337,7 +329,7 @@ pub(crate) async fn resume_last(app: &AppHandle) {
         None => false,
     };
 
-    match decide_resume_last(last_active.as_ref(), has_stream_id, stream_in_profile, has_file, file_exists) {
+    match decide_resume_last(&session, stream_in_profile, file_exists) {
         ResumeLastAction::PlayStream => {
             let (id, url, name) = stream.expect("PlayStream implies Some(stream)");
             // Before the ≤15 s blocking connect. The webview arms a one-shot
@@ -356,10 +348,9 @@ pub(crate) async fn resume_last(app: &AppHandle) {
             }
         }
         ResumeLastAction::PlayFile => {
-            let fp = last_file.expect("PlayFile implies Some(file)");
-            let name = file_name(&fp.path);
-            let mode = state.active_profile.read().await.player_session.resume_file_from;
-            let plan = plan_file_resume(mode, fp.position_ms);
+            let fp = session.last_file_position.clone().expect("PlayFile implies Some(file)");
+            let name = file_source_name(&fp.path);
+            let plan = plan_file_resume(session.resume_file_from, fp.position_ms);
             if let FileResumePlan::FromPosition { position_ms } = &plan {
                 emit_resuming(app, name.clone(), *position_ms);
             }
@@ -385,8 +376,10 @@ pub(crate) async fn resume_last(app: &AppHandle) {
         ResumeLastAction::Unavailable => {
             // A moved file still has its name; a stream deleted from the
             // profile took its name with it.
-            let name = match last_active {
-                Some(LastActive::File) => last_file.as_ref().map(|f| file_name(&f.path)),
+            let name = match session.last_source() {
+                Some(LastActive::File) => {
+                    session.last_file_position.as_ref().map(|f| file_source_name(&f.path))
+                }
                 _ => None,
             };
             answer_failure(app, ResumeFailure::Unavailable, name.as_deref());
@@ -448,97 +441,59 @@ mod tests {
         assert_eq!(decide_toggle(None, PlaybackState::Stopped), ToggleAction::ResumeLast);
     }
 
+    fn remembered_stream() -> PlayerSession {
+        PlayerSession {
+            last_active: Some(LastActive::Stream),
+            last_stream_id: Some("s1".into()),
+            ..Default::default()
+        }
+    }
+    fn remembered_file() -> PlayerSession {
+        PlayerSession {
+            last_active: Some(LastActive::File),
+            last_file_position: Some(FilePosition { path: "rec/a.mp3".into(), position_ms: 4200 }),
+            ..Default::default()
+        }
+    }
+
     #[test]
     fn resume_last_with_nothing_saved_has_no_last_source() {
-        assert_eq!(decide_resume_last(None, false, false, false, false), ResumeLastAction::NoLastSource);
+        assert_eq!(
+            decide_resume_last(&PlayerSession::default(), false, false),
+            ResumeLastAction::NoLastSource
+        );
     }
 
     #[test]
     fn resume_last_stream_valid_plays() {
-        assert_eq!(
-            decide_resume_last(Some(&LastActive::Stream), true, true, false, false),
-            ResumeLastAction::PlayStream
-        );
+        assert_eq!(decide_resume_last(&remembered_stream(), true, false), ResumeLastAction::PlayStream);
     }
 
     #[test]
     fn resume_last_stream_deleted_is_unavailable() {
-        assert_eq!(
-            decide_resume_last(Some(&LastActive::Stream), true, false, false, false),
-            ResumeLastAction::Unavailable
-        );
+        assert_eq!(decide_resume_last(&remembered_stream(), false, false), ResumeLastAction::Unavailable);
     }
 
     #[test]
     fn resume_last_stream_dangling_has_no_last_source() {
-        assert_eq!(
-            decide_resume_last(Some(&LastActive::Stream), false, false, false, false),
-            ResumeLastAction::NoLastSource
-        );
+        let dangling = PlayerSession { last_stream_id: None, ..remembered_stream() };
+        assert_eq!(decide_resume_last(&dangling, false, false), ResumeLastAction::NoLastSource);
     }
 
     #[test]
     fn resume_last_file_valid_plays() {
-        assert_eq!(
-            decide_resume_last(Some(&LastActive::File), false, false, true, true),
-            ResumeLastAction::PlayFile
-        );
+        assert_eq!(decide_resume_last(&remembered_file(), false, true), ResumeLastAction::PlayFile);
     }
 
     #[test]
     fn resume_last_file_moved_is_unavailable() {
-        assert_eq!(
-            decide_resume_last(Some(&LastActive::File), false, false, true, false),
-            ResumeLastAction::Unavailable
-        );
+        assert_eq!(decide_resume_last(&remembered_file(), false, false), ResumeLastAction::Unavailable);
     }
 
     #[test]
     fn resume_last_file_dangling_has_no_last_source() {
-        assert_eq!(
-            decide_resume_last(Some(&LastActive::File), false, false, false, false),
-            ResumeLastAction::NoLastSource
-        );
-    }
-
-    /// Сірий пункт трея й мовчазна гілка `resume_last` — одне й те саме «нічого
-    /// не записано» (запис tray-cannot-resume-last §3), але вирішують його дві
-    /// функції: меню — наперед, за самою сесією, натискання — потім, знаючи ще
-    /// профіль і диск. Розійдуться — і меню або запропонує дію, на яку
-    /// натискання відповість тишею, або посіріє там, де натискання щось би
-    /// зробило. Застарілості меню не бачить, тож збіг мусить триматися за будь-якої
-    /// відповіді профілю й диска.
-    #[test]
-    fn menu_and_press_agree_on_nothing_recorded() {
-        let position = FilePosition { path: "a.mp3".into(), position_ms: 5 };
-        for last_active in [None, Some(LastActive::Stream), Some(LastActive::File)] {
-            for last_stream_id in [None, Some("s1".to_string())] {
-                for last_file_position in [None, Some(position.clone())] {
-                    let session = PlayerSession {
-                        last_active: last_active.clone(),
-                        last_stream_id: last_stream_id.clone(),
-                        last_file_position,
-                        ..Default::default()
-                    };
-                    for (stream_in_profile, file_exists) in
-                        [(true, true), (true, false), (false, true), (false, false)]
-                    {
-                        let press = decide_resume_last(
-                            session.last_active.as_ref(),
-                            session.last_stream_id.is_some(),
-                            stream_in_profile,
-                            session.last_file_position.is_some(),
-                            file_exists,
-                        );
-                        assert_eq!(
-                            press == ResumeLastAction::NoLastSource,
-                            !session.has_last_source(),
-                            "{session:?}, stream_in_profile={stream_in_profile}, file_exists={file_exists}"
-                        );
-                    }
-                }
-            }
-        }
+        let dangling = PlayerSession { last_file_position: None, ..remembered_file() };
+        assert_eq!(decide_resume_last(&dangling, false, false), ResumeLastAction::NoLastSource);
     }
 
     #[test]

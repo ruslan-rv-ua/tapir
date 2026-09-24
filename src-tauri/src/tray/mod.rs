@@ -42,7 +42,7 @@ pub enum MenuPlayback {
 
 impl MenuPlayback {
     /// Read the display model off a live player status and whether the active
-    /// profile has a last source (`PlayerSession::has_last_source`). The one
+    /// profile has a last source (`PlayerSession::last_source`). The one
     /// place the tray asks `is_live()`.
     pub fn from_status(status: &PlayerStatus, has_last_source: bool) -> Self {
         match (&status.state, status.source.as_ref()) {
@@ -162,7 +162,8 @@ async fn build_snapshot(app: &AppHandle) -> Option<MenuSnapshot> {
     // Session fields only — no disk, no lookup of the stream in the profile:
     // the menu is built ahead of the click, so a stale last source can only be
     // told at the press (tray-cannot-resume-last §3).
-    let has_last_source = state.active_profile.read().await.player_session.has_last_source();
+    let has_last_source =
+        state.active_profile.read().await.player_session.last_source().is_some();
 
     let window_visible = app
         .get_webview_window("main")
