@@ -36,7 +36,7 @@ notes:
 
 # Головна кнопка плеєра в спокої вимкнена, хоча трей і `Ctrl+Shift+K` продовжують останнє
 
-> **Контекст:** відщеплено grilling'ом [tray-cannot-resume-last](p2-tray-cannot-resume-last.md)
+> **Контекст:** відщеплено grilling'ом [tray-cannot-resume-last](done/p2-tray-cannot-resume-last.md)
 > (2026-09-24). Запис **не огрилено** — розвилки внизу відкриті; успадковані рішення — ні.
 
 ## Опис
@@ -45,7 +45,7 @@ notes:
 кнопка — роль у трьох місцях: кнопка плеєра, головний пункт меню трея й гаряча клавіша
 «перемкнути відтворення». Коли не грає нічого, усі три **продовжують останнє**.
 
-Після [tray-cannot-resume-last](p2-tray-cannot-resume-last.md) так уміють трей і `Ctrl+Shift+K`.
+Після [tray-cannot-resume-last](done/p2-tray-cannot-resume-last.md) так уміють трей і `Ctrl+Shift+K`.
 Кнопка плеєра в спокої вимкнена (`isDisabled={!isActive}`,
 [PlayerPanel.tsx:336](../../src/components/player/PlayerPanel.tsx:336)), а зона плеєра в спокої
 взагалі виходить сама — усі її зупинки вимкнені
@@ -106,7 +106,7 @@ notes:
 
 ## Документи
 
-- [tray-cannot-resume-last](p2-tray-cannot-resume-last.md) — звідки відщеплено; §1, §3, §4, §6, §8
+- [tray-cannot-resume-last](done/p2-tray-cannot-resume-last.md) — звідки відщеплено; §1, §3, §4, §6, §8
 - [CONTEXT.md](../../CONTEXT.md) — §«Головна кнопка і останнє джерело»
 - [ADR 2026-08-31](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) — видимий носій
 - [ADR 2026-09-01](../decisions/2026-09-01-response-surfaces-ear-window-system.md) — поверхні відповіді

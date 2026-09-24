@@ -58,7 +58,7 @@ notes:
 
 ### Другий випадок: `Ctrl+Shift+K`, коли нічого не записано
 
-Знайдено grilling'ом [tray-cannot-resume-last](p2-tray-cannot-resume-last.md) §3 (2026-09-24).
+Знайдено grilling'ом [tray-cannot-resume-last](done/p2-tray-cannot-resume-last.md) §3 (2026-09-24).
 Коли не грає нічого, `Ctrl+Shift+K` продовжує останнє джерело; якщо його не записано
 (`last_active` порожнє або вказує на порожню комірку), `resume_last` виходить мовчки
 ([playback_control.rs:352](../../src-tauri/src/playback_control.rs:352)). Клас той самий —

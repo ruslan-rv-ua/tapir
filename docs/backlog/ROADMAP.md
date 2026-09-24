@@ -14,7 +14,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 саме вони визначають, чи версія закриється. Колонка «Суть» — поле `summary:` запису
 (без нього — `title:`).
 ♿ — запис зачіпає доступність (`a11y: true`), приймання потребує NVDA-прогону.
-Виконані записи (108) — у [done/README.md](done/README.md), спадок кожного — у секції
+Виконані записи (109) — у [done/README.md](done/README.md), спадок кожного — у секції
 «Спадок» його файлу.
 
 ---
@@ -48,11 +48,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > поверхонь не з'являється, IPC не міняється, а вже встановлені копії лишаються зі
 > своїми значеннями, бо міграцій немає.
 
-У черзі: 1. Виконано: 6.
-
-| Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
-|------|---|-----|------|---------|---------------|-------------|------|
-| [tray-cannot-resume-last](p2-tray-cannot-resume-last.md) ♿ | P2 | planned | ready | M | [tray-toggle-label-vs-action](done/p2-tray-toggle-label-vs-action.md) ✅ | [player-primary-button-resumes-last](p2-player-primary-button-resumes-last.md) | реалізовано 2026-09-24, чекає NVDA-прогону: трей продовжує останнє, як `Ctrl+Shift+K`; відмову у фоні несе тост фонового відгуку |
+Черга порожня. Виконано: 7.
 
 ---
 
@@ -71,7 +67,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 | [command-palette-phase-3](p1-command-palette-phase-3.md) ♿ | P1 | planned | ready | S | — | [command-palette-phase-4](p2-command-palette-phase-4.md), [command-palette-mode-prefixes](p3-command-palette-mode-prefixes.md) | Командна палітра — Фаза 3: розширення контенту (пісні, навігація) |
 | [import-duplicate-metadata-update](p2-import-duplicate-metadata-update.md) ♿ | P2 | planned | ready | M | — | — | рішення ухвалено 2026-07-23 |
 | [wishlist-match-tray-notification](p2-wishlist-match-tray-notification.md) ♿ | P2 | planned | ready | M | [wishlist-match-invisible](done/p1-wishlist-match-invisible.md) ✅ | — | четверта категорія `ToastKind`; слід, без якого гейт прапорцем був би заборонений, тепер є — журнал збігів |
-| [player-primary-button-resumes-last](p2-player-primary-button-resumes-last.md) ♿ | P2 | planned | draft | M | [tray-cannot-resume-last](p2-tray-cannot-resume-last.md) | — | третя поверхня ролі «головна кнопка»: кнопка панелі в спокої мусить продовжувати останнє; потрібні IPC і видимий носій у вікні |
+| [player-primary-button-resumes-last](p2-player-primary-button-resumes-last.md) ♿ | P2 | planned | draft | M | [tray-cannot-resume-last](done/p2-tray-cannot-resume-last.md) ✅ | — | третя поверхня ролі «головна кнопка»: кнопка панелі в спокої мусить продовжувати останнє; потрібні IPC і видимий носій у вікні |
 | [stream-failure-tray-toast](p2-stream-failure-tray-toast.md) ♿ | P2 | planned | ready | S | [error-state-never-reaches-ui](done/p1-error-state-never-reaches-ui.md) ✅ | — | ADR 2026-09-06 §6: у згорнутому вікні поверхня — система; нова категорія `ToastKind` зі своїм прапорцем, звірити з wishlist-match-tray-notification |
 | [streams-metrics-bar-duplicates-chips](p2-streams-metrics-bar-duplicates-chips.md) ♿ | P2 | planned | ready | S | — | — | грилінг 2026-09-08: чотири плитки повторюють числа чіпів і рядка стану й тихо тримають чотири живі області; смуга прибирається цілком |
 | [focus-active-item-on-playback-start](p2-focus-active-item-on-playback-start.md) ♿ | P2 | idea | draft | S | — | — | Автофокус на елементі при старті відтворення |

@@ -170,8 +170,6 @@ All project documentation lives in `docs/`. Key files:
 
 **Manual testing** (`docs/testing/`):
 - [test-streams.md](docs/testing/test-streams.md) — тестові URL радіо-потоків
-- [nvda-tray-cannot-resume-last.json](docs/testing/nvda-tray-cannot-resume-last.json) —
-  NVDA-прогін [запису](docs/backlog/p2-tray-cannot-resume-last.md); на прийманні видалити
 
 Чеклісти NVDA-прогону — JSON-файли для NVDA-аддона Axygen Checklist; формат і
 життєвий цикл — розділ [Test checklists](#test-checklists) нижче.

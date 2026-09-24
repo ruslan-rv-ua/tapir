@@ -9,7 +9,7 @@
   той самий текст на обох поверхнях — [ADR 2026-08-17 про локалізацію](2026-08-17-native-layer-localisation.md);
   родина записів — [sound-hotkeys-feedback-announce-only](../backlog/done/p1-sound-hotkeys-feedback-announce-only.md),
   [volume-hotkey-no-feedback](../backlog/done/p1-volume-hotkey-no-feedback.md);
-  рядок «продовжити останнє» — [tray-cannot-resume-last](../backlog/p2-tray-cannot-resume-last.md);
+  рядок «продовжити останнє» — [tray-cannot-resume-last](../backlog/done/p2-tray-cannot-resume-last.md);
   код — [transportControl.ts](../../src/lib/transportControl.ts),
   [notify.rs](../../src-tauri/src/tray/notify.rs).
 

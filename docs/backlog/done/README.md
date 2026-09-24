@@ -3,7 +3,7 @@
 > Згенеровано з front-matter записів командою `pnpm backlog index`. **Не редагувати руками:**
 > один рядок тут — поле `summary:` запису (без нього — `title:`).
 
-108 записів, найновіші зверху. Кожен файл зберігає ухвалені рішення, критерії,
+109 записів, найновіші зверху. Кожен файл зберігає ухвалені рішення, критерії,
 за якими фічу приймали, і секцію «Спадок» — що лишилось у коді й правилах після закриття.
 Черга — [ROADMAP.md](../ROADMAP.md).
 
@@ -12,6 +12,7 @@
 | [autostart-notice-lost-when-minimized](p2-autostart-notice-lost-when-minimized.md) ♿ | 0.1.1 | 2026-09-24 | «Ні»: репліку про переміщення до показу вікна не доносимо — гейт спрацював, а NVDA мовчить; довідка більше не обіцяє повідомлення. |
 | [minimized-start-crashes-release-build](p0-minimized-start-crashes-release-build.md) | 0.1.1 | 2026-09-24 | notify_state_changed бере стан через try_state і до app.manage лише пише warn; гілка --minimize більше не перемальовує трей до setup_tray |
 | [minimized-start-silent-to-nvda](p0-minimized-start-silent-to-nvda.md) ♿ | 0.1.1 | 2026-09-24 | вікно ховається в трей першою дією frontend_ready, через одноразовий засув MinimizeOnReady: скрінрідер питає вікно про документ лише раз |
+| [tray-cannot-resume-last](p2-tray-cannot-resume-last.md) ♿ | 0.1.1 | 2026-09-24 | Трей у спокої продовжує останнє, як `Ctrl+Shift+K`: «Грати» сірий лише без останнього джерела; відмову поза фокусом несе тост фонового відгуку. |
 | [reconnect-counter-not-live](p2-reconnect-counter-not-live.md) | 0.1.1 | 2026-09-15 | Пара їде в події переходу одним значенням `ReconnectProgress`; `Connecting` — лише перше з'єднання, тож спроби не блимають у відрі «Потребує уваги». |
 | [stale-search-overwrites-results](p2-stale-search-overwrites-results.md) | 0.1.1 | 2026-09-15 | дві заміни в польоті, пізня кладе результати критеріїв, яких уже немає; закрито грилінгом — квиток над усіма полями вибірки, ADR 2026-09-15 |
 | [row-silent-while-connecting](p1-row-silent-while-connecting.md) ♿ | 0.1.1 | 2026-09-08 | Ім'я рядка несе кожен факт, а не найгучніший: десять випадків у stateLabelFor; нормативна таблиця імені живе в docs/accessibility.md |

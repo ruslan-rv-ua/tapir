@@ -1,14 +1,15 @@
 ---
 slug: tray-cannot-resume-last
 title: "Пункт трея сірий, коли `Ctrl+Shift+K` уміє продовжити останнє"
-summary: "реалізовано 2026-09-24, чекає NVDA-прогону: трей продовжує останнє, як `Ctrl+Shift+K`; відмову у фоні несе тост фонового відгуку"
+summary: "Трей у спокої продовжує останнє, як `Ctrl+Shift+K`: «Грати» сірий лише без останнього джерела; відмову поза фокусом несе тост фонового відгуку."
 priority: P2
 type: planned
-status: ready
+status: done
 effort: M
 kind: bug
 target: 0.1.1
 updated: 2026-09-24
+completed: 2026-09-24
 a11y: true
 depends_on: [tray-toggle-label-vs-action]
 blocks: [player-primary-button-resumes-last]
@@ -41,7 +42,7 @@ notes:
   - "2026-09-08: перенесено з 0.3.0 у 0.1.1 — прогалина в уже обіцяній можливості, а не нова можливість: той самий жест із клавіатури працює."
   - "Ключова знахідка грилінгу: трей змодельовано як двійника головної кнопки плеєра, а вона в спокої вимкнена. Рішення — «продовжити останнє» стає властивістю ролі; панель відщеплено в player-primary-button-resumes-last (0.2.0), бо їй потрібні зміни IPC."
   - "Грилінг змінив словник: «головна кнопка», «останнє джерело», «холодний старт» (лише запуск застосунку), третя категорія тостів — «фоновий відгук»."
-  - "2026-09-24 реалізовано: 8cab207 (BackgroundFeedback), 29aaebb («cold» → словник), 11a12ce (фікс), a85b1c2 + 58f7643 (чекліст NVDA), 7e25712 + eab82d3 (правки після рев'ю). Лишився NVDA-прогін."
+  - "2026-09-24 реалізовано: 8cab207 (BackgroundFeedback), 29aaebb («cold» → словник), 11a12ce (фікс), a85b1c2 + 58f7643 (чекліст NVDA), 7e25712 + eab82d3 (правки після рев'ю). NVDA-прогін чистий (65/65), прийнято того ж дня."
   - "Понад критерії: setup_tray одразу перебудовує меню з реального стану — інакше кожен старт без --minimize показував сірий «Грати» (і «Показати Tapir» біля видимого вікна) до першої зміни стану."
   - "«Нічого не записано» читає одна функція, PlayerSession::last_source: і сірий пункт трея, і мовчазна гілка resume_last — розійтися їм нема де."
   - "Рев'ю свідомо не прийнято: «Tapir так і скаже» в довідці — формулювання §7, видимий носій у вікні відкладено в §8; THEMES.md і ROADMAP цитують старе `cold=resume-last` як обіцянку теми 0.1.1 — історія теми, не чіпали."
@@ -49,25 +50,25 @@ notes:
 
 # Пункт трея сірий, коли `Ctrl+Shift+K` уміє продовжити останнє
 
-> **Контекст:** знахідка grilling [tray-toggle-label-vs-action](done/p2-tray-toggle-label-vs-action.md);
+> **Контекст:** знахідка grilling [tray-toggle-label-vs-action](p2-tray-toggle-label-vs-action.md);
 > огрилено 2026-09-24, усі розвилки закриті — читати §«Що вирішено» перед кодом. Панель,
 > третю поверхню тієї самої ролі, відщеплено в
-> [player-primary-button-resumes-last](p2-player-primary-button-resumes-last.md) (0.2.0).
+> [player-primary-button-resumes-last](../p2-player-primary-button-resumes-last.md) (0.2.0).
 
 ## Опис
 
 Головний пункт відтворення в меню трея вимкнений, коли нічого не грає:
 `playback_items(MenuPlayback::Idle)` віддає `primary_enabled: false`
-([menu.rs:78](../../src-tauri/src/tray/menu.rs:78)).
+([menu.rs:78](../../../src-tauri/src/tray/menu.rs:78)).
 
 Але той самий жест із клавіатури в тому самому стані **працює**: `decide_toggle(None, …)`
-віддає `ToggleAction::ResumeLast` ([playback_control.rs:92](../../src-tauri/src/playback_control.rs:92)),
+віддає `ToggleAction::ResumeLast` ([playback_control.rs:92](../../../src-tauri/src/playback_control.rs:92)),
 і `Ctrl+Shift+K`, коли нічого не грає, вмикає останнє джерело — потік із профілю або файл із
 позиції.
 
 Код це навіть **документує як спільну поведінку**: «Same entry point as `Ctrl+Shift+K`:
 live=stop, file=pause/resume, **cold=resume-last**, shared debounce»
-([handlers.rs:36](../../src-tauri/src/tray/handlers.rs:36)). Гілка `cold=resume-last` із трея
+([handlers.rs:36](../../../src-tauri/src/tray/handlers.rs:36)). Гілка `cold=resume-last` із трея
 недосяжна — пункт, який мав би її запустити, вимкнений.
 
 ## Чому окремим записом
@@ -85,37 +86,37 @@ live=stop, file=pause/resume, **cold=resume-last**, shared debounce»
   FilePaused }`, а рішення про пункти живе в чистій `playback_items` з табличним тестом.
   Шов для цього запису готовий: `Idle` розпадається на два стани.
 - Чи є що продовжувати, видно з `profile.player_session` — сьогодні в знімку меню його немає.
-  `decide_cold_start` ([playback_control.rs:107](../../src-tauri/src/playback_control.rs:107))
+  `decide_cold_start` ([playback_control.rs:107](../../../src-tauri/src/playback_control.rs:107))
   на це питання відповідає, але всередині `resume_last`, після натискання й зі зверненням до диска.
 - **Трей змодельовано як двійника головної кнопки плеєра**, а не `Ctrl+Shift+K`: так каже
-  доккоментар `ID_PRIMARY_PLAYBACK` ([menu.rs:39](../../src-tauri/src/tray/menu.rs:39)) і довідка
-  («так само, як головною кнопкою програвача», [background.md:15](../help/uk/background.md:15)).
+  доккоментар `ID_PRIMARY_PLAYBACK` ([menu.rs:39](../../../src-tauri/src/tray/menu.rs:39)) і довідка
+  («так само, як головною кнопкою програвача», [background.md:15](../../help/uk/background.md:15)).
   А головна кнопка плеєра в спокої вимкнена
-  ([PlayerPanel.tsx:336](../../src/components/player/PlayerPanel.tsx:336)). Системна `Play` —
-  лише `resume_playback` ([smtc.rs:213](../../src-tauri/src/smtc.rs:213)), а коли нічого не
+  ([PlayerPanel.tsx:336](../../../src/components/player/PlayerPanel.tsx:336)). Системна `Play` —
+  лише `resume_playback` ([smtc.rs:213](../../../src-tauri/src/smtc.rs:213)), а коли нічого не
   грає, Tapir і зовсім зникає із системного оверлея
-  ([smtc.rs:335](../../src-tauri/src/smtc.rs:335), FR-8). До грилінгу «продовжити останнє»
+  ([smtc.rs:335](../../../src-tauri/src/smtc.rs:335), FR-8). До грилінгу «продовжити останнє»
   вручну вмів рівно один жест — `Ctrl+Shift+K`.
-- Довідка жесту не називає: [player.md:45](../help/uk/player.md:45) каже «Tapir може підняти те,
+- Довідка жесту не називає: [player.md:45](../../help/uk/player.md:45) каже «Tapir може підняти те,
   що ви слухали востаннє», а наступним реченням — «Типово Tapir так не робить», що читається так,
   ніби вся можливість вимкнена до автовідтворення.
 - `resume_last` відповідає лише **через вебв'ю** — `emit_announce`
-  ([playback_control.rs:307](../../src-tauri/src/playback_control.rs:307),
-  [:312](../../src-tauri/src/playback_control.rs:312),
-  [:344](../../src-tauri/src/playback_control.rs:344),
-  [:349](../../src-tauri/src/playback_control.rs:349)). Поза переднім вікном NVDA live region
+  ([playback_control.rs:307](../../../src-tauri/src/playback_control.rs:307),
+  [:312](../../../src-tauri/src/playback_control.rs:312),
+  [:344](../../../src-tauri/src/playback_control.rs:344),
+  [:349](../../../src-tauri/src/playback_control.rs:349)). Поза переднім вікном NVDA live region
   не читає, а очима його не видно взагалі, тож у фоні відмова й збій проходять у повній тиші.
   Так уже сьогодні з `Ctrl+Shift+K` і з автовідтворенням при `--minimize`: вікно ховається
-  раніше, ніж воно стартує ([app_commands.rs:46](../../src-tauri/src/commands/app_commands.rs:46)).
+  раніше, ніж воно стартує ([app_commands.rs:46](../../../src-tauri/src/commands/app_commands.rs:46)).
 - Меню будується **наперед** — `notify_state_changed`
-  ([tray/mod.rs:100](../../src-tauri/src/tray/mod.rs:100)) на зміну стану; клацання його лише
+  ([tray/mod.rs:100](../../../src-tauri/src/tray/mod.rs:100)) на зміну стану; клацання його лише
   показує. Двоє змінювачів останнього джерела меню не перебудовують: `clear_last_session`
-  ([playback_control.rs:201](../../src-tauri/src/playback_control.rs:201)) — ніколи,
+  ([playback_control.rs:201](../../../src-tauri/src/playback_control.rs:201)) — ніколи,
   `switch_profile` — лише до підміни профілю
-  ([profile_commands.rs:193](../../src-tauri/src/commands/profile_commands.rs:193),
-  [:244](../../src-tauri/src/commands/profile_commands.rs:244), підміна —
-  [:250](../../src-tauri/src/commands/profile_commands.rs:250)).
-- Поки триває з'єднання (до 15 с, [engine.rs:747](../../src-tauri/src/player/engine.rs:747)),
+  ([profile_commands.rs:193](../../../src-tauri/src/commands/profile_commands.rs:193),
+  [:244](../../../src-tauri/src/commands/profile_commands.rs:244), підміна —
+  [:250](../../../src-tauri/src/commands/profile_commands.rs:250)).
+- Поки триває з'єднання (до 15 с, [engine.rs:747](../../../src-tauri/src/player/engine.rs:747)),
   стан плеєра лишається «зупинено»: повторне натискання запускає друге з'єднання з тією самою
   станцією, і пізніше замінює раніше. З `Ctrl+Shift+K` так уже сьогодні; шкоди немає —
   прийнято як є.
@@ -126,7 +127,7 @@ live=stop, file=pause/resume, **cold=resume-last**, shared debounce»
 
 Головна кнопка — роль у трьох місцях: кнопка плеєра, головний пункт меню трея, гаряча клавіша
 «перемкнути відтворення». Коли не грає нічого, усі три **продовжують останнє**. Записано в
-[CONTEXT.md](../../CONTEXT.md) §«Головна кнопка і останнє джерело» разом з означенням
+[CONTEXT.md](../../../CONTEXT.md) §«Головна кнопка і останнє джерело» разом з означенням
 останнього джерела й межею для системних медіа-клавіш: у спокої вони до Tapir не доходять.
 
 Відкинуто: «лише трей» (пункт — фоновий двійник `Ctrl+Shift+K`, панель як є) — роль лишилась
@@ -137,11 +138,11 @@ live=stop, file=pause/resume, **cold=resume-last**, shared debounce»
 Панелі потрібні дві зміни IPC: команда, якою запустити «продовжити останнє» (серед
 зареєстрованих такої немає — `resume_last` кличуть лише Rust-шляхи), і знання, чи є що
 продовжувати (`ProfileSettings` полів останнього джерела навмисно не несе,
-[tauri.ts:729](../../src/lib/tauri.ts:729)). Фільтр 0.1.1 — «лише всередині наявного механізму,
+[tauri.ts:729](../../../src/lib/tauri.ts:729)). Фільтр 0.1.1 — «лише всередині наявного механізму,
 ні нової поверхні, ні зміни IPC» — їх відсікає. Трею з цього не треба нічого: зміна суто в Rust,
 тост наявної категорії.
 
-Тож панель — [player-primary-button-resumes-last](p2-player-primary-button-resumes-last.md),
+Тож панель — [player-primary-button-resumes-last](../p2-player-primary-button-resumes-last.md),
 0.2.0. До нього кнопка панелі в спокої лишається вимкненою, як сьогодні: трей не розходиться з
 моделлю, а наздоганяє її першим — той самий хід, що й «модель була права раніше за код» у
 батьківському записі.
@@ -165,12 +166,12 @@ live=stop, file=pause/resume, **cold=resume-last**, shared debounce»
 
 `Ctrl+Shift+K`, коли нічого не записано, мовчить, як і сьогодні: це клас «межа», а не
 «невдача». Чи відповідати на межу у фоні — питання
-[transport-boundary-silent-in-background](p2-transport-boundary-silent-in-background.md); туди
+[transport-boundary-silent-in-background](../p2-transport-boundary-silent-in-background.md); туди
 дописано другий випадок.
 
 ### 4. Поверхню відмови обирає `resume_last` — за фокусом
 
-За [ADR 2026-09-01](../decisions/2026-09-01-response-surfaces-ear-window-system.md) §3 рішення
+За [ADR 2026-09-01](../../decisions/2026-09-01-response-surfaces-ear-window-system.md) §3 рішення
 живе в модулі дії, тож один фікс покриває всіх трьох викликачів — пункт трея, `Ctrl+Shift+K` і
 автовідтворення при запуску:
 
@@ -183,10 +184,10 @@ live=stop, file=pause/resume, **cold=resume-last**, shared debounce»
 
 - Фокус питають, **коли відповідь уже відома** (після спроби з'єднання), тим самим предикатом,
   що й `frontend_ready` для `BusyNotice`
-  ([app_commands.rs:88](../../src-tauri/src/commands/app_commands.rs:88)): вікно видиме й
+  ([app_commands.rs:88](../../../src-tauri/src/commands/app_commands.rs:88)): вікно видиме й
   сфокусоване.
 - `player-announce` іде **завжди**, і поза фокусом теж: ним вебв'ю знімає приглушення
-  «Підключення» ([App.tsx:369](../../src/App.tsx:369)). Неозвучене оголошення в непередньому
+  «Підключення» ([App.tsx:369](../../../src/App.tsx:369)). Неозвучене оголошення в непередньому
   вікні нешкідливе.
 - Тексти тосту — ті самі ключі, що в оголошенні: `playback_unavailable`, `playback_error`.
   Першого в Rust-таблиці ключів ще немає, текст в обох локалях є. Заголовок — назва джерела,
@@ -203,14 +204,14 @@ live=stop, file=pause/resume, **cold=resume-last**, shared debounce»
 ### 5. Третя категорія тостів — «фоновий відгук»
 
 Тост пункту трея й тост автовідтворення при `--minimize` проходять критерій категорії з
-[ADR 2026-08-17](../decisions/2026-08-17-tray-toast-categories.md) §1 («іншого сліду немає
+[ADR 2026-08-17](../../decisions/2026-08-17-tray-toast-categories.md) §1 («іншого сліду немає
 ніде»), але не її назву «зворотний зв'язок хоткея». Той самий ADR забороняє додавати тост «за
 прецедентом сусіднього рядка», тож категорію названо за критерієм: **фоновий відгук** —
 відповідь на дію у фоні, зроблену людиною або виконану за її налаштуванням.
 
 - `CONTEXT.md` §«Сповіщення в треї» уже виправлено (у гілці грумінгу).
 - `ToastKind::HotkeyFeedback` → `BackgroundFeedback` — окремим механічним комітом: 14 входжень у
-  коді, плюс [AGENTS.md:52](../../AGENTS.md), [accessibility.md:1249](../accessibility.md),
+  коді, плюс [AGENTS.md:52](../../../AGENTS.md), [accessibility.md:1249](../../accessibility.md),
   ADR 2026-09-01 (рядки 38 і 87).
 - ADR 2026-08-17 — формулювання §1 і датована примітка про перейменування.
 - Записи в `done/` — історія, їх не чіпати.
@@ -222,36 +223,36 @@ live=stop, file=pause/resume, **cold=resume-last**, shared debounce»
 Те саме слово, що й для файлу на паузі: в обох випадках натискання вмикає звук. Нового тексту в
 локалях немає. «Що саме продовжиться» наперед не показується; обидві пропозиції — ціль у мітці
 («Грати: Jazz FM») і окремий рядок («Останнє: Jazz FM») — зафіксовано в
-[player-primary-button-resumes-last](p2-player-primary-button-resumes-last.md): у вікні є місце
+[player-primary-button-resumes-last](../p2-player-primary-button-resumes-last.md): у вікні є місце
 для носія, і трей візьме те саме формулювання.
 
 ### 7. Довідка: player.md — власник, background.md — півречення
 
 В обох локалях:
 
-- **player.md** ([player.md:45](../help/uk/player.md:45)) називає обидва жести — гарячу клавішу
+- **player.md** ([player.md:45](../../help/uk/player.md:45)) називає обидва жести — гарячу клавішу
   **Відтворення (перемикання)** (типово `Ctrl+Shift+K`) і пункт **Грати** в меню значка;
   відокремлює від них автовідтворення при запуску, щоб «Типово Tapir так не робить» більше не
   читалось як «можливість вимкнена»; каже, що коли останнього вже немає, Tapir так і скаже, а
   коли вікно не попереду — системним сповіщенням (як
-  [player.md:29](../help/uk/player.md:29) про «наступний»).
-- **background.md** ([background.md:15](../help/uk/background.md:15)) — півречення: коли нічого
+  [player.md:29](../../help/uk/player.md:29) про «наступний»).
+- **background.md** ([background.md:15](../../help/uk/background.md:15)) — півречення: коли нічого
   не грає, пункт меню продовжує те, що ви слухали востаннє. «Так само, як головною кнопкою
   програвача» лишається для стану, коли щось грає; «не показуються або лишаються неактивними» —
   правдиве й далі.
 
 Формулювання — на реалізації, після обов'язкового прочитання
-[help-content-polish](done/p1-help-content-polish.md).
+[help-content-polish](p1-help-content-polish.md).
 
 ### 8. Видимий носій у вікні — у записі 0.2.0
 
 Фокусна гілка «як сьогодні» порушує
-[ADR 2026-08-31](../decisions/2026-08-31-visible-carrier-for-announced-facts.md): «недоступне» й
+[ADR 2026-08-31](../../decisions/2026-08-31-visible-carrier-for-announced-facts.md): «недоступне» й
 «помилка» йдуть лише в `announce()`, і людина без скрінрідера на них не бачить нічого. Чисто
 виправити тут не можна: вебв'ю отримує `player-announce` і у фокусі, і поза ним (§4), тож видимий
 тост у вікні дав би поза фокусом другу поверхню поруч із нативною. Розвести їх — або друга точка
 рішення про фокус у вебв'ю (з гонкою на межі), або прапорець у події (зміна IPC). Прогалину
-записано в [player-primary-button-resumes-last](p2-player-primary-button-resumes-last.md), де
+записано в [player-primary-button-resumes-last](../p2-player-primary-button-resumes-last.md), де
 проєктується носій для «продовжити останнє» у вікні.
 
 ### 9. «Холодний старт» — лише запуск застосунку
@@ -261,18 +262,18 @@ live=stop, file=pause/resume, **cold=resume-last**, shared debounce»
 «cold» у значенні «не грає нічого» замінюється термінами словника:
 
 - `ColdStart`, `decide_cold_start`, їхні тести й коментарі в
-  [playback_control.rs](../../src-tauri/src/playback_control.rs); там само варіант `Silent`
+  [playback_control.rs](../../../src-tauri/src/playback_control.rs); там само варіант `Silent`
   доречно назвати за станом («нічого не записано», як у §3), а не за відповіддю;
-- доккоментарі [profile.rs](../../src-tauri/src/profile.rs) (:329, :347–348, :380) і
-  [handlers.rs:36](../../src-tauri/src/tray/handlers.rs:36);
-- коментарі [App.tsx:223](../../src/App.tsx:223), [playbackAnnounce.ts](../../src/lib/playbackAnnounce.ts)
-  (:19, :50), [ProfilePlaybackTab.tsx:52](../../src/components/profile/ProfilePlaybackTab.tsx:52);
-- [keyboard-shortcuts.md:61](../keyboard-shortcuts.md), [data-models.md:256](../data-models.md),
-  [accessibility.md](../accessibility.md) (:981, :1135).
+- доккоментарі [profile.rs](../../../src-tauri/src/profile.rs) (:329, :347–348, :380) і
+  [handlers.rs:36](../../../src-tauri/src/tray/handlers.rs:36);
+- коментарі [App.tsx:223](../../../src/App.tsx:223), [playbackAnnounce.ts](../../../src/lib/playbackAnnounce.ts)
+  (:19, :50), [ProfilePlaybackTab.tsx:52](../../../src/components/profile/ProfilePlaybackTab.tsx:52);
+- [keyboard-shortcuts.md:61](../../keyboard-shortcuts.md), [data-models.md:256](../../data-models.md),
+  [accessibility.md](../../accessibility.md) (:981, :1135).
 
-Де «cold» означає запуск застосунку ([portable.rs:112](../../src-tauri/src/portable.rs:112),
-[stream_commands.rs:107](../../src-tauri/src/commands/stream_commands.rs:107),
-[player.ts:14](../../src/stores/player.ts:14), [data-models.md:49](../data-models.md)), слово
+Де «cold» означає запуск застосунку ([portable.rs:112](../../../src-tauri/src/portable.rs:112),
+[stream_commands.rs:107](../../../src-tauri/src/commands/stream_commands.rs:107),
+[player.ts:14](../../../src/stores/player.ts:14), [data-models.md:49](../../data-models.md)), слово
 лишається. Плани й специфікації в `docs/superpowers/` і записи в `done/` — історія.
 
 ### 10. Нового ADR немає
@@ -315,17 +316,50 @@ ADR 2026-08-17 (§5).
 - [x] ADR 2026-09-01 має рядок «продовжити останнє» в таблиці §4
 - [x] Доккоментар `handlers.rs` описує рівно ті шляхи, які з трея досяжні
 - [x] `docs/help/` оновлено в обох локалях: player.md і background.md (§7)
-- [ ] NVDA-прогін за `docs/testing/nvda-tray-cannot-resume-last.json` чистий (§11)
+- [x] NVDA-прогін пройдено: 10 сценаріїв §11, 65 пунктів, 65 passed (2026-09-24)
 - [x] `cargo test`, `cargo clippy --all-targets`, `pnpm test`, `pnpm vite:build` зелені
+
+## Спадок
+
+Трей наздогнав модель ролі першим: коли не грає нічого, головний пункт меню значка — «Грати»,
+що продовжує останнє джерело тим самим входом і debounce, що й `Ctrl+Shift+K`, і сірий лише
+тоді, коли профіль не пам'ятає нічого. `MenuPlayback::Idle` розпався на `NoLastSource` і
+`LastSource`, а «нічого не записано» читає **одна** функція — `PlayerSession::last_source`: її
+питають і сірий пункт, і мовчазна гілка `resume_last` (`decide_resume_last` бере саму сесію),
+тож розійтися меню й натисканню нема де. До рев'ю визначень було два, і їх тримав у парі тест
+на 48 комбінацій — рев'ю звело їх в одне. Застарілість (потік видалили, файл перемістили)
+з'ясовує натискання, бо меню будується наперед і диска не питає. Меню перебудовується після
+`clear_last_session`, після підміни профілю в `switch_profile` і — понад критерії — одразу
+після створення значка в `setup_tray`: без цього кожен старт без `--minimize` показував сірий
+«Грати» (і «Показати Tapir» біля видимого вікна) до першої зміни стану.
+
+Поверхню відповіді обирає сам `resume_last`, тож фікс покрив усіх трьох викликачів — пункт
+трея, `Ctrl+Shift+K` і автовідтворення при запуску. `player-announce` іде завжди, а поза
+переднім вікном «недоступне» й «помилка» ще й дають тост `BackgroundFeedback` тими самими
+ключами, що й оголошення, із назвою джерела в заголовку, коли вона відома. Старт тосту не має:
+відповідає звук, а до 15 с тиші на з'єднання — компроміс «часткового вуха», записаний рядком у
+таблиці ADR 2026-09-01. Предикат «вікно попереду» в Rust один — `tray::window_in_foreground`,
+спільний із `BusyNotice`; гілку «фокус → тост» юніт-тест у Rust не тримає (потрібне справжнє
+вікно), її тримав NVDA-прогін.
+
+Два механічні коміти поміняли словник у коді: категорія тостів `HotkeyFeedback` стала
+`BackgroundFeedback` за своїм критерієм («сліду немає ніде»), а «cold» у значенні «не грає
+нічого» — термінами словника (`ColdStart` → `ResumeLastAction`, `Silent` → `NoLastSource`);
+«холодний старт» лишився тільки за запуском застосунку. Свідомі відхилення: довідка каже
+«Tapir так і скаже» й там, де у вікні відповідає лише оголошення, — видимий носій у вікні
+поїхав разом із панеллю в player-primary-button-resumes-last (§8); THEMES.md цитує старе
+`cold=resume-last` як обіцянку теми 0.1.1, і це історія теми. Для NVDA-чеклістів: і `Enter`, і
+клавіша контекстного меню на значку трея відкривають меню — `tray-icon` 0.21 не вмикає нового
+протоколу сповіщень, тож клавіатура приходить як праве клацання.
 
 ## Документи
 
-- [tray-toggle-label-vs-action](done/p2-tray-toggle-label-vs-action.md) — звідки знахідка; шов `MenuPlayback` / `playback_items`
-- [resume-last-playback](done/p1-resume-last-playback.md), [playback-toggle-stop-pause](done/p1-playback-toggle-stop-pause.md) — звідки `resume_last` і його таблиця станів
-- [player-primary-button-resumes-last](p2-player-primary-button-resumes-last.md) — панель, та сама роль, 0.2.0
-- [transport-boundary-silent-in-background](p2-transport-boundary-silent-in-background.md) — межа у фоні; другий випадок — `Ctrl+Shift+K` без записаного джерела
-- [ADR 2026-09-01](../decisions/2026-09-01-response-surfaces-ear-window-system.md) — вибір поверхні фонового відгуку
-- [ADR 2026-08-17](../decisions/2026-08-17-tray-toast-categories.md) — категорії тостів
-- [ADR 2026-08-31](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) — видимий носій (§8)
-- [CONTEXT.md](../../CONTEXT.md) — §«Головна кнопка і останнє джерело», §«Сповіщення в треї»
+- [tray-toggle-label-vs-action](p2-tray-toggle-label-vs-action.md) — звідки знахідка; шов `MenuPlayback` / `playback_items`
+- [resume-last-playback](p1-resume-last-playback.md), [playback-toggle-stop-pause](p1-playback-toggle-stop-pause.md) — звідки `resume_last` і його таблиця станів
+- [player-primary-button-resumes-last](../p2-player-primary-button-resumes-last.md) — панель, та сама роль, 0.2.0
+- [transport-boundary-silent-in-background](../p2-transport-boundary-silent-in-background.md) — межа у фоні; другий випадок — `Ctrl+Shift+K` без записаного джерела
+- [ADR 2026-09-01](../../decisions/2026-09-01-response-surfaces-ear-window-system.md) — вибір поверхні фонового відгуку
+- [ADR 2026-08-17](../../decisions/2026-08-17-tray-toast-categories.md) — категорії тостів
+- [ADR 2026-08-31](../../decisions/2026-08-31-visible-carrier-for-announced-facts.md) — видимий носій (§8)
+- [CONTEXT.md](../../../CONTEXT.md) — §«Головна кнопка і останнє джерело», §«Сповіщення в треї»
 - Код: `src-tauri/src/tray/`, `src-tauri/src/playback_control.rs`, `src-tauri/src/commands/profile_commands.rs`
