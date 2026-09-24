@@ -71,7 +71,7 @@ Tauri v2; локально підтвердити не вдалося (реєс�
 - [ ] Виправлено хибну нотатку про зум у
       [webview-reload-guard](done/p2-webview-reload-guard.md), якщо результат
       вимірювання розійдеться з припущенням
-- [ ] **NVDA-прогін** за чеклістом `docs/testing/nvda-webview-zoom-hotkeys.md`:
+- [ ] **NVDA-прогін** за чеклістом `docs/testing/nvda-webview-zoom-hotkeys.json`:
       масштаб не ламає фокус, F6-зони й оголошення; NVDA нічого не втрачає з
       дерева доступності на 200 %
 - [ ] `pnpm test`, `pnpm vite:build` без регресій
