@@ -4,14 +4,13 @@ title: "Репліка про вимкнений автозапуск губит
 summary: "репліка про автозапуск переїжджає на гейт «перший показ вікна»; гейт витягти в спільний тип, не копіювати"
 priority: P2
 type: planned
-status: blocked
-blocked_reason: "Реалізацію написано й перевірено логом, але прийняти не можна: після старту згорнутим вікно німе для NVDA (minimized-start-silent-to-nvda), тож репліку в ньому фізично не почути."
+status: ready
 effort: S
 kind: bug
 target: 0.1.1
-updated: 2026-09-15
+updated: 2026-09-24
 a11y: true
-depends_on: [hotkey-registration-silent-at-startup, minimized-start-silent-to-nvda]  # перший у done/
+depends_on: [hotkey-registration-silent-at-startup, minimized-start-silent-to-nvda]  # обидва в done/
 blocks: []
 touches:
   - src-tauri/src/commands/app_commands.rs
@@ -24,6 +23,7 @@ notes:
   - "2026-09-15: реалізацію припарковано на гілці `fix/autostart-notice-lost-when-minimized` @ d04669b (не зливати без прогону). Гейт винесено в `src-tauri/src/startup_notice.rs` (`StartupNotice<T>` + `main_window_is_foreground`), обидва споживачі — аліаси (`autostart::MovedNotice`, `hotkey_busy::BusyNotice`), один набір тестів на гейт; там же NVDA-чекліст і правки architecture/accessibility/data-models."
   - "2026-09-15, механіку доведено логом живого запуску: сесія стартує о 07:17:58 (`registered exe differs from current — deactivating`), `frontend_ready` настає тієї ж секунди й репліка МОВЧИТЬ, а `announcing deactivation after EXE move` іде о 07:18:29 — у мить, коли вікно вперше показали з клавіші. Тобто гейт працює; нечутною репліку робить сусідня вада."
   - "2026-09-15, дві названі межі: (1) репліка живе один сеанс, не до почутого — переміщення виявляється один раз, реєстр уже почищено, тож сеанс без показу вікна забирає її з собою; міжсеансової пам'яті, як у комбінацій, тут немає навмисно — стоячим доказом лишається знятий прапорець у налаштуваннях; (2) звичайний старт звужено: видиме, але не сфокусоване вікно чекає повернення фокуса — у чужому фокусі репліка все одно нікому не звучить."
+  - "2026-09-24: блок знято — minimized-start-silent-to-nvda прийнято після NVDA-прогону. Далі: перебазувати припарковану гілку на develop і пройти власний NVDA-прогін."
 ---
 
 # Репліка про вимкнений автозапуск губиться при старті згорнутим
@@ -34,8 +34,11 @@ notes:
 >
 > **Стан 2026-09-15:** код написано й припарковано на гілці (див. `notes:`), гейт
 > доведено логом живого запуску. Запис `blocked` не через себе, а через сусіда:
-> [minimized-start-silent-to-nvda](p0-minimized-start-silent-to-nvda.md) робить
+> [minimized-start-silent-to-nvda](done/p0-minimized-start-silent-to-nvda.md) робить
 > вікно після старту згорнутим німим, тож репліку нема як почути. Спершу той.
+>
+> **Стан 2026-09-24:** сусіда прийнято, блок знято — лишилося перебазувати
+> гілку й пройти прогін.
 
 ## Опис
 

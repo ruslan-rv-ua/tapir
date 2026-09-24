@@ -14,7 +14,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 саме вони визначають, чи версія закриється. Колонка «Суть» — поле `summary:` запису
 (без нього — `title:`).
 ♿ — запис зачіпає доступність (`a11y: true`), приймання потребує NVDA-прогону.
-Виконані записи (106) — у [done/README.md](done/README.md), спадок кожного — у секції
+Виконані записи (107) — у [done/README.md](done/README.md), спадок кожного — у секції
 «Спадок» його файлу.
 
 ---
@@ -48,13 +48,12 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > поверхонь не з'являється, IPC не міняється, а вже встановлені копії лишаються зі
 > своїми значеннями, бо міграцій немає.
 
-У черзі: 3. Виконано: 4.
+У черзі: 2. Виконано: 5.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
-| [minimized-start-silent-to-nvda](p0-minimized-start-silent-to-nvda.md) ♿ | P0 | planned | ready | S | — | [autostart-notice-lost-when-minimized](p2-autostart-notice-lost-when-minimized.md) | вікно ховається до завантаження вебв'ю, скрінрідер бачить порожній документ і більше не перепитує; ховати треба на frontend_ready |
+| [autostart-notice-lost-when-minimized](p2-autostart-notice-lost-when-minimized.md) ♿ | P2 | planned | ready | S | [hotkey-registration-silent-at-startup](done/p1-hotkey-registration-silent-at-startup.md) ✅, [minimized-start-silent-to-nvda](done/p0-minimized-start-silent-to-nvda.md) ✅ | — | репліка про автозапуск переїжджає на гейт «перший показ вікна»; гейт витягти в спільний тип, не копіювати |
 | [tray-cannot-resume-last](p2-tray-cannot-resume-last.md) ♿ | P2 | planned | draft | S | [tray-toggle-label-vs-action](done/p2-tray-toggle-label-vs-action.md) ✅ | — | знахідка grilling 2026-09-03: пункт трея сірий, хоча `Ctrl+Shift+K` у тому самому стані відновлює останнє джерело |
-| [autostart-notice-lost-when-minimized](p2-autostart-notice-lost-when-minimized.md) ♿ | P2 | planned | **blocked** | S | [hotkey-registration-silent-at-startup](done/p1-hotkey-registration-silent-at-startup.md) ✅, [minimized-start-silent-to-nvda](p0-minimized-start-silent-to-nvda.md) | — | репліка про автозапуск переїжджає на гейт «перший показ вікна»; гейт витягти в спільний тип, не копіювати Заблоковано: Реалізацію написано й перевірено логом, але прийняти не можна: після старту згорнутим вікно німе для NVDA (minimized-start-silent-to-nvda), тож репліку в ньому фізично не почути. |
 
 ---
 

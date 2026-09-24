@@ -122,7 +122,7 @@ firstNavItem?.focus();
 
 Ціна: при старті згорнутим вікно видно й воно забирає фокус до секунди. Свідомий
 обмін на те, щоб застосунок узагалі був озвученим у режимі, який стоїть за
-замовчуванням у автозапуску. Запис: [minimized-start-silent-to-nvda](../backlog/p0-minimized-start-silent-to-nvda.md).
+замовчуванням у автозапуску. Запис: [minimized-start-silent-to-nvda](../backlog/done/p0-minimized-start-silent-to-nvda.md).
 
 ## Першоджерела в цьому репозиторії
 

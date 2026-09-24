@@ -170,8 +170,6 @@ All project documentation lives in `docs/`. Key files:
 
 **Manual testing** (`docs/testing/`):
 - [test-streams.md](docs/testing/test-streams.md) — тестові URL радіо-потоків
-- [nvda-minimized-start-silent-to-nvda.md](docs/testing/nvda-minimized-start-silent-to-nvda.md) —
-  чи говорить вікно після старту згорнутим
 
 Чеклісти NVDA-прогону (`docs/testing/nvda-<slug>.md`) створюються для записів беклогу
 з `a11y: true` і видаляються на прийманні — метод і шаблон живуть у скілі
