@@ -403,7 +403,7 @@ export async function setOutputDevice(name: string | null): Promise<void> {
  *  rendered string (ADR native-layer-localisation §2). */
 export type TransportFailureReason = "unsupported" | "error";
 
-/** Native `HotkeyFeedback` toast for a failed prev/next while the window is in
+/** Native `BackgroundFeedback` toast for a failed prev/next while the window is in
  *  the background. `name` is the skip's target — the webview owns the naming
  *  rule (`sourceName`), Rust owns the key choice. */
 export async function notifyTransportFailure(

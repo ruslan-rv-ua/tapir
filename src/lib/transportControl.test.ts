@@ -214,7 +214,7 @@ describe("executeTransportSkip — failure surface follows window focus", () => 
     expect($announcer.get()).toBeNull();
   });
 
-  it("unfocused window: the native HotkeyFeedback toast, nothing in-window", async () => {
+  it("unfocused window: the native BackgroundFeedback toast, nothing in-window", async () => {
     playingStream("s2");
     vi.mocked(tauri.playStream).mockRejectedValueOnce("stream not found: s3");
     vi.mocked(tauri.isWindowFocused).mockResolvedValueOnce(false);
