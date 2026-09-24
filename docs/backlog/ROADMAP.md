@@ -52,7 +52,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
-| [tray-cannot-resume-last](p2-tray-cannot-resume-last.md) ♿ | P2 | planned | ready | M | [tray-toggle-label-vs-action](done/p2-tray-toggle-label-vs-action.md) ✅ | [player-primary-button-resumes-last](p2-player-primary-button-resumes-last.md) | огрилено 2026-09-24: трей продовжує останнє, як `Ctrl+Shift+K`; відмову у фоні несе тост фонового відгуку; панель — окремо в 0.2.0 |
+| [tray-cannot-resume-last](p2-tray-cannot-resume-last.md) ♿ | P2 | planned | ready | M | [tray-toggle-label-vs-action](done/p2-tray-toggle-label-vs-action.md) ✅ | [player-primary-button-resumes-last](p2-player-primary-button-resumes-last.md) | реалізовано 2026-09-24, чекає NVDA-прогону: трей продовжує останнє, як `Ctrl+Shift+K`; відмову у фоні несе тост фонового відгуку |
 
 ---
 
