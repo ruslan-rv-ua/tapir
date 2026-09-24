@@ -172,17 +172,17 @@ pub fn run() {
                     main_window.open_devtools();
                 }
                 let _ = main_window.set_focus(); // webview inits in foreground (NVDA)
-                if cli.minimize {
-                    // --minimize = start in the tray. hide(), NOT minimize() (that
-                    // is the taskbar). NVDA already attached above before we hide.
-                    // No tray refresh here: neither AppState nor the tray icon
-                    // exists yet at this point in setup, and `setup_tray` below
-                    // builds the menu from a snapshot that already says the window
-                    // is hidden. The refresh that used to stand here read
-                    // `AppState` before `manage` and aborted every release build
-                    // (backlog minimized-start-crashes-release-build).
-                    let _ = main_window.hide();
-                }
+            }
+            if cli.minimize {
+                // --minimize = start in the tray, and the window does go there —
+                // but NOT from here. A screen reader asks the window about its
+                // document once, up front; hidden this early there is no document
+                // yet, it finds nothing and never asks again, leaving the whole
+                // window mute for the session. So the hide waits for
+                // `frontend_ready`, which is the webview saying the document is
+                // up (backlog minimized-start-silent-to-nvda). hide(), NOT
+                // minimize() — that one is the taskbar.
+                app.manage(cli::MinimizeOnReady::new());
             }
 
             let mut settings = initial_settings;

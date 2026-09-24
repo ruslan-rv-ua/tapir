@@ -11,6 +11,22 @@ pub async fn frontend_ready(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
+    // Старт із `--minimize`: вікно ховається САМЕ ТУТ, першою дією. Документ
+    // щойно завантажився й скрінрідер уже подивився на нього — а от сховане в
+    // `setup` вікно він застав би порожнім і більше не перепитав би (беклог
+    // minimized-start-silent-to-nvda). Першою дією ще й тому, що все нижче
+    // питає, чи вікно на передньому плані: сховати треба ДО того, як стартові
+    // репліки вирішать, що їх уже чути.
+    if let Some(latch) = app.try_state::<crate::cli::MinimizeOnReady>()
+        && latch.take()
+    {
+        log::info!("--minimize: webview is ready, hiding the window to the tray");
+        if let Some(window) = app.get_webview_window("main") {
+            let _ = window.hide();
+        }
+        crate::tray::notify_state_changed(&app);
+    }
+
     state.scheduler.start(app.clone());
 
     // Capture whether the startup CLI plan explicitly drives playback BEFORE the

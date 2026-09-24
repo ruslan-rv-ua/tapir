@@ -94,6 +94,29 @@ impl StartupPlan {
     }
 }
 
+/// `--minimize` means "start in the tray" — but the hiding itself is deferred to
+/// `frontend_ready`, the same gate `StartupPlan` waits on, and for a neighbouring
+/// reason: a screen reader asks a window about its document **once**, while the
+/// window is up front. Hide before the webview has loaded and it finds nothing,
+/// remembers that, and never asks again — the whole window stays mute for the
+/// session, however often it is shown later (backlog
+/// minimized-start-silent-to-nvda). So `setup` only records the intent; the hide
+/// happens when the document is up and the reader has had its look.
+///
+/// One-shot: a webview reload calls `frontend_ready` again and must not hide a
+/// window the person has since opened.
+pub struct MinimizeOnReady(std::sync::atomic::AtomicBool);
+
+impl MinimizeOnReady {
+    pub fn new() -> Self {
+        Self(std::sync::atomic::AtomicBool::new(true))
+    }
+    /// `true` exactly once — on the first call — and `false` thereafter.
+    pub fn take(&self) -> bool {
+        self.0.swap(false, std::sync::atomic::Ordering::SeqCst)
+    }
+}
+
 /// Pure: Cli + context -> ordered plan. Order is fixed and deterministic:
 /// SwitchProfile -> stop_* -> wish_* -> record/play (profile first, because it
 /// changes where a stream is resolved). Startup-only flags on Forwarded land in
@@ -325,6 +348,21 @@ async fn execute_action(app: &AppHandle, action: Action) {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod minimize_latch_tests {
+    use super::*;
+
+    #[test]
+    fn minimize_on_ready_fires_once_so_a_reload_cannot_hide_an_open_window() {
+        let latch = MinimizeOnReady::new();
+        assert!(latch.take(), "the first frontend_ready hides the window");
+        assert!(
+            !latch.take(),
+            "a webview reload must not hide a window the person has opened since"
+        );
     }
 }
 
