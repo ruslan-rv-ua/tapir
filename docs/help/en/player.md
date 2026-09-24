@@ -36,11 +36,11 @@ When a file ends, **Auto-play next track** — profile settings, tab **Playback*
 
 When nothing is playing, pick up whatever you listened to last: press the **Playback (toggle)** hotkey — `Ctrl+Shift+K` by default — or choose **Play** in the tray icon's menu. You do not need to open the window for it. A station goes back on air as soon as Tapir connects to it, which can take a few seconds; a file resumes from its saved position or starts over — that choice is **Resume file** in the profile settings, tab **Playback**. This never affects a pause: a paused file continues where it stopped.
 
-Tapir remembers one last source per profile — whichever played later, a station or a file. A station you only listened to in the Station Browser, without adding it to the profile, is never among them. When there is nothing to remember — in a new profile, say — **Play** in the icon's menu is inactive and the hotkey does nothing.
+Tapir remembers one last source per profile — whichever played later, a station or a file. A station you only listened to in the Station Browser, without adding it to the profile, is never among them. When there is nothing to remember — in a new profile, say — that menu item is inactive and the hotkey does nothing.
 
 If what you listened to is gone — the stream was deleted from the profile, or the file was moved — Tapir says so and stops offering to pick it up. If it merely failed to play — the station did not answer, say — Tapir reports a playback error and keeps remembering it, so you can try again. With the window in the background, both messages arrive as a system notification.
 
-Tapir can also do this by itself as soon as it starts, but does not by default: to have it pick up the last source at startup, switch on **Resume last playback on startup** on the same **Playback** tab.
+Tapir can also do this by itself as soon as it starts, but does not by default: to have it pick up the last source at startup, switch on **Resume last playback on startup** on the same tab.
 
 ### The panel
 
