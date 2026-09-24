@@ -34,7 +34,7 @@ notes:
 ## Опис
 
 `executeTransportSkip` виходить мовчки, коли дія не резолвиться
-([transportControl.ts:50](../../src/lib/transportControl.ts:50), `action.kind === "none"`).
+([transportControl.ts:94](../../src/lib/transportControl.ts:94), `action.kind === "none"`).
 
 **У вікні прогалини немає:** на межі списку кнопки «попередній / наступний» стають `disabled`,
 і це повноцінний видимий носій. **У фоні кнопок не видно**, а звук не змінюється — отже

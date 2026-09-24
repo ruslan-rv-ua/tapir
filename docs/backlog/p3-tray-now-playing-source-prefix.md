@@ -32,8 +32,8 @@ notes:
 ## Опис
 
 Рядок складається з двох шарів, і кожен додає власний префікс. Зовнішній —
-`tray_now_playing` = «Зараз грає: {label}» ([menu.rs:64](../../src-tauri/src/tray/menu.rs:64)).
-Внутрішній додає `build_now_playing_label` ([menu.rs:120](../../src-tauri/src/tray/menu.rs:120)):
+`tray_now_playing` = «Зараз грає: {label}» ([menu.rs:113](../../src-tauri/src/tray/menu.rs:113)).
+Внутрішній додає `build_now_playing_label` ([menu.rs:165](../../src-tauri/src/tray/menu.rs:165)):
 
 | Джерело | `{label}` | Пункт меню |
 |---|---|---|

@@ -1,14 +1,15 @@
 ---
 slug: minimized-start-crashes-release-build
 title: "Старт із --minimize кладе release-білд одразу після запуску"
-summary: "tray::notify_state_changed у гілці --minimize читає AppState до app.manage; у release (panic = abort) паніка в задачі вбиває процес"
+summary: "notify_state_changed бере стан через try_state і до app.manage лише пише warn; гілка --minimize більше не перемальовує трей до setup_tray"
 priority: P0
 type: planned
-status: ready
+status: done
 effort: S
 kind: bug
 target: 0.1.1
-updated: 2026-09-08
+completed: 2026-09-24
+updated: 2026-09-24
 a11y: false
 depends_on: []
 blocks: []
@@ -20,13 +21,14 @@ notes:
   - "Знайдено 2026-09-08 при спробі пройти NVDA-чекліст autostart-notice-lost-when-minimized: випущений 0.1.0 зі scoop падав на `tapir.exe --minimize`, 5 запусків із 5."
   - "Вада жива й на develop: `lib.rs` і `tray/mod.rs` від тега `v0.1.0` не мінялись. У dev-білдах (`release-fast`, panic = unwind) паніка вбиває лише спавнену задачу, тож розробка її не бачить — видно лише в тому профілі, яким збираються релізи."
   - "2026-09-08: код злитий у develop (PR #19, merge 4bb58e3). Запис лишається відкритим лише через один критерій — «значок у треї видно», — який командою не перевіряється. Закрити можна будь-коли після того, як людина його побачить; решта перевірена вимірюванням."
+  - "2026-09-24: прийнято — людина підтвердила значок у треї після `tapir.exe --minimize` на release-збірці."
 ---
 
 # Старт із --minimize кладе release-білд одразу після запуску
 
 > **Контекст:** критичний баг випущеної 0.1.0, знайдений збоку — при підготовці
 > NVDA-прогону сусіднього запису
-> [autostart-notice-lost-when-minimized](p2-autostart-notice-lost-when-minimized.md).
+> [autostart-notice-lost-when-minimized](../p2-autostart-notice-lost-when-minimized.md).
 > Корінь інший (порядок ініціалізації трея), тому запис окремий.
 
 ## Опис
@@ -85,10 +87,10 @@ state() called before manage() for tapir_lib::app_state::AppState
 
 ## Критерії готовності
 
-- [ ] `tapir.exe --minimize` на release-білді стартує: вікно сховане, значок у
+- [x] `tapir.exe --minimize` на release-білді стартує: вікно сховане, значок у
       треї є, лог пише звичайну стартову послідовність
-      — процес і лог перевірено (див. нижче); **значок у треї лишається за оком
-      людини** — єдине, чого командою не видно
+      — процес і лог перевірено (див. нижче); значок у треї підтвердила людина
+      2026-09-24
 - [x] stderr при старті з `--minimize` не містить `state() called before manage()`
 - [x] Жоден виклик `notify_state_changed` більше не може вбити процес: стану ще
       немає — попередження в лог, не паніка
@@ -107,11 +109,25 @@ state() called before manage() for tapir_lib::app_state::AppState
 Середній рядок і пояснює, чому вада прожила реліз: у профілі розробки видно лише
 мовчазну паніку в stderr, якого в GUI-застосунку ніхто не читає.
 
+## Спадок
+
+- **Правило для `notify_state_changed`:** задача бере стан через `try_state`, і коли
+  `AppState` ще немає — пише `log::warn!` і йде геть. Будь-який новий виклик до
+  `app.manage` тепер лише шумить у лозі, а не кладе процес при `panic = "abort"`.
+- **Гілка `--minimize` у `setup` трей не чіпає:** стартовий знімок `setup_tray` уже
+  несе `window_visible: false`. Коментарі-адреси стоять у `src-tauri/src/lib.rs` і
+  `src-tauri/src/tray/mod.rs` (над `notify_state_changed`).
+- **Урок профілів:** вада, що живе лише в `release` (`panic = "abort"`), у
+  `release-fast` видна тільки як паніка в stderr, якого GUI-застосунок не показує.
+  Сценарії «старт згорнутим» проганяти на справжньому релізному профілі.
+- **Юніт-тесту немає свідомо:** потрібен живий `AppHandle`; доказ — таблиця
+  вимірювань вище.
+
 ## Документи
 
-- [autostart-notice-lost-when-minimized](p2-autostart-notice-lost-when-minimized.md) —
+- [autostart-notice-lost-when-minimized](../p2-autostart-notice-lost-when-minimized.md) —
   сусідній запис; його NVDA-прогін і наштовхнув на цю ваду
-- [architecture.md](../architecture.md) §5.3 — порядок `setup()` і два гейти
+- [architecture.md](../../architecture.md) §5.3 — порядок `setup()` і два гейти
   відкладеного мовлення
 - `src-tauri/src/lib.rs` (гілка `--minimize` у `setup`), `src-tauri/src/tray/mod.rs`
   (`notify_state_changed`, `build_snapshot`)
