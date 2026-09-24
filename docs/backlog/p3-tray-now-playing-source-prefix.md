@@ -1,43 +1,47 @@
 ---
 slug: tray-now-playing-source-prefix
-title: "Рядок «Зараз грає» у треї: подвійна двокрапка і зайвий префікс у прев'ю"
-summary: "знахідка grilling 2026-09-03: «Зараз грає: Файл: track.mp3» і префікс «Станція:», що відрізняє прев'ю від ефіру"
+title: "Рядок «Зараз грає» у треї: подвійна двокрапка, зайвий префікс у прев'ю, трек лише під час запису"
+summary: "«Зараз грає» в треї: подвійна двокрапка, префікс «Станція:» лише в прев'ю, а трек потоку видно лише під час запису"
 priority: P3
 type: planned
 status: draft
 effort: S
 kind: bug
 target: 0.3.0
-updated: 2026-09-03
-a11y: false
-depends_on: []
+updated: 2026-09-24
+a11y: true
+depends_on: [track-line-dangling-dash]
 blocks: []
 touches:
   - src-tauri/src/tray/menu.rs
+  - src-tauri/src/tray/mod.rs
+  - src-tauri/src/player/engine.rs
+  - src-tauri/src/stream/manager.rs
   - src/i18n/messages/uk.json
   - src/i18n/messages/en.json
-gates: [cargo test, cargo clippy --all-targets, pnpm test, pnpm vite:build]
+gates: [cargo test, cargo clippy --all-targets, pnpm test, pnpm typecheck, pnpm vite:build]
 notes:
   - "Знахідка grilling tray-toggle-label-vs-action (2026-09-03). Розвилка НЕ закрита — грилити перед кодом."
   - "Пункт неактивний і суто інформаційний — дії за ним немає, тому P3."
   - "Другий наслідок суперечить рішенню #1 батьківського запису preview-player-presentation."
+  - "Огляд архітектури 2026-09-24 дописав другу ваду (трек у треї лише під час запису; є і в 0.1.0) і відкрите питання про одного власника рядка треку."
 ---
 
-# Рядок «Зараз грає» у треї: подвійна двокрапка і зайвий префікс у прев'ю
+# Рядок «Зараз грає» у треї: подвійна двокрапка, зайвий префікс у прев'ю, трек лише під час запису
 
-> **Контекст:** знахідка під час grilling
-> [tray-toggle-label-vs-action](done/p2-tray-toggle-label-vs-action.md). Запис **не огрилено** —
-> розвилка внизу відкрита.
+> **Контекст:** знахідка grilling [tray-toggle-label-vs-action](done/p2-tray-toggle-label-vs-action.md);
+> другу ваду й відкрите питання дописав [огляд архітектури 2026-09-24](../notes/architecture-review-2026-09-24.md).
+> Запис **не огрилено**: `planned` + `draft` → **GROOMING**, коду не чіпати. Номери рядків — стан на `f09f36b`.
 
 ## Опис
 
 Рядок складається з двох шарів, і кожен додає власний префікс. Зовнішній —
-`tray_now_playing` = «Зараз грає: {label}» ([menu.rs:113](../../src-tauri/src/tray/menu.rs:113)).
-Внутрішній додає `build_now_playing_label` ([menu.rs:165](../../src-tauri/src/tray/menu.rs:165)):
+`tray_now_playing` = «Зараз грає: {label}» (`src-tauri/src/tray/menu.rs:128`).
+Внутрішній додає `build_now_playing_label` (`src-tauri/src/tray/menu.rs:180`):
 
 | Джерело | `{label}` | Пункт меню |
 |---|---|---|
-| потік із профілю | `SomaFM` або `SomaFM — виконавець — трек` | «Зараз грає: SomaFM» |
+| потік із профілю | `SomaFM`; `SomaFM — виконавець — трек` лише поки потік пишеться (див. «Друга вада») | «Зараз грає: SomaFM» |
 | файл | `Файл: track.mp3` | «Зараз грає: **Файл:** track.mp3» |
 | прев'ю | `Станція: SomaFM` | «Зараз грає: **Станція:** SomaFM» |
 
@@ -79,7 +83,7 @@ notes:
 ## Що вже відомо
 
 - Ключі готові: `tray_now_playing`, `tray_source_file`, `tray_source_station` в обох локалях
-  ([uk.json:692](../../src/i18n/messages/uk.json:692)).
+  (`src/i18n/messages/uk.json:703`, `:711-712`).
 - `tray_source_station` сьогодні бере **лише** прев'ю; потік іде повз нього.
 - Термін «прев'ю» — домену, не інтерфейсу ([CONTEXT.md](../../CONTEXT.md) §«Прев'ю»),
   і в меню його бути не може; це вже враховано коментарем у коді.
@@ -87,18 +91,100 @@ notes:
   [ADR 2026-08-17](../decisions/2026-08-17-native-layer-localisation.md)): будь-яка правка
   ключів мусить лишити обидві локалі повними.
 
+## Друга вада: трек не видно, коли потік лише грає
+
+Є і в 0.1.0: `build_now_playing_label` відтоді той самий, `engine.rs` не мінявся.
+
+**Як відтворити.** Відтворити без запису потік із профілю, що передає метадані ефіру, й
+дочекатися зміни треку. Підказка значка (NVDA: `Win+B`, стрілками до Tapir) — «Tapir — ▶
+SomaFM», пункт меню — «Зараз грає: SomaFM»: трека немає, хоча плеєр у вікні, тост (якщо
+ввімкнено) і SMTC його показують. Почати запис — після наступної зміни треку «Tapir — ▶
+SomaFM — Виконавець — Назва · ● 1 запис». Зупинити запис — трек із трея зникає (або
+застигає, див. нижче). Хто лише слухає, трека в треї не бачить ніколи. Прев'ю не входить:
+його трека не показує й вікно (`src/components/player/PlayerPanel.test.tsx:259-260`).
+
+**Причина.** Трей бере трек лише в менеджера запису.
+
+- `build_now_playing_label` (`menu.rs:180`) бере `current_track` із `get_all_statuses()`
+  (:192, :202); без `StreamEntry` потоку — саму назву (:206). Цей рядок несуть `tooltip`
+  (:9-25) і пункт «Зараз грає» (:126-133); знімок — `src-tauri/src/tray/mod.rs:160`.
+- `StreamEntry` є, лише поки потік пишеться: його вставляє `start_recording`
+  (`src-tauri/src/stream/manager.rs:306`), знімає кінець задачі запису (:1219);
+  `current_track` пише лише `update_track_info` (:678).
+- Поза `Recording` рядок треку належить плеєру (`player_owns_track_line`, `manager.rs:86-88`).
+  Його гілка (`src-tauri/src/player/engine.rs:689-708`) шле `track-changed` і тост, але трек
+  не зберігає й `crate::tray::notify_state_changed` не кличе; шлях менеджера кличе
+  (`emit_track_changed`, `manager.rs:433`). `emit_player_status` (`engine.rs:115`) трей теж
+  оновлює, але `PlayerStatus` трека не несе.
+
+Не перевірено, але ймовірно:
+
+- після фінального переходу трей застигає на старому треку: `announce_transition`
+  (`manager.rs:1216`) спавнить оновлення трея (:415) раніше, ніж знімається `StreamEntry` (:1219);
+- у `Reconnecting` запису трей показує старий `current_track` (його не чистять), хоча рядок
+  тоді веде плеєр;
+- під час запису трей відстає на трек: `emit_track_changed` стоїть раніше за
+  `update_track_info` (`manager.rs:770-771`, `:778-779`, `:793-794`, `:1107-1108`).
+
+**Чому обіцянка слабка.** Довідка каже лише «побачите, що зараз грає» (`background.md`,
+рядок 13, [uk](../help/uk/background.md), [en](../help/en/background.md)) — назва станції це
+буквально виконує. Трек обіцяє лише код: докоментар `menu.rs:178-179` («station + track
+info»), коментар `manager.rs:432` і формат `menu.rs:204`. Докоментар трея вже раз зарахували
+обіцянкою (`cold=resume-last`, [THEMES.md](THEMES.md) §0.1.1), але цей описує реалізацію, яка
+під час запису справджується. Тому вада лишається тут, у 0.3.0. Механічно вона проходить і
+в 0.1.1 (`kind: bug`, є в 0.1.0, IPC не міняється); виносити її туди окремим записом чи ні,
+вирішує власник на грилінгу.
+
+**Напрям мінімального виправлення** — лише Rust, IPC і тіла подій ті самі, нових ключів i18n
+не треба:
+
+1. У гілці `owns_line` (`engine.rs:693`) запам'ятати виконавця й назву в `PlaybackSession`
+   (`engine.rs:121-130`) — стоп і зміна джерела чистять поле разом із сесією — і покликати
+   `crate::tray::notify_state_changed`. **Не** в `PlayerStatus` (`engine.rs:7-13`): це тіло
+   події `player-status`.
+2. `build_now_playing_label` (`menu.rs:202`) вибирає власника тим самим
+   `player_owns_track_line`: `current_track` менеджера лише під `Recording`, інакше — трек
+   плеєра. Це знімає й застиглий трек у `Reconnecting`.
+3. За бажання — `update_track_info` раніше за `emit_track_changed` у чотирьох парах вище.
+
+Подвійне тире в цьому ж рядку лікує [track-line-dangling-dash](p2-track-line-dangling-dash.md)
+(0.1.1); цей запис бере вже виправлену склейку `menu.rs:202-207`.
+
+## Відкрите питання: один власник рядка треку в Rust
+
+Кандидат «варто дослідити» з огляду архітектури. Правило `player_owns_track_line` визначене в
+менеджері (`manager.rs:86-88`), а застосовує його рушій (`engine.rs:90-96`, `:689-708`),
+читаючи менеджер через `AppHandle`. Емітерів `track-changed` і тоста два, і вони вже
+розійшлися: трей оновлює лише шлях менеджера. SMTC годує лише плеєр (`engine.rs:680`, поза
+правилом), трей читає лише менеджер. Мінімальне виправлення дає правилу третє місце —
+`menu.rs`, і локальність гіршає. Альтернатива — один модуль у Rust тримає поточні Метадані
+ефіру потоку й знає, чий рядок; подія, тост, трей і SMTC лише читають його. Хаб-власника вже
+відклали як завеликий для S ([tauri-ts-type-drift](done/p2-tauri-ts-type-drift.md)
+§«Рішення» #2); порт хоста з [reconnect-loop-behind-host-port](p2-reconnect-loop-behind-host-port.md)
+дав би такому модулю природне джерело межі треку. Для грилінгу: мінімальне виправлення тут
+чи окремий запис-ідея.
+
 ## Критерії готовності
 
+- [ ] `docs/help/` не змінюється: `background.md` ([en](../help/en/background.md), [uk](../help/uk/background.md)) обіцяє лише «що зараз грає», і обидві правки це тримають; якщо грилінг вирішить назвати в довідці трек чи вид джерела — правити обидві локалі
 - [ ] Режим префіксів вибрано й застосовано послідовно до всіх трьох видів джерела
 - [ ] Прев'ю й потік із профілю в рядку «Зараз грає» читаються однаково
 - [ ] Двокрапка в пункті одна
+- [ ] Потік, що лише грає: після зміни треку підказка значка й пункт «Зараз грає» несуть трек — той самий рядок, що й під час запису; після зупинки запису й у `Reconnecting` — трек плеєра, не застиглий трек менеджера
+- [ ] Прев'ю трека в треї, як і досі, не показує; `PlayerStatus` і тіла подій не змінились
+- [ ] `cargo test`: вибір треку для трея — чиста функція з тестом на `Recording`, `Reconnecting` і потік, що не пишеться
+- [ ] Грилінг закрив питання про власника рядка треку (тут чи окремим записом) і про версію другої вади (0.3.0 чи 0.1.1)
+- [ ] NVDA: `Win+B` → значок Tapir, потік лише грає — підказка читає трек
 - [ ] Обидві локалі повні; `cargo test` зелений
-- [ ] `docs/help/` — звірити, чи запис змінює видиму поведінку, описану в довідці
 
 ## Документи
 
 - [tray-toggle-label-vs-action](done/p2-tray-toggle-label-vs-action.md) — звідки знахідка
+- [Огляд архітектури 2026-09-24](../notes/architecture-review-2026-09-24.md) — друга вада й питання про власника рядка треку
 - [preview-player-presentation](done/p2-preview-player-presentation.md) §«Що вирішено» #1 — прев'ю не відрізняється від ефіру
+- [track-line-dangling-dash](p2-track-line-dangling-dash.md) — подвійне тире в тому ж рядку
+- [tauri-ts-type-drift](done/p2-tauri-ts-type-drift.md) §«Рішення» #2, #4 — звідки `player_owns_track_line`
+- [THEMES.md](THEMES.md) §0.1.1 — докоментар трея як обіцянка
 - [ADR 2026-08-17](../decisions/2026-08-17-native-layer-localisation.md) — локалізація нативного шару
-- [CONTEXT.md](../../CONTEXT.md) §«Живе джерело», §«Прев'ю»
-- Код: `src-tauri/src/tray/menu.rs`
+- [CONTEXT.md](../../CONTEXT.md) §«Живе джерело», §«Прев'ю», §«Метадані ефіру»
+- Код: `src-tauri/src/tray/menu.rs`, `src-tauri/src/tray/mod.rs`, `src-tauri/src/player/engine.rs`, `src-tauri/src/stream/manager.rs`
