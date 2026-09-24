@@ -6,8 +6,9 @@ import uk from "./messages/uk.json";
  * The startup checkbox and the field right under it must open with the same word.
  *
  * `profile_autoplay_label` and `settings_resume_file_from` stand one above the
- * other on the profile's "Playback" tab and describe halves of a single cold-start
- * decision: whether to bring the last source back, and — for a file — from where.
+ * other on the profile's "Playback" tab and describe halves of a single feature,
+ * resuming the last source: whether startup brings it back, and — for a file —
+ * from where it continues.
  * A label that promises "something starts playing" instead of "the last one comes
  * back" breaks that pair, and the two locales then describe different features
  * (uk once said «Автовідтворення при запуску» while en said "Resume last playback

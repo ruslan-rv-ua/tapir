@@ -13,18 +13,24 @@ use crate::stream::manager::StreamState;
 pub const TRAY_ID: &str = "main";
 
 /// How the tray renders playback — a **display model**, derived from
-/// `PlayerStatus`, not a mirror of it. `PlaybackState` alone cannot decide a
-/// tray item: the menu stops live sound and pauses a file, so it must know the
-/// source as well. Pairing the two as separate fields would spell six
-/// combinations where only four exist — "paused live sound" is unreachable
-/// (`PlaybackSource::is_live`: every primary control stops live). These four
-/// variants are exactly the situations the menu draws.
+/// `PlayerStatus` and the profile's last source, not a mirror of either.
+/// `PlaybackState` alone cannot decide a tray item: the menu stops live sound
+/// and pauses a file, so it must know the source as well, and when nothing
+/// plays it resumes the last source, so it must know whether there is one.
+/// Pairing these as separate fields would spell combinations that do not exist
+/// — "paused live sound" is unreachable (`PlaybackSource::is_live`: every
+/// primary control stops live), and a last source only matters while nothing
+/// plays. These five variants are exactly the situations the menu draws.
 ///
-/// Model: CONTEXT.md §«Живе джерело».
+/// Model: CONTEXT.md §«Живе джерело», §«Головна кнопка і останнє джерело».
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MenuPlayback {
-    /// Nothing is playing.
-    Idle,
+    /// Nothing is playing, and the profile has no last source: nothing for the
+    /// primary item to resume.
+    NoLastSource,
+    /// Nothing is playing, and the profile has a last source — perhaps a stale
+    /// one, which only the press finds out. The primary item resumes it.
+    LastSource,
     /// Live sound — the air of a profile stream, or a station played straight
     /// from the catalogue. Stops; never pauses.
     Live,
@@ -35,14 +41,18 @@ pub enum MenuPlayback {
 }
 
 impl MenuPlayback {
-    /// Read the display model off a live player status. The one place the tray
-    /// asks `is_live()`.
-    pub fn from_status(status: &PlayerStatus) -> Self {
+    /// Read the display model off a live player status and whether the active
+    /// profile has a last source (`PlayerSession::last_source`). The one
+    /// place the tray asks `is_live()`.
+    pub fn from_status(status: &PlayerStatus, has_last_source: bool) -> Self {
         match (&status.state, status.source.as_ref()) {
-            // A source implies an active session, so `Stopped` means idle
-            // whatever the source says — the invariant `decide_toggle` relies
-            // on. ("Live" is reserved here for the domain sense two lines down.)
-            (PlaybackState::Stopped, _) | (_, None) => Self::Idle,
+            // A source implies an active session, so `Stopped` means nothing
+            // plays whatever the source says — the invariant `decide_toggle`
+            // relies on. ("Live" is reserved here for the domain sense two lines
+            // down.)
+            (PlaybackState::Stopped, _) | (_, None) => {
+                if has_last_source { Self::LastSource } else { Self::NoLastSource }
+            }
             (_, Some(source)) if source.is_live() => Self::Live,
             (PlaybackState::Playing, _) => Self::FilePlaying,
             (PlaybackState::Paused, _) => Self::FilePaused,
@@ -68,8 +78,10 @@ pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
         .cloned()
         .ok_or_else(|| tauri::Error::AssetNotFound("default-window-icon".into()))?;
 
+    // A placeholder: the real state is read off `AppState` asynchronously, and
+    // this runs on the setup thread. It is replaced right below.
     let initial = MenuSnapshot {
-        playback: MenuPlayback::Idle,
+        playback: MenuPlayback::NoLastSource,
         now_playing_label: None,
         active_recordings: 0,
         window_visible: false,
@@ -84,6 +96,11 @@ pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
         .on_tray_icon_event(handlers::on_tray_icon_event)
         .on_menu_event(handlers::on_menu_event)
         .build(app)?;
+
+    // The placeholder greys "Play" even when the profile has a last source to
+    // resume, and the next change of state may be a long way off: a window
+    // shown at startup does not rebuild the menu. Read the real state now.
+    notify_state_changed(app);
 
     Ok(())
 }
@@ -105,6 +122,18 @@ pub fn notify_state_changed(app: &AppHandle) {
             log::warn!("Tray: failed to update menu/tooltip: {e}");
         }
     });
+}
+
+/// Whether the main window is in the foreground — visible **and** focused. The
+/// question behind every choice between the window's surface and the system's
+/// (ADR 2026-09-01 §3): NVDA reads live regions only in the foreground window,
+/// so a visible window without focus counts as background. Ask it once the
+/// answer is known, not when the action starts: a connect may take seconds, and
+/// the person may have switched windows meanwhile.
+pub fn window_in_foreground(app: &AppHandle) -> bool {
+    app.get_webview_window("main")
+        .map(|w| w.is_visible().unwrap_or(false) && w.is_focused().unwrap_or(false))
+        .unwrap_or(false)
 }
 
 /// `None` when there is no `AppState` yet — the caller ran before `setup`
@@ -130,13 +159,19 @@ async fn build_snapshot(app: &AppHandle) -> Option<MenuSnapshot> {
 
     let now_playing_label = menu::build_now_playing_label(&player_status, app).await;
 
+    // Session fields only — no disk, no lookup of the stream in the profile:
+    // the menu is built ahead of the click, so a stale last source can only be
+    // told at the press (tray-cannot-resume-last §3).
+    let has_last_source =
+        state.active_profile.read().await.player_session.last_source().is_some();
+
     let window_visible = app
         .get_webview_window("main")
         .and_then(|w| w.is_visible().ok())
         .unwrap_or(false);
 
     Some(MenuSnapshot {
-        playback: MenuPlayback::from_status(&player_status),
+        playback: MenuPlayback::from_status(&player_status, has_last_source),
         now_playing_label,
         active_recordings,
         window_visible,
@@ -170,19 +205,35 @@ mod tests {
         let preview = PlaybackSource::Preview { url: "http://x".into(), name: "X".into() };
         let file = PlaybackSource::File { path: "rec/a.mp3".into() };
 
-        // Обидва шляхи до живого звуку дають один стан — у цьому вся правка.
-        let air = status(PlaybackState::Playing, Some(stream));
-        assert_eq!(MenuPlayback::from_status(&air), MenuPlayback::Live);
-        let from_catalogue = status(PlaybackState::Playing, Some(preview));
-        assert_eq!(MenuPlayback::from_status(&from_catalogue), MenuPlayback::Live);
+        // Записане останнє джерело важить лише тоді, коли не грає нічого: те,
+        // що грає, пункт трея називає однаково, є що продовжити чи ні.
+        for has_last_source in [false, true] {
+            // Обидва шляхи до живого звуку дають один стан — у цьому вся правка.
+            let air = status(PlaybackState::Playing, Some(stream.clone()));
+            assert_eq!(MenuPlayback::from_status(&air, has_last_source), MenuPlayback::Live);
+            let from_catalogue = status(PlaybackState::Playing, Some(preview.clone()));
+            assert_eq!(
+                MenuPlayback::from_status(&from_catalogue, has_last_source),
+                MenuPlayback::Live
+            );
 
-        // Файл — протилежність: у нього є позиція, тож пауза лишається законною.
-        let playing = status(PlaybackState::Playing, Some(file.clone()));
-        assert_eq!(MenuPlayback::from_status(&playing), MenuPlayback::FilePlaying);
-        let paused = status(PlaybackState::Paused, Some(file));
-        assert_eq!(MenuPlayback::from_status(&paused), MenuPlayback::FilePaused);
+            // Файл — протилежність: у нього є позиція, тож пауза лишається законною.
+            let playing = status(PlaybackState::Playing, Some(file.clone()));
+            assert_eq!(
+                MenuPlayback::from_status(&playing, has_last_source),
+                MenuPlayback::FilePlaying
+            );
+            let paused = status(PlaybackState::Paused, Some(file.clone()));
+            assert_eq!(
+                MenuPlayback::from_status(&paused, has_last_source),
+                MenuPlayback::FilePaused
+            );
+        }
 
+        // Не грає нічого — і стан розпадається на два за тим, чи є що продовжити
+        // (запис tray-cannot-resume-last §3).
         let nothing = status(PlaybackState::Stopped, None);
-        assert_eq!(MenuPlayback::from_status(&nothing), MenuPlayback::Idle);
+        assert_eq!(MenuPlayback::from_status(&nothing, false), MenuPlayback::NoLastSource);
+        assert_eq!(MenuPlayback::from_status(&nothing, true), MenuPlayback::LastSource);
     }
 }

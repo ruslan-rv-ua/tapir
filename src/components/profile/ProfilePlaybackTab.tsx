@@ -24,9 +24,9 @@ interface Props {
 }
 
 /**
- * «Відтворення» — «чи відновлювати», «звідки відновлювати» і автоперехід в
- * одному місці: одна фіча холодного старту, одна поверхня редагування
- * (ADR 2026-08-08).
+ * «Відтворення» — «чи відновлювати при запуску», «звідки відновлювати» і
+ * автоперехід в одному місці: перші два — половини однієї фічі, продовження
+ * останнього джерела, і поверхня редагування в них одна (ADR 2026-08-08).
  */
 export function ProfilePlaybackTab({ value, onChange }: Props) {
   const hintId = useId();
@@ -49,7 +49,7 @@ export function ProfilePlaybackTab({ value, onChange }: Props) {
       </p>
 
       {/* Resume file: from last position vs from the beginning.
-          Cold-start Ctrl+Shift+K only — in-session pause/resume is untouched. */}
+          Resuming the last source only — in-session pause/resume is untouched. */}
       <Select
         selectedKey={value.resumeFileFrom}
         onSelectionChange={(key) =>

@@ -326,8 +326,8 @@ impl Default for PostprocessConfig {
 }
 
 // --- PlayerSession ---
-/// Which source was last active — the single discriminator cold-start uses to
-/// decide what `Ctrl+Shift+K` resumes. Set on every play-start; the resolve step
+/// Which source was last active — the single discriminator `resume_last` uses
+/// to decide what `Ctrl+Shift+K` resumes. Set on every play-start; the resolve step
 /// tolerates a dangling value (discriminator set but its data field `None`) by
 /// treating it as "nothing saved". Two slots only, so no timestamp/ordering.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -344,13 +344,14 @@ pub struct FilePosition {
     pub position_ms: u64,
 }
 
-/// What position the cold-start `Ctrl+Shift+K` file resume starts from.
-/// ONLY consulted on cold-start — in-session pause→resume always keeps the
+/// What position a file resumed as the last source starts from. ONLY consulted
+/// when resuming the last source — in-session pause→resume always keeps the
 /// position (pause semantics). Enum (not bool) to leave the door open for a
 /// third variant (e.g. Ask), per the backlog decision.
 ///
-/// Lives next to `autoplay_on_startup` in `PlayerSession`: «чи відновлювати» і
-/// «звідки відновлювати» — одна фіча холодного старту (ADR 2026-08-08).
+/// Lives next to `autoplay_on_startup` in `PlayerSession`: «чи відновлювати при
+/// запуску» і «звідки відновлювати» — половини однієї фічі, продовження
+/// останнього джерела (ADR 2026-08-08).
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum ResumeFileFrom {
@@ -377,7 +378,7 @@ pub struct PlayerSession {
     /// Play the next track in the list when the current file ends.
     #[serde(default = "default_true")]
     pub auto_advance: bool,
-    /// Where a cold-start file resume starts from — «звідки відновлювати»,
+    /// Where a file resumed as the last source starts from — «звідки відновлювати»,
     /// впритул до «чи відновлювати» (`autoplay_on_startup`).
     #[serde(default)]
     pub resume_file_from: ResumeFileFrom,
@@ -401,6 +402,20 @@ impl Default for PlayerSession {
 }
 
 impl PlayerSession {
+    /// Which kind of last source the profile remembers — `None` when it
+    /// remembers none: no discriminator, or one naming an empty slot (a
+    /// dangling discriminator remembers nothing). The one reading behind both
+    /// the tray's greyed "Play" and `resume_last`'s silent branch, so the tray
+    /// never offers what the press would answer with silence. Staleness is not
+    /// asked here: whether the stream is still in the profile or the file still
+    /// on disk, only the press finds out.
+    pub fn last_source(&self) -> Option<&LastActive> {
+        self.last_active.as_ref().filter(|kind| match kind {
+            LastActive::Stream => self.last_stream_id.is_some(),
+            LastActive::File => self.last_file_position.is_some(),
+        })
+    }
+
     /// Reset the fields that must not travel to a duplicate or an export: the
     /// per-profile autoplay policy and the whole resume triple (what/where
     /// playback last was). The resume triple is cleared in full — leaving only
@@ -1475,5 +1490,36 @@ mod tests {
         let s = PlayerSession { last_active: Some(LastActive::File), ..Default::default() };
         let back: PlayerSession = serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
         assert_eq!(back.last_active, Some(LastActive::File));
+    }
+
+    /// Запис `tray-cannot-resume-last` §3: «нічого не записано» — це порожній
+    /// `last_active` або порожня комірка, на яку він вказує. Записане джерело
+    /// є, навіть якщо воно вже застаріло: цього сесія не знає, це з'ясовує
+    /// натискання.
+    #[test]
+    fn last_source_only_when_the_discriminator_names_a_filled_slot() {
+        let stream = PlayerSession {
+            last_active: Some(LastActive::Stream),
+            last_stream_id: Some("s1".into()),
+            ..Default::default()
+        };
+        let file = PlayerSession {
+            last_active: Some(LastActive::File),
+            last_file_position: Some(FilePosition { path: "a.mp3".into(), position_ms: 5 }),
+            ..Default::default()
+        };
+        assert_eq!(stream.last_source(), Some(&LastActive::Stream));
+        assert_eq!(file.last_source(), Some(&LastActive::File));
+
+        let nothing_recorded = [
+            (PlayerSession::default(), "порожня сесія"),
+            (PlayerSession { last_stream_id: None, ..stream.clone() }, "потік без id"),
+            (PlayerSession { last_file_position: None, ..file.clone() }, "файл без позиції"),
+            // Профіль, записаний до появи дискримінатора: комірка є, вибору немає.
+            (PlayerSession { last_active: None, ..stream }, "комірка без дискримінатора"),
+        ];
+        for (session, what) in nothing_recorded {
+            assert_eq!(session.last_source(), None, "{what}");
+        }
     }
 }

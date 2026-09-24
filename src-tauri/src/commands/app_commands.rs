@@ -85,10 +85,7 @@ pub async fn frontend_ready(
     // віддасть Focused(true) у on_window_event. is_focused, не is_visible: NVDA
     // читає live region лише переднього вікна.
     if let Some(notice) = app.try_state::<crate::hotkey_busy::BusyNotice>() {
-        let foreground = app
-            .get_webview_window("main")
-            .map(|w| w.is_visible().unwrap_or(false) && w.is_focused().unwrap_or(false))
-            .unwrap_or(false);
+        let foreground = crate::tray::window_in_foreground(&app);
         if let Some(combos) = notice.on_webview_ready(foreground) {
             crate::hotkey_busy::emit_busy(&app, combos);
         }

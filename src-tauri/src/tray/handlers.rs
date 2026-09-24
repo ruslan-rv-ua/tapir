@@ -33,10 +33,13 @@ pub fn on_menu_event(app: &AppHandle, event: MenuEvent) {
 fn spawn_primary_playback(app: &AppHandle) {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
-        // Same entry point as Ctrl+Shift+K: live=stop, file=pause/resume,
-        // cold=resume-last, shared debounce. The menu item's own word follows
-        // the same split (`playback_items`), so it never promises a pause the
-        // live branch would not honour.
+        // Same entry point and shared debounce as Ctrl+Shift+K. From here:
+        // live sound stops, a file pauses or resumes, and with nothing playing
+        // the last source resumes — or, gone stale, is reported unavailable and
+        // forgotten. With no last source at all the item is greyed, so the
+        // silent branch of `resume_last` is the one the tray never reaches. The
+        // item's own word follows the same split (`playback_items`), so it
+        // never promises a pause the live branch would not honour.
         crate::playback_control::toggle_playback(&app).await;
     });
 }

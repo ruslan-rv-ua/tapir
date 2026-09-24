@@ -251,7 +251,7 @@ ADR не заводимо: з трьох умов провалюється пе�
   ([menu.rs:78](../../../src-tauri/src/tray/menu.rs:78)) — з `f9248f2` (2026-05-28), а
   `ToggleAction::ResumeLast` — з `ea6995c` (2026-07-17); трей після цього не переглядали.
   `Ctrl+Shift+K` на холодну відновлює останнє джерело, пункт трея — ні.
-  → [tray-cannot-resume-last](../p2-tray-cannot-resume-last.md).
+  → [tray-cannot-resume-last](p2-tray-cannot-resume-last.md).
 - **Рядок «Зараз грає».** Подвійна двокрапка («Зараз грає: Файл: track.mp3») і префікс
   «Станція:», що відрізняє прев'ю від ефіру всупереч рішенню #1 батьківського запису.
   → [tray-now-playing-source-prefix](../p3-tray-now-playing-source-prefix.md).
@@ -312,7 +312,7 @@ NVDA-чеклісті. Заразом виправлено id пункту в `d
 ## Документи
 
 - [preview-player-presentation](p2-preview-player-presentation.md) — батьківський запис, звідки знахідка
-- [tray-cannot-resume-last](../p2-tray-cannot-resume-last.md) — знахідка грилінгу, той самий пункт меню
+- [tray-cannot-resume-last](p2-tray-cannot-resume-last.md) — знахідка грилінгу, той самий пункт меню
 - [tray-now-playing-source-prefix](../p3-tray-now-playing-source-prefix.md) — знахідка грилінгу, той самий файл
 - [ADR 2026-08-16](../../decisions/2026-08-16-silence-is-mute-or-zero-volume.md) — прецедент «предикат замість поля»
 - [ADR 2026-08-17](../../decisions/2026-08-17-tray-toast-categories.md) — модель фонового шару

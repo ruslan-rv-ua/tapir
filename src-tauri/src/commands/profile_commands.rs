@@ -250,6 +250,10 @@ pub async fn switch_profile(
         let mut profile = state.active_profile.write().await;
         *profile = new_profile.clone();
     }
+    // The tray menu was last rebuilt from the old profile (by the stop and the
+    // volume above), and the new one may remember a different last source — or
+    // none — so its "Play" must be redrawn now, not at the next change of state.
+    crate::tray::notify_state_changed(&app);
 
     // Журнал збігів профільний разом із вішлістом — те, що спіймав минулий
     // профіль, у новому не значить нічого. Зупинка запису його НЕ чистить:

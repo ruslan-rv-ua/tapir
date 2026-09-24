@@ -40,7 +40,7 @@ function skipTarget(action: TransportAction, ctx: TransportContext): PlaybackSou
 
 /**
  * One rule for both callers: window focused → in-window toast, otherwise the
- * native HotkeyFeedback toast. Focus, not visibility — NVDA reads the live
+ * native BackgroundFeedback toast. Focus, not visibility — NVDA reads the live
  * region only in the foreground window. Both surfaces name the target and a
  * reason from a closed two-key set; the raw error stays in console/log only.
  */

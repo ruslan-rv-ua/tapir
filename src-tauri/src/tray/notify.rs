@@ -151,21 +151,22 @@ pub enum ToastKind {
     TrackChange,
     /// Події планувальника — старт, завершення, пропуск, не стартував.
     Scheduled,
-    /// Відповідь на фоновий хоткей.
-    HotkeyFeedback,
+    /// Фоновий відгук: відповідь на дію у фоні — зроблену людиною або виконану
+    /// за її налаштуванням.
+    BackgroundFeedback,
 }
 
 /// Чи показувати тост цієї категорії при таких налаштуваннях профілю.
 ///
 /// Правило одне: гейтиться те, що лишає **інший слід** — зміну треку видно в
 /// плеєрі, події планувальника пишуть `last_result` у панель розкладу й
-/// озвучуються live region'ом. `HotkeyFeedback` сліду не лишає ніде, тож не
-/// гейтиться ніколи: інакше натискання у фоні лишається без відповіді.
+/// озвучуються live region'ом. `BackgroundFeedback` сліду не лишає ніде, тож не
+/// гейтиться ніколи: інакше дія у фоні лишається без відповіді.
 pub fn is_enabled(kind: ToastKind, ui: &crate::profile::UiSettings) -> bool {
     match kind {
         ToastKind::TrackChange => ui.tray_notifications_track_change,
         ToastKind::Scheduled => ui.tray_notifications_scheduled,
-        ToastKind::HotkeyFeedback => true,
+        ToastKind::BackgroundFeedback => true,
     }
 }
 
@@ -228,7 +229,7 @@ pub fn notify_track_change(app: &tauri::AppHandle, stream_id: &str, artist: &str
 
 /// Show the NVDA-readable toast for a global recording toggle.
 ///
-/// `ToastKind::HotkeyFeedback` — категорія без гейта: це єдиний слід
+/// `ToastKind::BackgroundFeedback` — категорія без гейта: це єдиний слід
 /// натискання у фоні, а не ефірна балаканина, тож прапорці профілю її не
 /// стосуються (ADR 2026-08-17 про категорії тостів).
 ///
@@ -244,12 +245,12 @@ pub fn notify_recording_toggle(app: &tauri::AppHandle, outcome: ToggleOutcome) {
         ToggleOutcome::NothingToStart => i18n::t_plural(PluralKey::RecordAllStarted, 0),
     };
 
-    show_toast(app, ToastKind::HotkeyFeedback, &i18n::t(Key::AppName), &body);
+    show_toast(app, ToastKind::BackgroundFeedback, &i18n::t(Key::AppName), &body);
 }
 
 /// Show the NVDA-readable toast for the global stop-all shortcut (KB-12).
 ///
-/// Like `notify_recording_toggle`: `ToastKind::HotkeyFeedback`, тобто без
+/// Like `notify_recording_toggle`: `ToastKind::BackgroundFeedback`, тобто без
 /// гейта (єдиний слід натискання у фоні), і синхронний — обробник хоткея
 /// викликає його зі спавненої задачі.
 ///
@@ -257,7 +258,7 @@ pub fn notify_recording_toggle(app: &tauri::AppHandle, outcome: ToggleOutcome) {
 /// мовчазний no-op тут неприйнятний.
 pub fn notify_stop_all(app: &tauri::AppHandle, stopped: usize) {
     let body = i18n::t_plural(PluralKey::StopAll, stopped);
-    show_toast(app, ToastKind::HotkeyFeedback, &i18n::t(Key::AppName), &body);
+    show_toast(app, ToastKind::BackgroundFeedback, &i18n::t(Key::AppName), &body);
 }
 
 /// Причина невдалого prev/next — закритий набір, а не сирий рядок через межу
@@ -281,7 +282,7 @@ fn transport_failure_body(reason: TransportFailureReason) -> String {
 
 /// Toast for a failed prev/next while the window is out of focus.
 ///
-/// `ToastKind::HotkeyFeedback` — без гейта: попередній трек грає далі, тож
+/// `ToastKind::BackgroundFeedback` — без гейта: попередній трек грає далі, тож
 /// вухо тут не відповідає нічого, і цей тост — єдиний слід натискання.
 /// `title` = ім'я цілі, `body` = причина — ідіом `notify_track_change`;
 /// назву застосунку Windows і так малює над тостом.
@@ -290,7 +291,41 @@ pub fn notify_transport_failure(
     name: &str,
     reason: TransportFailureReason,
 ) {
-    show_toast(app, ToastKind::HotkeyFeedback, name, &transport_failure_body(reason));
+    show_toast(app, ToastKind::BackgroundFeedback, name, &transport_failure_body(reason));
+}
+
+/// Чому не вдалося продовжити останнє джерело — закритий набір із двох причин,
+/// кожна зі своїм ключем, тим самим, що його оголошує вікно (одна подія — один
+/// ключ, навіть коли поверхонь дві).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ResumeFailure {
+    /// Останнього джерела вже немає: потік видалили з профілю, файл перемістили.
+    Unavailable,
+    /// Джерело є, але не заграло: не вдалося з'єднатися чи відкрити файл.
+    Error,
+}
+
+/// Заголовок і тіло тосту. Заголовок — назва джерела, коли вона відома (потік
+/// у профілі, ім'я файлу), інакше назва застосунку: ідіом
+/// `notify_transport_failure`.
+fn resume_failure_toast(name: Option<&str>, failure: ResumeFailure) -> (String, String) {
+    let title = name.map_or_else(|| i18n::t(Key::AppName), str::to_owned);
+    let body = i18n::t(match failure {
+        ResumeFailure::Unavailable => Key::PlaybackUnavailable,
+        ResumeFailure::Error => Key::PlaybackError,
+    });
+    (title, body)
+}
+
+/// Toast for a failed "resume the last source" while the window is out of the
+/// foreground (backlog tray-cannot-resume-last §4).
+///
+/// `ToastKind::BackgroundFeedback` — без гейта: невдача лишає тишу, тож вухо не
+/// відповідає нічого, а live region вікна поза переднім планом не читається.
+/// Вдалий старт тосту не має — відповідає сам звук.
+pub fn notify_resume_failure(app: &tauri::AppHandle, name: Option<&str>, failure: ResumeFailure) {
+    let (title, body) = resume_failure_toast(name, failure);
+    show_toast(app, ToastKind::BackgroundFeedback, &title, &body);
 }
 
 // --- Balloon-дублікати подій scheduled-* (Phase 3D §5.5) ---
@@ -388,21 +423,20 @@ mod tests {
         assert!(!is_enabled(ToastKind::TrackChange, &ui));
         assert!(!is_enabled(ToastKind::Scheduled, &ui));
         assert!(
-            is_enabled(ToastKind::HotkeyFeedback, &ui),
-            "відповідь на натиснуту клавішу — не сповіщення, і прапорця не має"
+            is_enabled(ToastKind::BackgroundFeedback, &ui),
+            "відповідь на дію у фоні — не сповіщення, і прапорця не має"
         );
     }
 
-    /// Відповідь на фоновий хоткей не вимикається нічим: іншого сліду
-    /// натискання не лишає.
+    /// Фоновий відгук не вимикається нічим: іншого сліду дія у фоні не лишає.
     #[test]
-    fn hotkey_feedback_is_never_gated() {
+    fn background_feedback_is_never_gated() {
         let ui = UiSettings {
             stream_sort: crate::profile::StreamSort::Name,
             tray_notifications_track_change: false,
             tray_notifications_scheduled: false,
         };
-        assert!(is_enabled(ToastKind::HotkeyFeedback, &ui));
+        assert!(is_enabled(ToastKind::BackgroundFeedback, &ui));
     }
 
     /// Обидві причини — тими самими ключами, що їх бачить вікно (Paraglide),
@@ -427,6 +461,38 @@ mod tests {
             assert_eq!(
                 transport_failure_body(TransportFailureReason::Error),
                 "Playback error"
+            );
+        });
+    }
+
+    /// Запис tray-cannot-resume-last §4: тіло — ті самі ключі, що їх оголошує
+    /// вікно, в обох локалях; заголовок — назва джерела, коли вона відома, а
+    /// інакше назва застосунку (потоку, видаленого з профілю, назвати нічим).
+    #[test]
+    fn resume_failure_toast_names_the_source_when_it_is_known() {
+        let toast = resume_failure_toast;
+        with_locale(Locale::Uk, || {
+            assert_eq!(
+                toast(Some("Jazz FM"), ResumeFailure::Error),
+                ("Jazz FM".to_string(), "Помилка відтворення".to_string())
+            );
+            assert_eq!(
+                toast(Some("a.mp3"), ResumeFailure::Unavailable),
+                ("a.mp3".to_string(), "Останнє відтворення недоступне".to_string())
+            );
+            assert_eq!(
+                toast(None, ResumeFailure::Unavailable),
+                ("Tapir".to_string(), "Останнє відтворення недоступне".to_string())
+            );
+        });
+        with_locale(Locale::En, || {
+            assert_eq!(
+                toast(None, ResumeFailure::Unavailable),
+                ("Tapir".to_string(), "Last playback unavailable".to_string())
+            );
+            assert_eq!(
+                toast(Some("Jazz FM"), ResumeFailure::Error),
+                ("Jazz FM".to_string(), "Playback error".to_string())
             );
         });
     }

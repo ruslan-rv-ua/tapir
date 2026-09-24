@@ -58,7 +58,7 @@ OS-хоткей на `Ctrl+K`/`Alt+digit`/`F6`/… — гард і реєстр 
 | Комбо (дефолт) | Дія | Scope | Стан |
 |---|---|---|---|
 | `Ctrl+Shift+R` | toggle_recording (запис/зупинка всього активного профілю + toast) | OS | ✅ |
-| `Ctrl+Shift+K` | toggle_playback (джерело-залежний: стрім → **зупинити**; файл → **пауза/відновлення** з позиції; холодний старт → **відновити** останнє джерело). Розділяє debounce з tray Play/Pause і SMTC. | OS | ✅ |
+| `Ctrl+Shift+K` | toggle_playback (джерело-залежний: стрім → **зупинити**; файл → **пауза/відновлення** з позиції; нічого не грає → **продовжити** останнє джерело). Розділяє debounce з tray Play/Pause і SMTC. | OS | ✅ |
 | `Ctrl+Alt+Up` | volume_up (+5%) | OS | ✅ |
 | `Ctrl+Alt+Down` | volume_down (−5%) | OS | ✅ |
 | `Ctrl+Shift+H` | toggle_window (показати/сховати) | OS | ✅ |
