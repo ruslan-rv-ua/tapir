@@ -294,6 +294,40 @@ pub fn notify_transport_failure(
     show_toast(app, ToastKind::BackgroundFeedback, name, &transport_failure_body(reason));
 }
 
+/// Чому не вдалося продовжити останнє джерело — закритий набір із двох причин,
+/// кожна зі своїм ключем, тим самим, що його оголошує вікно (одна подія — один
+/// ключ, навіть коли поверхонь дві).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ResumeFailure {
+    /// Останнього джерела вже немає: потік видалили з профілю, файл перемістили.
+    Unavailable,
+    /// Джерело є, але не заграло: не вдалося з'єднатися чи відкрити файл.
+    Error,
+}
+
+/// Заголовок і тіло тосту. Заголовок — назва джерела, коли вона відома (потік
+/// у профілі, ім'я файлу), інакше назва застосунку: ідіом
+/// `notify_transport_failure`.
+fn resume_failure_toast(name: Option<&str>, failure: ResumeFailure) -> (String, String) {
+    let title = name.map_or_else(|| i18n::t(Key::AppName), str::to_owned);
+    let body = i18n::t(match failure {
+        ResumeFailure::Unavailable => Key::PlaybackUnavailable,
+        ResumeFailure::Error => Key::PlaybackError,
+    });
+    (title, body)
+}
+
+/// Toast for a failed "resume the last source" while the window is out of the
+/// foreground (backlog tray-cannot-resume-last §4).
+///
+/// `ToastKind::BackgroundFeedback` — без гейта: невдача лишає тишу, тож вухо не
+/// відповідає нічого, а live region вікна поза переднім планом не читається.
+/// Вдалий старт тосту не має — відповідає сам звук.
+pub fn notify_resume_failure(app: &tauri::AppHandle, name: Option<&str>, failure: ResumeFailure) {
+    let (title, body) = resume_failure_toast(name, failure);
+    show_toast(app, ToastKind::BackgroundFeedback, &title, &body);
+}
+
 // --- Balloon-дублікати подій scheduled-* (Phase 3D §5.5) ---
 // Тексти не «дзеркалять» live region, а беруть **ті самі ключі**: одна подія —
 // один текст, розійтися нема чому. StoppedByUser не дублюється: ручну зупинку
@@ -427,6 +461,38 @@ mod tests {
             assert_eq!(
                 transport_failure_body(TransportFailureReason::Error),
                 "Playback error"
+            );
+        });
+    }
+
+    /// Запис tray-cannot-resume-last §4: тіло — ті самі ключі, що їх оголошує
+    /// вікно, в обох локалях; заголовок — назва джерела, коли вона відома, а
+    /// інакше назва застосунку (потоку, видаленого з профілю, назвати нічим).
+    #[test]
+    fn resume_failure_toast_names_the_source_when_it_is_known() {
+        let toast = resume_failure_toast;
+        with_locale(Locale::Uk, || {
+            assert_eq!(
+                toast(Some("Jazz FM"), ResumeFailure::Error),
+                ("Jazz FM".to_string(), "Помилка відтворення".to_string())
+            );
+            assert_eq!(
+                toast(Some("a.mp3"), ResumeFailure::Unavailable),
+                ("a.mp3".to_string(), "Останнє відтворення недоступне".to_string())
+            );
+            assert_eq!(
+                toast(None, ResumeFailure::Unavailable),
+                ("Tapir".to_string(), "Останнє відтворення недоступне".to_string())
+            );
+        });
+        with_locale(Locale::En, || {
+            assert_eq!(
+                toast(None, ResumeFailure::Unavailable),
+                ("Tapir".to_string(), "Last playback unavailable".to_string())
+            );
+            assert_eq!(
+                toast(Some("Jazz FM"), ResumeFailure::Error),
+                ("Jazz FM".to_string(), "Playback error".to_string())
             );
         });
     }

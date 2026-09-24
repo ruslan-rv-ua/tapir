@@ -32,6 +32,16 @@ When the neighbouring track fails to play — the station refuses, or the connec
 
 When a file ends, **Auto-play next track** — profile settings, tab **Playback**, on by default — starts the next one. At the end of the list playback stops; Tapir does not loop.
 
+### Picking up where you left off
+
+When nothing is playing, pick up whatever you listened to last: press the **Playback (toggle)** hotkey — `Ctrl+Shift+K` by default — or choose **Play** in the tray icon's menu. You do not need to open the window for it. A station goes back on air as soon as Tapir connects to it, which can take a few seconds; a file resumes from its saved position or starts over — that choice is **Resume file** in the profile settings, tab **Playback**. This never affects a pause: a paused file continues where it stopped.
+
+Tapir remembers one last source per profile — whichever played later, a station or a file. A station you only listened to in the Station Browser, without adding it to the profile, is never among them. When there is nothing to remember — in a new profile, say — **Play** in the icon's menu is inactive and the hotkey does nothing.
+
+If what you listened to is gone — the stream was deleted from the profile, or the file was moved — Tapir says so and stops offering to pick it up. If it merely failed to play — the station did not answer, say — Tapir reports a playback error and keeps remembering it, so you can try again. With the window in the background, both messages arrive as a system notification.
+
+Tapir can also do this by itself as soon as it starts, but does not by default: to have it pick up the last source at startup, switch on **Resume last playback on startup** on the same **Playback** tab.
+
 ### The panel
 
 **Now playing** names the source and marks what it is: **LIVE** for a station on air, **File** for one of your recordings.
@@ -41,7 +51,5 @@ To hear that without walking into the player zone, press `F9` — anywhere in th
 The position in a file and the volume level stand as numbers beside their bars — 2 min 14 sec and 45%. The position is there even when the file's duration is unknown and there is no bar.
 
 **Output** shows the current device. Change it, or rescan after plugging something in, in the app settings, tab **Audio**. The panel only shows it — there is nothing to click here, which is worth knowing before you go looking for a device list that is not on this panel.
-
-When nothing is playing, Tapir can pick up whatever you listened to last: a station goes back on air, while a file resumes from its saved position or starts over — that choice is **Resume file** in the profile settings, tab **Playback**. It does not do so by default: to have it pick up the last source at startup, switch on **Resume last playback on startup** on the same tab. This never affects a pause: a paused file continues where it stopped.
 
 Listening to one station while another records is normal.

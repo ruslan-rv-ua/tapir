@@ -401,6 +401,20 @@ impl Default for PlayerSession {
 }
 
 impl PlayerSession {
+    /// Whether the profile remembers a last source: the discriminator is set and
+    /// the slot it names is filled. A dangling discriminator remembers nothing —
+    /// the reading `resume_last` gives it too, so the tray never offers what the
+    /// press would answer with silence. Staleness is not asked here: whether the
+    /// stream is still in the profile or the file still on disk, only the press
+    /// finds out.
+    pub fn has_last_source(&self) -> bool {
+        match self.last_active {
+            None => false,
+            Some(LastActive::Stream) => self.last_stream_id.is_some(),
+            Some(LastActive::File) => self.last_file_position.is_some(),
+        }
+    }
+
     /// Reset the fields that must not travel to a duplicate or an export: the
     /// per-profile autoplay policy and the whole resume triple (what/where
     /// playback last was). The resume triple is cleared in full — leaving only
@@ -1475,5 +1489,36 @@ mod tests {
         let s = PlayerSession { last_active: Some(LastActive::File), ..Default::default() };
         let back: PlayerSession = serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
         assert_eq!(back.last_active, Some(LastActive::File));
+    }
+
+    /// Запис `tray-cannot-resume-last` §3: «нічого не записано» — це порожній
+    /// `last_active` або порожня комірка, на яку він вказує. Записане джерело
+    /// є, навіть якщо воно вже застаріло: цього сесія не знає, це з'ясовує
+    /// натискання.
+    #[test]
+    fn has_last_source_only_when_the_discriminator_names_a_filled_slot() {
+        let stream = PlayerSession {
+            last_active: Some(LastActive::Stream),
+            last_stream_id: Some("s1".into()),
+            ..Default::default()
+        };
+        let file = PlayerSession {
+            last_active: Some(LastActive::File),
+            last_file_position: Some(FilePosition { path: "a.mp3".into(), position_ms: 5 }),
+            ..Default::default()
+        };
+        assert!(stream.has_last_source());
+        assert!(file.has_last_source());
+
+        let nothing_recorded = [
+            (PlayerSession::default(), "порожня сесія"),
+            (PlayerSession { last_stream_id: None, ..stream.clone() }, "потік без id"),
+            (PlayerSession { last_file_position: None, ..file.clone() }, "файл без позиції"),
+            // Профіль, записаний до появи дискримінатора: комірка є, вибору немає.
+            (PlayerSession { last_active: None, ..stream }, "комірка без дискримінатора"),
+        ];
+        for (session, what) in nothing_recorded {
+            assert!(!session.has_last_source(), "{what}");
+        }
     }
 }

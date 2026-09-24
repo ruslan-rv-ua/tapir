@@ -1,5 +1,5 @@
 //! The single source-aware playback-toggle entry point (Ctrl+Shift+K and the
-//! tray Play/Pause item), plus resuming the last source and the persistence
+//! tray's primary item), plus resuming the last source and the persistence
 //! that revives the dormant `PlayerSession` resume fields.
 //!
 //! Pure decision logic lives in `decide_toggle` / `decide_resume_last` and is
@@ -9,6 +9,7 @@ use crate::app_state::AppState;
 use crate::player::engine::{PlaybackSource, PlaybackState, PlayerStatus};
 use crate::profile::{FilePosition, LastActive, PlayerSession};
 use crate::profile::ResumeFileFrom;
+use crate::tray::notify::ResumeFailure;
 use tauri::{AppHandle, Emitter, Manager};
 
 /// What the webview is being asked to say. A closed set, not a free string:
@@ -93,9 +94,11 @@ pub(crate) fn decide_toggle(source: Option<&PlaybackSource>, state: PlaybackStat
     }
 }
 
-/// What `Ctrl+Shift+K` resumes when nothing plays — the last source.
+/// What `resume_last` does with the last source — for each of its callers: the
+/// tray item and `Ctrl+Shift+K` when nothing plays, and startup autoplay.
 /// `NoLastSource` clears the record without an announce (nothing saved, or a
-/// dangling discriminator — impl-decision #1); `Unavailable` announces then
+/// dangling discriminator — impl-decision #1; the tray greys its item on the
+/// same reading, `PlayerSession::has_last_source`); `Unavailable` answers then
 /// clears (stale target: stream deleted / file moved).
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum ResumeLastAction {
@@ -212,9 +215,13 @@ async fn clear_last_session(app: &AppHandle) {
     if let Err(e) = committed {
         log::warn!("playback: failed to clear session record: {e}");
     }
+    // With nothing recorded the tray greys "Play" — but the menu is built ahead
+    // of the click, and clearing the record changes no player state, so nothing
+    // else would rebuild it.
+    crate::tray::notify_state_changed(app);
 }
 
-/// The single Ctrl+Shift+K / tray Play-Pause entry point. Debounced through the
+/// The single Ctrl+Shift+K / tray primary-item entry point. Debounced through the
 /// cell shared with the hotkey and SMTC (a hotkey + media key near-simultaneous
 /// must yield one action).
 pub async fn toggle_playback(app: &AppHandle) {
@@ -267,10 +274,41 @@ impl AutoplayGuard {
     }
 }
 
+/// A file's name as the webview's `nameOf()` gives it for a file source: the
+/// path's basename with its extension. The "resuming" announce must match it,
+/// or the started-suppression won't engage and NVDA would hear a duplicate.
+fn file_name(path: &str) -> String {
+    std::path::Path::new(path)
+        .file_name()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_else(|| path.to_string())
+}
+
+/// Answer a failed resume (backlog tray-cannot-resume-last §4, ADR 2026-09-01
+/// §3). The announcement goes whatever the focus: the webview also drops its
+/// pending "Connecting" on it, and one left unread in a background window does
+/// no harm. Out of the foreground nobody reads the live region, and a failure
+/// leaves the ear nothing to hear, so a background-feedback toast answers
+/// there. Deciding here, in the action's own module, answers every caller at
+/// once — the tray item, `Ctrl+Shift+K` and startup autoplay. `name` titles the
+/// toast: the source's name when it is known.
+fn answer_failure(app: &AppHandle, failure: ResumeFailure, name: Option<&str>) {
+    let kind = match failure {
+        ResumeFailure::Unavailable => AnnounceKind::Unavailable,
+        ResumeFailure::Error => AnnounceKind::Error,
+    };
+    emit_announce(app, kind, None);
+    if !crate::tray::window_in_foreground(app) {
+        crate::tray::notify::notify_resume_failure(app, name, failure);
+    }
+}
+
 /// Resume the last source — the newest saved one (impl "найновіше джерело" —
-/// `last_active` is the single marker). Stale target → announce + clear;
-/// dangling/empty → silent + clear. `pub(crate)` so `frontend_ready` can drive
-/// the same resume path used by Ctrl+Shift+K.
+/// `last_active` is the single marker). Stale target → answer + clear;
+/// dangling/empty → silent + clear; a failed start is answered and keeps the
+/// record. A start is never answered out of the foreground: the ear hears it.
+/// `pub(crate)` so `frontend_ready` can drive the same resume path used by
+/// Ctrl+Shift+K and the tray item.
 pub(crate) async fn resume_last(app: &AppHandle) {
     let state = app.state::<AppState>();
 
@@ -304,29 +342,26 @@ pub(crate) async fn resume_last(app: &AppHandle) {
             let (id, url, name) = stream.expect("PlayStream implies Some(stream)");
             // Before the ≤15 s blocking connect. The webview arms a one-shot
             // suppression so the eventual stopped→playing "started" for this
-            // source is not announced on top of "Connecting — X".
-            emit_announce(app, AnnounceKind::Connecting, Some(name));
+            // source is not announced on top of "Connecting — X". Out of the
+            // foreground this is the whole answer until the station sounds: up
+            // to 15 s of silence, accepted over a toast on every good press.
+            emit_announce(app, AnnounceKind::Connecting, Some(name.clone()));
             match state.player.play_stream(id, url, app).await {
                 Ok(()) => persist_session_snapshot(app).await,
                 Err(e) => {
                     log::warn!("playback: resume-last stream failed: {e}");
-                    emit_announce(app, AnnounceKind::Error, None); // transient — keep the record
+                    // Transient — keep the record.
+                    answer_failure(app, ResumeFailure::Error, Some(&name));
                 }
             }
         }
         ResumeLastAction::PlayFile => {
             let fp = last_file.expect("PlayFile implies Some(file)");
+            let name = file_name(&fp.path);
             let mode = state.active_profile.read().await.player_session.resume_file_from;
             let plan = plan_file_resume(mode, fp.position_ms);
             if let FileResumePlan::FromPosition { position_ms } = &plan {
-                // Basename must match the webview's `nameOf()` for a file source
-                // (path basename with extension) or the started-suppression
-                // won't engage and NVDA would hear a duplicate.
-                let name = std::path::Path::new(&fp.path)
-                    .file_name()
-                    .map(|s| s.to_string_lossy().into_owned())
-                    .unwrap_or_else(|| fp.path.clone());
-                emit_resuming(app, name, *position_ms);
+                emit_resuming(app, name.clone(), *position_ms);
             }
             match state.player.play_file(fp.path.clone(), app).await {
                 Ok(()) => {
@@ -342,12 +377,19 @@ pub(crate) async fn resume_last(app: &AppHandle) {
                 }
                 Err(e) => {
                     log::warn!("playback: resume-last file failed: {e}");
-                    emit_announce(app, AnnounceKind::Error, None); // keep the record; clears webview pending
+                    // Keep the record; the announce clears the webview's pending.
+                    answer_failure(app, ResumeFailure::Error, Some(&name));
                 }
             }
         }
         ResumeLastAction::Unavailable => {
-            emit_announce(app, AnnounceKind::Unavailable, None);
+            // A moved file still has its name; a stream deleted from the
+            // profile took its name with it.
+            let name = match last_active {
+                Some(LastActive::File) => last_file.as_ref().map(|f| file_name(&f.path)),
+                _ => None,
+            };
+            answer_failure(app, ResumeFailure::Unavailable, name.as_deref());
             clear_last_session(app).await;
         }
         ResumeLastAction::NoLastSource => {
@@ -457,6 +499,46 @@ mod tests {
             decide_resume_last(Some(&LastActive::File), false, false, false, false),
             ResumeLastAction::NoLastSource
         );
+    }
+
+    /// Сірий пункт трея й мовчазна гілка `resume_last` — одне й те саме «нічого
+    /// не записано» (запис tray-cannot-resume-last §3), але вирішують його дві
+    /// функції: меню — наперед, за самою сесією, натискання — потім, знаючи ще
+    /// профіль і диск. Розійдуться — і меню або запропонує дію, на яку
+    /// натискання відповість тишею, або посіріє там, де натискання щось би
+    /// зробило. Застарілості меню не бачить, тож збіг мусить триматися за будь-якої
+    /// відповіді профілю й диска.
+    #[test]
+    fn menu_and_press_agree_on_nothing_recorded() {
+        let position = FilePosition { path: "a.mp3".into(), position_ms: 5 };
+        for last_active in [None, Some(LastActive::Stream), Some(LastActive::File)] {
+            for last_stream_id in [None, Some("s1".to_string())] {
+                for last_file_position in [None, Some(position.clone())] {
+                    let session = PlayerSession {
+                        last_active: last_active.clone(),
+                        last_stream_id: last_stream_id.clone(),
+                        last_file_position,
+                        ..Default::default()
+                    };
+                    for (stream_in_profile, file_exists) in
+                        [(true, true), (true, false), (false, true), (false, false)]
+                    {
+                        let press = decide_resume_last(
+                            session.last_active.as_ref(),
+                            session.last_stream_id.is_some(),
+                            stream_in_profile,
+                            session.last_file_position.is_some(),
+                            file_exists,
+                        );
+                        assert_eq!(
+                            press == ResumeLastAction::NoLastSource,
+                            !session.has_last_source(),
+                            "{session:?}, stream_in_profile={stream_in_profile}, file_exists={file_exists}"
+                        );
+                    }
+                }
+            }
+        }
     }
 
     #[test]

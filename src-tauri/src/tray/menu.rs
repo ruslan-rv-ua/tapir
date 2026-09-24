@@ -36,9 +36,12 @@ use tauri::menu::{Menu, MenuBuilder, MenuItemBuilder};
 use tauri::Wry;
 
 const ID_NOW_PLAYING: &str = "now-playing";
-/// The menu's primary playback control — the counterpart of the player panel's
-/// main button. Named for the **role**, not for one of its labels: for a file it
-/// pauses and resumes, for live sound it stops.
+/// The menu's primary playback control — one of the three places of the
+/// primary control role, with the player panel's main button and the
+/// toggle-playback hotkey (CONTEXT.md §«Головна кнопка і останнє джерело»).
+/// Named for the **role**, not for one of its labels: for a file it pauses and
+/// resumes, for live sound it stops, and when nothing plays it resumes the last
+/// source.
 const ID_PRIMARY_PLAYBACK: &str = "primary-playback";
 const ID_STOP_PLAYBACK: &str = "stop-playback";
 const ID_RECORDING_INFO: &str = "recording-info";
@@ -75,10 +78,22 @@ pub(crate) struct PlaybackItems {
 /// decision here is what lets a test hold the labels to their states.
 pub(crate) fn playback_items(playback: MenuPlayback) -> PlaybackItems {
     match playback {
-        MenuPlayback::Idle => PlaybackItems {
+        // Greyed, but still drawn: the menu keeps its shape, "Play" always on
+        // top, and a greyed item is the visible carrier of the edge — like the
+        // disabled previous/next at the end of a list in the window.
+        MenuPlayback::NoLastSource => PlaybackItems {
             now_playing: false,
             primary: Key::TrayPlay,
             primary_enabled: false,
+            separate_stop: false,
+        },
+        // "Play" resumes the last source: the same branch of `toggle_playback`
+        // that `Ctrl+Shift+K` takes when nothing plays. The same word as for a
+        // paused file — in both, pressing it brings sound back.
+        MenuPlayback::LastSource => PlaybackItems {
+            now_playing: false,
+            primary: Key::TrayPlay,
+            primary_enabled: true,
             separate_stop: false,
         },
         MenuPlayback::Live => PlaybackItems {
@@ -224,14 +239,17 @@ mod tests {
     /// Кожен стан названо поіменно: вичерпність `match` ловить **пропущений**
     /// варіант, але не той, де мітку підмінено, — а саме підміна й була дефектом
     /// (пункт звався «Пауза», поки дія зупиняла). Очікування взято з таблиці §4
-    /// запису `tray-toggle-label-vs-action`, не перерахуванням тієї ж логіки.
+    /// запису `tray-toggle-label-vs-action` і таблиці §3 запису
+    /// `tray-cannot-resume-last` (сірий — лише коли нічого не записано), не
+    /// перерахуванням тієї ж логіки.
     #[test]
     fn playback_items_answers_for_every_state() {
         let table = [
-            (MenuPlayback::Idle,        false, Key::TrayPlay,  false, false),
-            (MenuPlayback::Live,        true,  Key::TrayStop,  true,  false),
-            (MenuPlayback::FilePlaying, true,  Key::TrayPause, true,  true),
-            (MenuPlayback::FilePaused,  true,  Key::TrayPlay,  true,  true),
+            (MenuPlayback::NoLastSource, false, Key::TrayPlay,  false, false),
+            (MenuPlayback::LastSource,   false, Key::TrayPlay,  true,  false),
+            (MenuPlayback::Live,         true,  Key::TrayStop,  true,  false),
+            (MenuPlayback::FilePlaying,  true,  Key::TrayPause, true,  true),
+            (MenuPlayback::FilePaused,   true,  Key::TrayPlay,  true,  true),
         ];
 
         for (playback, now_playing, primary, primary_enabled, separate_stop) in table {
@@ -249,7 +267,8 @@ mod tests {
     #[test]
     fn no_state_draws_two_stop_items() {
         for playback in [
-            MenuPlayback::Idle,
+            MenuPlayback::NoLastSource,
+            MenuPlayback::LastSource,
             MenuPlayback::Live,
             MenuPlayback::FilePlaying,
             MenuPlayback::FilePaused,
@@ -262,10 +281,14 @@ mod tests {
         }
     }
 
+    /// Підказка каже, що грає, а не що можна продовжити: записане останнє
+    /// джерело не грає, тож і воно лишає саму назву застосунку.
     #[test]
     fn idle_shows_just_app_name() {
-        let s = with_locale(Locale::Uk, || tooltip(&snap(MenuPlayback::Idle, None, 0)));
-        assert_eq!(s, "Tapir");
+        for idle in [MenuPlayback::NoLastSource, MenuPlayback::LastSource] {
+            let s = with_locale(Locale::Uk, || tooltip(&snap(idle, None, 0)));
+            assert_eq!(s, "Tapir", "{idle:?}");
+        }
     }
 
     #[test]
@@ -278,7 +301,7 @@ mod tests {
 
     #[test]
     fn recording_only_shows_recording_count() {
-        let s = with_locale(Locale::Uk, || tooltip(&snap(MenuPlayback::Idle, None, 3)));
+        let s = with_locale(Locale::Uk, || tooltip(&snap(MenuPlayback::NoLastSource, None, 3)));
         assert_eq!(s, "Tapir — ● 3 записи");
     }
 
@@ -309,7 +332,7 @@ mod tests {
         });
         assert_eq!(s, "Tapir — ▶ SomaFM · ● 2 recordings");
 
-        let one = with_locale(Locale::En, || tooltip(&snap(MenuPlayback::Idle, None, 1)));
+        let one = with_locale(Locale::En, || tooltip(&snap(MenuPlayback::NoLastSource, None, 1)));
         assert_eq!(one, "Tapir — ● 1 recording");
     }
 
