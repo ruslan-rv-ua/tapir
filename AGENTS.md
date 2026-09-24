@@ -170,9 +170,6 @@ All project documentation lives in `docs/`. Key files:
 
 **Manual testing** (`docs/testing/`):
 - [test-streams.md](docs/testing/test-streams.md) — тестові URL радіо-потоків
-- [nvda-minimized-start-silent-to-nvda.json](docs/testing/nvda-minimized-start-silent-to-nvda.json) —
-  пробний прогін аддоном для вже закритого
-  [запису](docs/backlog/done/p0-minimized-start-silent-to-nvda.md); після прогону видалити
 
 Чеклісти NVDA-прогону — JSON-файли для NVDA-аддона Axygen Checklist; формат і
 життєвий цикл — розділ [Test checklists](#test-checklists) нижче.
