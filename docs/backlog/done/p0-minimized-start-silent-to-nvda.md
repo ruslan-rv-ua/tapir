@@ -29,7 +29,7 @@ notes:
 # Після старту згорнутим вікно німе для NVDA
 
 > **Контекст:** знайдено збоку, під час прогону
-> [autostart-notice-lost-when-minimized](../p2-autostart-notice-lost-when-minimized.md),
+> [autostart-notice-lost-when-minimized](p2-autostart-notice-lost-when-minimized.md),
 > і заблокувало його приймання. Реалізовано й **прийнято 2026-09-24** (повний
 > NVDA-прогін без розбіжностей). Читати спершу «Спадок».
 
@@ -144,14 +144,14 @@ NVDA причепився, наступний крок — пауза після
 `tray/menu.rs` перед прогоном. Порядок пунктів — такий самий факт коду, як і їхній
 текст, і звіряється так само.
 
-**Розблоковано:** [autostart-notice-lost-when-minimized](../p2-autostart-notice-lost-when-minimized.md) —
+**Розблоковано:** [autostart-notice-lost-when-minimized](p2-autostart-notice-lost-when-minimized.md) —
 його репліці тепер є де прозвучати.
 
 ## Документи
 
 - [screenreader-startup-foreground.md](../../notes/screenreader-startup-foreground.md) —
   нотатка про той самий закон: скрінрідер чіпляється в мить ініціалізації документа
-- [autostart-notice-lost-when-minimized](../p2-autostart-notice-lost-when-minimized.md) —
+- [autostart-notice-lost-when-minimized](p2-autostart-notice-lost-when-minimized.md) —
   запис, прогін якого вперся в цю ваду
 - [accessibility.md](../../accessibility.md) §17 — відомі обмеження, рядок про німе вікно
 - `src-tauri/src/lib.rs` (гілка `--minimize` у `setup`), `src-tauri/src/cli.rs`,

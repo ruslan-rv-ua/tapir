@@ -26,6 +26,8 @@ Below **Disk threshold (GB)** — 1 GB by default — no new recording starts. A
 
 The entry's own row carries the reason. Three of them come up most: Tapir was not running at the time, the entry belongs to a profile that is not the active one, or the stream was already recording when the window opened. What each result means is in the section "Schedule".
 
+If Tapir was not running although it should have started with Windows, think back to whether you moved its folder. Once Tapir notices the move, it switches autostart off itself and may not tell you so. Switch **Launch with Windows** back on in the app settings, tab **General**; more in the section "Running in the background".
+
 ### A station records but will not play
 
 Tapir plays MP3 and AAC. A station whose codec is `AAC+` records perfectly well but stays silent inside Tapir — playback waits a while and gives up. The recording itself is sound: open it in another program with `Alt+Enter` on the Recordings screen.

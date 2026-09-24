@@ -28,7 +28,7 @@ notes:
 
 > **Контекст:** критичний баг випущеної 0.1.0, знайдений збоку — при підготовці
 > NVDA-прогону сусіднього запису
-> [autostart-notice-lost-when-minimized](../p2-autostart-notice-lost-when-minimized.md).
+> [autostart-notice-lost-when-minimized](p2-autostart-notice-lost-when-minimized.md).
 > Корінь інший (порядок ініціалізації трея), тому запис окремий.
 
 ## Опис
@@ -125,7 +125,7 @@ state() called before manage() for tapir_lib::app_state::AppState
 
 ## Документи
 
-- [autostart-notice-lost-when-minimized](../p2-autostart-notice-lost-when-minimized.md) —
+- [autostart-notice-lost-when-minimized](p2-autostart-notice-lost-when-minimized.md) —
   сусідній запис; його NVDA-прогін і наштовхнув на цю ваду
 - [architecture.md](../../architecture.md) §5.3 — порядок `setup()` і два гейти
   відкладеного мовлення

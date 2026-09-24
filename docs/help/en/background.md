@@ -28,7 +28,7 @@ The system media keys on your keyboard and the buttons on a headset control play
 
 **Launch with Windows** creates an entry in the Windows registry — the only thing Tapir leaves outside its own folder. Turn the option off and the entry goes away. **Launch minimized** goes with it: Tapir starts straight into the tray instead of taking your attention at the beginning of a session.
 
-The entry holds the full path to `tapir.exe`, so moving the Tapir folder elsewhere stops autostart from working. Once you start Tapir from its new place it notices, switches autostart off and tells you so — switch it back on.
+The entry holds the full path to `tapir.exe`, so moving the Tapir folder elsewhere stops autostart from working. Once you start Tapir from its new place it notices and switches autostart off, but it may not tell you so. After moving the folder, open the app settings, tab **General**, and switch **Launch with Windows** back on.
 
 A second launch does not open a second window; it brings the open one to the front instead.
 
