@@ -16,10 +16,10 @@ export interface PendingConnect {
 }
 
 /**
- * Cold-start stream resume announces "Connecting — X" (Rust side) and would
- * then announce "Playing: X" when the connect lands — a duplicate for the same
- * gesture. Suppress the "started" that matches a live pending connect; anything
- * else (different name, expired window) announces normally.
+ * Resuming a stream as the last source announces "Connecting — X" (Rust side)
+ * and would then announce "Playing: X" when the connect lands — a duplicate for
+ * the same gesture. Suppress the "started" that matches a live pending connect;
+ * anything else (different name, expired window) announces normally.
  */
 export function suppressesStarted(
   pending: PendingConnect | null,
@@ -47,8 +47,8 @@ function sameSource(a: PlaybackSource | null, b: PlaybackSource | null): boolean
  * Pick the single NVDA announcement for a player-status transition. Central
  * source of truth for pause/resume/stop/start — a UI button press and a global
  * hotkey both arrive here via `player-status`, so each yields exactly one
- * announce. Cold-start "connecting"/"unavailable" are NOT here — they come from
- * the Rust `player-announce` event (the webview can't derive them).
+ * announce. The last source's "connecting"/"unavailable" are NOT here — they
+ * come from the Rust `player-announce` event (the webview can't derive them).
  */
 export function selectPlaybackAnnouncement(
   prev: PlayerStatus,

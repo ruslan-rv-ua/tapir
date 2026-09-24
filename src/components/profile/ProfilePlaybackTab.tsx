@@ -49,7 +49,7 @@ export function ProfilePlaybackTab({ value, onChange }: Props) {
       </p>
 
       {/* Resume file: from last position vs from the beginning.
-          Cold-start Ctrl+Shift+K only — in-session pause/resume is untouched. */}
+          Resuming the last source only — in-session pause/resume is untouched. */}
       <Select
         selectedKey={value.resumeFileFrom}
         onSelectionChange={(key) =>

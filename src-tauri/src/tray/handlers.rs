@@ -34,9 +34,9 @@ fn spawn_primary_playback(app: &AppHandle) {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
         // Same entry point as Ctrl+Shift+K: live=stop, file=pause/resume,
-        // cold=resume-last, shared debounce. The menu item's own word follows
-        // the same split (`playback_items`), so it never promises a pause the
-        // live branch would not honour.
+        // nothing playing=resume the last source, shared debounce. The menu
+        // item's own word follows the same split (`playback_items`), so it
+        // never promises a pause the live branch would not honour.
         crate::playback_control::toggle_playback(&app).await;
     });
 }

@@ -220,8 +220,9 @@ function AppContent() {
     $streams.set($streams.get().map((s) => (s.id === updated.id ? updated : s)));
   }, []);
 
-  // Set by a Rust "connecting" announce (cold-start stream resume); the matching
-  // stopped→playing "started" would duplicate it for the same key press.
+  // Set by a Rust "connecting" announce (a stream resumed as the last source);
+  // the matching stopped→playing "started" would duplicate it for the same key
+  // press.
   const pendingConnectRef = useRef<PendingConnect | null>(null);
 
   const handlePlayerStatus = useCallback((payload: PlayerStatus) => {

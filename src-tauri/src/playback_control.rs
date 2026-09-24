@@ -1,8 +1,8 @@
 //! The single source-aware playback-toggle entry point (Ctrl+Shift+K and the
-//! tray Play/Pause item), plus cold-start resume and the persistence that
-//! revives the dormant `PlayerSession` resume fields.
+//! tray Play/Pause item), plus resuming the last source and the persistence
+//! that revives the dormant `PlayerSession` resume fields.
 //!
-//! Pure decision logic lives in `decide_toggle` / `decide_cold_start` and is
+//! Pure decision logic lives in `decide_toggle` / `decide_resume_last` and is
 //! unit-tested here; the async orchestration (Task 4) is thin glue over them.
 
 use crate::app_state::AppState;
@@ -93,48 +93,49 @@ pub(crate) fn decide_toggle(source: Option<&PlaybackSource>, state: PlaybackStat
     }
 }
 
-/// What cold-start `Ctrl+Shift+K` resumes. `Silent` clears the record without an
-/// announce (nothing saved, or a dangling discriminator — impl-decision #1);
-/// `Unavailable` announces then clears (stale target: stream deleted / file moved).
+/// What `Ctrl+Shift+K` resumes when nothing plays — the last source.
+/// `NoLastSource` clears the record without an announce (nothing saved, or a
+/// dangling discriminator — impl-decision #1); `Unavailable` announces then
+/// clears (stale target: stream deleted / file moved).
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) enum ColdStart {
+pub(crate) enum ResumeLastAction {
     PlayStream,
     PlayFile,
     Unavailable,
-    Silent,
+    NoLastSource,
 }
 
-pub(crate) fn decide_cold_start(
+pub(crate) fn decide_resume_last(
     last_active: Option<&LastActive>,
     has_stream_id: bool,
     stream_in_profile: bool,
     has_file: bool,
     file_exists: bool,
-) -> ColdStart {
+) -> ResumeLastAction {
     match last_active {
-        None => ColdStart::Silent,
+        None => ResumeLastAction::NoLastSource,
         Some(LastActive::Stream) => {
             if !has_stream_id {
-                ColdStart::Silent // dangling discriminator
+                ResumeLastAction::NoLastSource // dangling discriminator
             } else if stream_in_profile {
-                ColdStart::PlayStream
+                ResumeLastAction::PlayStream
             } else {
-                ColdStart::Unavailable // stream deleted from profile
+                ResumeLastAction::Unavailable // stream deleted from profile
             }
         }
         Some(LastActive::File) => {
             if !has_file {
-                ColdStart::Silent // dangling discriminator
+                ResumeLastAction::NoLastSource // dangling discriminator
             } else if file_exists {
-                ColdStart::PlayFile
+                ResumeLastAction::PlayFile
             } else {
-                ColdStart::Unavailable // file moved / deleted
+                ResumeLastAction::Unavailable // file moved / deleted
             }
         }
     }
 }
 
-/// How the cold-start `PlayFile` branch starts the file. `FromStart` = play at 0,
+/// How the `PlayFile` branch of `resume_last` starts the file. `FromStart` = play at 0,
 /// no seek, no position announce (mode `start`, or a saved position of 0);
 /// `FromPosition` = announce "resuming" then play + seek.
 #[derive(Debug, PartialEq, Eq)]
@@ -266,7 +267,7 @@ impl AutoplayGuard {
     }
 }
 
-/// Cold-start: resume the newest saved source (impl "найновіше джерело" —
+/// Resume the last source — the newest saved one (impl "найновіше джерело" —
 /// `last_active` is the single marker). Stale target → announce + clear;
 /// dangling/empty → silent + clear. `pub(crate)` so `frontend_ready` can drive
 /// the same resume path used by Ctrl+Shift+K.
@@ -298,8 +299,8 @@ pub(crate) async fn resume_last(app: &AppHandle) {
         None => false,
     };
 
-    match decide_cold_start(last_active.as_ref(), has_stream_id, stream_in_profile, has_file, file_exists) {
-        ColdStart::PlayStream => {
+    match decide_resume_last(last_active.as_ref(), has_stream_id, stream_in_profile, has_file, file_exists) {
+        ResumeLastAction::PlayStream => {
             let (id, url, name) = stream.expect("PlayStream implies Some(stream)");
             // Before the ≤15 s blocking connect. The webview arms a one-shot
             // suppression so the eventual stopped→playing "started" for this
@@ -308,12 +309,12 @@ pub(crate) async fn resume_last(app: &AppHandle) {
             match state.player.play_stream(id, url, app).await {
                 Ok(()) => persist_session_snapshot(app).await,
                 Err(e) => {
-                    log::warn!("playback: cold-start stream failed: {e}");
+                    log::warn!("playback: resume-last stream failed: {e}");
                     emit_announce(app, AnnounceKind::Error, None); // transient — keep the record
                 }
             }
         }
-        ColdStart::PlayFile => {
+        ResumeLastAction::PlayFile => {
             let fp = last_file.expect("PlayFile implies Some(file)");
             let mode = state.active_profile.read().await.player_session.resume_file_from;
             let plan = plan_file_resume(mode, fp.position_ms);
@@ -333,23 +334,23 @@ pub(crate) async fn resume_last(app: &AppHandle) {
                         && let Err(e) = state.player.seek_playback(position_ms, app).await
                     {
                         // Best-effort: stay at the start rather than fail the resume.
-                        log::warn!("playback: cold-start seek failed, staying at start: {e}");
+                        log::warn!("playback: resume-last seek failed, staying at start: {e}");
                     }
                     persist_session_snapshot(app).await;
                     // FromStart: `playback_started` (stopped→playing, file) announces
                     // webview-side, unchanged.
                 }
                 Err(e) => {
-                    log::warn!("playback: cold-start file failed: {e}");
+                    log::warn!("playback: resume-last file failed: {e}");
                     emit_announce(app, AnnounceKind::Error, None); // keep the record; clears webview pending
                 }
             }
         }
-        ColdStart::Unavailable => {
+        ResumeLastAction::Unavailable => {
             emit_announce(app, AnnounceKind::Unavailable, None);
             clear_last_session(app).await;
         }
-        ColdStart::Silent => {
+        ResumeLastAction::NoLastSource => {
             // Nothing saved or dangling discriminator — clear silently.
             clear_last_session(app).await;
         }
@@ -406,55 +407,55 @@ mod tests {
     }
 
     #[test]
-    fn cold_start_nothing_saved_is_silent() {
-        assert_eq!(decide_cold_start(None, false, false, false, false), ColdStart::Silent);
+    fn resume_last_with_nothing_saved_has_no_last_source() {
+        assert_eq!(decide_resume_last(None, false, false, false, false), ResumeLastAction::NoLastSource);
     }
 
     #[test]
-    fn cold_start_stream_valid_plays() {
+    fn resume_last_stream_valid_plays() {
         assert_eq!(
-            decide_cold_start(Some(&LastActive::Stream), true, true, false, false),
-            ColdStart::PlayStream
+            decide_resume_last(Some(&LastActive::Stream), true, true, false, false),
+            ResumeLastAction::PlayStream
         );
     }
 
     #[test]
-    fn cold_start_stream_deleted_is_unavailable() {
+    fn resume_last_stream_deleted_is_unavailable() {
         assert_eq!(
-            decide_cold_start(Some(&LastActive::Stream), true, false, false, false),
-            ColdStart::Unavailable
+            decide_resume_last(Some(&LastActive::Stream), true, false, false, false),
+            ResumeLastAction::Unavailable
         );
     }
 
     #[test]
-    fn cold_start_stream_dangling_is_silent() {
+    fn resume_last_stream_dangling_has_no_last_source() {
         assert_eq!(
-            decide_cold_start(Some(&LastActive::Stream), false, false, false, false),
-            ColdStart::Silent
+            decide_resume_last(Some(&LastActive::Stream), false, false, false, false),
+            ResumeLastAction::NoLastSource
         );
     }
 
     #[test]
-    fn cold_start_file_valid_plays() {
+    fn resume_last_file_valid_plays() {
         assert_eq!(
-            decide_cold_start(Some(&LastActive::File), false, false, true, true),
-            ColdStart::PlayFile
+            decide_resume_last(Some(&LastActive::File), false, false, true, true),
+            ResumeLastAction::PlayFile
         );
     }
 
     #[test]
-    fn cold_start_file_moved_is_unavailable() {
+    fn resume_last_file_moved_is_unavailable() {
         assert_eq!(
-            decide_cold_start(Some(&LastActive::File), false, false, true, false),
-            ColdStart::Unavailable
+            decide_resume_last(Some(&LastActive::File), false, false, true, false),
+            ResumeLastAction::Unavailable
         );
     }
 
     #[test]
-    fn cold_start_file_dangling_is_silent() {
+    fn resume_last_file_dangling_has_no_last_source() {
         assert_eq!(
-            decide_cold_start(Some(&LastActive::File), false, false, false, false),
-            ColdStart::Silent
+            decide_resume_last(Some(&LastActive::File), false, false, false, false),
+            ResumeLastAction::NoLastSource
         );
     }
 
@@ -481,7 +482,7 @@ mod tests {
     fn paused_file_resume_is_not_gated_by_resume_setting() {
         // Regression guard (spec §Не в скоупі): in-session pause→resume routes
         // through ToggleAction::ResumeFile → resume_playback and never consults
-        // resume_file_from; only ColdStart::PlayFile calls plan_file_resume.
+        // resume_file_from; only ResumeLastAction::PlayFile calls plan_file_resume.
         assert_eq!(decide_toggle(Some(&file()), PlaybackState::Paused), ToggleAction::ResumeFile);
     }
 

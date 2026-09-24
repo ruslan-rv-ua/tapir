@@ -86,7 +86,7 @@ describe("suppressesStarted", () => {
     expect(suppressesStarted(null, started, 500)).toBe(false);
   });
 
-  it("suppresses the started that follows a cold-start file 'resuming' announce", () => {
+  it("suppresses the started that follows a last-source file 'resuming' announce", () => {
     // The Rust side sends the file basename; nameOf() derives the same for a
     // file source, so the generic name+TTL match covers files too.
     const pendingFile = { name: "a.mp3", until: 1_000 };

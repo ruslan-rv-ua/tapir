@@ -326,8 +326,8 @@ impl Default for PostprocessConfig {
 }
 
 // --- PlayerSession ---
-/// Which source was last active — the single discriminator cold-start uses to
-/// decide what `Ctrl+Shift+K` resumes. Set on every play-start; the resolve step
+/// Which source was last active — the single discriminator `resume_last` uses
+/// to decide what `Ctrl+Shift+K` resumes. Set on every play-start; the resolve step
 /// tolerates a dangling value (discriminator set but its data field `None`) by
 /// treating it as "nothing saved". Two slots only, so no timestamp/ordering.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -344,8 +344,8 @@ pub struct FilePosition {
     pub position_ms: u64,
 }
 
-/// What position the cold-start `Ctrl+Shift+K` file resume starts from.
-/// ONLY consulted on cold-start — in-session pause→resume always keeps the
+/// What position a file resumed as the last source starts from. ONLY consulted
+/// when resuming the last source — in-session pause→resume always keeps the
 /// position (pause semantics). Enum (not bool) to leave the door open for a
 /// third variant (e.g. Ask), per the backlog decision.
 ///
@@ -377,7 +377,7 @@ pub struct PlayerSession {
     /// Play the next track in the list when the current file ends.
     #[serde(default = "default_true")]
     pub auto_advance: bool,
-    /// Where a cold-start file resume starts from — «звідки відновлювати»,
+    /// Where a file resumed as the last source starts from — «звідки відновлювати»,
     /// впритул до «чи відновлювати» (`autoplay_on_startup`).
     #[serde(default)]
     pub resume_file_from: ResumeFileFrom,
