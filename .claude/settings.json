@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "axygen-checklist-tools": {
+      "source": {
+        "source": "github",
+        "repo": "ruslan-rv-ua/axygen-checklist-tools"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "axygen-checklist@axygen-checklist-tools": true
+  }
+}

@@ -69,8 +69,9 @@ Issues **увімкнено**, але як вхідна скринька для 
 4. `pnpm backlog index` — перегенерувати [`ROADMAP.md`](../backlog/ROADMAP.md) і `done/README.md`.
 
 Для записів із `a11y: true` приймання вимагає **ручного NVDA-прогону** розробником —
-агент не закриває такий запис самотужки. Чекліст створюється й видаляється за
-скілом `.claude/skills/writing-nvda-checklists/`.
+агент не закриває такий запис самотужки. Чекліст — JSON для NVDA-аддона Axygen
+Checklist; пише його скіл `/axygen-checklist:write`, а де він лежить і коли
+видаляється — [AGENTS.md §«Test checklists»](../../AGENTS.md#test-checklists).
 
 ## Wayfinding (`/wayfinder`)
 

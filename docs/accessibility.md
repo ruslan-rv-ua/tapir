@@ -1273,9 +1273,9 @@ toast-канал і викидає їх, коли AppUserModelID не зареє
 - [ ] Live regions оголошують зміни
 - [ ] High Contrast: усі елементи видимі
 
-Чеклісти конкретних записів беклогу (`docs/testing/nvda-<slug>.md`) створюються для записів
-із `a11y: true` і видаляються на прийманні; метод і шаблон — скіл
-`.claude/skills/writing-nvda-checklists/`.
+Чеклісти конкретних записів беклогу (`docs/testing/nvda-<slug>.json`, JSON для NVDA-аддона
+Axygen Checklist) створюються для записів із `a11y: true` і видаляються на прийманні;
+формат і життєвий цикл — [AGENTS.md §«Test checklists»](../AGENTS.md#test-checklists).
 
 ### 16.2. Automated checks
 

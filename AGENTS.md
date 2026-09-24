@@ -171,9 +171,52 @@ All project documentation lives in `docs/`. Key files:
 **Manual testing** (`docs/testing/`):
 - [test-streams.md](docs/testing/test-streams.md) — тестові URL радіо-потоків
 
-Чеклісти NVDA-прогону (`docs/testing/nvda-<slug>.md`) створюються для записів беклогу
-з `a11y: true` і видаляються на прийманні — метод і шаблон живуть у скілі
-`.claude/skills/writing-nvda-checklists/`.
+Чеклісти NVDA-прогону — JSON-файли для NVDA-аддона Axygen Checklist; формат і
+життєвий цикл — розділ [Test checklists](#test-checklists) нижче.
+
+## Test checklists
+
+Checklists in this project are JSON files for the
+[Axygen Checklist](https://github.com/ruslan-rv-ua/axygen-checklist) NVDA add-on.
+Format: https://github.com/ruslan-rv-ua/axygen-checklist/blob/develop/docs/checklist-format.md
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/ruslan-rv-ua/axygen-checklist/main/docs/checklist-v1.schema.json",
+  "format_version": 1,
+  "checklist_name": "What is being tested",
+  "sections": [
+    {"section_name": "Group", "items": [
+      {"id": 1, "text": "One thing to check"},
+      {"id": 2, "text": "Another one", "note": "Hint for the tester"}
+    ]}
+  ]
+}
+```
+
+* You write `checklist_name`, `section_name`, `id`, `text` and `note`.
+* One item is one action plus the result you expect; preconditions go in a
+  first section of their own.
+* Wrap an exact string the tester has to reproduce - a URL, a path, a command,
+  an identifier - in single backticks: ``"text": "Open `http://localhost:8080`"``.
+  The add-on copies those to the clipboard on request, which beats reading
+  punctuation aloud. Nothing else in the text is markup.
+* `status` (`pending` / `passed` / `failed` / `blocked` / `skipped`) and
+  `comment` belong to the tester and are written by the add-on. When editing an
+  existing checklist, re-read the file first and preserve both verbatim. Never
+  invent them.
+* `id` is unique per file and **never renumbered**: new items take the next
+  unused number, existing ones keep theirs.
+* Keep `$schema` in the file.
+
+Checklists live in `docs/testing/`, one per backlog record: `nvda-<slug>.json`.
+
+Життєвий цикл. Чекліст пише скіл `/axygen-checklist:write` (плагін проєкту, оголошений
+у `.claude/settings.json`) для запису з `a11y: true`, чиї критерії вимагають
+NVDA-прогону: `<slug>` той самий, що в записі, коміт — разом із виправленням або одразу
+після. На файл посилаються критерій NVDA-прогону в записі й список «Manual testing»
+вище. Приймання: після чистого прогону коміт, що закриває запис, видаляє і чекліст, і
+його рядок у цьому файлі — рішення лишаються в записі в `done/`.
 
 ## Agent skills
 
