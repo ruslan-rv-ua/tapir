@@ -8,7 +8,7 @@ status: draft
 effort: L
 kind: feature
 target: 0.3.0
-updated: 2026-08-17
+updated: 2026-09-24
 a11y: false
 depends_on: []
 blocks: []
@@ -16,6 +16,8 @@ touches:
   - src-tauri/src/
   - src/components/wishlist/
 gates: []
+notes:
+  - "Звірка 2026-09-24: перший критерій уже виконано — чотири поля є в `WishlistEntry` (`src-tauri/src/profile.rs`) і в `src/lib/tauri.ts`. Їх ніхто не читає: `wishlist/matcher.rs` лише заповнює значення за замовчуванням, UI для них немає."
 ---
 
 # Умови та дії після запису у вішлісті
@@ -45,7 +47,7 @@ gates: []
 
 ## Критерії готовності
 
-- [ ] Модель запису вішліста містить поля `minBitrate`, `format`, `removeAfterRecord`, `addToIgnorelistAfterRecord`.
+- [x] Модель запису вішліста містить поля `minBitrate`, `format`, `removeAfterRecord`, `addToIgnorelistAfterRecord`.
 - [ ] Backend перевіряє `minBitrate` і `format` перед записом; якщо умова не виконана — пропускає.
 - [ ] Після успішного запису виконуються дії `removeAfterRecord` / `addToIgnorelistAfterRecord`.
 - [ ] UI дозволяє редагувати всі чотири умови для кожного запису вішліста.
