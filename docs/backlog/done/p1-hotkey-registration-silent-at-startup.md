@@ -256,7 +256,7 @@ UI прибрано) тепер має два носії: одноразову �
 вікна робив конфлікт повідомленим назавжди; реєстрація лише забуває звільнене й перепризначене.
 **Гейт «перший показ вікна»** (`hotkey_busy::BusyNotice`: підписка вебв'ю ∧ фокус головного
 вікна, `Focused(true)` в `on_window_event`) — репліка автозапуску має ту саму діру і переїде на
-нього ([autostart-notice-lost-when-minimized](../p2-autostart-notice-lost-when-minimized.md);
+нього ([autostart-notice-lost-when-minimized](p2-autostart-notice-lost-when-minimized.md);
 гейт витягти, не копіювати). **Перереєстрація при відкритті вкладки** — єдиний спосіб дізнатися,
 що Windows звільнила комбінацію; нововиявлене вкладка оголошує ввічливо, вже відоме — мовчки.
 Окремої команди читання стану не знадобилось. Чекліст (8 сценаріїв; «чужу програму» дає
@@ -275,7 +275,7 @@ PowerShell-скрипт із `RegisterHotKey`) виявив, що записат
   — чому позначка в рядку, а не лише репліка
 - [ADR «вухо, вікно, система»](../../decisions/2026-09-01-response-surfaces-ear-window-system.md)
   — чому нативний тост відкинуто на користь гейта показу вікна
-- [autostart-notice-lost-when-minimized](../p2-autostart-notice-lost-when-minimized.md) —
+- [autostart-notice-lost-when-minimized](p2-autostart-notice-lost-when-minimized.md) —
   хвіст: репліка автозапуску на тому самому гейті
 - [CONTEXT.md](../../../CONTEXT.md) §«Гаряча клавіша, комбінація, зайнята комбінація»
 - `src-tauri/src/shortcuts.rs`, `src-tauri/src/lib.rs`,
