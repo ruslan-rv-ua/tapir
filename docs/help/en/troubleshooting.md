@@ -74,7 +74,7 @@ The recordings come back; playback does not, and neither does a scheduled window
 
 Tapir opens the profile you used last, and each profile is one file in `data\profiles\`, in the folder beside `tapir.exe`. When that file is missing, cannot be read or is damaged, Tapir shows **Startup error** with the profile's name and the file's name, and closes. This happens after the file was deleted, renamed or edited by hand, or after `settings.json` was copied from another Tapir folder.
 
-Put a working copy of that file back under the same name — from a backup, or from the folder the settings came from — and start Tapir again. Do not delete the file instead: for most profiles Tapir then stops at the same place, and the Default profile comes back empty, without its streams. Until the file is back, Tapir can still start in another profile with the `--profile` parameter from the section "Running in the background"; it applies to that one start only.
+Put a working copy of that file back under the same name — from a backup, or from the folder the settings came from — and start Tapir again. Do not delete the file instead: for most profiles Tapir then stops at the same place, and the `Default` profile comes back empty, without its streams.
 
 ### If none of this helped
 
