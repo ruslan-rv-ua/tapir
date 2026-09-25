@@ -236,16 +236,22 @@ pub fn notify_track_change(app: &tauri::AppHandle, stream_id: &str, artist: &str
 /// Старт бере той самий ключ, що й кнопка «Записати все» в списку потоків: одна
 /// подія — один текст. У зупинки близнюка на фронтенді немає (там рахунок
 /// іде разом із пропущеними), тож ключ власний, але формулювання дзеркальне.
+/// Відмова через диск — той самий ключ, що вікно показує на цю відмову; чисел
+/// у тості немає, їх пише `warn!` у `check_disk_space`.
 pub fn notify_recording_toggle(app: &tauri::AppHandle, outcome: ToggleOutcome) {
     // Synchronous (no spawn): the shortcut handler already calls this from a
     // spawned task after awaiting toggle_all, and notification show() is non-blocking.
-    let body = match outcome {
+    let body = recording_toggle_body(outcome);
+    show_toast(app, ToastKind::BackgroundFeedback, &i18n::t(Key::AppName), &body);
+}
+
+fn recording_toggle_body(outcome: ToggleOutcome) -> String {
+    match outcome {
         ToggleOutcome::Started(n) => i18n::t_plural(PluralKey::RecordAllStarted, n),
         ToggleOutcome::Stopped(n) => i18n::t_plural(PluralKey::StopAll, n),
         ToggleOutcome::NothingToStart => i18n::t_plural(PluralKey::RecordAllStarted, 0),
-    };
-
-    show_toast(app, ToastKind::BackgroundFeedback, &i18n::t(Key::AppName), &body);
+        ToggleOutcome::DiskSpaceLow => i18n::t(Key::RecordRefusedDiskSpace),
+    }
 }
 
 /// Show the NVDA-readable toast for the global stop-all shortcut (KB-12).
@@ -461,6 +467,25 @@ mod tests {
             assert_eq!(
                 transport_failure_body(TransportFailureReason::Error),
                 "Playback error"
+            );
+        });
+    }
+
+    /// Відмова через диск — той самий текст, що вікно показує на цю відмову
+    /// (`record_refused_disk_space`), а не «Розпочато запис»; чисел у тості
+    /// немає — їх пише лог.
+    #[test]
+    fn recording_toggle_body_names_the_disk_refusal_in_both_locales() {
+        with_locale(Locale::Uk, || {
+            assert_eq!(
+                recording_toggle_body(ToggleOutcome::DiskSpaceLow),
+                "Замало вільного місця на диску — запис не розпочато"
+            );
+        });
+        with_locale(Locale::En, || {
+            assert_eq!(
+                recording_toggle_body(ToggleOutcome::DiskSpaceLow),
+                "Not enough free disk space — recording did not start"
             );
         });
     }

@@ -1,15 +1,19 @@
 //! Global recording toggle: decide start-vs-stop and orchestrate the manager.
 //!
 //! Used by the global `toggle_recording` shortcut. The pure helpers
-//! (`is_active`, `count_active`, `decide`) are unit-tested; `toggle_all` is
-//! thin orchestration over `StreamManager::{start_all, stop_all}` and is
-//! exercised via manual/integration runs. `stop_all_now` (global stop-all
-//! shortcut, KB-12) is likewise thin orchestration.
+//! (`is_active`, `count_active`, `decide`, `start_outcome`) are unit-tested;
+//! `toggle_all` is thin orchestration over `check_disk_space` and
+//! `StreamManager::{start_all, stop_all}` and is exercised via
+//! manual/integration runs. Its start goes through the same disk-space check
+//! as every other start path. `stop_all_now` (global stop-all shortcut, KB-12)
+//! is likewise thin orchestration.
 
 use std::collections::HashSet;
 use tauri::{AppHandle, Manager};
 
 use crate::app_state::AppState;
+use crate::commands::stream_commands::check_disk_space;
+use crate::errors::RadioError;
 use crate::stream::manager::{StreamState, StreamStatus};
 
 /// Result of a toggle, used to build the NVDA toast.
@@ -21,6 +25,9 @@ pub enum ToggleOutcome {
     Stopped(usize),
     /// Start was requested but the active profile has nothing to start.
     NothingToStart,
+    /// Start was refused: free space on the recordings volume is below the
+    /// profile's disk threshold. Nothing was started.
+    DiskSpaceLow,
 }
 
 /// Which direction the toggle goes.
@@ -53,6 +60,24 @@ pub fn decide(active_count: usize) -> ToggleAction {
         ToggleAction::Stop
     } else {
         ToggleAction::Start
+    }
+}
+
+/// Outcome of the start branch: the disk verdict gates the start, and `start`
+/// runs only when the disk allows it. An empty profile below the threshold is
+/// a refusal too, as in `start_all_recordings`. Only `DiskSpaceLow` refuses:
+/// the toast names the disk, so another error must not borrow that text —
+/// it fails open, like `check_disk_space` itself when it cannot measure.
+pub fn start_outcome(
+    disk: Result<(), RadioError>,
+    start: impl FnOnce() -> usize,
+) -> ToggleOutcome {
+    if matches!(disk, Err(RadioError::DiskSpaceLow { .. })) {
+        return ToggleOutcome::DiskSpaceLow;
+    }
+    match start() {
+        0 => ToggleOutcome::NothingToStart,
+        n => ToggleOutcome::Started(n),
     }
 }
 
@@ -100,7 +125,8 @@ pub async fn stop_all_now(app: &AppHandle) -> usize {
 }
 
 /// Toggle recording for the whole active profile. Reads the manager to decide,
-/// then reuses `stop_all_now` / `start_all`. Returns the outcome for the toast.
+/// then reuses `stop_all_now`, or `check_disk_space` followed by `start_all`
+/// (below the threshold nothing starts). Returns the outcome for the toast.
 pub async fn toggle_all(app: &AppHandle) -> ToggleOutcome {
     let state = app.state::<AppState>();
     let active = {
@@ -111,18 +137,14 @@ pub async fn toggle_all(app: &AppHandle) -> ToggleOutcome {
     match decide(active) {
         ToggleAction::Stop => ToggleOutcome::Stopped(stop_all_now(app).await),
         ToggleAction::Start => {
+            let disk = check_disk_space(&state).await;
             let (streams, settings) = {
                 let profile = state.active_profile.read().await;
                 (profile.streams.clone(), profile.recording.clone())
             };
             let mgr_arc = state.stream_manager.clone();
             let mut mgr = mgr_arc.write().await;
-            let started = mgr.start_all(streams, settings, mgr_arc.clone());
-            if started == 0 {
-                ToggleOutcome::NothingToStart
-            } else {
-                ToggleOutcome::Started(started)
-            }
+            start_outcome(disk, || mgr.start_all(streams, settings, mgr_arc.clone()))
         }
     }
 }
@@ -149,6 +171,23 @@ mod tests {
     #[test]
     fn decide_starts_when_nothing_active() {
         assert_eq!(decide(0), ToggleAction::Start);
+    }
+
+    /// Нижче порогу диска до менеджера не доходимо: замикання старту не
+    /// викликається взагалі, а не просто повертає нуль.
+    #[test]
+    fn start_outcome_refuses_below_disk_threshold_without_starting() {
+        let mut called = false;
+        let refusal = RadioError::DiskSpaceLow { free_bytes: 1, threshold_gb: 5 };
+        let outcome = start_outcome(Err(refusal), || { called = true; 3 });
+        assert_eq!(outcome, ToggleOutcome::DiskSpaceLow);
+        assert!(!called, "старт не мав початися");
+    }
+
+    #[test]
+    fn start_outcome_counts_started_streams_when_disk_allows() {
+        assert_eq!(start_outcome(Ok(()), || 3), ToggleOutcome::Started(3));
+        assert_eq!(start_outcome(Ok(()), || 0), ToggleOutcome::NothingToStart);
     }
 
     fn status(state: StreamState) -> StreamStatus {

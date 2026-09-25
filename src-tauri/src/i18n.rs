@@ -126,6 +126,8 @@ keys! { Key, ALL,
     PlaybackError          => "playback_error",
     StreamPlayUnsupported  => "stream_play_unsupported",
     PlaybackUnavailable    => "playback_unavailable",
+    // — відмова старту запису гарячою клавішею: той самий текст, що у вікні —
+    RecordRefusedDiskSpace => "record_refused_disk_space",
 }
 
 keys! { PluralKey, ALL,
