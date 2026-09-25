@@ -201,7 +201,21 @@ pub fn run() {
                 }
                 app.manage(autostart::StartupNotice::moved());
             }
-            let profile = Profile::load(&settings.active_profile).expect("Failed to load profile");
+            // Не відкрився активний профіль (файлу немає, не читається, битий
+            // JSON) — той самий діалог невдалого старту, що й для AppState нижче.
+            // `expect` тут був мовчазним abort-ом: у релізі `panic = "abort"`,
+            // а паніка не доходить ні до екрана, ні до tapir.log.
+            let profile = match Profile::load(&settings.active_profile) {
+                Ok(p) => p,
+                Err(e) => {
+                    log::error!("Failed to load profile '{}': {e}", settings.active_profile);
+                    app.dialog()
+                        .message(profile_load_error_body(&settings.active_profile, &e))
+                        .title(i18n::t(i18n::Key::StartupErrorTitle))
+                        .blocking_show();
+                    return Err(e.into());
+                }
+            };
             let state = match AppState::new(settings, profile, app.handle().clone()) {
                 Ok(s) => s,
                 Err(e) => {
@@ -411,4 +425,49 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/// Тіло діалогу невдалого старту, коли не відкрився активний профіль.
+///
+/// Файл названо відносно теки з `tapir.exe`, як його називає довідка: людині
+/// треба знайти його в портативній теці, а повний шлях у діалозі — це шум.
+/// Порада — повернути робочу копію, а не видалити файл: для профілю, окрім
+/// Default, відсутній файл дає ту саму помилку.
+fn profile_load_error_body(name: &str, err: &errors::RadioError) -> String {
+    let file = format!(r"data\profiles\{name}.tapirprofile");
+    i18n::t_args(
+        i18n::Key::StartupErrorProfile,
+        &[("profile", name), ("file", &file), ("error", &err.to_string())],
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use errors::RadioError;
+
+    #[test]
+    fn profile_error_body_names_the_profile_and_its_file_in_both_locales() {
+        let not_found = RadioError::NotFound("Profile 'Новини' not found".into());
+        let bad_json = RadioError::Json(serde_json::from_str::<serde_json::Value>("{").unwrap_err());
+        for locale in [i18n::Locale::Uk, i18n::Locale::En] {
+            for err in [&not_found, &bad_json] {
+                let (body, generic) = i18n::with_locale(locale, || {
+                    (
+                        profile_load_error_body("Новини", err),
+                        i18n::t_args(i18n::Key::StartupErrorBody, &[("error", &err.to_string())]),
+                    )
+                });
+                let quoted = match locale {
+                    i18n::Locale::Uk => "«Новини»",
+                    i18n::Locale::En => "“Новини”",
+                };
+                assert!(body.contains(quoted), "{locale:?}: {body}");
+                assert!(body.contains(r"data\profiles\Новини.tapirprofile"), "{locale:?}: {body}");
+                assert!(body.contains(&err.to_string()), "{locale:?}: {body}");
+                assert!(!body.contains('{'), "{locale:?}: незаповнений параметр у {body}");
+                assert_ne!(body, generic, "{locale:?}");
+            }
+        }
+    }
 }

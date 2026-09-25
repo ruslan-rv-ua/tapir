@@ -29,9 +29,9 @@ notes:
 # `--profile` не сеансовий: перше ж збереження налаштувань пише його в settings.json
 
 > **Контекст:** вада, знайдена на рев'ю
-> [corrupt-active-profile-aborts-startup](p1-corrupt-active-profile-aborts-startup.md).
+> [corrupt-active-profile-aborts-startup](done/p1-corrupt-active-profile-aborts-startup.md).
 > `planned` + `ready` → **РЕАЛІЗАЦІЯ** за варіантом А (рішення 2026-09-25, див. «Варіанти»).
-> Номери рядків — стан на `09142cc`.
+> Номери рядків — стан на `5553236`.
 
 ## Опис
 
@@ -66,8 +66,8 @@ notes:
   сеансовий override, settings.json НЕ пишемо».
 - Довідка ([background.md en](../help/en/background.md) `:43`, [uk](../help/uk/background.md)
   `:43`) обіцяє лише «стартувати в цьому профілі» — ані «на один запуск», ані «назавжди».
-  Тобто довідка не бреше, але й не каже, чого чекати; порада з troubleshooting.md на гілці
-  corrupt-active-profile-aborts-startup впала саме через це.
+  Тобто довідка не бреше, але й не каже, чого чекати; порада з troubleshooting.md у записі
+  corrupt-active-profile-aborts-startup (злито PR #30) впала на рев'ю саме через це.
 - **Рішення №7** специфікації фази 3G (`docs/superpowers/specs/2026-06-13-3g-cli-design.md`,
   додана `f399eeb`, видалена `74e1511`; читати `git show f399eeb:<шлях>`, розділ 2 п. 7 і
   §3.6) цю «липкість» **знало й прийняло**: override стає постійним, щойно сеанс викличе
@@ -92,7 +92,7 @@ notes:
 ## Причина
 
 - `src-tauri/src/lib.rs:85-93`: для відомого імені `initial_settings.active_profile = name.clone()`.
-- `lib.rs:188` → `AppState::new(settings, …)` (`:205`) → `AppState.settings`
+- `lib.rs:188` → `AppState::new(settings, …)` (`:219`) → `AppState.settings`
   (`app_state.rs:50`).
 - Усі записи `settings.json` серіалізують `GlobalSettings` цілком; `active_profile`
   (`settings.rs:18-19`) має лише `#[serde(default)]`, без `skip_serializing`:
@@ -139,15 +139,15 @@ notes:
 - [ ] Коментар `lib.rs:80-84` і `docs/architecture.md:268` описують, що саме гарантовано
       (і посилаються на це рішення, а не на «decision §7» видаленої специфікації)
 - [ ] `docs/help/{en,uk}/background.md`: біля `--profile` сказано, що параметр діє на цей
-      запуск і активного профілю не змінює; якщо до того часу злито
-      corrupt-active-profile-aborts-startup — у troubleshooting.md повернути пораду
-      стартувати з `--profile` (en і uk)
+      запуск і активного профілю не змінює; у `troubleshooting.md` (підрозділ про «Помилку
+      запуску» через профіль, en `:77` і uk) повернути пораду стартувати з `--profile`
+      в іншому профілі, поки файл не повернуто
 - [ ] `cargo test`, `cargo clippy --all-targets` зелені; `pnpm test` зелений, якщо
       змінювалась довідка (ворота слів)
 
 ## Документи
 
-- [corrupt-active-profile-aborts-startup](p1-corrupt-active-profile-aborts-startup.md) — звідки знахідка
+- [corrupt-active-profile-aborts-startup](done/p1-corrupt-active-profile-aborts-startup.md) — звідки знахідка
 - Специфікація 3G, рішення №7: `git show f399eeb:docs/superpowers/specs/2026-06-13-3g-cli-design.md`
 - [architecture.md](../architecture.md) — порядок старту
 - [autostart](done/p2-autostart.md) — підфаза 3I-2, гасіння автозапуску після перенесення
