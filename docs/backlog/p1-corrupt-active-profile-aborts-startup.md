@@ -133,7 +133,7 @@ notes:
       `i18n.rs:201`) містить назву профілю й ім'я файлу та не збігається з `startup_error_body`
 - [ ] Ручна перевірка на `release`: діалог на передньому плані, Enter закриває, процес не висить
 - [ ] NVDA: NVDA сам, без Alt+Tab, читає «Помилка запуску» і текст із назвою профілю; те саме
-      з `--minimize`
+      з `--minimize` — чекліст [nvda-corrupt-active-profile-aborts-startup.json](../testing/nvda-corrupt-active-profile-aborts-startup.json)
 - [x] `cargo test`, `cargo clippy --all-targets`, `pnpm test`, `pnpm typecheck`, `pnpm vite:build` зелені
 
 ## Документи

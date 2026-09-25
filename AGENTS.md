@@ -170,6 +170,8 @@ All project documentation lives in `docs/`. Key files:
 
 **Manual testing** (`docs/testing/`):
 - [test-streams.md](docs/testing/test-streams.md) — тестові URL радіо-потоків
+- [nvda-corrupt-active-profile-aborts-startup.json](docs/testing/nvda-corrupt-active-profile-aborts-startup.json) —
+  NVDA-прогін [запису](docs/backlog/p1-corrupt-active-profile-aborts-startup.md); на прийманні видалити
 
 Чеклісти NVDA-прогону — JSON-файли для NVDA-аддона Axygen Checklist; формат і
 життєвий цикл — розділ [Test checklists](#test-checklists) нижче.
