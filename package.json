@@ -12,7 +12,8 @@
     "lint": "eslint --max-warnings 0 src build",
     "typecheck": "tsc --noEmit",
     "test:watch": "vitest",
-    "backlog": "node build/backlog.mts"
+    "backlog": "node build/backlog.mts",
+    "merge-own-pr": "node build/mergeOwnPr.mts"
   },
   "packageManager": "pnpm@10.32.1",
   "dependencies": {

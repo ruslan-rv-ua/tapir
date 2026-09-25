@@ -38,7 +38,8 @@
 4. **README.** Те, що змінилось для людини, яка завантажує.
 5. **Ворота** локально: `just check`, `just check-rust`; `build/releaseShape.test.ts` серед них.
 6. **PR у `main`.** `git push -u origin release/X.Y.Z`, `gh pr create --base main`. Дочекатись
-   зеленого, `gh pr merge --merge`. `main` тепер несе релізний коміт, і CI на `push: main`
+   зеленого; зливає **людина** — `pnpm merge-own-pr` приймає лише базу `develop` (AGENTS.md
+   §«Branches and pull requests»). `main` тепер несе релізний коміт, і CI на `push: main`
    перевіряє його ще раз — **дочекатись і цього прогону**: workflow релізу читає його вердикт.
 7. **Тег** — лише за явною командою:
    ```
@@ -49,7 +50,7 @@
 8. **Release.** `gh run watch` на workflow «Release»; після зеленого —
    `gh release view vX.Y.Z` показує `tapir-vX.Y.Z-x64.exe` і `.sha256`.
 9. **Зворотне злиття.** PR `main` → `develop`: `gh pr create --base develop --head main`,
-   дочекатись, `gh pr merge --merge`, `git pull`.
+   дочекатись; зливає людина (коміти `main` не несуть трейлера агента), потім `git pull`.
 10. **Bucket.** Перший реліз — засівання (розділ нижче). Кожен наступний —
     `gh workflow run excavator.yml -R ruslan-rv-ua/scoop-bucket`, потім перевірити, що
     `bucket/tapir.json` у bucket оновився й CI bucket зелений. Добовий розклад Excavator —
