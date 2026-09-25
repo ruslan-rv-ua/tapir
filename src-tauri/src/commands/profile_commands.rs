@@ -37,7 +37,9 @@ pub async fn rename_profile(
     if old_name == active {
         return Err(RadioError::Forbidden("Cannot rename the active profile".into()).to_string());
     }
-    Profile::rename(&old_name, &new_name).map_err(|e| e.to_string())
+    let meta = Profile::rename(&old_name, &new_name).map_err(|e| e.to_string())?;
+    follow_file_profile(&state, &old_name, Some(meta.name.clone())).await;
+    Ok(meta)
 }
 
 #[tauri::command]
@@ -48,7 +50,18 @@ pub async fn delete_profile(name: String, state: State<'_, AppState>) -> Result<
     if name == active {
         return Err(RadioError::Forbidden("Cannot delete the active profile".into()).to_string());
     }
-    Profile::delete(&name).map_err(|e| e.to_string())
+    Profile::delete(&name).map_err(|e| e.to_string())?;
+    follow_file_profile(&state, &name, None).await;
+    Ok(())
+}
+
+/// Перейменований чи видалений профіль може бути тим, що `settings.json` тримає
+/// як активний, поки сеанс працює в іншому (`--profile`). Дія над профілем уже
+/// відбулась, тож невдалий запис налаштувань її не скасовує — лише в лог.
+async fn follow_file_profile(state: &AppState, old: &str, new: Option<String>) {
+    if let Err(e) = state.commit_profile_moved(old, new).await {
+        log::warn!("Could not update the active profile in settings after '{old}' changed: {e}");
+    }
 }
 
 #[tauri::command]
@@ -287,6 +300,7 @@ pub async fn delete_profiles(
     for name in to_delete {
         // Best-effort per profile; a single failure doesn't abort the batch.
         if Profile::delete(&name).is_ok() {
+            follow_file_profile(&state, &name, None).await;
             deleted.push(name);
         }
     }

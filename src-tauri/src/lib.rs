@@ -204,8 +204,8 @@ pub fn run() {
             );
             if moved {
                 settings.autostart = false;
-                let on_disk = settings_store::on_disk(&settings, file_profile.as_deref());
-                if let Err(e) = settings_store::save_detached(&on_disk) {
+                let snapshot = settings_store::disk_snapshot(&settings, file_profile.as_deref());
+                if let Err(e) = settings_store::save_detached(&snapshot) {
                     log::warn!("autostart: failed to persist autostart=false after EXE move: {e}");
                 }
                 app.manage(autostart::StartupNotice::moved());

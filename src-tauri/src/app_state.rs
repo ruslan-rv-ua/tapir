@@ -105,6 +105,18 @@ impl AppState {
     pub async fn commit_active_profile(&self, name: String) -> Result<(), RadioError> {
         self.settings_writer.choose_profile(&self.settings, name).await
     }
+
+    /// Неактивний профіль `old` перейменовано (`new`) або видалено (`None`):
+    /// якщо саме він записаний у `settings.json` як активний (сеанс запущено з
+    /// `--profile`), файл налаштувань іде за ним — див.
+    /// [`SettingsWriter::file_profile_moved`].
+    pub async fn commit_profile_moved(
+        &self,
+        old: &str,
+        new: Option<String>,
+    ) -> Result<(), RadioError> {
+        self.settings_writer.file_profile_moved(&self.settings, old, new).await
+    }
 }
 
 /// Stop all recordings, stop player, save volume/session, then briefly wait

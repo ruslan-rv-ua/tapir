@@ -47,7 +47,7 @@ fn write_settings_file(settings: &GlobalSettings) -> Result<(), RadioError> {
 
 /// Копія налаштувань для запису: активний профіль — `file_profile`, якщо сеанс
 /// працює не в тому профілі, що записаний у файлі (`--profile`).
-pub fn on_disk(settings: &GlobalSettings, file_profile: Option<&str>) -> GlobalSettings {
+pub fn disk_snapshot(settings: &GlobalSettings, file_profile: Option<&str>) -> GlobalSettings {
     let mut copy = settings.clone();
     if let Some(name) = file_profile {
         copy.active_profile = name.to_string();
@@ -62,7 +62,8 @@ pub fn on_disk(settings: &GlobalSettings, file_profile: Option<&str>) -> GlobalS
 /// гаряча клавіша) поклав би X у `settings.json`, і наступний звичайний запуск
 /// відкрив би X. Тому тут пам'ятається ім'я, яке лежить у файлі, і кожен знімок
 /// несе його. Замінює це ім'я лише [`choose_profile`](Self::choose_profile) —
-/// свідомий вибір профілю. Рішення — backlog `cli-profile-override-persists`
+/// свідомий вибір профілю — і [`file_profile_moved`](Self::file_profile_moved),
+/// коли файловий профіль перейменували чи видалили. Рішення — backlog `cli-profile-override-persists`
 /// (варіант А).
 pub struct SettingsWriter {
     writer: Writer<GlobalSettings>,
@@ -87,7 +88,7 @@ impl SettingsWriter {
         T: Send,
     {
         self.writer
-            .commit_as(cell, mutate, |s| on_disk(s, self.file_profile().as_deref()))
+            .commit_with_snapshot(cell, mutate, |s| disk_snapshot(s, self.file_profile().as_deref()))
             .await
     }
 
@@ -122,6 +123,29 @@ impl SettingsWriter {
                 .await;
         }
         committed
+    }
+
+    /// Профіль `old` перейменовано (`new` = нове ім'я) або видалено (`None`).
+    ///
+    /// Сеансовий профіль ні перейменувати, ні видалити не можна, а файловий —
+    /// можна: у вікні він звичайний неактивний. Якщо це він, файл налаштувань
+    /// пишеться одразу — інакше наступний звичайний запуск шукав би профіль,
+    /// якого вже немає. Видалений файловий профіль поступається сеансовому:
+    /// іншого існуючого кандидата, який людина обирала б, немає.
+    pub async fn file_profile_moved(
+        &self,
+        cell: &RwLock<GlobalSettings>,
+        old: &str,
+        new: Option<String>,
+    ) -> Result<(), RadioError> {
+        self.commit(cell, |_| {
+            if self.file_profile().as_deref() != Some(old) {
+                return Commit::Skip(());
+            }
+            self.set_file_profile(new);
+            Commit::Save(())
+        })
+        .await
     }
 
     fn file_profile(&self) -> Option<String> {
@@ -236,12 +260,48 @@ mod tests {
         assert_eq!(store.last().unwrap().active_profile, "Спорт");
     }
 
+    #[tokio::test]
+    async fn renaming_the_file_profile_writes_the_new_name_at_once() {
+        // Інакше наступний звичайний запуск шукав би файл, якого вже немає.
+        let (store, writer, cell) = overridden();
+
+        writer.file_profile_moved(&cell, "Музика", Some("Музика 2".into())).await.unwrap();
+        assert_eq!(store.last().unwrap().active_profile, "Музика 2");
+
+        writer.commit(&cell, toggle_smtc).await.unwrap();
+        assert_eq!(store.last().unwrap().active_profile, "Музика 2");
+        assert_eq!(cell.read().await.active_profile, "Новини");
+    }
+
+    #[tokio::test]
+    async fn deleting_the_file_profile_hands_the_file_to_the_session_profile() {
+        let (store, writer, cell) = overridden();
+
+        writer.file_profile_moved(&cell, "Музика", None).await.unwrap();
+        assert_eq!(store.last().unwrap().active_profile, "Новини");
+
+        writer.commit(&cell, toggle_smtc).await.unwrap();
+        assert_eq!(store.last().unwrap().active_profile, "Новини");
+    }
+
+    #[tokio::test]
+    async fn moving_another_profile_does_not_write() {
+        let (store, writer, cell) = overridden();
+
+        writer.file_profile_moved(&cell, "Спорт", None).await.unwrap();
+        writer.file_profile_moved(&cell, "Джаз", Some("Блюз".into())).await.unwrap();
+        assert_eq!(store.save_count(), 0);
+
+        writer.commit(&cell, toggle_smtc).await.unwrap();
+        assert_eq!(store.last().unwrap().active_profile, "Музика");
+    }
+
     #[test]
     fn detached_copy_carries_the_file_profile() {
         // Шлях `lib.rs` до AppState: гасіння перенесеного автозапуску.
         let settings = settings_in("Новини");
 
-        assert_eq!(on_disk(&settings, Some("Музика")).active_profile, "Музика");
-        assert_eq!(on_disk(&settings, None).active_profile, "Новини");
+        assert_eq!(disk_snapshot(&settings, Some("Музика")).active_profile, "Музика");
+        assert_eq!(disk_snapshot(&settings, None).active_profile, "Новини");
     }
 }

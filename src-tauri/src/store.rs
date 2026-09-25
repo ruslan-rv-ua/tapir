@@ -82,14 +82,14 @@ impl<T: Persist> Writer<T> {
         F: FnOnce(&mut T) -> Commit<R> + Send,
         R: Send,
     {
-        self.commit_as(cell, mutate, T::clone).await
+        self.commit_with_snapshot(cell, mutate, T::clone).await
     }
 
     /// [`commit`](Self::commit), але знімок для диска будує `snapshot`, а не
     /// `clone`: так на диск іде не те, що в пам'яті. Викликається під тим самим
     /// локом стану, що й мутація, тож усе, що вона читає поза агрегатом, узгоджене
     /// з мутацією, яка щойно відбулась.
-    pub async fn commit_as<R, F, S>(
+    pub async fn commit_with_snapshot<R, F, S>(
         &self,
         cell: &RwLock<T>,
         mutate: F,
