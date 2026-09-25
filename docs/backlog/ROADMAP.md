@@ -48,12 +48,13 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > поверхонь не з'являється, IPC не міняється, а вже встановлені копії лишаються зі
 > своїми значеннями, бо міграцій немає.
 
-У черзі: 5. Виконано: 7.
+У черзі: 6. Виконано: 7.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
 | [corrupt-active-profile-aborts-startup](p1-corrupt-active-profile-aborts-startup.md) ♿ | P1 | planned | ready | S | — | — | Битий або відсутній файл активного профілю обриває старт: вікно блимає й зникає без діалогу й рядка в журналі — щоразу; лікує наявний діалог старту |
 | [hotkey-record-skips-disk-check](p1-hotkey-record-skips-disk-check.md) ♿ | P1 | planned | ready | S | — | — | Ctrl+Shift+R стартує запис усіх потоків повз поріг диску: тост «Розпочато запис», диск заповнюється до краю; вікно в тій самій ситуації відмовляє |
+| [cli-profile-override-persists](p2-cli-profile-override-persists.md) | P2 | planned | ready | S | — | — | `--profile` оголошено сеансовим, але будь-який запис налаштувань за сеанс (і гасіння перенесеного автозапуску) пише його в settings.json |
 | [file-position-lost-on-external-stop](p2-file-position-lost-on-external-stop.md) | P2 | planned | ready | S | — | — | Медіа-клавіша «Стоп», `--stop-playback` і перемикання профілю не зберігають позицію файлу: продовження останнього починає файл з нуля |
 | [preview-switch-keeps-mute](p2-preview-switch-keeps-mute.md) ♿ | P2 | planned | ready | S | — | — | прев'ю A → прев'ю B після Ctrl+M: «Відтворення: B», а звук лишається вимкненим — App.tsx не порівнює url; одне порівняння джерел на обидва місця |
 | [track-line-dangling-dash](p2-track-line-dangling-dash.md) ♿ | P2 | planned | ready | S | — | [tray-now-playing-source-prefix](p3-tray-now-playing-source-prefix.md) | станція без « - » у метаданих ефіру дає «— So What» у плеєрі, рядку потоку й журналі збігів, у треї — подвійне тире; лік — спільний trackLabel |
