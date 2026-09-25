@@ -1,14 +1,15 @@
 ---
 slug: hotkey-record-skips-disk-check
 title: "Ctrl+Shift+R запускає запис без перевірки вільного місця"
-summary: "Ctrl+Shift+R стартує запис усіх потоків повз поріг диску: тост «Розпочато запис», диск заповнюється до краю; вікно в тій самій ситуації відмовляє"
+summary: "Ctrl+Shift+R перевіряє вільне місце, як і решта шляхів старту: нижче порогу — тост «Замало вільного місця на диску», жоден потік не стартує"
 priority: P1
 type: planned
-status: ready
+status: done
 effort: S
 kind: bug
 target: 0.1.1
-updated: 2026-09-24
+updated: 2026-09-25
+completed: 2026-09-25
 a11y: true
 depends_on: []
 blocks: []
@@ -21,7 +22,7 @@ gates: [cargo test, cargo clippy --all-targets]
 
 # Ctrl+Shift+R запускає запис без перевірки вільного місця
 
-> **Контекст:** знахідка [огляду архітектури 2026-09-24](../notes/architecture-review-2026-09-24.md).
+> **Контекст:** знахідка [огляду архітектури 2026-09-24](../../notes/architecture-review-2026-09-24.md).
 > У v0.1.0 так само. `planned` + `ready` → **РЕАЛІЗАЦІЯ**. Номери рядків — стан на f09f36b.
 
 ## Опис
@@ -95,43 +96,70 @@ gates: [cargo test, cargo clippy --all-targets]
 
 ## Поза межами
 
-- **Нагляд за місцем після старту** — [p2-disk-space-monitor](p2-disk-space-monitor.md). Той
+- **Нагляд за місцем після старту** — [p2-disk-space-monitor](../p2-disk-space-monitor.md). Той
   запис спирається на перевірку перед стартом на всіх шляхах; цей робить її правдою.
 - **Усунення класу** (старт скопійовано в п'ять місць) — ідея
-  [recording-control-owns-every-start](p2-recording-control-owns-every-start.md). Автотест
+  [recording-control-owns-every-start](../p2-recording-control-owns-every-start.md). Автотест
   самого виклику перевірки в `toggle_all` чекає на той шов: жоден тест не будує `AppState`.
 - **Поверхня відповіді** `notify_recording_toggle` не змінюється: відмова йде тією самою, що
   й старт сьогодні (ADR 2026-09-01, §4).
 
 ## Критерії готовності
 
-- [ ] `docs/help/` не змінюється: довідка вже обіцяє цю поведінку (`recording.md:39`,
+- [x] `docs/help/` не змінюється: довідка вже обіцяє цю поведінку (`recording.md:39`,
       `troubleshooting.md:23` в обох мовах), виправлення робить обіцянку правдою
-- [ ] Нижче порогу `Ctrl+Shift+R` не стартує жодного потоку; поріг `0` перевірку вимикає, як
+- [x] Нижче порогу `Ctrl+Shift+R` не стартує жодного потоку; поріг `0` перевірку вимикає, як
       і на решті шляхів; зупинка тією самою клавішею працює без змін
-- [ ] Rust-тест у `recording_control.rs`: на відмову диска — `DiskSpaceLow`, і замикання
+- [x] Rust-тест у `recording_control.rs`: на відмову диска — `DiskSpaceLow`, і замикання
       старту не викликано; на згоду — `Started(n)` / `NothingToStart`, як досі
-- [ ] Тост відмови — категорія `BackgroundFeedback`; Rust-тест у `tray/notify.rs`: його тіло в
+- [x] Тост відмови — категорія `BackgroundFeedback`; Rust-тест у `tray/notify.rs`: його тіло в
       uk і en — `record_refused_disk_space`, а не «Розпочато запис»; `messages/*.json` не
       змінено, новий `Key` покриває `every_key_exists_in_both_locales` (`i18n.rs:216`)
-- [ ] Доккоментарі модуля (`recording_control.rs:1-7`) і `toggle_all` (:102-103) називають
+- [x] Доккоментарі модуля (`recording_control.rs:1-7`) і `toggle_all` (:102-103) називають
       перевірку
-- [ ] NVDA: поріг вище за вільне місце, вікно сховане, `Ctrl+Shift+R` → NVDA читає «Замало
+- [x] NVDA: поріг вище за вільне місце, вікно сховане, `Ctrl+Shift+R` → NVDA читає «Замало
       вільного місця на диску — запис не розпочато»; у показаному вікні жоден потік не пише
-- [ ] `cargo test`, `cargo clippy --all-targets` зелені
+- [x] `cargo test`, `cargo clippy --all-targets` зелені
+
+## Спадок
+
+Реалізовано за чернеткою, одним відхиленням. Відповідь гілки `Start` —
+`recording_control::start_outcome(disk, start)` поруч із `decide`; тіло тоста —
+`tray::notify::recording_toggle_body`, ключ `Key::RecordRefusedDiskSpace` бере наявний рядок
+вікна, `messages/*.json` не змінено. Сторожі: `start_outcome_refuses_below_disk_threshold_without_starting`
+(замикання старту не викликано взагалі, а не викликано й повернуло нуль),
+`start_outcome_counts_started_streams_when_disk_allows`,
+`recording_toggle_body_names_the_disk_refusal_in_both_locales`.
+
+**Відхилення: відмовляє лише `DiskSpaceLow`, а не будь-який `Err`.** Чернетка казала «при
+`Err`»; огляд помітив, що тост називає саме диск, і чужа помилка позичила б цей текст. Сьогодні
+`check_disk_space` іншої помилки не повертає — збій вимірювання він логує й пропускає запис, —
+тож будь-яка майбутня помилка теж пропускає старт: та сама політика «не можу виміряти — не
+блокую».
+
+**Клас лишився, і став ширшим.** Гілка `Start` тепер майже дослівно повторює
+`start_all_recordings` — шоста копія послідовності старту; а `recording_control` імпортує
+`commands::stream_commands::check_disk_space`, третім некомандним викликачем логіки, якій за
+`architecture.md` («Логіки в `commands/` немає») у `commands/` не місце. Обидва хвости —
+[recording-control-owns-every-start](../p2-recording-control-owns-every-start.md).
+
+**Для NVDA-прогонів про поріг.** Поле «Поріг диску (ГБ)» приймає щонайбільше 100, тож
+відтворити відмову можна лише на томі, де вільно менше за 100 ГБ; тестова тека поруч з exe
+лежить на тому, де його зібрано. Прогін 2026-09-25 (C:, вільно ~90 ГБ): 20 з 20, чекліст
+видалено цим закриттям.
 
 ## Документи
 
-- [Огляд архітектури 2026-09-24](../notes/architecture-review-2026-09-24.md) — звідки знахідка
-- [p2-disk-space-monitor](p2-disk-space-monitor.md) — нагляд після старту;
-  [recording-control-owns-every-start](p2-recording-control-owns-every-start.md) — усуває клас
-- [record-refusals-untranslated](done/p2-record-refusals-untranslated.md) — звідки
+- [Огляд архітектури 2026-09-24](../../notes/architecture-review-2026-09-24.md) — звідки знахідка
+- [p2-disk-space-monitor](../p2-disk-space-monitor.md) — нагляд після старту;
+  [recording-control-owns-every-start](../p2-recording-control-owns-every-start.md) — усуває клас
+- [record-refusals-untranslated](p2-record-refusals-untranslated.md) — звідки
   `record_refused_disk_space` і `RadioError::DiskSpaceLow`; шлях клавіші пропустив
-- Довідка [recording](../help/uk/recording.md), [troubleshooting](../help/uk/troubleshooting.md)
-  (en — близнюки); обіцянки писали [help-recording](done/p1-help-recording.md) і
-  [help-troubleshooting](done/p1-help-troubleshooting.md)
-- ADR: [категорії тостів](../decisions/2026-08-17-tray-toast-categories.md),
-  [вухо, вікно, система](../decisions/2026-09-01-response-surfaces-ear-window-system.md) §4,
-  [локалізація нативного шару](../decisions/2026-08-17-native-layer-localisation.md) §2;
-  [architecture.md](../architecture.md) §8; [CONTEXT.md](../../CONTEXT.md) §«Сповіщення в треї»
+- Довідка [recording](../../help/uk/recording.md), [troubleshooting](../../help/uk/troubleshooting.md)
+  (en — близнюки); обіцянки писали [help-recording](p1-help-recording.md) і
+  [help-troubleshooting](p1-help-troubleshooting.md)
+- ADR: [категорії тостів](../../decisions/2026-08-17-tray-toast-categories.md),
+  [вухо, вікно, система](../../decisions/2026-09-01-response-surfaces-ear-window-system.md) §4,
+  [локалізація нативного шару](../../decisions/2026-08-17-native-layer-localisation.md) §2;
+  [architecture.md](../../architecture.md) §8; [CONTEXT.md](../../../CONTEXT.md) §«Сповіщення в треї»
 - Код: `src-tauri/src/recording_control.rs`, `src-tauri/src/tray/notify.rs`, `src-tauri/src/i18n.rs`
