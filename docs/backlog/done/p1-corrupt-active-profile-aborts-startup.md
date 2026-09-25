@@ -1,14 +1,15 @@
 ---
 slug: corrupt-active-profile-aborts-startup
 title: "Пошкоджений або відсутній активний профіль мовчки обриває запуск Tapir"
-summary: "реалізовано 2026-09-25, чекає перевірки на release і NVDA-прогону: битий чи відсутній активний профіль дає діалог старту з назвою профілю й файлу"
+summary: "Битий чи відсутній активний профіль більше не обриває старт мовчки: діалог «Помилка запуску» з назвою профілю й файлу, причина — в tapir.log"
 priority: P1
 type: planned
-status: ready
+status: done
 effort: S
 kind: bug
 target: 0.1.1
 updated: 2026-09-25
+completed: 2026-09-25
 a11y: true
 depends_on: []
 blocks: []
@@ -23,13 +24,14 @@ gates: [cargo test, cargo clippy --all-targets, pnpm test, pnpm typecheck, pnpm 
 notes:
   - "Перевірено читанням коду, без запуску. У v0.1.0 той самий `expect` (`lib.rs:199`) і `panic = \"abort\"` у `[profile.release]`; `expect` живе з 9b3a91a (2026-04-14)."
   - "2026-09-25 реалізовано: 5368343 (match замість expect, ключ startup_error_profile_body, чиста profile_load_error_body у lib.rs з тестом, довідка), 15f587f (правки довідки після рев'ю). Ворота зелені: cargo test 574, clippy, pnpm test 1295, typecheck, vite:build. Лишились ручна перевірка на release і NVDA-прогін — і з ними питання переднього плану з п. 4."
+  - "2026-09-25 прийнято: ручна перевірка на release і NVDA-прогін чекліста nvda-corrupt-active-profile-aborts-startup.json — 25 з 25, без коментарів. Діалог на передньому плані й зі стартом згорнутим; п. 4 лагодити не довелось, MessageDialogBuilder::parent не знадобився."
   - "Рев'ю: з довідки прибрано пораду `--profile` — перевизначення не одноразове, бо будь-яке збереження налаштувань у тому сеансі пише його в settings.json як activeProfile. Вада стара й поза межами запису; винесена окремою задачею."
   - "Рев'ю свідомо не прийнято: спільний помічник «журнал → діалог → Err» для двох гілок setup (дві гілки, п. 1 прямо каже «за зразком»); ім'я файлу `data\\profiles\\<назва>.tapirprofile` у тілі — ще одна копія розкладки, власника «профілю за назвою» пропонує profiles-module."
 ---
 
 # Пошкоджений або відсутній активний профіль мовчки обриває запуск Tapir
 
-> **Контекст:** знахідка [огляду архітектури 2026-09-24](../notes/architecture-review-2026-09-24.md).
+> **Контекст:** знахідка [огляду архітектури 2026-09-24](../../notes/architecture-review-2026-09-24.md).
 > У v0.1.0 так само. `planned` + `ready` → **РЕАЛІЗАЦІЯ**. Номери рядків — стан на f09f36b.
 
 ## Опис
@@ -43,7 +45,7 @@ notes:
 Шляхи сюди: файл профілю видалили, перейменували чи правили руками в портативній теці;
 `settings.json` перенесли з установки з іншим набором профілів; збій живлення одразу після
 перейменування профілю й переходу на нього (`Profile::rename` пише неатомарно —
-[profile-rename-not-atomic](p2-profile-rename-not-atomic.md)).
+[profile-rename-not-atomic](../p2-profile-rename-not-atomic.md)).
 
 ## Як відтворити
 
@@ -58,8 +60,8 @@ notes:
 ## Що обіцяно
 
 - Невдалий старт має власну поверхню — діалог, що працює без `AppState`
-  ([ADR 2026-08-17](../decisions/2026-08-17-native-layer-localisation.md) §3).
-- [resume-last-playback](done/p1-resume-last-playback.md), таблиця помилок (рядок 101): для
+  ([ADR 2026-08-17](../../decisions/2026-08-17-native-layer-localisation.md) §3).
+- [resume-last-playback](p1-resume-last-playback.md), таблиця помилок (рядок 101): для
   пошкодженого профілю покладається на «існуючу обробку завантаження профілю» — на старті її немає.
 - Довідка «Якщо нічого не допомогло» (`docs/help/uk/troubleshooting.md:75`, en :75) веде в
   `tapir.log`, куди причина не доходить.
@@ -111,8 +113,8 @@ notes:
   (`lib.rs:73`, `settings.rs:198-210`) іде до білдера Tauri, плагінів журналу й діалогів і до
   вибору локалі (`lib.rs:78`) — діалогу там ще немає. Так само `ensure_data_dirs` (:69) і
   `setup_tray` (:234). Окремий запис за потреби.
-- **Неатомарне перейменування** лікує [profile-rename-not-atomic](p2-profile-rename-not-atomic.md);
-  єдиного власника «профілю за назвою» пропонує [profiles-module](p2-profiles-module.md).
+- **Неатомарне перейменування** лікує [profile-rename-not-atomic](../p2-profile-rename-not-atomic.md);
+  єдиного власника «профілю за назвою» пропонує [profiles-module](../p2-profiles-module.md).
 
 ## Відкриті питання
 
@@ -131,19 +133,49 @@ notes:
       `every_key_exists_in_both_locales` (`i18n.rs:216`); `StartupErrorBody` не змінено
 - [x] Rust-тест на функцію тіла: для `NotFound` і `Json` тіло в uk і en (`i18n::with_locale`,
       `i18n.rs:201`) містить назву профілю й ім'я файлу та не збігається з `startup_error_body`
-- [ ] Ручна перевірка на `release`: діалог на передньому плані, Enter закриває, процес не висить
-- [ ] NVDA: NVDA сам, без Alt+Tab, читає «Помилка запуску» і текст із назвою профілю; те саме
-      з `--minimize` — чекліст [nvda-corrupt-active-profile-aborts-startup.json](../testing/nvda-corrupt-active-profile-aborts-startup.json)
+- [x] Ручна перевірка на `release`: діалог на передньому плані, Enter закриває, процес не висить
+- [x] NVDA: NVDA сам, без Alt+Tab, читає «Помилка запуску» і текст із назвою профілю; те саме
+      з `--minimize` — прогін 2026-09-25: 25 з 25
 - [x] `cargo test`, `cargo clippy --all-targets`, `pnpm test`, `pnpm typecheck`, `pnpm vite:build` зелені
+
+## Спадок
+
+У `setup` більше немає `expect` на `Profile::load`. Невдале читання активного профілю — файлу
+немає, він не читається або JSON битий — іде тим самим шляхом, що й невдача `AppState::new`:
+`log::error!` з назвою профілю й помилкою, діалог невдалого старту, `Err` із `setup`. Причина
+тепер у `tapir.log` ще до діалогу. Заголовок діалогу спільний (`StartupErrorTitle`), а тіло
+власне — ключ `startup_error_profile_body`, варіант `Key::StartupErrorProfile`, бо порада
+загального тіла про аудіопристрій для профілю хибна. `StartupErrorBody` не змінено. Тіло будує
+чиста `profile_load_error_body` у `lib.rs`. Вона називає профіль і файл
+`data\profiles\<назва>.tapirprofile` відносно теки з `tapir.exe`, як довідка, і радить
+повернути робочу копію, а не видаляти файл. Сторожі: тест цієї функції (`NotFound` і `Json`,
+uk і en) і `every_key_exists_in_both_locales`.
+
+Діалог показує `blocking_show` у `setup`, як і гілка `AppState::new`. Прогін на `release`
+підтвердив, що діалог на передньому плані й NVDA читає його сам, зокрема з `--minimize`, тож
+`MessageDialogBuilder::parent` не знадобився. Після Enter процес завершується. Вихід через
+`Err` із `setup`, який Tauri перетворює на паніку, лишився поза межами, як і було записано.
+
+Довідка, обидві локалі: новий підрозділ troubleshooting про «Помилку запуску» через профіль.
+Свідомі відхилення:
+- Пораду `--profile` з довідки прибрано на рев'ю: перевизначення не одноразове, бо будь-яке
+  збереження налаштувань у тому сеансі пише його в `settings.json` як `activeProfile`. Вада
+  стара, поза межами цього запису, і винесена окремою задачею.
+- Спільний помічник «журнал → діалог → `Err`» для двох гілок `setup` не заведено.
+- Розкладку файлу профілю тіло діалогу повторює ще раз; власника «профілю за назвою» пропонує
+  [profiles-module](../p2-profiles-module.md).
+
+Не зроблено й лишилось відкритим: відкат на Default замість зупинки (див. «Відкриті питання»)
+і битий `settings.json`, який так само обриває старт, лише раніше.
 
 ## Документи
 
-- [Огляд архітектури 2026-09-24](../notes/architecture-review-2026-09-24.md) — звідки знахідка
-- [ADR 2026-08-17 — локалізація нативного шару](../decisions/2026-08-17-native-layer-localisation.md) §3
-- [tray-layer-not-localized](done/p1-tray-layer-not-localized.md) §5 — звідки ключі `startup_error_*`
-- [resume-last-playback](done/p1-resume-last-playback.md) — таблиця помилок спирається на цю обробку
-- [profile-rename-not-atomic](p2-profile-rename-not-atomic.md) — один зі шляхів сюди
-- Довідка: [troubleshooting (uk)](../help/uk/troubleshooting.md), [troubleshooting (en)](../help/en/troubleshooting.md),
-  [background (en)](../help/en/background.md) — `--profile`
-- [CONTEXT.md](../../CONTEXT.md) §«Профіль»
+- [Огляд архітектури 2026-09-24](../../notes/architecture-review-2026-09-24.md) — звідки знахідка
+- [ADR 2026-08-17 — локалізація нативного шару](../../decisions/2026-08-17-native-layer-localisation.md) §3
+- [tray-layer-not-localized](p1-tray-layer-not-localized.md) §5 — звідки ключі `startup_error_*`
+- [resume-last-playback](p1-resume-last-playback.md) — таблиця помилок спирається на цю обробку
+- [profile-rename-not-atomic](../p2-profile-rename-not-atomic.md) — один зі шляхів сюди
+- Довідка: [troubleshooting (uk)](../../help/uk/troubleshooting.md), [troubleshooting (en)](../../help/en/troubleshooting.md),
+  [background (en)](../../help/en/background.md) — `--profile`
+- [CONTEXT.md](../../../CONTEXT.md) §«Профіль»
 - Код: `src-tauri/src/lib.rs`, `src-tauri/src/profile.rs`, `src-tauri/src/i18n.rs`, `src-tauri/Cargo.toml`

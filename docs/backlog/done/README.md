@@ -3,12 +3,13 @@
 > Згенеровано з front-matter записів командою `pnpm backlog index`. **Не редагувати руками:**
 > один рядок тут — поле `summary:` запису (без нього — `title:`).
 
-109 записів, найновіші зверху. Кожен файл зберігає ухвалені рішення, критерії,
+110 записів, найновіші зверху. Кожен файл зберігає ухвалені рішення, критерії,
 за якими фічу приймали, і секцію «Спадок» — що лишилось у коді й правилах після закриття.
 Черга — [ROADMAP.md](../ROADMAP.md).
 
 | Запис | Версія | Коли | Підсумок |
 |-------|--------|------|----------|
+| [corrupt-active-profile-aborts-startup](p1-corrupt-active-profile-aborts-startup.md) ♿ | 0.1.1 | 2026-09-25 | Битий чи відсутній активний профіль більше не обриває старт мовчки: діалог «Помилка запуску» з назвою профілю й файлу, причина — в tapir.log |
 | [autostart-notice-lost-when-minimized](p2-autostart-notice-lost-when-minimized.md) ♿ | 0.1.1 | 2026-09-24 | «Ні»: репліку про переміщення до показу вікна не доносимо — гейт спрацював, а NVDA мовчить; довідка більше не обіцяє повідомлення. |
 | [minimized-start-crashes-release-build](p0-minimized-start-crashes-release-build.md) | 0.1.1 | 2026-09-24 | notify_state_changed бере стан через try_state і до app.manage лише пише warn; гілка --minimize більше не перемальовує трей до setup_tray |
 | [minimized-start-silent-to-nvda](p0-minimized-start-silent-to-nvda.md) ♿ | 0.1.1 | 2026-09-24 | вікно ховається в трей першою дією frontend_ready, через одноразовий засув MinimizeOnReady: скрінрідер питає вікно про документ лише раз |
