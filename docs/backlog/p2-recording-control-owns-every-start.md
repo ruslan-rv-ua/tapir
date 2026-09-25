@@ -99,7 +99,7 @@ gates: [cargo test, cargo clippy --all-targets]
   — ще одне дієслово для тих самих місць.
 - **Важіль.** П'ять копій старту й вісім місць зупинки в чотирьох файлах — одна реалізація.
 - **Тести через інтерфейс:** «місця мало → відмовляє кожен вхід», «причина зупинки → її хук».
-- **Клас дефектів.** [hotkey-record-skips-disk-check](p1-hotkey-record-skips-disk-check.md) —
+- **Клас дефектів.** [hotkey-record-skips-disk-check](done/p1-hotkey-record-skips-disk-check.md) —
   правило, яке пропустила одна копія. Локальне виправлення їде в 0.1.1; тут клас зникає, а
   виправлення отримує регресійний тест через інтерфейс.
 - **Розблоковує** [reconnect-loop-behind-host-port](p2-reconnect-loop-behind-host-port.md):
@@ -145,5 +145,5 @@ gates: [cargo test, cargo clippy --all-targets]
 
 - [Огляд архітектури 2026-09-24](../notes/architecture-review-2026-09-24.md) — карта записів і наскрізна тема
 - [CONTEXT.md](../../CONTEXT.md) §«Запис і Записи»; [architecture.md](../architecture.md) §«Форма контракту», §8
-- [hotkey-record-skips-disk-check](p1-hotkey-record-skips-disk-check.md) — дефект, клас якого прибирає запис
+- [hotkey-record-skips-disk-check](done/p1-hotkey-record-skips-disk-check.md) — дефект, клас якого прибирає запис
 - шляхи коду: `src-tauri/src/recording_control.rs`, `src-tauri/src/scheduler/core.rs` (зразок форми)

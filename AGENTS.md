@@ -170,7 +170,6 @@ All project documentation lives in `docs/`. Key files:
 
 **Manual testing** (`docs/testing/`):
 - [test-streams.md](docs/testing/test-streams.md) — тестові URL радіо-потоків
-- [nvda-hotkey-record-skips-disk-check.json](docs/testing/nvda-hotkey-record-skips-disk-check.json) — NVDA-прогін запису hotkey-record-skips-disk-check
 
 Чеклісти NVDA-прогону — JSON-файли для NVDA-аддона Axygen Checklist; формат і
 життєвий цикл — розділ [Test checklists](#test-checklists) нижче.
