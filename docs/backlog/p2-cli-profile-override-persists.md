@@ -147,6 +147,7 @@ notes:
 
 ## Документи
 
+- [Чекліст ручного прогону](../testing/nvda-cli-profile-override-persists.json) — сценарії відтворення, перемикання, перейменування й видалення файлового профілю, перенесений автозапуск
 - [corrupt-active-profile-aborts-startup](done/p1-corrupt-active-profile-aborts-startup.md) — звідки знахідка
 - Специфікація 3G, рішення №7: `git show f399eeb:docs/superpowers/specs/2026-06-13-3g-cli-design.md`
 - [architecture.md](../architecture.md) — порядок старту
