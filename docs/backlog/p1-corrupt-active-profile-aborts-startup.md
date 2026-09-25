@@ -1,14 +1,14 @@
 ---
 slug: corrupt-active-profile-aborts-startup
 title: "Пошкоджений або відсутній активний профіль мовчки обриває запуск Tapir"
-summary: "Битий або відсутній файл активного профілю обриває старт: вікно блимає й зникає без діалогу й рядка в журналі — щоразу; лікує наявний діалог старту"
+summary: "реалізовано 2026-09-25, чекає перевірки на release і NVDA-прогону: битий чи відсутній активний профіль дає діалог старту з назвою профілю й файлу"
 priority: P1
 type: planned
 status: ready
 effort: S
 kind: bug
 target: 0.1.1
-updated: 2026-09-24
+updated: 2026-09-25
 a11y: true
 depends_on: []
 blocks: []
@@ -22,6 +22,9 @@ touches:
 gates: [cargo test, cargo clippy --all-targets, pnpm test, pnpm typecheck, pnpm vite:build]
 notes:
   - "Перевірено читанням коду, без запуску. У v0.1.0 той самий `expect` (`lib.rs:199`) і `panic = \"abort\"` у `[profile.release]`; `expect` живе з 9b3a91a (2026-04-14)."
+  - "2026-09-25 реалізовано: 5368343 (match замість expect, ключ startup_error_profile_body, чиста profile_load_error_body у lib.rs з тестом, довідка), 15f587f (правки довідки після рев'ю). Ворота зелені: cargo test 574, clippy, pnpm test 1295, typecheck, vite:build. Лишились ручна перевірка на release і NVDA-прогін — і з ними питання переднього плану з п. 4."
+  - "Рев'ю: з довідки прибрано пораду `--profile` — перевизначення не одноразове, бо будь-яке збереження налаштувань у тому сеансі пише його в settings.json як activeProfile. Вада стара й поза межами запису; винесена окремою задачею."
+  - "Рев'ю свідомо не прийнято: спільний помічник «журнал → діалог → Err» для двох гілок setup (дві гілки, п. 1 прямо каже «за зразком»); ім'я файлу `data\\profiles\\<назва>.tapirprofile` у тілі — ще одна копія розкладки, власника «профілю за назвою» пропонує profiles-module."
 ---
 
 # Пошкоджений або відсутній активний профіль мовчки обриває запуск Tapir
@@ -120,18 +123,18 @@ notes:
 
 ## Критерії готовності
 
-- [ ] Довідка: `docs/help/en/troubleshooting.md` і `uk/` — короткий підрозділ про «Помилку
+- [x] Довідка: `docs/help/en/troubleshooting.md` і `uk/` — короткий підрозділ про «Помилку
       запуску» через профіль і як повернути профіль; `build/helpContent.test.ts` зелений
-- [ ] Відсутній, нечитабельний і битий файл активного профілю дають діалог невдалого старту з
+- [x] Відсутній, нечитабельний і битий файл активного профілю дають діалог невдалого старту з
       текстом про профіль; причина — в `tapir.log` до діалогу; `expect` на `Profile::load` немає
-- [ ] Новий ключ є в `en.json` і `uk.json`, новий варіант `Key` стереже
+- [x] Новий ключ є в `en.json` і `uk.json`, новий варіант `Key` стереже
       `every_key_exists_in_both_locales` (`i18n.rs:216`); `StartupErrorBody` не змінено
-- [ ] Rust-тест на функцію тіла: для `NotFound` і `Json` тіло в uk і en (`i18n::with_locale`,
+- [x] Rust-тест на функцію тіла: для `NotFound` і `Json` тіло в uk і en (`i18n::with_locale`,
       `i18n.rs:201`) містить назву профілю й ім'я файлу та не збігається з `startup_error_body`
 - [ ] Ручна перевірка на `release`: діалог на передньому плані, Enter закриває, процес не висить
 - [ ] NVDA: NVDA сам, без Alt+Tab, читає «Помилка запуску» і текст із назвою профілю; те саме
       з `--minimize`
-- [ ] `cargo test`, `cargo clippy --all-targets`, `pnpm test`, `pnpm typecheck`, `pnpm vite:build` зелені
+- [x] `cargo test`, `cargo clippy --all-targets`, `pnpm test`, `pnpm typecheck`, `pnpm vite:build` зелені
 
 ## Документи
 

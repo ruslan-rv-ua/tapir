@@ -52,7 +52,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
-| [corrupt-active-profile-aborts-startup](p1-corrupt-active-profile-aborts-startup.md) ♿ | P1 | planned | ready | S | — | — | Битий або відсутній файл активного профілю обриває старт: вікно блимає й зникає без діалогу й рядка в журналі — щоразу; лікує наявний діалог старту |
+| [corrupt-active-profile-aborts-startup](p1-corrupt-active-profile-aborts-startup.md) ♿ | P1 | planned | ready | S | — | — | реалізовано 2026-09-25, чекає перевірки на release і NVDA-прогону: битий чи відсутній активний профіль дає діалог старту з назвою профілю й файлу |
 | [hotkey-record-skips-disk-check](p1-hotkey-record-skips-disk-check.md) ♿ | P1 | planned | ready | S | — | — | Ctrl+Shift+R стартує запис усіх потоків повз поріг диску: тост «Розпочато запис», диск заповнюється до краю; вікно в тій самій ситуації відмовляє |
 | [file-position-lost-on-external-stop](p2-file-position-lost-on-external-stop.md) | P2 | planned | ready | S | — | — | Медіа-клавіша «Стоп», `--stop-playback` і перемикання профілю не зберігають позицію файлу: продовження останнього починає файл з нуля |
 | [preview-switch-keeps-mute](p2-preview-switch-keeps-mute.md) ♿ | P2 | planned | ready | S | — | — | прев'ю A → прев'ю B після Ctrl+M: «Відтворення: B», а звук лишається вимкненим — App.tsx не порівнює url; одне порівняння джерел на обидва місця |
