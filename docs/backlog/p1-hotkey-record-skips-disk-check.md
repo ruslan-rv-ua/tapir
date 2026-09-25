@@ -117,7 +117,8 @@ gates: [cargo test, cargo clippy --all-targets]
 - [ ] Доккоментарі модуля (`recording_control.rs:1-7`) і `toggle_all` (:102-103) називають
       перевірку
 - [ ] NVDA: поріг вище за вільне місце, вікно сховане, `Ctrl+Shift+R` → NVDA читає «Замало
-      вільного місця на диску — запис не розпочато»; у показаному вікні жоден потік не пише
+      вільного місця на диску — запис не розпочато»; у показаному вікні жоден потік не пише.
+      Чекліст: [nvda-hotkey-record-skips-disk-check.json](../testing/nvda-hotkey-record-skips-disk-check.json)
 - [ ] `cargo test`, `cargo clippy --all-targets` зелені
 
 ## Документи
