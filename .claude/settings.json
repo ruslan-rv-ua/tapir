@@ -1,4 +1,14 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(pnpm merge-own-pr *)",
+      "PowerShell(pnpm merge-own-pr *)"
+    ],
+    "deny": [
+      "Bash(gh pr merge *)",
+      "PowerShell(gh pr merge *)"
+    ]
+  },
   "extraKnownMarketplaces": {
     "axygen-checklist-tools": {
       "source": {
