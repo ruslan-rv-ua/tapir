@@ -101,7 +101,7 @@ Windows мовчки замінює наявну ціль. Ні зміни IPC, 
 ## Поза межами
 
 - **Зупинка старту на пошкодженому активному профілі** (`lib.rs:204`) — запис
-  [corrupt-active-profile-aborts-startup](p1-corrupt-active-profile-aborts-startup.md); тут
+  [corrupt-active-profile-aborts-startup](done/p1-corrupt-active-profile-aborts-startup.md); тут
   прибирається лише один шлях до такого профілю.
 - **`std::fs::rename(old, new)`** замість запису — ні: ім'я живе й усередині файлу
   (`profile.rs:456`).
@@ -129,6 +129,6 @@ Windows мовчки замінює наявну ціль. Ні зміни IPC, 
 - [profile-commit-seam](done/p0-profile-commit-seam.md) — шов запису профілю, таблиця «Розподіл сайтів»
 - [settings-commit-seam](done/p1-settings-commit-seam.md) — `write_json_atomically` як спільний механізм
 - [data-models.md](../data-models.md), [CONTEXT.md](../../CONTEXT.md) — ім'я профілю, Коміт, Сховище
-- [corrupt-active-profile-aborts-startup](p1-corrupt-active-profile-aborts-startup.md),
+- [corrupt-active-profile-aborts-startup](done/p1-corrupt-active-profile-aborts-startup.md),
   [profiles-module](p2-profiles-module.md) — записи того самого огляду
 - Код: `src-tauri/src/profile.rs`, `src-tauri/src/profile_store.rs`, `src-tauri/src/store.rs`

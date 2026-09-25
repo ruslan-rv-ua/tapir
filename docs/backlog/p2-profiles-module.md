@@ -106,7 +106,7 @@ gates: [cargo test, cargo clippy --all-targets]
   випадки лагодять раніше: [profile-rename-not-atomic](p2-profile-rename-not-atomic.md) (0.2.0)
   і гілку перемикання в [file-position-lost-on-external-stop](p2-file-position-lost-on-external-stop.md)
   (0.1.1); SMTC і CLI — справа [playback-verbs-persist-session](p2-playback-verbs-persist-session.md).
-  [corrupt-active-profile-aborts-startup](p1-corrupt-active-profile-aborts-startup.md) отримує
+  [corrupt-active-profile-aborts-startup](done/p1-corrupt-active-profile-aborts-startup.md) отримує
   одне місце для рішення «діалог чи відкат на `Default`»; виправлення 0.1.1 лишається локальним.
 - **Суміжне:** очікування задач запису (тайм-аут 2 с при перемиканні —
   [profile-switch-orphaned-tasks](p3-profile-switch-orphaned-tasks.md), сліпий сон 2 с на виході)

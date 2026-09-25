@@ -110,6 +110,8 @@ keys! { Key, ALL,
     // — діалог невдалого старту —
     StartupErrorTitle     => "startup_error_title",
     StartupErrorBody      => "startup_error_body",
+    // Не відкрився активний профіль: порада «перевірте аудіопристрій» тут хибна.
+    StartupErrorProfile   => "startup_error_profile_body",
     // — спільне з live region: одна подія — один ключ —
     AppName               => "app_name",
     SchedStarted          => "scheduled_announce_started",

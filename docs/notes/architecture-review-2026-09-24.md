@@ -34,7 +34,7 @@
 | Запис | Пріоритет |
 |---|---|
 | [hotkey-record-skips-disk-check](../backlog/p1-hotkey-record-skips-disk-check.md) — Ctrl+Shift+R стартує запис без перевірки вільного місця | P1 |
-| [corrupt-active-profile-aborts-startup](../backlog/p1-corrupt-active-profile-aborts-startup.md) — пошкоджений активний профіль мовчки валить старт | P1 |
+| [corrupt-active-profile-aborts-startup](../backlog/done/p1-corrupt-active-profile-aborts-startup.md) — пошкоджений активний профіль мовчки валить старт | P1 |
 | [file-position-lost-on-external-stop](../backlog/p2-file-position-lost-on-external-stop.md) — позиція файлу губиться після Stop з медіаклавіш, CLI чи перемикання профілю | P2 |
 | [preview-switch-keeps-mute](../backlog/p2-preview-switch-keeps-mute.md) — прев'ю→прев'ю лишає звук вимкненим | P2 |
 | [track-line-dangling-dash](../backlog/p2-track-line-dangling-dash.md) — «— So What» у рядку треку | P2 |
