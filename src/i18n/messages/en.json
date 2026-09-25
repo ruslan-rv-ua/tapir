@@ -721,5 +721,6 @@
   "tray_stop_all_few": "Recording stopped: {count} streams",
   "tray_stop_all_many": "Recording stopped: {count} streams",
   "startup_error_title": "Startup error",
-  "startup_error_body": "Tapir could not start:\n\n{error}\n\nMake sure an audio device is connected and try again."
+  "startup_error_body": "Tapir could not start:\n\n{error}\n\nMake sure an audio device is connected and try again.",
+  "startup_error_profile_body": "Tapir could not open the profile “{profile}”:\n\n{error}\n\nThe profile is stored in {file}, in the folder beside tapir.exe. Put a working copy of that file back in place — from a backup, for example — and start Tapir again."
 }
