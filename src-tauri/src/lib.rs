@@ -78,16 +78,24 @@ pub fn run() {
     i18n::set_locale(i18n::Locale::from_tag(&initial_settings.language));
 
     // --profile: pick the profile BEFORE AppState::new so we load the right one
-    // directly (not Default -> switch). Session-only override (decision §7): we do
-    // NOT save settings.json here. Only for an Ok parse; on Err we exit(2) in
-    // .setup anyway. Existence is checked via Profile::list (Profile::load("Default")
-    // would create a file as a side effect). Unknown name -> log warn + keep default.
+    // directly (not Default -> switch). Session-only override: settings.json keeps
+    // the file's active profile for the whole session — every settings write
+    // carries `file_profile` instead of the override (settings_store::SettingsWriter),
+    // and only switch_profile, a deliberate choice, replaces it (backlog
+    // cli-profile-override-persists, option A). Only for an Ok parse; on Err we
+    // exit(2) in .setup anyway. Existence is checked via Profile::list
+    // (Profile::load("Default") would create a file as a side effect). Unknown
+    // name -> log warn + keep default.
+    let mut file_profile: Option<String> = None;
     if let Ok(cli) = &parsed && let Some(name) = &cli.profile {
         let known = Profile::list(&initial_settings.active_profile)
             .map(|metas| metas.iter().any(|m| &m.name == name))
             .unwrap_or(false);
         if known {
-            initial_settings.active_profile = name.clone();
+            if *name != initial_settings.active_profile {
+                file_profile =
+                    Some(std::mem::replace(&mut initial_settings.active_profile, name.clone()));
+            }
         } else {
             log::warn!("--profile: profile '{name}' does not exist, ignoring");
         }
@@ -196,7 +204,8 @@ pub fn run() {
             );
             if moved {
                 settings.autostart = false;
-                if let Err(e) = settings_store::save_detached(&settings) {
+                let on_disk = settings_store::on_disk(&settings, file_profile.as_deref());
+                if let Err(e) = settings_store::save_detached(&on_disk) {
                     log::warn!("autostart: failed to persist autostart=false after EXE move: {e}");
                 }
                 app.manage(autostart::StartupNotice::moved());
@@ -216,7 +225,7 @@ pub fn run() {
                     return Err(e.into());
                 }
             };
-            let state = match AppState::new(settings, profile, app.handle().clone()) {
+            let state = match AppState::new(settings, file_profile, profile, app.handle().clone()) {
                 Ok(s) => s,
                 Err(e) => {
                     log::error!("Failed to initialize AppState: {e}");

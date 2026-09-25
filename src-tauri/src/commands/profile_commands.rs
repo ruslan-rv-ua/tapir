@@ -213,32 +213,10 @@ pub async fn switch_profile(
     // Step 8: load new profile
     let new_profile = Profile::load(&name).map_err(|e| e.to_string())?;
 
-    // Step 9: save settings with rollback on failure.
-    // IMPORTANT: capture old_active BEFORE mutating.
-    {
-        let old_active = state.settings.read().await.active_profile.clone();
-        let committed = state
-            .commit_settings(|settings| {
-                settings.active_profile = name.clone();
-                Commit::Save(())
-            })
-            .await;
-        if let Err(e) = committed {
-            // Відкат — на відміну від решти комітів, де розбіжність лікує
-            // наступний успішний запис. Тут чекати нема на що: `active_profile`
-            // читається лише при старті, а розійшовшись, відправив би застосунок
-            // у профіль, якого користувач не вибирав. Запис невдалий, тож на
-            // диску вже старе значення — `Skip` повертає пам'ять до нього, не
-            // намагаючись писати вдруге.
-            let _ = state
-                .commit_settings(|settings| {
-                    settings.active_profile = old_active;
-                    Commit::Skip(())
-                })
-                .await;
-            return Err(e.to_string());
-        }
-    }
+    // Step 9: save settings with rollback on failure (inside commit_active_profile).
+    // Свідомий вибір профілю — єдиний запис, що міняє `activeProfile` у файлі,
+    // навіть коли сеанс запущено з `--profile`.
+    state.commit_active_profile(name.clone()).await.map_err(|e| e.to_string())?;
 
     // Step 10: apply new volume
     if let Err(e) = state.player.set_volume(new_profile.player_session.volume, &app).await {
