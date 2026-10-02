@@ -8,7 +8,7 @@ import { $toasts } from "../../stores/toasts";
 import { $settings } from "../../stores/settings";
 import { PlayerPanel } from "./PlayerPanel";
 import { $muteState, $playerStatus } from "../../stores/player";
-import { $streams } from "../../stores/streams";
+import { $streams, $statuses } from "../../stores/streams";
 import { $songs, $songsQuery, $songsStation, $songsSort } from "../../stores/songs";
 import type { GlobalSettings, StreamInfo } from "../../lib/tauri";
 import type { Song } from "../../types/song";
@@ -400,5 +400,32 @@ describe("PlayerPanel — prev restart threshold", () => {
     await vi.waitFor(() => {
       expect($announcer.get()?.message).toBe(m.player_restarted());
     });
+  });
+});
+
+describe("PlayerPanel — a track without an artist", () => {
+  // A station that sends no " - " in its StreamTitle arrives with an empty
+  // artist (stream/connection.rs). The line must read like F9 and the window
+  // title do — through `trackLabel`, with no dangling dash.
+  afterEach(() => $statuses.set({}));
+
+  it("shows the bare title, without a leading dash", () => {
+    playingStream("s1");
+    $statuses.set({
+      s1: {
+        streamId: "s1",
+        state: "idle",
+        currentTrack: { artist: "", title: "So What", startedAt: "", ignored: false },
+        recordingStartedAt: null,
+        bytesRecorded: 0,
+        tracksRecorded: 0,
+        error: null,
+        reconnect: null,
+        sessionId: 0,
+      },
+    });
+    const { getByText, queryByText } = renderPanel();
+    expect(getByText("So What")).toBeTruthy();
+    expect(queryByText(/— So What/)).toBeNull();
   });
 });

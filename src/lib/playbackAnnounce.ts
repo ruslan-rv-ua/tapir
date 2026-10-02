@@ -100,7 +100,9 @@ export function sourceName(source: PlaybackSource, streams: StreamInfo[]): strin
  * `{ artist: "", title: "So What" }` (stream/connection.rs). Interpolating both
  * unconditionally would speak "— So What" with a dangling dash.
  */
-export function trackLabel(track: TrackInfo | null | undefined): string | null {
+export function trackLabel(
+  track: Pick<TrackInfo, "artist" | "title"> | null | undefined,
+): string | null {
   if (!track) return null;
   if (!track.artist && !track.title) return null;
   return [track.artist, track.title].filter(Boolean).join(" — ");

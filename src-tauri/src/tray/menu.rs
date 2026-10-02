@@ -199,11 +199,12 @@ pub async fn build_now_playing_label(
 
             let station = stream_info.map(|s| s.name).unwrap_or_else(|| stream_id.clone());
 
-            match stream_status.and_then(|s| s.current_track) {
-                Some(t) if !t.artist.is_empty() || !t.title.is_empty() => {
-                    Some(format!("{station} — {} — {}", t.artist, t.title))
-                }
-                _ => Some(station),
+            let track = stream_status
+                .and_then(|s| s.current_track)
+                .and_then(|t| crate::tray::notify::track_line(&t.artist, &t.title));
+            match track {
+                Some(track) => Some(format!("{station} — {track}")),
+                None => Some(station),
             }
         }
         PlaybackSource::File { path } => {

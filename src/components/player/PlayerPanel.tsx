@@ -27,7 +27,7 @@ import * as tauri from "../../lib/tauri";
 import * as m from "../../i18n/paraglide/messages";
 import { executeTransportSkip, type SkipTrigger } from "../../lib/transportControl";
 import { isSoundOff, toggleMute } from "../../lib/muteControl";
-import { sourceName } from "../../lib/playbackAnnounce";
+import { sourceName, trackLabel } from "../../lib/playbackAnnounce";
 import { isLiveSource } from "../../lib/playbackSource";
 
 /**
@@ -90,7 +90,7 @@ export const PlayerPanel = forwardRef<
   const currentTrack = currentStreamStatus?.currentTrack;
   // For files: empty string — reserved for future ID3 metadata tags
   const trackDisplay = source?.type === "stream"
-    ? (currentTrack ? `${currentTrack.artist} — ${currentTrack.title}` : "—")
+    ? (trackLabel(currentTrack) ?? "—")
     : "";
   // null, not "—": only a profile stream has a `StreamInfo` to read a bitrate
   // from, and the row below simply omits the number for anything else. (A dash

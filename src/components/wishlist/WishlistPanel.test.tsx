@@ -580,6 +580,18 @@ describe("WishlistPanel — журнал збігів", () => {
     expect(label).toContain("Tycho*");
   });
 
+  it("збіг без виконавця: ні колонка треку, ні мітка рядка не мають висячого тире", async () => {
+    // build_stream_title (wishlist/matcher.rs) віддає саму назву, коли станція
+    // не шле « - », — і збіг на ній законний.
+    $wishlistMatches.set([mkMatch({ artist: "", title: "So What", pattern: "So What" })]);
+    const { getByRole } = await openMatchesTab();
+
+    const row = getByRole("listitem");
+    expect(row.getAttribute("aria-label")).toContain("So What");
+    expect(row.getAttribute("aria-label")).not.toContain("—");
+    expect(row.textContent).not.toContain("—");
+  });
+
   it("найновіший збіг стоїть зверху", async () => {
     // Порядок приходить із буфера в Rust; екран його не переупорядковує.
     $wishlistMatches.set([mkMatch({ id: 2, title: "Awake" }), mkMatch({ id: 1, title: "Dive" })]);

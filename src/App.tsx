@@ -42,7 +42,7 @@ import { resolveEndedAction } from "./lib/playbackTransport";
 import { executeTransportSkip, parseSkipTrigger } from "./lib/transportControl";
 import { applyMuteCleanup } from "./lib/muteCleanup";
 import { rememberVolumeLevel, selectVolumeAnnouncement } from "./lib/muteControl";
-import { selectPlaybackAnnouncement, sourceName, suppressesStarted, type PendingConnect } from "./lib/playbackAnnounce";
+import { selectPlaybackAnnouncement, sourceName, suppressesStarted, trackLabel, type PendingConnect } from "./lib/playbackAnnounce";
 import { describeRecording, selectRecordingAnnouncement } from "./lib/recordingAnnounce";
 import { recordingStatusPatch } from "./lib/recordingStatusPatch";
 import { formatTimeParts } from "./lib/time";
@@ -316,7 +316,7 @@ function AppContent() {
     $wishlistMatches.set(prependMatch($wishlistMatches.get(), payload));
     announce(
       m.announcement_wishlist_match({
-        title: `${payload.artist} — ${payload.title}`,
+        title: trackLabel(payload) ?? "",
         station: payload.stationName,
       }),
       "assertive",
