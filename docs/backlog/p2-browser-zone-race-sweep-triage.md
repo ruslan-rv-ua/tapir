@@ -51,24 +51,24 @@ notes:
 1. **[П] Тулбар виділення рахує рядки, яких на екрані немає.** Поки картка завантаження
    ~~або помилки~~ забрала список, «Виділити все» виділяє півсотні станцій, яких не видно, і
    озвучує «Виділено 50» над карткою без жодного рядка. *Половину про картку помилки
-   закриває [debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md):
+   закриває [debounce-window-shows-stale-result-set](done/p2-debounce-window-shows-stale-result-set.md):
    своя невдала заміна скидає відповідь, тож під карткою помилки виділяти нічого. Лишається
    картка завантаження — там рядки попередньої відповіді досі в сторі.*
 2. **[П] `$appendLoading` не прив'язаний до вибірки.** Осиротіла порція лишає «Завантажити
    ще» **наступної** вибірки з написом «Завантаження…» і `aria-busy`, і кнопка не
    натискається, доки не осяде запит, якого людина вже не чекає.
 3. ~~**[П] Один символ у полі пошуку губить місце в популярному списку.**~~ →
-   [debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md):
+   [debounce-window-shows-stale-result-set](done/p2-debounce-window-shows-stale-result-set.md):
    ключ набору будується з відповіді екрана, а не з поля. Дефект реалізації, не межа
    [ADR 2026-09-06](../decisions/2026-09-06-new-result-set-forgets-the-current-stop.md).
 4. ~~**[П] Вихід із розділу всередині вікна дебаунса** лишає поле без запиту.~~ →
-   [debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md):
+   [debounce-window-shows-stale-result-set](done/p2-debounce-window-shows-stale-result-set.md):
    незавершений дебаунс при розмонтуванні стріляє одразу.
 5. ~~**[?] `Escape` у полі пошуку стріляє пошук без критеріїв.**~~ →
-   [empty-search-shows-popular-stations](p2-empty-search-shows-popular-stations.md): порожні
+   [empty-search-shows-popular-stations](done/p2-empty-search-shows-popular-stations.md): порожні
    критерії — не пошук, разом із двійниками (стерте поле, бітрейт 0, «усі країни»).
 6. ~~**[?] Невдала заміна лишає `$searchResults` і `$hasMore`** про критерії, яких уже
-   немає.~~ → [debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md):
+   немає.~~ → [debounce-window-shows-stale-result-set](done/p2-debounce-window-shows-stale-result-set.md):
    своя невдала заміна скидає відповідь.
 
 Розподіл пунктів 3–6 і обґрунтування — грумінг пошукової пари 2026-10-04,
@@ -109,8 +109,8 @@ notes:
 ## Документи
 
 - [stale-search-overwrites-results](done/p2-stale-search-overwrites-results.md) — §«Спадок»
-- [empty-search-shows-popular-stations](p2-empty-search-shows-popular-stations.md) — перший
+- [empty-search-shows-popular-stations](done/p2-empty-search-shows-popular-stations.md) — перший
   виділений запис
-- [debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md) —
+- [debounce-window-shows-stale-result-set](done/p2-debounce-window-shows-stale-result-set.md) —
   другий виділений запис
 - Код: `src/stores/browser.ts`, `src/components/browser/`

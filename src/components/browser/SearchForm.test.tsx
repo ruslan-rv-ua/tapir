@@ -1,7 +1,8 @@
 import { createRef } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, act } from "@testing-library/react";
+import { render, act, fireEvent } from "@testing-library/react";
 import { $searchParams, $browserFilters } from "../../stores/browser";
+import { searchStationsIpc } from "../../lib/tauri";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as m from "../../i18n/paraglide/messages";
 import { SearchForm } from "./SearchForm";
@@ -47,5 +48,32 @@ describe("SearchForm — focusSearch (Ctrl+F)", () => {
     expect(document.activeElement).toBe(input);
     expect(input.selectionStart).toBe(0);
     expect(input.selectionEnd).toBe(4);
+  });
+});
+
+// Point 4 of browser-zone-race-sweep-triage: leaving the section inside the debounce window used to
+// cancel the request, and the half-second window became endless — the field said
+// «jazz», the screen the previous answer, until the next keystroke. The pending
+// search fires at once instead. ADR 2026-10-04 «Екран показує відповідь, а не поле» §7.
+describe("SearchForm — leaving mid-debounce", () => {
+  it("fires the pending search at once instead of dropping it", () => {
+    vi.mocked(searchStationsIpc).mockClear();
+    const ref = createRef<ZoneEntry>();
+    const { container, unmount } = render(<SearchForm ref={ref} exitZone={vi.fn()} />);
+    const input = container.querySelector<HTMLInputElement>(
+      `input[placeholder="${m.browser_search_placeholder()}"]`,
+    )!;
+    fireEvent.change(input, { target: { value: "jazz" } });
+    expect(searchStationsIpc).not.toHaveBeenCalled(); // still inside the window
+
+    unmount();
+    expect(searchStationsIpc).toHaveBeenCalledWith(expect.objectContaining({ query: "jazz" }));
+  });
+
+  it("asks nothing on leaving when no search is pending", () => {
+    vi.mocked(searchStationsIpc).mockClear();
+    const { unmount } = render(<SearchForm ref={createRef<ZoneEntry>()} exitZone={vi.fn()} />);
+    unmount();
+    expect(searchStationsIpc).not.toHaveBeenCalled();
   });
 });

@@ -14,7 +14,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 саме вони визначають, чи версія закриється. Колонка «Суть» — поле `summary:` запису
 (без нього — `title:`).
 ♿ — запис зачіпає доступність (`a11y: true`), приймання потребує NVDA-прогону.
-Виконані записи (116) — у [done/README.md](done/README.md), спадок кожного — у секції
+Виконані записи (118) — у [done/README.md](done/README.md), спадок кожного — у секції
 «Спадок» його файлу.
 
 ---
@@ -50,12 +50,10 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > поверхонь не з'являється, IPC не міняється, а вже встановлені копії лишаються зі
 > своїми значеннями, бо міграцій немає.
 
-У черзі: 4. Виконано: 14.
+У черзі: 2. Виконано: 16.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
-| [debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md) ♿ | P2 | planned | ready | S | [stale-search-overwrites-results](done/p2-stale-search-overwrites-results.md) ✅ | [empty-search-shows-popular-stations](p2-empty-search-shows-popular-stations.md) | вікно дебаунсу свідомо показує попередню відповідь; носій $resultsFor закриває склейку, ключ набору, вихід посеред набору й рядки під карткою помилки |
-| [empty-search-shows-popular-stations](p2-empty-search-shows-popular-stations.md) ♿ | P2 | planned | ready | S | [debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md) | [browser-search-announces-result-count](p2-browser-search-announces-result-count.md) | показ результатів стоїть на відповіді екрана: нуль каже «Станцій не знайдено»; порожні критерії — не пошук; популярний список зветься популярним |
 | [play-file-refusals-untranslated](p2-play-file-refusals-untranslated.md) ♿ | P2 | planned | ready | S | [play-refusals-untranslated](p2-play-refusals-untranslated.md) | — | play_saved_song шле сиру англійську прозу рушія («File not found: {шлях}» тощо); SongsPanel показує її, автоперехід губить причину |
 | [play-refusals-untranslated](p2-play-refusals-untranslated.md) ♿ | P2 | planned | ready | S | — | [play-file-refusals-untranslated](p2-play-file-refusals-untranslated.md) | play_stream і preview_station шлють сиру англійську прозу на кожну відмову рушія; на станціях AAC+ прев'ю ще й закреслює станцію як «Недоступна» |
 
@@ -126,7 +124,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 | [stream-insert-single-path](p2-stream-insert-single-path.md) | P2 | idea | draft | M | — | — | Сім команд кладуть Потік у Профіль чотирма способами, кожен зі своєю частиною правил; перенесення назв не звіряє — два рядки з однією назвою |
 | [stream-manual-reorder](p2-stream-manual-reorder.md) ♿ | P2 | idea | draft | M | — | — | Ручне сортування потоків — ↑↓ кнопки або drag-and-drop |
 | [track-log-only-mode](p2-track-log-only-mode.md) | P2 | idea | draft | M | — | — | Режим логування назв треків без запису аудіо |
-| [browser-search-announces-result-count](p2-browser-search-announces-result-count.md) ♿ | P2 | idea | draft | S | [empty-search-shows-popular-stations](p2-empty-search-shows-popular-stations.md) | — | відповідь пошуку зараз чути лише при вході в список; палітра вже озвучує кількість результатів — чи робити так само в Браузері і як |
+| [browser-search-announces-result-count](p2-browser-search-announces-result-count.md) ♿ | P2 | idea | draft | S | [empty-search-shows-popular-stations](done/p2-empty-search-shows-popular-stations.md) ✅ | — | відповідь пошуку зараз чути лише при вході в список; палітра вже озвучує кількість результатів — чи робити так само в Браузері і як |
 | [command-palette-dual-language-search](p2-command-palette-dual-language-search.md) | P2 | idea | draft | S | — | — | Пошук у палітрі команд дублюється двома мовами |
 | [command-palette-fuzzy-search](p2-command-palette-fuzzy-search.md) | P2 | idea | draft | S | — | — | Нечіткий пошук у палітрі команд |
 | [focus-on-screen-open-option](p2-focus-on-screen-open-option.md) ♿ | P2 | idea | draft | S | — | — | Налаштування фокуса при відкритті екрана |

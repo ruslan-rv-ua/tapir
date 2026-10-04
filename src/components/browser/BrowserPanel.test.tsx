@@ -129,6 +129,73 @@ it("a changed query sends the results cursor back to the first station", async (
   expect(activeRow()).toBe("s1");
 });
 
+// Point 3 of browser-zone-race-sweep-triage: the key used to be built from the FIELD, so one
+// keystroke over Popular Stations — whose rows it does not touch — threw the
+// stop back to the top. The key is built from what the screen shows now.
+// ADR 2026-10-04 «Екран показує відповідь, а не поле» §6.
+it("typing a letter and erasing it over Popular Stations leaves the stop where it was", async () => {
+  const onZonesChange = vi.fn();
+  render(<BrowserPanel onZonesChange={onZonesChange} exitZone={vi.fn()} />);
+  const results = (await zonesOf(onZonesChange)).find((z) => z.id === "browser-results")!;
+
+  act(() => results.focus("forward"));
+  fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+  expect(activeRow()).toBe("u2");
+  act(() => (document.activeElement as HTMLElement).blur());
+
+  act(() => { updateSearchParam("query", "a"); }); // the debounce window: no request yet
+  act(() => results.focus("forward"));
+  expect(activeRow()).toBe("u2");
+  act(() => (document.activeElement as HTMLElement).blur());
+
+  act(() => { updateSearchParam("query", undefined); });
+  act(() => results.focus("forward"));
+  expect(activeRow()).toBe("u2");
+});
+
+// A search that found nothing used to show Popular Stations: «not searched yet» and
+// «found zero» were the same empty array. Zero is an answer too.
+// ADR 2026-10-04 «Екран показує відповідь, а не поле» §3.
+it("a search that found nothing says so, and Popular Stations are gone", async () => {
+  const { getByText, queryByText } = render(<BrowserPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
+  await waitFor(() => getByText(m.browser_popular_title()));
+
+  vi.mocked(searchStationsIpc).mockResolvedValueOnce([]);
+  await act(async () => {
+    updateSearchParam("query", "qwxzv");
+    await searchStations();
+  });
+
+  // The visible text is the carrier, and the region entered with F6 is named by it.
+  expect(getByText(m.browser_no_results())).toBeTruthy();
+  expect(document.querySelector(`[aria-label="${m.browser_no_results()}"]`)).not.toBeNull();
+  expect(queryByText(m.browser_popular_title())).toBeNull();
+});
+
+it("before the first answer arrives the screen is still Popular Stations, not «nothing found»", async () => {
+  const { getByText, queryByText } = render(<BrowserPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
+  await waitFor(() => getByText(m.browser_popular_title()));
+
+  act(() => { updateSearchParam("query", "jazz"); }); // the debounce window
+  expect(getByText(m.browser_popular_title())).toBeTruthy();
+  expect(queryByText(m.browser_no_results())).toBeNull();
+});
+
+// The list kept the name «Search results» in both modes, so F6 into Popular
+// Stations announced fifty unrelated stations as results of a search.
+it("the list is named for what it shows: Popular Stations, then Search results", async () => {
+  render(<BrowserPanel onZonesChange={vi.fn()} exitZone={vi.fn()} />);
+  const list = () => document.querySelector("[data-zone-id='browser-results']");
+  await waitFor(() => expect(list()?.getAttribute("aria-label")).toBe(m.browser_popular_title()));
+
+  vi.mocked(searchStationsIpc).mockResolvedValueOnce([mk("s1")]);
+  await act(async () => {
+    updateSearchParam("query", "jazz");
+    await searchStations();
+  });
+  expect(list()?.getAttribute("aria-label")).toBe(m.zone_browser_results());
+});
+
 // "Load more" appends to the SAME result set — the remembered row still means
 // what it meant, so it survives.
 it("«Load more» keeps the remembered row", async () => {

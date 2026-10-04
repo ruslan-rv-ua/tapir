@@ -109,7 +109,7 @@ if (stillOurs(criteria)) …
 > скидає відповідь без запиту, тож і прапорець гасить сама. Теза пункту не змінилась —
 > хто лишає критерії без запиту, той і каже «нічого не йде»; `resetSearch` — випадок
 > «спорожнити все одразу». Код доганяє в записі
-> [empty-search-shows-popular-stations](../backlog/p2-empty-search-shows-popular-stations.md).
+> [empty-search-shows-popular-stations](../backlog/done/p2-empty-search-shows-popular-stations.md).
 
 ### 5. Заміна не бере критеріїв аргументом
 
@@ -171,7 +171,7 @@ if (stillOurs(criteria)) …
   > Прапорець і далі підіймає виліт запиту; вікно дебаунсу показує попередню відповідь
   > свідомо (§1), а склеювання закриває не прапорець, а відмова дописування на порозі,
   > поки екран не відповідає полю (§5). «Окремий запис беклогу» —
-  > [debounce-window-shows-stale-result-set](../backlog/p2-debounce-window-shows-stale-result-set.md).
+  > [debounce-window-shows-stale-result-set](../backlog/done/p2-debounce-window-shows-stale-result-set.md).
 - **Квиток лишається посиланням.** Будь-яке майбутнє місце, що «оновить» критерії новим
   об'єктом із тими самими значеннями, викине відповідь у польоті. Хибне спрацювання
   можливе лише в консервативний бік.
