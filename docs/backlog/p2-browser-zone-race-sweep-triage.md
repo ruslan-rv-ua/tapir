@@ -65,7 +65,7 @@ notes:
    [debounce-window-shows-stale-result-set](done/p2-debounce-window-shows-stale-result-set.md):
    незавершений дебаунс при розмонтуванні стріляє одразу.
 5. ~~**[?] `Escape` у полі пошуку стріляє пошук без критеріїв.**~~ →
-   [empty-search-shows-popular-stations](p2-empty-search-shows-popular-stations.md): порожні
+   [empty-search-shows-popular-stations](done/p2-empty-search-shows-popular-stations.md): порожні
    критерії — не пошук, разом із двійниками (стерте поле, бітрейт 0, «усі країни»).
 6. ~~**[?] Невдала заміна лишає `$searchResults` і `$hasMore`** про критерії, яких уже
    немає.~~ → [debounce-window-shows-stale-result-set](done/p2-debounce-window-shows-stale-result-set.md):
@@ -109,7 +109,7 @@ notes:
 ## Документи
 
 - [stale-search-overwrites-results](done/p2-stale-search-overwrites-results.md) — §«Спадок»
-- [empty-search-shows-popular-stations](p2-empty-search-shows-popular-stations.md) — перший
+- [empty-search-shows-popular-stations](done/p2-empty-search-shows-popular-stations.md) — перший
   виділений запис
 - [debounce-window-shows-stale-result-set](done/p2-debounce-window-shows-stale-result-set.md) —
   другий виділений запис

@@ -4,7 +4,7 @@
 - **Дата:** 2026-10-04
 - **Тип:** ADR — що показує екран Браузера між зміною критеріїв і приїздом відповіді
 - **Контекст:** беклог — [debounce-window-shows-stale-result-set](../backlog/done/p2-debounce-window-shows-stale-result-set.md),
-  [empty-search-shows-popular-stations](../backlog/p2-empty-search-shows-popular-stations.md),
+  [empty-search-shows-popular-stations](../backlog/done/p2-empty-search-shows-popular-stations.md),
   пункти 3–6 [browser-zone-race-sweep-triage](../backlog/p2-browser-zone-race-sweep-triage.md);
   попередник — [ADR «Прапорець заміни належить екрану, а не запиту»](2026-09-15-replace-flag-belongs-to-the-screen.md),
   який цю межу назвав і свідомо лишив; словник — [CONTEXT.md](../../CONTEXT.md) §«Пошук станцій»,

@@ -35,7 +35,7 @@ notes:
 > **Контекст:** названа межа
 > [ADR 2026-09-15 «Прапорець заміни належить екрану, а не запиту»](../../decisions/2026-09-15-replace-flag-belongs-to-the-screen.md).
 > **Виґрумінговано 2026-10-04** разом із
-> [empty-search-shows-popular-stations](../p2-empty-search-shows-popular-stations.md); рішення —
+> [empty-search-shows-popular-stations](p2-empty-search-shows-popular-stations.md); рішення —
 > [ADR 2026-10-04 «Екран показує відповідь, а не поле»](../../decisions/2026-10-04-screen-shows-the-answer-not-the-field.md).
 > Читати першим ADR; тут — лише те, що несе саме цей запис.
 
@@ -65,7 +65,7 @@ notes:
 - **§7 — незавершений дебаунс при розмонтуванні форми стріляє одразу**, а не гаситься.
 
 §3–4 (що показує екран, порожні критерії) — у
-[empty-search-shows-popular-stations](../p2-empty-search-shows-popular-stations.md), який
+[empty-search-shows-popular-stations](p2-empty-search-shows-popular-stations.md), який
 залежить від цього запису.
 
 ### Пункти запису-розвідки, що лікуються тут
@@ -101,7 +101,7 @@ starts over: your next entry into it lands on the first result.»:
 > If nothing matches, the list says so: “No stations found”.
 
 Третє речення в обох мовах — частка
-[empty-search-shows-popular-stations](../p2-empty-search-shows-popular-stations.md); правка одна,
+[empty-search-shows-popular-stations](p2-empty-search-shows-popular-stations.md); правка одна,
 бо PR один.
 
 `docs/accessibility.md` §5.1 — до абзацу «Кнопки „Пошук" немає — запит іде за дебаунсом при

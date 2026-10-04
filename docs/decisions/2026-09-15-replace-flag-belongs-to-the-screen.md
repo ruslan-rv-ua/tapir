@@ -109,7 +109,7 @@ if (stillOurs(criteria)) …
 > скидає відповідь без запиту, тож і прапорець гасить сама. Теза пункту не змінилась —
 > хто лишає критерії без запиту, той і каже «нічого не йде»; `resetSearch` — випадок
 > «спорожнити все одразу». Код доганяє в записі
-> [empty-search-shows-popular-stations](../backlog/p2-empty-search-shows-popular-stations.md).
+> [empty-search-shows-popular-stations](../backlog/done/p2-empty-search-shows-popular-stations.md).
 
 ### 5. Заміна не бере критеріїв аргументом
 

@@ -1,14 +1,15 @@
 ---
 slug: empty-search-shows-popular-stations
 title: "Браузер станцій: пошук без результатів показує популярні станції"
-summary: "показ результатів стоїть на відповіді екрана: нуль каже «Станцій не знайдено»; порожні критерії — не пошук; популярний список зветься популярним"
+summary: "Нульова відповідь каже «Станцій не знайдено»; порожні критерії не йдуть у каталог; список зветься за режимом; NVDA 16/16"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: S
 kind: bug
 target: 0.1.1
 updated: 2026-10-04
+completed: 2026-10-04
 a11y: true
 depends_on: [debounce-window-shows-stale-result-set]
 blocks: []
@@ -33,10 +34,10 @@ notes:
 # Браузер станцій: пошук без результатів показує популярні станції
 
 > **Контекст:** знахідка фонового обходу під час грилінгу
-> [stale-search-overwrites-results](done/p2-stale-search-overwrites-results.md) (2026-09-15).
+> [stale-search-overwrites-results](p2-stale-search-overwrites-results.md) (2026-09-15).
 > **Виґрумінговано 2026-10-04** разом із
-> [debounce-window-shows-stale-result-set](done/p2-debounce-window-shows-stale-result-set.md); рішення —
-> [ADR 2026-10-04 «Екран показує відповідь, а не поле»](../decisions/2026-10-04-screen-shows-the-answer-not-the-field.md).
+> [debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md); рішення —
+> [ADR 2026-10-04 «Екран показує відповідь, а не поле»](../../decisions/2026-10-04-screen-shows-the-answer-not-the-field.md).
 > Читати першим ADR; тут — лише те, що несе саме цей запис.
 
 ## Опис
@@ -45,7 +46,7 @@ notes:
 **«Популярні станції»** — заголовок і півсотні станцій, які до запиту не мають стосунку.
 Рядок «Станцій не знайдено. Спробуйте інший запит.» не показується ніколи.
 
-Механізм — один вираз у [BrowserPanel.tsx](../../src/components/browser/BrowserPanel.tsx):
+Механізм — один вираз у [BrowserPanel.tsx](../../../src/components/browser/BrowserPanel.tsx):
 
 ```ts
 const showSearchResults = isSearchActive && (searchResults.length > 0 || searchLoading || !!searchError);
@@ -82,7 +83,7 @@ const showSearchResults = isSearchActive && (searchResults.length > 0 || searchL
   самого повідомлення.
 - **Без озвучення нуля.** Приїзд відповіді не озвучується, як і досі (`accessibility.md` §5.1);
   факт живе в списку. Озвучення кількості результатів за прецедентом командної палітри —
-  окрема ідея [browser-search-announces-result-count](p2-browser-search-announces-result-count.md)
+  окрема ідея [browser-search-announces-result-count](../p2-browser-search-announces-result-count.md)
   (0.3.0).
 
 Розвилки 2 («порожньо» як окремий стан вибірки) і 3 (визнати поведінку навмисною) відкинуто:
@@ -91,7 +92,7 @@ const showSearchResults = isSearchActive && (searchResults.length > 0 || searchL
 
 ### Пункт запису-розвідки, що лікується тут
 
-**5** з [browser-zone-race-sweep-triage](p2-browser-zone-race-sweep-triage.md) — `Escape` у полі
+**5** з [browser-zone-race-sweep-triage](../p2-browser-zone-race-sweep-triage.md) — `Escape` у полі
 пошуку стріляє пошук без критеріїв: лікує ADR §4, разом із двійниками (стерте поле, бітрейт 0,
 «усі країни»).
 
@@ -99,7 +100,7 @@ const showSearchResults = isSearchActive && (searchResults.length > 0 || searchL
 
 - Довідка: третє речення погодженої правки абзацу «Пошук» («Якщо за запитом нічого немає, список
   так і каже: „Станцій не знайдено"») — текст у
-  [debounce-window-shows-stale-result-set](done/p2-debounce-window-shows-stale-result-set.md)
+  [debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md)
   §«Довідка й `accessibility.md`»; правка одна, бо PR один.
 - `docs/accessibility.md` §5.1, дерево: `StationList aria-label` — «Популярні станції» /
   «Результати пошуку» за режимом; «(поки пошук не виконано)» біля `<h2>` → «(поки немає
@@ -109,20 +110,20 @@ const showSearchResults = isSearchActive && (searchResults.length > 0 || searchL
 
 ## Критерії готовності
 
-- [ ] Пошук, що нічого не знайшов, показує «Станцій не знайдено. Спробуйте інший запит.» —
+- [x] Пошук, що нічого не знайшов, показує «Станцій не знайдено. Спробуйте інший запит.» —
       видимий носій (ADR 2026-08-31), і він же назва регіону на вході через F6
-- [ ] `m.browser_no_results()` досяжний — тест панелі на нульову відповідь
-- [ ] «Ще не шукали» відрізняється від «знайдено нуль»: до першої відповіді за активних
+- [x] `m.browser_no_results()` досяжний — тест панелі на нульову відповідь
+- [x] «Ще не шукали» відрізняється від «знайдено нуль»: до першої відповіді за активних
       критеріїв — популярні, а не «нічого не знайдено» — тест
-- [ ] Порожні критерії не йдуть у каталог (IPC не викликається) і скидають відповідь; прапорець
+- [x] Порожні критерії не йдуть у каталог (IPC не викликається) і скидають відповідь; прапорець
       гасне навіть тоді, коли заміна ще летить, і її пізня відповідь його не чіпає — тест у дусі
       «resetSearch says «nothing is coming»»
-- [ ] Назва списку не бреше: популярні — «Популярні станції», пошук — «Результати пошуку» — тест
+- [x] Назва списку не бреше: популярні — «Популярні станції», пошук — «Результати пошуку» — тест
       на `aria-label` в обох режимах
-- [ ] `docs/help/` — третє речення погодженої правки (див. вище)
-- [ ] `docs/accessibility.md` §5.1 — дерево
-- [ ] Докстрінги `$searchLoading` і `resetSearch` узгоджено з ADR 2026-10-04 §4
-- [ ] NVDA-чекліст [nvda-empty-search-shows-popular-stations.json](../testing/nvda-empty-search-shows-popular-stations.json) через `/axygen-checklist:write`, сценарії:
+- [x] `docs/help/` — третє речення погодженої правки (див. вище)
+- [x] `docs/accessibility.md` §5.1 — дерево
+- [x] Докстрінги `$searchLoading` і `resetSearch` узгоджено з ADR 2026-10-04 §4
+- [x] NVDA-прогін 2026-10-04 — 16/16; чекліст видалено на прийманні. Сценарії:
       (1) щойно відкритий розділ, F6 у список — «Популярні станції» і перша станція;
       (2) набрати безглуздий запит, дочекатися, F6 — «Станцій не знайдено. Спробуйте інший запит.»,
       а не популярні;
@@ -131,16 +132,38 @@ const showSearchResults = isSearchActive && (searchResults.length > 0 || searchL
       (5) задати країну й набрати запит, `Escape` — текст зник, список далі відфільтрований
       країною; F6 — «Результати пошуку»;
       (6) «Скинути фільтри» — популярні; F6 — «Популярні станції»
-- [ ] `pnpm vite:build`, `pnpm test`, `pnpm typecheck`
+- [x] `pnpm vite:build`, `pnpm test`, `pnpm typecheck`
+
+## Спадок
+
+`showSearchResults` у `BrowserPanel.tsx` стоїть на `$resultsFor !== null` замість довжини
+рядків: нульова відповідь — відповідь, і `m.browser_no_results()` нарешті досяжний. До першої
+відповіді за активних критеріїв екран лишається популярним. Обидва випадки закріплено
+тестами панелі.
+
+Правило «порожні критерії — не пошук» живе в сторі, форма не мінялась. `hasCriteria` — один
+предикат для `$isSearchActive` і для рішення, чи йти в каталог; нове поле `SearchCriteria`,
+що звужує пошук, треба дописати саме туди. `updateSearchParam`, після якого критеріїв не
+лишилось, і `resetSearch` кличуть спільний `dropSearch()` — відповідь, помилка й прапорець
+заміни разом; `searchStations` на порожніх критеріях повертається ще до прапорця, тож Escape,
+стерте поле, бітрейт 0 і «Усі країни» більше не шлють запит. Докстрінги `$searchLoading` і
+`resetSearch` переписано: писар без запиту тепер кожен, хто спорожнив критерії.
+
+Назва списку — за режимом у `StationList.tsx`: «Популярні станції» (той самий текст, що
+видимий `<h2>`) або «Результати пошуку». Тест на `aria-label` в обох режимах.
+
+Відхилення від чернетки: старі тести стору, що шукали з порожніми критеріями, дістали запит
+`rock` — інакше пошуку тепер немає. Із рев'ю відкинуто: передавати назву списку з панелі
+замість гілки по `mode` у `StationList` — `mode` там і так є носієм режиму.
 
 ## Документи
 
-- [ADR 2026-10-04 — екран показує відповідь, а не поле](../decisions/2026-10-04-screen-shows-the-answer-not-the-field.md)
-- [ADR 2026-08-31 — видимий носій для озвучених фактів](../decisions/2026-08-31-visible-carrier-for-announced-facts.md)
-- [ADR 2026-09-15 — прапорець заміни належить екрану, а не запиту](../decisions/2026-09-15-replace-flag-belongs-to-the-screen.md) — §4
-- [stale-search-overwrites-results](done/p2-stale-search-overwrites-results.md) — звідки
+- [ADR 2026-10-04 — екран показує відповідь, а не поле](../../decisions/2026-10-04-screen-shows-the-answer-not-the-field.md)
+- [ADR 2026-08-31 — видимий носій для озвучених фактів](../../decisions/2026-08-31-visible-carrier-for-announced-facts.md)
+- [ADR 2026-09-15 — прапорець заміни належить екрану, а не запиту](../../decisions/2026-09-15-replace-flag-belongs-to-the-screen.md) — §4
+- [stale-search-overwrites-results](p2-stale-search-overwrites-results.md) — звідки
   знахідка; §«Спадок»
-- [CONTEXT.md](../../CONTEXT.md) §«Пошук станцій» — **Відповідь екрана**
+- [CONTEXT.md](../../../CONTEXT.md) §«Пошук станцій» — **Відповідь екрана**
 - Код: `src/components/browser/BrowserPanel.tsx` (`showSearchResults`, `emptyMessage`),
   `src/components/browser/StationList.tsx` (`ariaLabel`),
   `src/components/common/composite-list/CompositeList.tsx` (порядок гілок),
