@@ -154,7 +154,7 @@ crash-recovery **і** перебудову меню трея із трьома �
 
 ## Поправка 2026-10-04: мить старту — факт сесії
 
-Грумінг [recording-duration-is-per-connection](../backlog/p2-recording-duration-is-per-connection.md)
+Грумінг [recording-duration-is-per-connection](../backlog/done/p2-recording-duration-is-per-connection.md)
 ухвалив, що тривалість запису рахується від команди «почати», а не від поточного
 з'єднання ([CONTEXT.md](../../CONTEXT.md) §«Запис і Записи», «Тривалість запису»). Мить
 старту від цього перестає бути фактом переходу: її знає сесія з моменту команди, і жоден

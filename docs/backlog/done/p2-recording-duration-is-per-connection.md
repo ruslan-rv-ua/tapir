@@ -1,34 +1,37 @@
 ---
 slug: recording-duration-is-per-connection
 title: "Тривалість запису обнуляється після кожного перепідключення"
-summary: "довідка обіцяє час від початку запису, а рядок потоку й рядок стану показують вік поточного з'єднання: кожне перепідключення обнуляє число"
+summary: "Мить сесії ставить команда «почати» поруч із session_id, подія повторює її в усіх живих фазах; рядок стану рахує й записи, що перепідключаються."
 priority: P2
 type: planned
-status: ready
+status: done
 effort: S
 kind: bug
 target: 0.1.1
 updated: 2026-10-04
+completed: 2026-10-04
 a11y: false
 depends_on: [reconnect-counter-not-live]
 blocks: []
 touches:
   - src-tauri/src/stream/manager.rs
   - src/components/layout/StatusBar.tsx
+  - src/lib/recordingStatusPatch.ts
 gates: [cargo test, pnpm test, pnpm vite:build]
 notes:
   - "2026-09-15: винесено з грумінгу reconnect-counter-not-live. Там ухвалено возити `recordingStartedAt` у події переходу замість вигаданого фронтендом; семантику самого числа свідомо не чіпали, щоб не змішувати з виправленням лічильника."
   - "2026-10-04: огляд беклогу знайшов відповідь на головне питання в довідці й CONTEXT.md; research → planned, P3 → P2 і перенесено в 0.1.1 рішенням власника."
   - "2026-10-04: виґрумінговано (draft → ready). Мить — команда «почати»; рядок потоку в `reconnecting` без змін; рядок стану рахує всі три фази; подія везе мить сесії, поправка до ADR 2026-09-15. Термін «Тривалість запису» — у CONTEXT.md."
+  - "2026-10-04: реалізовано й закрито (ready → done)."
 ---
 
 # Тривалість запису обнуляється після кожного перепідключення
 
 > **Контекст:** знайдено під час грумінгу
-> [reconnect-counter-not-live](done/p2-reconnect-counter-not-live.md) (2026-09-15).
+> [reconnect-counter-not-live](p2-reconnect-counter-not-live.md) (2026-09-15).
 > 2026-10-04 перенесено в 0.1.1: що таке «тривалість запису», уже кажуть довідка й словник
 > (див. «Відповідь»). Того ж дня виґрумінговано (див. «Рішення грумінгу»). Режим —
-> **READY**: до реалізації.
+> **DONE** (2026-10-04): див. «Спадок».
 
 ## Опис
 
@@ -65,7 +68,7 @@ notes:
 - довідка, рядок стану: «час найдовшого з них» / «how long the longest one has been running»
   (`recording.md:13`) і «тривалість найдовшого активного запису»
   (`docs/help/{uk,en}/navigation.md:48`);
-- [CONTEXT.md](../../CONTEXT.md) §«Запис і Записи»: підключення й перепідключення — **фази**
+- [CONTEXT.md](../../../CONTEXT.md) §«Запис і Записи»: підключення й перепідключення — **фази**
   запису, а не його відсутність.
 
 Тож рядок потоку й рядок стану відповідають однаково, а число, що обнуляється всередині
@@ -102,7 +105,7 @@ notes:
 `Recording` воно несе мить сесії, у фіналі `null`. Емісія бере значення зі статусу, а не з
 переходу. Фронтенд (`recordingStatusPatch.ts`) не міняється. Це суперечило §1 і другому
 похідному правилу §4
-[ADR 2026-09-15](../decisions/2026-09-15-event-carries-what-the-transition-knows.md), тому
+[ADR 2026-09-15](../../decisions/2026-09-15-event-carries-what-the-transition-knows.md), тому
 до ADR дописано поправку 2026-10-04: мить старту тепер факт сесії, який подія повторює, і
 існує тоді й лише тоді, коли запис живий. Відхилено віддати мить pull-каналу: це зміна IPC,
 а мить не накопичується, тож §2 ADR до неї не пасує.
@@ -119,27 +122,52 @@ notes:
 
 ## Критерії готовності
 
-- [ ] `docs/help/` не змінюється: `recording.md` і `navigation.md` в обох локалях уже
+- [x] `docs/help/` не змінюється: `recording.md` і `navigation.md` в обох локалях уже
       обіцяють тривалість від початку запису — виправлення приводить код до обіцянки
 - [x] Визначення «Тривалість запису» записане в `CONTEXT.md` §«Запис і Записи» (грумінг)
 - [x] Поправка 2026-10-04 до ADR 2026-09-15 дописана (грумінг)
-- [ ] `start_recording` ставить `recording_started_at` разом із `session_id`;
+- [x] `start_recording` ставить `recording_started_at` разом із `session_id`;
       `Transition::Recording` мітки не несе
-- [ ] Тест на `apply_transition`: `Connecting → Recording → Reconnecting → Recording` — мить
+- [x] Тест на `apply_transition`: `Connecting → Recording → Reconnecting → Recording` — мить
       та сама в статусі й у кожній емісії, вже присутня в `Connecting`; фінал дає `None`
-- [ ] Сторож §5 (`every_emitted_field_alone_is_enough_to_emit`) і рядок про
+- [x] Сторож §5 (`every_emitted_field_alone_is_enough_to_emit`) і рядок про
       `recording_started_at` у ньому узгоджені з тим, що мить між переходами не міняється
-- [ ] Рядок стану: тест, де один запис у `reconnecting`, а другий у `recording` — лічильник
+- [x] Рядок стану: тест, де один запис у `reconnecting`, а другий у `recording` — лічильник
       рахує обидва, найдовший береться з того, що перепідключається
-- [ ] Рядок потоку в `reconnecting` показує «Спроба N з M», як і раніше; після
+- [x] Рядок потоку в `reconnecting` показує «Спроба N з M», як і раніше; після
       `Recording` час продовжується від команди
-- [ ] `cargo test`, `pnpm test`, `pnpm vite:build` — без помилок
+- [x] `cargo test`, `pnpm test`, `pnpm vite:build` — без помилок
+
+## Спадок
+
+Мить сесії тепер одна на весь запис: `start_recording` ставить `recording_started_at`
+поруч із `session_id`, і жоден перехід її не пише — лише фінал стирає. `Transition::Recording`
+мітки більше не носить; `transition_outcome` дає мить `None` скрізь, а `apply_transition`
+доповнює емісію значенням зі статусу. Тіло `recording-status` не змінилось: те саме поле,
+той самий тип, тепер присутнє в `connecting`, `reconnecting` і `recording`, `null` у фіналі.
+Фронтенд-дзеркало (`recordingStatusPatch.ts`) не мінялось, оновлено лише коментар.
+
+Сторож §5 (`every_emitted_field_alone_is_enough_to_emit`) звузився до трьох полів переходу:
+мить старту вийшла з обох переліків `apply_transition`, бо між переходами вона не міняється
+й нової події сама не дає. Рядок «recording_started_at alone» перетворився на протилежне
+твердження: повторний `Recording` нічого не емітить. Новий тест
+`the_start_moment_is_the_command_and_survives_every_reconnect` проходить шлях
+`Connecting → Recording → Reconnecting → Recording` і перевіряє ту саму мить у статусі й у
+кожній емісії, а потім `None` після фіналу. Поведінкового тесту на сам `start_recording`
+немає: він вимагає `AppHandle`, як і сусіди.
+
+Рядок стану рахує `isRecordingLike` замість `state === "recording"`: запис, що
+перепідключається, лишається в лічильнику й може бути найдовшим. Рядок потоку не змінювався:
+у `reconnecting` він і далі каже «Спроба N з M», а після перепідключення час іде від команди.
+Обидві поведінки закріплено тестами в `StatusBar.test.tsx` і `StreamItem.test.tsx`.
+
+`docs/help/` не чіпали: довідка вже обіцяла саме цю тривалість.
 
 ## Документи
 
-- [reconnect-counter-not-live](done/p2-reconnect-counter-not-live.md) — звідки відщеплено
-- [ADR: подія несе те, що знає перехід](../decisions/2026-09-15-event-carries-what-the-transition-knows.md)
+- [reconnect-counter-not-live](p2-reconnect-counter-not-live.md) — звідки відщеплено
+- [ADR: подія несе те, що знає перехід](../../decisions/2026-09-15-event-carries-what-the-transition-knows.md)
   — чому мить старту тепер їде в події й чому це нічого не змінило
-- [CONTEXT.md](../../CONTEXT.md) §«Запис і Записи»
+- [CONTEXT.md](../../../CONTEXT.md) §«Запис і Записи»
 - Код: `src-tauri/src/stream/manager.rs` (`apply_transition`, `session_id`),
   `src/components/streams/StreamItem.tsx`, `src/components/layout/StatusBar.tsx`

@@ -14,7 +14,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 саме вони визначають, чи версія закриється. Колонка «Суть» — поле `summary:` запису
 (без нього — `title:`).
 ♿ — запис зачіпає доступність (`a11y: true`), приймання потребує NVDA-прогону.
-Виконані записи (115) — у [done/README.md](done/README.md), спадок кожного — у секції
+Виконані записи (116) — у [done/README.md](done/README.md), спадок кожного — у секції
 «Спадок» його файлу.
 
 ---
@@ -50,14 +50,13 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > поверхонь не з'являється, IPC не міняється, а вже встановлені копії лишаються зі
 > своїми значеннями, бо міграцій немає.
 
-У черзі: 5. Виконано: 13.
+У черзі: 4. Виконано: 14.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
 | [debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md) ♿ | P2 | planned | ready | S | [stale-search-overwrites-results](done/p2-stale-search-overwrites-results.md) ✅ | [empty-search-shows-popular-stations](p2-empty-search-shows-popular-stations.md) | вікно дебаунсу свідомо показує попередню відповідь; носій $resultsFor закриває склейку, ключ набору, вихід посеред набору й рядки під карткою помилки |
 | [empty-search-shows-popular-stations](p2-empty-search-shows-popular-stations.md) ♿ | P2 | planned | ready | S | [debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md) | [browser-search-announces-result-count](p2-browser-search-announces-result-count.md) | показ результатів стоїть на відповіді екрана: нуль каже «Станцій не знайдено»; порожні критерії — не пошук; популярний список зветься популярним |
 | [play-refusals-untranslated](p2-play-refusals-untranslated.md) ♿ | P2 | planned | ready | S | — | [play-file-refusals-untranslated](p2-play-file-refusals-untranslated.md) | play_stream і preview_station шлють сиру англійську прозу на кожну відмову рушія; на станціях AAC+ прев'ю ще й закреслює станцію як «Недоступна» |
-| [recording-duration-is-per-connection](p2-recording-duration-is-per-connection.md) | P2 | planned | ready | S | [reconnect-counter-not-live](done/p2-reconnect-counter-not-live.md) ✅ | — | довідка обіцяє час від початку запису, а рядок потоку й рядок стану показують вік поточного з'єднання: кожне перепідключення обнуляє число |
 | [play-file-refusals-untranslated](p2-play-file-refusals-untranslated.md) ♿ | P2 | planned | draft | S | [play-refusals-untranslated](p2-play-refusals-untranslated.md) | — | play_saved_song шле сиру англійську прозу рушія («File not found: {шлях}» тощо), і SongsPanel показує її в обох локалях |
 
 ---

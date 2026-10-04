@@ -283,6 +283,32 @@ describe("StreamItem — reconnecting counter display", () => {
     expect(statusCell.textContent).toMatch(/reconnecting|перепідключення/i);
     expect(statusCell.textContent).not.toMatch(/attempt|спроба/i);
   });
+
+  it("keeps saying 'Attempt N of M' while reconnecting even though the session moment is known", () => {
+    // The start moment now rides in every live phase (ADR 2026-09-15,
+    // amendment 2026-10-04), but the segment shows time only in `recording`.
+    const startedAt = new Date(Date.now() - 2 * 3600_000).toISOString();
+    const { container } = renderItem(mkStream(), {
+      ...mkReconnecting({ attempt: 3, max: 10 }),
+      recordingStartedAt: startedAt,
+    });
+    const statusCell = container.querySelector('[data-segment="status"]')!;
+    expect(statusCell.textContent).toMatch(/attempt 3 of 10|спроба 3 з 10/i);
+    expect(statusCell.textContent).not.toMatch(/\d:\d\d/);
+  });
+
+  it("continues the time from the start command once the reconnect succeeds", () => {
+    // A reconnect is a phase of the recording, not a new one: the duration
+    // counts from «почати», not from the latest connection (CONTEXT.md).
+    const startedAt = new Date(Date.now() - 2 * 3600_000).toISOString();
+    const { container } = renderItem(mkStream(), {
+      ...mkReconnecting(null),
+      state: "recording",
+      recordingStartedAt: startedAt,
+    });
+    const statusCell = container.querySelector('[data-segment="status"]')!;
+    expect(statusCell.textContent).toMatch(/^2:00:0\d$/);
+  });
 });
 
 describe("StreamItem — error state accessibility (D9)", () => {
