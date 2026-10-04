@@ -51,7 +51,7 @@ describe("SearchForm — focusSearch (Ctrl+F)", () => {
   });
 });
 
-// Point 4 of the race sweep: leaving the section inside the debounce window used to
+// Point 4 of browser-zone-race-sweep-triage: leaving the section inside the debounce window used to
 // cancel the request, and the half-second window became endless — the field said
 // «jazz», the screen the previous answer, until the next keystroke. The pending
 // search fires at once instead. ADR 2026-10-04 «Екран показує відповідь, а не поле» §7.

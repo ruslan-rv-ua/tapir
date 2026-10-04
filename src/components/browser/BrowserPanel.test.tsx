@@ -129,7 +129,7 @@ it("a changed query sends the results cursor back to the first station", async (
   expect(activeRow()).toBe("s1");
 });
 
-// Point 3 of the race sweep: the key used to be built from the FIELD, so one
+// Point 3 of browser-zone-race-sweep-triage: the key used to be built from the FIELD, so one
 // keystroke over Popular Stations — whose rows it does not touch — threw the
 // stop back to the top. The key is built from what the screen shows now.
 // ADR 2026-10-04 «Екран показує відповідь, а не поле» §6.

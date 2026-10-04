@@ -59,6 +59,13 @@ export const $searchParams = atom<SearchCriteria>({
  * and does not touch it either. ADR 2026-10-04 «Екран показує відповідь, а не поле» §2.
  */
 export const $resultsFor = atom<SearchCriteria | null>(null);
+
+/** No answer on screen: rows, $hasMore and $resultsFor go together, per the invariant above. */
+function dropAnswer(): void {
+  $searchResults.set([]);
+  $hasMore.set(false);
+  $resultsFor.set(null);
+}
 export const $browserFilters = atom<BrowserFilters | null>(null);
 export const $hasMore = atom<boolean>(false);
 export const $popularStations = atom<StationResult[]>([]);
@@ -144,9 +151,7 @@ export async function searchStations(): Promise<void> {
     $resultsFor.set(criteria);
   } catch (e) {
     if (!stillOurs(criteria)) return;
-    $searchResults.set([]);
-    $hasMore.set(false);
-    $resultsFor.set(null);
+    dropAnswer();
     $searchError.set(String(e));
   } finally {
     if (stillOurs(criteria)) $searchLoading.set(false);
@@ -258,9 +263,7 @@ export function updateSearchParam<K extends keyof SearchCriteria>(
 
 export function resetSearch(): void {
   $searchParams.set({ limit: 50, order: "clickcount" });
-  $searchResults.set([]);
-  $hasMore.set(false);
-  $resultsFor.set(null);
+  dropAnswer();
   $searchError.set(null);
   // Not dead code, and not somebody else's field. This is the ONE criteria write
   // with no request behind it, so it is the one place that has to say «nothing is

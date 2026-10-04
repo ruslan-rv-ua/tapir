@@ -24,6 +24,12 @@ function cancelPending(pending: PendingSearch): void {
   pending.current = undefined;
 }
 
+/** Search now — still a task away, so the criteria write lands first. */
+function searchNow(pending: PendingSearch): void {
+  cancelPending(pending);
+  setTimeout(() => searchStations(), 0);
+}
+
 /** Search once typing pauses. `pending.current` is set exactly while one waits. */
 function searchAfterPause(pending: PendingSearch): void {
   cancelPending(pending);
@@ -70,8 +76,7 @@ export const SearchForm = forwardRef<ZoneEntry, SearchFormProps>(function Search
   // Immediate search on filter change
   const handleFilterChange = useCallback(<K extends keyof SearchCriteria>(key: K, value: string) => {
     updateSearchParam(key, (value || undefined) as SearchCriteria[K]);
-    cancelPending(debounceRef);
-    setTimeout(() => searchStations(), 0);
+    searchNow(debounceRef);
   }, []);
 
   // Debounced bitrate change
@@ -83,9 +88,8 @@ export const SearchForm = forwardRef<ZoneEntry, SearchFormProps>(function Search
   // SearchField clear (Escape / clear button) only clears the text query —
   // dropdown filters and bitrate are left intact. Full reset is the dedicated button.
   const handleClear = useCallback(() => {
-    cancelPending(debounceRef);
     updateSearchParam("query", undefined);
-    setTimeout(() => searchStations(), 0);
+    searchNow(debounceRef);
   }, []);
 
   // Dedicated "Reset filters" button: clears every filter and returns to Popular.
