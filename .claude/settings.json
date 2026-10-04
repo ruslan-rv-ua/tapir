@@ -2,7 +2,23 @@
   "permissions": {
     "allow": [
       "Bash(pnpm merge-own-pr *)",
-      "PowerShell(pnpm merge-own-pr *)"
+      "PowerShell(pnpm merge-own-pr *)",
+      "Bash(gh pr checks *)",
+      "PowerShell(gh pr checks *)",
+      "Bash(gh pr view *)",
+      "PowerShell(gh pr view *)",
+      "Bash(git fetch)",
+      "Bash(git fetch *)",
+      "PowerShell(git fetch)",
+      "PowerShell(git fetch *)",
+      "Bash(git checkout develop)",
+      "PowerShell(git checkout develop)",
+      "Bash(git pull)",
+      "Bash(git pull --ff-only)",
+      "PowerShell(git pull)",
+      "PowerShell(git pull --ff-only)",
+      "Bash(git branch -d *)",
+      "PowerShell(git branch -d *)"
     ],
     "deny": [
       "Bash(gh pr merge *)",
