@@ -56,8 +56,8 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 |------|---|-----|------|---------|---------------|-------------|------|
 | [debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md) ♿ | P2 | planned | ready | S | [stale-search-overwrites-results](done/p2-stale-search-overwrites-results.md) ✅ | [empty-search-shows-popular-stations](p2-empty-search-shows-popular-stations.md) | вікно дебаунсу свідомо показує попередню відповідь; носій $resultsFor закриває склейку, ключ набору, вихід посеред набору й рядки під карткою помилки |
 | [empty-search-shows-popular-stations](p2-empty-search-shows-popular-stations.md) ♿ | P2 | planned | ready | S | [debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md) | [browser-search-announces-result-count](p2-browser-search-announces-result-count.md) | показ результатів стоїть на відповіді екрана: нуль каже «Станцій не знайдено»; порожні критерії — не пошук; популярний список зветься популярним |
+| [play-file-refusals-untranslated](p2-play-file-refusals-untranslated.md) ♿ | P2 | planned | ready | S | [play-refusals-untranslated](p2-play-refusals-untranslated.md) | — | play_saved_song шле сиру англійську прозу рушія («File not found: {шлях}» тощо); SongsPanel показує її, автоперехід губить причину |
 | [play-refusals-untranslated](p2-play-refusals-untranslated.md) ♿ | P2 | planned | ready | S | — | [play-file-refusals-untranslated](p2-play-file-refusals-untranslated.md) | play_stream і preview_station шлють сиру англійську прозу на кожну відмову рушія; на станціях AAC+ прев'ю ще й закреслює станцію як «Недоступна» |
-| [play-file-refusals-untranslated](p2-play-file-refusals-untranslated.md) ♿ | P2 | planned | draft | S | [play-refusals-untranslated](p2-play-refusals-untranslated.md) | — | play_saved_song шле сиру англійську прозу рушія («File not found: {шлях}» тощо), і SongsPanel показує її в обох локалях |
 
 ---
 
