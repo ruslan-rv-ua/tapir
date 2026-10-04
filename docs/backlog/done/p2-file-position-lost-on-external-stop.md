@@ -1,14 +1,15 @@
 ---
 slug: file-position-lost-on-external-stop
 title: "Позиція файлу губиться після зупинки медіа-клавішею, `--stop-playback` чи перемиканням профілю"
-summary: "Медіа-клавіша «Стоп», `--stop-playback` і перемикання профілю не зберігають позицію файлу: продовження останнього починає файл з нуля"
+summary: "Медіа-клавіші «Стоп»/«Пауза», `--stop-playback` і перемикання профілю зберігають позицію файлу; перемикання й вихід ділять один Коміт"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: S
 kind: bug
 target: 0.1.1
-updated: 2026-09-24
+updated: 2026-10-04
+completed: 2026-10-04
 a11y: false
 depends_on: []
 blocks: []
@@ -28,13 +29,13 @@ notes:
 
 # Позиція файлу губиться після зупинки медіа-клавішею, `--stop-playback` чи перемиканням профілю
 
-> **Контекст:** знахідка [огляду архітектури 2026-09-24](../notes/architecture-review-2026-09-24.md).
-> `planned` + `ready` → **РЕАЛІЗАЦІЯ**. Номери рядків — стан на f09f36b; шляхи Rust — від
+> **Контекст:** знахідка [огляду архітектури 2026-09-24](../../notes/architecture-review-2026-09-24.md).
+> **ЗАКРИТО 2026-10-04** (див. «Спадок»). Номери рядків — стан на f09f36b; шляхи Rust — від
 > `src-tauri/src/`.
 
 ## Опис
 
-Позиція файлу (`player_session.last_file_position`) — одне з [Сесійних полів](../../CONTEXT.md)
+Позиція файлу (`player_session.last_file_position`) — одне з [Сесійних полів](../../../CONTEXT.md)
 профілю: на диск вона потрапляє на переходах, коли місце виклику не забуло про
 `persist_session_snapshot`. Три шляхи зупинки забувають: системні медіа-клавіші,
 `tapir --stop-playback` і перемикання профілю. У профілі лишається позиція зі старту
@@ -62,7 +63,7 @@ notes:
 
 ## Що обіцяно
 
-- [CONTEXT.md](../../CONTEXT.md), «Сесійні поля» (:316-320): поля пишуться на переходах, серед
+- [CONTEXT.md](../../../CONTEXT.md), «Сесійні поля» (:316-320): поля пишуться на переходах, серед
   них «пауза/зупинка файлу». Там само (:176): поки щось грає, медіа-клавіші поводяться як
   головна кнопка, а її пауза файлу (`PauseFile`) позицію зберігає.
 - Довідка, «Робота у фоні»: медіа-клавіші керують відтворенням так само, як кнопки
@@ -72,7 +73,7 @@ notes:
   `settings_resume_from_position`, `src/i18n/messages/uk.json:391`).
 - Довідка, «Перемикання»: перемикання зупиняє відтворення (`docs/help/uk/profiles.md:11`,
   en :11) — це зупинка файлу за правилом CONTEXT.
-- [playback-toggle-stop-pause](done/p1-playback-toggle-stop-pause.md), рішення #7 (:64):
+- [playback-toggle-stop-pause](p1-playback-toggle-stop-pause.md), рішення #7 (:64):
   збереження позиції на pause / stop / зміні треку / виході; підключено лише клавішу, трей,
   IPC-зупинку й вихід.
 
@@ -115,8 +116,8 @@ notes:
 - **Усунення класу.** `persist_session_snapshot` — вісім викликів у чотирьох модулях плюс
   власна копія виходу; кожен новий шлях зупинки мусить про нього пам'ятати. Дієслова
   програвача, що самі зберігають Сесійні поля, — ідея
-  [playback-verbs-persist-session](p2-playback-verbs-persist-session.md) з того самого огляду.
-- **Одне згортання для перемикання й виходу** — ідея [profiles-module](p2-profiles-module.md);
+  [playback-verbs-persist-session](../p2-playback-verbs-persist-session.md) з того самого огляду.
+- **Одне згортання для перемикання й виходу** — ідея [profiles-module](../p2-profiles-module.md);
   тут перемикання лише отримує функцію Коміту виходу.
 - **Кнопка паузи в плеєрі** (`commands/player_commands.rs:65-70`) позиції не зберігає, як і
   записано в `docs/data-models.md` §3.7 (:250); після виправлення її позиція губиться лише
@@ -124,36 +125,60 @@ notes:
 
 ## Критерії готовності
 
-- [ ] `docs/help/` не змінюється: довідка вже обіцяє цю поведінку (`background.md:25`,
+- [x] `docs/help/` не змінюється: довідка вже обіцяє цю поведінку (`background.md:25`,
       `player.md:37`, `profiles.md:11`, обидві мови); виправлення робить обіцянку правдою
-- [ ] Медіа-клавіша «Стоп» і `--stop-playback` зберігають позицію файлу перед зупинкою,
+- [x] Медіа-клавіша «Стоп» і `--stop-playback` зберігають позицію файлу перед зупинкою,
       медіа-пауза — перед паузою
-- [ ] `switch_profile` пише позицію в старий профіль тим самим Комітом, що й гучність
-- [ ] Rust-тест спільної функції Коміту в `playback_control.rs`: файл на 750 000 мс →
+- [x] `switch_profile` пише позицію в старий профіль тим самим Комітом, що й гучність
+- [x] Rust-тест спільної функції Коміту в `playback_control.rs`: файл на 750 000 мс →
       гучність + `last_file_position` (шлях, 750 000); `source: None` → лише гучність,
       наявна позиція не змінена
-- [ ] Ручна перевірка трьох способів з «Як відтворити» (чекліст
-      [nvda-file-position-lost-on-external-stop.json](../testing/nvda-file-position-lost-on-external-stop.json)):
+- [x] Ручна перевірка трьох способів з «Як відтворити» (NVDA-прогін 2026-10-04,
+      20 passed, 5 blocked, 1 не позначено; медіа-клавіш у тестувальника немає, ці пункти
+      прийнято без прогону):
       `Ctrl+Shift+K` продовжує з 12:30 і
       оголошує позицію. SMTC і CLI юніт-тестом не покрити — жоден тест не будує `AppState`
-- [ ] `docs/data-models.md` §3.7: рядок «Зупинка файлу» з усіма шляхами, рядок «Перемикання
+- [x] `docs/data-models.md` §3.7: рядок «Зупинка файлу» з усіма шляхами, рядок «Перемикання
       профілю» (позиція — у старий профіль), медіа-клавіша в рядку паузи
-- [ ] `cargo test`, `cargo clippy --all-targets` зелені
+- [x] `cargo test`, `cargo clippy --all-targets` зелені
+
+## Спадок
+
+Реалізовано за «Виправленням» без відхилень. SMTC (Pause файлу, Stop) і `--stop-playback`
+кличуть `persist_session_snapshot` перед плеєром. `switch_profile` читає статус до зупинки, а
+тіло Коміту виходу стало чистою `playback_control::apply_closing_session` (гучність +
+`apply_session_snapshot`) — її кличуть і `switch_profile`, і `graceful_shutdown`; два
+юніт-тести стережуть саме її. `CONTEXT.md` «Сесійні поля» і `docs/data-models.md` §3.7
+називають перемикання профілю серед переходів.
+
+Що лишилось:
+
+- **Клас не усунуто.** Тепер десять викликів `persist_session_snapshot`; новий шлях зупинки
+  мусить пам'ятати про нього — [playback-verbs-persist-session](../p2-playback-verbs-persist-session.md).
+- **Обгортка Коміту дублюється.** `switch_profile` і `graceful_shutdown` ділять тіло, але
+  кожен сам читає статус і гучність, кличе `commit_profile` і логує помилку —
+  [profiles-module](../p2-profiles-module.md).
+- **Збій зупинки при перемиканні.** Якщо `stop_playback` у `switch_profile` поверне помилку,
+  `?` виходить до Коміту — губиться і позиція, і гучність (гучність так губилась і раніше).
+- **Медіа-«Стоп» на ефірі** тепер робить зайвий запис профілю з тим самим `last_stream_id`;
+  нешкідливо.
+- **Медіа-клавіші вухом не перевірено:** у тестувальника їх немає; пункти прийнято без прогону.
+  `--stop-playback`, перемикання, вихід і аварія після паузи — пройдено.
 
 ## Документи
 
-- [Огляд архітектури 2026-09-24](../notes/architecture-review-2026-09-24.md) — звідки знахідка
-- [playback-verbs-persist-session](p2-playback-verbs-persist-session.md),
-  [profiles-module](p2-profiles-module.md) — ідеї, що прибирають клас
-- [playback-toggle-stop-pause](done/p1-playback-toggle-stop-pause.md) — ввів
+- [Огляд архітектури 2026-09-24](../../notes/architecture-review-2026-09-24.md) — звідки знахідка
+- [playback-verbs-persist-session](../p2-playback-verbs-persist-session.md),
+  [profiles-module](../p2-profiles-module.md) — ідеї, що прибирають клас
+- [playback-toggle-stop-pause](p1-playback-toggle-stop-pause.md) — ввів
   `persist_session_snapshot` і пообіцяв збереження на кожному переході
-- [resume-file-from-setting](done/p2-resume-file-from-setting.md) — налаштування, чию
-  обіцянку ламає дефект; [resume-last-playback](done/p1-resume-last-playback.md) —
+- [resume-file-from-setting](p2-resume-file-from-setting.md) — налаштування, чию
+  обіцянку ламає дефект; [resume-last-playback](p1-resume-last-playback.md) —
   автовідтворення
-- [tray-cannot-resume-last](done/p2-tray-cannot-resume-last.md),
-  [player-primary-button-resumes-last](p2-player-primary-button-resumes-last.md) — інші
+- [tray-cannot-resume-last](p2-tray-cannot-resume-last.md),
+  [player-primary-button-resumes-last](../p2-player-primary-button-resumes-last.md) — інші
   поверхні продовження, що показують втрачену позицію
-- [data-models.md](../data-models.md) §3.7; [CONTEXT.md](../../CONTEXT.md) — «Сесійні поля»,
+- [data-models.md](../../data-models.md) §3.7; [CONTEXT.md](../../../CONTEXT.md) — «Сесійні поля»,
   «Головна кнопка і останнє джерело»
-- Довідка: [background](../help/uk/background.md), [player](../help/uk/player.md),
-  [profiles](../help/uk/profiles.md) та en-близнюки
+- Довідка: [background](../../help/uk/background.md), [player](../../help/uk/player.md),
+  [profiles](../../help/uk/profiles.md) та en-близнюки
