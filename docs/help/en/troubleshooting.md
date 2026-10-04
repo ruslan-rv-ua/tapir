@@ -46,11 +46,13 @@ The player panel only shows the current device. Choose a different one in the ap
 
 Tapir remembers the output device by name and never falls back on its own, so unplugging the headphones it was pointed at leaves what is playing silent. Playing a station from the window after that is not silent: Tapir says **Couldn't open the output device**. Open the app settings, tab **Audio**, and pick another device or **System default**. If what you want is missing from the list, plug it in and press **Refresh device list**.
 
-### A file will not open in another program
+### A file will not play or open
 
-Tapir names the reason. Usually Windows has no program registered for that kind of file, or the file has been moved, renamed or deleted outside Tapir since the list was built.
+Tapir names the reason. When it says **File not found** — on `Enter` and on `Alt+Enter` alike — the file has been moved, renamed or deleted outside Tapir since the list was built. `Ctrl+Enter` opens the folder the file should be in, which settles in one step whether it is still there.
 
-For the first, set a default program for `.mp3` or `.aac` files in Windows and try again. For the second, `Ctrl+Enter` opens the folder the file should be in, which settles in one step whether it is still there.
+If a file will not open in another program, usually Windows has no program registered for that kind of file: set a default program for `.mp3` or `.aac` files in Windows and try again.
+
+**Couldn't play this file** means the file is there but Tapir could not read it. Sometimes another program holds it, such as a tag editor — close it and try again. Sometimes the file is broken or unfinished: `Alt+Enter` shows whether it plays anywhere else.
 
 ### A global hotkey did nothing
 

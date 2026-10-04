@@ -4,6 +4,7 @@ import { render, fireEvent, act } from "@testing-library/react";
 import * as m from "../../i18n/paraglide/messages";
 import { $songs, $songsSelection, $songsQuery, $songsStation, $songsSort } from "../../stores/songs";
 import { $announcer } from "../../stores/announcer";
+import { $toasts } from "../../stores/toasts";
 import { replaceSelection } from "../../stores/selection";
 import type { Song } from "../../types/song";
 import { useCallback, useRef } from "react";
@@ -17,6 +18,7 @@ vi.mock("../../lib/tauri", () => ({
   deleteSongs: vi.fn().mockResolvedValue({ deleted: [], skipped: [] }),
   // Pulled in by useGlobalShortcuts (Ctrl+M → muteControl) in the wired test below.
   setVolume: vi.fn().mockResolvedValue(undefined),
+  playSavedSong: vi.fn().mockResolvedValue(undefined),
 }));
 
 // SongsPanel uses useTauriEvent; stub it so jsdom doesn't try to call the
@@ -202,5 +204,25 @@ describe("SongsPanel — the list after its result set is replaced", () => {
 
     expect(rows(container)).toEqual(["a.mp3", "b.mp3"]);
     expect(stops(container)).toEqual(["b.mp3/summary"]);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* A refused play speaks the interface language, never the engine's    */
+/* ------------------------------------------------------------------ */
+
+describe("SongsPanel — Enter on a track the player refuses", () => {
+  it("toasts \"File not found\" for a vanished track and keeps its row", async () => {
+    vi.mocked(tauri.listSavedSongs).mockResolvedValue([mk("a.mp3"), mk("b.mp3")]);
+    vi.mocked(tauri.playSavedSong).mockRejectedValueOnce("file_not_found");
+    $toasts.set([]);
+    const { findByRole } = renderPanel();
+    const row = await findByRole("listitem", { name: /a\.mp3/ });
+    act(() => row.focus());
+    fireEvent.keyDown(row, { key: "Enter" });
+
+    await vi.waitFor(() => expect($toasts.get()[0]?.message).toBe(m.songs_open_not_found()));
+    expect(tauri.playSavedSong).toHaveBeenCalledWith("a.mp3");
+    expect(await findByRole("listitem", { name: /a\.mp3/ })).toBeTruthy();
   });
 });

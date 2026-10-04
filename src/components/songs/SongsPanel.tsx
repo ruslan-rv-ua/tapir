@@ -24,6 +24,7 @@ import type { Song, SongTagsUpdatedPayload, SongDeletedPayload, SongRenamedPaylo
 import { useTauriEvent } from "../../hooks/useTauriEvent";
 import { addToast } from "../../stores/toasts";
 import { shellOpenErrorMessage } from "../../lib/shellOpenError";
+import { playRefusalMessage } from "../../lib/playRefusal";
 import { plural } from "../../lib/plural";
 import { resultSetKey } from "../../lib/resultSetKey";
 import { useAnnounce } from "../../hooks/useAnnounce";
@@ -154,7 +155,7 @@ export function SongsPanel({ onZonesChange, exitZone }: Props) {
       if (isThisPlaying) await tauri.stopPlayback();
       else await tauri.playSavedSong(path);
     } catch (err) {
-      addToast(String(err), "error");
+      addToast(playRefusalMessage(err), "error");
     }
   }, []);
 

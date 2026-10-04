@@ -27,15 +27,15 @@ touches:
 gates: [cargo test, cargo clippy --all-targets, pnpm test, pnpm typecheck, pnpm vite:build]
 notes:
   - "Заведено 2026-10-04 після злиття play-refusals-untranslated (PR #47): той самий клас вади на третій групі команд екрана «Записи». Залежність — спільний підхід (закритий перелік кодів, деталь у лозі, мапер «код → ключ»), а не спільний код: дім кодів для операцій над файлами вирішує грумінг."
-  - "Звірено з HEAD 262f0f0. Сусід play-file-refusals-untranslated (ready) чіпає `play_saved_song` у тому самому файлі; порядок реалізації — на грумінгу."
+  - "Звірено з HEAD 95a9bec (після злиття play-file-refusals-untranslated, PR #48): усі чотири виклики `songs_toast_failed` з прозою на місці; `play_saved_song` уже шле коди."
 ---
 
 # Відмова перейменувати, змінити теги чи видалити трек приходить у тост англійською
 
-> **Контекст:** заведено 2026-10-04, звірено з HEAD 262f0f0. Режим — **DRAFT → GROOMING**:
+> **Контекст:** заведено 2026-10-04, звірено з HEAD 95a9bec. Режим — **DRAFT → GROOMING**:
 > довести до `ready`, коду не писати. Читати першим — батьківський
 > [play-refusals-untranslated](done/p2-play-refusals-untranslated.md) і сусід
-> [play-file-refusals-untranslated](p2-play-file-refusals-untranslated.md).
+> [play-file-refusals-untranslated](done/p2-play-file-refusals-untranslated.md) — обидва закриті.
 
 ## Опис
 
@@ -52,7 +52,7 @@ notes:
 
 Усі три виклики роблять те саме: `addToast(m.songs_toast_failed({ error: String(err) }), "error")`.
 
-### Що виявила звірка з HEAD 262f0f0
+### Що виявила звірка з HEAD 95a9bec
 
 1. **Захардкоджені рядки — лише верхівка.** Решта гілок віддає `Display` від `RadioError`
    (`src-tauri/src/errors.rs`), тобто ще гірше:
@@ -84,6 +84,10 @@ notes:
    діалогу), чи окремий запис.
 6. **Масове видалення вже чесне.** `delete_songs` не відмовляє, а повертає `skipped` — його
    не чіпати.
+7. **Четвертий виклик `songs_toast_failed`.** «Показати в теці» (`SongsPanel.tsx`, дія
+   `explorer`) так само клеїть `String(e)` від `open_song_in_explorer` — текст
+   `std::io::Error` з невдалого запуску `explorer.exe`. Гілка майже недосяжна, але це ще один
+   вихід прози крізь той самий ключ.
 
 ## Чому це вада
 
@@ -104,17 +108,16 @@ notes:
    недоступний» (мережевий диск) — він веде до іншої дії людини?
 2. **Ключі: окремий на кожну дію чи спільні?** «Не вдалося перейменувати файл» / «…зберегти
    теги» / «…видалити файл» проти одного «Не вдалося змінити файл». `songs_toast_failed` з
-   плейсхолдером `{error}` після міграції має зникнути — інакше крізь нього проза повернеться.
-3. **Дім кодів.** `PLAY_ERR_*` живуть у `player_commands.rs`; для операцій над файлами —
-   поруч у `songs_commands.rs` чи в `songs/`? Типізувати `ops`/`tags` (замість
+   плейсхолдером `{error}` після міграції має зникнути — інакше крізь нього проза повернеться;
+   отже «Показати в теці» (п. 7 звірки) — в обсязі.
+3. **Дім кодів.** `PLAY_ERR_*` і `file_refusal_on_wire` (з типом `FileRefusal`) живуть у
+   `player_commands.rs`; для операцій над файлами — поруч чи в `songs_commands.rs`/`songs/`? Типізувати `ops`/`tags` (замість
    `RadioError::Format(String)`), щоб класифікація йшла типом, а не зіставленням рядків.
 4. **Захист тегів відтворюваного файла** (п. 4 звірки) — в обсязі, якщо запис тегів справді
    відмовляє; інакше лише зафіксувати.
 5. **Носій відмови в діалозі** (п. 5 звірки) — у цьому записі чи окремо.
 6. **Довідка.** Чи називати захист відтворюваного файла також для перейменування (і тегів,
    якщо п. 4).
-7. **Порядок із play-file-refusals-untranslated** — обидва змінюють `songs_commands.rs` і
-   локалі; чи реалізувати поспіль, чи злити в одну гілку.
 
 ## Критерії готовності
 
@@ -144,7 +147,7 @@ notes:
 ## Документи
 
 - [play-refusals-untranslated](done/p2-play-refusals-untranslated.md) — батьківський запис, коди й мапер
-- [play-file-refusals-untranslated](p2-play-file-refusals-untranslated.md) — сусід у тому самому файлі
+- [play-file-refusals-untranslated](done/p2-play-file-refusals-untranslated.md) — сусід у тому самому файлі, `file_refusal_on_wire`
 - [record-refusals-untranslated](done/p2-record-refusals-untranslated.md) — той самий клас для запису
 - [ADR 2026-08-17 — локалізація нативного шару](../decisions/2026-08-17-native-layer-localisation.md)
 - [ADR 2026-09-06 — помилка як діагноз](../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md) §5

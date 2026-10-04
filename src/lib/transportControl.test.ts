@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import * as tauri from "./tauri";
 import * as m from "../i18n/paraglide/messages";
-import { executeTransportSkip, parseSkipTrigger } from "./transportControl";
+import { executeEndedAdvance, executeTransportSkip, parseSkipTrigger } from "./transportControl";
 import { $playerStatus } from "../stores/player";
 import { $streams } from "../stores/streams";
 import { $songs, $songsQuery, $songsStation, $songsSort } from "../stores/songs";
@@ -16,6 +16,7 @@ vi.mock("./tauri", () => ({
   playStream: vi.fn().mockResolvedValue(undefined),
   playSavedSong: vi.fn().mockResolvedValue(undefined),
   seekPlayback: vi.fn().mockResolvedValue(undefined),
+  stopPlayback: vi.fn().mockResolvedValue(undefined),
   notifyTransportFailure: vi.fn().mockResolvedValue(undefined),
   isWindowFocused: vi.fn().mockResolvedValue(true),
 }));
@@ -252,5 +253,31 @@ describe("executeTransportSkip — failure surface follows window focus", () => 
     await executeTransportSkip("next");
     expect(tauri.notifyTransportFailure).toHaveBeenCalledWith("s3", "error");
     expect($toasts.get()).toHaveLength(0);
+  });
+});
+
+describe("executeEndedAdvance — the track ended on its own", () => {
+  it("plays the next file in filtered order", async () => {
+    playingFile("a.mp3");
+    await executeEndedAdvance("a.mp3");
+    expect(tauri.playSavedSong).toHaveBeenCalledWith("b.mp3");
+    expect(tauri.stopPlayback).not.toHaveBeenCalled();
+  });
+
+  it("stops at the end of the list", async () => {
+    playingFile("c.mp3");
+    await executeEndedAdvance("c.mp3");
+    expect(tauri.playSavedSong).not.toHaveBeenCalled();
+    expect(tauri.stopPlayback).toHaveBeenCalled();
+  });
+
+  it("names the refusal when the next track is gone, and stops", async () => {
+    playingFile("a.mp3");
+    vi.mocked(tauri.playSavedSong).mockRejectedValueOnce("file_not_found");
+    await executeEndedAdvance("a.mp3");
+    expect($toasts.get()[0]?.message).toBe(m.songs_open_not_found());
+    // Skip-on-error guard: never loop through broken files.
+    expect(tauri.stopPlayback).toHaveBeenCalled();
+    expect(tauri.playSavedSong).toHaveBeenCalledTimes(1);
   });
 });

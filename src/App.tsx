@@ -36,10 +36,7 @@ import { SECTIONS } from "./lib/sections";
 import { addToast } from "./stores/toasts";
 import * as tauri from "./lib/tauri";
 import type { RecordingStatusPayload, TrackChangedPayload, StreamUnsupportedPayload, RecordingStartedPayload, RecordingCompletedPayload, StreamInfo, PlayerStatus, PlayerProgressPayload, WishlistMatch, PlayerEndedPayload, PlaybackAnnounce } from "./lib/tauri";
-import { $filteredSongs } from "./stores/songs";
-import { computePlaybackNeighbors } from "./stores/playbackNeighbors";
-import { resolveEndedAction } from "./lib/playbackTransport";
-import { executeTransportSkip, parseSkipTrigger } from "./lib/transportControl";
+import { executeEndedAdvance, executeTransportSkip, parseSkipTrigger } from "./lib/transportControl";
 import { applyMuteCleanup, muteCleanupFlags } from "./lib/muteCleanup";
 import { rememberVolumeLevel, selectVolumeAnnouncement } from "./lib/muteControl";
 import { selectPlaybackAnnouncement, sourceName, suppressesStarted, trackLabel, type PendingConnect } from "./lib/playbackAnnounce";
@@ -273,23 +270,8 @@ function AppContent() {
     });
   }, []);
 
-  const handlePlayerEnded = useCallback(async (payload: PlayerEndedPayload) => {
-    const autoAdvance = $profileSettings.get()?.autoAdvance ?? true;
-    const neighbors = computePlaybackNeighbors(
-      { type: "file", path: payload.path },
-      $streams.get(),
-      $filteredSongs.get(),
-    );
-    const action = resolveEndedAction(autoAdvance, neighbors);
-    try {
-      if (action.kind === "play-file") await tauri.playSavedSong(action.path);
-      else await tauri.stopPlayback(); // end of list or autoAdvance off
-    } catch (e) {
-      console.error(e);
-      addToast(m.playback_error(), "error");
-      // Skip-on-error guard: never loop through broken files — just stop.
-      await tauri.stopPlayback().catch(() => {});
-    }
+  const handlePlayerEnded = useCallback((payload: PlayerEndedPayload) => {
+    void executeEndedAdvance(payload.path);
   }, []);
 
   const handleRecordingCompleted = useCallback((payload: RecordingCompletedPayload) => {

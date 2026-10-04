@@ -187,6 +187,7 @@
   "stream_play_unsupported": "Tapir не відтворює кодек цього потоку",
   "stream_play_failed": "Не вдалося відтворити потік",
   "stream_play_output_unavailable": "Не вдалося відкрити пристрій виведення",
+  "file_play_failed": "Не вдалося відтворити файл",
   "record_refused_disk_space": "Замало вільного місця на диску — запис не розпочато",
   "stream_not_found_in_profile": "Потік не знайдено в активному профілі",
   "recording_started": "Запис розпочато: {name}",

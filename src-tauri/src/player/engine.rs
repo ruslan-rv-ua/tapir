@@ -127,6 +127,57 @@ impl std::fmt::Display for LiveRefusal {
     }
 }
 
+/// Why `play_file` was refused — the file twin of [`LiveRefusal`], turned into
+/// stable codes by `player_commands::file_refusal_on_wire`. Same shape: the
+/// outermost `anyhow` context, classified by `downcast_ref`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FileRefusal {
+    /// `File::open` said `NotFound` — the track is no longer where the list
+    /// saw it. Only that kind: access denied or a file held by another process
+    /// is not "not found".
+    NotFound,
+    /// Any other open failure, or a file the decoder would not take (broken,
+    /// unfinished, not audio at all).
+    Unplayable,
+    /// The file was decodable, but the output device would not open.
+    Output,
+}
+
+impl std::fmt::Display for FileRefusal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::NotFound => "file not found",
+            Self::Unplayable => "could not play file",
+            Self::Output => "failed to open audio output stream",
+        })
+    }
+}
+
+impl FileRefusal {
+    /// Classify by the `io::ErrorKind`, never by the message.
+    fn of_open(e: &std::io::Error) -> Self {
+        match e.kind() {
+            std::io::ErrorKind::NotFound => Self::NotFound,
+            _ => Self::Unplayable,
+        }
+    }
+}
+
+/// `File::open` for playback, with the reason attached and the path kept in
+/// the inner context — the log's, not the toast's.
+fn open_for_play(path: &str) -> Result<std::fs::File> {
+    std::fs::File::open(path).map_err(|e| {
+        let reason = FileRefusal::of_open(&e);
+        anyhow::Error::new(e).context(format!("opening {path}")).context(reason)
+    })
+}
+
+fn decode_for_play(file: std::fs::File, path: &str) -> Result<Decoder<std::io::BufReader<std::fs::File>>> {
+    Decoder::try_from(file)
+        .with_context(|| format!("decoding {path}"))
+        .context(FileRefusal::Unplayable)
+}
+
 // ── Internal runtime types (not serialized) ────────────────────────────────
 
 /// Emit `player-status` to the frontend and notify the tray. All callers
@@ -260,21 +311,19 @@ impl PlayerEngine {
     pub async fn play_file(&self, path: String, app: &AppHandle) -> Result<()> {
         self.stop_session().await;
 
-        let file = std::fs::File::open(&path)
-            .with_context(|| format!("File not found: {path}"))?;
+        let file = open_for_play(&path)?;
         // `Decoder::try_from(File)` reads the file length from metadata and sets
         // `byte_len` + `is_seekable` on the symphonia source. Without those, backward
         // seeks on headerless CBR MP3 (ICY-stream recordings) fail with `ForwardOnly`
         // → `RandomAccessNotSupported`. `Decoder::new(BufReader)` leaves them unset.
-        let decoder = Decoder::try_from(file)
-            .context("Unsupported audio format")?;
+        let decoder = decode_for_play(file, &path)?;
 
         let duration_ms = decoder.total_duration().map(|d| d.as_millis() as u64)
             .or_else(|| probe_file_duration(&path));
 
         let device_name = self.output_device_name.lock().await.clone();
         let device_sink = open_device_sink(device_name.as_deref())
-            .context("Failed to open audio output stream")?;
+            .context(FileRefusal::Output)?;
         let player = Arc::new(Player::connect_new(device_sink.mixer()));
 
         let volume = *self.volume.lock().await;
@@ -907,6 +956,48 @@ fn open_device_sink(device_name: Option<&str>) -> anyhow::Result<MixerDeviceSink
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn file_refusal(e: &anyhow::Error) -> Option<FileRefusal> {
+        e.downcast_ref::<FileRefusal>().copied()
+    }
+
+    #[test]
+    fn missing_file_is_not_found() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("gone.mp3");
+        let e = open_for_play(path.to_str().unwrap()).unwrap_err();
+        assert_eq!(file_refusal(&e), Some(FileRefusal::NotFound));
+        // The path stays in the chain for the log.
+        assert!(format!("{e:#}").contains("gone.mp3"));
+    }
+
+    #[test]
+    fn access_denied_is_unplayable_not_not_found() {
+        let e = std::io::Error::from(std::io::ErrorKind::PermissionDenied);
+        assert_eq!(FileRefusal::of_open(&e), FileRefusal::Unplayable);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn opening_a_directory_is_unplayable() {
+        // On Windows `File::open` on a directory is "Access is denied" — the
+        // real refusal a held or locked file gives, reachable without a lock.
+        let dir = tempfile::tempdir().unwrap();
+        let e = open_for_play(dir.path().to_str().unwrap()).unwrap_err();
+        assert_eq!(file_refusal(&e), Some(FileRefusal::Unplayable));
+    }
+
+    #[test]
+    fn text_posing_as_mp3_is_unplayable() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("notes.mp3");
+        std::fs::write(&path, "not audio at all, just some text").unwrap();
+        let p = path.to_str().unwrap();
+        let Err(e) = decode_for_play(open_for_play(p).unwrap(), p) else {
+            panic!("text decoded as audio");
+        };
+        assert_eq!(file_refusal(&e), Some(FileRefusal::Unplayable));
+    }
 
     #[test]
     fn sanitize_volume_maps_non_finite_to_zero() {
