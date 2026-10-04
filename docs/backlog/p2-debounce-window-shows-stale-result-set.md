@@ -128,7 +128,7 @@ starts over: your next entry into it lands on the first result.»:
 - [ ] `docs/help/` uk/en — погоджене речення вище (межі обсягу: 600–3000 слів en,
       uk ≥ 0.75 × en)
 - [ ] `docs/accessibility.md` §5.1 — рядок про вікно дебаунсу
-- [ ] NVDA-чекліст через `/axygen-checklist:write`, сценарії:
+- [ ] NVDA-чекліст [nvda-debounce-window-shows-stale-result-set.json](../testing/nvda-debounce-window-shows-stale-result-set.json) через `/axygen-checklist:write`, сценарії:
       (1) над популярними стати на п'яту станцію, `Ctrl+F`, набрати й одразу стерти літеру,
       F6 назад — та сама п'ята станція;
       (2) набрати запит і за пів секунди перейти в інший розділ, повернутися — список відповідає

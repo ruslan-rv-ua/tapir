@@ -122,7 +122,7 @@ const showSearchResults = isSearchActive && (searchResults.length > 0 || searchL
 - [ ] `docs/help/` — третє речення погодженої правки (див. вище)
 - [ ] `docs/accessibility.md` §5.1 — дерево
 - [ ] Докстрінги `$searchLoading` і `resetSearch` узгоджено з ADR 2026-10-04 §4
-- [ ] NVDA-чекліст через `/axygen-checklist:write`, сценарії:
+- [ ] NVDA-чекліст [nvda-empty-search-shows-popular-stations.json](../testing/nvda-empty-search-shows-popular-stations.json) через `/axygen-checklist:write`, сценарії:
       (1) щойно відкритий розділ, F6 у список — «Популярні станції» і перша станція;
       (2) набрати безглуздий запит, дочекатися, F6 — «Станцій не знайдено. Спробуйте інший запит.»,
       а не популярні;
