@@ -40,7 +40,7 @@ A shortcut to `tapir.exe` can carry parameters, so that one icon on the desktop 
 
 The first only applies when Tapir is not yet running, because it decides how it starts:
 
-- `--profile "News"` — start in this profile
+- `--profile "News"` — start in this profile for this run only; next time Tapir opens the profile you used before, unless you switch profiles in the window
 - `--minimize` — start straight into the tray
 
 A shortcut for startup might read: `tapir.exe --profile "News" --minimize`.

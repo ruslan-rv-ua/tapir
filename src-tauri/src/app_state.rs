@@ -4,7 +4,7 @@ use tokio::sync::RwLock;
 use crate::settings::GlobalSettings;
 use crate::profile::Profile;
 use crate::profile_store::FileProfileStore;
-use crate::settings_store::FileSettingsStore;
+use crate::settings_store::{FileSettingsStore, SettingsWriter};
 use crate::store::{Commit, Writer};
 use crate::errors::RadioError;
 use crate::stream::manager::{StreamManager, StreamState, StreamStatus};
@@ -20,7 +20,7 @@ pub struct AppState {
     /// Єдиний шлях запису активного профілю — див. [`AppState::commit_profile`].
     profile_writer: Arc<Writer<Profile>>,
     /// Те саме для глобальних налаштувань — див. [`AppState::commit_settings`].
-    settings_writer: Arc<Writer<GlobalSettings>>,
+    settings_writer: Arc<SettingsWriter>,
     // PlayerEngine is internally synchronized via Arc<Mutex<>> fields — no outer RwLock needed.
     pub player: Arc<PlayerEngine>,
     pub browser_client: Arc<tokio::sync::OnceCell<RadioBrowserClient>>,
@@ -33,8 +33,11 @@ pub struct AppState {
 }
 
 impl AppState {
+    /// `file_profile` — активний профіль із `settings.json`, коли `--profile`
+    /// підмінив його на цей сеанс (див. [`SettingsWriter`]).
     pub fn new(
         settings: GlobalSettings,
+        file_profile: Option<String>,
         profile: Profile,
         app_handle: tauri::AppHandle,
     ) -> anyhow::Result<Self> {
@@ -50,7 +53,7 @@ impl AppState {
             settings: Arc::new(RwLock::new(settings)),
             active_profile: Arc::new(RwLock::new(profile)),
             profile_writer: Arc::new(Writer::new(Arc::new(FileProfileStore))),
-            settings_writer: Arc::new(Writer::new(Arc::new(FileSettingsStore))),
+            settings_writer: Arc::new(SettingsWriter::new(Arc::new(FileSettingsStore), file_profile)),
             player: Arc::new(player),
             browser_client,
             scheduler: crate::scheduler::timer::SchedulerShared::new(),
@@ -87,12 +90,32 @@ impl AppState {
     ///
     /// Дзеркало [`AppState::commit_profile`], з тими самими правилами:
     /// синхронне замикання, помилка запису лишає пам'ять зміненою.
+    /// `active_profile` ця мутація на диску не міняє, поки діє `--profile` —
+    /// для вибору профілю є [`AppState::commit_active_profile`].
     pub async fn commit_settings<T, F>(&self, mutate: F) -> Result<T, RadioError>
     where
         F: FnOnce(&mut GlobalSettings) -> Commit<T> + Send,
         T: Send,
     {
         self.settings_writer.commit(&self.settings, mutate).await
+    }
+
+    /// Зробити `name` активним профілем у налаштуваннях і записати їх; невдалий
+    /// запис відкочує пам'ять — див. [`SettingsWriter::choose_profile`].
+    pub async fn commit_active_profile(&self, name: String) -> Result<(), RadioError> {
+        self.settings_writer.choose_profile(&self.settings, name).await
+    }
+
+    /// Неактивний профіль `old` перейменовано (`new`) або видалено (`None`):
+    /// якщо саме він записаний у `settings.json` як активний (сеанс запущено з
+    /// `--profile`), файл налаштувань іде за ним — див.
+    /// [`SettingsWriter::file_profile_moved`].
+    pub async fn commit_profile_moved(
+        &self,
+        old: &str,
+        new: Option<String>,
+    ) -> Result<(), RadioError> {
+        self.settings_writer.file_profile_moved(&self.settings, old, new).await
     }
 }
 
