@@ -13,9 +13,10 @@ export const $searchResults = atom<StationResult[]>([]);
  * coming, so the screen shows a loading card INSTEAD of them. Deliberately NOT "a
  * request is in flight": a foreign reply leaves this flag UP, because the fresh
  * request is still on the wire and lowering it would blink the card away and back.
- * The one criteria writer that issues no request of its own — resetSearch — lowers
- * it by hand, which is the whole of the rule and not an exception to it.
- * ADR 2026-09-15 «прапорець заміни належить екрану, а не запиту».
+ * A criteria write that leaves no criteria issues no request of its own — so it
+ * lowers the flag by hand (see dropSearch), which is the whole of the rule and not
+ * an exception to it. ADR 2026-09-15 «прапорець заміни належить екрану, а не
+ * запиту» §4, generalised by ADR 2026-10-04 §4.
  */
 export const $searchLoading = atom<boolean>(false);
 /**
@@ -72,9 +73,12 @@ export const $popularStations = atom<StationResult[]>([]);
 export const $popularLoading = atom<boolean>(false);
 export const $popularError = atom<string | null>(null);
 
-export const $isSearchActive = computed($searchParams, (params) =>
-  Boolean(params.query || params.country || params.language || params.codec || params.minBitrate)
-);
+/** Whether these criteria ask anything of the catalogue. Without them it is not a search. */
+function hasCriteria(params: SearchCriteria): boolean {
+  return Boolean(params.query || params.country || params.language || params.codec || params.minBitrate);
+}
+
+export const $isSearchActive = computed($searchParams, hasCriteria);
 
 /** Multi-select for browser results (milestone D). Keyed by stationuuid. */
 export const $stationSelection = atom<Set<string>>(new Set());
@@ -138,9 +142,14 @@ function stillOurs(criteria: SearchCriteria): boolean {
  *
  * Until it is called the screen keeps showing the previous answer — the debounce
  * window, by design (ADR 2026-10-04 §1).
+ *
+ * Empty criteria ask nothing: the catalogue is not searched for everything, and the
+ * write that emptied them has already dropped the answer (ADR 2026-10-04 §4). The
+ * rule lives here, not in the form, so no caller can forget it.
  */
 export async function searchStations(): Promise<void> {
   const criteria = $searchParams.get();
+  if (!hasCriteria(criteria)) return;
   $searchLoading.set(true);
   $searchError.set(null);
   try {
@@ -253,24 +262,41 @@ export async function addStations(stations: StationResult[]): Promise<StreamInfo
   return addStationsFromBrowser(stations);
 }
 
+/**
+ * Criteria are gone, so is the search: no answer, no error, and nothing coming. Run
+ * by every criteria write after which no criteria are left — those are the writes
+ * with no request behind them (searchStations refuses empty criteria).
+ */
+function dropSearch(): void {
+  dropAnswer();
+  $searchError.set(null);
+  // Not dead code, and not somebody else's field. No request follows this write,
+  // so this is the one place that can say «nothing is coming» — a replace still in
+  // the air will land foreign and, by the rule above, touch nothing at all, this
+  // flag included. Guarded by the store tests «resetSearch says «nothing is coming»»
+  // and «lowers the flag while a replace is still in the air»; delete this line and
+  // nothing looks wrong until someone presses Escape during a search.
+  $searchLoading.set(false);
+}
+
+/**
+ * Write one criterion. While criteria remain this touches only the field: the rows
+ * on screen stay the previous answer until the debounced search lands (ADR
+ * 2026-10-04 §1). When none remain it drops the search at once (§4).
+ */
 export function updateSearchParam<K extends keyof SearchCriteria>(
   key: K,
   value: SearchCriteria[K],
 ): void {
-  $searchParams.set({ ...$searchParams.get(), [key]: value });
+  const next = { ...$searchParams.get(), [key]: value };
+  $searchParams.set(next);
+  if (!hasCriteria(next)) dropSearch();
   replaceSelection($stationSelection, new Set()); // new result set → drop selection
 }
 
+/** «Скинути фільтри»: empty every criterion at once — the all-at-once case of §4. */
 export function resetSearch(): void {
   $searchParams.set({ limit: 50, order: "clickcount" });
-  dropAnswer();
-  $searchError.set(null);
-  // Not dead code, and not somebody else's field. This is the ONE criteria write
-  // with no request behind it, so it is the one place that has to say «nothing is
-  // coming» — a replace still in the air will land foreign and, by the rule above,
-  // touch nothing at all, this flag included. Guarded by the store test «право
-  // гасити»; delete this line and nothing looks wrong until someone presses
-  // «Скинути фільтри» during a search.
-  $searchLoading.set(false);
+  dropSearch();
   replaceSelection($stationSelection, new Set());
 }

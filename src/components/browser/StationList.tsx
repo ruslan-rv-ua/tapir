@@ -147,7 +147,9 @@ export const StationList = forwardRef<StationListHandle, Props>(
       <CompositeList<StationListHandle>
         ref={ref}
         zoneId={RESULTS_ZONE}
-        ariaLabel={m.zone_browser_results()}
+        // Named for what it shows: the same text as the visible <h2> over Popular
+        // Stations, «Search results» over an answer (ADR 2026-08-31 — visible carrier).
+        ariaLabel={mode === "popular" ? m.browser_popular_title() : m.zone_browser_results()}
         items={items}
         resultSetKey={resultSetKey}
         className="flex-1 overflow-auto"

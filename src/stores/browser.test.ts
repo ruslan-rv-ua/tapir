@@ -38,6 +38,7 @@ describe("browser selection lifecycle", () => {
   });
 
   it("keeps the selection across load-more pagination", async () => {
+    updateSearchParam("query", "rock");
     await searchStations(); // an answer on screen to append to
     replaceSelection($stationSelection, new Set(["u1", "u2"]));
     await loadMore();
@@ -50,14 +51,14 @@ describe("browser selection lifecycle", () => {
 describe("hasMore is asked, not guessed", () => {
   it("asks the catalogue for one record past the batch it shows", async () => {
     vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(4));
-    $searchParams.set({ limit: 3, order: "clickcount" });
+    $searchParams.set({ query: "rock", limit: 3, order: "clickcount" });
     await searchStations();
     expect(searchStationsIpc).toHaveBeenCalledWith(expect.objectContaining({ limit: 4 }));
   });
 
   it("keeps the extra record out of the list and reads it as 'there is more'", async () => {
     vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(4));
-    $searchParams.set({ limit: 3, order: "clickcount" });
+    $searchParams.set({ query: "rock", limit: 3, order: "clickcount" });
     await searchStations();
     expect($searchResults.get().map((s) => s.stationuuid)).toEqual(["u0", "u1", "u2"]);
     expect($hasMore.get()).toBe(true);
@@ -65,7 +66,7 @@ describe("hasMore is asked, not guessed", () => {
 
   it("a full batch with no extra record means there is nothing more", async () => {
     vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(3));
-    $searchParams.set({ limit: 3, order: "clickcount" });
+    $searchParams.set({ query: "rock", limit: 3, order: "clickcount" });
     await searchStations();
     expect($searchResults.get()).toHaveLength(3);
     expect($hasMore.get()).toBe(false);
@@ -77,7 +78,7 @@ describe("hasMore is asked, not guessed", () => {
 describe("appending and replacing do not share a loading or error surface", () => {
   it("appending raises $appendLoading, never $searchLoading", async () => {
     vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(2));
-    $searchParams.set({ limit: 2, order: "clickcount" });
+    $searchParams.set({ query: "rock", limit: 2, order: "clickcount" });
     await searchStations();
 
     const seen: { search: boolean; append: boolean }[] = [];
@@ -95,7 +96,7 @@ describe("appending and replacing do not share a loading or error surface", () =
 
   it("a failed append leaves the results and $searchError alone, and toasts instead", async () => {
     vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(2));
-    $searchParams.set({ limit: 2, order: "clickcount" });
+    $searchParams.set({ query: "rock", limit: 2, order: "clickcount" });
     await searchStations();
 
     vi.mocked(searchStationsIpc).mockRejectedValueOnce(new Error("offline"));
@@ -109,7 +110,7 @@ describe("appending and replacing do not share a loading or error surface", () =
 
   it("a failed REPLACE still goes to $searchError, as before", async () => {
     vi.mocked(searchStationsIpc).mockRejectedValueOnce(new Error("offline"));
-    $searchParams.set({ limit: 2, order: "clickcount" });
+    $searchParams.set({ query: "rock", limit: 2, order: "clickcount" });
     await searchStations();
     expect($searchError.get()).toContain("offline");
     expect($toasts.get()).toHaveLength(0);
@@ -122,6 +123,7 @@ describe("appending and replacing do not share a loading or error surface", () =
 // є курсор пагінації».
 describe("the loaded prefix is the pagination cursor", () => {
   it("leaves the criteria object untouched — the very same reference", async () => {
+    updateSearchParam("query", "rock");
     await searchStations(); // an answer on screen to append to
     const before = $searchParams.get();
     await loadMore();
@@ -132,6 +134,7 @@ describe("the loaded prefix is the pagination cursor", () => {
   // not put back when it failed, so the next press asked for the page AFTER the
   // one that never arrived — a silent hole in the middle of a whole-looking list.
   it("asks for the very same page again after a failed batch", async () => {
+    updateSearchParam("query", "rock");
     updateSearchParam("limit", 2);
     vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(2));
     await searchStations();
@@ -150,6 +153,7 @@ describe("the loaded prefix is the pagination cursor", () => {
   // the person has since replaced would append stations that do not match what
   // they are reading — again silently, again looking whole.
   it("throws away a batch that lands after the criteria changed", async () => {
+    updateSearchParam("query", "rock");
     updateSearchParam("limit", 2);
     vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(2));
     await searchStations();
@@ -171,6 +175,7 @@ describe("the loaded prefix is the pagination cursor", () => {
   });
 
   it("does not toast a batch that FAILED after the criteria changed", async () => {
+    updateSearchParam("query", "rock");
     updateSearchParam("limit", 2);
     vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(2));
     await searchStations();
@@ -205,7 +210,7 @@ describe("a foreign reply to a REPLACE touches nothing", () => {
   };
 
   it("the late reply puts neither rows, nor hasMore, nor an error on screen", async () => {
-    $searchParams.set({ limit: 2, order: "clickcount" });
+    $searchParams.set({ query: "rock", limit: 2, order: "clickcount" });
     const a = held();
     const inFlightA = searchStations();
 
@@ -225,7 +230,7 @@ describe("a foreign reply to a REPLACE touches nothing", () => {
   // The blink this record is named after: the abandoned reply used to reach its
   // `finally` and clear the flag while the fresh request was still on the wire.
   it("keeps the loading card up while the fresh request is still on the wire", async () => {
-    $searchParams.set({ limit: 2, order: "clickcount" });
+    $searchParams.set({ query: "rock", limit: 2, order: "clickcount" });
     const a = held();
     const inFlightA = searchStations();
 
@@ -251,7 +256,7 @@ describe("a foreign reply to a REPLACE touches nothing", () => {
   // $searchError is cleared at request START, so without the ticket an older
   // failure lands on top of a newer success and nothing ever clears it again.
   it("the late FAILURE puts no error card over a good result set", async () => {
-    $searchParams.set({ limit: 2, order: "clickcount" });
+    $searchParams.set({ query: "rock", limit: 2, order: "clickcount" });
     const a = held();
     const inFlightA = searchStations();
 
@@ -271,7 +276,7 @@ describe("a foreign reply to a REPLACE touches nothing", () => {
   // a request that will lower it; «Скинути фільтри» is the one that is not, so it
   // has to say so itself — otherwise the abandoned reply leaves the flag up for good.
   it("resetSearch says «nothing is coming», and the late reply leaves that alone", async () => {
-    $searchParams.set({ limit: 2, order: "clickcount" });
+    $searchParams.set({ query: "rock", limit: 2, order: "clickcount" });
     const a = held();
     const inFlightA = searchStations();
     expect($searchLoading.get()).toBe(true);
@@ -426,5 +431,66 @@ describe("«Load more» never glues two result sets", () => {
     await expect(append).rejects.toThrow();
     expect($searchResults.get().map((s) => s.stationuuid)).toEqual(["u10", "u11"]);
     expect($resultsFor.get()).toBe($searchParams.get());
+  });
+});
+
+// The catalogue is not asked without criteria: Escape, an erased field, bitrate 0 or
+// «all countries» on the last filter used to fire a search for everything, and its
+// rows surfaced on the next keystroke as «the previous answer». A change that leaves
+// no criteria drops the answer, and whoever made it says «nothing is coming».
+// ADR 2026-10-04 «Екран показує відповідь, а не поле» §4.
+describe("empty criteria are not a search", () => {
+  it("emptying the criteria drops the answer, and searching then asks nothing", async () => {
+    updateSearchParam("query", "rock");
+    await searchStations();
+    vi.mocked(searchStationsIpc).mockClear();
+
+    updateSearchParam("query", undefined);
+    expect($resultsFor.get()).toBeNull();
+    expect($searchResults.get()).toHaveLength(0);
+    expect($hasMore.get()).toBe(false);
+
+    await searchStations(); // what the form still calls after Escape
+    expect(searchStationsIpc).not.toHaveBeenCalled();
+    expect($searchLoading.get()).toBe(false);
+  });
+
+  it("lowers the flag while a replace is still in the air, and its late reply leaves it so", async () => {
+    updateSearchParam("query", "rock");
+    let release!: (b: StationResult[]) => void;
+    vi.mocked(searchStationsIpc).mockImplementationOnce(
+      () => new Promise<StationResult[]>((ok) => { release = ok; }),
+    );
+    const inFlight = searchStations();
+    expect($searchLoading.get()).toBe(true);
+
+    updateSearchParam("query", undefined); // no request behind this one
+    expect($searchLoading.get()).toBe(false);
+
+    release(page(3));
+    await inFlight;
+    expect($searchLoading.get()).toBe(false);
+    expect($searchResults.get()).toHaveLength(0);
+  });
+
+  it("clears an error card of criteria that are gone", async () => {
+    updateSearchParam("query", "rock");
+    vi.mocked(searchStationsIpc).mockRejectedValueOnce(new Error("offline"));
+    await searchStations();
+    updateSearchParam("query", undefined);
+    expect($searchError.get()).toBeNull();
+  });
+
+  it("a filter that stays is still a search: erasing the text is the debounce window", async () => {
+    updateSearchParam("country", "Poland");
+    updateSearchParam("query", "rock");
+    await searchStations();
+    const answer = $resultsFor.get();
+
+    updateSearchParam("query", undefined);
+    expect($resultsFor.get()).toBe(answer);
+    vi.mocked(searchStationsIpc).mockClear();
+    await searchStations();
+    expect(searchStationsIpc).toHaveBeenCalledTimes(1);
   });
 });

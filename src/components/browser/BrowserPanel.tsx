@@ -66,7 +66,11 @@ export function BrowserPanel({ onZonesChange, exitZone }: Props) {
   // Proxied (see useZoneProxy): StationList drops its <ul> while loading/empty and on every new result set.
   const resultsProxy = useZoneProxy("browser-results", resultsListRef);
 
-  const showSearchResults = isSearchActive && (searchResults.length > 0 || searchLoading || !!searchError);
+  // A search answer is on screen once one has landed — zero rows included, which is
+  // «nothing found», not Popular Stations. With criteria but no answer yet (the
+  // first keystroke's debounce window) the previous screen stays: Popular Stations.
+  // ADR 2026-10-04 «Екран показує відповідь, а не поле» §3.
+  const showSearchResults = isSearchActive && (resultsFor !== null || searchLoading || !!searchError);
   const stations = showSearchResults ? searchResults : popularStations;
   const loading = showSearchResults ? searchLoading : popularLoading;
   const error = showSearchResults ? searchError : popularError;

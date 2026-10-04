@@ -580,8 +580,8 @@ BrowserPanel (role="region", aria-label="Браузер станцій")
 │   ├── Select: Країна · Select: Мова · Select: Кодек
 │   ├── NumberField: Мін. бітрейт (0…320, крок 32)
 │   └── Button: Скинути фільтри   (лише коли фільтр активний)
-├── <h2>: «Популярні станції»     (поки пошук не виконано)
-└── ListCard → StationList (role="application", aria-label="Результати пошуку")
+├── <h2>: «Популярні станції»     (поки немає відповіді на пошук)
+└── ListCard → StationList (role="application", aria-label="Популярні станції" / "Результати пошуку" за режимом)
     ├── loading: role="status" aria-live="polite"
     ├── error:   role="alert"
     └── empty:   role="status"
