@@ -4,6 +4,7 @@ use std::path::Path;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::app_state::AppState;
+use crate::commands::player_commands::file_refusal_on_wire;
 use crate::commands::shell_open::shell_open;
 use crate::portable;
 use crate::profile::AudioFormat;
@@ -35,7 +36,7 @@ pub async fn play_saved_song(
     state: State<'_, AppState>,
     app: AppHandle,
 ) -> Result<(), String> {
-    state.player.play_file(path, &app).await.map_err(|e| e.to_string())?;
+    state.player.play_file(path, &app).await.map_err(file_refusal_on_wire)?;
     crate::playback_control::persist_session_snapshot(&app).await;
     Ok(())
 }

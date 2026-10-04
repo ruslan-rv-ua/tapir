@@ -7,6 +7,8 @@ vi.mock("../i18n/paraglide/messages", () => ({
   stream_play_failed: () => "Не вдалося відтворити потік",
   failure_station_unreachable: () => "Станція не відповідає",
   stream_play_output_unavailable: () => "Не вдалося відкрити пристрій виведення",
+  songs_open_not_found: () => "Файл не знайдено",
+  file_play_failed: () => "Не вдалося відтворити файл",
 }));
 
 describe("playRefusalMessage", () => {
@@ -28,6 +30,14 @@ describe("playRefusalMessage", () => {
 
   it("names the output device when it would not open", () => {
     expect(playRefusalMessage("output_unavailable")).toBe("Не вдалося відкрити пристрій виведення");
+  });
+
+  it("says the track is gone — the same wording as Alt+Enter", () => {
+    expect(playRefusalMessage("file_not_found")).toBe("Файл не знайдено");
+  });
+
+  it("says the file would not play — access denied, held, broken, not audio", () => {
+    expect(playRefusalMessage("file_play_failed")).toBe("Не вдалося відтворити файл");
   });
 
   it("passes an unknown value through untouched", () => {
