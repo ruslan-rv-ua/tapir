@@ -50,7 +50,11 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > поверхонь не з'являється, IPC не міняється, а вже встановлені копії лишаються зі
 > своїми значеннями, бо міграцій немає.
 
-Черга порожня. Виконано: 18.
+У черзі: 1. Виконано: 18.
+
+| Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
+|------|---|-----|------|---------|---------------|-------------|------|
+| [song-edit-refusals-untranslated](p2-song-edit-refusals-untranslated.md) ♿ | P2 | planned | draft | S | [play-refusals-untranslated](done/p2-play-refusals-untranslated.md) ✅ | — | rename_song, update_song_tags і delete_song шлють англійську прозу («Stop playback first…», «IO error: …»); тост клеїть її в «Не вдалось виконати дію: {error}» |
 
 ---
 
