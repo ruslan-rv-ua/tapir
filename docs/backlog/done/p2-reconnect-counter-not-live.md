@@ -197,7 +197,7 @@ NVDA-прогін [error-state-never-reaches-ui](p1-error-state-never-reaches-ui
 відхиляла `Error { attempt, max }`.
 
 **Знахідки поза обсягом**, відщеплені записами:
-[recording-duration-is-per-connection](../p2-recording-duration-is-per-connection.md) —
+[recording-duration-is-per-connection](p2-recording-duration-is-per-connection.md) —
 тривалість рахується від поточного з'єднання, не від сесії запису; і
 [status-fixtures-rebuilt-per-test-file](../p3-status-fixtures-rebuilt-per-test-file.md) —
 5 білдерів `StreamStatus` у Rust і 17 літералів у 9 файлах TS.
@@ -212,5 +212,5 @@ NVDA-прогін [error-state-never-reaches-ui](p1-error-state-never-reaches-ui
 - [ADR: подія несе те, що знає перехід](../../decisions/2026-09-15-event-carries-what-the-transition-knows.md)
 - [ADR: семантика спроби перепідключення](../../decisions/2026-08-13-reconnect-attempt-semantics.md)
 - [reconnect-max-in-status](p2-reconnect-max-in-status.md) — звідки відщеплено
-- [recording-duration-is-per-connection](../p2-recording-duration-is-per-connection.md) —
+- [recording-duration-is-per-connection](p2-recording-duration-is-per-connection.md) —
   винесене питання про те, від чого рахується тривалість запису
