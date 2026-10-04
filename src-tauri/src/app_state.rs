@@ -150,9 +150,9 @@ pub async fn graceful_shutdown(app: &AppHandle) {
     // «синхронного» шляху для виходу не потрібно.
     let committed = state
         .commit_profile(|profile| {
-            profile.player_session.volume = volume;
-            crate::playback_control::apply_session_snapshot(
+            crate::playback_control::apply_closing_session(
                 &mut profile.player_session,
+                volume,
                 &player_status,
             );
             Commit::Save(())

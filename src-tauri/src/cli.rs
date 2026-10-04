@@ -269,6 +269,8 @@ async fn execute_action(app: &AppHandle, action: Action) {
 
         Action::StopPlayback => {
             let state = app.state::<AppState>();
+            // Stop drops the source — capture the file position first.
+            crate::playback_control::persist_session_snapshot(app).await;
             if let Err(e) = state.player.stop_playback(app).await {
                 log::warn!("CLI --stop-playback failed: {e}");
                 feedback(app, CliFeedback::ActionFailed { action: "stop-playback".into() });

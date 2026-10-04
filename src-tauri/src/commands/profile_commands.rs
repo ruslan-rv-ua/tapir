@@ -198,6 +198,10 @@ pub async fn switch_profile(
     // Confirm-діалог — Фаза 3; поки що переключення зупиняє без підтвердження.
     crate::scheduler::timer::on_profile_switch(&app).await;
 
+    // Resume snapshot BEFORE the stop below — stop drops the source and the
+    // file position. Saved together with the volume in step 6-7.
+    let player_status = state.player.get_status().await;
+
     // Steps 3-5: stop recordings + playback, join tasks (timeout 2s)
     let handles = {
         let mut manager = state.stream_manager.write().await;
@@ -209,12 +213,17 @@ pub async fn switch_profile(
         futures_util::future::join_all(handles),
     ).await;
 
-    // Step 6-7: save volume to old profile (still the active one at this point)
+    // Step 6-7: save volume + resume snapshot to old profile (still the active
+    // one at this point) — one Commit, the same body as on app exit.
     {
         let volume = state.player.current_volume().await;
         let committed = state
             .commit_profile(|profile| {
-                profile.player_session.volume = volume;
+                crate::playback_control::apply_closing_session(
+                    &mut profile.player_session,
+                    volume,
+                    &player_status,
+                );
                 Commit::Save(())
             })
             .await;
