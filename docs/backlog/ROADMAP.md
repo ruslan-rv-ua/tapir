@@ -56,8 +56,8 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 |------|---|-----|------|---------|---------------|-------------|------|
 | [debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md) ♿ | P2 | planned | ready | S | [stale-search-overwrites-results](done/p2-stale-search-overwrites-results.md) ✅ | [empty-search-shows-popular-stations](p2-empty-search-shows-popular-stations.md) | вікно дебаунсу свідомо показує попередню відповідь; носій $resultsFor закриває склейку, ключ набору, вихід посеред набору й рядки під карткою помилки |
 | [empty-search-shows-popular-stations](p2-empty-search-shows-popular-stations.md) ♿ | P2 | planned | ready | S | [debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md) | [browser-search-announces-result-count](p2-browser-search-announces-result-count.md) | показ результатів стоїть на відповіді екрана: нуль каже «Станцій не знайдено»; порожні критерії — не пошук; популярний список зветься популярним |
+| [recording-duration-is-per-connection](p2-recording-duration-is-per-connection.md) | P2 | planned | ready | S | [reconnect-counter-not-live](done/p2-reconnect-counter-not-live.md) ✅ | — | довідка обіцяє час від початку запису, а рядок потоку й рядок стану показують вік поточного з'єднання: кожне перепідключення обнуляє число |
 | [play-refusals-untranslated](p2-play-refusals-untranslated.md) ♿ | P2 | planned | draft | S | — | — | play_stream віддає сиру англійську прозу на тайм-аут проби й нерозібраний формат, і тост показує її в обох локалях; найчастіше — на станціях AAC+ |
-| [recording-duration-is-per-connection](p2-recording-duration-is-per-connection.md) | P2 | planned | draft | S | [reconnect-counter-not-live](done/p2-reconnect-counter-not-live.md) ✅ | — | довідка обіцяє час від початку запису, а рядок потоку й рядок стану показують вік поточного з'єднання: кожне перепідключення обнуляє число |
 
 ---
 
