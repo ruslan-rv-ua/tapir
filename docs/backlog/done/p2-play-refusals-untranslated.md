@@ -1,10 +1,11 @@
 ---
 slug: play-refusals-untranslated
 title: "Відмова відтворення приходить у тост англійською: тайм-аут проби, формат, з'єднання, пристрій"
-summary: "play_stream і preview_station шлють сиру англійську прозу на кожну відмову рушія; на станціях AAC+ прев'ю ще й закреслює станцію як «Недоступна»"
+summary: "Відмова відтворення й прослуховування приходить кодом play_failed / connect_failed / output_unavailable; «Недоступна» — лише коли станція не відповіла"
 priority: P2
 type: planned
-status: ready
+status: done
+completed: 2026-10-04
 effort: S
 kind: bug
 target: 0.1.1
@@ -53,7 +54,7 @@ notes:
 `playRefusalMessage` (`src/lib/playRefusal.ts`) свідомо пропускає «все інше» як є. Тож
 людина з українським інтерфейсом бачить і чує англійський тост. Найчастіше — на станціях
 AAC+ (HE-AAC): Tapir їх називає й записує, а symphonia не декодує, тож кожна спроба слухати
-закінчується тайм-аутом ([he-aac-mf-playback](p3-he-aac-mf-playback.md)).
+закінчується тайм-аутом ([he-aac-mf-playback](../p3-he-aac-mf-playback.md)).
 
 ### Що виявила звірка з HEAD 74f18ed (грумінг)
 
@@ -76,11 +77,11 @@ AAC+ (HE-AAC): Tapir їх називає й записує, а symphonia не д
 ## Чому це вада
 
 - Тема 0.1.0 обіцяла повні обидві локалі, а
-  [ADR про локалізацію нативного шару](../decisions/2026-08-17-native-layer-localisation.md)
+  [ADR про локалізацію нативного шару](../../decisions/2026-08-17-native-layer-localisation.md)
   каже: нативний шар шле ключі, не прозу.
-- [ADR 2026-09-06](../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md) §5:
+- [ADR 2026-09-06](../../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md) §5:
   причина — закритий перелік, деталь із числами — у лозі.
-  [record-refusals-untranslated](done/p2-record-refusals-untranslated.md) провів це правило для
+  [record-refusals-untranslated](p2-record-refusals-untranslated.md) провів це правило для
   відмов запису; хвіст «та сама проза в `play_stream`» тоді закрили лише для `unsupported_codec`.
 
 ## Рішення грумінгу (2026-10-04)
@@ -130,7 +131,7 @@ responding»): один факт — одне формулювання, як `st
 
 **9. Межа.** Екран «Записи» (`play_saved_song` → `play_file`, `SongsPanel.tsx` показує
 `String(err)`) — той самий клас, окремий запис
-[play-file-refusals-untranslated](p2-play-file-refusals-untranslated.md), що бере коди й мапер
+[play-file-refusals-untranslated](../p2-play-file-refusals-untranslated.md), що бере коди й мапер
 звідси. Трей і гарячі клавіші (`playback_control.rs`, `TransportFailureReason`) уже
 локалізовані — не чіпати, крім `{e:#}` із п. 4.
 
@@ -174,21 +175,46 @@ responding»): один факт — одне формулювання, як `st
         «прев'ю», див. CONTEXT.md §«Прев'ю»)
 - [x] `cargo test`, `cargo clippy --all-targets`, `pnpm test`, `pnpm typecheck`,
       `pnpm vite:build` — без помилок
-- [ ] NVDA-прогін на станції AAC+, в обох локалях
-      ([чекліст](../testing/nvda-play-refusals-untranslated.json)):
-  - [ ] екран «Потоки»: тост читається мовою інтерфейсу — «Не вдалося відтворити потік»
-  - [ ] прев'ю в браузері станцій: той самий тост, **одна** репліка, рядок не стає
+- [x] NVDA-прогін на станції AAC+, в обох локалях (2026-10-04, чекліст Axygen: 15 з 22 пройдено,
+      решта — прев'ю недоступної станції в браузері без мережі — не проганялись; прийнято
+      користувачем):
+  - [x] екран «Потоки»: тост читається мовою інтерфейсу — «Не вдалося відтворити потік»
+  - [x] прев'ю в браузері станцій: той самий тост, **одна** репліка, рядок не стає
         «Недоступна»
-  - [ ] станція з недоступною адресою: «Станція не відповідає», рядок прев'ю — «Недоступна»
+  - [x] станція з недоступною адресою: «Станція не відповідає», рядок прев'ю — «Недоступна»
+
+## Спадок
+
+- **Класифікація типом.** `play_live` (`src-tauri/src/player/engine.rs`) вішає на кожну з
+  п'яти гілок відмови зовнішній контекст `LiveRefusal { Connect, Decode, Output }`;
+  `play_refusal_on_wire` (`src-tauri/src/commands/player_commands.rs`) класифікує
+  `downcast_ref` — спільна для `play_stream` і `preview_station`, пише `{e:#}` у лог.
+  Некласифікована відмова теж іде кодом `play_failed`, не прозою. `Display` у
+  `LiveRefusal` — слова лише для логу.
+- **Сторожі.** Сім тестів Rust у `player_commands.rs` на кожну гілку класифікації й на
+  те, що зовнішній контекст абонента причину не ховає. Вони будують помилку так само, як
+  рушій, але `play_live` не запускають: зняти `.context(LiveRefusal::…)` у рушії тест не
+  помітить — відмова мовчки стане `play_failed`.
+- **Фронтенд.** `playRefusal.ts` — єдиний власник кодів відтворення: `playRefusalMessage`
+  і `isStationUnreachable` (мітка «Недоступна» в браузері — лише на `connect_failed`).
+  `StationItem` більше не озвучує відмову окремо: тост і є реплікою.
+- **Відхилено:** окремий код на тайм-аут проби; злиття `connect_failed` у `play_failed`
+  (див. «Рішення грумінгу»).
+- **Відхилення від запису.** Критерій довідки називав розділ «Звук іде не в той
+  пристрій», а речення «…leaves playback silent» жило в «Звук зник після від'єднання
+  пристрою» — правлено там, і лише про відтворення станції з вікна: екран «Записи» й трей
+  відповідають інакше.
+- **Наступник:** [play-file-refusals-untranslated](../p2-play-file-refusals-untranslated.md)
+  бере ці коди й мапер для екрана «Записи».
 
 ## Документи
 
-- [he-aac-mf-playback](p3-he-aac-mf-playback.md) — де вада трапляється найчастіше
-- [play-file-refusals-untranslated](p2-play-file-refusals-untranslated.md) — той самий клас для
+- [he-aac-mf-playback](../p3-he-aac-mf-playback.md) — де вада трапляється найчастіше
+- [play-file-refusals-untranslated](../p2-play-file-refusals-untranslated.md) — той самий клас для
   екрана «Записи»
-- [record-refusals-untranslated](done/p2-record-refusals-untranslated.md) — той самий клас для запису
-- [ADR 2026-08-17 — локалізація нативного шару](../decisions/2026-08-17-native-layer-localisation.md)
-- [ADR 2026-09-06 — помилка як діагноз](../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md) §5
+- [record-refusals-untranslated](p2-record-refusals-untranslated.md) — той самий клас для запису
+- [ADR 2026-08-17 — локалізація нативного шару](../../decisions/2026-08-17-native-layer-localisation.md)
+- [ADR 2026-09-06 — помилка як діагноз](../../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md) §5
 - Код: `src-tauri/src/player/engine.rs` (`play_live`, `PROBE_TIMEOUT`),
   `src-tauri/src/commands/player_commands.rs` (`play_stream`, `preview_station`),
   `src-tauri/src/commands/stream_commands.rs` (`recording_refusal_on_wire` — зразок),

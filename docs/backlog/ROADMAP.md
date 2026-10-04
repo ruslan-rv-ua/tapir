@@ -14,7 +14,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 саме вони визначають, чи версія закриється. Колонка «Суть» — поле `summary:` запису
 (без нього — `title:`).
 ♿ — запис зачіпає доступність (`a11y: true`), приймання потребує NVDA-прогону.
-Виконані записи (118) — у [done/README.md](done/README.md), спадок кожного — у секції
+Виконані записи (119) — у [done/README.md](done/README.md), спадок кожного — у секції
 «Спадок» його файлу.
 
 ---
@@ -50,12 +50,11 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > поверхонь не з'являється, IPC не міняється, а вже встановлені копії лишаються зі
 > своїми значеннями, бо міграцій немає.
 
-У черзі: 2. Виконано: 16.
+У черзі: 1. Виконано: 17.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
-| [play-file-refusals-untranslated](p2-play-file-refusals-untranslated.md) ♿ | P2 | planned | ready | S | [play-refusals-untranslated](p2-play-refusals-untranslated.md) | — | play_saved_song шле сиру англійську прозу рушія («File not found: {шлях}» тощо); SongsPanel показує її, автоперехід губить причину |
-| [play-refusals-untranslated](p2-play-refusals-untranslated.md) ♿ | P2 | planned | ready | S | — | [play-file-refusals-untranslated](p2-play-file-refusals-untranslated.md) | play_stream і preview_station шлють сиру англійську прозу на кожну відмову рушія; на станціях AAC+ прев'ю ще й закреслює станцію як «Недоступна» |
+| [play-file-refusals-untranslated](p2-play-file-refusals-untranslated.md) ♿ | P2 | planned | ready | S | [play-refusals-untranslated](done/p2-play-refusals-untranslated.md) ✅ | — | play_saved_song шле сиру англійську прозу рушія («File not found: {шлях}» тощо); SongsPanel показує її, автоперехід губить причину |
 
 ---
 
