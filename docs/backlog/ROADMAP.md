@@ -54,8 +54,8 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
-| [debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md) ♿ | P2 | planned | draft | S | [stale-search-overwrites-results](done/p2-stale-search-overwrites-results.md) ✅ | — | критерії міняються миттєво, запит — через 500 мс; у це вікно стара вибірка видається за відповідь, а дописування йде новими критеріями по старому зсуву |
-| [empty-search-shows-popular-stations](p2-empty-search-shows-popular-stations.md) ♿ | P2 | planned | draft | S | — | — | нульовий результат згортає showSearchResults, тож відповіддю на запит стає список популярних; рядок «Станцій не знайдено» недосяжний узагалі |
+| [debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md) ♿ | P2 | planned | ready | S | [stale-search-overwrites-results](done/p2-stale-search-overwrites-results.md) ✅ | [empty-search-shows-popular-stations](p2-empty-search-shows-popular-stations.md) | вікно дебаунсу свідомо показує попередню відповідь; носій $resultsFor закриває склейку, ключ набору, вихід посеред набору й рядки під карткою помилки |
+| [empty-search-shows-popular-stations](p2-empty-search-shows-popular-stations.md) ♿ | P2 | planned | ready | S | [debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md) | [browser-search-announces-result-count](p2-browser-search-announces-result-count.md) | показ результатів стоїть на відповіді екрана: нуль каже «Станцій не знайдено»; порожні критерії — не пошук; популярний список зветься популярним |
 | [play-refusals-untranslated](p2-play-refusals-untranslated.md) ♿ | P2 | planned | draft | S | — | — | play_stream віддає сиру англійську прозу на тайм-аут проби й нерозібраний формат, і тост показує її в обох локалях; найчастіше — на станціях AAC+ |
 | [recording-duration-is-per-connection](p2-recording-duration-is-per-connection.md) | P2 | planned | draft | S | [reconnect-counter-not-live](done/p2-reconnect-counter-not-live.md) ✅ | — | довідка обіцяє час від початку запису, а рядок потоку й рядок стану показують вік поточного з'єднання: кожне перепідключення обнуляє число |
 
@@ -107,7 +107,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > того, хто міняє код. Виняток — [webview-zoom-hotkeys](p1-webview-zoom-hotkeys.md):
 > `planned`/`ready`, обговорення не потребує, у версії стоїть за цінністю.
 
-У черзі: 30. Виконано: 0.
+У черзі: 31. Виконано: 0.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
@@ -126,6 +126,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 | [stream-insert-single-path](p2-stream-insert-single-path.md) | P2 | idea | draft | M | — | — | Сім команд кладуть Потік у Профіль чотирма способами, кожен зі своєю частиною правил; перенесення назв не звіряє — два рядки з однією назвою |
 | [stream-manual-reorder](p2-stream-manual-reorder.md) ♿ | P2 | idea | draft | M | — | — | Ручне сортування потоків — ↑↓ кнопки або drag-and-drop |
 | [track-log-only-mode](p2-track-log-only-mode.md) | P2 | idea | draft | M | — | — | Режим логування назв треків без запису аудіо |
+| [browser-search-announces-result-count](p2-browser-search-announces-result-count.md) ♿ | P2 | idea | draft | S | [empty-search-shows-popular-stations](p2-empty-search-shows-popular-stations.md) | — | відповідь пошуку зараз чути лише при вході в список; палітра вже озвучує кількість результатів — чи робити так само в Браузері і як |
 | [command-palette-dual-language-search](p2-command-palette-dual-language-search.md) | P2 | idea | draft | S | — | — | Пошук у палітрі команд дублюється двома мовами |
 | [command-palette-fuzzy-search](p2-command-palette-fuzzy-search.md) | P2 | idea | draft | S | — | — | Нечіткий пошук у палітрі команд |
 | [focus-on-screen-open-option](p2-focus-on-screen-open-option.md) ♿ | P2 | idea | draft | S | — | — | Налаштування фокуса при відкритті екрана |
@@ -156,7 +157,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
-| [browser-zone-race-sweep-triage](p2-browser-zone-race-sweep-triage.md) ♿ | P2 | research | draft | S | [stale-search-overwrites-results](done/p2-stale-search-overwrites-results.md) ✅ | — | обхід зони браузера дав шість дефектів поза класом stale-search; частина підтверджена, частина не перевірялась — звірити й розділити на власні записи |
+| [browser-zone-race-sweep-triage](p2-browser-zone-race-sweep-triage.md) ♿ | P2 | research | draft | S | [stale-search-overwrites-results](done/p2-stale-search-overwrites-results.md) ✅ | — | обхід зони браузера дав шість дефектів поза класом stale-search; пункти 3–6 забрала пошукова пара 0.1.1, лишились 1 (половина) і 2 |
 | [hls-stream-support](p3-hls-stream-support.md) ♿ | P3 | idea | draft | L | [mpv-playback-engine](p3-mpv-playback-engine.md) | — | залежить від рішення mpv-playback-engine |
 | [mpv-playback-engine](p3-mpv-playback-engine.md) ♿ | P3 | research | draft | L | — | [hls-stream-support](p3-hls-stream-support.md), [he-aac-mf-playback](p3-he-aac-mf-playback.md) | розвилка A4 (PoC-gate): «go» закриває he-aac-mf-playback і hls-stream-support разом; робити першим серед декодер-записів |
 | [stream-auth](p3-stream-auth.md) ♿ | P3 | research | draft | L | — | — | брати лише за реальною потребою (станція з платним/приватним mountpoint) |
