@@ -355,7 +355,7 @@ pub(crate) async fn resume_last(app: &AppHandle) {
             match state.player.play_stream(id, url, app).await {
                 Ok(()) => persist_session_snapshot(app).await,
                 Err(e) => {
-                    log::warn!("playback: resume-last stream failed: {e}");
+                    log::warn!("playback: resume-last stream failed: {e:#}");
                     // Transient — keep the record.
                     answer_failure(app, ResumeFailure::Error, Some(&name));
                 }
@@ -381,7 +381,7 @@ pub(crate) async fn resume_last(app: &AppHandle) {
                     // webview-side, unchanged.
                 }
                 Err(e) => {
-                    log::warn!("playback: resume-last file failed: {e}");
+                    log::warn!("playback: resume-last file failed: {e:#}");
                     // Keep the record; the announce clears the webview's pending.
                     answer_failure(app, ResumeFailure::Error, Some(&name));
                 }

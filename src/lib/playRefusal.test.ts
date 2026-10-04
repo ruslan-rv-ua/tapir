@@ -4,6 +4,9 @@ import { playRefusalMessage } from "./playRefusal";
 vi.mock("../i18n/paraglide/messages", () => ({
   stream_play_unsupported: () => "Tapir не відтворює кодек цього потоку",
   stream_not_found_in_profile: () => "Потік не знайдено в активному профілі",
+  stream_play_failed: () => "Не вдалося відтворити потік",
+  failure_station_unreachable: () => "Станція не відповідає",
+  stream_play_output_unavailable: () => "Не вдалося відкрити пристрій виведення",
 }));
 
 describe("playRefusalMessage", () => {
@@ -15,10 +18,19 @@ describe("playRefusalMessage", () => {
     expect(playRefusalMessage("stream_not_found")).toBe("Потік не знайдено в активному профілі");
   });
 
-  it("passes anything else through untouched", () => {
-    // Причина обриву — єдина деталь, яку має користувач; узагальнювати її
-    // означало б забрати її.
-    expect(playRefusalMessage("failed to connect to stream")).toBe("failed to connect to stream");
+  it("says the stream would not play — probe timeout, undecodable format, decoder panic", () => {
+    expect(playRefusalMessage("play_failed")).toBe("Не вдалося відтворити потік");
+  });
+
+  it("says the station did not answer — the same wording as the browser's health check", () => {
+    expect(playRefusalMessage("connect_failed")).toBe("Станція не відповідає");
+  });
+
+  it("names the output device when it would not open", () => {
+    expect(playRefusalMessage("output_unavailable")).toBe("Не вдалося відкрити пристрій виведення");
+  });
+
+  it("passes an unknown value through untouched", () => {
     expect(playRefusalMessage(new Error("boom"))).toBe("Error: boom");
   });
 });

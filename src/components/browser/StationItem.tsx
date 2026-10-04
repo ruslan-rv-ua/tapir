@@ -7,7 +7,7 @@ import { CompositeRow, CompositeSegment, CompositeAction, COMPOSITE_FOCUS_RING }
 import { $playerStatus } from "../../stores/player";
 import { previewStation, stopPlayback } from "../../lib/tauri";
 import { addToast } from "../../stores/toasts";
-import { useAnnounce } from "../../hooks/useAnnounce";
+import { playRefusalMessage } from "../../lib/playRefusal";
 import * as m from "../../i18n/paraglide/messages";
 
 const SEGMENT_ICONS: Partial<Record<Exclude<SegmentKind, "summary">, ReactNode>> = {
@@ -45,10 +45,11 @@ interface StationItemProps {
    *  something Tapir records. The visible carrier for the caveat the add
    *  announces (ADR 2026-08-31): the codec cell says so, not just the voice. */
   unsupported: UnsupportedCodec | null;
-  /** lastcheckok === 0 OR a preview attempt has failed this session. */
+  /** lastcheckok === 0 OR a preview found the station not answering this session. */
   isUnavailable: boolean;
   isSelected: boolean;
   onAdd: () => void;
+  /** Called only when the preview refusal is `connect_failed`. */
   onPreviewFailed: () => void;
 }
 
@@ -64,7 +65,6 @@ export function StationItem({
   onPreviewFailed,
 }: StationItemProps) {
   const playerStatus = useStore($playerStatus);
-  const announce = useAnnounce();
   const resolved = station.urlResolved || station.url;
   const isPreviewing =
     !!resolved &&
@@ -84,9 +84,13 @@ export function StationItem({
     try {
       await previewStation(resolved, station.name);
     } catch (err) {
-      addToast(String(err), "error");
-      announce(m.station_preview_failed({ name: station.name }), "polite");
-      onPreviewFailed();
+      // One event, one voice: the toast (a polite live region) carries the
+      // reason, the focused row carries the station — no announce on top.
+      addToast(playRefusalMessage(err), "error");
+      // Only a station that did not answer is "unavailable". One that answered
+      // but would not play (AAC+) is on the air and records fine; the label
+      // would talk people out of adding it.
+      if (String(err) === "connect_failed") onPreviewFailed();
     }
   };
 
