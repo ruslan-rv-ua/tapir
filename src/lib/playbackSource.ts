@@ -32,3 +32,19 @@ export const LIVE_BY_SOURCE_TYPE: Record<PlaybackSource["type"], boolean> = {
 export function isLiveSource(source: PlaybackSource | null | undefined): boolean {
   return source ? LIVE_BY_SOURCE_TYPE[source.type] : false;
 }
+
+/**
+ * "Is this the same source?" — the one answer for every reader of
+ * `player-status` that has to tell a switch from a continuation: the
+ * announcer ("Playing: B") and the mute cleanup (the toggle resets on a new
+ * source, ADR 2026-08-16 §3). Each kind has its own identity — a stream its
+ * id, a catalogue station its url, a file its path — and two kinds are never
+ * the same. Two copies of this used to drift apart; keep it one.
+ */
+export function sameSource(a: PlaybackSource | null, b: PlaybackSource | null): boolean {
+  if (!a || !b) return a === b;
+  if (a.type === "stream" && b.type === "stream") return a.streamId === b.streamId;
+  if (a.type === "preview" && b.type === "preview") return a.url === b.url;
+  if (a.type === "file" && b.type === "file") return a.path === b.path;
+  return false;
+}

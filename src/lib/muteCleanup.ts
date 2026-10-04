@@ -1,12 +1,26 @@
 import { $muteState } from "../stores/player";
+import { sameSource } from "./playbackSource";
 import * as tauri from "./tauri";
 import type { PlayerStatus } from "./tauri";
 
 export interface MuteCleanupFlags {
   /** prev.state === "stopped" && payload.state === "playing" */
   stateChangedToPlaying: boolean;
-  /** payload.state === "playing" and the source changed (type / streamId / path) */
+  /** payload.state === "playing" and the source is not `sameSource` as before */
   sourceChangedWhilePlaying: boolean;
+}
+
+/**
+ * The transition flags `applyMuteCleanup` acts on, read off two consecutive
+ * `player-status` payloads. The source comparison is `sameSource` — the same
+ * one the announcer uses — so whatever is announced as "Playing: B" also gets
+ * the sound back.
+ */
+export function muteCleanupFlags(prev: PlayerStatus, next: PlayerStatus): MuteCleanupFlags {
+  return {
+    stateChangedToPlaying: prev.state === "stopped" && next.state === "playing",
+    sourceChangedWhilePlaying: next.state === "playing" && !sameSource(prev.source, next.source),
+  };
 }
 
 /**
