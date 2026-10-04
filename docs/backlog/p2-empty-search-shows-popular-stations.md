@@ -35,7 +35,7 @@ notes:
 > **Контекст:** знахідка фонового обходу під час грилінгу
 > [stale-search-overwrites-results](done/p2-stale-search-overwrites-results.md) (2026-09-15).
 > **Виґрумінговано 2026-10-04** разом із
-> [debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md); рішення —
+> [debounce-window-shows-stale-result-set](done/p2-debounce-window-shows-stale-result-set.md); рішення —
 > [ADR 2026-10-04 «Екран показує відповідь, а не поле»](../decisions/2026-10-04-screen-shows-the-answer-not-the-field.md).
 > Читати першим ADR; тут — лише те, що несе саме цей запис.
 
@@ -99,7 +99,7 @@ const showSearchResults = isSearchActive && (searchResults.length > 0 || searchL
 
 - Довідка: третє речення погодженої правки абзацу «Пошук» («Якщо за запитом нічого немає, список
   так і каже: „Станцій не знайдено"») — текст у
-  [debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md)
+  [debounce-window-shows-stale-result-set](done/p2-debounce-window-shows-stale-result-set.md)
   §«Довідка й `accessibility.md`»; правка одна, бо PR один.
 - `docs/accessibility.md` §5.1, дерево: `StationList aria-label` — «Популярні станції» /
   «Результати пошуку» за режимом; «(поки пошук не виконано)» біля `<h2>` → «(поки немає

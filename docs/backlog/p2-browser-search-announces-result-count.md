@@ -28,7 +28,7 @@ notes:
 
 > **Контекст:** відгалуження грумінгу
 > [empty-search-shows-popular-stations](p2-empty-search-shows-popular-stations.md) і
-> [debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md)
+> [debounce-window-shows-stale-result-set](done/p2-debounce-window-shows-stale-result-set.md)
 > (2026-10-04). Ідея, дизайну немає — перед планом **ОБГОВОРЕННЯ**.
 
 ## Опис
