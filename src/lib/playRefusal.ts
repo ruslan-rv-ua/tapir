@@ -2,8 +2,8 @@ import * as m from "../i18n/paraglide/messages";
 
 /**
  * Localized toast for a rejected `play_stream`, `preview_station` or
- * `play_saved_song`. The
- * backend refuses with a stable code and words none of them itself; the detail
+ * `play_saved_song`. The backend refuses with a stable code and words none of
+ * them itself; the detail
  * (the whole error chain) is in the log, not in the toast (ADR 2026-09-06 §5):
  *
  * - `unsupported_codec` — a stream whose air Tapir cannot even name
