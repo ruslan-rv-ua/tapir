@@ -18,6 +18,8 @@ A row marked **incomplete** is a track Tapir did not see the start or the end of
 
 `Alt+Enter` hands the file to whatever program Windows associates with it, and `Ctrl+Enter` opens its folder with the file selected. Both act on the focused row only, never on the selection. If the file cannot be opened, Tapir says why — usually no program is registered for that file type, or the file has been moved since the list was built.
 
+If the file is no longer where the list sees it — moved or deleted outside Tapir — both `Enter` and `Alt+Enter` say **File not found**. The row stays in the list until you come back to this screen, when Tapir reads the folder again.
+
 ### Renaming, tags and deleting
 
 Both editors open from the keyboard: `F2` renames the focused row, `F4` opens its tags. Either key acts on the focused row alone, even when several rows are selected.

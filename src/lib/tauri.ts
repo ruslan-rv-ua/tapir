@@ -370,9 +370,6 @@ export async function playStream(streamId: string): Promise<void> {
 export async function previewStation(url: string, name: string): Promise<void> {
   return invoke("preview_station", { url, name });
 }
-export async function playFile(path: string): Promise<void> {
-  return invoke("play_file", { path });
-}
 export async function pausePlayback(): Promise<void> {
   return invoke("pause_playback");
 }

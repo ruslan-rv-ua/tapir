@@ -1,13 +1,16 @@
 import { $playerStatus } from "../stores/player";
-import { $playbackNeighbors } from "../stores/playbackNeighbors";
-import { $settings } from "../stores/settings";
+import { $playbackNeighbors, computePlaybackNeighbors } from "../stores/playbackNeighbors";
+import { $profileSettings, $settings } from "../stores/settings";
+import { $filteredSongs } from "../stores/songs";
 import { $streams } from "../stores/streams";
 import { addToast } from "../stores/toasts";
 import { announce } from "../stores/announcer";
 import * as tauri from "./tauri";
 import { sourceName } from "./playbackAnnounce";
+import { playRefusalMessage } from "./playRefusal";
 import * as m from "../i18n/paraglide/messages";
 import {
+  resolveEndedAction,
   resolveTransportAction,
   type TransportAction,
   type TransportContext,
@@ -112,5 +115,29 @@ export async function executeTransportSkip(
     await reportSkipFailure(action, ctx, e);
   } finally {
     pending = false;
+  }
+}
+
+/**
+ * The file at `path` ended on its own (`player-ended`): play the next one in
+ * filtered order, or stop at the end of the list / with auto-advance off.
+ * A refusal names its reason (`playRefusalMessage`) and stops — the
+ * skip-on-error guard: never loop through broken files.
+ */
+export async function executeEndedAdvance(path: string): Promise<void> {
+  const autoAdvance = $profileSettings.get()?.autoAdvance ?? true;
+  const neighbors = computePlaybackNeighbors(
+    { type: "file", path },
+    $streams.get(),
+    $filteredSongs.get(),
+  );
+  const action = resolveEndedAction(autoAdvance, neighbors);
+  try {
+    if (action.kind === "play-file") await tauri.playSavedSong(action.path);
+    else await tauri.stopPlayback(); // end of list or autoAdvance off
+  } catch (e) {
+    console.error(e);
+    addToast(playRefusalMessage(e), "error");
+    await tauri.stopPlayback().catch(() => {});
   }
 }

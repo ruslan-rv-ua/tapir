@@ -1,6 +1,6 @@
 use tauri::{AppHandle, State};
 use crate::app_state::AppState;
-use crate::player::engine::{AudioDevice, LiveRefusal};
+use crate::player::engine::{AudioDevice, FileRefusal, LiveRefusal};
 
 /// Stable error code returned by `play_stream` when the stream's air is not
 /// something Tapir can even name. Part of the IPC contract: the frontend maps it
@@ -41,6 +41,33 @@ fn play_refusal_on_wire(e: anyhow::Error) -> String {
     play_refusal_code(&e).to_string()
 }
 
+/// The track is no longer where the list saw it — `NotFound` from `File::open`
+/// and nothing else. Same frontend key as `Alt+Enter`'s `not_found`
+/// (`songs_open_not_found`): one fact, one wording.
+pub(crate) const PLAY_ERR_FILE_NOT_FOUND: &str = "file_not_found";
+/// Any other refusal of a file: access denied, held by another process, a
+/// broken or unfinished file the decoder would not take. One code — all lead to
+/// the same action (the help).
+pub(crate) const PLAY_ERR_FILE_PLAY_FAILED: &str = "file_play_failed";
+
+/// The closed list of file-play refusals on the wire, by the [`FileRefusal`]
+/// context the engine attaches. The output device shares the live code: the
+/// wording names no source.
+fn file_refusal_code(e: &anyhow::Error) -> &'static str {
+    match e.downcast_ref::<FileRefusal>() {
+        Some(FileRefusal::NotFound) => PLAY_ERR_FILE_NOT_FOUND,
+        Some(FileRefusal::Output) => PLAY_ERR_OUTPUT_UNAVAILABLE,
+        Some(FileRefusal::Unplayable) | None => PLAY_ERR_FILE_PLAY_FAILED,
+    }
+}
+
+/// Refusal → wire for `play_saved_song`: the whole chain (path included) to the
+/// log, the code to the frontend (ADR 2026-09-06 §5).
+pub(crate) fn file_refusal_on_wire(e: anyhow::Error) -> String {
+    log::warn!("Player: file play refused: {e:#}");
+    file_refusal_code(&e).to_string()
+}
+
 #[tauri::command]
 pub async fn play_stream(
     stream_id: String,
@@ -76,17 +103,6 @@ pub async fn preview_station(
     app: AppHandle,
 ) -> Result<(), String> {
     state.player.preview(url, name, &app).await.map_err(play_refusal_on_wire)
-}
-
-#[tauri::command]
-pub async fn play_file(
-    path: String,
-    state: State<'_, AppState>,
-    app: AppHandle,
-) -> Result<(), String> {
-    state.player.play_file(path, &app).await.map_err(|e| e.to_string())?;
-    crate::playback_control::persist_session_snapshot(&app).await;
-    Ok(())
 }
 
 #[tauri::command]
@@ -237,5 +253,33 @@ mod tests {
         // A caller wrapping the engine's error must not hide the reason.
         let e = refused("x", LiveRefusal::Output).context("while resuming");
         assert_eq!(play_refusal_code(&e), "output_unavailable");
+    }
+
+    fn file_refused(detail: &str, reason: FileRefusal) -> anyhow::Error {
+        Err::<(), _>(anyhow::anyhow!("{detail}")).context(reason).unwrap_err()
+    }
+
+    #[test]
+    fn missing_file_is_file_not_found() {
+        let e = file_refused("opening C:\\rec\\a.mp3", FileRefusal::NotFound);
+        assert_eq!(file_refusal_code(&e), "file_not_found");
+    }
+
+    #[test]
+    fn unplayable_file_is_file_play_failed() {
+        let e = file_refused("decoding C:\\rec\\a.mp3", FileRefusal::Unplayable);
+        assert_eq!(file_refusal_code(&e), "file_play_failed");
+    }
+
+    #[test]
+    fn file_output_failure_is_output_unavailable() {
+        let e = file_refused("audio device not found: Speakers", FileRefusal::Output);
+        assert_eq!(file_refusal_code(&e), "output_unavailable");
+    }
+
+    #[test]
+    fn unclassified_file_failure_leaves_as_a_code_without_the_path() {
+        let e = anyhow::anyhow!("something about C:\\rec\\a.mp3");
+        assert_eq!(file_refusal_on_wire(e), "file_play_failed");
     }
 }
