@@ -94,6 +94,21 @@ describe("StatusBar free-space segment", () => {
   });
 });
 
+describe("StatusBar — recordings summary counts every phase of a recording", () => {
+  it("counts a reconnecting recording and takes the longest from it", () => {
+    // Connecting and reconnecting are phases of a recording, not its absence
+    // (CONTEXT.md §«Запис і Записи»): the summary must not say the recording
+    // vanished while it reconnects, nor hide the longest one.
+    $statuses.set({
+      s1: { ...recordingStatus(2 * 3600_000), state: "reconnecting", reconnect: { attempt: 2, max: 10 } },
+      s2: { ...recordingStatus(60_000), streamId: "s2" },
+    });
+    renderBar();
+    expect(screen.getByText(/^2 (recordings|записи)$/i)).toBeTruthy();
+    expect(screen.getByText(/^2:00:0\d$/)).toBeTruthy();
+  });
+});
+
 describe("StatusBar — scoped application role", () => {
   it("keeps the contentinfo landmark and nests an application wrapper", () => {
     const { container } = renderBar();

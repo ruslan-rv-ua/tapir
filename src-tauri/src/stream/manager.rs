@@ -41,6 +41,10 @@ pub struct StreamStatus {
     pub stream_id: String,
     pub state: StreamState,
     pub current_track: Option<TrackInfo>,
+    /// Мить команди «почати» — тривалість запису рахується від неї, з усіма
+    /// перепідключеннями всередині (CONTEXT.md §«Запис і Записи»). Ставить її
+    /// [`StreamManager::start_recording`] разом із `session_id`; жоден перехід
+    /// її не пише, лише фінал стирає (ADR 2026-09-15, поправка 2026-10-04).
     pub recording_started_at: Option<String>,
     pub bytes_recorded: u64,
     pub tracks_recorded: u32,
@@ -52,8 +56,8 @@ pub struct StreamStatus {
     pub reconnect: Option<ReconnectProgress>,
     /// Стабільний id сесії запису (§3.3): присвоюється на старті, reconnect
     /// його НЕ змінює. Scheduler трекає власність записів саме по ньому —
-    /// recording_started_at для цього непридатний (None у Connecting,
-    /// перезаписується кожним реконектом).
+    /// recording_started_at для цього непридатний: мітка часу, а не id, і
+    /// дві команди в ту саму мить її не розрізнять.
     pub session_id: u64,
 }
 
@@ -285,7 +289,7 @@ impl StreamManager {
             stream_id: stream_id.clone(),
             state: StreamState::Idle,
             current_track: None,
-            recording_started_at: None,
+            recording_started_at: Some(chrono::Local::now().to_rfc3339()),
             bytes_recorded: 0,
             tracks_recorded: 0,
             error: None,
@@ -496,7 +500,7 @@ enum Transition {
     /// (ADR 2026-09-15 «Підключення — перше з'єднання запису»).
     Connecting,
     Reconnecting(ReconnectProgress),
-    Recording { started_at: String },
+    Recording,
     Final(TaskOutcome),
 }
 
@@ -514,9 +518,9 @@ struct Emission {
     /// переходів **є** скиданням пари в дзеркалі фронтенду: окремого механізму
     /// для цього не існує (ADR 2026-09-15 «Подія несе те, що знає перехід» §1).
     reconnect: Option<ReconnectProgress>,
-    /// Мить, коли з'єднання стало записом. Доти фронтенд штампував власний
-    /// годинник на прибуття події — те саме поле з живим джерелом, яке ніхто
-    /// не читав (§1).
+    /// Мить команди «почати». Не факт переходу, а факт сесії, який подія
+    /// повторює зі статусу: є в усіх живих фазах, `None` у фіналі
+    /// (ADR 2026-09-15, поправка 2026-10-04).
     recording_started_at: Option<String>,
 }
 
@@ -543,6 +547,8 @@ fn opening_transition(attempt: u32, max_retries: u32) -> Transition {
 /// безкоштовний: кожна подія штовхає живий снапшот crash-recovery і повну
 /// перебудову меню трея з трьома замками.
 fn transition_outcome(transition: Transition) -> (StreamState, Emission) {
+    // Мить старту тут скрізь `None`: її знає не перехід, а статус, і
+    // доповнює емісію [`apply_transition`].
     match transition {
         Transition::Connecting => (
             StreamState::Connecting,
@@ -562,13 +568,13 @@ fn transition_outcome(transition: Transition) -> (StreamState, Emission) {
                 recording_started_at: None,
             },
         ),
-        Transition::Recording { started_at } => (
+        Transition::Recording => (
             StreamState::Recording,
             Emission {
                 status: RecordingStatus::Recording,
                 error: None,
                 reconnect: None,
-                recording_started_at: Some(started_at),
+                recording_started_at: None,
             },
         ),
         // Стан і причина йдуть з одного джерела — інакше причина пережила б
@@ -598,19 +604,28 @@ fn transition_outcome(transition: Transition) -> (StreamState, Emission) {
 /// безкоштовний: кожна подія штовхає живий снапшот crash-recovery і повну
 /// перебудову меню трея з трьома замками.
 ///
-/// Обидва переліки полів нижче — про одні й ті самі чотири поля, і п'яте,
-/// дописане лише в один із них, компілятор не спіймає. Сторож на це —
+/// Обидва переліки полів нижче — про одні й ті самі три поля переходу, і
+/// четверте, дописане лише в один із них, компілятор не спіймає. Сторож на це —
 /// `every_emitted_field_alone_is_enough_to_emit`.
+///
+/// Мить старту в переліки не входить: вона факт сесії, а не переходу. Між
+/// переходами вона не міняється, тож нової події сама не дає; фінал її стирає,
+/// але фінал і так міняє стан. Подія лише повторює те, що лежить у статусі
+/// (ADR 2026-09-15, поправка 2026-10-04).
 fn apply_transition(status: &mut StreamStatus, transition: Transition) -> Option<Emission> {
-    let (state, next) = transition_outcome(transition);
+    let ends = matches!(transition, Transition::Final(_));
+    let (state, mut next) = transition_outcome(transition);
 
-    let changed = (status.state, status.error, status.reconnect, &status.recording_started_at)
-        != (state, next.error, next.reconnect, &next.recording_started_at);
+    let changed = (status.state, status.error, status.reconnect)
+        != (state, next.error, next.reconnect);
 
     status.state = state;
     status.error = next.error;
     status.reconnect = next.reconnect;
-    status.recording_started_at = next.recording_started_at.clone();
+    if ends {
+        status.recording_started_at = None;
+    }
+    next.recording_started_at = status.recording_started_at.clone();
 
     changed.then_some(next)
 }
@@ -1017,14 +1032,7 @@ pub async fn recording_task(
         });
 
         // --- Async event consumer ---
-        let started_at = chrono::Local::now().to_rfc3339();
-        announce_transition(
-            &app_handle,
-            &manager,
-            &stream_id,
-            Transition::Recording { started_at },
-        )
-        .await;
+        announce_transition(&app_handle, &manager, &stream_id, Transition::Recording).await;
 
         let mut local_bytes: u64 = 0;
         const BYTES_UPDATE_THRESHOLD: u64 = 65536;
@@ -1304,17 +1312,40 @@ mod tests {
         assert_eq!(status.reconnect, Some(progress(3, 10)));
         assert_eq!(e.reconnect, status.reconnect);
 
-        let e = apply_transition(&mut status, Transition::Recording { started_at: "t0".into() })
+        let e = apply_transition(&mut status, Transition::Recording)
             .expect("recording changes the status");
         assert_eq!(status.reconnect, None, "the pair does not outlive the reconnect");
         assert_eq!(e.reconnect, None);
-        assert_eq!(status.recording_started_at.as_deref(), Some("t0"));
-        assert_eq!(e.recording_started_at.as_deref(), Some("t0"));
 
         let e = apply_transition(&mut status, Transition::Connecting)
             .expect("connecting changes the status");
         assert_eq!(status.reconnect, None);
-        assert_eq!(status.recording_started_at, None, "the start moment belongs to recording");
+        assert_eq!(e.reconnect, None);
+    }
+
+    #[test]
+    fn the_start_moment_is_the_command_and_survives_every_reconnect() {
+        // Тривалість запису рахується від команди «почати», перепідключення —
+        // фази запису (CONTEXT.md §«Запис і Записи»; ADR 2026-09-15, поправка
+        // 2026-10-04). Мить уже є в `Connecting`, жоден перехід її не пише, і
+        // кожна емісія повторює її зі статусу; фінал стирає.
+        let mut status = StreamStatus { recording_started_at: Some("t0".into()), ..idle_status() };
+
+        let path = [
+            Transition::Connecting,
+            Transition::Recording,
+            Transition::Reconnecting(progress(1, 10)),
+            Transition::Recording,
+        ];
+        for transition in path {
+            let label = format!("{transition:?}");
+            let e = apply_transition(&mut status, transition).expect("each step changes the state");
+            assert_eq!(status.recording_started_at.as_deref(), Some("t0"), "status after {label}");
+            assert_eq!(e.recording_started_at.as_deref(), Some("t0"), "emission of {label}");
+        }
+
+        let e = apply_transition(&mut status, Transition::Final(TaskOutcome::Stopped)).unwrap();
+        assert_eq!(status.recording_started_at, None, "the moment lives only as long as the recording");
         assert_eq!(e.recording_started_at, None);
     }
 
@@ -1331,10 +1362,12 @@ mod tests {
 
     #[test]
     fn every_emitted_field_alone_is_enough_to_emit() {
-        // `apply_transition` перелічує ті самі чотири поля двічі — у перевірці
-        // «чи змінилось» і в присвоєннях, — і п'яте поле, дописане лише в один
-        // перелік, компілятор не спіймає. Кожне поле перевіряється окремо:
-        // пара переходів нижче різниться рівно одним із них.
+        // `apply_transition` перелічує ті самі три поля переходу двічі — у
+        // перевірці «чи змінилось» і в присвоєннях, — і четверте поле, дописане
+        // лише в один перелік, компілятор не спіймає. Кожне поле перевіряється
+        // окремо: пара переходів нижче різниться рівно одним із них. Мить
+        // старту сюди не входить: між переходами вона не міняється, отже й
+        // подію сама не дає (поправка 2026-10-04 до ADR 2026-09-15).
         let settled = |transition| {
             let mut status = idle_status();
             apply_transition(&mut status, transition);
@@ -1353,10 +1386,10 @@ mod tests {
             "reconnect alone"
         );
 
-        let mut status = settled(Transition::Recording { started_at: "t0".into() });
+        let mut status = settled(Transition::Recording);
         assert!(
-            apply_transition(&mut status, Transition::Recording { started_at: "t1".into() }).is_some(),
-            "recording_started_at alone"
+            apply_transition(&mut status, Transition::Recording).is_none(),
+            "the start moment never changes between transitions, so a repeat says nothing"
         );
 
         let failed = |reason| Transition::Final(TaskOutcome::Failed(reason));

@@ -13,8 +13,8 @@ import type { RecordingStatusPayload, StreamStatus } from "./tauri";
  *
  * Функція чиста: усе, що вона кладе, приходить у самій події. Годинника тут
  * немає навмисно — `recordingStartedAt` бекенд знає точніше, бо ставить його в
- * мить, коли з'єднання стало записом, а не коли подія доїхала
- * (ADR 2026-09-15 «Подія несе те, що знає перехід» §1).
+ * мить команди «почати», а не коли подія доїхала
+ * (ADR 2026-09-15 «Подія несе те, що знає перехід», поправка 2026-10-04).
  */
 export function recordingStatusPatch(payload: RecordingStatusPayload): Partial<StreamStatus> {
   return {
@@ -23,8 +23,7 @@ export function recordingStatusPatch(payload: RecordingStatusPayload): Partial<S
     // після нього — «очікування» (`tauri-ts-type-drift`, рішення 8).
     state: payload.status === "stopped" ? "idle" : payload.status,
     // Порожнеча в події — це скидання, а не «поле не згадали»: перехід, що не
-    // є перепідключенням, стирає пару, а перехід, що не є записом, — мить
-    // старту. Інваріанта «пара є тоді й лише тоді, коли перепідключення»
+    // є перепідключенням, стирає пару, а фінал — мить старту. Інваріанта «пара є тоді й лише тоді, коли перепідключення»
     // дзеркало не відтворює саме — воно повторює те, що сказав бекенд.
     reconnect: payload.reconnect,
     recordingStartedAt: payload.recordingStartedAt,

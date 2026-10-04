@@ -8,6 +8,7 @@ import { $freeSpace } from "../../stores/system";
 import { $profileSettings } from "../../stores/settings";
 import { formatBytes, formatDuration, isLowDiskSpace } from "../../lib/formatters";
 import { plural } from "../../lib/plural";
+import { isRecordingLike } from "../../lib/streamState";
 import * as m from "../../i18n/paraglide/messages";
 
 interface Props {
@@ -36,7 +37,10 @@ export const StatusBar = forwardRef<ZoneEntry, Props>(({ exitZone }, ref) => {
   const seg2Ref = useRef<HTMLDivElement | null>(null);
   const segRefs = useMemo(() => [seg0Ref, seg1Ref, seg2Ref], []);
 
-  const activeStatuses = Object.values(statuses).filter((s) => s.state === "recording");
+  // Підключення й перепідключення — фази запису, а не його відсутність
+  // (CONTEXT.md §«Запис і Записи»): запис, що перепідключається, лишається і
+  // в лічильнику, і в найдовшому.
+  const activeStatuses = Object.values(statuses).filter((s) => isRecordingLike(s.state));
   const recordingCount = activeStatuses.length;
 
   // Update every second when actively recording
