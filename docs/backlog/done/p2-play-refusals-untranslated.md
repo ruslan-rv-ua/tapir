@@ -131,7 +131,7 @@ responding»): один факт — одне формулювання, як `st
 
 **9. Межа.** Екран «Записи» (`play_saved_song` → `play_file`, `SongsPanel.tsx` показує
 `String(err)`) — той самий клас, окремий запис
-[play-file-refusals-untranslated](../p2-play-file-refusals-untranslated.md), що бере коди й мапер
+[play-file-refusals-untranslated](p2-play-file-refusals-untranslated.md), що бере коди й мапер
 звідси. Трей і гарячі клавіші (`playback_control.rs`, `TransportFailureReason`) уже
 локалізовані — не чіпати, крім `{e:#}` із п. 4.
 
@@ -204,13 +204,13 @@ responding»): один факт — одне формулювання, як `st
   пристрій», а речення «…leaves playback silent» жило в «Звук зник після від'єднання
   пристрою» — правлено там, і лише про відтворення станції з вікна: екран «Записи» й трей
   відповідають інакше.
-- **Наступник:** [play-file-refusals-untranslated](../p2-play-file-refusals-untranslated.md)
+- **Наступник:** [play-file-refusals-untranslated](p2-play-file-refusals-untranslated.md)
   бере ці коди й мапер для екрана «Записи».
 
 ## Документи
 
 - [he-aac-mf-playback](../p3-he-aac-mf-playback.md) — де вада трапляється найчастіше
-- [play-file-refusals-untranslated](../p2-play-file-refusals-untranslated.md) — той самий клас для
+- [play-file-refusals-untranslated](p2-play-file-refusals-untranslated.md) — той самий клас для
   екрана «Записи»
 - [record-refusals-untranslated](p2-record-refusals-untranslated.md) — той самий клас для запису
 - [ADR 2026-08-17 — локалізація нативного шару](../../decisions/2026-08-17-native-layer-localisation.md)
