@@ -1,14 +1,15 @@
 ---
 slug: preview-switch-keeps-mute
 title: "Перемикання прев'ю лишає звук вимкненим, хоча Tapir оголошує «Відтворення»"
-summary: "прев'ю A → прев'ю B після Ctrl+M: «Відтворення: B», а звук лишається вимкненим — App.tsx не порівнює url; одне порівняння джерел на обидва місця"
+summary: "Прев'ю → прев'ю повертає вимкнений звук; один sameSource у playbackSource.ts для Оголошення й скидання, прапорці — чиста muteCleanupFlags"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: S
 kind: bug
 target: 0.1.1
-updated: 2026-09-24
+updated: 2026-10-04
+completed: 2026-10-04
 a11y: true
 depends_on: []
 blocks: []
@@ -24,9 +25,8 @@ gates: [pnpm test, pnpm typecheck, pnpm vite:build]
 
 # Перемикання прев'ю лишає звук вимкненим, хоча Tapir оголошує «Відтворення»
 
-> **Контекст:** знахідка [огляду архітектури 2026-09-24](../notes/architecture-review-2026-09-24.md);
-> є на f09f36b і в v0.1.0. `planned` + `ready` → **РЕАЛІЗАЦІЯ**; відкрите питання внизу має
-> рекомендовану відповідь і роботи не блокує.
+> **Контекст:** знахідка [огляду архітектури 2026-09-24](../../notes/architecture-review-2026-09-24.md);
+> є на f09f36b і в v0.1.0. **ЗАКРИТО 2026-10-04** (див. «Спадок»).
 
 ## Опис
 
@@ -52,12 +52,12 @@ gates: [pnpm test, pnpm typecheck, pnpm vite:build]
 
 ## Що обіцяно
 
-- [ADR 2026-08-16](../decisions/2026-08-16-silence-is-mute-or-zero-volume.md) §3: перемикач
+- [ADR 2026-08-16](../../decisions/2026-08-16-silence-is-mute-or-zero-volume.md) §3: перемикач
   скидається на новому джерелі; «Обмеження / наслідки»: «Явний `Ctrl+M` + перемикання станції →
   звук повертається».
 - Докоментар `src/lib/muteControl.ts:12-13` і коментар `src/lib/muteCleanup.ts:27` — те саме
   правило.
-- [CONTEXT.md](../../CONTEXT.md) §«Живе джерело»: шляхів два, поводиться воно одним; керування
+- [CONTEXT.md](../../../CONTEXT.md) §«Живе джерело»: шляхів два, поводиться воно одним; керування
   звуком питає «це живе джерело?», а не «це потік із профілю?».
 - Довідка скидання на перемиканні не обіцяє — обіцянка внутрішня.
 
@@ -103,8 +103,8 @@ IPC, подій, поверхонь і ключів i18n не додається
 - Що саме скидається, не змінюємо: правило ADR лише доходить до третього виду джерела.
 - Дзеркало програвача в один модуль не збираємо: п'ять файлів на одну подію `player-status` і
   дві копії «того самого джерела» — клас, який знімає ідея
-  [player-mirror-module](p2-player-mirror-module.md) (тотожність джерела як поняття —
-  [playback-source-module](p2-playback-source-module.md)). Тут — мінімальна латка.
+  [player-mirror-module](../p2-player-mirror-module.md) (тотожність джерела як поняття —
+  [playback-source-module](../p2-playback-source-module.md)). Тут — мінімальна латка.
 - Ручне відновлення в `handleStop` (`src/components/player/PlayerPanel.tsx:210-232`) не чіпаємо.
 
 ## Відкриті питання
@@ -114,32 +114,52 @@ IPC, подій, поверхонь і ключів i18n не додається
 вирівнювання решти переходів під нове правило стає окремим записом. **Рекомендовано: код** —
 правило чинне для всіх інших переходів, тригер перегляду (скарги, що звук повернувся сам після
 перемикання станції) не настав, а латка вирівнює прев'ю з рештою живих джерел.
+**Відповідь: код** (рекомендоване); ADR не переглядали.
 
 ## Критерії готовності
 
-- [ ] `docs/help/` не змінюється: правила скидання довідка не описує, `player.md:19` і
+- [x] `docs/help/` не змінюється: правила скидання довідка не описує, `player.md:19` і
       `troubleshooting.md:39` (en, uk) правдиві до й після
-- [ ] Прев'ю A → прев'ю B під вимкненим звуком повертає рівень, збережений до `Ctrl+M`
-- [ ] `App.tsx` не тримає власної копії порівняння: Оголошення й скидання беруть один `sameSource`
-- [ ] vitest: функція прапорців дає `sourceChangedWhilePlaying: true` для прев'ю з різними `url`
+- [x] Прев'ю A → прев'ю B під вимкненим звуком повертає рівень, збережений до `Ctrl+M`
+- [x] `App.tsx` не тримає власної копії порівняння: Оголошення й скидання беруть один `sameSource`
+- [x] vitest: функція прапорців дає `sourceChangedWhilePlaying: true` для прев'ю з різними `url`
       і `false` для того самого; потік, файл, `null` і `paused` → інше джерело зафіксовано поруч
-- [ ] vitest: прапорці цієї функції на переході прев'ю → прев'ю під вимкненим звуком ведуть
+- [x] vitest: прапорці цієї функції на переході прев'ю → прев'ю під вимкненим звуком ведуть
       `applyMuteCleanup` до `setVolume(savedVolume)` і знімають `muted`
-- [ ] Пауза → продовження того самого джерела лишає звук вимкненим (`muteCleanup.ts:28-29`)
-- [ ] NVDA: кроки «Як відтворити» → після «Відтворення: B» станцію чути, `F9` звук вимкненим не
+- [x] Пауза → продовження того самого джерела лишає звук вимкненим (`muteCleanup.ts:28-29`)
+- [x] NVDA: кроки «Як відтворити» → після «Відтворення: B» станцію чути, `F9` звук вимкненим не
       називає
-- [ ] `pnpm test`, `pnpm typecheck`, `pnpm vite:build` зелені
+- [x] `pnpm test`, `pnpm typecheck`, `pnpm vite:build` зелені
+
+## Спадок
+
+Реалізовано за «Виправленням»; одне відхилення — `sameSource` став вичерпним `switch` по
+`type` з `never` у `default` (знахідка код-рев'ю): четвертий вид джерела не скомпілюється,
+доки не назве своєї тотожності, — та сама гарантія, що й `LIVE_BY_SOURCE_TYPE` поруч.
+`App.tsx` порівняння більше не тримає: кличе `muteCleanupFlags(prev, payload)` з
+`muteCleanup.ts`; Оголошення (`playbackAnnounce.ts`) імпортує той самий `sameSource`.
+Сторожі: `playbackSource.test.ts` (усі три види, різні види, `null`) і `muteCleanup.test.ts`
+(прапорці на кожному переході запису, прев'ю → прев'ю під вимкненим звуком доходить до
+`setVolume(savedVolume)`, пауза → продовження того самого файлу лишає звук вимкненим).
+
+Що лишилось:
+
+- **Клас не усунуто.** Дзеркало програвача й далі розкидане по файлах; прибирає його
+  [player-mirror-module](../p2-player-mirror-module.md), тотожність джерела як поняття —
+  [playback-source-module](../p2-playback-source-module.md).
+- **NVDA-прогін 26/26** (2026-10-04): прев'ю → прев'ю, прев'ю → потік, потік → потік, зупинка
+  під вимкненим звуком і пауза файлу; чекліст видалено разом із закриттям.
 
 ## Документи
 
-- [Огляд архітектури 2026-09-24](../notes/architecture-review-2026-09-24.md) — звідки знахідка
-- [ADR 2026-08-16](../decisions/2026-08-16-silence-is-mute-or-zero-volume.md) §3, «Обмеження /
+- [Огляд архітектури 2026-09-24](../../notes/architecture-review-2026-09-24.md) — звідки знахідка
+- [ADR 2026-08-16](../../decisions/2026-08-16-silence-is-mute-or-zero-volume.md) §3, «Обмеження /
   наслідки», «Коли переглянути»
-- [CONTEXT.md](../../CONTEXT.md) §«Живе джерело», §«Прев'ю», §«Вимкнений звук»
-- [player-mirror-module](p2-player-mirror-module.md) — ідея, що прибирає клас дефекту
-- [playback-source-module](p2-playback-source-module.md) — тотожність джерела як поняття
-- [zero-volume-reads-as-muted](done/p2-zero-volume-reads-as-muted.md) — завів ADR; які зміни
+- [CONTEXT.md](../../../CONTEXT.md) §«Живе джерело», §«Прев'ю», §«Вимкнений звук»
+- [player-mirror-module](../p2-player-mirror-module.md) — ідея, що прибирає клас дефекту
+- [playback-source-module](../p2-playback-source-module.md) — тотожність джерела як поняття
+- [zero-volume-reads-as-muted](p2-zero-volume-reads-as-muted.md) — завів ADR; які зміни
   джерела бачить `App.tsx`, не звіряв
-- [help-muted-playback-symptom](done/p2-help-muted-playback-symptom.md) — довідка про тишу
-- [preview-player-presentation](done/p2-preview-player-presentation.md) — дав `isLiveSource`, але
+- [help-muted-playback-symptom](p2-help-muted-playback-symptom.md) — довідка про тишу
+- [preview-player-presentation](p2-preview-player-presentation.md) — дав `isLiveSource`, але
   порівняння в `handlePlayerStatus` не зачепив

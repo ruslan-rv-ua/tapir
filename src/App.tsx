@@ -40,7 +40,7 @@ import { $filteredSongs } from "./stores/songs";
 import { computePlaybackNeighbors } from "./stores/playbackNeighbors";
 import { resolveEndedAction } from "./lib/playbackTransport";
 import { executeTransportSkip, parseSkipTrigger } from "./lib/transportControl";
-import { applyMuteCleanup } from "./lib/muteCleanup";
+import { applyMuteCleanup, muteCleanupFlags } from "./lib/muteCleanup";
 import { rememberVolumeLevel, selectVolumeAnnouncement } from "./lib/muteControl";
 import { selectPlaybackAnnouncement, sourceName, suppressesStarted, trackLabel, type PendingConnect } from "./lib/playbackAnnounce";
 import { describeRecording, selectRecordingAnnouncement } from "./lib/recordingAnnounce";
@@ -262,17 +262,7 @@ function AppContent() {
     rememberVolumeLevel(payload.volume);
 
     // ── Mute state cleanup ───────────────────────────────────────────────────
-    const stateChangedToPlaying = prev.state === "stopped" && payload.state === "playing";
-    const sourceChangedWhilePlaying =
-      payload.state === "playing" &&
-      (prev.source?.type !== payload.source?.type ||
-        (payload.source?.type === "stream" &&
-          prev.source?.type === "stream" &&
-          prev.source.streamId !== payload.source.streamId) ||
-        (payload.source?.type === "file" &&
-          prev.source?.type === "file" &&
-          prev.source.path !== payload.source.path));
-    applyMuteCleanup(payload, { stateChangedToPlaying, sourceChangedWhilePlaying });
+    applyMuteCleanup(payload, muteCleanupFlags(prev, payload));
   }, []);
 
   const handlePlayerProgress = useCallback((payload: PlayerProgressPayload) => {

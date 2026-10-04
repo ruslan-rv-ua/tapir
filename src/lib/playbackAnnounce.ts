@@ -1,5 +1,5 @@
 import type { PlayerStatus, PlaybackSource, StreamInfo, StreamStatus, TrackInfo } from "./tauri";
-import { isLiveSource } from "./playbackSource";
+import { isLiveSource, sameSource } from "./playbackSource";
 
 export type PlaybackAnnouncement =
   | { kind: "started"; name: string }
@@ -32,15 +32,6 @@ export function suppressesStarted(
     announcement.name === pending.name &&
     now <= pending.until
   );
-}
-
-function sameSource(a: PlaybackSource | null, b: PlaybackSource | null): boolean {
-  if (!a || !b) return a === b;
-  if (a.type !== b.type) return false;
-  if (a.type === "stream" && b.type === "stream") return a.streamId === b.streamId;
-  if (a.type === "file" && b.type === "file") return a.path === b.path;
-  if (a.type === "preview" && b.type === "preview") return a.url === b.url;
-  return false;
 }
 
 /**
