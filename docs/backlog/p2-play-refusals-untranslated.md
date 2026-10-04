@@ -29,7 +29,7 @@ gates: [cargo test, cargo clippy --all-targets, pnpm test, pnpm typecheck, pnpm 
 notes:
   - "Знахідка огляду беклогу 2026-10-04 (звірка he-aac-mf-playback з HEAD a04e358). Ті самі рядки engine.rs і той самий playRefusal.ts є в тегу v0.1.0."
   - "2026-10-04: перенесено в 0.1.1 рішенням власника — kind: bug, є у відвантаженій збірці, поверхня та сама, тип IPC той самий."
-  - "2026-10-04: виґрумінговано (draft → ready). Один код `play_failed` на тайм-аут проби й формат; обсяг свідомо ширшає на `connect_failed` і `output_unavailable`, на прев'ю браузера (тост, зайва репліка, мітка «Недоступна»). Екран «Пісні» винесено в play-file-refusals-untranslated."
+  - "2026-10-04: виґрумінговано (draft → ready). Один код `play_failed` на тайм-аут проби й формат; обсяг свідомо ширшає на `connect_failed` і `output_unavailable`, на прев'ю браузера (тост, зайва репліка, мітка «Недоступна»). Екран «Записи» винесено в play-file-refusals-untranslated."
 ---
 
 # Відмова відтворення приходить у тост англійською: тайм-аут проби, формат, з'єднання, пристрій
@@ -128,7 +128,7 @@ responding»): один факт — одне формулювання, як `st
 
 **8. Довідка (обидві локалі) — у критеріях готовності, правиться разом із кодом.**
 
-**9. Межа.** Екран «Пісні» (`play_saved_song` → `play_file`, `SongsPanel.tsx` показує
+**9. Межа.** Екран «Записи» (`play_saved_song` → `play_file`, `SongsPanel.tsx` показує
 `String(err)`) — той самий клас, окремий запис
 [play-file-refusals-untranslated](p2-play-file-refusals-untranslated.md), що бере коди й мапер
 звідси. Трей і гарячі клавіші (`playback_control.rs`, `TransportFailureReason`) уже
@@ -184,7 +184,7 @@ responding»): один факт — одне формулювання, як `st
 
 - [he-aac-mf-playback](p3-he-aac-mf-playback.md) — де вада трапляється найчастіше
 - [play-file-refusals-untranslated](p2-play-file-refusals-untranslated.md) — той самий клас для
-  екрана «Пісні»
+  екрана «Записи»
 - [record-refusals-untranslated](done/p2-record-refusals-untranslated.md) — той самий клас для запису
 - [ADR 2026-08-17 — локалізація нативного шару](../decisions/2026-08-17-native-layer-localisation.md)
 - [ADR 2026-09-06 — помилка як діагноз](../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md) §5
