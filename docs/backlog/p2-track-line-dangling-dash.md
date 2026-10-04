@@ -125,7 +125,8 @@ notes:
 - [ ] vitest, `StreamItem.test.tsx`: той самий трек — сегмент «So What», після зупинки мітка `m.segment_track_last({ track: "So What" })`
 - [ ] vitest, `WishlistPanel.test.tsx`: збіг із порожнім `artist` — колонка треку й мітка рядка без тире
 - [ ] `cargo test`: юніт-тест функції з п. 5 — `("", "So What")` → «So What», `("Miles", "So What")` → «Miles — So What», `("", "")` → `None`; її кличуть і `notify_track_change`, і `build_now_playing_label`
-- [ ] NVDA, рівень пунктуації «все»: потік без « - » у метаданих ефіру — рядок треку в плеєрі й сегмент у рядку потоку звучать без «тире»; пункт «Зараз грає» в треї під час запису — з одним тире
+- [ ] NVDA, рівень пунктуації «все»: потік без « - » у метаданих ефіру — рядок треку в плеєрі й сегмент у рядку потоку звучать без «тире»; пункт «Зараз грає» в треї під час запису — з одним тире.
+      Чекліст: [nvda-track-line-dangling-dash.json](../testing/nvda-track-line-dangling-dash.json)
 - [ ] Гейти з front-matter зелені
 
 ## Документи
