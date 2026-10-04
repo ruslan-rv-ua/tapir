@@ -39,7 +39,7 @@ gates: [cargo test, cargo clippy --all-targets]
 справді пише, вирішує кожне місце виклику: воно саме мусить викликати
 `persist_session_snapshot` (`playback_control.rs:177-195`), і в правильному порядку. Три
 шляхи цього не роблять — звідси вада
-[file-position-lost-on-external-stop](p2-file-position-lost-on-external-stop.md). Ідея:
+[file-position-lost-on-external-stop](done/p2-file-position-lost-on-external-stop.md). Ідея:
 збереження стає частиною самих дієслів програвача, і викликач не може його пропустити.
 
 ## Тертя
@@ -121,7 +121,7 @@ SMTC переносити не треба: на переходах його ро
   кнопка плеєра з [player-primary-button-resumes-last](p2-player-primary-button-resumes-last.md)
   отримає збереження, не знаючи про нього.
 - **Тести через інтерфейс:** один тест на дієслово замість ручної перевірки кожного викликача.
-- **Клас вад:** [file-position-lost-on-external-stop](p2-file-position-lost-on-external-stop.md)
+- **Клас вад:** [file-position-lost-on-external-stop](done/p2-file-position-lost-on-external-stop.md)
   — локальна латка 0.1.1 (знімок перед медіа-паузою, медіа-стопом і `--stop-playback`, знімок
   у Коміті `switch_profile`); ця ідея її узагальнює, а тест латки стає регресійним. Як клас
   гілки SMTC і CLI закриває цей запис, гілку перемикання — разом із profiles-module. Якщо

@@ -227,11 +227,15 @@ fn handle_button(app: &AppHandle, button: SystemMediaTransportControlsButton) {
                 if status.source.as_ref().is_some_and(PlaybackSource::is_live) {
                     let _ = state.player.stop_playback(&app).await;
                 } else {
+                    // Capture the file position before pause, like PauseFile.
+                    crate::playback_control::persist_session_snapshot(&app).await;
                     let _ = state.player.pause_playback(&app).await;
                 }
             }
             // FR-5: Stop stops playback, NOT recording. No debounce — idempotent.
             SystemMediaTransportControlsButton::Stop => {
+                // Stop drops the source — capture the file position first.
+                crate::playback_control::persist_session_snapshot(&app).await;
                 let _ = state.player.stop_playback(&app).await;
             }
             // The "what is next" decision lives in the webview — same bridge

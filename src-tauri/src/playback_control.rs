@@ -170,6 +170,20 @@ pub(crate) fn apply_session_snapshot(session: &mut PlayerSession, status: &Playe
     }
 }
 
+/// Body of the single profile Commit made when the profile is closed — app exit
+/// and profile switch: the volume plus the resume snapshot, with `status` read
+/// BEFORE the player was stopped (stop drops the source and position). One
+/// Commit instead of a separate `persist_session_snapshot`, so the profile is
+/// written once.
+pub(crate) fn apply_closing_session(
+    session: &mut PlayerSession,
+    volume: f32,
+    status: &PlayerStatus,
+) {
+    session.volume = volume;
+    apply_session_snapshot(session, status);
+}
+
 /// Snapshot the current live status into the active profile's `player_session`
 /// and save. No-op for Preview/None (transient). Called on play-start and before
 /// a file pause/stop, so the dormant resume fields stay current. Position writes
@@ -549,5 +563,29 @@ mod tests {
         assert_eq!(s.last_active, None);
         assert!(s.last_stream_id.is_none());
         assert!(s.last_file_position.is_none());
+    }
+
+    #[test]
+    fn closing_session_writes_volume_and_file_position() {
+        let mut s = PlayerSession::default();
+        apply_closing_session(&mut s, 0.3, &status(Some(file()), Some(750_000)));
+        assert_eq!(s.volume, 0.3);
+        assert_eq!(s.last_active, Some(LastActive::File));
+        let fp = s.last_file_position.unwrap();
+        assert_eq!(fp.path, "rec/a.mp3");
+        assert_eq!(fp.position_ms, 750_000);
+    }
+
+    #[test]
+    fn closing_session_without_source_writes_only_volume() {
+        // Stop already happened (source gone): the position recorded earlier
+        // must survive — only the volume changes.
+        let mut s = remembered_file();
+        apply_closing_session(&mut s, 0.3, &status(None, None));
+        assert_eq!(s.volume, 0.3);
+        assert_eq!(s.last_active, Some(LastActive::File));
+        let fp = s.last_file_position.unwrap();
+        assert_eq!(fp.path, "rec/a.mp3");
+        assert_eq!(fp.position_ms, 4200);
     }
 }
