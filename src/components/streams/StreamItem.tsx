@@ -14,6 +14,7 @@ import { StreamContextMenu } from "./StreamContextMenu";
 import { AddPatternDialog } from "../wishlist/AddPatternDialog";
 import { $playerStatus } from "../../stores/player";
 import * as m from "../../i18n/paraglide/messages";
+import { trackLabel } from "../../lib/playbackAnnounce";
 import * as tauri from "../../lib/tauri";
 import { addToast } from "../../stores/toasts";
 import { useAnnounce } from "../../hooks/useAnnounce";
@@ -174,9 +175,7 @@ export function StreamItem({
   const isStreamActive = isRecordingLike(state) || isThisStreamPlaying;
   const hasTrack = !!status?.currentTrack;
   const showAsLastTrack = !isStreamActive && hasTrack;
-  const trackValue = status?.currentTrack
-    ? `${status.currentTrack.artist} — ${status.currentTrack.title}`
-    : "—";
+  const trackValue = trackLabel(status?.currentTrack) ?? "—";
   // Кваліфікатор ігнорованого треку стоїть у самому тексті сегмента, а не лише
   // в aria-мітці: подія рутинна, оголошення в неї більше немає, і носієм цього
   // факту лишається рядок на екрані (ADR 2026-08-31 §3, §4). «Востаннє грав»
@@ -185,7 +184,7 @@ export function StreamItem({
   const trackDisplay = status?.currentTrack?.ignored
     ? m.segment_track_ignored({ track: trackValue })
     : trackValue;
-  const trackLabel = showAsLastTrack
+  const trackSegmentLabel = showAsLastTrack
     ? m.segment_track_last({ track: trackDisplay })
     : hasTrack
       ? trackDisplay
@@ -268,7 +267,7 @@ export function StreamItem({
               itemId={stream.id}
               segment="track"
               isFocused={isFocused}
-              label={trackLabel}
+              label={trackSegmentLabel}
               roleDescription={m.segment_track()}
               className={`px-3 py-2 text-sm ${trackTextClass} truncate`}
               style={{ gridRow: 1, gridColumn: 2 }}

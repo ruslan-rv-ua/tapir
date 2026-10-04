@@ -68,7 +68,7 @@ notes:
 - **Рядок треку повз `trackLabel` — 4 місця:** `PlayerPanel.tsx:92-94` (під `aria-live`),
   `StreamItem.tsx:177-179` (текст сегмента і його `aria-label`), `MatchList.tsx:52`,
   `App.tsx:319` (оголошення збігу). Станція шле назву без « - » → виконавець порожній, і всі
-  чотири дають «— So What». Це вада [track-line-dangling-dash](p2-track-line-dangling-dash.md)
+  чотири дають «— So What». Це вада [track-line-dangling-dash](done/p2-track-line-dangling-dash.md)
   всупереч doc-коментарю `trackLabel` (`playbackAnnounce.ts:96-101`) і `windowTitle.ts:24-25`,
   які обіцяють один рендер.
 - **Спільні зміни й тести:** `StreamItem.tsx` і `StreamList.tsx` змінювались разом у 14
@@ -107,7 +107,7 @@ notes:
   помилок відтворення.
 - **Тести через інтерфейс:** «статус × рядок → грає», «відмова → текст», «половинчастий
   трек → рядок» перевіряються без рендеру компонентів.
-- **Клас дефектів зникає:** латки 0.1.1 [track-line-dangling-dash](p2-track-line-dangling-dash.md)
+- **Клас дефектів зникає:** латки 0.1.1 [track-line-dangling-dash](done/p2-track-line-dangling-dash.md)
   і [preview-switch-keeps-mute](p2-preview-switch-keeps-mute.md) виправляють копії. Наступна
   копія з'явиться так само, бо правило тримає doc-коментар, а не модуль.
 

@@ -182,6 +182,19 @@ fn show_toast(app: &tauri::AppHandle, kind: ToastKind, title: &str, body: &str) 
     }
 }
 
+/// The one way the tray renders "artist — title", or None when neither is known.
+/// Rust twin of the frontend's `trackLabel` (src/lib/playbackAnnounce.ts): a
+/// station that sends no `" - "` arrives with an empty artist, and gluing both
+/// halves unconditionally leaves a dangling dash.
+pub fn track_line(artist: &str, title: &str) -> Option<String> {
+    match (artist.is_empty(), title.is_empty()) {
+        (false, false) => Some(format!("{artist} — {title}")),
+        (true, false) => Some(title.to_string()),
+        (false, true) => Some(artist.to_string()),
+        (true, true) => None,
+    }
+}
+
 static LAST_NOTIFY_MS: AtomicU64 = AtomicU64::new(0);
 const THROTTLE_MS: u64 = 3000;
 
@@ -216,12 +229,7 @@ pub fn notify_track_change(app: &tauri::AppHandle, stream_id: &str, artist: &str
         if now.saturating_sub(last) < THROTTLE_MS { return; }
         LAST_NOTIFY_MS.store(now, Ordering::Relaxed);
 
-        let body = match (artist.is_empty(), title.is_empty()) {
-            (false, false) => format!("{artist} — {title}"),
-            (true, false)  => title,
-            (false, true)  => artist,
-            _ => return,
-        };
+        let Some(body) = track_line(&artist, &title) else { return };
 
         show_toast(&app, ToastKind::TrackChange, &station, &body);
     });
@@ -395,6 +403,17 @@ mod tests {
     use super::*;
     use crate::i18n::{with_locale, Locale};
     use crate::profile::UiSettings;
+
+    /// Станція без « - » у метаданих ефіру дає порожнього виконавця
+    /// (stream/connection.rs). Рядок треку не мусить висіти на тире — ні в
+    /// тості, ні в меню, яке кличе ту саму функцію.
+    #[test]
+    fn track_line_skips_an_empty_half() {
+        assert_eq!(track_line("", "So What").as_deref(), Some("So What"));
+        assert_eq!(track_line("Miles", "So What").as_deref(), Some("Miles — So What"));
+        assert_eq!(track_line("Miles", "").as_deref(), Some("Miles"));
+        assert_eq!(track_line("", ""), None);
+    }
 
     /// Дві категорії — два прапорці, і вони не знають одна про одну. Саме
     /// зв'язок «зняв балаканину про треки — втратив розклад» і був багом.

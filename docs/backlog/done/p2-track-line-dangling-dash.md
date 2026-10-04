@@ -1,14 +1,15 @@
 ---
 slug: track-line-dangling-dash
 title: "Рядок треку з висячим тире («— So What»), коли станція не передає виконавця"
-summary: "станція без « - » у метаданих ефіру дає «— So What» у плеєрі, рядку потоку й журналі збігів, у треї — подвійне тире; лік — спільний trackLabel"
+summary: "трек без виконавця читається без висячого тире в плеєрі, рядку потоку й вішлісті; у треї одне тире — спільні trackLabel і track_line"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: S
 kind: bug
 target: 0.1.1
-updated: 2026-09-24
+updated: 2026-10-04
+completed: 2026-10-04
 a11y: true
 depends_on: []
 blocks: []
@@ -27,7 +28,7 @@ notes:
 
 # Рядок треку з висячим тире («— So What»), коли станція не передає виконавця
 
-> **Контекст:** знахідка [огляду архітектури 2026-09-24](../notes/architecture-review-2026-09-24.md).
+> **Контекст:** знахідка [огляду архітектури 2026-09-24](../../notes/architecture-review-2026-09-24.md).
 > `planned` + `ready` → **РЕАЛІЗАЦІЯ**. Номери рядків — стан на `f09f36b`.
 
 ## Опис
@@ -68,7 +69,7 @@ notes:
   для того самого треку.
 - Сповіщення в треї порожню половину вже обробляє (`src-tauri/src/tray/notify.rs:219-224`) —
   той самий трек у тості правильний, у меню трея ні.
-- [ADR про видимий носій](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) §6
+- [ADR про видимий носій](../../decisions/2026-08-31-visible-carrier-for-announced-facts.md) §6
   **не** порушено: одна змінна на видимий і озвучений текст елемента є (у `StreamItem` тире в
   обох), а пунктуацію між поверхнями ADR не регулює. Довідка формату рядка теж не обіцяє.
 
@@ -105,36 +106,62 @@ notes:
 ## Поза межами
 
 - Префікси рядка «Зараз грає» (подвійна двокрапка) — це
-  [tray-now-playing-source-prefix](p3-tray-now-playing-source-prefix.md); туди ж огляд відносить
+  [tray-now-playing-source-prefix](../p3-tray-now-playing-source-prefix.md); туди ж огляд відносить
   і те, що без запису трей треку не показує взагалі. Тут міняється лише склейка треку в
   `build_now_playing_label`; той запис бере вже виправлений рядок.
 - Один власник усього про джерело відтворення (назва, рядок треку, «чи грає цей рядок») —
-  ідея [playback-source-module](p2-playback-source-module.md) з того самого огляду. Цей запис
+  ідея [playback-source-module](../p2-playback-source-module.md) з того самого огляду. Цей запис
   лише доводить `trackLabel` до всіх споживачів.
 - `src/components/streams/StreamContextMenu.tsx:46-48` — не вада: склеює « - » і зрізає
   крайній роздільник, бо це заготовка патерну у форматі матчера. Хвіст
-  [hotkeys-expansion](done/p2-hotkeys-expansion.md) §«Відхилення реалізації» №4 зараховує його
+  [hotkeys-expansion](p2-hotkeys-expansion.md) §«Відхилення реалізації» №4 зараховує його
   помилково.
 - Парсер не змінюється: порожній виконавець — законна форма, її тримає тест.
 
 ## Критерії готовності
 
-- [ ] `docs/help/` не змінюється: формат рядка треку довідка не описує (`docs/help/en/player.md:49`, `docs/help/en/wishlist.md:9`)
-- [ ] У `src/` немає склейки `` `${…artist} — ${…title}` `` поза `trackLabel` (перевірити grep'ом)
-- [ ] vitest, `PlayerPanel.test.tsx`: трек `{ artist: "", title: "So What" }` дає рядок «So What» без тире
-- [ ] vitest, `StreamItem.test.tsx`: той самий трек — сегмент «So What», після зупинки мітка `m.segment_track_last({ track: "So What" })`
-- [ ] vitest, `WishlistPanel.test.tsx`: збіг із порожнім `artist` — колонка треку й мітка рядка без тире
-- [ ] `cargo test`: юніт-тест функції з п. 5 — `("", "So What")` → «So What», `("Miles", "So What")` → «Miles — So What», `("", "")` → `None`; її кличуть і `notify_track_change`, і `build_now_playing_label`
-- [ ] NVDA, рівень пунктуації «все»: потік без « - » у метаданих ефіру — рядок треку в плеєрі й сегмент у рядку потоку звучать без «тире»; пункт «Зараз грає» в треї під час запису — з одним тире
-- [ ] Гейти з front-matter зелені
+- [x] `docs/help/` не змінюється: формат рядка треку довідка не описує (`docs/help/en/player.md:49`, `docs/help/en/wishlist.md:9`)
+- [x] У `src/` немає склейки `` `${…artist} — ${…title}` `` поза `trackLabel` (перевірити grep'ом)
+- [x] vitest, `PlayerPanel.test.tsx`: трек `{ artist: "", title: "So What" }` дає рядок «So What» без тире
+- [x] vitest, `StreamItem.test.tsx`: той самий трек — сегмент «So What», після зупинки мітка `m.segment_track_last({ track: "So What" })`
+- [x] vitest, `WishlistPanel.test.tsx`: збіг із порожнім `artist` — колонка треку й мітка рядка без тире
+- [x] `cargo test`: юніт-тест функції з п. 5 — `("", "So What")` → «So What», `("Miles", "So What")` → «Miles — So What», `("", "")` → `None`; її кличуть і `notify_track_change`, і `build_now_playing_label`
+- [ ] NVDA, рівень пунктуації «все»: потік без « - » у метаданих ефіру — рядок треку в плеєрі й сегмент у рядку потоку звучать без «тире»; пункт «Зараз грає» в треї під час запису — з одним тире.
+      **Пройдено частково, прийнято рішенням користувача** — див. «Спадок»
+- [x] Гейти з front-matter зелені
+
+## Спадок
+
+Реалізовано за чернеткою, без відхилень. Фронтенд: `trackLabel`
+(`src/lib/playbackAnnounce.ts`) приймає `Pick<TrackInfo, "artist" | "title">` і тепер
+єдиний рендер пари «виконавець — назва» — плеєр, сегмент рядка потоку, колонка й мітка
+журналу збігів, оголошення збігу. Локальна константа мітки сегмента в `StreamItem.tsx`
+перейменована на `trackSegmentLabel`, щоб не затіняти імпорт. Rust: близнюк
+`tray::notify::track_line(artist, title) -> Option<String>`; його кличуть тост зміни треку і
+`build_now_playing_label` (пункт «Зараз грає» й підказка іконки). Сторожі: по тесту в
+`PlayerPanel.test.tsx`, `StreamItem.test.tsx` (живий трек і «Востаннє грав»),
+`WishlistPanel.test.tsx` і `track_line_skips_an_empty_half` у `notify.rs`.
+
+**Два власники одного правила.** `trackLabel` і `track_line` — те саме правило в двох мовах;
+звести їх в одного власника — ідея [playback-source-module](../p2-playback-source-module.md).
+Заготовка патерну в `StreamContextMenu.tsx` склеює « - » свідомо (формат матчера) і лишилась
+поза записом.
+
+**NVDA-прогін 2026-10-04 — частковий, 5 з 20.** Пройдено підготовку й рядок треку в плеєрі
+на станції без виконавця: назва звучить без «тире». Зона плеєра, сегмент рядка потоку, трей і
+вішліст на слух не перевірялись; користувач прийняв запис без них, спираючись на
+автотести, і чекліст видалено цим закриттям. Для повторного прогону: Deutschlandfunk
+(`https://st01.sslstream.dlf.de/dlf/01/128/mp3/stream.mp3`) шле назви передач без « - »
+(перевірено 2026-10-04); збіг вішліста ловиться патерном `*` на першій же назві після
+старту запису.
 
 ## Документи
 
-- [Огляд архітектури 2026-09-24](../notes/architecture-review-2026-09-24.md) — звідки знахідка
-- [hotkeys-expansion](done/p2-hotkeys-expansion.md) §«Відхилення реалізації» №4, §«Спадок» — народження `trackLabel` і незаведений хвіст
-- [tray-now-playing-source-prefix](p3-tray-now-playing-source-prefix.md) — той самий рядок трея
-- [playback-source-module](p2-playback-source-module.md) — один власник рядка треку (ідея)
-- [wishlist-match-invisible](done/p1-wishlist-match-invisible.md) — звідки журнал збігів і оголошення збігу
-- [ADR 2026-08-31 — видимий носій](../decisions/2026-08-31-visible-carrier-for-announced-facts.md) §6 — чому ADR не порушено
-- [CONTEXT.md](../../CONTEXT.md) §«Метадані ефіру», §«Вішліст і Ігнор-лист»
+- [Огляд архітектури 2026-09-24](../../notes/architecture-review-2026-09-24.md) — звідки знахідка
+- [hotkeys-expansion](p2-hotkeys-expansion.md) §«Відхилення реалізації» №4, §«Спадок» — народження `trackLabel` і незаведений хвіст
+- [tray-now-playing-source-prefix](../p3-tray-now-playing-source-prefix.md) — той самий рядок трея
+- [playback-source-module](../p2-playback-source-module.md) — один власник рядка треку (ідея)
+- [wishlist-match-invisible](p1-wishlist-match-invisible.md) — звідки журнал збігів і оголошення збігу
+- [ADR 2026-08-31 — видимий носій](../../decisions/2026-08-31-visible-carrier-for-announced-facts.md) §6 — чому ADR не порушено
+- [CONTEXT.md](../../../CONTEXT.md) §«Метадані ефіру», §«Вішліст і Ігнор-лист»
 - Код: `src/lib/playbackAnnounce.ts`, `src-tauri/src/tray/menu.rs`, `src-tauri/src/tray/notify.rs`

@@ -5,6 +5,7 @@ import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import type { WishlistMatch } from "../../lib/tauri";
 import { formatTime } from "../../lib/formatters";
 import * as m from "../../i18n/paraglide/messages";
+import { trackLabel } from "../../lib/playbackAnnounce";
 
 interface Props {
   items: WishlistMatch[];
@@ -49,7 +50,7 @@ export const MatchList = forwardRef<ZoneEntry, Props>(({ items, exitZone, emptyM
       renderRow={({ id, isActive, isFocused }) => {
         const item = items.find((it) => String(it.id) === id)!;
         const time = formatTime(item.matchedAt);
-        const track = `${item.artist} — ${item.title}`;
+        const track = trackLabel(item) ?? "";
         return (
           <CompositeRow
             key={id}

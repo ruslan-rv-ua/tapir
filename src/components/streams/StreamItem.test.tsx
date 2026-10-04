@@ -146,6 +146,25 @@ describe("StreamItem — last-played track presentation", () => {
     expect(track.getAttribute("aria-label")).toBe(qualified);
   });
 
+  it("drops the dash when the station sends no artist, live and after a stop", () => {
+    // Без « - » у метаданих ефіру виконавець порожній (stream/connection.rs);
+    // рядок мусить звучати, як F9, — без висячого тире.
+    const bare = { artist: "", title: "So What", startedAt: "", ignored: false };
+    const live = renderItem(
+      mkStream(),
+      mkStatus({ state: "recording", recordingStartedAt: "2026-01-01T00:00:00Z", currentTrack: bare }),
+    );
+    const liveTrack = live.container.querySelector('[data-segment="track"]')!;
+    expect(liveTrack.textContent).toBe("So What");
+    expect(liveTrack.getAttribute("aria-label")).toBe("So What");
+    live.unmount();
+
+    const { container } = renderItem(mkStream(), mkStatus({ currentTrack: bare }));
+    const track = container.querySelector('[data-segment="track"]')!;
+    expect(track.textContent).toBe("So What");
+    expect(track.getAttribute("aria-label")).toBe(m.segment_track_last({ track: "So What" }));
+  });
+
   it("labels a track as current (no prefix, not italic) while recording", () => {
     const { container } = renderItem(mkStream(), mkStatus({ state: "recording", recordingStartedAt: "2026-01-01T00:00:00Z" }));
     const track = container.querySelector('[data-segment="track"]')!;
