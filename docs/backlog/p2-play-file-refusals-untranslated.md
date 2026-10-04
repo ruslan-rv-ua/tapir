@@ -36,7 +36,7 @@ notes:
 # Відмова відтворити трек на екрані «Записи» приходить у тост англійською
 
 > **Контекст:** винесено з грумінгу
-> [play-refusals-untranslated](p2-play-refusals-untranslated.md) 2026-10-04, щоб той лишився
+> [play-refusals-untranslated](done/p2-play-refusals-untranslated.md) 2026-10-04, щоб той лишився
 > S і з одним NVDA-сценарієм; того ж дня виґрумінговано (див. «Рішення грумінгу»). Режим —
 > **READY**: до реалізації, після батьківського запису.
 
@@ -173,7 +173,7 @@ NVDA-прогону — тоді.
 
 ## Документи
 
-- [play-refusals-untranslated](p2-play-refusals-untranslated.md) — батьківський запис, коди й мапер
+- [play-refusals-untranslated](done/p2-play-refusals-untranslated.md) — батьківський запис, коди й мапер
 - [record-refusals-untranslated](done/p2-record-refusals-untranslated.md) — той самий клас для запису
 - [ADR 2026-08-17 — локалізація нативного шару](../decisions/2026-08-17-native-layer-localisation.md)
 - [ADR 2026-09-06 — помилка як діагноз](../decisions/2026-09-06-error-is-the-diagnosis-attention-is-the-bucket.md) §5

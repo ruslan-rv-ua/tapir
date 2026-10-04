@@ -101,6 +101,32 @@ async fn manager_stream_state(app: &AppHandle, stream_id: &str) -> Option<Stream
 /// the byte pipeline, so playback must not block on it indefinitely.
 const PROBE_TIMEOUT: Duration = Duration::from_secs(15);
 
+/// Why a live play attempt (`play_stream`, `preview`) was refused — the closed
+/// list the IPC turns into stable codes (`player_commands::play_refusal_on_wire`).
+/// Attached as the outermost `anyhow` context, so classification is a
+/// `downcast_ref`, never string matching; the inner chain keeps the detail for
+/// the log. `Display` is that log's wording, not anything a person reads.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LiveRefusal {
+    /// No connection — the station did not answer.
+    Connect,
+    /// Connected, but the air never became sound: probe timeout, a format
+    /// symphonia cannot decode, or a panic while initialising the decoder.
+    Decode,
+    /// The air was decodable, but the output device would not open.
+    Output,
+}
+
+impl std::fmt::Display for LiveRefusal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Connect => "failed to connect to stream",
+            Self::Decode => "could not decode stream",
+            Self::Output => "failed to open audio output stream",
+        })
+    }
+}
+
 // ── Internal runtime types (not serialized) ────────────────────────────────
 
 /// Emit `player-status` to the frontend and notify the tray. All callers
@@ -619,7 +645,7 @@ impl PlayerEngine {
         //
         // Connect first so we can extract content_type for symphonia probing.
         let conn = connection::connect(&url).await
-            .context("failed to connect to stream")?;
+            .context(LiveRefusal::Connect)?;
         let mime_hint: Option<String> = conn.content_type.clone();
 
         let (mut producer, consumer) = rtrb::RingBuffer::<u8>::new(512 * 1024);
@@ -753,18 +779,20 @@ impl PlayerEngine {
             Ok(Ok(Ok(src))) => src,
             Ok(Ok(Err(e))) => {
                 cancel.cancel();
-                return Err(e).context("could not decode stream (unsupported format?)");
+                return Err(e).context(LiveRefusal::Decode);
             }
             Ok(Err(e)) => {
                 cancel.cancel();
-                return Err(anyhow::anyhow!("LiveSource init task panicked: {e}"));
+                return Err(anyhow::anyhow!("LiveSource init task panicked: {e}"))
+                    .context(LiveRefusal::Decode);
             }
             Err(_elapsed) => {
                 cancel.cancel();
                 return Err(anyhow::anyhow!(
                     "timed out probing stream format after {}s (unsupported codec?)",
                     PROBE_TIMEOUT.as_secs()
-                ));
+                ))
+                .context(LiveRefusal::Decode);
             }
         };
 
@@ -786,7 +814,7 @@ impl PlayerEngine {
                     position_ms: None,
                     duration_ms: None,
                 }, &self.wake_lock);
-                return Err(e).context("Failed to open audio output stream");
+                return Err(e).context(LiveRefusal::Output);
             }
         };
         let player = Arc::new(Player::connect_new(device_sink.mixer()));

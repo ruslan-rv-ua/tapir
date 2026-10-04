@@ -30,7 +30,7 @@ If Tapir was not running although it should have started with Windows, think bac
 
 ### A station records but will not play
 
-Tapir plays MP3 and AAC. A station whose codec is `AAC+` records perfectly well but stays silent inside Tapir — playback waits a while and gives up. The recording itself is sound: open it in another program with `Alt+Enter` on the Recordings screen.
+Tapir plays MP3 and AAC. A station whose codec is `AAC+` records perfectly well but stays silent inside Tapir — playback waits a while and gives up with **Couldn't play this stream**. The same happens when you listen to such a station in the Station Browser, and it does not earn the **Unavailable** mark for it: the station is on the air, and you can add it and record it. The recording itself is sound: open it in another program with `Alt+Enter` on the Recordings screen.
 
 You can see this coming. The Station Browser shows a **Codec** column for every station, and the **Codec** filter narrows a search to the values you want. Tapir records exactly two of them: `MP3` and `AAC`. A station with any other codec — `OGG`, say — will not record at all: rather than a file whose contents do not match its name, Tapir says it cannot do this, and the stream's row then shows the codec followed by "not supported".
 
@@ -44,7 +44,7 @@ The player panel only shows the current device. Choose a different one in the ap
 
 ### Sound stopped after unplugging a device
 
-Tapir remembers the output device by name and never falls back on its own, so unplugging the headphones it was pointed at leaves playback silent. Open the app settings, tab **Audio**, and pick another device or **System default**. If what you want is missing from the list, plug it in and press **Refresh device list**.
+Tapir remembers the output device by name and never falls back on its own, so unplugging the headphones it was pointed at leaves what is playing silent. Playing a station from the window after that is not silent: Tapir says **Couldn't open the output device**. Open the app settings, tab **Audio**, and pick another device or **System default**. If what you want is missing from the list, plug it in and press **Refresh device list**.
 
 ### A file will not open in another program
 

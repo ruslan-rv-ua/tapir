@@ -30,7 +30,7 @@ notes: ["Реалізація збережена на гілці he-aac-mf @ 74c
 
 **АЛЕ в реальному відтворенні зламалися ВСІ AAC-потоки** (включно з AAC-LC, який раніше нормально грав через symphonia) — їх програвало неправильно (схоже, не та швидкість/тон). Це зловив ручний тест (відкладений gate). Роботу **відкочено**, а #2-фікс (non-destructive `play_live` + `PROBE_TIMEOUT`) залишено.
 
-**Поточний стан без цієї фічі:** HE-AAC-станції показують помилку без зависання завдяки #2-фіксу (`PROBE_TIMEOUT`, `src-tauri/src/player/engine.rs:102`, уже в коді) — тобто graceful degradation уже є. Тому це **«nice to have»**, а не блокер. Сама помилка, щоправда, доходить до тоста сирим англійським рядком «timed out probing stream format after 15s (unsupported codec?)» в обох локалях — це окрема вада, [play-refusals-untranslated](p2-play-refusals-untranslated.md).
+**Поточний стан без цієї фічі:** HE-AAC-станції показують помилку без зависання завдяки #2-фіксу (`PROBE_TIMEOUT`, `src-tauri/src/player/engine.rs:102`, уже в коді) — тобто graceful degradation уже є. Тому це **«nice to have»**, а не блокер. Сама помилка, щоправда, доходить до тоста сирим англійським рядком «timed out probing stream format after 15s (unsupported codec?)» в обох локалях — це окрема вада, [play-refusals-untranslated](done/p2-play-refusals-untranslated.md).
 
 ### Де лежить уже зроблена робота (НЕ видаляти)
 

@@ -6,6 +6,8 @@ import * as tauri from "../../lib/tauri";
 import { getStationSegments, StationItem } from "./StationItem";
 import { $playerStatus } from "../../stores/player";
 import * as m from "../../i18n/paraglide/messages";
+import { $toasts } from "../../stores/toasts";
+import { $announcer } from "../../stores/announcer";
 
 vi.mock("../../lib/tauri", () => ({
   previewStation: vi.fn().mockResolvedValue(undefined),
@@ -130,11 +132,38 @@ describe("StationItem — preview button", () => {
     expect(tauri.stopPlayback).toHaveBeenCalled();
   });
 
-  it("calls onPreviewFailed when the preview connection rejects", async () => {
-    (tauri.previewStation as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("connect failed"));
-    const { container, props } = renderItem();
-    fireEvent.click(container.querySelector('button[data-segment="action-play"]')!);
+  function refusePreview(code: string) {
+    (tauri.previewStation as ReturnType<typeof vi.fn>).mockRejectedValueOnce(code);
+    const r = renderItem();
+    fireEvent.click(r.container.querySelector('button[data-segment="action-play"]')!);
+    return r;
+  }
+
+  it("marks the station unavailable when it did not answer — the toast names the reason", async () => {
+    $toasts.set([]);
+    const { props } = refusePreview("connect_failed");
     await vi.waitFor(() => expect(props.onPreviewFailed).toHaveBeenCalled());
+    expect($toasts.get().map((t) => t.message)).toEqual([m.failure_station_unreachable()]);
+  });
+
+  it("does not mark a station that answered but would not play (AAC+): one toast, no second voice", async () => {
+    $toasts.set([]);
+    $announcer.set(null);
+    const { props } = refusePreview("play_failed");
+    await vi.waitFor(() => expect($toasts.get()).toHaveLength(1));
+    expect($toasts.get()[0].message).toBe(m.stream_play_failed());
+    expect(props.onPreviewFailed).not.toHaveBeenCalled();
+    // ToastContainer is already a polite live region — an announce on top
+    // would say the same event twice.
+    expect($announcer.get()).toBeNull();
+  });
+
+  it("does not mark the station when the output device would not open", async () => {
+    $toasts.set([]);
+    const { props } = refusePreview("output_unavailable");
+    await vi.waitFor(() => expect($toasts.get()).toHaveLength(1));
+    expect($toasts.get()[0].message).toBe(m.stream_play_output_unavailable());
+    expect(props.onPreviewFailed).not.toHaveBeenCalled();
   });
 });
 
