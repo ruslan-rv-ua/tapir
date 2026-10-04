@@ -8,7 +8,7 @@ status: ready
 effort: L
 kind: feature
 target: 0.2.0
-updated: 2026-08-17
+updated: 2026-10-04
 a11y: true
 depends_on: [profile-scoped-settings]
 blocks: []
@@ -108,6 +108,7 @@ notes:
 
 ## Критерії готовності
 
+- [ ] `docs/help/` оновлено: `settings.md` (обидві локалі) більше не каже, що вкладка **Постобробка** порожня, і описує запуск програми; разом — `docs/accessibility.md` (діалог профілю: вкладка вже не «disabled but focusable») і `ProfileSettingsDialog.test.tsx`
 - [ ] Модуль `postprocess::runner` реалізовано з чергою та timeout/kill.
 - [ ] Запуск зовнішньої програми після фіналізації треку з підстановкою `%file`, `%artist`, `%title`.
 - [ ] Конфігурація аргументів (рядок з placeholders) зберігається та завантажується.

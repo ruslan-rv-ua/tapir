@@ -8,13 +8,13 @@ status: draft
 effort: M
 kind: feature
 target: unscheduled
-updated: 2026-08-17
+updated: 2026-10-04
 a11y: true
-depends_on: []
+depends_on: [mpv-playback-engine]
 blocks: []
 touches: [src-tauri/src/player/engine.rs]
 gates: [cargo test, cargo clippy --all-targets]
-depends_on_external: ["player::engine (LiveSource)", "Windows Media Foundation (windows crate)", "#2-фікс PROBE_TIMEOUT (вже в develop)"]
+depends_on_external: ["player::engine (LiveSource)", "Windows Media Foundation (windows crate)"]
 notes: ["Реалізація збережена на гілці he-aac-mf @ 74c2d90 (НЕ видаляти); архів рішень @ 64d2843 — див. [[he-aac-mf-parked]]"]
 ---
 
@@ -30,7 +30,7 @@ notes: ["Реалізація збережена на гілці he-aac-mf @ 74c
 
 **АЛЕ в реальному відтворенні зламалися ВСІ AAC-потоки** (включно з AAC-LC, який раніше нормально грав через symphonia) — їх програвало неправильно (схоже, не та швидкість/тон). Це зловив ручний тест (відкладений gate). Роботу **відкочено**, а #2-фікс (non-destructive `play_live` + `PROBE_TIMEOUT`) залишено.
 
-**Поточний стан без цієї фічі:** HE-AAC-станції показують доброякісну помилку «timed out probing stream format» (без зависання) завдяки #2-фіксу — тобто graceful degradation уже є. Тому це **«nice to have»**, а не блокер.
+**Поточний стан без цієї фічі:** HE-AAC-станції показують помилку без зависання завдяки #2-фіксу (`PROBE_TIMEOUT`, `src-tauri/src/player/engine.rs:102`, уже в коді) — тобто graceful degradation уже є. Тому це **«nice to have»**, а не блокер. Сама помилка, щоправда, доходить до тоста сирим англійським рядком «timed out probing stream format after 15s (unsupported codec?)» в обох локалях — це окрема вада, [play-refusals-untranslated](p2-play-refusals-untranslated.md).
 
 ### Де лежить уже зроблена робота (НЕ видаляти)
 
@@ -48,6 +48,7 @@ notes: ["Реалізація збережена на гілці he-aac-mf @ 74c
 
 ## Критерії готовності
 
+- [ ] `docs/help/` — запис-дослідження видимої поведінки не змінює; записи, які з нього виростуть, несуть власний пункт про довідку
 - [ ] HE-AAC/HE-AACv2 (`groovesalad-16-aac`) відтворюється з **правильною швидкістю/тоном** на реальному пристрої
 - [ ] **AAC-LC лишається на symphonia** (НЕ маршрутизувати LC у MF) — жодної регресії для станцій, що й так грали
 - [ ] MP3 не зачеплено

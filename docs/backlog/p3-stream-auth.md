@@ -8,7 +8,7 @@ status: draft
 effort: L
 kind: feature
 target: unscheduled
-updated: 2026-08-17
+updated: 2026-10-04
 a11y: true
 depends_on: []
 blocks: []
@@ -23,7 +23,7 @@ gates: [cargo test, cargo clippy --all-targets, pnpm test, pnpm vite:build]
 notes:
   - "Виявлено при groomingʼу full-edit-stream (2026-08-07): поля username/password існують у StreamInfo від Phase 1, але жоден із трьох потрібних шарів не реалізований"
   - "data-models.md описував DPAPI-шифрування як діюче; drift знято 2026-09-07 (data-models-doc-drift) — тепер поля названі мертвими, і документ звіряти більше не треба"
-  - "Профіль уже страхує експорт: export_json / import стирають password (profile.rs:570-625) — цей інваріант зберегти"
+  - "Профіль уже страхує експорт: export_json / import стирають password (profile.rs:772-828) — цей інваріант зберегти"
 ---
 
 # Автентифікація потоку: оживити username/password (DPAPI + передача в HTTP)
@@ -37,23 +37,25 @@ notes:
 ## Опис
 
 `StreamInfo` має `username` і `password`
-([profile.rs:34-36](../../src-tauri/src/profile.rs#L34-L36)), і вони чесно
+([profile.rs:56-58](../../src-tauri/src/profile.rs#L56-L58)), і вони чесно
 переживають копіювання/переміщення між профілями
 (`prepare_transfer_stream`) та стираються при експорті
-([profile.rs:570-625](../../src-tauri/src/profile.rs#L570-L625)). На цьому все
+([profile.rs:772-828](../../src-tauri/src/profile.rs#L772-L828)). На цьому все
 й закінчується — бракує трьох шарів:
 
 1. **Шифрування.** Його немає: `CryptProtectData` у коді не зустрічається, а
    рядок `"DPAPI:abc"` живе лише у тестових фікстурах
-   ([stream_commands.rs:717](../../src-tauri/src/commands/stream_commands.rs#L717)).
+   ([stream_commands.rs:843-865](../../src-tauri/src/commands/stream_commands.rs#L843-L865)).
    Тобто **документація випереджає код**, і пароль сьогодні ліг би у
    `profile.json` відкритим текстом.
 2. **Передача при підключенні.** У `src-tauri/src` немає жодного `basic_auth`
    чи `Authorization`. Креденшли не бачить ні запис
-   ([connection.rs:19](../../src-tauri/src/stream/connection.rs#L19) —
-   єдина точка вихідного HTTP для рекордера), ні probe
+   ([connection.rs:33](../../src-tauri/src/stream/connection.rs#L33), `connect`), ні probe
    (`probe_once` у `stream_io_commands.rs`), ні плеєр
-   ([player/engine.rs](../../src-tauri/src/player/engine.rs)).
+   ([player/engine.rs](../../src-tauri/src/player/engine.rs)). Спрощення (звірка 2026-10-04):
+   усі троє ходять через той самий `connection::connect` — плеєр (`engine.rs:621`) і проба
+   (`src-tauri/src/stream/probe.rs:38`) теж, тож креденшли досить провести в одну функцію;
+   окремий клієнт має лише завантаження плейлиста (`playlist.rs`).
 3. **UI.** Полів немає ні в режимі додавання, ні в режимі редагування
    `AddStreamDialog`.
 
@@ -82,6 +84,7 @@ notes:
 
 Уточнити після дослідження. Кістяк:
 
+- [ ] `docs/help/` — запис-дослідження видимої поведінки не змінює; записи, які з нього виростуть, несуть власний пункт про довідку
 - [ ] Рішення про шифрування ухвалене й записане (зокрема — доля портативності)
 - [ ] Пароль ніколи не лягає у `profile.json` відкритим текстом
 - [ ] Креденшли доходять до рекордера, probe і плеєра — по одному тесту на шар

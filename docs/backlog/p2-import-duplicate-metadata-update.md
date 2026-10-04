@@ -1,25 +1,27 @@
 ---
 slug: import-duplicate-metadata-update
 title: Оновлення метаданих існуючого потоку при імпорті дубліката
-summary: "рішення ухвалено 2026-07-23"
+summary: "дублікат при імпорті пропускається й навіть не зондується; опція «Оновити метадані» оновлює наявний потік зі свіжої проби — рішення 2026-07-23"
 priority: P2
 type: planned
 status: ready
 effort: M
 kind: feature
 target: 0.2.0
-updated: 2026-08-17
+updated: 2026-10-04
 a11y: true
 depends_on: []
 blocks: []
 touches:
   - src-tauri/src/commands/stream_io_commands.rs
   - src/components/streams/ImportStreamsDialog.tsx
+  - docs/help/uk/streams.md
+  - docs/help/en/streams.md
 gates: [pnpm test, pnpm vite:build, cargo test, cargo clippy --all-targets]
 notes:
-  - "Row.status зараз кодує «duplicate» як стан probe (ImportStreamsDialog.tsx:28) — потрібен окремий прапорець isDuplicate, бо дублікати теж почнуть зондуватись і status стане ok/error"
+  - "Row.status зараз кодує «duplicate» як стан probe (ImportStreamsDialog.tsx:17, :34) — потрібен окремий прапорець isDuplicate, бо дублікати теж почнуть зондуватись і status стане ok/error/unsupported"
   - "ImportCandidate не несе id/метаданих існуючого потоку — старі значення для diff брати з $streams (стор має повний StreamInfo[]); у commit ідентифікувати оновлення за URL, не UUID"
-  - "update_stream редагує лише name — format/bitrate/icy_* належать probe, затерти ручні правки неможливо; єдине ризикове поле — name, його diff показуємо явно"
+  - "Ручних правок у format/bitrate/icy_* не буває — вони належать probe; єдине ризикове поле — name, його diff показуємо явно. Після full-edit-stream update_stream приймає ще URL і метадані проби (ProbedMeta) і проводить назву з проби через naming::disambiguate — оновлення з імпорту має поводитись так само"
   - "Специфікація ICY не нормалізує icy-name (довільний текст, який задає мовник) — порівняння case-insensitive + trim є рішенням на рівні застосунку, спиратись на спеку нема на що"
 ---
 
@@ -37,7 +39,7 @@ Phase 3J реалізувала імпорт потоків з файлів M3U8
 знайдено дублікат (потік з таким самим URL вже існує у профілі), він
 позначається у `ImportStreamsDialog` як «дублікат» і вимикається для вибору —
 тобто просто пропускається. Ба більше, дублікати виключені й із зондування
-([ImportStreamsDialog.tsx:69](../../src/components/streams/ImportStreamsDialog.tsx#L69)),
+([ImportStreamsDialog.tsx:84](../../src/components/streams/ImportStreamsDialog.tsx#L84)),
 тож свіжих метаданих для них зараз не існує взагалі.
 
 Результат зондування (`ProbeResult`) часто точніший за збережене у профілі:
@@ -59,11 +61,15 @@ ICY-заголовки повертають офіційну назву стан
 
 **Технічні точки входу:**
 
-- [stream_io_commands.rs:168](../../src-tauri/src/commands/stream_io_commands.rs#L168)
+- [stream_io_commands.rs:252](../../src-tauri/src/commands/stream_io_commands.rs#L252)
   — `commit_stream_import`: другий параметр зі списком оновлень
   (ідентифікація за URL — дедуплікація і так за URL); оновлює
   `name`/`format`/`bitrate`/`icy_name`/`icy_genre`/`icy_url` зі значень probe;
-  один `save`, як зараз.
+  один `save`, як зараз. Назву з проби — через `naming::disambiguate`, як це вже робить
+  `update_stream` після [full-edit-stream](done/p1-full-edit-stream.md).
+- Відтоді в діалозі з'явився четвертий вид рядка — `unsupported` (`RowStatus`,
+  `ImportStreamsDialog.tsx:13-17`; поле `ProbeResult.unsupported`). Дублікат, чия проба
+  поверне `unsupported`, рішення 2026-07-23 не розглядало — вирішити на початку реалізації.
 - `stream::probe` → `ProbeResult { icy_name, bitrate, format, … }` — поле
   називається `format` (тип `AudioFormat`), не `codec`.
 - Модель `Row` у діалозі: «дублікат» зараз — значення `RowStatus`; після
@@ -71,14 +77,14 @@ ICY-заголовки повертають офіційну назву стан
   стати окремим прапорцем (зачіпає всі місця з `status === "duplicate"`).
 - Прецедент «probe точніший за плейлист» уже в коді: для не-дублікатів діалог
   підставляє `icy_name` замість назви з плейлиста
-  ([ImportStreamsDialog.tsx:87](../../src/components/streams/ImportStreamsDialog.tsx#L87)).
+  ([ImportStreamsDialog.tsx:105](../../src/components/streams/ImportStreamsDialog.tsx#L105)).
 
 ## Прийняті рішення (2026-07-23)
 
 1. **Обсяг оновлення** — усі probe-поля: `name`, `format`, `bitrate`,
-   `icy_name`/`icy_genre`/`icy_url`. Єдине користувацьке поле — `name`
-   (`update_stream` редагує лише його), і саме його diff чекбокс показує явно;
-   решта полів належать probe, ручних правок там не буває.
+   `icy_name`/`icy_genre`/`icy_url`. Єдине користувацьке поле серед них — `name`
+   (адресу людина теж править, але при імпорті вона й є тотожністю), і саме його diff
+   чекбокс показує явно; решта полів належать probe, ручних правок там не буває.
 2. **Probe для дублікатів** — зондувати разом з усіма при відкритті діалогу.
    Стану «probe вже виконано» для дублікатів не існувало — без цього фіча
    неможлива в принципі.
@@ -93,6 +99,8 @@ ICY-заголовки повертають офіційну назву стан
 
 ## Критерії готовності
 
+- [ ] `docs/help/` оновлено: `streams.md` (обидві локалі) описує, що імпорт робить із
+      дублікатом і що означає «Оновити метадані»
 - [ ] Дублікати зондуються разом з іншими кандидатами (фільтр
       `alreadyInProfile` у `toCheck` прибрано); основний чекбокс додавання
       для дублікатів лишається вимкненим незалежно від результату probe.

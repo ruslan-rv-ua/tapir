@@ -8,7 +8,7 @@ status: draft
 effort: L
 kind: chore
 target: 0.3.0
-updated: 2026-09-24
+updated: 2026-10-04
 a11y: false
 depends_on: []
 blocks: []
@@ -27,7 +27,7 @@ gates: [cargo test, cargo clippy --all-targets]
 
 > **Контекст:** знахідка [огляду архітектури 2026-09-24](../notes/architecture-review-2026-09-24.md);
 > Rust, залежність локально замінна (файлова система). `idea` + `draft` → режим **ОБГОВОРЕННЯ**:
-> інтерфейс не спроєктовано, код не чіпати. Рядки коду — стан на `f09f36b`.
+> інтерфейс не спроєктовано, код не чіпати. Рядки коду — стан на `f09f36b`; що змінили латки 0.1.1 — у «Тертя».
 
 ## Опис
 
@@ -54,6 +54,20 @@ gates: [cargo test, cargo clippy --all-targets]
   (`profile_commands.rs:193`) і комітить лише гучність (`:199-211`) — позиція файлу губиться.
   Задачі запису чекають по-різному: join із тайм-аутом 2 с (`:189-197`) проти `stop_all` і
   сліпого сну 2 с (`app_state.rs:117`, `:142`).
+  **Після латок 0.1.1 (стан на `a04e358`):** [file-position-lost-on-external-stop](done/p2-file-position-lost-on-external-stop.md)
+  (PR #36) звів Сесійні поля: перемикання знімає стан програвача до зупинки
+  (`profile_commands.rs:203`) і комітить через `apply_closing_session` — те саме тіло, що й
+  вихід (`app_state.rs:153`). Розходяться далі очікування задач (join із тайм-аутом
+  `profile_commands.rs:205-214` проти `stop_all` і сну `app_state.rs:165`), виклики зупинки
+  програвача й писар знімка аварійного відновлення, який скасовує лише вихід. Саме
+  `switch_profile` тепер 87 рядків (`:183-269`): відкат `active_profile` переїхав у
+  `SettingsWriter::choose_profile` (`settings_store.rs:102`, PR #35).
+- **Нове правило з PR #35, яке теж тримає кожен викликач:** перейменування, видалення й пакетне
+  видалення мусять покликати `follow_file_profile` → `commit_profile_moved`
+  (`profile_commands.rs:41`, `:54`, `:312`), інакше `settings.json` сесії з `--profile`
+  вказуватиме на файл, якого вже немає ([cli-profile-override-persists](done/p2-cli-profile-override-persists.md)).
+  Шоста копія правила «ім'я профілю → файл» — лише для показу, у тексті діалогу помилки
+  запуску (`lib.rs:446`).
 - **Файли повз Сховище.** Шлях `format!("{}.tapirprofile", …)` зібрано 5 разів (`profile.rs:573`,
   `:725`, `:726`, `:746`; `profile_store.rs:41`). Читання, перелік, перейменування й видалення
   ходять у `std::fs` напряму (`profile.rs:582`, `:666-674`, `:733-734`, `:750`), `save_detached`
@@ -103,11 +117,12 @@ gates: [cargo test, cargo clippy --all-targets]
   «пам'ять чи диск» без диска й без `AppState`; перемикання й згортання — лише якщо зупинку
   записів і програвача теж можна підставити (див. «Хто володіє згортанням»).
 - **Класи вад, що зникають:** запис профілю повз Сховище й розбіжність двох згортань. Окремі
-  випадки лагодять раніше: [profile-rename-not-atomic](p2-profile-rename-not-atomic.md) (0.2.0)
-  і гілку перемикання в [file-position-lost-on-external-stop](done/p2-file-position-lost-on-external-stop.md)
-  (0.1.1); SMTC і CLI — справа [playback-verbs-persist-session](p2-playback-verbs-persist-session.md).
-  [corrupt-active-profile-aborts-startup](done/p1-corrupt-active-profile-aborts-startup.md) отримує
-  одне місце для рішення «діалог чи відкат на `Default`»; виправлення 0.1.1 лишається локальним.
+  випадки лагодять раніше: [profile-rename-not-atomic](p2-profile-rename-not-atomic.md) (0.2.0);
+  гілку перемикання вже виправила латка 0.1.1 [file-position-lost-on-external-stop](done/p2-file-position-lost-on-external-stop.md),
+  як і SMTC з CLI, — клас лишається справою [playback-verbs-persist-session](p2-playback-verbs-persist-session.md).
+  [corrupt-active-profile-aborts-startup](done/p1-corrupt-active-profile-aborts-startup.md) (0.1.1)
+  вибрав діалог «Помилка запуску» й вихід, і це рішення лишилось локальним у `lib.rs`; модуль
+  дав би йому одне місце.
 - **Суміжне:** очікування задач запису (тайм-аут 2 с при перемиканні —
   [profile-switch-orphaned-tasks](p3-profile-switch-orphaned-tasks.md), сліпий сон 2 с на виході)
   стане одним і вирішуватиметься раз.
@@ -115,8 +130,9 @@ gates: [cargo test, cargo clippy --all-targets]
 ## Обмеження
 
 - **Виняток Знімка** ([CONTEXT.md](../../CONTEXT.md), «Знімок»): невдалий коміт
-  `active_profile` відкочує пам'ять явно (`profile_commands.rs:226-240`) і профіль не
-  підмінюється. Відкат лишається.
+  `active_profile` відкочує пам'ять явно (`profile_commands.rs:226-240`; з PR #35 — у
+  `SettingsWriter::choose_profile`, `settings_store.rs:102`) і профіль не підмінюється. Відкат
+  лишається.
 - [ADR 2026-08-08](../decisions/2026-08-08-global-vs-profile-settings-boundary.md): межа
   глобального й профільного. `active_profile` — поле глобальних налаштувань, модуль профілів ними
   не володіє; діалог профілю й далі працює для неактивного профілю без перемикання.
@@ -139,13 +155,14 @@ gates: [cargo test, cargo clippy --all-targets]
 - **Порядок перемикання.** Новий профіль читається (`profile_commands.rs:214`) після зупинки
   записів і відтворення, тож невдале читання лишає старий профіль із зупиненими записами.
   Читати до згортання?
-- **Старт.** Завантаження активного профілю в `lib.rs` іде через модуль (з рішенням про
-  пошкоджений файл) чи лишається окремим шляхом до `AppState`?
+- **Старт.** Завантаження активного профілю в `lib.rs` іде через модуль чи лишається окремим
+  шляхом до `AppState`? Рішення про пошкоджений файл уже ухвалене — діалог «Помилка запуску» й
+  вихід ([corrupt-active-profile-aborts-startup](done/p1-corrupt-active-profile-aborts-startup.md)).
 
 ## Критерії готовності
 
-- [ ] `docs/help/` — запис видимої поведінки не змінює (позицію файлу при перемиканні
-      виправляє file-position-lost-on-external-stop)
+- [ ] `docs/help/` — запис видимої поведінки не змінює (позицію файлу при перемиканні вже
+      виправила латка 0.1.1 file-position-lost-on-external-stop)
 - [ ] Обрано форму модуля й місце шва Сховища; відповіді на відкриті питання записано тут
 - [ ] Межу узгоджено з recording-control-owns-every-start, playback-verbs-persist-session і
       stream-insert-single-path

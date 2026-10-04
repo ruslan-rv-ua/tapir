@@ -8,7 +8,7 @@ status: draft
 effort: S
 kind: bug
 target: 0.2.0
-updated: 2026-09-24
+updated: 2026-10-04
 a11y: true
 depends_on: [transport-skip-silent-failure]
 blocks: []
@@ -61,7 +61,7 @@ notes:
 Знайдено grilling'ом [tray-cannot-resume-last](done/p2-tray-cannot-resume-last.md) §3 (2026-09-24).
 Коли не грає нічого, `Ctrl+Shift+K` продовжує останнє джерело; якщо його не записано
 (`last_active` порожнє або вказує на порожню комірку), `resume_last` виходить мовчки
-([playback_control.rs:352](../../src-tauri/src/playback_control.rs:352)). Клас той самий —
+(гілка `ResumeLastAction::NoLastSource`, [playback_control.rs:402](../../src-tauri/src/playback_control.rs:402)). Клас той самий —
 «межа», а не «невдача»: у вікні носій є (плеєр каже, що нічого не грає, а пункт трея в цьому
 стані сірий), у фоні натискання не лишає сліду.
 

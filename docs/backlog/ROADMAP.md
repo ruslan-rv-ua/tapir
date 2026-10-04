@@ -36,11 +36,12 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > **Тема — те, що обіцяно, але не працює.** Патч до випущеного 0.1.0: тільки записи
 > `kind: bug`, жодної нової поверхні, жодного нового `ToastKind`. Критерій відбору
 > подвійний — дефект видно в тому, що вже відвантажено людям, і виправлення лишається
-> всередині наявного механізму (IPC і набір поверхонь не міняються). Версія закрита,
-> коли код перестає розходитися з тим, що вже обіцяно: довідка обіцяє номер спроби
-> перепідключення, пошук обіцяє показати відповідь саме на введений запит, автозапуск
-> обіцяє тихий старт згорнутим у трей — живий і чутний для скрінрідера, — застосунок
-> обіцяє сказати про вимкнений автозапуск, докоментар трея обіцяє `cold=resume-last`.
+> всередині наявного механізму (IPC і набір поверхонь не міняються). Запис, який грумінг
+> виведе за ці межі, повертається в наступну мінорну версію. Версія закрита, коли код
+> перестає розходитися з тим, що вже обіцяно: довідка обіцяє номер спроби перепідключення
+> й час, що минув від початку запису, пошук обіцяє показати відповідь саме на введений
+> запит і сказати, коли не знайшов нічого, автозапуск обіцяє тихий старт згорнутим у трей —
+> живий і чутний для скрінрідера, — докоментар трея обіцяє `cold=resume-last`.
 > Пряме продовження *чесного інтерфейсу* 0.1.0 — цього разу проти вже випущеної збірки.
 >
 > Поза чергою записів версія несе ще й **зміни значень за замовчуванням** — те, з чим
@@ -48,7 +49,13 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > поверхонь не з'являється, IPC не міняється, а вже встановлені копії лишаються зі
 > своїми значеннями, бо міграцій немає.
 
-Черга порожня. Виконано: 13.
+У черзі: 3. Виконано: 13.
+
+| Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
+|------|---|-----|------|---------|---------------|-------------|------|
+| [debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md) ♿ | P2 | planned | draft | S | [stale-search-overwrites-results](done/p2-stale-search-overwrites-results.md) ✅ | — | критерії міняються миттєво, запит — через 500 мс; у це вікно стара вибірка видається за відповідь, а дописування йде новими критеріями по старому зсуву |
+| [empty-search-shows-popular-stations](p2-empty-search-shows-popular-stations.md) ♿ | P2 | planned | draft | S | — | — | нульовий результат згортає showSearchResults, тож відповіддю на запит стає список популярних; рядок «Станцій не знайдено» недосяжний узагалі |
+| [recording-duration-is-per-connection](p2-recording-duration-is-per-connection.md) | P2 | planned | draft | S | [reconnect-counter-not-live](done/p2-reconnect-counter-not-live.md) ✅ | — | довідка обіцяє час від початку запису, а рядок потоку й рядок стану показують вік поточного з'єднання: кожне перепідключення обнуляє число |
 
 ---
 
@@ -56,17 +63,20 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 
 > **Тема — фічі з готовим дизайном.** Записи, де рішення вже ухвалені (`type: planned`)
 > і лишилася реалізація, включно з останньою незакритою фазою застосунку —
-> **3H Post-processing**.
+> **3H Post-processing**. `planned`/`draft` тут — рішення ухвалене, але дрібніші розвилки
+> ще відкриті: перед кодом **GROOMING**. Виняток — дві ідеї, що стоять у версії за
+> цінністю, [focus-active-item-on-playback-start](p2-focus-active-item-on-playback-start.md)
+> і [streams-list-search](p2-streams-list-search.md): їм спершу **ОБГОВОРЕННЯ**.
 
 У черзі: 13. Виконано: 12.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
 | [post-processing](p1-post-processing.md) ♿ | P1 | planned | ready | L | [profile-scoped-settings](done/p0-profile-scoped-settings.md) ✅ | — | остання незакрита фаза **3H**; оживляє вкладку-заглушку в діалозі профілю |
-| [per-stream-ignorelist-ui](p1-per-stream-ignorelist-ui.md) ♿ | P1 | planned | draft | M | — | — | бекенд уже працює, наповнити список з інтерфейсу неможливо; довідка описує це як дірку |
-| [command-palette-phase-3](p1-command-palette-phase-3.md) ♿ | P1 | planned | ready | S | — | [command-palette-phase-4](p2-command-palette-phase-4.md), [command-palette-mode-prefixes](p3-command-palette-mode-prefixes.md) | Командна палітра — Фаза 3: розширення контенту (пісні, навігація) |
-| [import-duplicate-metadata-update](p2-import-duplicate-metadata-update.md) ♿ | P2 | planned | ready | M | — | — | рішення ухвалено 2026-07-23 |
-| [wishlist-match-tray-notification](p2-wishlist-match-tray-notification.md) ♿ | P2 | planned | ready | M | [wishlist-match-invisible](done/p1-wishlist-match-invisible.md) ✅ | — | четверта категорія `ToastKind`; слід, без якого гейт прапорцем був би заборонений, тепер є — журнал збігів |
+| [per-stream-ignorelist-ui](p1-per-stream-ignorelist-ui.md) ♿ | P1 | planned | draft | M | — | — | бекенд уже працює, наповнити список з інтерфейсу неможливо; довідка про нього свідомо мовчить, згадано лише в DEVELOPERS.md |
+| [command-palette-phase-3](p1-command-palette-phase-3.md) ♿ | P1 | planned | draft | S | — | [command-palette-phase-4](p2-command-palette-phase-4.md), [command-palette-mode-prefixes](p3-command-palette-mode-prefixes.md) | Командна палітра — Фаза 3: розширення контенту (пісні, навігація) |
+| [import-duplicate-metadata-update](p2-import-duplicate-metadata-update.md) ♿ | P2 | planned | ready | M | — | — | дублікат при імпорті пропускається й навіть не зондується; опція «Оновити метадані» оновлює наявний потік зі свіжої проби — рішення 2026-07-23 |
+| [wishlist-match-tray-notification](p2-wishlist-match-tray-notification.md) ♿ | P2 | planned | ready | M | [wishlist-match-invisible](done/p1-wishlist-match-invisible.md) ✅ | — | нова категорія `ToastKind` зі своїм прапорцем; слід, без якого гейт прапорцем був би заборонений, тепер є — журнал збігів |
 | [player-primary-button-resumes-last](p2-player-primary-button-resumes-last.md) ♿ | P2 | planned | draft | M | [tray-cannot-resume-last](done/p2-tray-cannot-resume-last.md) ✅ | — | третя поверхня ролі «головна кнопка»: кнопка панелі в спокої мусить продовжувати останнє; потрібні IPC і видимий носій у вікні |
 | [profile-rename-not-atomic](p2-profile-rename-not-atomic.md) | P2 | planned | ready | S | — | — | `Profile::rename` пише новий файл сирим `std::fs::write`, без tmp і `sync_all`: втрата живлення за секунди після перейменування може згубити профіль |
 | [stream-failure-tray-toast](p2-stream-failure-tray-toast.md) ♿ | P2 | planned | ready | S | [error-state-never-reaches-ui](done/p1-error-state-never-reaches-ui.md) ✅ | — | ADR 2026-09-06 §6: у згорнутому вікні поверхня — система; нова категорія `ToastKind` зі своїм прапорцем, звірити з wishlist-match-tray-notification |
@@ -84,7 +94,10 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > кожну треба спершу обговорити (режим **ОБГОВОРЕННЯ** за алгоритмом
 > [README](README.md#алгоритм-для-агента)), і лише потім планувати. Записи `planned`/`draft`
 > тут — хвости грилінгів, їм потрібен **GROOMING**, а не обговорення; `research`/`draft` —
-> дослідження, не обговорення.
+> дослідження, не обговорення. Ідеї з `kind: chore` — поглиблення модулів з
+> [огляду архітектури 2026-09-24](../notes/architecture-review-2026-09-24.md): комфорт для
+> того, хто міняє код. Виняток — [webview-zoom-hotkeys](p1-webview-zoom-hotkeys.md):
+> `planned`/`ready`, обговорення не потребує, у версії стоїть за цінністю.
 
 У черзі: 30. Виконано: 0.
 
@@ -98,10 +111,10 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 | [composite-list-owns-bulk-removal](p2-composite-list-owns-bulk-removal.md) ♿ | P2 | idea | draft | M | — | — | Фокус після масового видалення зшито руками в 5 списках; список має сам вести Виділення й цей фокус. Спільне правило з клампом дрейфу — під питанням |
 | [ipc-seam-test-adapter](p2-ipc-seam-test-adapter.md) | P2 | idea | draft | M | — | — | 34 тестові файли пишуть свій частковий мок tauri.ts і копіюють фікстури; у шов — спільний адаптер у пам'яті, мапа подій, словник кодів відмов |
 | [pause-recording](p2-pause-recording.md) ♿ | P2 | idea | draft | M | — | — | Пауза запису без відключення від потоку |
-| [playback-source-module](p2-playback-source-module.md) ♿ | P2 | idea | draft | M | — | — | «чи грає джерело цього рядка» виведено 6 разів, «слухати / зупинити» з відмовою — 5, рядок треку повз trackLabel — 4; зібрати в один модуль |
-| [playback-verbs-persist-session](p2-playback-verbs-persist-session.md) | P2 | idea | draft | M | — | — | Сесійні поля зберігає викликач: 8 викликів у 4 модулях, а SMTC, CLI й перемикання профілю їх пропускають; зберігати має саме дієслово програвача |
-| [player-mirror-module](p2-player-mirror-module.md) ♿ | P2 | idea | draft | M | — | — | Одну подію player-status розбирають п'ять файлів, «те саме джерело» записане двічі й розійшлося; ідея — один модуль дзеркала програвача |
-| [recording-control-owns-every-start](p2-recording-control-owns-every-start.md) | P2 | idea | draft | M | — | [reconnect-loop-behind-host-port](p2-reconnect-loop-behind-host-port.md) | старт Запису скопійовано в п'ять місць, і копії розійшлися (Ctrl+Shift+R не перевіряє місце); ідея — один модуль на кожен старт і зупинку |
+| [playback-source-module](p2-playback-source-module.md) ♿ | P2 | idea | draft | M | — | — | «чи грає джерело цього рядка» виведено 6 разів, «слухати / зупинити» з відмовою — 5; рядок треку й тотожність латки 0.1.1 звели — решту зібрати в один модуль |
+| [playback-verbs-persist-session](p2-playback-verbs-persist-session.md) | P2 | idea | draft | M | — | — | Сесійні поля зберігає викликач: 11 викликів у 6 модулях; латка 0.1.1 закрила SMTC, CLI й перемикання, лишилась пауза кнопкою плеєра; зберігати має дієслово |
+| [player-mirror-module](p2-player-mirror-module.md) ♿ | P2 | idea | draft | M | — | — | Одну подію player-status розбирають шість файлів; тотожність джерела латка 0.1.1 звела, але перехід класифікують двічі; ідея — один модуль дзеркала програвача |
+| [recording-control-owns-every-start](p2-recording-control-owns-every-start.md) | P2 | idea | draft | M | — | [reconnect-loop-behind-host-port](p2-reconnect-loop-behind-host-port.md) | старт Запису скопійовано в п'ять місць, і копії розходяться: відмову кожна обробляє по-своєму, кодек звіряє лише розклад; ідея — один модуль на старт і зупинку |
 | [stream-insert-single-path](p2-stream-insert-single-path.md) | P2 | idea | draft | M | — | — | Сім команд кладуть Потік у Профіль чотирма способами, кожен зі своєю частиною правил; перенесення назв не звіряє — два рядки з однією назвою |
 | [stream-manual-reorder](p2-stream-manual-reorder.md) ♿ | P2 | idea | draft | M | — | — | Ручне сортування потоків — ↑↓ кнопки або drag-and-drop |
 | [track-log-only-mode](p2-track-log-only-mode.md) | P2 | idea | draft | M | — | — | Режим логування назв треків без запису аудіо |
@@ -131,24 +144,22 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > Найперше рішення для цієї секції — **gate A4** ([mpv-playback-engine](p3-mpv-playback-engine.md)):
 > його «go» закриває два інші записи разом.
 
-У черзі: 17. Виконано: 3.
+У черзі: 15. Виконано: 3.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
-| [disk-space-monitor](p2-disk-space-monitor.md) ♿ | P2 | planned | draft | M | — | — | знахідка architecture-doc-drift: §8 описував нагляд за місцем як робочий — події, щохвилинна перевірка, автозупинка, — а в коді немає нічого; не грилений |
+| [disk-space-monitor](p2-disk-space-monitor.md) ♿ | P2 | planned | draft | M | — | — | §8 описував нагляд за місцем як робочий — події, щохвилинна перевірка, автозупинка; у коді лише німий індикатор у рядку стану; не грилений |
 | [browser-zone-race-sweep-triage](p2-browser-zone-race-sweep-triage.md) ♿ | P2 | research | draft | S | [stale-search-overwrites-results](done/p2-stale-search-overwrites-results.md) ✅ | — | обхід зони браузера дав шість дефектів поза класом stale-search; частина підтверджена, частина не перевірялась — звірити й розділити на власні записи |
-| [debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md) ♿ | P2 | planned | draft | S | [stale-search-overwrites-results](done/p2-stale-search-overwrites-results.md) ✅ | — | критерії міняються миттєво, запит — через 500 мс; у це вікно стара вибірка видається за відповідь, а дописування йде новими критеріями по старому зсуву |
-| [empty-search-shows-popular-stations](p2-empty-search-shows-popular-stations.md) ♿ | P2 | planned | draft | S | — | — | нульовий результат згортає showSearchResults, тож відповіддю на запит стає список популярних; рядок «Станцій не знайдено» недосяжний узагалі |
-| [hls-stream-support](p3-hls-stream-support.md) ♿ | P3 | idea | draft | L | — | — | залежить від рішення mpv-playback-engine |
+| [play-refusals-untranslated](p2-play-refusals-untranslated.md) ♿ | P2 | planned | draft | S | — | — | play_stream віддає сиру англійську прозу на тайм-аут проби й нерозібраний формат, і тост показує її в обох локалях; найчастіше — на станціях AAC+ |
+| [hls-stream-support](p3-hls-stream-support.md) ♿ | P3 | idea | draft | L | [mpv-playback-engine](p3-mpv-playback-engine.md) | — | залежить від рішення mpv-playback-engine |
 | [mpv-playback-engine](p3-mpv-playback-engine.md) ♿ | P3 | research | draft | L | — | [hls-stream-support](p3-hls-stream-support.md), [he-aac-mf-playback](p3-he-aac-mf-playback.md) | розвилка A4 (PoC-gate): «go» закриває he-aac-mf-playback і hls-stream-support разом; робити першим серед декодер-записів |
 | [stream-auth](p3-stream-auth.md) ♿ | P3 | research | draft | L | — | — | брати лише за реальною потребою (станція з платним/приватним mountpoint) |
 | [command-palette-taxonomy](p3-command-palette-taxonomy.md) ♿ | P3 | idea | draft | M | — | — | спірна — «Відкриті питання» ставлять під сумнів саму суть пропозиції |
-| [he-aac-mf-playback](p3-he-aac-mf-playback.md) ♿ | P3 | research | draft | M | — | — | залежить від рішення mpv-playback-engine |
+| [he-aac-mf-playback](p3-he-aac-mf-playback.md) ♿ | P3 | research | draft | M | [mpv-playback-engine](p3-mpv-playback-engine.md) | — | залежить від рішення mpv-playback-engine |
 | [profile-switch-orphaned-tasks](p3-profile-switch-orphaned-tasks.md) ♿ | P3 | idea | draft | M | — | — | **умовний** — лише за реальним тригером (незафіналізовані файли після перемикання профілю) |
 | [capabilities-dead-plugin-permissions](p3-capabilities-dead-plugin-permissions.md) | P3 | planned | draft | S | [dead-js-tauri-plugins](done/p3-dead-js-tauri-plugins.md) ✅ | — | хвіст dead-js-tauri-plugins: чотири дозволи в `capabilities/default.json` нікого не обслуговують; рішення, бо відсутній дозвіл ламає виклик мовчки |
 | [cli-answers-only-with-exit-code](p3-cli-answers-only-with-exit-code.md) | P3 | idea | draft | S | — | — | спірна — `--version` і `--help` не друкують нічого (код 0 без `e.print()`); перше питання — чи GUI-застосунок узагалі має відповідати в консолі |
 | [command-palette-mode-prefixes](p3-command-palette-mode-prefixes.md) ♿ | P3 | idea | draft | S | [command-palette-phase-3](p1-command-palette-phase-3.md) | — | спірна — українська розкладка без `>`/`@` |
 | [help-style-guide-extract](p3-help-style-guide-extract.md) | P3 | planned | draft | S | [help-word-floor](done/p2-help-word-floor.md) ✅ | — | стиль-гайд довідки лежить у закритому `help-content-polish`, тест цитує його за slug'ом; чистий рефакторинг адреси, три відкриті питання |
-| [recording-duration-is-per-connection](p3-recording-duration-is-per-connection.md) | P3 | research | draft | S | [reconnect-counter-not-live](done/p2-reconnect-counter-not-live.md) ✅ | — | рядок і рядок стану показують вік поточного з'єднання, а не сесії запису; питання не в числі, а в тому, що таке «тривалість» |
 | [recording-start-speaks-three-times](p3-recording-start-speaks-three-times.md) ♿ | P3 | idea | draft | S | [row-silent-while-connecting](done/p1-row-silent-while-connecting.md) ✅ | — | тригер-gated: одна дія дає «Підключення…», «Записується…», «Запис розпочато…»; вертатись, лише коли людина скаже, що заважає |
-| [status-fixtures-rebuilt-per-test-file](p3-status-fixtures-rebuilt-per-test-file.md) | P3 | planned | draft | S | — | — | 5 білдерів у Rust і 17 літералів у 9 файлах TS; одне поле статусу — і правити треба всюди. Метушня, не ризик: забуту фікстуру ловлять типи |
+| [status-fixtures-rebuilt-per-test-file](p3-status-fixtures-rebuilt-per-test-file.md) | P3 | planned | draft | S | — | — | 5 білдерів у Rust і 18 літералів у 10 файлах TS; одне поле статусу — і правити треба всюди. Метушня, не ризик: забуту фікстуру ловлять типи |

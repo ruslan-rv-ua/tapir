@@ -7,7 +7,7 @@ status: draft
 effort: S
 kind: feature
 target: 0.3.0
-updated: 2026-08-17
+updated: 2026-10-04
 a11y: true
 depends_on: []
 blocks: []
@@ -30,6 +30,7 @@ gates: [pnpm test, cargo test]
 
 ## Критерії готовності
 
+- [ ] `docs/help/` оновлено — або зазначено, що запис видимої поведінки не змінює
 - [ ] UI: кнопка або пункт меню «Sleep Timer» у PlayerPanel або тулбарі
 - [ ] Вибір тривалості: декілька пресетів (15 / 30 / 60 хв) + довільне значення
 - [ ] Відлік залишку часу видимий у UI (в PlayerPanel або StatusBar)

@@ -8,7 +8,7 @@ status: draft
 effort: M
 kind: chore
 target: 0.3.0
-updated: 2026-09-06
+updated: 2026-10-04
 a11y: false
 depends_on: [tauri-ts-type-drift]
 blocks: []
@@ -55,7 +55,9 @@ specta: `Option<T>` у ts-rs іде як `T | null` — саме та конве
   окремий згенерований файл, з якого `tauri.ts` реекспортує, чи звірка «згенероване
   проти закомміченого» без заміни ручного файлу.
 - Форма воріт у CI: `cargo test` експортує, `git diff --exit-code` ловить дрейф — чи
-  достатньо цього, і як це лягає в наявний пайплайн з `paths`-фільтром.
+  достатньо цього, і як це лягає в наявний пайплайн (він свідомо **без** `paths`-фільтра:
+  кожен PR ганяє обидва jobs — `.github/workflows/ci.yml`,
+  [ADR 2026-09-05](../decisions/2026-09-05-gates-refuse-rather-than-advise.md)).
 - Ціна `TS_RS_LARGE_INT=number` для 21 поля `u64`/`usize` і чи потрібне воно взагалі,
   якщо звірка йде лише по формі, а не по типу числа.
 - Час на `cargo test` і чи не повторює цей експорт пастку Windows з lib-тестами, що

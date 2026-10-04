@@ -8,7 +8,7 @@ status: draft
 effort: M
 kind: chore
 target: 0.3.0
-updated: 2026-09-24
+updated: 2026-10-04
 a11y: false
 depends_on: []
 blocks: []
@@ -114,7 +114,7 @@ gates: [pnpm test, pnpm typecheck, pnpm vite:build]
   текст сирим, `shellOpenError` дає загальну фразу, `transportControl` — «error».
 - Контракт команд — `Result<T, String>` на межі IPC ([architecture.md](../architecture.md), §6).
 - Перетин: TS-половина [status-fixtures-rebuilt-per-test-file](p3-status-fixtures-rebuilt-per-test-file.md)
-  (17 літералів `StreamStatus`) — підмножина будівників звідси; Rust-половина лишається там.
+  (18 літералів `StreamStatus` на `a04e358`) — підмножина будівників звідси; Rust-половина лишається там.
 
 ## Відкриті питання
 

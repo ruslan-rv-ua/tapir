@@ -7,7 +7,7 @@ status: draft
 effort: M
 kind: feature
 target: 0.3.0
-updated: 2026-08-17
+updated: 2026-10-04
 a11y: true
 depends_on: []
 blocks: []
@@ -35,6 +35,7 @@ gates: [pnpm test, cargo test, cargo clippy --all-targets]
 
 ## Критерії готовності
 
+- [ ] `docs/help/` оновлено — або зазначено, що запис видимої поведінки не змінює
 - [ ] `pause_recording` / `resume_recording` IPC-команди
 - [ ] Байти читаються з сокета але не записуються під час паузи (щоб не накопичувати буфер і не відключатись)
 - [ ] Новий стан `StreamState::RecordingPaused` (або `Paused`) у `StreamStatus`
