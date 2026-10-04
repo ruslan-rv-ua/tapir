@@ -147,7 +147,7 @@ info»), коментар `manager.rs:432` і формат `menu.rs:204`. Док
    плеєра. Це знімає й застиглий трек у `Reconnecting`.
 3. За бажання — `update_track_info` раніше за `emit_track_changed` у чотирьох парах вище.
 
-Подвійне тире в цьому ж рядку лікує [track-line-dangling-dash](p2-track-line-dangling-dash.md)
+Подвійне тире в цьому ж рядку лікує [track-line-dangling-dash](done/p2-track-line-dangling-dash.md)
 (0.1.1); цей запис бере вже виправлену склейку `menu.rs:202-207`.
 
 ## Відкрите питання: один власник рядка треку в Rust
@@ -182,7 +182,7 @@ info»), коментар `manager.rs:432` і формат `menu.rs:204`. Док
 - [tray-toggle-label-vs-action](done/p2-tray-toggle-label-vs-action.md) — звідки знахідка
 - [Огляд архітектури 2026-09-24](../notes/architecture-review-2026-09-24.md) — друга вада й питання про власника рядка треку
 - [preview-player-presentation](done/p2-preview-player-presentation.md) §«Що вирішено» #1 — прев'ю не відрізняється від ефіру
-- [track-line-dangling-dash](p2-track-line-dangling-dash.md) — подвійне тире в тому ж рядку
+- [track-line-dangling-dash](done/p2-track-line-dangling-dash.md) — подвійне тире в тому ж рядку
 - [tauri-ts-type-drift](done/p2-tauri-ts-type-drift.md) §«Рішення» #2, #4 — звідки `player_owns_track_line`
 - [THEMES.md](THEMES.md) §0.1.1 — докоментар трея як обіцянка
 - [ADR 2026-08-17](../decisions/2026-08-17-native-layer-localisation.md) — локалізація нативного шару

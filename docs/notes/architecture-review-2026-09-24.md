@@ -37,7 +37,7 @@
 | [corrupt-active-profile-aborts-startup](../backlog/done/p1-corrupt-active-profile-aborts-startup.md) — пошкоджений активний профіль мовчки валить старт | P1 |
 | [file-position-lost-on-external-stop](../backlog/p2-file-position-lost-on-external-stop.md) — позиція файлу губиться після Stop з медіаклавіш, CLI чи перемикання профілю | P2 |
 | [preview-switch-keeps-mute](../backlog/p2-preview-switch-keeps-mute.md) — прев'ю→прев'ю лишає звук вимкненим | P2 |
-| [track-line-dangling-dash](../backlog/p2-track-line-dangling-dash.md) — «— So What» у рядку треку | P2 |
+| [track-line-dangling-dash](../backlog/done/p2-track-line-dangling-dash.md) — «— So What» у рядку треку | P2 |
 
 **Зміцнення**, у 0.2.0: [profile-rename-not-atomic](../backlog/p2-profile-rename-not-atomic.md) —
 перейменування профілю пише файл повз атомарне Сховище.

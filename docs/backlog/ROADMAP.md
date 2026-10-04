@@ -14,7 +14,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 саме вони визначають, чи версія закриється. Колонка «Суть» — поле `summary:` запису
 (без нього — `title:`).
 ♿ — запис зачіпає доступність (`a11y: true`), приймання потребує NVDA-прогону.
-Виконані записи (111) — у [done/README.md](done/README.md), спадок кожного — у секції
+Виконані записи (112) — у [done/README.md](done/README.md), спадок кожного — у секції
 «Спадок» його файлу.
 
 ---
@@ -48,14 +48,13 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 > поверхонь не з'являється, IPC не міняється, а вже встановлені копії лишаються зі
 > своїми значеннями, бо міграцій немає.
 
-У черзі: 4. Виконано: 9.
+У черзі: 3. Виконано: 10.
 
 | Slug | P | Тип | Стан | Зусилля | Залежить від | Розблоковує | Суть |
 |------|---|-----|------|---------|---------------|-------------|------|
 | [cli-profile-override-persists](p2-cli-profile-override-persists.md) | P2 | planned | ready | S | — | — | `--profile` оголошено сеансовим, але будь-який запис налаштувань за сеанс (і гасіння перенесеного автозапуску) пише його в settings.json |
 | [file-position-lost-on-external-stop](p2-file-position-lost-on-external-stop.md) | P2 | planned | ready | S | — | — | Медіа-клавіша «Стоп», `--stop-playback` і перемикання профілю не зберігають позицію файлу: продовження останнього починає файл з нуля |
 | [preview-switch-keeps-mute](p2-preview-switch-keeps-mute.md) ♿ | P2 | planned | ready | S | — | — | прев'ю A → прев'ю B після Ctrl+M: «Відтворення: B», а звук лишається вимкненим — App.tsx не порівнює url; одне порівняння джерел на обидва місця |
-| [track-line-dangling-dash](p2-track-line-dangling-dash.md) ♿ | P2 | planned | ready | S | — | [tray-now-playing-source-prefix](p3-tray-now-playing-source-prefix.md) | станція без « - » у метаданих ефіру дає «— So What» у плеєрі, рядку потоку й журналі збігів, у треї — подвійне тире; лік — спільний trackLabel |
 
 ---
 
@@ -126,7 +125,7 @@ front-matter). Це не той самий roadmap, що [`docs/implementation-p
 | [diagnostic-report-block](p3-diagnostic-report-block.md) ♿ | P3 | idea | draft | S | [about-app-info](done/p1-about-app-info.md) ✅ | — | хвіст about-app-info: збірка Windows, версія WebView2, кнопка «Скопіювати відомості для звіту» |
 | [player-station-image](p3-player-station-image.md) | P3 | idea | draft | S | — | — | Зображення станції у плеєрі |
 | [recording-stats](p3-recording-stats.md) ♿ | P3 | idea | draft | S | — | — | Статистика запису — скільки записано, топ станцій |
-| [tray-now-playing-source-prefix](p3-tray-now-playing-source-prefix.md) ♿ | P3 | planned | draft | S | [track-line-dangling-dash](p2-track-line-dangling-dash.md) | — | «Зараз грає» в треї: подвійна двокрапка, префікс «Станція:» лише в прев'ю, а трек потоку видно лише під час запису |
+| [tray-now-playing-source-prefix](p3-tray-now-playing-source-prefix.md) ♿ | P3 | planned | draft | S | [track-line-dangling-dash](done/p2-track-line-dangling-dash.md) ✅ | — | «Зараз грає» в треї: подвійна двокрапка, префікс «Станція:» лише в прев'ю, а трек потоку видно лише під час запису |
 
 ---
 
