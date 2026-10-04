@@ -190,7 +190,7 @@ mod tests {
     /// Built the way `play_live` builds them: the detail inside, the reason as
     /// the outermost context.
     fn refused(detail: &str, reason: LiveRefusal) -> anyhow::Error {
-        Err::<(), _>(anyhow::anyhow!("{}", detail.to_owned())).context(reason).unwrap_err()
+        Err::<(), _>(anyhow::anyhow!("{detail}")).context(reason).unwrap_err()
     }
 
     #[test]

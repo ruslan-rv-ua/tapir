@@ -44,7 +44,7 @@ The player panel only shows the current device. Choose a different one in the ap
 
 ### Sound stopped after unplugging a device
 
-Tapir remembers the output device by name and never falls back on its own, so unplugging the headphones it was pointed at leaves what is playing silent. The next attempt to play is not silent — Tapir says **Couldn't open the output device**. Open the app settings, tab **Audio**, and pick another device or **System default**. If what you want is missing from the list, plug it in and press **Refresh device list**.
+Tapir remembers the output device by name and never falls back on its own, so unplugging the headphones it was pointed at leaves what is playing silent. Playing a station from the window after that is not silent: Tapir says **Couldn't open the output device**. Open the app settings, tab **Audio**, and pick another device or **System default**. If what you want is missing from the list, plug it in and press **Refresh device list**.
 
 ### A file will not open in another program
 

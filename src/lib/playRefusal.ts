@@ -22,6 +22,15 @@ import * as m from "../i18n/paraglide/messages";
  *
  * Anything else passes through untouched. Mirrors `shellOpenErrorMessage`.
  */
+/**
+ * Whether a live-play refusal means the station did not answer — the only one
+ * that earns a browser row the **Unavailable** mark. A station that answered
+ * but would not play (AAC+) is on the air and records fine.
+ */
+export function isStationUnreachable(err: unknown): boolean {
+  return String(err) === "connect_failed";
+}
+
 export function playRefusalMessage(err: unknown): string {
   const text = String(err);
   switch (text) {

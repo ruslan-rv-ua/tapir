@@ -7,7 +7,7 @@ import { CompositeRow, CompositeSegment, CompositeAction, COMPOSITE_FOCUS_RING }
 import { $playerStatus } from "../../stores/player";
 import { previewStation, stopPlayback } from "../../lib/tauri";
 import { addToast } from "../../stores/toasts";
-import { playRefusalMessage } from "../../lib/playRefusal";
+import { isStationUnreachable, playRefusalMessage } from "../../lib/playRefusal";
 import * as m from "../../i18n/paraglide/messages";
 
 const SEGMENT_ICONS: Partial<Record<Exclude<SegmentKind, "summary">, ReactNode>> = {
@@ -49,7 +49,7 @@ interface StationItemProps {
   isUnavailable: boolean;
   isSelected: boolean;
   onAdd: () => void;
-  /** Called only when the preview refusal is `connect_failed`. */
+  /** Called only when the preview refusal is `isStationUnreachable`. */
   onPreviewFailed: () => void;
 }
 
@@ -87,10 +87,7 @@ export function StationItem({
       // One event, one voice: the toast (a polite live region) carries the
       // reason, the focused row carries the station — no announce on top.
       addToast(playRefusalMessage(err), "error");
-      // Only a station that did not answer is "unavailable". One that answered
-      // but would not play (AAC+) is on the air and records fine; the label
-      // would talk people out of adding it.
-      if (String(err) === "connect_failed") onPreviewFailed();
+      if (isStationUnreachable(err)) onPreviewFailed();
     }
   };
 
