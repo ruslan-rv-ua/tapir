@@ -3,7 +3,7 @@ import type { StationResult } from "../lib/tauri";
 import { searchStationsIpc } from "../lib/tauri";
 import {
   $stationSelection, $searchResults, $searchLoading, $appendLoading, $searchError, $hasMore,
-  $searchParams, updateSearchParam, resetSearch, loadMore, searchStations,
+  $searchParams, $resultsFor, updateSearchParam, resetSearch, loadMore, searchStations,
 } from "./browser";
 import { $toasts } from "./toasts";
 import { replaceSelection } from "./selection";
@@ -38,6 +38,8 @@ describe("browser selection lifecycle", () => {
   });
 
   it("keeps the selection across load-more pagination", async () => {
+    await searchStations(); // an answer on screen to append to
+    replaceSelection($stationSelection, new Set(["u1", "u2"]));
     await loadMore();
     expect($stationSelection.get().size).toBe(2);
   });
@@ -120,6 +122,7 @@ describe("appending and replacing do not share a loading or error surface", () =
 // є курсор пагінації».
 describe("the loaded prefix is the pagination cursor", () => {
   it("leaves the criteria object untouched — the very same reference", async () => {
+    await searchStations(); // an answer on screen to append to
     const before = $searchParams.get();
     await loadMore();
     expect($searchParams.get()).toBe(before);
@@ -281,5 +284,147 @@ describe("a foreign reply to a REPLACE touches nothing", () => {
 
     expect($searchLoading.get()).toBe(false);
     expect($searchResults.get()).toHaveLength(0);
+  });
+});
+
+// The store used to know only what was ASKED ($searchParams). What the rows on screen
+// answer is a fact of its own — $resultsFor — and every writer of the result set
+// writes it. ADR 2026-10-04 «Екран показує відповідь, а не поле» §2.
+describe("the screen's answer ($resultsFor)", () => {
+  const held = () => {
+    let settle!: { ok: (b: StationResult[]) => void; no: (e: Error) => void };
+    vi.mocked(searchStationsIpc).mockImplementationOnce(
+      () => new Promise<StationResult[]>((ok, no) => { settle = { ok, no }; }),
+    );
+    return () => settle;
+  };
+
+  it("is nothing before any reply", () => {
+    expect($resultsFor.get()).toBeNull();
+  });
+
+  it("an own replace that lands takes the very criteria it flew out with", async () => {
+    updateSearchParam("query", "rock");
+    const asked = $searchParams.get();
+    vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(2));
+    await searchStations();
+    expect($resultsFor.get()).toBe(asked);
+  });
+
+  it("an own replace that FAILS drops the rows, hasMore and the answer", async () => {
+    updateSearchParam("query", "rock");
+    updateSearchParam("limit", 2);
+    vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(3));
+    await searchStations();
+    expect($hasMore.get()).toBe(true);
+
+    updateSearchParam("query", "jazz");
+    vi.mocked(searchStationsIpc).mockRejectedValueOnce(new Error("offline"));
+    await searchStations();
+
+    expect($searchError.get()).toContain("offline");
+    expect($searchResults.get()).toHaveLength(0);
+    expect($hasMore.get()).toBe(false);
+    expect($resultsFor.get()).toBeNull();
+  });
+
+  it("a foreign replace leaves the answer alone", async () => {
+    updateSearchParam("query", "rock");
+    const a = held();
+    const inFlightA = searchStations();
+
+    updateSearchParam("query", "jazz");
+    const jazz = $searchParams.get();
+    vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(2, 10));
+    await searchStations();
+
+    a().no(new Error("offline")); // late, foreign, and a failure at that
+    await inFlightA;
+    expect($resultsFor.get()).toBe(jazz);
+    expect($searchResults.get()).toHaveLength(2);
+  });
+
+  it("resetSearch drops the answer", async () => {
+    updateSearchParam("query", "rock");
+    await searchStations();
+    resetSearch();
+    expect($resultsFor.get()).toBeNull();
+  });
+
+  it("loadMore grows the set and leaves the answer as it was", async () => {
+    updateSearchParam("query", "rock");
+    updateSearchParam("limit", 2);
+    vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(3));
+    await searchStations();
+    const answer = $resultsFor.get();
+
+    vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(2, 2));
+    await loadMore();
+    expect($resultsFor.get()).toBe(answer);
+  });
+
+  it("a criteria change is the debounce window: the answer stays the previous one", async () => {
+    updateSearchParam("query", "rock");
+    await searchStations();
+    const answer = $resultsFor.get();
+    updateSearchParam("query", "rockj");
+    expect($resultsFor.get()).toBe(answer);
+  });
+});
+
+// The glue this record is named after: «Load more» pressed in the debounce window
+// took the criteria from the field (new) and the offset from the screen (old) —
+// 50 rows of «rock», then «jazz» from the 51st. ADR 2026-10-04 §5.
+describe("«Load more» never glues two result sets", () => {
+  const rockOnScreen = async () => {
+    updateSearchParam("query", "rock");
+    updateSearchParam("limit", 2);
+    vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(3));
+    await searchStations();
+    vi.mocked(searchStationsIpc).mockClear();
+  };
+
+  it("a press in the debounce window is refused at the door, without IPC", async () => {
+    await rockOnScreen();
+    updateSearchParam("query", "jazz"); // the window: the field says jazz, the screen rock
+
+    await expect(loadMore()).rejects.toThrow();
+
+    expect(searchStationsIpc).not.toHaveBeenCalled();
+    expect($searchResults.get().map((s) => s.stationuuid)).toEqual(["u0", "u1"]);
+    expect($hasMore.get()).toBe(true);
+    expect($appendLoading.get()).toBe(false);
+    expect($toasts.get()).toHaveLength(0); // the new answer is on its way; nothing to say
+  });
+
+  it("an append that flew out before the change still lands foreign, as before", async () => {
+    await rockOnScreen();
+    let release!: (batch: StationResult[]) => void;
+    vi.mocked(searchStationsIpc).mockImplementationOnce(
+      () => new Promise<StationResult[]>((resolve) => { release = resolve; }),
+    );
+    const inFlight = loadMore(); // the screen answered the field when it left
+    updateSearchParam("query", "jazz");
+    release(page(3, 2));
+    await expect(inFlight).rejects.toThrow();
+    expect($searchResults.get()).toHaveLength(2);
+  });
+
+  it("a replace landing mid-append: the append is foreign, the new answer stands", async () => {
+    await rockOnScreen();
+    let release!: (batch: StationResult[]) => void;
+    vi.mocked(searchStationsIpc).mockImplementationOnce(
+      () => new Promise<StationResult[]>((resolve) => { release = resolve; }),
+    );
+    const append = loadMore();
+
+    updateSearchParam("query", "jazz");
+    vi.mocked(searchStationsIpc).mockResolvedValueOnce(page(2, 10));
+    await searchStations(); // jazz lands while the rock batch is in the air
+
+    release(page(3, 2));
+    await expect(append).rejects.toThrow();
+    expect($searchResults.get().map((s) => s.stationuuid)).toEqual(["u10", "u11"]);
+    expect($resultsFor.get()).toBe($searchParams.get());
   });
 });

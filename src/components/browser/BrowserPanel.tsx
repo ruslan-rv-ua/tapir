@@ -9,7 +9,7 @@ import { ListCard } from "../common/ListCard";
 import {
   $searchResults, $searchLoading, $appendLoading, $searchError,
   $popularStations, $popularLoading, $popularError,
-  $hasMore, $isSearchActive, $stationSelection, $searchParams,
+  $hasMore, $isSearchActive, $stationSelection, $resultsFor,
   loadFilters, loadPopularStations, loadMore,
 } from "../../stores/browser";
 import { replaceSelection } from "../../stores/selection";
@@ -34,13 +34,12 @@ export function BrowserPanel({ onZonesChange, exitZone }: Props) {
   const popularError = useStore($popularError);
   const hasMore = useStore($hasMore);
   const isSearchActive = useStore($isSearchActive);
-  // Read for the result-set key below, and it costs a render of the results per
-  // keystroke — the price of the key being a prop the type system can demand,
-  // instead of the imperative reset call this used to be (one screen of three
-  // remembered to make it). Criteria change BEFORE their rows: the key moves the
-  // list's stop to the first row at once, and the rows that arrive half a second
-  // later find it already there.
-  const searchParams = useStore($searchParams);
+  // What the rows on screen answer — the source of the result-set key below. Not
+  // $searchParams: the field changes on every keystroke, half a second before any
+  // rows do, and a key built from it moved the stop under rows it said nothing
+  // about (Popular Stations included). This one changes exactly when the rows are
+  // replaced. ADR 2026-10-04 «Екран показує відповідь, а не поле» §6.
+  const resultsFor = useStore($resultsFor);
 
   const announce = useAnnounce();
   const selection = useStore($stationSelection);
@@ -73,25 +72,26 @@ export function BrowserPanel({ onZonesChange, exitZone }: Props) {
   const error = showSearchResults ? searchError : popularError;
   const emptyMessage = showSearchResults ? m.browser_no_results() : m.browser_empty();
 
-  // Every field of SearchCriteria, plus which of the two lists is on screen.
-  // The second is not view state smuggled into the key: this one list renders
-  // Popular Stations OR a search result, and those are two different sets — the
-  // flag only ever flips when the rows under it are replaced wholesale. Listed
-  // in full rather than only the
-  // fields a control can reach today (`order` and `limit` are pinned), so a
-  // criterion added to the type is not silently left out of the identity of the
-  // set it defines. "Load more" writes none of them, which is what keeps the
-  // cursor on the batch the person is reading.
-  const listResultSetKey = resultSetKey([
-    showSearchResults,
-    searchParams.query,
-    searchParams.country,
-    searchParams.language,
-    searchParams.codec,
-    searchParams.minBitrate,
-    searchParams.order,
-    searchParams.limit,
-  ]);
+  // The identity of the set ON SCREEN. This one list renders Popular Stations OR a
+  // search answer, and those are two different sets. Popular Stations take a
+  // constant key: what is typed in the search field is not about them. A search
+  // answer takes every field of the criteria it answers — listed in full rather
+  // than only the fields a control can reach today (`order` and `limit` are
+  // pinned), so a criterion added to the type is not silently left out of the
+  // identity of the set it defines. "Load more" grows the answer without
+  // replacing it, which is what keeps the cursor on the batch the person is reading.
+  const listResultSetKey = showSearchResults
+    ? resultSetKey([
+      "search",
+      resultsFor?.query,
+      resultsFor?.country,
+      resultsFor?.language,
+      resultsFor?.codec,
+      resultsFor?.minBitrate,
+      resultsFor?.order,
+      resultsFor?.limit,
+    ])
+    : resultSetKey(["popular"]);
 
   const visibleIds = useMemo(() => stations.map((s) => s.stationuuid), [stations]);
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selection.has(id));

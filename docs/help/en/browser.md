@@ -6,7 +6,7 @@ A whole trip through this screen is short: search, listen to one or two candidat
 
 ### Searching
 
-Type a station name or genre into the search box. `Ctrl+F` puts focus in that box from anywhere on the screen, and pressing it again selects what you already typed, so the next character starts a fresh query. **Country**, **Language**, **Codec** and **Min bitrate (kbps)** narrow the results further, and each takes effect as you set it. Whenever the query changes the list starts over: your next entry into it lands on the first result.
+Type a station name or genre into the search box. `Ctrl+F` puts focus in that box from anywhere on the screen, and pressing it again selects what you already typed, so the next character starts a fresh query. **Country**, **Language**, **Codec** and **Min bitrate (kbps)** narrow the results further, and each takes effect as you set it. The list updates once you pause typing — until then the previous results stay on screen. When the new ones arrive the list starts over: your next entry into it lands on the first result.
 
 Two gestures clear things, and they clear different amounts. Clearing the search box — `Escape` or its clear button — removes the text only; country, language, codec and bitrate stay, and the list stays filtered by them. **Reset filters** drops everything and returns you to the popular list; it appears only while a filter is set.
 

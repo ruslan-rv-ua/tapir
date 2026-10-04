@@ -129,6 +129,30 @@ it("a changed query sends the results cursor back to the first station", async (
   expect(activeRow()).toBe("s1");
 });
 
+// Point 3 of the race sweep: the key used to be built from the FIELD, so one
+// keystroke over Popular Stations — whose rows it does not touch — threw the
+// stop back to the top. The key is built from what the screen shows now.
+// ADR 2026-10-04 «Екран показує відповідь, а не поле» §6.
+it("typing a letter and erasing it over Popular Stations leaves the stop where it was", async () => {
+  const onZonesChange = vi.fn();
+  render(<BrowserPanel onZonesChange={onZonesChange} exitZone={vi.fn()} />);
+  const results = (await zonesOf(onZonesChange)).find((z) => z.id === "browser-results")!;
+
+  act(() => results.focus("forward"));
+  fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+  expect(activeRow()).toBe("u2");
+  act(() => (document.activeElement as HTMLElement).blur());
+
+  act(() => { updateSearchParam("query", "a"); }); // the debounce window: no request yet
+  act(() => results.focus("forward"));
+  expect(activeRow()).toBe("u2");
+  act(() => (document.activeElement as HTMLElement).blur());
+
+  act(() => { updateSearchParam("query", undefined); });
+  act(() => results.focus("forward"));
+  expect(activeRow()).toBe("u2");
+});
+
 // "Load more" appends to the SAME result set — the remembered row still means
 // what it meant, so it survives.
 it("«Load more» keeps the remembered row", async () => {

@@ -16,6 +16,23 @@ import { ScreenZone } from "../layout/ScreenZone";
 import type { ZoneEntry } from "../../hooks/useZoneNavigation";
 import * as m from "../../i18n/paraglide/messages";
 
+type PendingSearch = { current: ReturnType<typeof setTimeout> | undefined };
+
+/** Drop the search waiting out the debounce, if any. */
+function cancelPending(pending: PendingSearch): void {
+  clearTimeout(pending.current);
+  pending.current = undefined;
+}
+
+/** Search once typing pauses. `pending.current` is set exactly while one waits. */
+function searchAfterPause(pending: PendingSearch): void {
+  cancelPending(pending);
+  pending.current = setTimeout(() => {
+    pending.current = undefined;
+    searchStations();
+  }, 500);
+}
+
 interface SearchFormProps {
   exitZone: (forward: boolean) => void;
 }
@@ -47,32 +64,26 @@ export const SearchForm = forwardRef<ZoneEntry, SearchFormProps>(function Search
   // Debounced text search
   const handleQueryChange = useCallback((value: string) => {
     updateSearchParam("query", value || undefined);
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      searchStations();
-    }, 500);
+    searchAfterPause(debounceRef);
   }, []);
 
   // Immediate search on filter change
   const handleFilterChange = useCallback(<K extends keyof SearchCriteria>(key: K, value: string) => {
     updateSearchParam(key, (value || undefined) as SearchCriteria[K]);
-    clearTimeout(debounceRef.current);
+    cancelPending(debounceRef);
     setTimeout(() => searchStations(), 0);
   }, []);
 
   // Debounced bitrate change
   const handleBitrateChange = useCallback((value: number) => {
     updateSearchParam("minBitrate", value > 0 ? value : undefined);
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      searchStations();
-    }, 500);
+    searchAfterPause(debounceRef);
   }, []);
 
   // SearchField clear (Escape / clear button) only clears the text query —
   // dropdown filters and bitrate are left intact. Full reset is the dedicated button.
   const handleClear = useCallback(() => {
-    clearTimeout(debounceRef.current);
+    cancelPending(debounceRef);
     updateSearchParam("query", undefined);
     setTimeout(() => searchStations(), 0);
   }, []);
@@ -81,14 +92,23 @@ export const SearchForm = forwardRef<ZoneEntry, SearchFormProps>(function Search
   // The button unmounts once isActive flips false, so move focus to the search
   // input to avoid focus loss (matters for screen readers).
   const handleReset = useCallback(() => {
-    clearTimeout(debounceRef.current);
+    cancelPending(debounceRef);
     resetSearch();
     searchInputRef.current?.focus();
   }, []);
 
-  // Cleanup on unmount
+  // Leaving with a search still waiting out the debounce fires it now rather than
+  // dropping it: dropped, the half-second window would last until the next
+  // keystroke — the field saying one thing and the screen answering another. Not
+  // a new writer of the result set: the same searchStations, just not cancelled.
+  // ADR 2026-10-04 «Екран показує відповідь, а не поле» §7.
   useEffect(() => {
-    return () => clearTimeout(debounceRef.current);
+    const pending = debounceRef;
+    return () => {
+      if (pending.current === undefined) return;
+      cancelPending(pending);
+      searchStations();
+    };
   }, []);
 
   return (

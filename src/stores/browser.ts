@@ -45,6 +45,20 @@ export const $searchParams = atom<SearchCriteria>({
   limit: 50,
   order: "clickcount",
 });
+/**
+ * What the rows on screen ANSWER — the very criteria object the replace that put
+ * them there flew out with, or null when no answer is on screen. Not a second copy
+ * of $searchParams: that one says what was ASKED, this one what the screen shows,
+ * and between a keystroke and its debounced request the two deliberately differ
+ * («вікно дебаунсу»). "The screen answers the field" is `$resultsFor === $searchParams`,
+ * the same reference comparison the ticket makes.
+ *
+ * Invariant: non-empty $searchResults and $hasMore always belong to this. Writers:
+ * an own replace (its criteria on success, null on failure) and resetSearch (null).
+ * loadMore grows the same set and does not touch it; updateSearchParam is the window
+ * and does not touch it either. ADR 2026-10-04 «Екран показує відповідь, а не поле» §2.
+ */
+export const $resultsFor = atom<SearchCriteria | null>(null);
 export const $browserFilters = atom<BrowserFilters | null>(null);
 export const $hasMore = atom<boolean>(false);
 export const $popularStations = atom<StationResult[]>([]);
@@ -107,9 +121,16 @@ function stillOurs(criteria: SearchCriteria): boolean {
  * also make the ticket below a promise the caller has to keep rather than one the
  * function can keep itself.
  *
- * A foreign reply writes NOTHING — not the rows, not $hasMore, not the error, and
- * not the flag. One rule over every field the result set owns, so the error that
- * outlives its own request has nowhere left to land.
+ * An own reply writes the whole answer: rows, $hasMore and $resultsFor together. An
+ * own FAILURE drops the answer — rows, $hasMore, $resultsFor — and leaves only the
+ * error: rows of criteria that are gone would lie under the error card to anyone
+ * who reaches them («Виділити все»). A foreign reply writes NOTHING — not the rows,
+ * not $hasMore, not the error, not the answer, and not the flag. One rule over every
+ * field the result set owns, so the error that outlives its own request has nowhere
+ * left to land.
+ *
+ * Until it is called the screen keeps showing the previous answer — the debounce
+ * window, by design (ADR 2026-10-04 §1).
  */
 export async function searchStations(): Promise<void> {
   const criteria = $searchParams.get();
@@ -120,8 +141,13 @@ export async function searchStations(): Promise<void> {
     if (!stillOurs(criteria)) return;
     $searchResults.set(results);
     $hasMore.set(hasMore);
+    $resultsFor.set(criteria);
   } catch (e) {
-    if (stillOurs(criteria)) $searchError.set(String(e));
+    if (!stillOurs(criteria)) return;
+    $searchResults.set([]);
+    $hasMore.set(false);
+    $resultsFor.set(null);
+    $searchError.set(String(e));
   } finally {
     if (stillOurs(criteria)) $searchLoading.set(false);
   }
@@ -141,13 +167,35 @@ class ForeignBatch extends Error {
 }
 
 /**
+ * Rejection value for a press refused at the door: the rows on screen answer
+ * criteria the field no longer holds (the debounce window), so there is no offset
+ * that means anything for the new ones. Rejected for the same reason ForeignBatch
+ * is — the trailing stop must read it as "nothing was appended".
+ */
+class ScreenBehindField extends Error {
+  constructor() {
+    super("the rows on screen answer criteria that have since changed");
+  }
+}
+
+/**
  * APPEND the next batch of the SAME result set. Must not take the list away — the
  * cursor is standing in those rows — so a failure is a toast, and the state is
  * left exactly as it was: the next press asks for the very same page again.
  * Rejects so the caller (the trailing stop) can keep focus on the button it pressed.
+ *
+ * Refuses at the door, with no request, unless the screen answers the field. In the
+ * debounce window the criteria are already new while the rows — the offset — are
+ * still the old answer's; asking with both would glue the second page of one result
+ * set onto the first of another, and the ticket could not catch it: the criteria are
+ * genuinely the ones the batch flew out with. The new answer is on its way, so the
+ * refusal is silent. The ticket on landing stays with the field: an append that left
+ * while the screen answered the field and lands after a change is foreign, as before.
+ * ADR 2026-10-04 §5.
  */
 export async function loadMore(): Promise<void> {
   const criteria = $searchParams.get();
+  if ($resultsFor.get() !== criteria) throw new ScreenBehindField();
   const offset = $searchResults.get().length;
   $appendLoading.set(true);
   try {
@@ -212,6 +260,7 @@ export function resetSearch(): void {
   $searchParams.set({ limit: 50, order: "clickcount" });
   $searchResults.set([]);
   $hasMore.set(false);
+  $resultsFor.set(null);
   $searchError.set(null);
   // Not dead code, and not somebody else's field. This is the ONE criteria write
   // with no request behind it, so it is the one place that has to say «nothing is
