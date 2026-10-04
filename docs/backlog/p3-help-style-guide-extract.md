@@ -7,7 +7,7 @@ type: planned
 status: draft
 effort: S
 kind: chore
-target: unscheduled
+target: 0.2.0
 updated: 2026-10-04
 a11y: false
 depends_on:
@@ -20,6 +20,7 @@ gates:
   - pnpm test
 notes:
   - "Чистий рефакторинг документації: жодне правило не міняється, міняється адреса."
+  - "2026-10-04: з unscheduled у 0.2.0 рішенням власника — у 0.1.1 не проходить, бо не kind: bug."
 ---
 
 # Винести стиль-гайд довідки з done/ у docs/
