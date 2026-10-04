@@ -46,7 +46,7 @@ gates: [pnpm test, pnpm typecheck, pnpm vite:build]
   (`src/lib/playbackAnnounce.ts:37-44`) порівнює прев'ю за `url` (:42); інлайн-копія для
   `sourceChangedWhilePlaying` (`src/App.tsx:266-274`) прев'ю не знає. Оголошення каже
   «Відтворення: B», а перемикач Вимкненого звуку лишається —
-  [preview-switch-keeps-mute](p2-preview-switch-keeps-mute.md). `ccba686` виніс Оголошення в
+  [preview-switch-keeps-mute](done/p2-preview-switch-keeps-mute.md). `ccba686` виніс Оголошення в
   `playbackAnnounce.ts` уже з гілкою `url`; прапорці для звуку лишились інлайн.
 - **Правило перевірене константами, а не там, де рахується.** `applyMuteCleanup` приймає
   готові прапорці (`src/lib/muteCleanup.ts:5-10`), `muteCleanup.test.ts:28-30` подає їх
@@ -101,7 +101,7 @@ gates: [pnpm test, pnpm typecheck, pnpm vite:build]
   майбутнім третім, — дістає Оголошення, повернення звуку й поверхню відповіді без повторів.
 - **Тести через інтерфейс.** Послідовність статусів → Оголошення й виклики IPC замість
   прапорців-констант: сторож на межі дзеркала, якого ADR 2026-09-15 §6 вимагає для статусу запису.
-- **Клас дефектів зникає.** Латка [preview-switch-keeps-mute](p2-preview-switch-keeps-mute.md)
+- **Клас дефектів зникає.** Латка [preview-switch-keeps-mute](done/p2-preview-switch-keeps-mute.md)
   у 0.1.1 зводить порівняння до одного `sameSource` і виносить прапорці в чисту функцію, але
   перехід і далі класифікують окремо селектор Оголошень і прапорці звуку. Модуль прибирає саме
   це й успадковує регресійний тест латки.
@@ -152,7 +152,7 @@ gates: [pnpm test, pnpm typecheck, pnpm vite:build]
 ## Документи
 
 - [Огляд архітектури 2026-09-24](../notes/architecture-review-2026-09-24.md) — звідки запис
-- [preview-switch-keeps-mute](p2-preview-switch-keeps-mute.md) — латка 0.1.1, клас якої модуль прибирає
+- [preview-switch-keeps-mute](done/p2-preview-switch-keeps-mute.md) — латка 0.1.1, клас якої модуль прибирає
 - [zero-volume-reads-as-muted](done/p2-zero-volume-reads-as-muted.md) — звідки модель тиші
 - [transport-skip-silent-failure](done/p1-transport-skip-silent-failure.md) — звідки вибір поверхні в `transportControl`
 - ADR 2026-08-16, 2026-09-01, 2026-09-15 — посилання в «Обмеженнях»; сусіди партії — у «Напрямі»

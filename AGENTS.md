@@ -175,7 +175,6 @@ All project documentation lives in `docs/`. Key files:
 
 **Manual testing** (`docs/testing/`):
 - [test-streams.md](docs/testing/test-streams.md) — тестові URL радіо-потоків
-- [nvda-preview-switch-keeps-mute.json](docs/testing/nvda-preview-switch-keeps-mute.json) — чекліст прогону preview-switch-keeps-mute
 
 Чеклісти NVDA-прогону — JSON-файли для NVDA-аддона Axygen Checklist; формат і
 життєвий цикл — розділ [Test checklists](#test-checklists) нижче.

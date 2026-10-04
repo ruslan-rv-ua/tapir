@@ -53,7 +53,7 @@ notes:
   `StreamItem.tsx:120-123`, `StreamContextMenu.tsx:37-40`, `SongsList.tsx:45-48`,
   `SongsPanel.tsx:149-152`, `StationItem.tsx:69-73`. Сьома копія тотожності, `App.tsx:266-274`,
   не має гілки прев'ю, яка є в `sameSource` (`playbackAnnounce.ts:37-44`). Звідси вада
-  [preview-switch-keeps-mute](p2-preview-switch-keeps-mute.md).
+  [preview-switch-keeps-mute](done/p2-preview-switch-keeps-mute.md).
 - **«Слухати / зупинити» з відмовою — 5 копій:** `StreamItem.tsx:138-145`,
   `StreamContextMenu.tsx:53-56` + `:85-87`, `StreamList.tsx:293-296`, `SongsPanel.tsx:147-159`,
   `StationItem.tsx:75-91`. Три копії перекладають відмову через `playRefusalMessage`, дві
@@ -108,7 +108,7 @@ notes:
 - **Тести через інтерфейс:** «статус × рядок → грає», «відмова → текст», «половинчастий
   трек → рядок» перевіряються без рендеру компонентів.
 - **Клас дефектів зникає:** латки 0.1.1 [track-line-dangling-dash](done/p2-track-line-dangling-dash.md)
-  і [preview-switch-keeps-mute](p2-preview-switch-keeps-mute.md) виправляють копії. Наступна
+  і [preview-switch-keeps-mute](done/p2-preview-switch-keeps-mute.md) виправляють копії. Наступна
   копія з'явиться так само, бо правило тримає doc-коментар, а не модуль.
 
 ## Обмеження
