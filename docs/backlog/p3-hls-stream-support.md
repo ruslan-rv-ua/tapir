@@ -8,9 +8,9 @@ status: draft
 effort: L
 kind: feature
 target: unscheduled
-updated: 2026-08-17
+updated: 2026-10-04
 a11y: true
-depends_on: []
+depends_on: [mpv-playback-engine]
 blocks: []
 touches: [src-tauri/src/stream, src-tauri/src/player/engine.rs]
 gates: [cargo test, cargo clippy --all-targets, pnpm test, pnpm vite:build]
@@ -27,7 +27,7 @@ depends_on_external: ["Phase 1 (stream::connection, stream::format)", "PlayerEng
 
 **Поточний стан:** Tapir використовує `reqwest` для прямих ICY/Shoutcast потоків. HLS-потоки (прапор `hls: 1` у Radio Browser API) не підтримуються — `stream::connection` не знає як читати `.m3u8`-маніфест і завантажувати сегменти.
 
-Частина станцій у Radio Browser має прапор `hls: 1`. Наразі при спробі підключення до такої станції Tapir або отримує помилку з'єднання, або завантажує текстовий `.m3u8` замість аудіо.
+Частина станцій у Radio Browser має прапор `hls: 1`. Колись при спробі підключення до такої станції Tapir або отримував помилку з'єднання, або завантажував текстовий `.m3u8` замість аудіо. З 2026-08-31 ([unknown-format-falls-back-to-mp3](done/p1-unknown-format-falls-back-to-mp3.md)) вміст, якого Tapir не розпізнає, відхиляється: запис не стартує («Потік «…»: кодек не розпізнано — запис не почався»), а діалог додавання попереджає «Кодек цього потоку не розпізнано — Tapir його не записуватиме». Імпорт HLS-плейлиста дає порожній список (`src-tauri/src/stream/playlist.rs:48-56`).
 
 **Чому P3 (під сумнівом):**
 - HLS не підтримує ICY metadata — зміна треку не виявляється автоматично
@@ -64,6 +64,7 @@ depends_on_external: ["Phase 1 (stream::connection, stream::format)", "PlayerEng
 3. **Ігнорувати HLS** — фільтрувати станції з `hls: 1` у Stream Browser і показувати попередження «HLS не підтримується».
 
 ## Критерії готовності
+- [ ] `docs/help/` оновлено — або зазначено, що запис видимої поведінки не змінює
 - [ ] `stream::connection` визначає HLS за розширенням `.m3u8` або Content-Type `application/vnd.apple.mpegurl`
 - [ ] Реалізовано парсер Extended M3U8 (без DRM)
 - [ ] Сегментний downloader з чергою і буфером

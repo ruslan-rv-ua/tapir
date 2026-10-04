@@ -1,14 +1,14 @@
 ---
 slug: status-fixtures-rebuilt-per-test-file
 title: "Фікстури StreamStatus зібрані руками в кожному тестовому файлі"
-summary: "5 білдерів у Rust і 17 літералів у 9 файлах TS; одне поле статусу — і правити треба всюди. Метушня, не ризик: забуту фікстуру ловлять типи"
+summary: "5 білдерів у Rust і 18 літералів у 10 файлах TS; одне поле статусу — і правити треба всюди. Метушня, не ризик: забуту фікстуру ловлять типи"
 priority: P3
 type: planned
 status: draft
 effort: S
 kind: chore
 target: unscheduled
-updated: 2026-09-24
+updated: 2026-10-04
 a11y: false
 depends_on: []
 blocks: []
@@ -49,7 +49,10 @@ notes:
 
 **TypeScript — 17 літералів у 9 файлах:** `StreamItem.test.tsx` (6), `StreamList.test.tsx`
 (4), плюс по одному в `CommandPalette`, `StatusBar`, `StreamContextMenu`, `StreamsPanel`,
-`useGlobalShortcuts`, `playbackAnnounce`, `windowTitle`.
+`useGlobalShortcuts`, `playbackAnnounce`, `windowTitle`. На `a04e358` — **18 у 10**: PR #34
+додав літерал у `PlayerPanel.test.tsx:415-425`. Поза тестами є ще один, продакшн-літерал —
+порожній статус за замовчуванням у `updateStreamStatus` (`src/stores/streams.ts:83-93`); його
+запис не рахував, але правиться він разом із рештою.
 
 Наслідок виміряний, не припущений: у `reconnect-counter-not-live` дві половини пари
 звелися в одне поле, і це торкнулося **13 файлів**, з яких змістовних було два.

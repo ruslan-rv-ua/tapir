@@ -7,13 +7,13 @@ status: draft
 effort: M
 kind: feature
 target: 0.3.0
-updated: 2026-08-17
+updated: 2026-10-04
 a11y: false
 depends_on: []
 blocks: []
 touches:
   - src-tauri/src/
-  - src/components/settings/
+  - src/components/profile/ProfileRecordingTab.tsx
 gates: []
 ---
 
@@ -32,6 +32,7 @@ gates: []
 
 ## Критерії готовності
 
+- [ ] `docs/help/` оновлено — або зазначено, що запис видимої поведінки не змінює
 - [ ] Є перемикач для ввімкнення режиму «тільки лог».
 - [ ] При активному режимі аудіо-файли не створюються.
 - [ ] Назви треків (і час) записуються у файл при кожній зміні метаданих.

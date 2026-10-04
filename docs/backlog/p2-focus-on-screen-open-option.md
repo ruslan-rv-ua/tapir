@@ -7,13 +7,14 @@ status: draft
 effort: S
 kind: feature
 target: 0.3.0
-updated: 2026-08-17
+updated: 2026-10-04
 a11y: true
 depends_on: []
 blocks: []
 touches:
-  - src/components/settings/
+  - src/App.tsx
   - src/components/layout/
+  - src/components/settings/
 gates: []
 ---
 
@@ -32,6 +33,7 @@ gates: []
 
 ## Критерії готовності
 
+- [ ] `docs/help/` оновлено — або зазначено, що запис видимої поведінки не змінює
 - [ ] Опція присутня у налаштуваннях з двома варіантами.
 - [ ] При значенні `list` фокус переміщується на основну область при відкритті екрана.
 - [ ] При значенні `toolbar` поведінка залишається незмінною.

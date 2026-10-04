@@ -8,7 +8,7 @@ status: draft
 effort: M
 kind: feature
 target: 0.2.0
-updated: 2026-09-24
+updated: 2026-10-04
 a11y: true
 depends_on: [tray-cannot-resume-last]
 blocks: []
@@ -84,6 +84,9 @@ notes:
      неактивний рядок над «Грати».
 
    Трей бере те саме формулювання, що й панель. `Ctrl+Shift+K` наперед не показує нічого.
+   Як трей називає джерело, вирішує й розвилка префіксів
+   [tray-now-playing-source-prefix](p3-tray-now-playing-source-prefix.md) («Зараз грає: Станція: …»)
+   — грилити разом, щоб «Грати: …» / «Останнє: …» і «Зараз грає: …» говорили однією мовою.
 4. **Видимий носій для «недоступне» й «помилка» у вікні.** Сьогодні обидві відповіді
    `resume_last` у фокусі — лише `announce()`, і людина без скрінрідера не бачить нічого
    ([ADR 2026-08-31](../decisions/2026-08-31-visible-carrier-for-announced-facts.md)). Перейти на

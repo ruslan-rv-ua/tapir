@@ -7,7 +7,7 @@ status: draft
 effort: M
 kind: feature
 target: 0.3.0
-updated: 2026-08-17
+updated: 2026-10-04
 a11y: false
 depends_on: []
 blocks: []
@@ -42,6 +42,7 @@ gates: [pnpm test, cargo test, cargo clippy --all-targets]
 
 ## Критерії готовності
 
+- [ ] `docs/help/` оновлено — або зазначено, що запис видимої поведінки не змінює
 - [ ] Налаштування: toggle + поле для API credentials у SettingsDialog
 - [ ] При зміні ICY-метаданих → `track.updateNowPlaying` (зараз грає)
 - [ ] При наступній зміні ICY → `track.scrobble` попереднього треку (якщо ≥30 сек)

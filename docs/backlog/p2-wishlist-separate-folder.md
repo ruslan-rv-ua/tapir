@@ -7,13 +7,13 @@ status: draft
 effort: S
 kind: feature
 target: 0.3.0
-updated: 2026-08-17
+updated: 2026-10-04
 a11y: false
 depends_on: []
 blocks: []
 touches:
   - src-tauri/src/
-  - src/components/settings/
+  - src/components/profile/ProfileRecordingTab.tsx
 gates: []
 notes:
   - Розширений варіант — для кожного вішліста своя папка (per-wishlist folder). Може потребувати окремого запису або ускладнити налаштування.
@@ -33,6 +33,7 @@ notes:
 
 ## Критерії готовності
 
+- [ ] `docs/help/` оновлено — або зазначено, що запис видимої поведінки не змінює
 - [ ] У налаштуваннях є поле для вибору папки wishlist-записів.
 - [ ] Якщо поле заповнене, wishlist-треки зберігаються у вказану папку.
 - [ ] Якщо поле порожнє — поведінка стандартна (без змін).

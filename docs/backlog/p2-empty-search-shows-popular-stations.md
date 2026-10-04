@@ -7,18 +7,22 @@ type: planned
 status: draft
 effort: S
 kind: bug
-target: unscheduled
-updated: 2026-09-15
+target: 0.1.1
+updated: 2026-10-04
 a11y: true
 depends_on: []
 blocks: []
 touches:
   - src/components/browser/BrowserPanel.tsx
   - src/components/browser/BrowserPanel.test.tsx
+  - src/stores/browser.ts
+  - src/i18n/messages/uk.json
+  - src/i18n/messages/en.json
 gates: [pnpm vite:build, pnpm test, pnpm typecheck]
 notes:
   - "Знахідка фонового обходу під час грилінгу stale-search-overwrites-results (2026-09-15), підтверджена емпірично двома незалежними перевірками"
   - "Напрям виправлення НЕ обраний: питання не «як показати порожньо», а що таке «пошук триває» — див. «Розвилка»"
+  - "2026-10-04: перенесено в 0.1.1 рішенням власника; код на HEAD a04e358 той самий, що в v0.1.0. Грумити разом із debounce-window-shows-stale-result-set — обидві розвилки перевизначають «пошук триває»"
 ---
 
 # Браузер станцій: пошук без результатів показує популярні станції
@@ -26,6 +30,7 @@ notes:
 > **Контекст:** знахідка фонового обходу під час грилінгу
 > [stale-search-overwrites-results](done/p2-stale-search-overwrites-results.md) (2026-09-15).
 > Перевірено емпірично. Спосіб виправлення **не обраний** — див. «Розвилка».
+> 2026-10-04 перенесено в 0.1.1; режим — **GROOMING** (`planned` + `draft`).
 
 ## Опис
 
@@ -67,6 +72,16 @@ const showSearchResults = isSearchActive && (searchResults.length > 0 || searchL
    [ADR 2026-09-15](../decisions/2026-09-15-replace-flag-belongs-to-the-screen.md).
 3. **Визнати поточну поведінку навмисною** й прибрати мертвий рядок разом із перекладами.
    Тоді назву зони треба міняти теж — «Результати пошуку» над популярними бреше.
+
+## Умова перебування в 0.1.1
+
+Усі три варіанти лишаються у фронтенді: та сама гілка порожнього стану `CompositeList`, рядок
+`m.browser_no_results()` уже написаний і перекладений, IPC не міняється. Якщо грумінг вибере
+шлях, що потребує нової поверхні чи зміни IPC, запис повертається з 0.1.1 у наступну мінорну
+версію. Грумити разом із
+[debounce-window-shows-stale-result-set](p2-debounce-window-shows-stale-result-set.md): тут
+перевизначається `showSearchResults`, там — `$searchLoading`, і обидва відповідають на одне
+питання — що означає «пошук триває».
 
 ## Критерії готовності
 

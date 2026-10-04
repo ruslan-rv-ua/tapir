@@ -8,7 +8,7 @@ status: draft
 effort: L
 kind: chore
 target: 0.3.0
-updated: 2026-09-24
+updated: 2026-10-04
 a11y: false
 depends_on: []
 blocks: []
@@ -119,8 +119,9 @@ Rust-шар, куди Коміт кладе Знімок); їхнє слово �
   зрізу: гілка про поразку, мертва весь час життя застосунку
   ([error-state-never-reaches-ui](done/p1-error-state-never-reaches-ui.md)), і «спроба N з M»,
   що не їхала в події ([reconnect-counter-not-live](done/p2-reconnect-counter-not-live.md)).
-  Відкриті вади огляду — поза цим зрізом: `preview-switch-keeps-mute` у дзеркалі програвача,
-  `track-line-dangling-dash` (`App.tsx:319`) у тексті Оголошення.
+  Дві інші вади огляду — поза цим зрізом і вже закриті латками 0.1.1:
+  [preview-switch-keeps-mute](done/p2-preview-switch-keeps-mute.md) у дзеркалі програвача (PR #38)
+  і [track-line-dangling-dash](done/p2-track-line-dangling-dash.md) у тексті Оголошення (PR #34).
 
 ## Обмеження
 

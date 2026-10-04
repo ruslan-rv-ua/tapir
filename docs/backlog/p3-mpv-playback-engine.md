@@ -8,7 +8,7 @@ status: draft
 effort: L
 kind: feature
 target: unscheduled
-updated: 2026-09-07
+updated: 2026-10-04
 a11y: true
 depends_on: []
 blocks: [he-aac-mf-playback, hls-stream-support]
@@ -47,8 +47,8 @@ notes: ["Робити ПЕРШИМ серед декодер-записів — 
 | HLS | Не підтримується (окремий P3) | Нативно через FFmpeg |
 | Декод/демукс/буфер | Власний код: `LiveSource`, `RtrbReader`, reqwest-pump (~400 рядків [engine.rs](../../src-tauri/src/player/engine.rs)) | Усе всередині mpv → наш код спрощується |
 | Гучність/пауза/seek/позиція/тривалість | Ручне зведення через rodio `Player` | Нативні properties mpv |
-| Вибір аудіопристрою | `cpal` enum, вже працює ([engine.rs:339](../../src-tauri/src/player/engine.rs#L339)) | mpv `--audio-device` + `audio-device-list` |
-| **ICY-метадані (artist/title)** | **Власний парсер** `StreamTitle`, надійний *перший* тайтл, годує `track-changed`/SMTC/нотифікації ([engine.rs:659](../../src-tauri/src/player/engine.rs#L659)) | mpv читає ICY (`metadata` property + observe), **але є відома вада: перший тайтл часто не приходить до першої зміни** |
+| Вибір аудіопристрою | `cpal` enum, вже працює ([engine.rs:381](../../src-tauri/src/player/engine.rs#L381)) | mpv `--audio-device` + `audio-device-list` |
+| **ICY-метадані (artist/title)** | **Власний насос ефіру**, спільний для плеєра й рекордера з 2026-09-04: `connection::pump_air` ([connection.rs:268](../../src-tauri/src/stream/connection.rs#L268)), розбір блоку — `parse_metadata_block` (`:373`); надійний *перший* тайтл, годує `track-changed`/SMTC/нотифікації | mpv читає ICY (`metadata` property + observe), **але є відома вада: перший тайтл часто не приходить до першої зміни** |
 | Контроль пайплайну | Повний (non-destructive probe, wake-lock, прогрес) | Через події/properties — менше контролю |
 | Ліцензія | Permissive (Rust-крейти) | **LGPL-2.1** (mpv/FFmpeg), нерідко GPL-збірки FFmpeg |
 
@@ -58,12 +58,13 @@ notes: ["Робити ПЕРШИМ серед декодер-записів — 
 2. **Ліцензія.** libmpv/FFmpeg — LGPL-2.1 (нерідко GPL-збірки). Динамічне лінкування DLL під LGPL допустиме, але треба notices і можливість заміни бібліотеки. Перевірити, яка саме збірка FFmpeg усередині DLL.
 3. **SMTC-дубль.** Проєкт сам синхронізує SMTC (`crate::smtc`); mpv на Windows теж уміє в SMTC → можливий конфлікт/дубляж. Вимкнути одну сторону.
 4. **mpv — video-движок.** Для audio-only запускати з `--vid=no`/`--no-video`; зайвий «вантаж» заради аудіо.
-5. **Втрата тонкого контролю.** Логіку «спершу переконатися, що потік декодується, лише потім зупиняти старий» ([engine.rs:837](../../src-tauri/src/player/engine.rs#L837)) доведеться перебудовувати на події mpv.
+5. **Втрата тонкого контролю.** Логіку «спершу переконатися, що потік декодується, лише потім зупиняти старий» ([engine.rs:740-771](../../src-tauri/src/player/engine.rs#L740-L771)) доведеться перебудовувати на події mpv.
 6. **Можливе перетинання з MF-роботою.** Якщо mpv заходить — гілка `he-aac-mf` і запис [he-aac-mf-playback](p3-he-aac-mf-playback.md) стають непотрібні (mpv розв'язує ту саму проблему). Не починати обидва шляхи паралельно.
 
 ## Критерії готовності
 
 Спочатку **PoC-gate** (без нього не промотувати):
+- [ ] `docs/help/` — запис-дослідження видимої поведінки не змінює; записи, які з нього виростуть, несуть власний пункт про довідку
 - [ ] PoC на `libmpv2`: один **HE-AACv2** потік (напр. SomaFM `groovesalad-16-aac`) грає з правильною швидкістю/тоном
 - [ ] PoC: один **ICY**-потік — перевірено, чи приходить **перший** `StreamTitle` без затримки (ключове рішення go/no-go)
 - [ ] Оцінено розмір `libmpv-2.dll` + вплив на portable-бандл і час старту
@@ -80,7 +81,7 @@ notes: ["Робити ПЕРШИМ серед декодер-записів — 
 ## Відкриті питання
 
 - **In-process (`libmpv2`/`tauri-plugin-libmpv`) чи окремий процес (`tauri-plugin-mpv` + JSON-IPC)?** DLL у процесі простіше інтегрувати, процес — ізоляція й простіша ліцензія.
-- Чи дає mpv надійний перший ICY-тайтл? Якщо ні — лишити власний ICY-pump (reqwest) лише для метаданих, а mpv годувати байтами/URL як декодер?
+- Чи дає mpv надійний перший ICY-тайтл? Якщо ні — лишити власний ICY-pump (reqwest) лише для метаданих, а mpv годувати байтами/URL як декодер? Насос уже спільний із рекордером (`connection::pump_air`, [icy-metadata-reader-dedup](done/p1-icy-metadata-reader-dedup.md)), тож «лишити» означає зберегти наявний модуль, а не писати новий.
 - Як збирати/постачати `libmpv-2.dll` для portable-EXE (звідки беремо бінарник, оновлення, антивірус-false-positive)?
 - Чи зберігається поточна модель «non-destructive probe» (старий потік грає, поки новий не підтверджений) на подіях mpv?
 - Реальна цінність проти ризику: скільки станцій у користувача саме HE-AAC/HLS без MP3/AAC-LC-альтернативи?
@@ -89,7 +90,7 @@ notes: ["Робити ПЕРШИМ серед декодер-записів — 
 ## Документи
 
 - Пов'язані записи: [he-aac-mf-playback](p3-he-aac-mf-playback.md), [hls-stream-support](p3-hls-stream-support.md)
-- Код: [src-tauri/src/player/engine.rs](../../src-tauri/src/player/engine.rs) — `LiveSource`, `play_live` (`PROBE_TIMEOUT`), `play_file`, `open_device_sink`, ICY-парсер `parse_stream_title`; `src-tauri/src/smtc.rs`, `src-tauri/src/wake_lock.rs`
+- Код: [src-tauri/src/player/engine.rs](../../src-tauri/src/player/engine.rs) — `LiveSource`, `play_live` (`PROBE_TIMEOUT`), `play_file`, `open_device_sink`; ICY — `src-tauri/src/stream/connection.rs` (`pump_air`, `parse_metadata_block`; `parse_stream_title` у `engine.rs` прибрано 2026-09-04); `src-tauri/src/smtc.rs`, `src-tauri/src/wake_lock.rs`
 - [docs/architecture.md](../architecture.md), [docs/tech-stack.md](../tech-stack.md)
 - Крейти: [libmpv2 — lib.rs](https://lib.rs/crates/libmpv2) · [tauri-plugin-libmpv — crates.io](https://crates.io/crates/tauri-plugin-libmpv) · [tauri-plugin-mpv — lib.rs](https://lib.rs/crates/tauri-plugin-mpv)
 - ICY у mpv/FFmpeg: [mpv commit 0b77649 — stream_lavf: read ICY metadata](https://github.com/mpv-player/mpv/commit/0b77649c0b6afb103e0390163bd14f1cf9d20f06) · [mpv #36](https://github.com/mpv-player/mpv/issues/36) · [mpv #753 — перший тайтл не показано до зміни](https://github.com/mpv-player/mpv/issues/753) · [FFmpeg `-icy` опції](https://ffmpeg.org/pipermail/ffmpeg-user/2014-January/019673.html)

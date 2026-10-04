@@ -1,14 +1,14 @@
 ---
 slug: player-mirror-module
 title: "Один модуль дзеркала програвача: переходи, Оголошення і Вимкнений звук"
-summary: "Одну подію player-status розбирають п'ять файлів, «те саме джерело» записане двічі й розійшлося; ідея — один модуль дзеркала програвача"
+summary: "Одну подію player-status розбирають шість файлів; тотожність джерела латка 0.1.1 звела, але перехід класифікують двічі; ідея — один модуль дзеркала програвача"
 priority: P2
 type: idea
 status: draft
 effort: M
 kind: chore
 target: 0.3.0
-updated: 2026-09-24
+updated: 2026-10-04
 a11y: true
 depends_on: []
 blocks: []
@@ -29,18 +29,26 @@ gates: [pnpm test, pnpm typecheck, pnpm vite:build]
 
 > **Контекст:** знахідка [огляду архітектури 2026-09-24](../notes/architecture-review-2026-09-24.md).
 > `idea` + `draft` → режим **ОБГОВОРЕННЯ**: коду не чіпати, інтерфейс ще не спроєктовано.
-> Номери рядків — стан на `f09f36b`.
+> Номери рядків — стан на `f09f36b`; що змінив PR #38 — у «Тертя».
 
 ## Опис
 
 Дзеркало програвача — атоми `$playerStatus` і `$muteState` у вебв'ю та правила, що їх
 оновлюють, озвучують переходи й повертають звук. Щоб зрозуміти одну подію `player-status`,
 треба прочитати п'ять файлів: `handlePlayerStatus` (`src/App.tsx:228-276`),
-`playbackAnnounce.ts`, `muteControl.ts`, `muteCleanup.ts`, `stores/player.ts`. Зшиває їх
+`playbackAnnounce.ts`, `muteControl.ts`, `muteCleanup.ts`, `stores/player.ts` — а з PR #38 шість,
+бо порівняння джерел переїхало в `playbackSource.ts`. Зшиває їх
 `App.tsx`, у якого немає жодного тесту, а «який це перехід» кожен споживач вирішує сам — і
 відповіді вже розійшлися.
 
 ## Тертя
+
+Перші два пункти — стан на `f09f36b`; латка [preview-switch-keeps-mute](done/p2-preview-switch-keeps-mute.md)
+(PR #38) обидва зняла: `sameSource` тепер один, вичерпний за видами джерела
+(`src/lib/playbackSource.ts:44-60`), ним користуються `playbackAnnounce.ts:51` і
+`muteCleanupFlags` (`src/lib/muteCleanup.ts:19`), а прапорці рахує ця чиста функція з власним
+блоком тестів (`muteCleanup.test.ts:135-186`). Лишається те, що перехід і далі класифікують
+окремо селектор Оголошень і прапорці звуку (див. «Що дає»).
 
 - **«Те саме джерело» записано двічі, копії розійшлися.** `sameSource`
   (`src/lib/playbackAnnounce.ts:37-44`) порівнює прев'ю за `url` (:42); інлайн-копія для
