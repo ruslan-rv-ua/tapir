@@ -145,7 +145,7 @@ Aria: ні `TableView`, ні `GridList` у застосунку немає. Іс
 (`Writer::commit_with_snapshot`), тож вибір профілю й запис, який його несе, не
 розходяться. Запис до `AppState`, який бачить підміну, — гасіння перенесеного
 автозапуску в `lib.rs` — пише ту саму копію через `settings_store::disk_snapshot`.
-Рішення — backlog [cli-profile-override-persists](backlog/p2-cli-profile-override-persists.md), варіант А.
+Рішення — backlog [cli-profile-override-persists](backlog/done/p2-cli-profile-override-persists.md), варіант А.
 
 Гарантія: **на диск ніколи не лягає знімок, старіший за вже записаний**. Механізм —
 квиток, а не утримання лока: номер береться під локом стану миттєво, лок

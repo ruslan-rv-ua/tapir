@@ -1,14 +1,15 @@
 ---
 slug: cli-profile-override-persists
 title: "`--profile` не сеансовий: перше ж збереження налаштувань пише його в settings.json"
-summary: "`--profile` оголошено сеансовим, але будь-який запис налаштувань за сеанс (і гасіння перенесеного автозапуску) пише його в settings.json"
+summary: "`--profile` справді сеансовий: записи налаштувань кладуть у settings.json файлове ім'я профілю; міняє його лише перемикання, перейменування чи видалення"
 priority: P2
 type: planned
-status: ready
+status: done
 effort: S
 kind: bug
 target: 0.1.1
-updated: 2026-09-25
+updated: 2026-10-04
+completed: 2026-10-04
 a11y: false
 depends_on: []
 blocks: []
@@ -29,8 +30,8 @@ notes:
 # `--profile` не сеансовий: перше ж збереження налаштувань пише його в settings.json
 
 > **Контекст:** вада, знайдена на рев'ю
-> [corrupt-active-profile-aborts-startup](done/p1-corrupt-active-profile-aborts-startup.md).
-> `planned` + `ready` → **РЕАЛІЗАЦІЯ** за варіантом А (рішення 2026-09-25, див. «Варіанти»).
+> [corrupt-active-profile-aborts-startup](p1-corrupt-active-profile-aborts-startup.md).
+> **ЗАКРИТО 2026-10-04** за варіантом А (рішення 2026-09-25, див. «Варіанти» і «Спадок»).
 > Номери рядків — стан на `5553236`.
 
 ## Опис
@@ -62,9 +63,9 @@ notes:
 
 - Коментар `src-tauri/src/lib.rs:80-84`: «Session-only override (decision §7): we do NOT save
   settings.json here».
-- [architecture.md](../architecture.md) `:268`: «`--profile` → підмінити active_profile ←
+- [architecture.md](../../architecture.md) `:268`: «`--profile` → підмінити active_profile ←
   сеансовий override, settings.json НЕ пишемо».
-- Довідка ([background.md en](../help/en/background.md) `:43`, [uk](../help/uk/background.md)
+- Довідка ([background.md en](../../help/en/background.md) `:43`, [uk](../../help/uk/background.md)
   `:43`) обіцяє лише «стартувати в цьому профілі» — ані «на один запуск», ані «назавжди».
   Тобто довідка не бреше, але й не каже, чого чекати; порада з troubleshooting.md у записі
   corrupt-active-profile-aborts-startup (злито PR #30) впала на рев'ю саме через це.
@@ -148,13 +149,38 @@ notes:
 - [x] `cargo test`, `cargo clippy --all-targets` зелені; `pnpm test` зелений, якщо
       змінювалась довідка (ворота слів)
 
+## Спадок
+
+Реалізовано за варіантом А; підстановка — у сховищі. `settings_store::SettingsWriter`
+пам'ятає файлове ім'я профілю (`None`, коли `--profile` не підміняв) і кладе його в кожен
+знімок через `Writer::commit_with_snapshot` — під тим самим локом, що й зміна стану, тож
+знімок не розходиться з пам'яттю. Гасіння перенесеного автозапуску в `lib.rs` пише
+`settings_store::disk_snapshot` з тим самим правилом. IPC і `get_settings` не змінились:
+фронтенд і далі бачить сеансовий профіль активним.
+
+**Відхилення від чернетки: перейменування й видалення.** Рев'ю знайшло, що файловий профіль
+у сеансі з `--profile` — звичайний неактивний профіль: його можна перейменувати чи видалити,
+і тоді `settings.json` указував би на неіснуючий профіль, а наступний старт падав у «Помилку
+запуску». Тому `commit_profile_moved` веде файлове ім'я за перейменуванням, а при видаленні
+віддає файл профілю сеансу; критерій 1 доповнено цим винятком. **Кожен майбутній шлях, що
+перейменовує чи видаляє профіль, мусить кликати `commit_profile_moved`.**
+
+**Відкриті хвости (не регресії, окремих записів не заведено).**
+- Відкат невдалого перемикання в `choose_profile` — два окремі захоплення локу; запис
+  налаштувань між ними може покласти на диск ім'я, яке відкат потім прибирає з пам'яті.
+  Вікно успадковане від старого `switch_profile`.
+- Невдалий запис після перейменування лише логується; якщо до виходу більше нічого не
+  записалось, `settings.json` лишається зі старою назвою.
+
+**NVDA-прогін 2026-10-04 — 26 з 26.** Відтворення, перемикання, перейменування й видалення
+файлового профілю, перенесений автозапуск. Чекліст видалено цим закриттям.
+
 ## Документи
 
-- [Чекліст ручного прогону](../testing/nvda-cli-profile-override-persists.json) — сценарії відтворення, перемикання, перейменування й видалення файлового профілю, перенесений автозапуск
-- [corrupt-active-profile-aborts-startup](done/p1-corrupt-active-profile-aborts-startup.md) — звідки знахідка
+- [corrupt-active-profile-aborts-startup](p1-corrupt-active-profile-aborts-startup.md) — звідки знахідка
 - Специфікація 3G, рішення №7: `git show f399eeb:docs/superpowers/specs/2026-06-13-3g-cli-design.md`
-- [architecture.md](../architecture.md) — порядок старту
-- [autostart](done/p2-autostart.md) — підфаза 3I-2, гасіння автозапуску після перенесення
-- [settings-commit-seam](done/p1-settings-commit-seam.md) — `commit_settings` і `save_detached`
+- [architecture.md](../../architecture.md) — порядок старту
+- [autostart](p2-autostart.md) — підфаза 3I-2, гасіння автозапуску після перенесення
+- [settings-commit-seam](p1-settings-commit-seam.md) — `commit_settings` і `save_detached`
 - Код: `src-tauri/src/lib.rs`, `src-tauri/src/app_state.rs`, `src-tauri/src/settings_store.rs`,
   `src-tauri/src/commands/settings_commands.rs`, `src-tauri/src/commands/profile_commands.rs`
