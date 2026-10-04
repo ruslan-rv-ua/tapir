@@ -43,8 +43,19 @@ export function isLiveSource(source: PlaybackSource | null | undefined): boolean
  */
 export function sameSource(a: PlaybackSource | null, b: PlaybackSource | null): boolean {
   if (!a || !b) return a === b;
-  if (a.type === "stream" && b.type === "stream") return a.streamId === b.streamId;
-  if (a.type === "preview" && b.type === "preview") return a.url === b.url;
-  if (a.type === "file" && b.type === "file") return a.path === b.path;
-  return false;
+  if (a.type !== b.type) return false;
+  // Exhaustive over the kinds, like `LIVE_BY_SOURCE_TYPE`: a fourth kind must
+  // say what its identity is, or this stops compiling.
+  switch (a.type) {
+    case "stream":
+      return a.streamId === (b as typeof a).streamId;
+    case "preview":
+      return a.url === (b as typeof a).url;
+    case "file":
+      return a.path === (b as typeof a).path;
+    default: {
+      const unknown: never = a;
+      return unknown;
+    }
+  }
 }
