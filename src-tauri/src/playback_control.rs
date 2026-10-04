@@ -566,7 +566,7 @@ mod tests {
     }
 
     #[test]
-    fn closing_commit_writes_volume_and_file_position() {
+    fn closing_session_writes_volume_and_file_position() {
         let mut s = PlayerSession::default();
         apply_closing_session(&mut s, 0.3, &status(Some(file()), Some(750_000)));
         assert_eq!(s.volume, 0.3);
@@ -577,7 +577,7 @@ mod tests {
     }
 
     #[test]
-    fn closing_commit_without_source_writes_only_volume() {
+    fn closing_session_without_source_writes_only_volume() {
         // Stop already happened (source gone): the position recorded earlier
         // must survive — only the volume changes.
         let mut s = remembered_file();
